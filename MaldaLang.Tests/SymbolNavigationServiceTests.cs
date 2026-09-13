@@ -135,6 +135,161 @@ var result = foo();
     }
 
     [Fact]
+    public void Rename_LocalInOneFunction_DoesNotRenameSameNameInAnotherFunction()
+    {
+        const string source = """
+function first() {
+    var count = 1;
+    return count;
+}
+
+function second() {
+    var count = 2;
+    return count;
+}
+""";
+
+        var firstCountColumn = source.Replace("\r\n", "\n").Split('\n')[1].IndexOf("count", StringComparison.Ordinal);
+        var edits = _service.Rename(source, 1, firstCountColumn, "total", "test.malda");
+
+        Assert.NotNull(edits);
+        Assert.Equal(2, edits!.Count);
+        Assert.All(edits, edit => Assert.True(edit.Span.Line is 1 or 2));
+        Assert.DoesNotContain(edits, edit => edit.Span.Line >= 5);
+        Assert.All(edits, edit => Assert.Equal("count", Slice(source, edit.Span)));
+    }
+
+    [Fact]
+    public void Rename_LocalInOneBlock_DoesNotRenameSiblingBlock()
+    {
+        const string source = """
+function demo() {
+    if (true) {
+        var count = 1;
+        print(count);
+    }
+    if (true) {
+        var count = 2;
+        print(count);
+    }
+}
+""";
+
+        var firstCountColumn = source.Replace("\r\n", "\n").Split('\n')[2].IndexOf("count", StringComparison.Ordinal);
+        var edits = _service.Rename(source, 2, firstCountColumn, "total", "test.malda");
+
+        Assert.NotNull(edits);
+        Assert.Equal(2, edits!.Count);
+        Assert.All(edits, edit => Assert.True(edit.Span.Line is 2 or 3));
+        Assert.DoesNotContain(edits, edit => edit.Span.Line >= 6);
+    }
+
+    [Fact]
+    public void Rename_Function_DoesNotRenameShadowingLocal()
+    {
+        const string source = """
+function foo() {
+    return 1;
+}
+
+function wrapper() {
+    var foo = 2;
+    return foo;
+}
+
+var result = foo();
+""";
+
+        var edits = _service.Rename(source, 0, 9, "bar", "test.malda");
+
+        Assert.NotNull(edits);
+        Assert.Equal(2, edits!.Count);
+        Assert.Contains(edits, edit => edit.Span.Line == 0);
+        Assert.Contains(edits, edit => edit.Span.Line == 9);
+        Assert.DoesNotContain(edits, edit => edit.Span.Line is 5 or 6);
+    }
+
+    [Fact]
+    public void Rename_MethodInOneClass_DoesNotRenameMethodInAnotherClass()
+    {
+        const string source = """
+class First {
+    function value() {
+        return 1;
+    }
+}
+
+class Second {
+    function value() {
+        return 2;
+    }
+}
+""";
+
+        var firstValueColumn = source.Replace("\r\n", "\n").Split('\n')[1].IndexOf("value", StringComparison.Ordinal);
+        var edits = _service.Rename(source, 1, firstValueColumn, "amount", "test.malda");
+
+        Assert.NotNull(edits);
+        Assert.Single(edits!);
+        Assert.Equal(1, edits[0].Span.Line);
+        Assert.Equal("value", Slice(source, edits[0].Span));
+    }
+
+    [Fact]
+    public void GetReferences_Local_DoesNotIncludeOtherFunction()
+    {
+        const string source = """
+function first() {
+    var count = 1;
+    return count;
+}
+
+function second() {
+    var count = 2;
+    return count;
+}
+""";
+
+        var firstCountColumn = source.Replace("\r\n", "\n").Split('\n')[1].IndexOf("count", StringComparison.Ordinal);
+        var references = _service.GetReferences(source, 1, firstCountColumn, "test.malda");
+
+        Assert.Equal(2, references.Count);
+        Assert.All(references, reference => Assert.True(reference.Span.Line is 1 or 2));
+    }
+
+    [Fact]
+    public void RenameWorkspaceSymbol_Function_DoesNotRenameLocalOfSameName()
+    {
+        const string librarySource = """
+function sharedHelper() {
+    return 1;
+}
+""";
+        const string mainSource = """
+function wrapper() {
+    var sharedHelper = 2;
+    return sharedHelper;
+}
+
+var result = sharedHelper();
+""";
+
+        var documents = new[]
+        {
+            new WorkspaceDocumentInfo { SourceKey = "lib.malda", Text = librarySource },
+            new WorkspaceDocumentInfo { SourceKey = "main.malda", Text = mainSource }
+        };
+
+        var edits = _service.RenameWorkspaceSymbol(documents, librarySource, 0, 10, "renamedHelper", "lib.malda");
+
+        Assert.NotNull(edits);
+        Assert.Equal(2, edits!.Count);
+        Assert.Contains(edits, edit => edit.SourceKey == "lib.malda" && Slice(librarySource, edit.Span) == "sharedHelper");
+        Assert.Contains(edits, edit => edit.SourceKey == "main.malda" && edit.Span.Line == 5 && Slice(mainSource, edit.Span) == "sharedHelper");
+        Assert.DoesNotContain(edits, edit => edit.SourceKey == "main.malda" && edit.Span.Line is 1 or 2);
+    }
+
+    [Fact]
     public void Rename_InvalidIdentifier_ReturnsNull()
     {
         const string source = "function foo() { return 1; }";

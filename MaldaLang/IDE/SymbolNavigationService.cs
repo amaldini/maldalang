@@ -198,13 +198,22 @@ public class SymbolNavigationService : ISymbolNavigationService
             return null;
         }
 
-        var declaration = FindDeclaration(statements, token.Lexeme);
-        if (declaration == null)
+        if (TryBuildBindingIndex(statements, tokens, out var bindings))
+        {
+            var declaration = bindings.FindRelated(line, column).FirstOrDefault(occurrence => occurrence.IsDeclaration);
+            if (declaration != null)
+            {
+                return CreateLocation(sourceFileName, declaration.Name, declaration.Span.Line, declaration.Span.Column, declaration.Span.Length);
+            }
+        }
+
+        var fallback = FindDeclaration(statements, token.Lexeme);
+        if (fallback == null)
         {
             return null;
         }
 
-        return CreateLocation(sourceFileName, declaration.Value.Name, declaration.Value.Line - 1, declaration.Value.Column - 1, declaration.Value.Name.Length);
+        return CreateLocation(sourceFileName, fallback.Value.Name, fallback.Value.Line - 1, fallback.Value.Column - 1, fallback.Value.Name.Length);
     }
 
     /// <summary>
@@ -235,17 +244,24 @@ public class SymbolNavigationService : ISymbolNavigationService
             return new List<SymbolLocation>();
         }
 
-        var locations = new List<SymbolLocation>();
-        foreach (var current in EnumerateIdentifierTokens(tokens))
+        if (TryParseStatements(source, sourceFileName, cancellationToken, out var statements) &&
+            TryBuildBindingIndex(statements, tokens, out var bindings))
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (current.Lexeme == token.Lexeme)
+            var related = bindings.FindRelated(line, column);
+            if (related.Count > 0)
             {
-                locations.Add(CreateLocation(sourceFileName, current.Lexeme, current.Line - 1, current.Column - 1, current.Lexeme.Length));
+                return related
+                    .Select(occurrence => CreateLocation(sourceFileName, occurrence.Name, occurrence.Span.Line, occurrence.Span.Column, occurrence.Span.Length))
+                    .ToList();
             }
+
+            return new List<SymbolLocation>
+            {
+                CreateLocation(sourceFileName, token.Lexeme, token.Line - 1, token.Column - 1, token.Lexeme.Length)
+            };
         }
 
-        return locations;
+        return CollectSameNameLocations(tokens, token.Lexeme, sourceFileName, cancellationToken);
     }
 
     public List<SymbolLocation> GetWorkspaceReferences(IEnumerable<WorkspaceDocumentInfo> documents, string source, int line, int column, string? sourceFileName = null, CancellationToken cancellationToken = default)
@@ -305,26 +321,37 @@ public class SymbolNavigationService : ISymbolNavigationService
             return null;
         }
 
-        var edits = new List<TextEditInfo>();
-        foreach (var current in EnumerateIdentifierTokens(tokens))
+        if (TryParseStatements(source, sourceFileName, cancellationToken, out var statements) &&
+            TryBuildBindingIndex(statements, tokens, out var bindings))
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (current.Lexeme == token.Lexeme)
+            var related = bindings.FindRelated(line, column);
+            if (related.Count > 0)
             {
-                edits.Add(new TextEditInfo
+                return related
+                    .Select(occurrence => new TextEditInfo
+                    {
+                        Span = occurrence.Span,
+                        NewText = newName
+                    })
+                    .ToList();
+            }
+
+            return new List<TextEditInfo>
+            {
+                new TextEditInfo
                 {
                     Span = new TextSpanInfo
                     {
-                        Line = current.Line - 1,
-                        Column = current.Column - 1,
-                        Length = current.Lexeme.Length
+                        Line = token.Line - 1,
+                        Column = token.Column - 1,
+                        Length = token.Lexeme.Length
                     },
                     NewText = newName
-                });
-            }
+                }
+            };
         }
 
-        return edits.Count == 0 ? null : edits;
+        return CollectSameNameEdits(tokens, token.Lexeme, newName, cancellationToken);
     }
 
     public List<WorkspaceTextEditInfo>? RenameWorkspaceSymbol(IEnumerable<WorkspaceDocumentInfo> documents, string source, int line, int column, string newName, string? sourceFileName = null, CancellationToken cancellationToken = default)
@@ -631,11 +658,18 @@ public class SymbolNavigationService : ISymbolNavigationService
             return null;
         }
 
+        if (TryParseStatements(source, sourceFileName, cancellationToken, out var statements) &&
+            TryBuildBindingIndex(statements, tokens, out var bindings) &&
+            !bindings.IsWorkspaceVisible(line, column))
+        {
+            return null;
+        }
+
         var localDefinition = GetDefinition(source, line, column, sourceFileName, cancellationToken);
         if (localDefinition != null &&
-            TryParseStatements(source, sourceFileName, cancellationToken, out var statements))
+            TryParseStatements(source, sourceFileName, cancellationToken, out var parsedStatements))
         {
-            var localWorkspaceDeclaration = FindWorkspaceSearchableDeclaration(statements, localDefinition.Name, localDefinition.Span);
+            var localWorkspaceDeclaration = FindWorkspaceSearchableDeclaration(parsedStatements, localDefinition.Name, localDefinition.Span);
             if (localWorkspaceDeclaration != null)
             {
                 return localWorkspaceDeclaration.Name;
@@ -654,6 +688,18 @@ public class SymbolNavigationService : ISymbolNavigationService
             cancellationToken.ThrowIfCancellationRequested();
             if (!TryGetTokens(document.Text, document.SourceKey, cancellationToken, out var tokens))
             {
+                continue;
+            }
+
+            if (TryParseStatements(document.Text, document.SourceKey, cancellationToken, out var statements) &&
+                TryBuildBindingIndex(statements, tokens, out var bindings))
+            {
+                foreach (var occurrence in bindings.FindWorkspaceVisible(name))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    locations.Add(CreateLocation(document.SourceKey, occurrence.Name, occurrence.Span.Line, occurrence.Span.Column, occurrence.Span.Length));
+                }
+
                 continue;
             }
 
@@ -787,55 +833,60 @@ public class SymbolNavigationService : ISymbolNavigationService
 
     private static IEnumerable<Token> EnumerateIdentifierTokens(IEnumerable<Token> tokens)
     {
-        foreach (var token in tokens)
-        {
-            if (token.Type == TokenType.Identifier)
-            {
-                yield return token;
-            }
-            else if (token.Type == TokenType.InterpolatedString)
-            {
-                foreach (var nested in EnumerateInterpolatedStringIdentifiers(token))
-                {
-                    yield return nested;
-                }
-            }
-        }
+        return SymbolBindingIndex.EnumerateIdentifierTokens(tokens);
     }
 
-    private static IEnumerable<Token> EnumerateInterpolatedStringIdentifiers(Token interpolated)
+    private static bool TryBuildBindingIndex(List<Statement> statements, List<Token> tokens, out SymbolBindingIndex index)
     {
-        if (interpolated.Literal is not List<LexerInterpolatedStringSegment> segments)
+        index = SymbolBindingIndex.Build(statements, tokens);
+        return true;
+    }
+
+    private static List<SymbolLocation> CollectSameNameLocations(
+        List<Token> tokens,
+        string name,
+        string? sourceFileName,
+        CancellationToken cancellationToken)
+    {
+        var locations = new List<SymbolLocation>();
+        foreach (var current in EnumerateIdentifierTokens(tokens))
         {
-            yield break;
+            cancellationToken.ThrowIfCancellationRequested();
+            if (current.Lexeme == name)
+            {
+                locations.Add(CreateLocation(sourceFileName, current.Lexeme, current.Line - 1, current.Column - 1, current.Lexeme.Length));
+            }
         }
 
-        foreach (var segment in segments)
+        return locations;
+    }
+
+    private static List<TextEditInfo>? CollectSameNameEdits(
+        List<Token> tokens,
+        string name,
+        string newName,
+        CancellationToken cancellationToken)
+    {
+        var edits = new List<TextEditInfo>();
+        foreach (var current in EnumerateIdentifierTokens(tokens))
         {
-            if (!segment.IsExpression || string.IsNullOrWhiteSpace(segment.Content))
+            cancellationToken.ThrowIfCancellationRequested();
+            if (current.Lexeme == name)
             {
-                continue;
-            }
-
-            List<Token> nestedTokens;
-            try
-            {
-                nestedTokens = new Lexer(segment.Content).Tokenize();
-            }
-            catch
-            {
-                continue;
-            }
-
-            foreach (var ident in EnumerateIdentifierTokens(nestedTokens))
-            {
-                var line = segment.SourceLine + ident.Line - 1;
-                var column = ident.Line == 1
-                    ? segment.SourceColumn + ident.Column - 1
-                    : ident.Column;
-                yield return new Token(TokenType.Identifier, ident.Lexeme, ident.Literal, line, column);
+                edits.Add(new TextEditInfo
+                {
+                    Span = new TextSpanInfo
+                    {
+                        Line = current.Line - 1,
+                        Column = current.Column - 1,
+                        Length = current.Lexeme.Length
+                    },
+                    NewText = newName
+                });
             }
         }
+
+        return edits.Count == 0 ? null : edits;
     }
 
     private static bool IsValidIdentifier(string name)
