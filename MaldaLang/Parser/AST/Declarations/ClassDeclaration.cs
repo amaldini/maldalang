@@ -10,15 +10,17 @@ public class ClassDeclaration : Statement
     public string Name { get; }
     public string? Superclass { get; }
     public List<ClassMember> Members { get; }
-    public bool IsExported { get; }
-    
-    public ClassDeclaration(string name, string? superclass, List<ClassMember> members, bool isExported = false, int line = 0, int column = 0)
+    public bool IsExported { get; set; }
+    public bool HasPrimaryConstructor { get; }
+
+    public ClassDeclaration(string name, string? superclass, List<ClassMember> members, bool isExported = false, int line = 0, int column = 0, bool hasPrimaryConstructor = false)
         : base(line, column)
     {
         Name = name;
         IsExported = isExported;
         Superclass = superclass;
         Members = members;
+        HasPrimaryConstructor = hasPrimaryConstructor;
     }
 }
 

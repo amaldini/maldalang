@@ -43,6 +43,7 @@ public class Parser
         {
             CollectDeclaration(statements, applySourceFile: true);
         }
+        ClassAugmentation.Merge(statements, _errors, _sourceFileName);
         return statements;
     }
 
@@ -332,7 +333,7 @@ public class Parser
             members = DesugarPrimaryConstructor(name, nameToken, primaryParams, primaryHints!, members);
         }
 
-        return new ClassDeclaration(name, superclass, members, isExported, nameToken.Line, nameToken.Column);
+        return new ClassDeclaration(name, superclass, members, isExported, nameToken.Line, nameToken.Column, primaryParams != null);
     }
 
     private (List<string> Names, List<string?> Hints) ParsePrimaryConstructorParams()

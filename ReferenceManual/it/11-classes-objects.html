@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Classi e oggetti MALDA: costruttori, metodi, ereditarietà, membri static, overload degli operatori e costruttori primari.">
+    <meta name="description" content="Classi e oggetti MALDA: costruttori, metodi, ereditarietà, membri static, overload degli operatori, costruttori primari e aumento di classe.">
     <title>11. Classi e oggetti - Manuale di riferimento MALDA</title>
     <link rel="stylesheet" href="../styles.css">
     <link rel="stylesheet" href="../syntax.css">
@@ -201,6 +201,33 @@ print(p.x + p.y);</code></pre>
     }
 }
 print(new Point(3, 4).total());</code></pre>
+
+        <h2>11.7 Aggiungere metodi a una classe già definita</h2>
+        <p>Una seconda <code>class Name { … }</code> con lo stesso nome <strong>aumenta</strong> la classe originale: i nuovi membri vengono accodati. Non c'è una keyword extra. Una dichiarazione successiva non può usare un costruttore primario, non può cambiare <code>extends</code> e non può ripetere un nome di membro già presente.</p>
+        <pre><code data-run="true" data-expect="7">class Point(x, y);
+class Point {
+    function total() {
+        return this.x + this.y;
+    }
+}
+print(new Point(3, 4).total());</code></pre>
+        <pre><code data-run="true" data-expect="1\n2">class Counter {
+    var value = 0;
+
+    function Counter() {
+    }
+}
+
+class Counter {
+    function inc() {
+        this.value = this.value + 1;
+        return this.value;
+    }
+}
+
+var c = new Counter();
+print(c.inc());
+print(c.inc());</code></pre>
         <div class="see-also">
             <h3>Vedi anche</h3>
             <ul>

@@ -22,7 +22,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | 08-control-structures.html | a7dce8f0a0c17a1a36f37de007bdc8684d2b9e3388111ce3df38f493f35cb554 |
 | 09-functions.html | bfc36bf24000b8d223f136dc2b1a05d67f68978d8d17ac8e634342f0974feaea |
 | 10-prompts.html | eb2c0dc586f5cc15c3c65af78befbfffde01347c5465dba4a2485294b0c6f9a7 |
-| 11-classes-objects.html | 7ee3c392d3fc9cdfabb0f55f18e6e4c1e0c347520323cfd283449504654139c2 |
+| 11-classes-objects.html | 844b3b8d6e2a1173692ccc4e6d09ab806816fbf32ade26670a3e898a11483c26 |
 | 12-input-output.html | ed3fb9d438fc0f847bf231af035d241449a455fa47cc3d9e35cd6130b58d910f |
 | 13-built-in-functions.html | e28177f8ec88aa5bd1df859a7db30329bd9eaec0afc4b280e2d7408cb35d1ff4 |
 | 14-graphs.html | aa57872f357cc1df0463f0020e1a6ea66ee0d542f80ea4621d30c500af56ca06 |
@@ -47,6 +47,6 @@ python3 scripts/sync-reference-manual-it-status.py
 | 33-personal-assistant.html | 12cc2d16342414b2325cd1a39c86d935f05614281fa372f8339ff3199a80725e |
 | 34-examples.html | 7b1b4ca6c633240f9c7553011447aa36af7110b8a2c3ec3d6c17a14c533ef056 |
 | 35-property-testing.html | f841e4da3417b64fea4fd0ad66aac42f46f50cae50a0113c869c6e840dfc9e22 |
-| 36-grammar.html | 86b9fb6a49d94ff8fdc5f68e6ceeaacc14112a3839b5e9a661266d07cca98ca7 |
+| 36-grammar.html | dbbccdd98ce652299ed6a22fdbe77da77d5422e8855d1582d147afdf1a72ccc5 |
 | 37-appendix.html | 64f31b064b3d7c07c614253e628f15a6679a91bd372f4ea6a50bda04b6a9b542 |
 | 38-appendix-gpu-billiards.html | e26d23a5c6537436eebae745760e889481887fdd5f6d634a8c53e3741bffb276 |

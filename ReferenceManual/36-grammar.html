@@ -50,6 +50,7 @@ ClassDecl     ::= "class" Identifier (
                     "(" ParamList? ")" ( "{" ClassMember* "}" | ";" )
                   | ("extends" Identifier)? "{" ClassMember* "}"
                   )
+                  /* later ClassDecl with the same Identifier is an augmentation */
 ClassMember   ::= AccessModifier? (FieldDecl | MethodDecl | ConstructorDecl)
 FieldDecl     ::= "var" Identifier TypeHint? ("=" Expression)? ";"
 MethodDecl    ::= AccessModifier? FunctionDecl

@@ -186,7 +186,7 @@ internal static class TargetPartitioner
             filteredMembers.Add(new ClassMember(member.Access, member.IsStatic, member.Type, member.Name, clonedFunction, member.TypeHint));
         }
 
-        return new ClassDeclaration(classDeclaration.Name, classDeclaration.Superclass, filteredMembers, classDeclaration.IsExported, classDeclaration.Line, classDeclaration.Column);
+        return new ClassDeclaration(classDeclaration.Name, classDeclaration.Superclass, filteredMembers, classDeclaration.IsExported, classDeclaration.Line, classDeclaration.Column, classDeclaration.HasPrimaryConstructor);
     }
 
     private static bool IncludeProperty(PropertyDeclaration property, TargetBackend backend)

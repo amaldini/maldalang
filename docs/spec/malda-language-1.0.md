@@ -503,6 +503,29 @@ class Point(x, y) { function total() { return this.x + this.y; } }
 
 ---
 
+## 20. Classes — augmentation
+
+Additive semantics; classic `class Name { … }` is unchanged when the name is new.
+
+```malda
+class Point(x, y);
+class Point {
+    function total() {
+        return this.x + this.y;
+    }
+}
+```
+
+- A later `class Identifier { … }` for a name already declared in the same program (including `include` splice) **augments** the first declaration: members are appended in source order.
+- Allowed on a later declaration: instance and static methods, fields, and a constructor only when the first declaration has none. A later `extends Super` is legal only when it repeats the original superclass.
+- **Illegal:** a primary constructor on a later declaration; adding or changing `extends`; repeating a member name already present on the class.
+- `export` on any declaration of that name marks the merged class exported.
+- After parse, interpreter and both transpilers see a single `ClassDeclaration`.
+
+**Implementation:** parse-time merge in `Parser.ClassAugmentation`.
+
+---
+
 ## 16. Planned amendments (non-normative roadmap)
 
 Versioning and deprecation rules: [CHANGELOG.md](CHANGELOG.md).
@@ -527,3 +550,4 @@ Versioning and deprecation rules: [CHANGELOG.md](CHANGELOG.md).
 | 2026-08-12 | Final 1.0 | Spec Final declared; Tier 0 interpreter + C# conformance green (`run-tier0-conformance.ps1`) |
 | 2026-08-14 | Final 1.0 | §8.1 optional constructor payload types (`Buy(sku: string, qty: int)`) — additive L1b |
 | 2026-08-21 | Final 1.0 | §11.1 overlapping `async` + `sleep` task isolation (interpreter activations) |
+| 2026-09-13 | Final 1.0 | §20 later `class Name { … }` augments an already-defined class |

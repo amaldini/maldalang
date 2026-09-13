@@ -236,4 +236,22 @@ public class InterpretJsPairTests
             """,
             "private-base-field-js");
     }
+
+    [Fact]
+    public void ClassAugmentation_SameStdout()
+    {
+        InterpretJsPair.AssertSameFromSource(
+            """
+            class Point(x, y);
+            class Point {
+                function total() {
+                    return this.x + this.y;
+                }
+            }
+            var p = new Point(3, 4);
+            io.print(p.x);
+            io.print(p.total());
+            """,
+            "class-augmentation-js");
+    }
 }

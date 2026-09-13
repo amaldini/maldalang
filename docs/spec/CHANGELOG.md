@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — class augmentation)
+
+- **Later `class Name { … }`:** a second (or later) `class` with an already-declared name **augments** the first declaration — members are appended. No new keyword. A later declaration cannot use a primary constructor, cannot add or change `extends` (repeating the same superclass is fine), and cannot repeat a member name. `export` on any declaration marks the merged class exported. Previously a second `class Name` replaced the first in the interpreter and failed C#/JS emit; those programs now merge or error on a repeated member. Interpreter, C# transpile, and JS agree (one emitted class). Grammar: [`36-grammar.html`](../../ReferenceManual/36-grammar.html); narrative: [`11-classes-objects.html`](../../ReferenceManual/11-classes-objects.html) §11.7. Spec §20.
+
 #### Added (MINOR — include / import navigation and unresolved-module diagnostics)
 
 - **Module references in tooling:** the quoted path of an `include "…";` or file-form `import "…";` is a navigable file reference. Desktop IDE *Go to Definition* (F12), LSP `textDocument/definition`, and the Outline (`textDocument/documentSymbol`, new `SymbolItemKind.Module`) resolve it against the host file's directory via `ModulePathResolver` — the same rule the parser and module loader use. A file that half-parses still navigates from its import statements (module scanning is pre-parse). No syntax change; `malda check` output set is unchanged apart from the new warning below.

@@ -244,6 +244,18 @@ var p = new Point(3, 4);
 io.print(p.total());
 ```
 
+A later `class Name { … }` with the same name **augments** the original class (appends members). Do not use a primary constructor, change `extends`, or repeat a member name on the later declaration.
+
+```malda
+class Point(x, y);
+class Point {
+    function total() {
+        return this.x + this.y;
+    }
+}
+io.print(new Point(3, 4).total());
+```
+
 ## Prompts (AI)
 
 ```malda
