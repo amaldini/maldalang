@@ -36,7 +36,7 @@
 MALDA (Multi Agent Language with Development Automation) Interpreter
 Version 1.0.19
 You can enter multiline code - the interpreter will continue reading until you type 'run', 'compile', or 'transpile'
-Type 'exit' to quit, 'run' to execute, 'compile' or 'transpile' to build executable, 'help' for help
+Type 'exit' to quit, 'vars' to list definitions, 'run' to execute, 'compile' or 'transpile' to build executable, 'help' for help
 (c) 2026 - Andrea Maldini
 > </code></pre>
 
@@ -46,6 +46,7 @@ Type 'exit' to quit, 'run' to execute, 'compile' or 'transpile' to build executa
             <li><strong>Inserire codice</strong>: digita codice MALDA riga per riga. Un'istruzione completa viene eseguita appena premi Invio; un blocco ancora aperto prosegue sul prompt di continuazione <code>..&gt;</code>.</li>
             <li><strong>Stato della sessione</strong>: variabili, funzioni e classi definite in una voce restano visibili nelle voci successive. Le dichiarazioni <code>schema</code>, di sum type e <code>api</code> non vengono conservate tra le voci — dichiarale nella stessa voce che le usa.</li>
             <li><strong>Espressioni pure</strong>: un'espressione senza <code>;</code> finale e senza assegnazione ne stampa il valore, quindi <code>1 + 2</code> mostra <code>3</code>.</li>
+            <li><strong><code>vars</code></strong> (alias <code>defs</code>, <code>who</code>): elenca variabili, funzioni, classi, prompt, actor e workflow definiti nella sessione. I nomi host come <code>math</code> / <code>str</code> / <code>io</code> sono omessi. Filtro opzionale: <code>vars functions</code>, <code>vars classes</code>, e così via. È un comando REPL, non un built-in del linguaggio. Digitare un nome continua a ispezionare quel binding.</li>
             <li><strong><code>run</code></strong>: esegue il codice nel buffer</li>
             <li><strong><code>compile</code></strong>: compila il codice nel buffer in un eseguibile (modalità interpreter)</li>
             <li><strong><code>transpile</code></strong>: compila il codice nel buffer in un eseguibile (transpile verso C#)</li>
@@ -60,6 +61,12 @@ Type 'exit' to quit, 'run' to execute, 'compile' or 'transpile' to build executa
 > function add(a, b) { return a + b; }
 > add(x, y)
 30
+> vars
+variables:
+  x = 10
+  y = 20
+functions:
+  add(a, b)
 > print(x + y);
 30
 > </code></pre>

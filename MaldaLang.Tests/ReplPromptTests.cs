@@ -2,9 +2,11 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using MaldaLang;
+using MaldaLang.Cli;
 using MaldaLang.Interpreter;
 using Xunit;
 
@@ -13,7 +15,8 @@ namespace MaldaLang.Tests;
 /// <summary>
 /// Coverage for the interactive REPL dispatch: the <c>help</c> command must not be
 /// dropped by the empty-code guard, entries share one interpreter so variables and
-/// functions survive across them, and a bare expression echoes its value.
+/// functions survive across them, a bare expression echoes its value, and
+/// <c>vars</c> lists user definitions.
 /// </summary>
 public class ReplPromptTests : TestBase
 {
@@ -23,7 +26,8 @@ public class ReplPromptTests : TestBase
 
     private static (string StdOut, string StdErr) InvokePromptInput(
         InputResult result,
-        Interpreter.Interpreter? interpreter = null)
+        Interpreter.Interpreter? interpreter = null,
+        ISet<string>? hostNames = null)
     {
         interpreter ??= new Interpreter.Interpreter();
         lock (_consoleLock)
@@ -36,7 +40,7 @@ public class ReplPromptTests : TestBase
             Console.SetError(error);
             try
             {
-                ExecutePromptInput.Invoke(null, new object[] { result, interpreter });
+                ExecutePromptInput.Invoke(null, new object[] { result, interpreter, hostNames });
             }
             finally
             {
@@ -55,7 +59,8 @@ public class ReplPromptTests : TestBase
 
         Assert.Contains("MALDA CLI", stdOut);
         Assert.Contains("REPL commands:", stdOut);
-        Assert.Contains("run | compile | transpile | help | exit", stdOut);
+        Assert.Contains("run | compile | transpile | vars | help | exit", stdOut);
+        Assert.Contains("vars [kind]", stdOut);
     }
 
     [Fact]
@@ -140,5 +145,63 @@ public class ReplPromptTests : TestBase
 
         Assert.Equal(string.Empty, assignOut.Trim());
         Assert.Equal("5", echoOut.Trim());
+    }
+
+    [Fact]
+    public void VarsEntry_EmptySession_PrintsNoUserDefinitions()
+    {
+        var interpreter = new Interpreter.Interpreter();
+        var hostNames = ReplSessionInventory.SnapshotHostNames(interpreter);
+
+        var (stdOut, stdErr) = InvokePromptInput(
+            new InputResult { Code = "", Action = "vars" }, interpreter, hostNames);
+
+        Assert.Equal("(no user definitions)", stdOut.Trim());
+        Assert.Equal(string.Empty, stdErr.Trim());
+    }
+
+    [Fact]
+    public void VarsEntry_ListsUserDefinitions_AndHidesHostNames()
+    {
+        var interpreter = new Interpreter.Interpreter();
+        var hostNames = ReplSessionInventory.SnapshotHostNames(interpreter);
+
+        InvokePromptInput(new InputResult { Code = "var x = 10;", Action = "run" }, interpreter, hostNames);
+        InvokePromptInput(new InputResult { Code = "function double(n) { return n * 2; }", Action = "run" }, interpreter, hostNames);
+        var (stdOut, _) = InvokePromptInput(
+            new InputResult { Code = "", Action = "vars" }, interpreter, hostNames);
+
+        Assert.Contains("variables:", stdOut);
+        Assert.Contains("x = 10", stdOut);
+        Assert.Contains("functions:", stdOut);
+        Assert.Contains("double(n)", stdOut);
+        Assert.DoesNotContain("math", stdOut);
+        Assert.DoesNotContain("AnsiConsole", stdOut);
+    }
+
+    [Fact]
+    public void VarsEntry_UnknownFilter_PrintsUsageError()
+    {
+        var (stdOut, _) = InvokePromptInput(new InputResult { Code = "widgets", Action = "vars" });
+
+        Assert.Contains("Unknown vars filter 'widgets'", stdOut);
+        Assert.Contains("variables, functions, classes", stdOut);
+    }
+
+    [Fact]
+    public void VarsEntry_FunctionsFilter_OmitsVariables()
+    {
+        var interpreter = new Interpreter.Interpreter();
+        var hostNames = ReplSessionInventory.SnapshotHostNames(interpreter);
+
+        InvokePromptInput(new InputResult { Code = "var x = 1;", Action = "run" }, interpreter, hostNames);
+        InvokePromptInput(new InputResult { Code = "function ping() { return 1; }", Action = "run" }, interpreter, hostNames);
+        var (stdOut, _) = InvokePromptInput(
+            new InputResult { Code = "functions", Action = "vars" }, interpreter, hostNames);
+
+        Assert.Contains("functions:", stdOut);
+        Assert.Contains("ping()", stdOut);
+        Assert.DoesNotContain("variables:", stdOut);
+        Assert.DoesNotContain("x = 1", stdOut);
     }
 }

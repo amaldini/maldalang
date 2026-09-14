@@ -36,7 +36,7 @@
 MALDA (Multi Agent Language with Development Automation) Interpreter
 Version 1.0.19
 You can enter multiline code - the interpreter will continue reading until you type 'run', 'compile', or 'transpile'
-Type 'exit' to quit, 'run' to execute, 'compile' or 'transpile' to build executable, 'help' for help
+Type 'exit' to quit, 'vars' to list definitions, 'run' to execute, 'compile' or 'transpile' to build executable, 'help' for help
 (c) 2026 - Andrea Maldini
 > </code></pre>
 
@@ -46,6 +46,7 @@ Type 'exit' to quit, 'run' to execute, 'compile' or 'transpile' to build executa
             <li><strong>Enter code</strong>: Type MALDA code line by line. A complete statement runs as soon as you press Enter; a block that is still open continues on the <code>..&gt;</code> continuation prompt.</li>
             <li><strong>Session state</strong>: Variables, functions, and classes defined in one entry stay visible in later entries. <code>schema</code>, sum-type, and <code>api</code> declarations are not carried across entries — declare them in the same entry that uses them.</li>
             <li><strong>Bare expressions</strong>: An expression with no trailing <code>;</code> and no assignment echoes its value, so <code>1 + 2</code> prints <code>3</code>.</li>
+            <li><strong><code>vars</code></strong> (aliases <code>defs</code>, <code>who</code>): List user-defined variables, functions, classes, prompts, actors, and workflows. Host names such as <code>math</code> / <code>str</code> / <code>io</code> are omitted. Optional filter: <code>vars functions</code>, <code>vars classes</code>, and so on. This is a REPL command, not a language built-in. Typing a name still inspects that one binding.</li>
             <li><strong><code>run</code></strong>: Execute the buffered code</li>
             <li><strong><code>compile</code></strong>: Compile the buffered code to an executable (interpreter mode)</li>
             <li><strong><code>transpile</code></strong>: Compile the buffered code to an executable (transpiled to C#)</li>
@@ -60,6 +61,12 @@ Type 'exit' to quit, 'run' to execute, 'compile' or 'transpile' to build executa
 > function add(a, b) { return a + b; }
 > add(x, y)
 30
+> vars
+variables:
+  x = 10
+  y = 20
+functions:
+  add(a, b)
 > print(x + y);
 30
 > </code></pre>

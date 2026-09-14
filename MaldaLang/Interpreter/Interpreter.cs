@@ -2302,6 +2302,8 @@ public partial class Interpreter
     }
 
     internal Environment GlobalsEnvironment => _globals;
+    internal IReadOnlyDictionary<string, ActorDefinition> DefinedActors => _actors;
+    internal IReadOnlyDictionary<string, WorkflowDeclaration> DefinedWorkflows => _workflows;
     internal Environment CurrentEnvironment => _environment;
     internal ObjectInstance? CurrentThisObject => _currentObject;
 
