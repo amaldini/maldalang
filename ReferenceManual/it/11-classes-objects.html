@@ -204,6 +204,13 @@ print(new Point(3, 4).total());</code></pre>
 
         <h2>11.7 Aggiungere metodi a una classe già definita</h2>
         <p>Una seconda <code>class Name { … }</code> con lo stesso nome <strong>aumenta</strong> la classe originale: i nuovi membri vengono accodati. Non c'è una keyword extra. Una dichiarazione successiva non può usare un costruttore primario, non può cambiare <code>extends</code> e non può ripetere un nome di membro già presente.</p>
+        <p>I metodi condividono il corpo compatto delle funzioni: una sola espressione più <code>;</code> è il <code>return</code> di quell'espressione. Per un metodo semplice puoi anche omettere le graffe della classe:</p>
+        <pre><code data-run="true" data-expect="7">class Point(x, y);
+class Point { function total() this.x + this.y; }
+print(new Point(3, 4).total());</code></pre>
+        <pre><code data-run="true" data-expect="6">class Point(x, y);
+class Point function doubled() this.x * 2;
+print(new Point(3, 4).doubled());</code></pre>
         <pre><code data-run="true" data-expect="7">class Point(x, y);
 class Point {
     function total() {

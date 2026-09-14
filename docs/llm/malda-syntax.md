@@ -244,16 +244,14 @@ var p = new Point(3, 4);
 io.print(p.total());
 ```
 
-A later `class Name { … }` with the same name **augments** the original class (appends members). Do not use a primary constructor, change `extends`, or repeat a member name on the later declaration.
+A later `class Name { … }` with the same name **augments** the original class (appends members). Do not use a primary constructor, change `extends`, or repeat a member name on the later declaration. Methods share the compact function body (`function total() this.x + this.y;`). A single added method can omit the class braces: `class Point function total() this.x + this.y;`.
 
 ```malda
 class Point(x, y);
-class Point {
-    function total() {
-        return this.x + this.y;
-    }
-}
+class Point { function total() this.x + this.y; }
+class Point function doubled() this.x * 2;
 io.print(new Point(3, 4).total());
+io.print(new Point(3, 4).doubled());
 ```
 
 ## Prompts (AI)

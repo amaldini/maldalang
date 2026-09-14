@@ -315,11 +315,17 @@ public class Parser
         {
             // Data-only form: class Point(x, y);
         }
+        else if (primaryParams == null && superclass == null && IsSingleMethodClassStart())
+        {
+            // Brace-less single-method class / compact augmentation:
+            // class Point function total() this.x + this.y;
+            members.Add(ClassMember(name));
+        }
         else
         {
             Consume(TokenType.LeftBrace, primaryParams != null
                 ? "Expect '{' or ';' after primary constructor."
-                : "Expect '{' after class name.");
+                : "Expect '{' after class name or 'function' for a single-method class.");
             while (!Check(TokenType.RightBrace) && !IsAtEnd())
             {
                 members.Add(ClassMember(name));
@@ -334,6 +340,25 @@ public class Parser
         }
 
         return new ClassDeclaration(name, superclass, members, isExported, nameToken.Line, nameToken.Column, primaryParams != null);
+    }
+
+    /// <summary>
+    /// <c>function</c>, optional <c>public</c>/<c>private</c> and <c>static</c>, starting a brace-less
+    /// single-method class: <c>class Point function total() this.x + this.y;</c>.
+    /// </summary>
+    private bool IsSingleMethodClassStart()
+    {
+        var offset = 0;
+        var first = Peek(offset);
+        if (first == null)
+            return false;
+        if (first.Type == TokenType.Public || first.Type == TokenType.Private)
+            offset++;
+        var next = Peek(offset);
+        if (next != null && next.Type == TokenType.Static)
+            offset++;
+        var fn = Peek(offset);
+        return fn != null && fn.Type == TokenType.Function;
     }
 
     private (List<string> Names, List<string?> Hints) ParsePrimaryConstructorParams()
@@ -685,8 +710,7 @@ public class Parser
             Advance();
             returnType = Consume(TokenType.Identifier, "Expect return type name after '->'.").Lexeme;
         }
-        Consume(TokenType.LeftBrace, "Expect '{' before method body.");
-        var body = Block();
+        var body = ParseFunctionOrMethodBody("method");
         var funcDecl = new FunctionDeclaration(name, parameters, body, decorators, parameterDecorators, parameterTypeHints, returnType, false, nameToken.Line, nameToken.Column);
         return new ClassMember(access, isStatic, MemberType.Method, name, funcDecl);
     }
@@ -810,19 +834,22 @@ public class Parser
             Advance();
             returnType = Consume(TokenType.Identifier, "Expect return type name after '->'.").Lexeme;
         }
-        BlockStatement body;
-        if (Match(TokenType.LeftBrace))
-        {
-            body = Block();
-        }
-        else
-        {
-            // One-statement function: function square(x) x*x;
-            var expr = Expression();
-            var semi = Consume(TokenType.Semicolon, "Expect ';' after single-expression function body.");
-            body = new BlockStatement(new List<Statement> { new ReturnStatement(expr, semi.Line, semi.Column) });
-        }
+        var body = ParseFunctionOrMethodBody("function");
         return new FunctionDeclaration(name, parameters, body, decorators, parameterDecorators, parameterTypeHints, returnType, isExported, nameToken.Line, nameToken.Column);
+    }
+
+    /// <summary>
+    /// Shared body for top-level functions and methods: <c>{ … }</c> or a single expression + <c>;</c>
+    /// (desugars to <c>return expr;</c>). Constructors stay block-only.
+    /// </summary>
+    private BlockStatement ParseFunctionOrMethodBody(string kind)
+    {
+        if (Match(TokenType.LeftBrace))
+            return Block();
+
+        var expr = Expression();
+        var semi = Consume(TokenType.Semicolon, $"Expect ';' after single-expression {kind} body.");
+        return new BlockStatement(new List<Statement> { new ReturnStatement(expr, semi.Line, semi.Column) });
     }
 
     private Statement WorkflowDeclaration()

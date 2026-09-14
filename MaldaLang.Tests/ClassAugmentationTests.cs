@@ -290,6 +290,123 @@ public class ClassAugmentationTests : TestBase
     }
 
     [Fact]
+    public void Parse_CompactMethodInBraces_MergesOntoFirst()
+    {
+        var classDecl = Assert.Single(ParseClasses("""
+            class Point(x, y);
+            class Point { function total() this.x + this.y; }
+            """));
+        Assert.Contains(classDecl.Members, m => m.Type == MemberType.Method && m.Name == "total");
+    }
+
+    [Fact]
+    public void Parse_BracelessMethod_MergesOntoFirst()
+    {
+        var classDecl = Assert.Single(ParseClasses("""
+            class Point(x, y);
+            class Point function total() this.x + this.y;
+            """));
+        Assert.Contains(classDecl.Members, m => m.Type == MemberType.Method && m.Name == "total");
+    }
+
+    [Fact]
+    public void Parse_BracelessAsFirstDeclaration_IsSingleMethodClass()
+    {
+        var classDecl = Assert.Single(ParseClasses("class Greeter function hello() \"hi\";"));
+        Assert.Equal("Greeter", classDecl.Name);
+        Assert.False(classDecl.HasPrimaryConstructor);
+        var method = Assert.Single(classDecl.Members);
+        Assert.Equal(MemberType.Method, method.Type);
+        Assert.Equal("hello", method.Name);
+    }
+
+    [Fact]
+    public void Parse_BracelessStaticExport_MarksOriginalExported()
+    {
+        var classDecl = Assert.Single(ParseClasses("""
+            class MathUtils {
+                static var PI = 3;
+            }
+            export class MathUtils static function doublePi() MathUtils.PI * 2;
+            """));
+        Assert.True(classDecl.IsExported);
+        Assert.Contains(classDecl.Members, m => m.Type == MemberType.Method && m.Name == "doublePi" && m.IsStatic);
+    }
+
+    [Fact]
+    public void Parse_BracelessField_IsRejected()
+    {
+        var message = FirstParseError("class Point var x = 1;");
+        Assert.Contains("function", message);
+    }
+
+    [Fact]
+    public void Parse_BracelessDuplicateMember_IsRejected()
+    {
+        var message = FirstParseError("""
+            class Point(x, y) {
+                function total() {
+                    return this.x + this.y;
+                }
+            }
+            class Point function total() 0;
+            """);
+        Assert.Contains("already defined on class 'Point'", message);
+    }
+
+    [Fact]
+    public void Parse_ConstructorExpressionBody_IsRejected()
+    {
+        var message = FirstParseError("class Box function Box() 1;");
+        Assert.Contains("constructor body", message);
+    }
+
+    [Fact]
+    public void Interpret_CompactMethodInBraces_ReturnsExpression()
+    {
+        var output = RunProgram("""
+            class Point(x, y);
+            class Point { function total() this.x + this.y; }
+            print(new Point(3, 4).total());
+            """);
+        Assert.Equal("7", output);
+    }
+
+    [Fact]
+    public void Interpret_BracelessMethod_ReturnsExpression()
+    {
+        var output = RunProgram("""
+            class Point(x, y);
+            class Point function doubled() this.x * 2;
+            print(new Point(3, 4).doubled());
+            """);
+        Assert.Equal("6", output);
+    }
+
+    [Fact]
+    public void Interpret_BracelessAsFirstDeclaration_CanCallMethod()
+    {
+        var output = RunProgram("""
+            class Greeter function hello() "hi";
+            print(new Greeter().hello());
+            """);
+        Assert.Equal("hi", output);
+    }
+
+    [Fact]
+    public void Interpret_BracelessStatic_CanReadStaticField()
+    {
+        var output = RunProgram("""
+            class MathUtils {
+                static var PI = 3;
+            }
+            class MathUtils static function doublePi() MathUtils.PI * 2;
+            print(MathUtils.doublePi());
+            """);
+        Assert.Equal("6", output);
+    }
+
+    [Fact]
     public void JsTranspile_EmitsSingleClassWithAddedMethod()
     {
         var js = new Compiler.Compiler().TranspileToJavaScriptFromSource("""

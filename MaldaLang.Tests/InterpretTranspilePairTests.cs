@@ -666,6 +666,34 @@ public class InterpretTranspilePairTests
     }
 
     [Fact]
+    public void ClassAugmentation_CompactMethod_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            class Point(x, y);
+            class Point { function total() this.x + this.y; }
+            var p = new Point(3, 4);
+            io.print(p.x);
+            io.print(p.total());
+            """,
+            "class-augmentation-compact");
+    }
+
+    [Fact]
+    public void ClassAugmentation_Braceless_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            class Point(x, y);
+            class Point function doubled() this.x * 2;
+            var p = new Point(3, 4);
+            io.print(p.x);
+            io.print(p.doubled());
+            """,
+            "class-augmentation-braceless");
+    }
+
+    [Fact]
     public void TaggedCatch_SameStdout()
     {
         InterpretTranspilePair.AssertSameFromSource(

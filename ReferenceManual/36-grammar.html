@@ -49,8 +49,10 @@ ReturnType    ::= ("->" | "=&gt;") (Identifier | "program" "(" Identifier ")")
 ClassDecl     ::= "class" Identifier (
                     "(" ParamList? ")" ( "{" ClassMember* "}" | ";" )
                   | ("extends" Identifier)? "{" ClassMember* "}"
+                  | AccessModifier? FunctionDecl
                   )
-                  /* later ClassDecl with the same Identifier is an augmentation */
+                  /* later ClassDecl with the same Identifier is an augmentation;
+                     AccessModifier? FunctionDecl is a single-method / compact form */
 ClassMember   ::= AccessModifier? (FieldDecl | MethodDecl | ConstructorDecl)
 FieldDecl     ::= "var" Identifier TypeHint? ("=" Expression)? ";"
 MethodDecl    ::= AccessModifier? FunctionDecl

@@ -514,9 +514,13 @@ class Point {
         return this.x + this.y;
     }
 }
+class Point { function magnitude() math.sqrt(this.x * this.x + this.y * this.y); }
+class Point function doubled() this.x * 2;
 ```
 
-- A later `class Identifier { … }` for a name already declared in the same program (including `include` splice) **augments** the first declaration: members are appended in source order.
+- A later `class Identifier { … }` or brace-less `class Identifier function …` for a name already declared in the same program (including `include` splice) **augments** the first declaration: members are appended in source order.
+- Methods (in a first class, an augmenting `{ }` body, or the brace-less form) share the compact function body: `function name() expr;` desugars to `return expr;`. Constructors stay block-only.
+- The brace-less form is a single method (optional `public` / `private` / `static`). It cannot carry a primary constructor, `extends`, fields, or more than one member — use `{ }` for those.
 - Allowed on a later declaration: instance and static methods, fields, and a constructor only when the first declaration has none. A later `extends Super` is legal only when it repeats the original superclass.
 - **Illegal:** a primary constructor on a later declaration; adding or changing `extends`; repeating a member name already present on the class.
 - `export` on any declaration of that name marks the merged class exported.
@@ -551,3 +555,4 @@ Versioning and deprecation rules: [CHANGELOG.md](CHANGELOG.md).
 | 2026-08-14 | Final 1.0 | §8.1 optional constructor payload types (`Buy(sku: string, qty: int)`) — additive L1b |
 | 2026-08-21 | Final 1.0 | §11.1 overlapping `async` + `sleep` task isolation (interpreter activations) |
 | 2026-09-13 | Final 1.0 | §20 later `class Name { … }` augments an already-defined class |
+| 2026-09-15 | Final 1.0 | §20 compact method bodies and brace-less `class Name function …` |

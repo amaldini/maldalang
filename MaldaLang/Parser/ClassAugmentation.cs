@@ -10,8 +10,9 @@ using MaldaLang.Parser.AST.Declarations;
 using MaldaLang.Parser.AST.Statements;
 
 /// <summary>
-/// A later <c>class Name { … }</c> for an already-declared class appends members
-/// to the first declaration. Interpreter and both transpilers then see one class.
+/// A later <c>class Name { … }</c> or brace-less <c>class Name function …</c> for an
+/// already-declared class appends members to the first declaration. Interpreter and
+/// both transpilers then see one class.
 /// </summary>
 internal static class ClassAugmentation
 {
