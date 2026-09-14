@@ -24,7 +24,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | 10-prompts.html | eb2c0dc586f5cc15c3c65af78befbfffde01347c5465dba4a2485294b0c6f9a7 |
 | 11-classes-objects.html | 844b3b8d6e2a1173692ccc4e6d09ab806816fbf32ade26670a3e898a11483c26 |
 | 12-input-output.html | ed3fb9d438fc0f847bf231af035d241449a455fa47cc3d9e35cd6130b58d910f |
-| 13-built-in-functions.html | e28177f8ec88aa5bd1df859a7db30329bd9eaec0afc4b280e2d7408cb35d1ff4 |
+| 13-built-in-functions.html | 24465633ba35842f5af0323c3a387c360b7e5099c462049cce2f323cd6148603 |
 | 14-graphs.html | aa57872f357cc1df0463f0020e1a6ea66ee0d542f80ea4621d30c500af56ca06 |
 | 15-vectordb.html | c95110675a56912eca0f8763af981ab2ba6e6eb71a7be1d0d82734ad3a5a8760 |
 | 16-database.html | 02e590b662a39562f93905cf63d11e51e6f9731690d3278ca191ec0c9276b00c |
@@ -39,9 +39,9 @@ python3 scripts/sync-reference-manual-it-status.py
 | 25-web-ui.html | 33189783a02c4e8aa2bc065c638400b255aac7a0a44b1d39e47284d2be6f8b79 |
 | 26-http-server-html-ui.html | 99277b6534ab451aa9f423df39fde22a9db36678931a2dfd7affe739b2ddb8da |
 | 27-browser-javascript-backend.html | f6c38e05fa884ebc54f346c48b954c759e66798bf2bc4af913244e7523887daa |
-| 28-rest-api.html | 13368d8deb38c4e4fe3850d761f3718c16881c41771950246dc40464a4f231f9 |
+| 28-rest-api.html | 7d7450e0e586adb75c485de6433068f9a0044499e8b3d01f12e4590903b6d5b8 |
 | 29-rest-web-client.html | ecc9a67a9378a116a101add4446c440a8cb9dcb4cecc55930676cec024ad132e |
-| 30-full-stack-development.html | 1c17a8b8f83f65278856cf2311b1836299642b710646a9b54c7f57d20e72db74 |
+| 30-full-stack-development.html | 21cedf256bb09b2be90d36f91ef0da048c75bbbedc524c23a06037ae1b77d111 |
 | 31-dotnet-interop.html | 0d141eca04bf37f54b5f708af1536c5b893c18612d10efbdef9ed50afde521c6 |
 | 32-device-integration.html | bd8a620a1f7357e86d028bd88a13214a69815b8f6c29b3e4f44b9ceed1b88c4c |
 | 33-personal-assistant.html | 12cc2d16342414b2325cd1a39c86d935f05614281fa372f8339ff3199a80725e |
