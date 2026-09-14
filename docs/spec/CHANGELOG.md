@@ -114,7 +114,7 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 #### Added (MINOR — compact class methods / one-line augmentation)
 
 - **Compact method bodies:** methods accept the same one-expression body as top-level functions: `function total() this.x + this.y;` desugars to `return`. Constructors stay block-only. Applies in a first class, an augmenting `{ }` body, and actors (shared method parse).
-- **Brace-less single-method class:** `class Point function total() this.x + this.y;` (optional `public` / `private` / `static`) is a class with one method. If the name already exists it **augments** under the same merge rules as `class Name { … }`. No primary constructor, `extends`, fields, or extra members on this form. Grammar: [`36-grammar.html`](../../ReferenceManual/36-grammar.html); narrative: [`11-classes-objects.html`](../../ReferenceManual/11-classes-objects.html) §11.7. Spec §20.
+- **Brace-less single-method class:** `class Point function total() this.x + this.y;` (optional `public` / `private` / `static`) is a class with one method. If the name already exists it **augments** under the same merge rules as `class Name { … }`. A **first** declaration may attach that method to a primary constructor: `class Point(x, y) function total() this.x + this.y;`. A later declaration still cannot use a primary constructor. No `extends`, fields, or extra members on this form. Grammar: [`36-grammar.html`](../../ReferenceManual/36-grammar.html); narrative: [`11-classes-objects.html`](../../ReferenceManual/11-classes-objects.html) §11.6–11.7. Spec §19–§20.
 
 #### Added (MINOR — class augmentation)
 

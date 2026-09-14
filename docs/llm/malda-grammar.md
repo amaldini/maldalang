@@ -31,7 +31,7 @@ DecoratedFunctionDecl ::= Decorator+ FunctionDecl
 ReturnType    ::= ("->" | "=>") (Identifier | "program" "(" Identifier ")")
 
 ClassDecl     ::= "class" Identifier (
-                    "(" ParamList? ")" ( "{" ClassMember* "}" | ";" )
+                    "(" ParamList? ")" ( "{" ClassMember* "}" | ";" | AccessModifier? FunctionDecl )
                   | ("extends" Identifier)? "{" ClassMember* "}"
                   | AccessModifier? FunctionDecl
                   )

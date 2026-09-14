@@ -97,6 +97,17 @@ public class PrimaryConstructorTests : TestBase
     }
 
     [Fact]
+    public void Parse_BracelessMethod_FollowsSynthesizedMembers()
+    {
+        var classDecl = ParseClass("class Point(x, y) function total() this.x + this.y;");
+
+        Assert.True(classDecl.HasPrimaryConstructor);
+        Assert.Equal(4, classDecl.Members.Count);
+        Assert.Equal(new[] { "x", "y", "Point", "total" }, classDecl.Members.Select(m => m.Name).ToArray());
+        Assert.Equal(MemberType.Method, classDecl.Members[3].Type);
+    }
+
+    [Fact]
     public void Parse_EmptyBodyBraces_StillSynthesizesConstructor()
     {
         var classDecl = ParseClass("class Point(x, y) { }");
@@ -199,6 +210,16 @@ public class PrimaryConstructorTests : TestBase
     }
 
     [Fact]
+    public void Interpret_BracelessMethod_CanReadPrimaryFields()
+    {
+        var output = RunProgram("""
+            class Point(x, y) function total() this.x + this.y;
+            print(new Point(3, 4).total());
+            """);
+        Assert.Equal("7", output);
+    }
+
+    [Fact]
     public void Transpile_Methods_MatchInterpreter()
     {
         var source = """
@@ -207,6 +228,18 @@ public class PrimaryConstructorTests : TestBase
                     return this.x + this.y;
                 }
             }
+            print(new Point(3, 4).total());
+            """;
+        var result = TranspiledTestRunner.CompileAndRunFromSource(source);
+        Assert.True(result.ExitCode == 0, $"ExitCode={result.ExitCode}\nStdErr={result.StdErr}\nStdOut={result.StdOut}");
+        Assert.Equal("7", result.StdOut.Trim());
+    }
+
+    [Fact]
+    public void Transpile_BracelessMethod_MatchInterpreter()
+    {
+        var source = """
+            class Point(x, y) function total() this.x + this.y;
             print(new Point(3, 4).total());
             """;
         var result = TranspiledTestRunner.CompileAndRunFromSource(source);

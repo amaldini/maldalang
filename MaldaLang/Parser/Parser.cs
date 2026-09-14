@@ -315,16 +315,17 @@ public class Parser
         {
             // Data-only form: class Point(x, y);
         }
-        else if (primaryParams == null && superclass == null && IsSingleMethodClassStart())
+        else if (superclass == null && IsSingleMethodClassStart())
         {
-            // Brace-less single-method class / compact augmentation:
+            // Brace-less single-method class, optional primary constructor:
             // class Point function total() this.x + this.y;
+            // class Point(x, y) function total() this.x + this.y;
             members.Add(ClassMember(name));
         }
         else
         {
             Consume(TokenType.LeftBrace, primaryParams != null
-                ? "Expect '{' or ';' after primary constructor."
+                ? "Expect '{', ';', or 'function' after primary constructor."
                 : "Expect '{' after class name or 'function' for a single-method class.");
             while (!Check(TokenType.RightBrace) && !IsAtEnd())
             {
@@ -344,7 +345,8 @@ public class Parser
 
     /// <summary>
     /// <c>function</c>, optional <c>public</c>/<c>private</c> and <c>static</c>, starting a brace-less
-    /// single-method class: <c>class Point function total() this.x + this.y;</c>.
+    /// single-method class: <c>class Point function total() this.x + this.y;</c> or
+    /// <c>class Point(x, y) function total() this.x + this.y;</c>.
     /// </summary>
     private bool IsSingleMethodClassStart()
     {

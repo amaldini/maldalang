@@ -187,6 +187,7 @@ print(5 + rhs); // 12</code></pre>
         <p>Quelle forme si espandono in una classe classica: campi public, un costruttore con lo stesso nome della classe che assegna <code>this.x = x</code> (e così via), poi gli eventuali membri del corpo. I type hint opzionali sui parametri vengono memorizzati su quei campi: <code>class Point(x: float, y: float)</code>.</p>
         <ul>
             <li>Solo dati: <code>class Point(x, y);</code> oppure <code>class Point(x, y) { }</code>.</li>
+            <li>Un metodo senza graffe di classe: <code>class Point(x, y) function total() this.x + this.y;</code>.</li>
             <li>Non dichiarare <code>function Point(...)</code> nella stessa classe (costruttore duplicato).</li>
             <li>Non dichiarare <code>var x</code> nel corpo quando <code>x</code> è già un parametro primario.</li>
             <li><code>extends</code> non si può combinare con un costruttore primario. Usa una classe classica e chiama <code>super(...)</code>.</li>
@@ -200,6 +201,8 @@ print(p.x + p.y);</code></pre>
         return this.x + this.y;
     }
 }
+print(new Point(3, 4).total());</code></pre>
+        <pre><code data-run="true" data-expect="7">class Point(x, y) function total() this.x + this.y;
 print(new Point(3, 4).total());</code></pre>
 
         <h2>11.7 Aggiungere metodi a una classe già definita</h2>

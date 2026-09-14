@@ -648,6 +648,19 @@ public class InterpretTranspilePairTests
     }
 
     [Fact]
+    public void PrimaryConstructor_BracelessMethod_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            class Point(x, y) function total() this.x + this.y;
+            var p = new Point(3, 4);
+            io.print(p.x);
+            io.print(p.total());
+            """,
+            "primary-constructor-braceless");
+    }
+
+    [Fact]
     public void ClassAugmentation_SameStdout()
     {
         InterpretTranspilePair.AssertSameFromSource(

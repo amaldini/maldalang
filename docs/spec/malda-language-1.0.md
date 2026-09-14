@@ -490,11 +490,12 @@ Additive syntax; classic `class Name { … }` is unchanged.
 ```malda
 class Point(x, y);
 class Point(x, y) { function total() { return this.x + this.y; } }
+class Point(x, y) function total() this.x + this.y;
 ```
 
 - After `class Identifier`, `(` starts a **primary constructor**. Each parameter is a **public** instance field of the same name (optional `: Type` hints are stored on those fields).
 - MALDA synthesizes a constructor named like the class whose body is `this.param = param;` for each parameter, in source order.
-- A body is optional: `class Point(x, y);` or `class Point(x, y) { … }`. Body members are appended after the synthesized fields and constructor.
+- A body is optional: `class Point(x, y);`, `class Point(x, y) { … }`, or a single method without class braces: `class Point(x, y) function total() this.x + this.y;`. Body members are appended after the synthesized fields and constructor.
 - **Illegal in v1:** combining a primary constructor with `extends`; declaring `function ClassName(...)` in the same class; declaring `var` with a primary parameter's name.
 - Construction is still `new Point(3, 4)`. Equality remains identity unless the class defines `__eq__`.
 - This form is distinct from sum types (`type Point = Point(x, y);`, constructed without `new`) and from schemas (`schema Point { x: int; y: int; }`).
@@ -520,7 +521,7 @@ class Point function doubled() this.x * 2;
 
 - A later `class Identifier { … }` or brace-less `class Identifier function …` for a name already declared in the same program (including `include` splice) **augments** the first declaration: members are appended in source order.
 - Methods (in a first class, an augmenting `{ }` body, or the brace-less form) share the compact function body: `function name() expr;` desugars to `return expr;`. Constructors stay block-only.
-- The brace-less form is a single method (optional `public` / `private` / `static`). It cannot carry a primary constructor, `extends`, fields, or more than one member — use `{ }` for those.
+- The brace-less form is a single method (optional `public` / `private` / `static`). On a **first** declaration it may follow a primary constructor (`class Point(x, y) function total() this.x + this.y;`). It cannot carry `extends`, fields, or more than one member — use `{ }` for those. A later declaration still cannot use a primary constructor.
 - Allowed on a later declaration: instance and static methods, fields, and a constructor only when the first declaration has none. A later `extends Super` is legal only when it repeats the original superclass.
 - **Illegal:** a primary constructor on a later declaration; adding or changing `extends`; repeating a member name already present on the class.
 - `export` on any declaration of that name marks the merged class exported.
@@ -556,3 +557,4 @@ Versioning and deprecation rules: [CHANGELOG.md](CHANGELOG.md).
 | 2026-08-21 | Final 1.0 | §11.1 overlapping `async` + `sleep` task isolation (interpreter activations) |
 | 2026-09-13 | Final 1.0 | §20 later `class Name { … }` augments an already-defined class |
 | 2026-09-15 | Final 1.0 | §20 compact method bodies and brace-less `class Name function …` |
+| 2026-09-15 | Final 1.0 | §19 brace-less `class Name(params) function …` on a first declaration |

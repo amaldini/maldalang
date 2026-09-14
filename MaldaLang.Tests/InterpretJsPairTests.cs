@@ -238,6 +238,19 @@ public class InterpretJsPairTests
     }
 
     [Fact]
+    public void PrimaryConstructor_BracelessMethod_SameStdout()
+    {
+        InterpretJsPair.AssertSameFromSource(
+            """
+            class Point(x, y) function total() this.x + this.y;
+            var p = new Point(3, 4);
+            io.print(p.x);
+            io.print(p.total());
+            """,
+            "primary-constructor-braceless-js");
+    }
+
+    [Fact]
     public void ClassAugmentation_SameStdout()
     {
         InterpretJsPair.AssertSameFromSource(

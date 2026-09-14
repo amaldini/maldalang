@@ -118,6 +118,18 @@ public class ClassAugmentationTests : TestBase
     }
 
     [Fact]
+    public void Parse_LaterPrimaryConstructorWithBracelessMethod_IsRejected()
+    {
+        var message = FirstParseError("""
+            class Point {
+                var x;
+            }
+            class Point(x) function doubled() this.x * 2;
+            """);
+        Assert.Contains("cannot use a primary constructor", message);
+    }
+
+    [Fact]
     public void Parse_LaterExtends_IsRejected()
     {
         var message = FirstParseError("""
