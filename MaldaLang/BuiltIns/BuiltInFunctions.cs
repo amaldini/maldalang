@@ -4317,11 +4317,12 @@ public static class BuiltInFunctions
 
         if (args.Count == 3)
         {
-            if (args[2].Type != ValueType.Object || args[2].AsObject() is not JsonObject opts)
+            if (args[2].Type != ValueType.Object)
             {
                 throw new Exception("pageLayout() options must be an object");
             }
 
+            var opts = args[2].AsObject();
             var cssValue = opts.Get("css", null);
             if (cssValue.Type == ValueType.String)
             {
@@ -4357,9 +4358,10 @@ public static class BuiltInFunctions
         string? correlationId = null;
         if (args.Count == 3)
         {
-            if (args[2].Type != ValueType.Object || args[2].AsObject() is not JsonObject opts)
+            if (args[2].Type != ValueType.Object)
                 throw new Exception("enqueueJob() options must be an object");
 
+            var opts = args[2].AsObject();
             var runAtValue = opts.Get("runAt", null);
             if (runAtValue.Type == ValueType.String &&
                 DateTimeOffset.TryParse(runAtValue.AsString(), out var parsedRunAt))

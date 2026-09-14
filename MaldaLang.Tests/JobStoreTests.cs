@@ -8,6 +8,7 @@ using ValueType = MaldaLang.Interpreter.ValueType;
 
 namespace MaldaLang.Tests;
 
+[Collection("JobStoreSerial")]
 public class JobStoreTests : IDisposable
 {
     private readonly string _dbPath;

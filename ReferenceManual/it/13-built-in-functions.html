@@ -879,7 +879,7 @@ var session = readSecureCookie(urlDecode(cookieValue), "cookie-secret");</code><
             </ul>
         </div>
         <h3>13.16.1a Job in background (coda leggera)</h3>
-        <p>Le unità async brevi (email, webhook) usano una coda SQLite in <code>./.malda/jobs.db</code>. È distinta dai processi <code>workflow</code> durevoli.</p>
+        <p>Le unità async brevi (email, webhook) usano una coda SQLite in <code>./.malda/jobs.db</code>. Si può cambiare la connessione con <code>MALDA_JOBS_CONNECTION</code> (stessa forma di <code>MALDA_WORKFLOW_CONNECTION</code>). È distinta dai processi <code>workflow</code> durevoli.</p>
         <pre><code>var jobId = enqueueJob("mail", {"to": "user@example.com"}, {"maxAttempts": 3});
 var job = claimJob("mail", "worker-1");
 if (job != null) {

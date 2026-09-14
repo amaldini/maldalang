@@ -878,7 +878,7 @@ var session = readSecureCookie(urlDecode(cookieValue), "cookie-secret");</code><
             </ul>
         </div>
         <h3>13.16.1a Background jobs (lightweight queue)</h3>
-        <p>Short async units (email, webhooks) use a SQLite queue at <code>./.malda/jobs.db</code>. This is separate from durable <code>workflow</code> processes.</p>
+        <p>Short async units (email, webhooks) use a SQLite queue at <code>./.malda/jobs.db</code>. Override the connection with <code>MALDA_JOBS_CONNECTION</code> (same shape as <code>MALDA_WORKFLOW_CONNECTION</code>). This is separate from durable <code>workflow</code> processes.</p>
         <pre><code>var jobId = enqueueJob("mail", {"to": "user@example.com"}, {"maxAttempts": 3});
 var job = claimJob("mail", "worker-1");
 if (job != null) {

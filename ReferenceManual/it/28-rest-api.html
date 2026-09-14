@@ -498,7 +498,7 @@ server.start();
 
         <h2>28.13 Mount su HttpServer</h2>
         <p>Per un unico listener che serve prima le route API e poi pagine/componenti/file statici, costruisci un <code>RestServer</code> deferred e fanne il <code>mount</code>. Non dare all'API una porta propria e non chiamare <code>start()</code> come listener standalone prima del mount.</p>
-        <pre><code>var api = new RestServer();
+        <pre><code>var rest = new RestServer();
 var web = new HttpServer(8080);
 
 function requireAuth(req, res, next) {
@@ -513,11 +513,11 @@ function health() {
     };
 }
 
-web.mount(api);
+web.mount(rest);
 web.enableSession(sessionSecret);
-api.enableCsrf(csrfSecret);
-api.setRateLimit(200, 60, "verifiedSubOrIp");
-api.use(requireAuth, {
+rest.enableCsrf(csrfSecret);
+rest.setRateLimit(200, 60, "verifiedSubOrIp");
+rest.use(requireAuth, {
     "except": ["/api/health"]
 });
 web.start();</code></pre>

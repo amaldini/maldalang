@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Andrea Maldini
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
+using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using MaldaLang.Tests.Planning;
@@ -17,6 +18,14 @@ public class ShipContractGuardTests
     private static readonly Regex TableRow = new(
         @"^\|\s*`([^`]+)`\s*\|\s*(pair|trace|n/a)\s*\|\s*([^|]+)\|\s*(.*?)\s*\|",
         RegexOptions.Compiled);
+
+    private static readonly string[] KnownTraceOracles =
+    [
+        "WorkflowTranspilerParityTests",
+        "HttpTraceParityTests",
+        "JobTraceParityTests",
+        "Tier0CsharpShipSmokeTests"
+    ];
 
     private static readonly string[] ReadmeShowcases =
     [
@@ -64,6 +73,12 @@ public class ShipContractGuardTests
 
             if (row.Kind == "pair" && row.Oracle.IndexOf("InterpretTranspilePairTests", StringComparison.Ordinal) < 0)
                 problems.Add($"{path}: pair oracle must name InterpretTranspilePairTests");
+
+            if (row.Kind == "trace" && !KnownTraceOracles.Any(name =>
+                    row.Oracle.IndexOf(name, StringComparison.Ordinal) >= 0))
+            {
+                problems.Add($"{path}: trace oracle must name one of {string.Join(", ", KnownTraceOracles)}");
+            }
         }
 
         var pairFiles = new HashSet<string>(PairExamplePaths(), StringComparer.Ordinal);

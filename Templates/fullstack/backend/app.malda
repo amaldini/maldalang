@@ -2,7 +2,7 @@
 include "data/local_first.malda";
 {{/LOCAL_FIRST}}
 
-var api = new RestServer();
+var rest = new RestServer();
 var web = new HttpServer(8080);
 var ticketsStateId = "tickets-board";
 
@@ -153,14 +153,14 @@ function ticketsLive() {
 initLocalDataPlatform();
 {{/LOCAL_FIRST}}
 
-web.mount(api);
+web.mount(rest);
 web.enableSession(sessionSecret);
 // CSRF protects Rest API mutations; HTML forms include csrfField for the same secret
 // when you also enableCsrf on the HttpServer and set the csrf_token cookie to match.
-api.enableCsrf(csrfSecret);
-api.setRateLimit(200, 60, "verifiedSubOrIp");
-api.setRateLimitHeaders(true, true);
-api.use(requireAuth, {
+rest.enableCsrf(csrfSecret);
+rest.setRateLimit(200, 60, "verifiedSubOrIp");
+rest.setRateLimitHeaders(true, true);
+rest.use(requireAuth, {
     "except": ["/api/health", "/api/readiness", "/metrics"]
 });
 web.start();

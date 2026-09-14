@@ -90,7 +90,7 @@
         <p>Quando usi i decoratori di target a sorgente unica, puoi anche scegliere una struttura più piatta (per esempio un unico entry <code>app.malda</code>) continuando a separare le responsabilità marcando le dichiarazioni con <code>@server()</code>, <code>@client()</code> e <code>@shared()</code>.</p>
         <h3>30.3.1 Host a una sola porta: HttpServer.mount</h3>
         <p>Costruisci un <code>RestServer</code> deferred (senza porta), costruisci <code>HttpServer</code> con la porta pubblica, poi <code>mount</code> prima di <code>web.start()</code>. Non dare all'API un listener proprio e non fare <code>start()</code> del <code>RestServer</code> come server standalone. Le route API che matchano girano per prime; i path non riconosciuti cadono su pagine, <code>@ACTION</code>, <code>@LIVE</code> e file statici.</p>
-        <pre><code>var api = new RestServer();
+        <pre><code>var rest = new RestServer();
 var web = new HttpServer(8080);
 
 @GET("/api/items")
@@ -103,11 +103,11 @@ function itemsPage() {
     return "&lt;html&gt;&lt;body&gt;&lt;h1&gt;Items&lt;/h1&gt;&lt;/body&gt;&lt;/html&gt;";
 }
 
-web.mount(api);
+web.mount(rest);
 web.enableSession(sessionSecret);
-api.enableCsrf(csrfSecret);
-api.setRateLimit(200, 60, "verifiedSubOrIp");
-api.use(requireAuth, {
+rest.enableCsrf(csrfSecret);
+rest.setRateLimit(200, 60, "verifiedSubOrIp");
+rest.use(requireAuth, {
     "except": ["/api/health"]
 });
 web.start();</code></pre>
@@ -320,7 +320,7 @@ function triageItem(item) {
             <li><strong>Risposte fragment</strong>: verifica gli header <code>X-Malda-Fragment</code> e <code>X-Malda-Fragment-Target</code> quando testi handler <code>@ACTION</code> o <code>@POST</code>. Il client deve aggiornare solo l'elemento target.</li>
             <li><strong>Continuità di sessione</strong>: passa <code>session</code> in query o form; <code>ui.sessionId(req, default)</code> lo legge. Senza di esso, <code>componentState*</code> e <code>ui.state</code> potrebbero non persistere tra le richieste.</li>
             <li><strong>Errori API</strong>: quando la UI chiama <code>GET /api/items</code>, distingui l'HTTP <code>response.status</code> da un envelope JSON. I fallimenti del framework usano <code>{"status", "error", "message", "correlationId"}</code> — vedi <a href="28-rest-api.html">28. Server REST API</a> §28.11. Gli elenchi applicativi usano spesso <code>{"status": 200, "data": [...]}</code>.</li>
-            <li><strong>CSRF</strong>: abilitalo sul <code>RestServer</code> montato (<code>api.enableCsrf</code>) per le mutazioni JSON. I form HTML servono <code>csrfField</code> (e il cookie corrispondente se abiliti CSRF anche su <code>HttpServer</code>). Fetch deve inviare <code>X-CSRF-Token</code> (o l'header configurato). Vedi 28.9 e i commenti in <code>Templates/fullstack/backend/app.malda</code>.</li>
+            <li><strong>CSRF</strong>: abilitalo sul <code>RestServer</code> montato (<code>rest.enableCsrf</code>) per le mutazioni JSON. I form HTML servono <code>csrfField</code> (e il cookie corrispondente se abiliti CSRF anche su <code>HttpServer</code>). Fetch deve inviare <code>X-CSRF-Token</code> (o l'header configurato). Vedi 28.9 e i commenti in <code>Templates/fullstack/backend/app.malda</code>. Non chiamare la variabile <code>api</code> — è una keyword.</li>
             <li><strong>Lookup</strong>: per il CRUD guidato da schema, assicurati che <code>lookups</code> contenga tutte le chiavi referenziate in <code>dialogLookupOptions</code> (es. <code>owners</code>, <code>tags</code>). Lookup mancanti producono dropdown vuoti.</li>
         </ul>
         <p>Per il debugging specifico della Web UI (divergenza dell'albero, event handler, cache dei template), vedi <a href="25-web-ui.html">25. Componenti server Web UI</a> (25.3.15 Insidie comuni e debugging, 25.6 Testing e troubleshooting).</p>

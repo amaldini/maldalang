@@ -1,0 +1,28 @@
+// Offline stand-in for the Second Brain ASK HTTP surface.
+// The full showcase (Examples/Agents/secondbrain_semantic.malda) is too large for CI.
+// Run: malda Examples/Agents/secondbrain_ask_wrapper.malda
+// Then GET http://127.0.0.1:8080/health and GET http://127.0.0.1:8080/ask
+// Ctrl+C stops. No LLM.
+
+var server = new RestServer(8080, "127.0.0.1");
+
+@GET("/health")
+function health() {
+    return {
+        "status": "ok",
+        "service": "secondbrain-ask"
+    };
+}
+
+@GET("/ask")
+function ask() {
+    return {
+        "ok": true,
+        "answer": "offline fixture",
+        "question": "hello",
+        "sources": []
+    };
+}
+
+server.start();
+io.print("secondbrain-ask wrapper at http://127.0.0.1:8080/health");

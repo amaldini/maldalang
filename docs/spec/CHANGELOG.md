@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (PATCH — ship-contract follow-up)
+
+- **Fullstack / ASK / jobs / Tier 0 C# oracles:** `HttpTraceParityTests` now GETs `/api/health` on a scaffolded `malda new fullstack` host and `/health` + `/ask` on `Examples/Agents/secondbrain_ask_wrapper.malda`. `JobTraceParityTests` compares interpret vs C# job journals with `MALDA_JOBS_CONNECTION` (ids stripped). `Tier0CsharpShipSmokeTests` runs a 5-case C# slice on every PR; the full matrix stays nightly. Registry: [`ship-contract.md`](ship-contract.md). The fullstack template names the mounted server `rest` because `api` is a keyword. `enqueueJob` options and `pageLayout` options accept transpile `DictionaryInstance` literals (same hole as `use()`).
+
 #### Added (MINOR — class augmentation)
 
 - **Later `class Name { … }`:** a second (or later) `class` with an already-declared name **augments** the first declaration — members are appended. No new keyword. A later declaration cannot use a primary constructor, cannot add or change `extends` (repeating the same superclass is fine), and cannot repeat a member name. `export` on any declaration marks the merged class exported. Previously a second `class Name` replaced the first in the interpreter and failed C#/JS emit; those programs now merge or error on a repeated member. Interpreter, C# transpile, and JS agree (one emitted class). Grammar: [`36-grammar.html`](../../ReferenceManual/36-grammar.html); narrative: [`11-classes-objects.html`](../../ReferenceManual/11-classes-objects.html) §11.7. Spec §20.
@@ -522,6 +526,7 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 
 | Date | Change |
 |------|--------|
+| 2026-09-14 | PATCH: ship-contract follow-up (fullstack HTTP, jobs journal, ASK wrapper, Tier 0 C# PR slice) |
 | 2026-09-06 | MINOR: `executePlan` `step.out` + `fixture` typed outputs (`evalPrompt` coerce path) |
 | 2026-09-06 | MINOR: sum-type constructor namespaces (`Result.Ok`); clash diagnostic; `import { T }` no longer flattens constructors |
 | 2026-09-05 | PATCH: HTTP ship traces (`HttpTraceParityTests`) for `Templates/webapi` `/api/health`; RestServer `start()` + `use()` options now match C# transpile |

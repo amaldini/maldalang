@@ -827,6 +827,11 @@ public partial class HttpServerInstance : ObjectInstance
     }
 
     /// <summary>
+    /// Test-only: stop every running HttpServer so HTTP traces do not leak ports.
+    /// </summary>
+    internal static void StopAllForTesting() => StopAllForConsoleCancel();
+
+    /// <summary>
     /// Stops every running HttpServer. Used by Ctrl+C and tests.
     /// </summary>
     internal static void StopAllForConsoleCancel()

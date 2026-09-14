@@ -19,7 +19,7 @@ To scaffold the same starter with SQLite/local-first groundwork:
 malda new fullstack sales-portal --local-first
 ```
 
-Then open (single port via `web.mount(api)`):
+Then open (single port via `web.mount(rest)`):
 
 - API health check: `http://localhost:8080/api/health`
 - API auth sample: `http://localhost:8080/api/me`
@@ -55,7 +55,7 @@ malda test --format ci
 
 ## Web Runtime Surface
 
-- API and web servers support global middleware via `api.use(fn)` or `server.use(fn)`
+- API and web servers support global middleware via `rest.use(fn)` or `server.use(fn)`
 - Middleware uses the `function middleware(req, res, next)` shape and can either terminate the response or call `next()`
 - Existing named parameter binding still works for path/query/body conventions
 - You can also receive first-class `req` and `res` objects in handlers

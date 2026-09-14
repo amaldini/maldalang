@@ -3,6 +3,7 @@
 
 namespace MaldaLang.Runtime.Jobs;
 
+using System;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 
@@ -61,7 +62,14 @@ public sealed class JobStore : IDisposable
 
             lock (DefaultLock)
             {
-                return _default ??= new JobStore();
+                if (_default != null)
+                {
+                    return _default;
+                }
+
+                var fromEnv = Environment.GetEnvironmentVariable("MALDA_JOBS_CONNECTION");
+                _default = new JobStore(string.IsNullOrWhiteSpace(fromEnv) ? null : fromEnv);
+                return _default;
             }
         }
     }
@@ -425,7 +433,8 @@ public sealed class JobStore : IDisposable
             }
 
             var path = connectionString[(idx + prefix.Length)..].Trim();
-            if (path.StartsWith('\'') && path.EndsWith('\''))
+            if (path.Length >= 2 &&
+                ((path[0] == '\'' && path[^1] == '\'') || (path[0] == '"' && path[^1] == '"')))
             {
                 path = path[1..^1];
             }

@@ -18,6 +18,15 @@ malda Examples/Agents/agent_governance_golden.malda
 
 Uses `schema` + `validate()` + `@pure` helpers + `@effects("print")` on the impure handler.
 
+## ASK HTTP wrapper (offline)
+
+Stand-in for the Second Brain ASK host (`GET /health`, `GET /ask` fixture). No LLM.
+The full showcase stays `secondbrain_semantic.malda` (too large for CI).
+
+```bash
+malda Examples/Agents/secondbrain_ask_wrapper.malda
+```
+
 Declarative multi-agent teams (no LLM):
 
 ```bash

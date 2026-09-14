@@ -59,7 +59,7 @@ public class ScaffoldingTests : TestBase
             Assert.True(File.Exists(Path.Combine(destination, "config", "deploy.example.json")));
 
             var app = File.ReadAllText(Path.Combine(destination, "backend", "app.malda"));
-            Assert.Contains("web.mount(api)", app);
+            Assert.Contains("web.mount(rest)", app);
             Assert.Contains("new HttpServer(8080)", app);
             Assert.Contains("new RestServer()", app);
             Assert.Contains("enableSession", app);

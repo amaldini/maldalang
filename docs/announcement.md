@@ -486,7 +486,9 @@ if a built-in is added without being documented anywhere.
   embeddings, and .NET interop entry points). Remaining gaps are deeper parity issues —
   for example static calls on a `DotNetTypeInstance` handle — not “built-in not emitted.”
   Large showcases (Ralph, Second Brain) are too big for CI smoke (`n/a` in
-  `TranspileSmokeTests`); curated interpret/transpile pairs cover smaller examples.
+  `TranspileSmokeTests`); the ASK HTTP surface is covered by
+  `Examples/Agents/secondbrain_ask_wrapper.malda`. Curated interpret/transpile
+  pairs, HTTP/job traces, and a Tier 0 C# PR slice cover smaller examples.
 - **Durable workflows are the local end of durable execution.** Step-level memoized
   recovery, JSON-shaped step outputs, a fixed deny-list for the determinism check, and a
   single SQLite file with no failover (documented single-writer / read-only ops model). Good

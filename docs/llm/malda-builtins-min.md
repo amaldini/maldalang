@@ -143,7 +143,7 @@ exact arguments rather than guessing.
 | `http.enableCsrf(secret)` + `csrfField(...)` | Cookie + form `_csrf` must match (see gotchas) |
 | `http.mount(restServer)` | Serve API + UI on one `HttpServer` port (`new RestServer()` defers port) |
 | `bindForm` / `formErrors` / `pageLayout` | CSRF-aware forms and simple `@PAGE` chrome |
-| `enqueueJob` / `claimJob` / `completeJob` / `failJob` / `getJob` / `listJobs` | Lightweight job queue in `./.malda/jobs.db` (not durable workflows) |
+| `enqueueJob` / `claimJob` / `completeJob` / `failJob` / `getJob` / `listJobs` | Lightweight job queue in `./.malda/jobs.db` or `MALDA_JOBS_CONNECTION` (not durable workflows) |
 
 ### Server-driven UI (`ui.*`)
 

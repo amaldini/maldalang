@@ -66,7 +66,7 @@ These strings are what `@property` / `runProperty` use via `GetRequiredCapabilit
 
 † Host embed on interpret/transpile via `MaldaLang.UIHost` when the program uses `ui.mount` / related APIs — see [`docs/ui-framework.md`](../ui-framework.md). Not available on the JS backend.
 
-Jobs are a lightweight SQLite queue (`./.malda/jobs.db`), not durable `workflow` / `step` semantics.
+Jobs are a lightweight SQLite queue (`./.malda/jobs.db`, or `MALDA_JOBS_CONNECTION`), not durable `workflow` / `step` semantics.
 
 When in doubt, smoke both interpreter and transpile for shippable `.exe`s, and treat JS as browser-only. Silent interpreter≠transpile footguns: [`docs/llm/malda-gotchas.md`](../llm/malda-gotchas.md).
 

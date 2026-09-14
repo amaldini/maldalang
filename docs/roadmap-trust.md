@@ -221,8 +221,9 @@ oracle, not only `compile --mode transpile`.
 | Known-divergence fixtures | Nested `result.map`, dict `append`+`length`, `--typed-transpile-level 2`, `error()` failure token |
 
 HTTP GET traces landed in `HttpTraceParityTests` (`Templates/webapi` is
-`trace`). Still out: fullstack HTTP host, jobs-cwd, Second Brain ASK
-wrapper, Tier 0 C# on every PR.
+`trace`). DT8 follow-up: fullstack HTTP host, jobs journal
+(`MALDA_JOBS_CONNECTION`), Second Brain ASK wrapper, and a Tier 0 C#
+PR slice (`Tier0CsharpShipSmokeTests`; full matrix stays nightly).
 
 ---
 
@@ -290,3 +291,4 @@ wrapper, Tier 0 C# on every PR.
 | 2026-08-21 | DT7 corpus widened: existing nested-schema / typed-payload Examples + inline gotcha pairs (`grounded.wrap`, `cap.*`, `result`/`option`, primary constructors, tagged catch, `?.`, destructuring, `parseJSON` fields, `io.getEnvOr`). No new showcase Examples. |
 | 2026-09-05 | DT8 landed: pair exit identity, `docs/spec/ship-contract.md` + `ShipContractGuardTests`, workflow journal in CI smoke, nested `result.map` / list-append / typed-transpile-level 2 / `error()` fixtures |
 | 2026-09-05 | HTTP GET traces: `HttpTraceParityTests` (inline health + `malda new webapi`); `Templates/webapi` is `trace` |
+| 2026-09-14 | DT8 follow-up: fullstack `/api/health` trace, jobs journal (`MALDA_JOBS_CONNECTION`), ASK wrapper `/health`+`/ask`, Tier 0 C# PR slice |

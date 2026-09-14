@@ -41,7 +41,7 @@ JS / PWA DOM samples under `js/` need `malda compile … --mode js` (or the Desk
 | `auth_cookie_login.malda` | 8080; no external API key |
 | `form_validate_flash.malda` | 8082; CSRF + bindForm + schema validate |
 | `rest_bearer_jwt.malda` | 8081 |
-| `job_queue_basic.malda` | Writes `./.malda/jobs.db`; offline |
+| `job_queue_basic.malda` | Writes `./.malda/jobs.db` (or `MALDA_JOBS_CONNECTION`); offline |
 | `ai_generated_*` / `@AIPAGE` | Needs LLM provider (`api-key`) |
 
 Fullstack scaffold with mount + sessions: `malda new fullstack my-app`.  

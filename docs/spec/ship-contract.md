@@ -11,8 +11,8 @@ contract.
 | Kind | Meaning |
 |------|---------|
 | `pair` | Same `.malda` → same stdout when interpret and C# transpile both exit 0. Mixed success/failure fails. Oracle: [`InterpretTranspilePairTests`](../../MaldaLang.Tests/InterpretTranspilePairTests.cs). |
-| `trace` | Structured outcome (workflow journal, or HTTP status + JSON body). Not stdout. |
-| `n/a` | Compile-only smoke, or excluded. **Notes must name the reason** (`llm-await`, `too-large`, `relative-cwd`, `js-only`, `http-trace pending`, …). |
+| `trace` | Structured outcome (workflow journal, jobs journal, HTTP status + JSON body, or a Tier 0 C# slice). Not raw stdout. |
+| `n/a` | Compile-only smoke, or excluded. **Notes must name the reason** (`llm-await`, `too-large`, `relative-cwd`, `js-only`, …). |
 
 Inline pair fixtures (interpolation, `cap.*` abs-path, nested `result.map`, dict
 `append`+`length`, `--typed-transpile-level 2`, `error()` failure identity) live
@@ -40,7 +40,8 @@ Templates (`malda new`) and README showcases must appear below even when `n/a`.
 | `Examples/Prompts/prompt_tools_then_structured.malda` | n/a | TranspileSmokeTests | offline print works; C# construct NRE; live await is llm-await |
 | `Examples/Agents/phase6_pure_validate.malda` | pair | InterpretTranspilePairTests | |
 | `Examples/Agents/agent_governance_golden.malda` | pair | InterpretTranspilePairTests | offline validate + @pure; live agent wiring is commented |
-| `Examples/Agents/secondbrain_semantic.malda` | n/a | — | too-large; README showcase |
+| `Examples/Agents/secondbrain_ask_wrapper.malda` | trace | HttpTraceParityTests | GET `/health` + `/ask` fixture; stand-in for ASK HTTP |
+| `Examples/Agents/secondbrain_semantic.malda` | n/a | — | too-large; ASK HTTP surface is the wrapper above |
 | `Examples/RalphWiggum/RalphWiggum.malda` | n/a | — | too-large; llm-await; README showcase |
 | `Examples/MCP/mcp_schema_tool.malda` | pair | InterpretTranspilePairTests | |
 | `docs/llm/few-shot/28_api_program_prompt.malda` | pair | InterpretTranspilePairTests | |
@@ -51,15 +52,16 @@ Templates (`malda new`) and README showcases must appear below even when `n/a`.
 | `Examples/Workflows/simple_step.malda` | trace | WorkflowTranspilerParityTests | journal snapshot is inline; this file is smoke |
 | `Examples/Workflows/determinism_helpers.malda` | trace | WorkflowTranspilerParityTests | WF1001/WF1002; file is smoke |
 | `Examples/Workflows/runprogram_in_step.malda` | n/a | TranspileSmokeTests | smoke + interpreter; pair would need a journal fixture |
-| `Examples/Web/job_queue_basic.malda` | n/a | TranspileSmokeTests | jobs-cwd; generated ids |
+| `Examples/Web/job_queue_basic.malda` | trace | JobTraceParityTests | `MALDA_JOBS_CONNECTION` isolates cwd; generated ids stripped |
 | `Examples/Memory/grounded_ask.malda` | n/a | TranspileSmokeTests | graphmemory-score |
 | `Examples/Tools/capability_tokens.malda` | n/a | TranspileSmokeTests | relative-cwd; abs-path cap fixtures are inline pairs |
 | `Examples/VectorDB/basic_vectordb.malda` | n/a | TranspileSmokeTests | inline VectorDB pair covers the contract |
 | `Templates/agent/app.malda` | n/a | — | relative-cwd; `malda new agent`; cap pair fixtures cover the contract |
 | `Templates/webapi/app.malda` | trace | HttpTraceParityTests | GET `/api/health` status + JSON; scaffold + inline health fixture |
-| `Templates/fullstack/backend/app.malda` | n/a | — | http-trace pending |
+| `Templates/fullstack/backend/app.malda` | trace | HttpTraceParityTests | GET `/api/health` on scaffolded `malda new fullstack` |
 | `Templates/game/app.malda` | n/a | — | js-only |
-| `Templates/game-fullstack/app.malda` | n/a | — | fullstack; do not interpret |
+| `Templates/game-fullstack/app.malda` | n/a | — | js-client + host scores; do not interpret |
+| `conformance/tier0/manifest.json` | trace | Tier0CsharpShipSmokeTests | PR C# slice (5 cases); full matrix is nightly |
 
 Landing a new host construct that claims interpret + C# agree: add a `pair` or
 `trace` row (or `n/a` with a one-line reason) in the same PR. Do not weaken

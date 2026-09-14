@@ -12,8 +12,8 @@ namespace MaldaLang.Tests;
 /// exit 0; mixed success/failure fails the pair). Compile-only smoke stays in
 /// <see cref="TranspileSmokeTests"/>. Registry: <c>docs/spec/ship-contract.md</c>.
 /// Still n/a (smoke only): live-await LLM prompts (RalphWiggum),
-/// workflow/job Examples (see WorkflowTranspilerParityTests; runprogram_in_step
-/// is smoke + interpreter), grounded_ask
+/// workflow Examples (see WorkflowTranspilerParityTests; jobs are
+/// JobTraceParityTests), grounded_ask
 /// (GraphMemory score drift), capability_tokens Example (relative cwd file I/O;
 /// abs-path cap fixtures are inline below).
 /// Sequential: pair capture and in-process <c>runMALDA</c> both redirect

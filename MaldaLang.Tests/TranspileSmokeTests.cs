@@ -21,6 +21,7 @@ public class TranspileSmokeTests
     [InlineData("Examples/Basics/as_variant.malda")]
     [InlineData("Examples/Agents/phase6_pure_validate.malda")]
     [InlineData("Examples/Agents/agent_governance_golden.malda")]
+    [InlineData("Examples/Agents/secondbrain_ask_wrapper.malda")]
     [InlineData("Examples/Workflows/simple_step.malda")]
     [InlineData("Examples/Workflows/determinism_helpers.malda")]
     [InlineData("Examples/Workflows/runprogram_in_step.malda")]
