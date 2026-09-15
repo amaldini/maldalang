@@ -13,7 +13,7 @@ python3 scripts/sync-reference-manual-it-status.py
 |------|------------|
 | index.html | 34b638cb69d58867a260b555a84837a404d9200c7ac9654ba7e3749d0b970513 |
 | 01-introduction.html | f0fafee37f919a20c9a5c684f2572b908d7471444b7b20be13e2a31398b37f00 |
-| 02-tools.html | e9d94b8564a3dea814878aa7b79914e10588535c61c3b318a4758c421c123012 |
+| 02-tools.html | c2de18af03008dc03f56a2f8dcc600a66fe7a64e21135fa82a3055aa6c3fdc31 |
 | 03-lexical-structure.html | 4d80f4139d2bbec29a9ccc4cf2c65802b87cb067b54a0e41c55a62c57a4011bf |
 | 04-data-types.html | dfa4f1ac41f69db4b39162851249c387eb9bdfdd68beab3357de1273e2c10788 |
 | 05-variables.html | a30202298928dbac05888f10ae07c0ca3f0b01fcc301b779c06d7fbc77406740 |
@@ -22,7 +22,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | 08-control-structures.html | cc1c667b10d4a7b5960ee93103626de4fe545e50df91ed6e732abd4631cfee60 |
 | 09-functions.html | ee96e817f925549616e36326ae963d33839acfe9c120699c79d79f28ce7f7392 |
 | 10-prompts.html | 437b630aa79841552941a4df3f701f41de031c0a775aaaea8bdad83d8739090e |
-| 11-classes-objects.html | b8f8d6f8df594c51b942f523b43c613e3b3338129ed2e46804962c2228974f2c |
+| 11-classes-objects.html | 5348eedd5694358736c7300c2c98dbc53652d144441d44f7c13324a31d13dc19 |
 | 12-input-output.html | 8291a454c7896bfa433201dca1753cbcec532ee91f9317afc5a29a60fb4aa61d |
 | 13-built-in-functions.html | 14d5421792970c32fa6adcb89a721a76d124e4ccd7c356aa9d943f79b5476bdc |
 | 14-graphs.html | 347a1016edadda55e027a00dccbaf624e285cb8b15e53b62110cc984ee16fc5c |
@@ -47,6 +47,6 @@ python3 scripts/sync-reference-manual-it-status.py
 | 33-personal-assistant.html | 114f37e895a46b4763edd1c7573ebbb1d412bd3c312d48efe229bd7769ffbf47 |
 | 34-examples.html | 31320826b536f08f06c1c062ade4629773cad8c22936f9be93da6ef885213668 |
 | 35-property-testing.html | 56db55d7d9717d783e9b7e9e3ac586f82d355998b6f27c2275b1e7868b23cae7 |
-| 36-grammar.html | c53b0204c0092b6d0894b368c5712e05b03b96565294fcdc5d547d9b66b47d6e |
+| 36-grammar.html | 8b1705a3f42ab85934e2e564588eac6c75dae08c919b6ce23daaf095d88cd461 |
 | 37-appendix.html | 3d60ea6a51ad5c40edf336c6b99b67847070fa9eb17505c264d192eea621c956 |
 | 38-appendix-gpu-billiards.html | 8e9ce6e4b3de2d80177f2ece209fe92bbb6d0722572a7da861b34d5196b04153 |
