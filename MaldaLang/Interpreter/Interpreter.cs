@@ -1073,6 +1073,22 @@ public partial class Interpreter
     
     private async Task DefineClassAsync(ClassDeclaration decl)
     {
+        if (_classes.TryGetValue(decl.Name, out var existing))
+        {
+            var problems = ClassAugmentation.CollectProblems(ShapeOf(existing), decl);
+            if (problems.Count > 0)
+            {
+                var message = problems.Count == 1
+                    ? problems[0]
+                    : string.Join(System.Environment.NewLine, problems);
+                throw new RuntimeException(message, decl.Line, decl.SourceFile);
+            }
+
+            await AddClassMembersAsync(existing, decl);
+            _globals.Define(decl.Name, RuntimeValue.Class(existing));
+            return;
+        }
+
         ClassDefinition? superclass = null;
         if (decl.Superclass != null)
         {
@@ -1080,10 +1096,27 @@ public partial class Interpreter
                 throw new RuntimeException($"Superclass '{decl.Superclass}' not found.");
             superclass = _classes[decl.Superclass];
         }
-        
+
         var klass = new ClassDefinition(decl.Name, superclass);
-        
-        // Process members
+        await AddClassMembersAsync(klass, decl);
+        _classes[decl.Name] = klass;
+        _globals.Define(decl.Name, RuntimeValue.Class(klass));
+    }
+
+    private static ClassAugmentation.ExistingClass ShapeOf(ClassDefinition klass)
+    {
+        var names = new List<string>(klass.Fields.Count + klass.Methods.Count + klass.StaticMethods.Count + klass.StaticFields.Count + 1);
+        names.AddRange(klass.Fields.Keys);
+        names.AddRange(klass.Methods.Keys);
+        names.AddRange(klass.StaticMethods.Keys);
+        names.AddRange(klass.StaticFields.Keys);
+        if (klass.Constructor?.Declaration != null)
+            names.Add(klass.Constructor.Declaration.Name);
+        return new ClassAugmentation.ExistingClass(klass.Name, klass.Superclass?.Name, klass.Constructor != null, names);
+    }
+
+    private async Task AddClassMembersAsync(ClassDefinition klass, ClassDeclaration decl)
+    {
         foreach (var member in decl.Members)
         {
             if (member.Type == MemberType.Field)
@@ -1124,9 +1157,6 @@ public partial class Interpreter
                 klass.Constructor = constructor;
             }
         }
-        
-        _classes[decl.Name] = klass;
-        _globals.Define(decl.Name, RuntimeValue.Class(klass));
     }
     
     private void DefineFunction(FunctionDeclaration decl)

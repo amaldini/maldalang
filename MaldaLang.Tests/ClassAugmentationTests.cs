@@ -3,6 +3,7 @@
 
 using MaldaLang;
 using MaldaLang.Compiler;
+using MaldaLang.Interpreter;
 using MaldaLang.Parser.AST.Declarations;
 using Xunit;
 
@@ -416,6 +417,114 @@ public class ClassAugmentationTests : TestBase
             print(MathUtils.doublePi());
             """);
         Assert.Equal("6", output);
+    }
+
+    [Fact]
+    public void Interpret_SecondPass_AugmentsExistingClass()
+    {
+        var output = InterpretInSession(
+            "class Point(x, y);",
+            """
+            class Point {
+                function total() {
+                    return this.x + this.y;
+                }
+            }
+            print(new Point(3, 4).total());
+            """);
+        Assert.Equal("7", output);
+    }
+
+    [Fact]
+    public void Interpret_SecondPass_BracelessMethod_AugmentsExistingClass()
+    {
+        var output = InterpretInSession(
+            "class Point(x, y);",
+            """
+            class Point function doubled() this.x * 2;
+            print(new Point(3, 4).doubled());
+            """);
+        Assert.Equal("6", output);
+    }
+
+    [Fact]
+    public void Interpret_SecondPass_ExistingInstance_SeesAddedMethod()
+    {
+        var output = InterpretInSession(
+            """
+            class Point(x, y);
+            var p = new Point(3, 4);
+            """,
+            """
+            class Point function total() this.x + this.y;
+            print(p.total());
+            """);
+        Assert.Equal("7", output);
+    }
+
+    [Fact]
+    public void Interpret_SecondPass_DuplicateMember_IsRejected()
+    {
+        var ex = Assert.Throws<RuntimeException>(() => InterpretInSession(
+            """
+            class Point(x, y) {
+                function total() {
+                    return this.x + this.y;
+                }
+            }
+            """,
+            """
+            class Point {
+                function total() {
+                    return 0;
+                }
+            }
+            """));
+        Assert.Contains("already defined on class 'Point'", ex.Message);
+    }
+
+    [Fact]
+    public void Interpret_SecondPass_LaterPrimaryConstructor_IsRejected()
+    {
+        var ex = Assert.Throws<RuntimeException>(() => InterpretInSession(
+            "class Point { var x; }",
+            "class Point(x);"));
+        Assert.Contains("cannot use a primary constructor", ex.Message);
+    }
+
+    [Fact]
+    public void Interpret_SecondPass_LaterExtends_IsRejected()
+    {
+        var ex = Assert.Throws<RuntimeException>(() => InterpretInSession(
+            """
+            class Animal { }
+            class Dog { }
+            """,
+            "class Dog extends Animal { }"));
+        Assert.Contains("cannot add 'extends'", ex.Message);
+    }
+
+    private string InterpretInSession(params string[] entries)
+    {
+        RedirectConsole();
+        try
+        {
+            var interpreter = new Interpreter.Interpreter();
+            foreach (var source in entries)
+            {
+                var lexer = new Lexer(source);
+                var tokens = lexer.Tokenize();
+                var parser = new Parser.Parser(tokens);
+                var statements = parser.Parse();
+                Assert.Empty(parser.Errors);
+                interpreter.InterpretAsync(statements).GetAwaiter().GetResult();
+            }
+            return GetOutput();
+        }
+        finally
+        {
+            RestoreConsole();
+        }
     }
 
     [Fact]

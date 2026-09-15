@@ -239,7 +239,7 @@ var p = new Point(3, 4);
 io.print(p.total());
 ```
 
-A later `class Name { … }` with the same name **augments** the original class (appends members). Do not use a primary constructor, change `extends`, or repeat a member name on the later declaration. Methods share the compact function body (`function total() this.x + this.y;`). A single added method can omit the class braces: `class Point function total() this.x + this.y;`.
+A later `class Name { … }` with the same name **augments** the original class (appends members). Do not use a primary constructor, change `extends`, or repeat a member name on the later declaration. Methods share the compact function body (`function total() this.x + this.y;`). A single added method can omit the class braces: `class Point function total() this.x + this.y;`. The same merge applies across REPL entries in one session.
 
 ```malda
 class Point(x, y);

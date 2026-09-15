@@ -213,7 +213,7 @@ print(new Point(2, 3).total());</code></pre>
 print(new Point(3, 4).total());</code></pre>
 
         <h2>11.7 Adding methods to an already-defined class</h2>
-        <p>A later <code>class Name { … }</code> with the same name <strong>augments</strong> the original class: new members are appended. There is no extra keyword. A later declaration cannot use a primary constructor, cannot change <code>extends</code>, and cannot repeat a member name that is already present.</p>
+        <p>A later <code>class Name { … }</code> with the same name <strong>augments</strong> the original class: new members are appended. There is no extra keyword. A later declaration cannot use a primary constructor, cannot change <code>extends</code>, and cannot repeat a member name that is already present. The same merge applies across REPL entries in one session (each entry is parsed on its own; the interpreter appends members to the class already bound). Instances created before the later entry see the new methods.</p>
         <p>Methods share the compact function body: a single expression plus <code>;</code> is <code>return</code> of that expression. For one simple method you can also omit the class braces:</p>
         <pre><code data-run="true" data-expect="7">class Point(x, y);
 class Point { function total() this.x + this.y; }
