@@ -2361,7 +2361,16 @@ public partial class Interpreter
     
     private RuntimeValue LookUpVariable(IdentifierExpression expr)
     {
-        // First try to get from environment
+        var memberFrame = CurrentClassMemberFrame();
+        if (memberFrame != null)
+        {
+            // Locals / parameters of this call, then implicit members, then globals.
+            if (TryGetFunctionLocal(expr.Name, memberFrame, out var local))
+                return local;
+            if (TryReadImplicitMember(expr.Name, out var member))
+                return member;
+        }
+
         if (_environment.TryGet(expr.Name, out var value))
         {
             return value;
@@ -2388,34 +2397,96 @@ public partial class Interpreter
             var funcValue = new FunctionValue(funcDecl, _globals);
             return RuntimeValue.Function(funcValue);
         }
+
+        // Non-member fallback: implicit this only when the name is unbound.
+        if (memberFrame == null && TryReadImplicitMember(expr.Name, out var leakedMember))
+            return leakedMember;
         
-        // If not found in environment and we're in a method context,
-        // try to access it as a member variable on the current object
+        throw new RuntimeException($"Undefined variable '{expr.Name}'.", expr.Line, _currentFile);
+    }
+
+    /// <summary>
+    /// Innermost class/actor member on the stack. Lambdas are skipped so a method's
+    /// implicit fields stay in scope; a named free function stops the walk.
+    /// </summary>
+    private FunctionFrame? CurrentClassMemberFrame()
+    {
+        foreach (var frame in _executionStack)
+        {
+            if (frame is not FunctionFrame functionFrame)
+                continue;
+            if (!string.IsNullOrEmpty(functionFrame.Function.ClassName))
+                return functionFrame;
+            if (functionFrame.Function.Declaration?.Name == "<lambda>")
+                continue;
+            return null;
+        }
+        return null;
+    }
+
+    private bool TryGetFunctionLocal(string name, FunctionFrame memberFrame, out RuntimeValue value)
+    {
+        return _environment.TryGetUntil(name, memberFrame.Environment.GetEnclosing(), out value);
+    }
+
+    private bool TryAssignFunctionLocal(string name, RuntimeValue value, FunctionFrame memberFrame)
+    {
+        return _environment.TryAssignUntil(name, value, memberFrame.Environment.GetEnclosing());
+    }
+
+    private bool TryReadImplicitMember(string name, out RuntimeValue value)
+    {
+        value = default;
         if (_currentObject != null)
         {
-            // Check if it's actually a field on the class
-            var field = _currentObject.Class?.FindField(expr.Name);
+            var field = _currentObject.Class?.FindField(name);
             if (field != null)
             {
-                // Static fields live on the class, not on the instance.
-                if (field.IsStatic && _currentObject.Class!.StaticFields.TryGetValue(expr.Name, out var classStatic))
-                    return classStatic;
-                // Access the field through the object instance
-                return _currentObject.Get(expr.Name, _currentClass);
+                if (field.IsStatic && _currentObject.Class!.StaticFields.TryGetValue(name, out var classStatic))
+                {
+                    value = classStatic;
+                    return true;
+                }
+                value = _currentObject.Get(name, _currentClass);
+                return true;
             }
         }
-        
-        // Static fields of the enclosing class are in scope by bare name inside
-        // that class's methods (mirrors the implicit `this.field` behavior).
-        // Resolution is limited to the current class itself, so this is always
-        // an internal access and needs no visibility check.
-        if (_currentClass != null && _currentClass.StaticFields.TryGetValue(expr.Name, out var staticValue))
+
+        if (_currentClass != null && _currentClass.StaticFields.TryGetValue(name, out var staticValue))
         {
-            return staticValue;
+            value = staticValue;
+            return true;
         }
-        
-        // Variable not found anywhere
-        throw new RuntimeException($"Undefined variable '{expr.Name}'.", expr.Line, _currentFile);
+
+        return false;
+    }
+
+    private bool TryWriteImplicitMember(string name, RuntimeValue value, int? line)
+    {
+        if (_currentObject != null)
+        {
+            var field = _currentObject.Class?.FindField(name);
+            if (field != null)
+            {
+                if (field.Access == AccessModifier.Private && _currentClass != _currentObject.Class)
+                    throw new RuntimeException($"Cannot access private field '{name}' from outside {_currentObject.Class.Name}.", line, _currentFile);
+                if (field.IsStatic)
+                {
+                    _currentObject.Class!.StaticFields[name] = value;
+                    return true;
+                }
+                _currentObject.Set(name, value);
+                return true;
+            }
+        }
+
+        if (_currentClass != null && _currentClass.StaticFields.ContainsKey(name))
+        {
+            _currentClass.StaticFields[name] = value;
+            return true;
+        }
+
+        return false;
     }
     
     private async Task<RuntimeValue> EvaluateInterpolatedStringAsync(InterpolatedStringExpression expr)
@@ -2935,24 +3006,20 @@ public partial class Interpreter
     {
         if (target is IdentifierExpression idExpr)
         {
+            var memberFrame = CurrentClassMemberFrame();
+            if (memberFrame != null)
+            {
+                if (TryGetFunctionLocal(idExpr.Name, memberFrame, out var local))
+                    return local;
+                if (TryReadImplicitMember(idExpr.Name, out var member))
+                    return member;
+            }
+
             if (_environment.TryGet(idExpr.Name, out var value))
                 return value;
-            
-            if (_currentObject != null)
-            {
-                var field = _currentObject.Class?.FindField(idExpr.Name);
-                if (field != null)
-                {
-                    if (field.Access == AccessModifier.Private && _currentClass != _currentObject.Class)
-                        throw new RuntimeException($"Cannot access private field '{idExpr.Name}' from outside {_currentObject.Class.Name}.");
-                    if (field.IsStatic && _currentObject.Class!.StaticFields.TryGetValue(idExpr.Name, out var classStatic))
-                        return classStatic;
-                    return _currentObject.Get(idExpr.Name);
-                }
-            }
-            
-            if (_currentClass != null && _currentClass.StaticFields.TryGetValue(idExpr.Name, out var staticValue))
-                return staticValue;
+
+            if (memberFrame == null && TryReadImplicitMember(idExpr.Name, out var leakedMember))
+                return leakedMember;
             
             throw new RuntimeException($"Undefined variable '{idExpr.Name}'.", idExpr.Line, _currentFile);
         }
@@ -3051,32 +3118,21 @@ public partial class Interpreter
     {
         if (target is IdentifierExpression idExpr)
         {
+            var memberFrame = CurrentClassMemberFrame();
+            if (memberFrame != null)
+            {
+                if (TryAssignFunctionLocal(idExpr.Name, value, memberFrame))
+                    return;
+                if (TryWriteImplicitMember(idExpr.Name, value, idExpr.Line))
+                    return;
+            }
+
             EnsureMutableIdentifier(idExpr.Name, idExpr.Line);
             if (_environment.TryAssign(idExpr.Name, value))
                 return;
-            
-            if (_currentObject != null)
-            {
-                var field = _currentObject.Class?.FindField(idExpr.Name);
-                if (field != null)
-                {
-                    if (field.Access == AccessModifier.Private && _currentClass != _currentObject.Class)
-                        throw new RuntimeException($"Cannot access private field '{idExpr.Name}' from outside {_currentObject.Class.Name}.");
-                    if (field.IsStatic)
-                    {
-                        _currentObject.Class!.StaticFields[idExpr.Name] = value;
-                        return;
-                    }
-                    _currentObject.Set(idExpr.Name, value);
-                    return;
-                }
-            }
-            
-            if (_currentClass != null && _currentClass.StaticFields.ContainsKey(idExpr.Name))
-            {
-                _currentClass.StaticFields[idExpr.Name] = value;
+
+            if (memberFrame == null && TryWriteImplicitMember(idExpr.Name, value, idExpr.Line))
                 return;
-            }
             
             throw new RuntimeException($"Undefined variable '{idExpr.Name}'.", idExpr.Line, _currentFile);
         }

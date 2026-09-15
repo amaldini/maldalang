@@ -117,6 +117,46 @@ public class Environment
         
         return false;
     }
+
+    /// <summary>
+    /// Look up <paramref name="name"/> on this frame and its ancestors, stopping before
+    /// <paramref name="stopExclusive"/> (typically a function's closure / globals).
+    /// </summary>
+    public bool TryGetUntil(string name, Environment? stopExclusive, out RuntimeValue value)
+    {
+        Environment? env = this;
+        while (env != null && !ReferenceEquals(env, stopExclusive))
+        {
+            if (env._values.TryGetValue(name, out value))
+                return true;
+            env = env._enclosing;
+        }
+
+        value = default;
+        return false;
+    }
+
+    /// <summary>
+    /// Assign <paramref name="name"/> on this frame and its ancestors, stopping before
+    /// <paramref name="stopExclusive"/>. Returns false if the name is not a local in that range.
+    /// </summary>
+    public bool TryAssignUntil(string name, RuntimeValue value, Environment? stopExclusive)
+    {
+        Environment? env = this;
+        while (env != null && !ReferenceEquals(env, stopExclusive))
+        {
+            if (env._values.ContainsKey(name))
+            {
+                if (env._constNames.Contains(name))
+                    throw new RuntimeException($"Cannot assign to const '{name}'.");
+                env._values[name] = value;
+                return true;
+            }
+            env = env._enclosing;
+        }
+
+        return false;
+    }
     
     public Dictionary<string, RuntimeValue> GetAllVariables()
     {

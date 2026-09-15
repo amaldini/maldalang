@@ -40,6 +40,10 @@ public class JsTranspiler
     private readonly Stack<HashSet<string>> _localScopes = new();
     private readonly HashSet<string> _moduleConstNames = new(StringComparer.Ordinal);
     private readonly Stack<HashSet<string>> _constScopeStack = new();
+    private readonly Dictionary<string, ClassDeclaration> _classDeclarations = new(StringComparer.Ordinal);
+    private string? _currentClassName;
+    private bool _currentMemberIsStatic;
+    private bool _rewriteImplicitMembers;
 
     private static readonly HashSet<string> JsRuntimeModules = new(StringComparer.Ordinal)
     {
@@ -81,6 +85,12 @@ public class JsTranspiler
             _shaderFunctions[kv.Key] = kv.Value;
         CopyLocalScopesFrom(other);
         CopyConstScopesFrom(other);
+        _classDeclarations.Clear();
+        foreach (var kv in other._classDeclarations)
+            _classDeclarations[kv.Key] = kv.Value;
+        _currentClassName = other._currentClassName;
+        _currentMemberIsStatic = other._currentMemberIsStatic;
+        _rewriteImplicitMembers = other._rewriteImplicitMembers;
     }
 
     public string Transpile(List<Statement> statements, bool isLibrary = false, string? sourceFilePath = null)
@@ -106,6 +116,10 @@ public class JsTranspiler
         _shaderFunctions.Clear();
         ResetLocalScopes();
         ResetConstScopes();
+        _classDeclarations.Clear();
+        _currentClassName = null;
+        _currentMemberIsStatic = false;
+        _rewriteImplicitMembers = false;
         _generatedLine = 1;
         _currentSourceLine = null;
         _currentSourceColumn = null;
@@ -141,6 +155,7 @@ public class JsTranspiler
             else if (statement is ClassDeclaration classDeclaration)
             {
                 classDeclarations.Add(classDeclaration);
+                _classDeclarations[classDeclaration.Name] = classDeclaration;
             }
             else if (statement is PropertyDeclaration propertyDeclaration)
             {
@@ -536,7 +551,7 @@ public class JsTranspiler
             case LiteralExpression literal:
                 return TranspileLiteral(literal.Value);
             case IdentifierExpression identifier:
-                return EscapeIdentifier(identifier.Name);
+                return TranspileIdentifierReference(identifier.Name);
             case NamedArgumentExpression named:
                 return TranspileExpression(named.Value);
             case BinaryExpression binary:
@@ -700,9 +715,18 @@ public class JsTranspiler
             : $" extends {EscapeIdentifier(classDeclaration.Superclass)}";
         EmitLine($"class {EscapeIdentifier(classDeclaration.Name)}{extendsClause} {{");
         _indentLevel++;
-        foreach (var member in classDeclaration.Members)
+        var previousClassName = _currentClassName;
+        _currentClassName = classDeclaration.Name;
+        try
         {
-            TranspileClassMember(member);
+            foreach (var member in classDeclaration.Members)
+            {
+                TranspileClassMember(member);
+            }
+        }
+        finally
+        {
+            _currentClassName = previousClassName;
         }
         _indentLevel--;
         EmitLine("}");
@@ -733,10 +757,22 @@ public class JsTranspiler
                 var asyncPrefix = StatementRequiresAsync(method.Body) ? "async " : string.Empty;
                 EmitLine($"{staticPrefix}{asyncPrefix}{EscapeIdentifier(member.Name)}({parameters}) {{");
                 _indentLevel++;
-                InLocalScope(method.Parameters, () =>
+                var previousStatic = _currentMemberIsStatic;
+                var previousRewrite = _rewriteImplicitMembers;
+                _currentMemberIsStatic = member.IsStatic;
+                _rewriteImplicitMembers = true;
+                try
                 {
-                    TranspileStatementsWithOptionalDeferFrame(method.Body.Statements);
-                });
+                    InLocalScope(method.Parameters, () =>
+                    {
+                        TranspileStatementsWithOptionalDeferFrame(method.Body.Statements);
+                    });
+                }
+                finally
+                {
+                    _currentMemberIsStatic = previousStatic;
+                    _rewriteImplicitMembers = previousRewrite;
+                }
                 _indentLevel--;
                 EmitLine("}");
                 break;
@@ -751,13 +787,25 @@ public class JsTranspiler
                 var parameters = string.Join(", ", constructor.Parameters.Select(EscapeIdentifier));
                 EmitLine($"constructor({parameters}) {{");
                 _indentLevel++;
-                InLocalScope(constructor.Parameters, () =>
+                var previousStatic = _currentMemberIsStatic;
+                var previousRewrite = _rewriteImplicitMembers;
+                _currentMemberIsStatic = false;
+                _rewriteImplicitMembers = true;
+                try
                 {
-                    foreach (var statement in constructor.Body.Statements)
+                    InLocalScope(constructor.Parameters, () =>
                     {
-                        TranspileStatement(statement);
-                    }
-                });
+                        foreach (var statement in constructor.Body.Statements)
+                        {
+                            TranspileStatement(statement);
+                        }
+                    });
+                }
+                finally
+                {
+                    _currentMemberIsStatic = previousStatic;
+                    _rewriteImplicitMembers = previousRewrite;
+                }
                 _indentLevel--;
                 EmitLine("}");
                 break;
@@ -1711,6 +1759,47 @@ public class JsTranspiler
         return false;
     }
 
+    private string TranspileIdentifierReference(string name)
+    {
+        if (_rewriteImplicitMembers
+            && _currentClassName != null
+            && !IsLocalName(name)
+            && TryFindClassField(_currentClassName, name, out var isStatic))
+        {
+            if (isStatic)
+                return $"{EscapeIdentifier(_currentClassName)}.{EscapeIdentifier(name)}";
+            if (!_currentMemberIsStatic)
+                return $"this.{EscapeIdentifier(name)}";
+        }
+
+        return EscapeIdentifier(name);
+    }
+
+    private bool TryFindClassField(string className, string fieldName, out bool isStatic)
+    {
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var current = className;
+        while (!string.IsNullOrEmpty(current) && seen.Add(current))
+        {
+            if (!_classDeclarations.TryGetValue(current, out var decl))
+                break;
+            foreach (var member in decl.Members)
+            {
+                if (member.Type == MemberType.Field
+                    && string.Equals(member.Name, fieldName, StringComparison.Ordinal))
+                {
+                    isStatic = member.IsStatic;
+                    return true;
+                }
+            }
+
+            current = decl.Superclass ?? string.Empty;
+        }
+
+        isStatic = false;
+        return false;
+    }
+
     private bool IsUnshadowedRuntimeModule(string name) =>
         JsRuntimeModules.Contains(name) && !IsLocalName(name);
 
@@ -2049,14 +2138,14 @@ public class JsTranspiler
         return value;
     }
 
-    private static string TranspileAssignmentTarget(Expression expression)
+    private string TranspileAssignmentTarget(Expression expression)
     {
         return expression switch
         {
-            IdentifierExpression identifier => EscapeIdentifier(identifier.Name),
+            IdentifierExpression identifier => TranspileIdentifierReference(identifier.Name),
             ThisExpression => "this",
             MemberAccessExpression memberAccess => $"{TranspileAssignmentTarget(memberAccess.Object)}.{EscapeIdentifier(memberAccess.Member)}",
-            ArrayAccessExpression arrayAccess => $"{TranspileExpressionStatic(arrayAccess.Array)}[{TranspileExpressionStatic(arrayAccess.Index)}]",
+            ArrayAccessExpression arrayAccess => $"{TranspileExpression(arrayAccess.Array)}[{TranspileExpression(arrayAccess.Index)}]",
             _ => throw new NotSupportedException($"JavaScript transpilation for assignment target '{expression.GetType().Name}' is not supported yet.")
         };
     }

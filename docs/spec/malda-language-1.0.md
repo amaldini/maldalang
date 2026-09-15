@@ -499,6 +499,7 @@ class Point(x, y) function total() this.x + this.y;
 - **Illegal in v1:** combining a primary constructor with `extends`; declaring `function ClassName(...)` in the same class; declaring `var` with a primary parameter's name.
 - Construction is still `new Point(3, 4)`. Equality remains identity unless the class defines `__eq__`.
 - This form is distinct from sum types (`type Point = Point(x, y);`, constructed without `new`) and from schemas (`schema Point { x: int; y: int; }`).
+- **Name resolution in methods and constructors** (all classes, not only this form): locals and parameters of the current call, then instance/static fields of the receiving class (implicit `this.` / class statics), then the enclosing module, then built-ins. A top-level `var x` does **not** shadow a field `x`. Parameters and method locals still shadow fields, so constructors keep `this.x = x`. Interpreter, C# transpile, and JS agree.
 
 **Implementation:** parser desugar in `Parser.ClassDeclaration`; interpreter and transpilers see a normal class.
 

@@ -231,7 +231,7 @@ var c = new Counter();
 io.print(c.inc());
 ```
 
-A parameter list after the class name is a primary constructor: each parameter becomes a public field, and `new Name(...)` assigns them. The body is optional (`class Point(x, y);`) and may add methods, including a brace-less first method (`class Point(x, y) function total() this.x + this.y;`). Do not mix this form with `extends` or with an explicit `function Point(...)`. `toJSON` dumps those public fields (and other public instance fields); `parseJSON` returns a dict, not a class instance.
+A parameter list after the class name is a primary constructor: each parameter becomes a public field, and `new Name(...)` assigns them. The body is optional (`class Point(x, y);`) and may add methods, including a brace-less first method (`class Point(x, y) function total() this.x + this.y;`). Do not mix this form with `extends` or with an explicit `function Point(...)`. `toJSON` dumps those public fields (and other public instance fields); `parseJSON` returns a dict, not a class instance. Inside methods, a bare name is a local or parameter first, then a field of `this` (or a static field), then an enclosing `var`. An outer `var x` does not shadow a field `x`; use a parameter or a renamed global if you meant the outer binding. `this.x` is still required when a parameter shadows the field.
 
 ```malda
 class Point(x, y) function total() this.x + this.y;

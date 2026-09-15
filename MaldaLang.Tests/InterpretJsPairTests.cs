@@ -251,6 +251,22 @@ public class InterpretJsPairTests
     }
 
     [Fact]
+    public void ImplicitField_BeatsOuterVar_SameStdout()
+    {
+        InterpretJsPair.AssertSameFromSource(
+            """
+            var x = 10;
+            class Point(x, y) {
+                function total() {
+                    return x + y;
+                }
+            }
+            io.print(new Point(2, 3).total());
+            """,
+            "implicit-field-beats-outer-var-js");
+    }
+
+    [Fact]
     public void ClassAugmentation_SameStdout()
     {
         InterpretJsPair.AssertSameFromSource(

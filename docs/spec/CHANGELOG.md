@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Changed (MAJOR — implicit fields beat enclosing `var`)
+
+- **Bare names in methods / constructors:** lookup is locals and parameters of the current call, then instance/static fields of the current class, then the enclosing module, then built-ins. A top-level `var x = 10` no longer shadows field `x` inside `function total() { return x + y; }` — that prints `this.x + this.y`. Parameters still shadow (`this.x = x` in a constructor). Interpreter, C#, and JS agree. Narrative: [`11-classes-objects.html`](../../ReferenceManual/11-classes-objects.html) §11.1 / §11.6. Spec §19.
+
 #### Added (PATCH — ship-contract follow-up)
 
 - **Fullstack / ASK / jobs / Tier 0 C# oracles:** `HttpTraceParityTests` now GETs `/api/health` on a scaffolded `malda new fullstack` host and `/health` + `/ask` on `Examples/Agents/secondbrain_ask_wrapper.malda`. `JobTraceParityTests` compares interpret vs C# job journals with `MALDA_JOBS_CONNECTION` (ids stripped). `Tier0CsharpShipSmokeTests` runs a 5-case C# slice on every PR; the full matrix stays nightly. Registry: [`ship-contract.md`](ship-contract.md). The fullstack template names the mounted server `rest` because `api` is a keyword. `enqueueJob` options and `pageLayout` options accept transpile `DictionaryInstance` literals (same hole as `use()`).
