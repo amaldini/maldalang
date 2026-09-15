@@ -189,6 +189,85 @@ public class ReplPromptTests : TestBase
     }
 
     [Fact]
+    public void RunEntries_LaterClass_AugmentsInsteadOfRedefining()
+    {
+        var interpreter = new Interpreter.Interpreter();
+
+        InvokePromptInput(new InputResult { Code = "class Point(x, y);", Action = "run" }, interpreter);
+        InvokePromptInput(
+            new InputResult { Code = "class Point { function total() { return this.x + this.y; } }", Action = "run" },
+            interpreter);
+        var (stdOut, stdErr) = InvokePromptInput(
+            new InputResult { Code = "print(new Point(3, 4).total());", Action = "run" }, interpreter);
+
+        Assert.Contains("7", stdOut);
+        Assert.Equal(string.Empty, stdErr.Trim());
+    }
+
+    [Fact]
+    public void RunEntries_BracelessClass_AugmentsExistingClass()
+    {
+        var interpreter = new Interpreter.Interpreter();
+
+        InvokePromptInput(new InputResult { Code = "class Point(x, y);", Action = "run" }, interpreter);
+        InvokePromptInput(
+            new InputResult { Code = "class Point function doubled() this.x * 2;", Action = "run" },
+            interpreter);
+        var (stdOut, _) = InvokePromptInput(
+            new InputResult { Code = "print(new Point(3, 4).doubled());", Action = "run" }, interpreter);
+
+        Assert.Contains("6", stdOut);
+    }
+
+    [Fact]
+    public void RunEntries_ExistingInstance_SeesAddedMethod()
+    {
+        var interpreter = new Interpreter.Interpreter();
+
+        InvokePromptInput(new InputResult { Code = "class Point(x, y); var p = new Point(3, 4);", Action = "run" }, interpreter);
+        InvokePromptInput(
+            new InputResult { Code = "class Point function total() this.x + this.y;", Action = "run" },
+            interpreter);
+        var (stdOut, _) = InvokePromptInput(
+            new InputResult { Code = "print(p.total());", Action = "run" }, interpreter);
+
+        Assert.Contains("7", stdOut);
+    }
+
+    [Fact]
+    public void RunEntries_DuplicateMember_ReportsAlreadyDefined()
+    {
+        var interpreter = new Interpreter.Interpreter();
+
+        InvokePromptInput(
+            new InputResult { Code = "class Point(x, y) { function total() { return this.x + this.y; } }", Action = "run" },
+            interpreter);
+        var (stdOut, _) = InvokePromptInput(
+            new InputResult { Code = "class Point { function total() { return 0; } }", Action = "run" },
+            interpreter);
+
+        Assert.Contains("already defined on class 'Point'", stdOut);
+    }
+
+    [Fact]
+    public void VarsEntry_AfterAugmentation_ListsAddedMethod()
+    {
+        var interpreter = new Interpreter.Interpreter();
+        var hostNames = ReplSessionInventory.SnapshotHostNames(interpreter);
+
+        InvokePromptInput(new InputResult { Code = "class Point(x, y);", Action = "run" }, interpreter, hostNames);
+        InvokePromptInput(
+            new InputResult { Code = "class Point function total() this.x + this.y;", Action = "run" },
+            interpreter, hostNames);
+        var (stdOut, _) = InvokePromptInput(
+            new InputResult { Code = "classes", Action = "vars" }, interpreter, hostNames);
+
+        Assert.Contains("classes:", stdOut);
+        Assert.Contains("Point(x, y)", stdOut);
+        Assert.Contains("methods: total", stdOut);
+    }
+
+    [Fact]
     public void VarsEntry_FunctionsFilter_OmitsVariables()
     {
         var interpreter = new Interpreter.Interpreter();

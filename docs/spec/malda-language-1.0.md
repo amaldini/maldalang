@@ -520,15 +520,15 @@ class Point { function magnitude() math.sqrt(this.x * this.x + this.y * this.y);
 class Point function doubled() this.x * 2;
 ```
 
-- A later `class Identifier { … }` or brace-less `class Identifier function …` for a name already declared in the same program (including `include` splice) **augments** the first declaration: members are appended in source order.
+- A later `class Identifier { … }` or brace-less `class Identifier function …` for a name already declared in the same program (including `include` splice) or already bound in a REPL session **augments** the first declaration: members are appended in source order.
 - Methods (in a first class, an augmenting `{ }` body, or the brace-less form) share the compact function body: `function name() expr;` desugars to `return expr;`. Constructors stay block-only.
 - The brace-less form is a single method (optional `public` / `private` / `static`). On a **first** declaration it may follow a primary constructor (`class Point(x, y) function total() this.x + this.y;`). It cannot carry `extends`, fields, or more than one member — use `{ }` for those. A later declaration still cannot use a primary constructor.
 - Allowed on a later declaration: instance and static methods, fields, and a constructor only when the first declaration has none. A later `extends Super` is legal only when it repeats the original superclass.
 - **Illegal:** a primary constructor on a later declaration; adding or changing `extends`; repeating a member name already present on the class.
 - `export` on any declaration of that name marks the merged class exported.
-- After parse, interpreter and both transpilers see a single `ClassDeclaration`.
+- After parse, interpreter and both transpilers see a single `ClassDeclaration`. A REPL entry that declares an already-bound class is merged at interpret time with the same rules (the class object is updated in place, so earlier instances see new methods).
 
-**Implementation:** parse-time merge in `Parser.ClassAugmentation`.
+**Implementation:** parse-time merge in `Parser.ClassAugmentation`; interpret-time append in `Interpreter.DefineClassAsync` when the name is already in the session.
 
 ---
 
@@ -559,3 +559,4 @@ Versioning and deprecation rules: [CHANGELOG.md](CHANGELOG.md).
 | 2026-09-13 | Final 1.0 | §20 later `class Name { … }` augments an already-defined class |
 | 2026-09-15 | Final 1.0 | §20 compact method bodies and brace-less `class Name function …` |
 | 2026-09-15 | Final 1.0 | §19 brace-less `class Name(params) function …` on a first declaration |
+| 2026-09-15 | Final 1.0 | §20 REPL later `class Name` augments the session-bound class |

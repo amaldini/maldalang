@@ -213,7 +213,7 @@ print(new Point(2, 3).total());</code></pre>
 print(new Point(3, 4).total());</code></pre>
 
         <h2>11.7 Aggiungere metodi a una classe già definita</h2>
-        <p>Una seconda <code>class Name { … }</code> con lo stesso nome <strong>aumenta</strong> la classe originale: i nuovi membri vengono accodati. Non c'è una keyword extra. Una dichiarazione successiva non può usare un costruttore primario, non può cambiare <code>extends</code> e non può ripetere un nome di membro già presente.</p>
+        <p>Una seconda <code>class Name { … }</code> con lo stesso nome <strong>aumenta</strong> la classe originale: i nuovi membri vengono accodati. Non c'è una keyword extra. Una dichiarazione successiva non può usare un costruttore primario, non può cambiare <code>extends</code> e non può ripetere un nome di membro già presente. Lo stesso merge vale tra voci REPL della stessa sessione (ogni voce è analizzata da sola; l'interprete accoda i membri alla classe già bound). Le istanze create prima della voce successiva vedono i nuovi metodi.</p>
         <p>I metodi condividono il corpo compatto delle funzioni: una sola espressione più <code>;</code> è il <code>return</code> di quell'espressione. Per un metodo semplice puoi anche omettere le graffe della classe:</p>
         <pre><code data-run="true" data-expect="7">class Point(x, y);
 class Point { function total() this.x + this.y; }

@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Clarified (PATCH — REPL class augmentation)
+
+- **REPL later `class Name`:** a second (or later) REPL entry that declares a class already bound in the session **augments** it with the same rules as a later declaration in one file (no primary constructor, no adding/changing `extends`, no repeated member names). Previously the interpreter replaced the class. Instances created before the later entry see the new methods. Spec §20; narrative: [`11-classes-objects.html`](../../ReferenceManual/11-classes-objects.html) §11.7, [`02-tools.html`](../../ReferenceManual/02-tools.html) §2.1.1.
+
 #### Changed (MAJOR — implicit fields beat enclosing `var`)
 
 - **Bare names in methods / constructors:** lookup is locals and parameters of the current call, then instance/static fields of the current class, then the enclosing module, then built-ins. A top-level `var x = 10` no longer shadows field `x` inside `function total() { return x + y; }` — that prints `this.x + this.y`. Parameters still shadow (`this.x = x` in a constructor). Interpreter, C#, and JS agree. Narrative: [`11-classes-objects.html`](../../ReferenceManual/11-classes-objects.html) §11.1 / §11.6. Spec §19.
