@@ -98,6 +98,23 @@ public sealed class ReplSessionSource
             Upsert(snippet);
     }
 
+    public string? Peek(string name)
+    {
+        var matches = _definitions
+            .Where(d => string.Equals(d.Name, name, StringComparison.Ordinal))
+            .ToList();
+        return matches.Count == 0 ? null : JoinSources(matches);
+    }
+
+    public string? TryRemove(string name)
+    {
+        var previous = Peek(name);
+        if (previous == null)
+            return null;
+        _definitions.RemoveAll(d => string.Equals(d.Name, name, StringComparison.Ordinal));
+        return previous;
+    }
+
     public string Format(string? filter)
     {
         TryParseKindOrName(filter, out var kind, out var name);

@@ -52,7 +52,7 @@ class CronFile
 class InputResult
 {
     public string? Code { get; set; }
-    public string Action { get; set; } = "run"; // "run", "compile", "transpile", "exit", "help", "vars", "source"
+    public string Action { get; set; } = "run"; // "run", "compile", "transpile", "exit", "help", "vars", "source", "drop", "replace"
 }
 
 sealed class CliProfilingSettings
@@ -4055,10 +4055,12 @@ class Program
         Console.WriteLine("  malda help deploy");
         Console.WriteLine();
         Console.WriteLine("REPL commands:");
-        Console.WriteLine("  run | compile | transpile | vars | source | help | exit");
+        Console.WriteLine("  run | compile | transpile | vars | source | drop | replace | help | exit");
         Console.WriteLine("  vars [kind]                List session definitions (aliases: defs, who)");
         Console.WriteLine("                             kind: variables, functions, classes, prompts, actors, workflows");
         Console.WriteLine("  source [kind|name]         Print definition source as entered (alias: src)");
+        Console.WriteLine("  drop <name>                Remove a definition (alias: undef)");
+        Console.WriteLine("  replace <name>             Drop and reprint source so you can re-enter it (alias: edit)");
         Console.WriteLine();
         Console.WriteLine("Use 'malda help <command>' for command-specific usage.");
         Console.WriteLine();
@@ -4342,6 +4344,18 @@ class Program
                 sessionSource ??= new ReplSessionSource();
                 sessionSource.Write(Console.Out, result.Code);
             }
+            else if (result.Action == ReplSessionEdit.DropAction
+                     || result.Action == ReplSessionEdit.ReplaceAction)
+            {
+                sessionSource ??= new ReplSessionSource();
+                ReplSessionEdit.Write(
+                    Console.Out,
+                    result.Action,
+                    result.Code ?? "",
+                    interpreter,
+                    hostNames,
+                    sessionSource);
+            }
             else if (string.IsNullOrWhiteSpace(result.Code))
             {
                 return;
@@ -4437,6 +4451,8 @@ class Program
             return new InputResult { Code = varsFilter, Action = "vars" };
         if (ReplSessionSource.TryParseCommand(trimmedFirst, out var sourceFilter))
             return new InputResult { Code = sourceFilter, Action = "source" };
+        if (ReplSessionEdit.TryParseCommand(trimmedFirst, out var editAction, out var editName))
+            return new InputResult { Code = editName, Action = editAction };
         
         // Check if we need multiline input
         if (!NeedsMoreInput(firstLine))
@@ -4481,6 +4497,10 @@ class Program
             else if (ReplSessionSource.TryParseCommand(trimmed, out var contSourceFilter))
             {
                 return new InputResult { Code = contSourceFilter, Action = "source" };
+            }
+            else if (ReplSessionEdit.TryParseCommand(trimmed, out var contEditAction, out var contEditName))
+            {
+                return new InputResult { Code = contEditName, Action = contEditAction };
             }
             
             // Allow user to cancel with empty line

@@ -61,9 +61,11 @@ public class ReplPromptTests : TestBase
 
         Assert.Contains("MALDA CLI", stdOut);
         Assert.Contains("REPL commands:", stdOut);
-        Assert.Contains("run | compile | transpile | vars | source | help | exit", stdOut);
+        Assert.Contains("run | compile | transpile | vars | source | drop | replace | help | exit", stdOut);
         Assert.Contains("vars [kind]", stdOut);
         Assert.Contains("source [kind|name]", stdOut);
+        Assert.Contains("drop <name>", stdOut);
+        Assert.Contains("replace <name>", stdOut);
     }
 
     [Fact]
@@ -353,5 +355,96 @@ public class ReplPromptTests : TestBase
 
         Assert.Contains("class Point(x, y);", stdOut);
         Assert.Contains("class Point function total() this.x + this.y;", stdOut);
+    }
+
+    [Fact]
+    public void DropEntry_RemovesFunction_SoNameIsUndefined()
+    {
+        var interpreter = new Interpreter.Interpreter();
+        var hostNames = ReplSessionInventory.SnapshotHostNames(interpreter);
+        var sessionSource = new ReplSessionSource();
+
+        InvokePromptInput(
+            new InputResult { Code = "function ping() { return 1; }", Action = "run" },
+            interpreter, hostNames, sessionSource);
+        var (dropOut, _) = InvokePromptInput(
+            new InputResult { Code = "ping", Action = "drop" }, interpreter, hostNames, sessionSource);
+        var (callOut, _) = InvokePromptInput(
+            new InputResult { Code = "print(ping());", Action = "run" }, interpreter, hostNames, sessionSource);
+        var (sourceOut, _) = InvokePromptInput(
+            new InputResult { Code = "", Action = "source" }, interpreter, hostNames, sessionSource);
+
+        Assert.Contains("Dropped function 'ping'", dropOut);
+        Assert.Contains("Undefined variable", callOut);
+        Assert.Equal("(no user definitions)", sourceOut.Trim());
+    }
+
+    [Fact]
+    public void ReplaceEntry_PrintsPreviousSource_ThenNewDefinitionBinds()
+    {
+        var interpreter = new Interpreter.Interpreter();
+        var hostNames = ReplSessionInventory.SnapshotHostNames(interpreter);
+        var sessionSource = new ReplSessionSource();
+
+        InvokePromptInput(
+            new InputResult { Code = "function ping() { return 1; }", Action = "run" },
+            interpreter, hostNames, sessionSource);
+        var (replaceOut, _) = InvokePromptInput(
+            new InputResult { Code = "ping", Action = "replace" }, interpreter, hostNames, sessionSource);
+        InvokePromptInput(
+            new InputResult { Code = "function ping() { return 7; }", Action = "run" },
+            interpreter, hostNames, sessionSource);
+        var (callOut, _) = InvokePromptInput(
+            new InputResult { Code = "print(ping());", Action = "run" }, interpreter, hostNames, sessionSource);
+
+        Assert.Contains("Dropped function 'ping'", replaceOut);
+        Assert.Contains("function ping() { return 1; }", replaceOut);
+        Assert.Contains("Enter a new definition to replace it.", replaceOut);
+        Assert.Contains("7", callOut);
+    }
+
+    [Fact]
+    public void DropEntry_AllowsClassToBeRedefinedWithPrimaryConstructor()
+    {
+        var interpreter = new Interpreter.Interpreter();
+        var hostNames = ReplSessionInventory.SnapshotHostNames(interpreter);
+        var sessionSource = new ReplSessionSource();
+
+        InvokePromptInput(new InputResult { Code = "class Point(x, y);", Action = "run" }, interpreter, hostNames, sessionSource);
+        InvokePromptInput(
+            new InputResult { Code = "class Point function total() this.x + this.y;", Action = "run" },
+            interpreter, hostNames, sessionSource);
+        var (dropOut, _) = InvokePromptInput(
+            new InputResult { Code = "Point", Action = "drop" }, interpreter, hostNames, sessionSource);
+        var (redefineOut, redefineErr) = InvokePromptInput(
+            new InputResult { Code = "class Point(a, b);", Action = "run" }, interpreter, hostNames, sessionSource);
+        var (callOut, _) = InvokePromptInput(
+            new InputResult { Code = "print(new Point(3, 4).a);", Action = "run" }, interpreter, hostNames, sessionSource);
+
+        Assert.Contains("Dropped class 'Point'", dropOut);
+        Assert.Equal(string.Empty, redefineOut.Trim());
+        Assert.Equal(string.Empty, redefineErr.Trim());
+        Assert.Contains("3", callOut);
+    }
+
+    [Fact]
+    public void DropEntry_RefusesHostName()
+    {
+        var interpreter = new Interpreter.Interpreter();
+        var hostNames = ReplSessionInventory.SnapshotHostNames(interpreter);
+        var sessionSource = new ReplSessionSource();
+
+        var (stdOut, _) = InvokePromptInput(
+            new InputResult { Code = "math", Action = "drop" }, interpreter, hostNames, sessionSource);
+
+        Assert.Contains("Cannot drop host name 'math'", stdOut);
+    }
+
+    [Fact]
+    public void DropEntry_UnknownName_PrintsError()
+    {
+        var (stdOut, _) = InvokePromptInput(new InputResult { Code = "missing", Action = "drop" });
+
+        Assert.Contains("No user definition named 'missing'", stdOut);
     }
 }
