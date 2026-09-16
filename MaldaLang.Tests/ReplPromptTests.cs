@@ -15,14 +15,19 @@ namespace MaldaLang.Tests;
 /// <summary>
 /// Coverage for the interactive REPL dispatch: the <c>help</c> command must not be
 /// dropped by the empty-code guard, entries share one interpreter so variables and
-/// functions survive across them, a bare expression echoes its value, and
-/// <c>vars</c> lists user definitions.
+/// functions survive across them, a bare expression echoes its value,
+/// <c>vars</c> lists user definitions, and a blank continuation line leaves
+/// multiline edit without ending the session.
 /// </summary>
 public class ReplPromptTests : TestBase
 {
     private static readonly MethodInfo ExecutePromptInput = typeof(Program)
         .GetMethod("ExecutePromptInput", BindingFlags.Static | BindingFlags.NonPublic)
         ?? throw new InvalidOperationException("ExecutePromptInput not found on MaldaLang.Program");
+
+    private static readonly MethodInfo ReadMultilineInput = typeof(Program)
+        .GetMethod("ReadMultilineInput", BindingFlags.Static | BindingFlags.NonPublic)
+        ?? throw new InvalidOperationException("ReadMultilineInput not found on MaldaLang.Program");
 
     private static (string StdOut, string StdErr) InvokePromptInput(
         InputResult result,
@@ -51,6 +56,28 @@ public class ReplPromptTests : TestBase
             }
 
             return (output.ToString().Replace("\r", ""), error.ToString().Replace("\r", ""));
+        }
+    }
+
+    private static InputResult? InvokeReadMultilineInput(string consoleInput)
+    {
+        lock (_consoleLock)
+        {
+            var originalIn = Console.In;
+            var originalOut = Console.Out;
+            using var input = new StringReader(consoleInput);
+            using var output = new StringWriter();
+            Console.SetIn(input);
+            Console.SetOut(output);
+            try
+            {
+                return (InputResult?)ReadMultilineInput.Invoke(null, null);
+            }
+            finally
+            {
+                Console.SetIn(originalIn);
+                Console.SetOut(originalOut);
+            }
         }
     }
 
@@ -446,5 +473,59 @@ public class ReplPromptTests : TestBase
         var (stdOut, _) = InvokePromptInput(new InputResult { Code = "missing", Action = "drop" });
 
         Assert.Contains("No user definition named 'missing'", stdOut);
+    }
+
+    [Fact]
+    public void ContinuationBlankLine_DoesNotEndTheSession()
+    {
+        var result = InvokeReadMultilineInput("function ping() {\n\n");
+
+        Assert.NotNull(result);
+        Assert.Equal("run", result!.Action);
+        Assert.Contains("function ping()", result.Code);
+    }
+
+    [Fact]
+    public void ContinuationBlankLine_AfterClosedBlock_SubmitsTheBuffer()
+    {
+        var result = InvokeReadMultilineInput("function ping() {\nreturn 1;\n}\n\n");
+
+        Assert.NotNull(result);
+        Assert.Equal("run", result!.Action);
+        Assert.Contains("function ping()", result.Code);
+        Assert.Contains("return 1;", result.Code);
+        Assert.Contains("}", result.Code);
+    }
+
+    [Fact]
+    public void ContinuationBlankLine_AfterClosedBlock_DefinesTheFunction()
+    {
+        var result = InvokeReadMultilineInput("function ping() {\nreturn 1;\n}\n\n");
+        Assert.NotNull(result);
+
+        var interpreter = new Interpreter.Interpreter();
+        InvokePromptInput(result!, interpreter);
+        var (stdOut, stdErr) = InvokePromptInput(
+            new InputResult { Code = "print(ping());", Action = "run" }, interpreter);
+
+        Assert.Contains("1", stdOut);
+        Assert.Equal(string.Empty, stdErr.Trim());
+    }
+
+    [Fact]
+    public void ContinuationEof_EndsTheSession()
+    {
+        var result = InvokeReadMultilineInput("function ping() {\n");
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public void BlankFirstLine_StaysInSessionAsNoOp()
+    {
+        var result = InvokeReadMultilineInput("\n");
+
+        Assert.NotNull(result);
+        Assert.Equal("run", result!.Action);
     }
 }

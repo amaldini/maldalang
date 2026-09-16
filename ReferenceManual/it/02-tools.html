@@ -35,15 +35,15 @@
         <pre><code>$ malda
 MALDA (Multi Agent Language with Development Automation) Interpreter
 Version 1.0.22
-You can enter multiline code - the interpreter will continue reading until you type 'run', 'compile', or 'transpile'
-Type 'exit' to quit, 'vars' to list definitions, 'source' to print their code, 'run' to execute, 'compile' or 'transpile' to build executable, 'help' for help
+You can enter multiline code - type 'run', 'compile', or 'transpile' to execute the buffer, or a blank line to submit it and return to the prompt
+Type 'exit' to quit, 'vars' to list definitions, 'source' to print their code, 'help' for help
 (c) 2026 - Andrea Maldini
 > </code></pre>
 
         <p>In modalità interattiva puoi:</p>
 
         <ul>
-            <li><strong>Inserire codice</strong>: digita codice MALDA riga per riga. Un'istruzione completa viene eseguita appena premi Invio; un blocco ancora aperto prosegue sul prompt di continuazione <code>..&gt;</code>.</li>
+            <li><strong>Inserire codice</strong>: digita codice MALDA riga per riga. Un'istruzione completa viene eseguita appena premi Invio; un blocco ancora aperto prosegue sul prompt di continuazione <code>..&gt;</code>. Una riga vuota su <code>..&gt;</code> (tipicamente dopo una <code>}</code> di chiusura) invia il buffer e torna a <code>&gt;</code> — non chiude la sessione. Digita <code>exit</code> per uscire dall'interprete.</li>
             <li><strong>Stato della sessione</strong>: variabili, funzioni e classi definite in una voce restano visibili nelle voci successive. Una successiva <code>class Name { … }</code> o <code>class Name function …</code> senza graffe per un nome già definito in questa sessione <strong>aumenta</strong> quella classe (stesse regole di un file: niente costruttore primario, niente cambio di <code>extends</code>, niente nomi di membro ripetuti). Le istanze create prima della voce successiva vedono i nuovi metodi. Le dichiarazioni <code>schema</code>, di sum type e <code>api</code> non vengono conservate tra le voci — dichiarale nella stessa voce che le usa.</li>
             <li><strong>Espressioni pure</strong>: un'espressione senza <code>;</code> finale e senza assegnazione ne stampa il valore, quindi <code>1 + 2</code> mostra <code>3</code>.</li>
             <li><strong><code>vars</code></strong> (alias <code>defs</code>, <code>who</code>): elenca variabili, funzioni, classi, prompt, actor e workflow definiti nella sessione. I nomi host come <code>math</code> / <code>str</code> / <code>io</code> sono omessi. Filtro opzionale: <code>vars functions</code>, <code>vars classes</code>, e così via. È un comando REPL, non un built-in del linguaggio. Digitare un nome continua a ispezionare quel binding.</li>

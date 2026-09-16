@@ -4283,8 +4283,8 @@ class Program
         {
             Console.WriteLine($"Version {version}");
         }
-        Console.WriteLine("You can enter multiline code - the interpreter will continue reading until you type 'run', 'compile', or 'transpile'");
-        Console.WriteLine("Type 'exit' to quit, 'vars' to list definitions, 'source' to print their code, 'run' to execute, 'compile' or 'transpile' to build executable, 'help' for help");
+        Console.WriteLine("You can enter multiline code - type 'run', 'compile', or 'transpile' to execute the buffer, or a blank line to submit it and return to the prompt");
+        Console.WriteLine("Type 'exit' to quit, 'vars' to list definitions, 'source' to print their code, 'help' for help");
         Console.WriteLine("(c) 2026 - Andrea Maldini");
         // One interpreter for the whole session: variables, functions, and classes
         // defined in one entry stay visible in later ones.
@@ -4461,7 +4461,10 @@ class Program
             return new InputResult { Code = firstLine, Action = "run" };
         }
         
-        // Start multiline collection - continue until "run", "compile", or "transpile" is entered
+        // Continuation until 'run'/'compile'/'transpile', a complete-looking
+        // buffer is not auto-submitted (NeedsMoreInput has false negatives).
+        // A blank line finishes the entry without ending the REPL; EOF still
+        // ends the session — do not treat blank the same as ReadLine null.
         var sb = new StringBuilder(firstLine);
         
         while (true)
@@ -4503,9 +4506,8 @@ class Program
                 return new InputResult { Code = contEditName, Action = contEditAction };
             }
             
-            // Allow user to cancel with empty line
             if (string.IsNullOrWhiteSpace(line))
-                return null;
+                return new InputResult { Code = sb.ToString(), Action = "run" };
                 
             sb.AppendLine();
             sb.Append(line);
