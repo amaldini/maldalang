@@ -52,7 +52,7 @@ class CronFile
 class InputResult
 {
     public string? Code { get; set; }
-    public string Action { get; set; } = "run"; // "run", "compile", "transpile", "exit", "help", "vars"
+    public string Action { get; set; } = "run"; // "run", "compile", "transpile", "exit", "help", "vars", "source"
 }
 
 sealed class CliProfilingSettings
@@ -4055,9 +4055,10 @@ class Program
         Console.WriteLine("  malda help deploy");
         Console.WriteLine();
         Console.WriteLine("REPL commands:");
-        Console.WriteLine("  run | compile | transpile | vars | help | exit");
+        Console.WriteLine("  run | compile | transpile | vars | source | help | exit");
         Console.WriteLine("  vars [kind]                List session definitions (aliases: defs, who)");
         Console.WriteLine("                             kind: variables, functions, classes, prompts, actors, workflows");
+        Console.WriteLine("  source [kind|name]         Print definition source as entered (alias: src)");
         Console.WriteLine();
         Console.WriteLine("Use 'malda help <command>' for command-specific usage.");
         Console.WriteLine();
@@ -4281,18 +4282,19 @@ class Program
             Console.WriteLine($"Version {version}");
         }
         Console.WriteLine("You can enter multiline code - the interpreter will continue reading until you type 'run', 'compile', or 'transpile'");
-        Console.WriteLine("Type 'exit' to quit, 'vars' to list definitions, 'run' to execute, 'compile' or 'transpile' to build executable, 'help' for help");
+        Console.WriteLine("Type 'exit' to quit, 'vars' to list definitions, 'source' to print their code, 'run' to execute, 'compile' or 'transpile' to build executable, 'help' for help");
         Console.WriteLine("(c) 2026 - Andrea Maldini");
         // One interpreter for the whole session: variables, functions, and classes
         // defined in one entry stay visible in later ones.
         var interpreter = new Interpreter.Interpreter();
         var hostNames = ReplSessionInventory.SnapshotHostNames(interpreter);
+        var sessionSource = new ReplSessionSource();
         while (true)
         {
             var result = ReadMultilineInput();
             if (result == null || result.Action == "exit")
                 break;
-            ExecutePromptInput(result, interpreter, hostNames);
+            ExecutePromptInput(result, interpreter, hostNames, sessionSource);
         }
     }
 
@@ -4312,11 +4314,13 @@ class Program
     /// defined by earlier entries is still in scope.
     /// <paramref name="hostNames"/> are globals present at session start (stdlib
     /// and host classes); <c>vars</c> hides them so only user definitions remain.
+    /// <paramref name="sessionSource"/> records original definition text for <c>source</c>.
     /// </summary>
     static void ExecutePromptInput(
         InputResult result,
         Interpreter.Interpreter interpreter,
-        ISet<string>? hostNames = null)
+        ISet<string>? hostNames = null,
+        ReplSessionSource? sessionSource = null)
     {
         try
         {
@@ -4333,6 +4337,11 @@ class Program
                 }
                 ReplSessionInventory.Write(Console.Out, interpreter, hostNames, kind);
             }
+            else if (result.Action == "source")
+            {
+                sessionSource ??= new ReplSessionSource();
+                sessionSource.Write(Console.Out, result.Code);
+            }
             else if (string.IsNullOrWhiteSpace(result.Code))
             {
                 return;
@@ -4342,7 +4351,10 @@ class Program
                 // A bare expression echoes its value (`1 + 2` -> `3`); anything else
                 // (statements, declarations, multi-line buffers) runs through Run.
                 if (!TryEchoPromptExpression(result.Code, interpreter))
+                {
                     Run(result.Code, interpreter);
+                    sessionSource?.Record(result.Code);
+                }
             }
             else if (result.Action == "compile")
             {
@@ -4423,6 +4435,8 @@ class Program
             return new InputResult { Code = null, Action = "help" };
         if (ReplSessionInventory.TryParseCommand(trimmedFirst, out var varsFilter))
             return new InputResult { Code = varsFilter, Action = "vars" };
+        if (ReplSessionSource.TryParseCommand(trimmedFirst, out var sourceFilter))
+            return new InputResult { Code = sourceFilter, Action = "source" };
         
         // Check if we need multiline input
         if (!NeedsMoreInput(firstLine))
@@ -4463,6 +4477,10 @@ class Program
             else if (ReplSessionInventory.TryParseCommand(trimmed, out var contVarsFilter))
             {
                 return new InputResult { Code = contVarsFilter, Action = "vars" };
+            }
+            else if (ReplSessionSource.TryParseCommand(trimmed, out var contSourceFilter))
+            {
+                return new InputResult { Code = contSourceFilter, Action = "source" };
             }
             
             // Allow user to cancel with empty line

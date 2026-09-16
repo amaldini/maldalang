@@ -27,9 +27,11 @@ public class ReplPromptTests : TestBase
     private static (string StdOut, string StdErr) InvokePromptInput(
         InputResult result,
         Interpreter.Interpreter? interpreter = null,
-        ISet<string>? hostNames = null)
+        ISet<string>? hostNames = null,
+        ReplSessionSource? sessionSource = null)
     {
         interpreter ??= new Interpreter.Interpreter();
+        sessionSource ??= new ReplSessionSource();
         lock (_consoleLock)
         {
             var originalOut = Console.Out;
@@ -40,7 +42,7 @@ public class ReplPromptTests : TestBase
             Console.SetError(error);
             try
             {
-                ExecutePromptInput.Invoke(null, new object[] { result, interpreter, hostNames });
+                ExecutePromptInput.Invoke(null, new object[] { result, interpreter, hostNames, sessionSource });
             }
             finally
             {
@@ -59,8 +61,9 @@ public class ReplPromptTests : TestBase
 
         Assert.Contains("MALDA CLI", stdOut);
         Assert.Contains("REPL commands:", stdOut);
-        Assert.Contains("run | compile | transpile | vars | help | exit", stdOut);
+        Assert.Contains("run | compile | transpile | vars | source | help | exit", stdOut);
         Assert.Contains("vars [kind]", stdOut);
+        Assert.Contains("source [kind|name]", stdOut);
     }
 
     [Fact]
@@ -282,5 +285,73 @@ public class ReplPromptTests : TestBase
         Assert.Contains("ping()", stdOut);
         Assert.DoesNotContain("variables:", stdOut);
         Assert.DoesNotContain("x = 1", stdOut);
+    }
+
+    [Fact]
+    public void SourceEntry_EmptySession_PrintsNoUserDefinitions()
+    {
+        var interpreter = new Interpreter.Interpreter();
+        var sessionSource = new ReplSessionSource();
+
+        var (stdOut, stdErr) = InvokePromptInput(
+            new InputResult { Code = "", Action = "source" }, interpreter, sessionSource: sessionSource);
+
+        Assert.Equal("(no user definitions)", stdOut.Trim());
+        Assert.Equal(string.Empty, stdErr.Trim());
+    }
+
+    [Fact]
+    public void SourceEntry_PrintsEnteredDefinitionSource()
+    {
+        var interpreter = new Interpreter.Interpreter();
+        var sessionSource = new ReplSessionSource();
+
+        InvokePromptInput(new InputResult { Code = "var x = 10;", Action = "run" }, interpreter, sessionSource: sessionSource);
+        InvokePromptInput(
+            new InputResult { Code = "function double(n) { return n * 2; }", Action = "run" },
+            interpreter,
+            sessionSource: sessionSource);
+        var (stdOut, _) = InvokePromptInput(
+            new InputResult { Code = "", Action = "source" }, interpreter, sessionSource: sessionSource);
+
+        Assert.Contains("var x = 10;", stdOut);
+        Assert.Contains("function double(n) { return n * 2; }", stdOut);
+        Assert.DoesNotContain("variables:", stdOut);
+    }
+
+    [Fact]
+    public void SourceEntry_NameFilter_PrintsOneDefinition()
+    {
+        var interpreter = new Interpreter.Interpreter();
+        var sessionSource = new ReplSessionSource();
+
+        InvokePromptInput(new InputResult { Code = "var x = 1;", Action = "run" }, interpreter, sessionSource: sessionSource);
+        InvokePromptInput(
+            new InputResult { Code = "function ping() { return 1; }", Action = "run" },
+            interpreter,
+            sessionSource: sessionSource);
+        var (stdOut, _) = InvokePromptInput(
+            new InputResult { Code = "ping", Action = "source" }, interpreter, sessionSource: sessionSource);
+
+        Assert.Contains("function ping() { return 1; }", stdOut);
+        Assert.DoesNotContain("var x", stdOut);
+    }
+
+    [Fact]
+    public void SourceEntry_AfterClassAugmentation_PrintsBothSnippets()
+    {
+        var interpreter = new Interpreter.Interpreter();
+        var sessionSource = new ReplSessionSource();
+
+        InvokePromptInput(new InputResult { Code = "class Point(x, y);", Action = "run" }, interpreter, sessionSource: sessionSource);
+        InvokePromptInput(
+            new InputResult { Code = "class Point function total() this.x + this.y;", Action = "run" },
+            interpreter,
+            sessionSource: sessionSource);
+        var (stdOut, _) = InvokePromptInput(
+            new InputResult { Code = "Point", Action = "source" }, interpreter, sessionSource: sessionSource);
+
+        Assert.Contains("class Point(x, y);", stdOut);
+        Assert.Contains("class Point function total() this.x + this.y;", stdOut);
     }
 }

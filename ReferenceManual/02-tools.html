@@ -36,7 +36,7 @@
 MALDA (Multi Agent Language with Development Automation) Interpreter
 Version 1.0.21
 You can enter multiline code - the interpreter will continue reading until you type 'run', 'compile', or 'transpile'
-Type 'exit' to quit, 'vars' to list definitions, 'run' to execute, 'compile' or 'transpile' to build executable, 'help' for help
+Type 'exit' to quit, 'vars' to list definitions, 'source' to print their code, 'run' to execute, 'compile' or 'transpile' to build executable, 'help' for help
 (c) 2026 - Andrea Maldini
 > </code></pre>
 
@@ -47,6 +47,7 @@ Type 'exit' to quit, 'vars' to list definitions, 'run' to execute, 'compile' or 
             <li><strong>Session state</strong>: Variables, functions, and classes defined in one entry stay visible in later entries. A later <code>class Name { … }</code> or brace-less <code>class Name function …</code> for a name already defined in this session <strong>augments</strong> that class (same rules as in a file: no primary constructor, no changing <code>extends</code>, no repeated member names). Instances created before the later entry see the new methods. <code>schema</code>, sum-type, and <code>api</code> declarations are not carried across entries — declare them in the same entry that uses them.</li>
             <li><strong>Bare expressions</strong>: An expression with no trailing <code>;</code> and no assignment echoes its value, so <code>1 + 2</code> prints <code>3</code>.</li>
             <li><strong><code>vars</code></strong> (aliases <code>defs</code>, <code>who</code>): List user-defined variables, functions, classes, prompts, actors, and workflows. Host names such as <code>math</code> / <code>str</code> / <code>io</code> are omitted. Optional filter: <code>vars functions</code>, <code>vars classes</code>, and so on. This is a REPL command, not a language built-in. Typing a name still inspects that one binding.</li>
+            <li><strong><code>source</code></strong> (alias <code>src</code>): Print those definitions in source form, as they were entered. Optional filter by kind (<code>source functions</code>) or by name (<code>source add</code>). Later class augmentations are concatenated so the dump can recreate the class. This is the original text, not a live-value dump — use <code>vars</code> for current values. Failed entries are omitted.</li>
             <li><strong><code>run</code></strong>: Execute the buffered code</li>
             <li><strong><code>compile</code></strong>: Compile the buffered code to an executable (interpreter mode)</li>
             <li><strong><code>transpile</code></strong>: Compile the buffered code to an executable (transpiled to C#)</li>
@@ -67,6 +68,10 @@ variables:
   y = 20
 functions:
   add(a, b)
+> source
+var x = 10;
+var y = 20;
+function add(a, b) { return a + b; }
 > print(x + y);
 30
 > </code></pre>

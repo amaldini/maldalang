@@ -36,7 +36,7 @@
 MALDA (Multi Agent Language with Development Automation) Interpreter
 Version 1.0.21
 You can enter multiline code - the interpreter will continue reading until you type 'run', 'compile', or 'transpile'
-Type 'exit' to quit, 'vars' to list definitions, 'run' to execute, 'compile' or 'transpile' to build executable, 'help' for help
+Type 'exit' to quit, 'vars' to list definitions, 'source' to print their code, 'run' to execute, 'compile' or 'transpile' to build executable, 'help' for help
 (c) 2026 - Andrea Maldini
 > </code></pre>
 
@@ -47,6 +47,7 @@ Type 'exit' to quit, 'vars' to list definitions, 'run' to execute, 'compile' or 
             <li><strong>Stato della sessione</strong>: variabili, funzioni e classi definite in una voce restano visibili nelle voci successive. Una successiva <code>class Name { … }</code> o <code>class Name function …</code> senza graffe per un nome già definito in questa sessione <strong>aumenta</strong> quella classe (stesse regole di un file: niente costruttore primario, niente cambio di <code>extends</code>, niente nomi di membro ripetuti). Le istanze create prima della voce successiva vedono i nuovi metodi. Le dichiarazioni <code>schema</code>, di sum type e <code>api</code> non vengono conservate tra le voci — dichiarale nella stessa voce che le usa.</li>
             <li><strong>Espressioni pure</strong>: un'espressione senza <code>;</code> finale e senza assegnazione ne stampa il valore, quindi <code>1 + 2</code> mostra <code>3</code>.</li>
             <li><strong><code>vars</code></strong> (alias <code>defs</code>, <code>who</code>): elenca variabili, funzioni, classi, prompt, actor e workflow definiti nella sessione. I nomi host come <code>math</code> / <code>str</code> / <code>io</code> sono omessi. Filtro opzionale: <code>vars functions</code>, <code>vars classes</code>, e così via. È un comando REPL, non un built-in del linguaggio. Digitare un nome continua a ispezionare quel binding.</li>
+            <li><strong><code>source</code></strong> (alias <code>src</code>): stampa quelle definizioni in forma sorgente, come sono state immesse. Filtro opzionale per tipo (<code>source functions</code>) o per nome (<code>source add</code>). Le successive aumentazioni di classe sono concatenate così il dump può ricreare la classe. È il testo originale, non un dump dei valori correnti — usa <code>vars</code> per i valori. Le voci fallite sono omesse.</li>
             <li><strong><code>run</code></strong>: esegue il codice nel buffer</li>
             <li><strong><code>compile</code></strong>: compila il codice nel buffer in un eseguibile (modalità interpreter)</li>
             <li><strong><code>transpile</code></strong>: compila il codice nel buffer in un eseguibile (transpile verso C#)</li>
@@ -67,6 +68,10 @@ variables:
   y = 20
 functions:
   add(a, b)
+> source
+var x = 10;
+var y = 20;
+function add(a, b) { return a + b; }
 > print(x + y);
 30
 > </code></pre>
