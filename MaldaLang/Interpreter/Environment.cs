@@ -173,6 +173,16 @@ public class Environment
     {
         return new Dictionary<string, RuntimeValue>(_values, StringComparer.Ordinal);
     }
+
+    /// <summary>
+    /// Removes a binding defined on this frame only. Returns false when the name
+    /// is not present here (enclosing frames are not walked).
+    /// </summary>
+    public bool TryRemoveOwn(string name)
+    {
+        _constNames.Remove(name);
+        return _values.Remove(name);
+    }
     
     private void CollectVariables(Dictionary<string, RuntimeValue> variables)
     {

@@ -27,9 +27,11 @@ public class ReplPromptTests : TestBase
     private static (string StdOut, string StdErr) InvokePromptInput(
         InputResult result,
         Interpreter.Interpreter? interpreter = null,
-        ISet<string>? hostNames = null)
+        ISet<string>? hostNames = null,
+        ReplSessionSource? sessionSource = null)
     {
         interpreter ??= new Interpreter.Interpreter();
+        sessionSource ??= new ReplSessionSource();
         lock (_consoleLock)
         {
             var originalOut = Console.Out;
@@ -40,7 +42,7 @@ public class ReplPromptTests : TestBase
             Console.SetError(error);
             try
             {
-                ExecutePromptInput.Invoke(null, new object[] { result, interpreter, hostNames });
+                ExecutePromptInput.Invoke(null, new object[] { result, interpreter, hostNames, sessionSource });
             }
             finally
             {
@@ -59,8 +61,11 @@ public class ReplPromptTests : TestBase
 
         Assert.Contains("MALDA CLI", stdOut);
         Assert.Contains("REPL commands:", stdOut);
-        Assert.Contains("run | compile | transpile | vars | help | exit", stdOut);
+        Assert.Contains("run | compile | transpile | vars | source | drop | replace | help | exit", stdOut);
         Assert.Contains("vars [kind]", stdOut);
+        Assert.Contains("source [kind|name]", stdOut);
+        Assert.Contains("drop <name>", stdOut);
+        Assert.Contains("replace <name>", stdOut);
     }
 
     [Fact]
@@ -282,5 +287,164 @@ public class ReplPromptTests : TestBase
         Assert.Contains("ping()", stdOut);
         Assert.DoesNotContain("variables:", stdOut);
         Assert.DoesNotContain("x = 1", stdOut);
+    }
+
+    [Fact]
+    public void SourceEntry_EmptySession_PrintsNoUserDefinitions()
+    {
+        var interpreter = new Interpreter.Interpreter();
+        var sessionSource = new ReplSessionSource();
+
+        var (stdOut, stdErr) = InvokePromptInput(
+            new InputResult { Code = "", Action = "source" }, interpreter, sessionSource: sessionSource);
+
+        Assert.Equal("(no user definitions)", stdOut.Trim());
+        Assert.Equal(string.Empty, stdErr.Trim());
+    }
+
+    [Fact]
+    public void SourceEntry_PrintsEnteredDefinitionSource()
+    {
+        var interpreter = new Interpreter.Interpreter();
+        var sessionSource = new ReplSessionSource();
+
+        InvokePromptInput(new InputResult { Code = "var x = 10;", Action = "run" }, interpreter, sessionSource: sessionSource);
+        InvokePromptInput(
+            new InputResult { Code = "function double(n) { return n * 2; }", Action = "run" },
+            interpreter,
+            sessionSource: sessionSource);
+        var (stdOut, _) = InvokePromptInput(
+            new InputResult { Code = "", Action = "source" }, interpreter, sessionSource: sessionSource);
+
+        Assert.Contains("var x = 10;", stdOut);
+        Assert.Contains("function double(n) { return n * 2; }", stdOut);
+        Assert.DoesNotContain("variables:", stdOut);
+    }
+
+    [Fact]
+    public void SourceEntry_NameFilter_PrintsOneDefinition()
+    {
+        var interpreter = new Interpreter.Interpreter();
+        var sessionSource = new ReplSessionSource();
+
+        InvokePromptInput(new InputResult { Code = "var x = 1;", Action = "run" }, interpreter, sessionSource: sessionSource);
+        InvokePromptInput(
+            new InputResult { Code = "function ping() { return 1; }", Action = "run" },
+            interpreter,
+            sessionSource: sessionSource);
+        var (stdOut, _) = InvokePromptInput(
+            new InputResult { Code = "ping", Action = "source" }, interpreter, sessionSource: sessionSource);
+
+        Assert.Contains("function ping() { return 1; }", stdOut);
+        Assert.DoesNotContain("var x", stdOut);
+    }
+
+    [Fact]
+    public void SourceEntry_AfterClassAugmentation_PrintsBothSnippets()
+    {
+        var interpreter = new Interpreter.Interpreter();
+        var sessionSource = new ReplSessionSource();
+
+        InvokePromptInput(new InputResult { Code = "class Point(x, y);", Action = "run" }, interpreter, sessionSource: sessionSource);
+        InvokePromptInput(
+            new InputResult { Code = "class Point function total() this.x + this.y;", Action = "run" },
+            interpreter,
+            sessionSource: sessionSource);
+        var (stdOut, _) = InvokePromptInput(
+            new InputResult { Code = "Point", Action = "source" }, interpreter, sessionSource: sessionSource);
+
+        Assert.Contains("class Point(x, y);", stdOut);
+        Assert.Contains("class Point function total() this.x + this.y;", stdOut);
+    }
+
+    [Fact]
+    public void DropEntry_RemovesFunction_SoNameIsUndefined()
+    {
+        var interpreter = new Interpreter.Interpreter();
+        var hostNames = ReplSessionInventory.SnapshotHostNames(interpreter);
+        var sessionSource = new ReplSessionSource();
+
+        InvokePromptInput(
+            new InputResult { Code = "function ping() { return 1; }", Action = "run" },
+            interpreter, hostNames, sessionSource);
+        var (dropOut, _) = InvokePromptInput(
+            new InputResult { Code = "ping", Action = "drop" }, interpreter, hostNames, sessionSource);
+        var (callOut, _) = InvokePromptInput(
+            new InputResult { Code = "print(ping());", Action = "run" }, interpreter, hostNames, sessionSource);
+        var (sourceOut, _) = InvokePromptInput(
+            new InputResult { Code = "", Action = "source" }, interpreter, hostNames, sessionSource);
+
+        Assert.Contains("Dropped function 'ping'", dropOut);
+        Assert.Contains("Undefined variable", callOut);
+        Assert.Equal("(no user definitions)", sourceOut.Trim());
+    }
+
+    [Fact]
+    public void ReplaceEntry_PrintsPreviousSource_ThenNewDefinitionBinds()
+    {
+        var interpreter = new Interpreter.Interpreter();
+        var hostNames = ReplSessionInventory.SnapshotHostNames(interpreter);
+        var sessionSource = new ReplSessionSource();
+
+        InvokePromptInput(
+            new InputResult { Code = "function ping() { return 1; }", Action = "run" },
+            interpreter, hostNames, sessionSource);
+        var (replaceOut, _) = InvokePromptInput(
+            new InputResult { Code = "ping", Action = "replace" }, interpreter, hostNames, sessionSource);
+        InvokePromptInput(
+            new InputResult { Code = "function ping() { return 7; }", Action = "run" },
+            interpreter, hostNames, sessionSource);
+        var (callOut, _) = InvokePromptInput(
+            new InputResult { Code = "print(ping());", Action = "run" }, interpreter, hostNames, sessionSource);
+
+        Assert.Contains("Dropped function 'ping'", replaceOut);
+        Assert.Contains("function ping() { return 1; }", replaceOut);
+        Assert.Contains("Enter a new definition to replace it.", replaceOut);
+        Assert.Contains("7", callOut);
+    }
+
+    [Fact]
+    public void DropEntry_AllowsClassToBeRedefinedWithPrimaryConstructor()
+    {
+        var interpreter = new Interpreter.Interpreter();
+        var hostNames = ReplSessionInventory.SnapshotHostNames(interpreter);
+        var sessionSource = new ReplSessionSource();
+
+        InvokePromptInput(new InputResult { Code = "class Point(x, y);", Action = "run" }, interpreter, hostNames, sessionSource);
+        InvokePromptInput(
+            new InputResult { Code = "class Point function total() this.x + this.y;", Action = "run" },
+            interpreter, hostNames, sessionSource);
+        var (dropOut, _) = InvokePromptInput(
+            new InputResult { Code = "Point", Action = "drop" }, interpreter, hostNames, sessionSource);
+        var (redefineOut, redefineErr) = InvokePromptInput(
+            new InputResult { Code = "class Point(a, b);", Action = "run" }, interpreter, hostNames, sessionSource);
+        var (callOut, _) = InvokePromptInput(
+            new InputResult { Code = "print(new Point(3, 4).a);", Action = "run" }, interpreter, hostNames, sessionSource);
+
+        Assert.Contains("Dropped class 'Point'", dropOut);
+        Assert.Equal(string.Empty, redefineOut.Trim());
+        Assert.Equal(string.Empty, redefineErr.Trim());
+        Assert.Contains("3", callOut);
+    }
+
+    [Fact]
+    public void DropEntry_RefusesHostName()
+    {
+        var interpreter = new Interpreter.Interpreter();
+        var hostNames = ReplSessionInventory.SnapshotHostNames(interpreter);
+        var sessionSource = new ReplSessionSource();
+
+        var (stdOut, _) = InvokePromptInput(
+            new InputResult { Code = "math", Action = "drop" }, interpreter, hostNames, sessionSource);
+
+        Assert.Contains("Cannot drop host name 'math'", stdOut);
+    }
+
+    [Fact]
+    public void DropEntry_UnknownName_PrintsError()
+    {
+        var (stdOut, _) = InvokePromptInput(new InputResult { Code = "missing", Action = "drop" });
+
+        Assert.Contains("No user definition named 'missing'", stdOut);
     }
 }
