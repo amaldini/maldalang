@@ -319,6 +319,28 @@ var id = startWorkflow(""Bad"", null);
     }
 
     [Fact]
+    public void WF1001_AnnealInWorkflowBody_Throws()
+    {
+        WorkflowEngine.ResetForTesting("Data Source=" + GetTestDbPath());
+        var source = @"
+workflow Bad(input) {
+    var result = math.anneal(0.0, x => x * x, x => x, { steps: 1 });
+    print(result.cost);
+}
+var id = startWorkflow(""Bad"", null);
+";
+        var lexer = new Lexer(source);
+        var tokens = lexer.Tokenize();
+        var parser = new Parser.Parser(tokens);
+        var statements = parser.Parse();
+        var interp = new Interpreter.Interpreter();
+        var ex = Assert.Throws<RuntimeException>(() =>
+            interp.InterpretAsync(statements).GetAwaiter().GetResult());
+        Assert.Contains("WF1001", ex.Message);
+        Assert.Contains("anneal", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void WF1002_WriteFileOutsideStep_Throws()
     {
         WorkflowEngine.ResetForTesting("Data Source=" + GetTestDbPath());

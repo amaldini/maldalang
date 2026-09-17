@@ -13,7 +13,7 @@ python3 scripts/sync-reference-manual-it-status.py
 |------|------------|
 | index.html | 65ba4d463d988fa5a242abd49bdbad27a9458f38981adf5ad6855430a3ad9a7c |
 | 01-introduction.html | 694e5b9530676286b466e9ccff8231a1f89bf64599bb0f2a4b172a9d9eff3aef |
-| 02-tools.html | 8ec7231730a5ca948b217528dbc004e59e96a5a98e78168d6af2b7066825e008 |
+| 02-tools.html | c16158b68f6f29db6871b7e0c359b67cdafca927c41b298819d9c0aa5ba9a4e4 |
 | 03-lexical-structure.html | 1b990cb52447379acdc611d5bf7f8ae247d49bffce6775e412a7cf9331eae30f |
 | 04-data-types.html | 4e64677c4be318e08c307e7aa6da8f0cc2db4227db879e1f6b2dbd68b4c779f1 |
 | 05-variables.html | 45411eb63f6035e2cac4943d9a329bdcd5c52a71f83bb523d0ba7a94f6c3af06 |
@@ -24,7 +24,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | 10-prompts.html | 86655f50d9a57c761ef8bb8ef4851e8ddfdbad17939375b6f2fb1c0ac6ef5743 |
 | 11-classes-objects.html | 8cc076125e576c7b96ecf423fc081900cc22b8b5dfa02cba09e8b4e9e2f4e920 |
 | 12-input-output.html | 3ba7dc4e0a734129d90fa8c353aace39baebb72c098caa3ea9986de3dabb224d |
-| 13-built-in-functions.html | c7ad21a01505e8a263d749f4f3e95651f42e01d2c86fbcf590e782e7772f7773 |
+| 13-built-in-functions.html | 1224a5cda03d3615807f9bfce73db0b149fdd5837f2070b06b66c9849b198145 |
 | 14-graphs.html | f5e9b035b4e2e59baa6c110c79dbb508edf99147bfd12b70846c9a97df159e9f |
 | 15-vectordb.html | ae14c009892eeeff8dfee3d662e6477a17cce5ec86ff79f582c219e11d3e3e88 |
 | 16-database.html | 1135d01b02ff20c2dba32d72f576928cbf6d1b212c64799e2d58b4bf8698b7e6 |
@@ -33,7 +33,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | 19-graph-memory.html | 2782af3364b7d01edfb1f31bbe5f6aa4b63d799886c5ffcbbd405e537cec22dd |
 | 20-mcp-server.html | 6811669af074756655e0232f75d93cecd3bc555ee2d15f3ee53cc118d8b2e2bd |
 | 21-acp.html | 05bf83e84d7854c312bfaa8495c17dfc70c7d5e1e39fdaeb5e6ac15f4bd53e29 |
-| 22-durable-workflows.html | 5ea53f84bff7ee40e0b28313c09d1c832634f7a3b4c1b462caf956f5ae96321e |
+| 22-durable-workflows.html | 1d3440f76d74394184eee896eea2920d457d3e5d6e43dc195ac5ccda5d3ba6d8 |
 | 23-agentic-runs.html | 2095e9462f3645750d6198e55b14cb94eede68d8bcfd5323746d397f2ed0a01e |
 | 24-web-ui-hub.html | 5ef36fbdc02af952dcc298371f340ff825708aebf89e0099cb5266b48838794f |
 | 25-web-ui.html | 21f88b63a160a67d51bbf187f6fbc481273e9b666a122e222490b5433f00ec67 |

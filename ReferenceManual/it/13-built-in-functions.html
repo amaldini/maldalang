@@ -62,7 +62,7 @@ print(io.readFile("config.json"));</code></pre>
         <p>Solo i nomi piatti che hanno una controparte <code>math.</code>, <code>str.</code> o <code>io.</code> sono considerati alias deprecati. Chiamarne uno produce un warning nell'IDE e nel language server dalla sorgente <code>malda-style</code>, nella forma <em>Prefer 'io.print(...)' instead of 'print(...)' (deprecated flat alias)</em>. Il warning è solo un avviso: a runtime non viene rimosso nulla e i transpiler accettano entrambe le forme.</p>
         <p>I nomi interessati, che rispecchiano <code>MaldaLang/BuiltIns/StdLibNamespaces.cs</code>:</p>
         <ul>
-            <li><strong>math:</strong> <code>abs</code>, <code>sum</code>, <code>average</code>, <code>max</code>, <code>min</code>, <code>pow</code>, <code>sqrt</code>, <code>floor</code>, <code>ceil</code>, <code>round</code>, <code>trunc</code>, <code>sign</code>, <code>exp</code>, <code>log</code>, <code>log10</code>, <code>log2</code>, <code>sin</code>, <code>cos</code>, <code>tan</code>, <code>asin</code>, <code>acos</code>, <code>atan</code>, <code>atan2</code>, <code>hypot</code>, <code>clamp</code>, <code>degToRad</code>, <code>radToDeg</code>, <code>zeros</code>, <code>rsqrt</code>, <code>randn</code>, <code>argmax</code>, <code>argmin</code>, <code>logSumExp</code>, <code>softmax</code>, <code>crossEntropyFromLogits</code>, <code>randomChoiceWeighted</code>, <code>seed</code>, <code>random</code>, <code>randomInt</code>, <code>randomFloat</code></li>
+            <li><strong>math:</strong> <code>abs</code>, <code>sum</code>, <code>average</code>, <code>max</code>, <code>min</code>, <code>pow</code>, <code>sqrt</code>, <code>floor</code>, <code>ceil</code>, <code>round</code>, <code>trunc</code>, <code>sign</code>, <code>exp</code>, <code>log</code>, <code>log10</code>, <code>log2</code>, <code>sin</code>, <code>cos</code>, <code>tan</code>, <code>asin</code>, <code>acos</code>, <code>atan</code>, <code>atan2</code>, <code>hypot</code>, <code>clamp</code>, <code>degToRad</code>, <code>radToDeg</code>, <code>zeros</code>, <code>rsqrt</code>, <code>randn</code>, <code>argmax</code>, <code>argmin</code>, <code>logSumExp</code>, <code>softmax</code>, <code>crossEntropyFromLogits</code>, <code>randomChoiceWeighted</code>, <code>seed</code>, <code>random</code>, <code>randomInt</code>, <code>randomFloat</code>, <code>anneal</code></li>
             <li><strong>str:</strong> <code>length</code>, <code>upper</code>, <code>lower</code>, <code>trim</code>, <code>text</code>, <code>trimText</code>, <code>substring</code>, <code>indexOf</code>, <code>replace</code>, <code>split</code>, <code>normalizeText</code>, <code>tokenize</code>, <code>tokenOverlap</code>, <code>similarity</code>, <code>extractNumbers</code>, <code>regexMatch</code>, <code>regexReplace</code>, <code>regexFind</code>, <code>startsWith</code>, <code>endsWith</code>, <code>padStart</code>, <code>padEnd</code>, <code>includes</code>, <code>join</code>, <code>repeat</code>, <code>base64Encode</code>, <code>base64Decode</code>, <code>md5</code>, <code>sha256</code></li>
             <li><strong>io:</strong> <code>print</code>, <code>input</code>, <code>readFile</code>, <code>writeFile</code>, <code>copyFile</code>, <code>readFileBase64</code>, <code>writeFileBase64</code>, <code>readTextFileLines</code>, <code>deleteFile</code>, <code>hasFile</code>, <code>hasDirectory</code>, <code>ensureDir</code>, <code>listDirectory</code>, <code>hasEmbeddedFolder</code>, <code>embeddedFolderRoot</code>, <code>glob</code>, <code>grep</code>, <code>replaceInFile</code>, <code>pathExists</code>, <code>pathJoin</code>, <code>pathNormalize</code>, <code>pathGetExtension</code>, <code>isPathUnder</code>, <code>getEnv</code>, <code>getEnvOr</code>, <code>hasEnv</code>, <code>getFileName</code>, <code>getDirectoryName</code>, <code>gitStatus</code>, <code>gitAdd</code>, <code>gitCommit</code>, <code>gitDiff</code>, <code>gitLog</code>, <code>gitBranch</code>, <code>gitCheckout</code>, <code>gitPull</code>, <code>gitPush</code></li>
         </ul>
@@ -160,7 +160,7 @@ g[0][0] = 1.0;                // other rows stay zero</code></pre>
         <h3>13.3.1 Helper matematici orientati agli LLM (riferimento)</h3>
         <p>Questi helper sono disponibili come <code>math.softmax(values)</code> (preferito), <code>softmax(values)</code> piatto (deprecato) e <code>Math.softmax(values)</code> (alias deprecato).</p>
         <h4>seed(seedValue)</h4>
-        <p>Imposta il seed pseudo-casuale globale usato da <code>random()</code>, <code>randomInt()</code>, <code>randomFloat()</code>, <code>randn()</code> e <code>randomChoiceWeighted()</code>. L'argomento deve essere un intero. Restituisce <code>null</code>.</p>
+        <p>Imposta il seed pseudo-casuale globale usato da <code>random()</code>, <code>randomInt()</code>, <code>randomFloat()</code>, <code>randn()</code>, <code>randomChoiceWeighted()</code> e <code>anneal()</code>. L'argomento deve essere un intero. Restituisce <code>null</code>.</p>
         <pre><code>seed(42);
 print(random());       // Deterministic across runs with same seed
 print(Math.random());</code></pre>
@@ -199,6 +199,30 @@ print(loss);</code></pre>
         <pre><code>var idx = randomChoiceWeighted([0.1, 0.7, 0.2]); // Often 1
 print(idx);</code></pre>
         <p><strong>Comportamento sugli errori:</strong> questi helper sollevano errori a runtime per conteggi/tipi di argomenti non validi, array vuoti dove non ammessi, indici target fuori range, temperature softmax non positiva, pesi negativi o peso totale zero.</p>
+        <h3>13.3.2 Simulated annealing</h3>
+        <p><code>math.anneal(initial, cost, neighbor, options?)</code> esegue simulated annealing Metropolis. <code>cost</code> e <code>neighbor</code> sono lambda unarie (o funzioni con nome): cost restituisce un numero finito da minimizzare, neighbor restituisce uno stato candidato. <code>options</code> opzionale:</p>
+        <ul>
+            <li><code>steps</code> — numero di iterazioni (default <code>1000</code>)</li>
+            <li><code>temp</code> / <code>temperature</code> — temperatura iniziale (default <code>1.0</code>)</li>
+            <li><code>cooling</code> — fattore geometrico (default <code>0.995</code>) oppure una lambda unaria <code>t =&gt; nextTemp</code></li>
+            <li><code>schedule</code> — uguale a un <code>cooling</code> funzione</li>
+            <li><code>maximize</code> — <code>true</code> per massimizzare il cost (default <code>false</code>)</li>
+            <li><code>copy</code> — clona array/dict prima di ogni neighbor e quando salva il migliore (default <code>true</code>)</li>
+        </ul>
+        <p>Restituisce <code>{ state, cost, steps }</code>. L'accettazione usa <code>math.random()</code>, quindi <code>math.seed(n)</code> rende un'esecuzione riproducibile. Come gli altri helper RNG, <code>anneal</code> è <code>WF1001</code> fuori da uno <code>step</code> di workflow.</p>
+        <pre><code data-run="true" data-expect="true\n5">math.seed(1);
+var result = math.anneal(0.0, x => x * x, x => x, { steps: 5 });
+print(result.cost == 0.0);
+print(result.steps);</code></pre>
+        <pre><code>math.seed(7);
+var result = math.anneal(
+    10.0,
+    x => (x - 3.0) * (x - 3.0),
+    x => x + math.randomFloat(-1.0, 1.0),
+    { steps: 800, temp: 2.0, cooling: t => t * 0.995 }
+);
+print(result.state);
+print(result.cost);</code></pre>
         <h2>13.4 Funzioni sulle stringhe</h2>
         <p>Le operazioni sulle stringhe sono disponibili come <strong>funzioni built-in piatte</strong> (es. <code>upper(s)</code>) e come <strong>metodi in stile extension</strong> sui valori stringa (es. <code>s.upper()</code>). Entrambe le forme funzionano nell'interprete e nel codice transpile.</p>
         <pre><code>var len = length("Hello");      // String length
@@ -806,7 +830,7 @@ var pinned = math.randomInt(1, 100);         // Always 39 after seed(7)</code></
             <strong>Casualità riproducibile:</strong>
             <ul>
                 <li><code>randomInt(min, max)</code> include <em>entrambi</em> gli estremi, a differenza degli intervalli semiaperti comuni in altri linguaggi.</li>
-                <li><code>math.seed(n)</code> reimposta il generatore condiviso dietro <code>random</code>, <code>randomInt</code>, <code>randomFloat</code> e <code>randn</code>. Imposta il seed in cima a un programma per rendere un'esecuzione deterministica, che è ciò che rende testabile un programma casuale.</li>
+                <li><code>math.seed(n)</code> reimposta il generatore condiviso dietro <code>random</code>, <code>randomInt</code>, <code>randomFloat</code>, <code>randn</code>, <code>randomChoiceWeighted</code> e <code>anneal</code>. Imposta il seed in cima a un programma per rendere un'esecuzione deterministica, che è ciò che rende testabile un programma casuale.</li>
                 <li>Le forme piatte <code>randomInt(1, 10)</code> e <code>Math.randomInt(1, 10)</code> continuano a funzionare, ma il language server le segnala entrambe come alias deprecati. Preferisci <code>math.</code>, come descritto in <a href="#stdlib-namespaces">13.2 Namespace della stdlib e alias piatti</a>.</li>
             </ul>
         </div>

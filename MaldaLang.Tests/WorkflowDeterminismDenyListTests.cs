@@ -21,6 +21,7 @@ public class WorkflowDeterminismDenyListTests
         "randomFloat",
         "randomChoiceWeighted",
         "randn",
+        "anneal",
         "sleep"
     ];
 
@@ -77,11 +78,11 @@ public class WorkflowDeterminismDenyListTests
     }
 
     [Fact]
-    public void DenyList_CountIsTwenty()
+    public void DenyList_CountIsTwentyOne()
     {
-        // Documented in Reference Manual Determinism Boundary (7 WF1001 + 13 WF1002).
-        Assert.Equal(7, ExpectedNonDeterministic.Length);
+        // Documented in Reference Manual Determinism Boundary (8 WF1001 + 13 WF1002).
+        Assert.Equal(8, ExpectedNonDeterministic.Length);
         Assert.Equal(13, ExpectedSideEffecting.Length);
-        Assert.Equal(20, ExpectedNonDeterministic.Length + ExpectedSideEffecting.Length);
+        Assert.Equal(21, ExpectedNonDeterministic.Length + ExpectedSideEffecting.Length);
     }
 }

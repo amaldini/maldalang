@@ -99,6 +99,7 @@ different convention from `str.length(s)` / `math.sqrt(x)`. There is no `arr` na
 | `math.randomInt(min, max)` | Random integer, **both endpoints included** |
 | `math.random()` / `math.randomFloat(min, max)` | Random floats |
 | `math.seed(n)` | Pin the sequence so a run is reproducible and testable |
+| `math.anneal(initial, cost, neighbor, options?)` | Simulated annealing; `cost`/`neighbor` (and optional `cooling`) are lambdas |
 
 ## AnsiConsole
 

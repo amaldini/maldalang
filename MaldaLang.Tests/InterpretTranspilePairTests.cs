@@ -66,6 +66,27 @@ public class InterpretTranspilePairTests
     }
 
     [Fact]
+    public void MathAnneal_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            math.seed(1);
+            var result = math.anneal(0.0, x => x * x, x => x, { steps: 5 });
+            io.print(result.cost == 0.0);
+            io.print(result.steps);
+            function energy(x) {
+                return (x - 3.0) * (x - 3.0);
+            }
+            function move(x) {
+                return x + math.randomFloat(-1.0, 1.0);
+            }
+            var found = math.anneal(10.0, energy, move, { steps: 300, temp: 2.0, cooling: t => t * 0.99 });
+            io.print(found.cost < 4.0);
+            """,
+            "math-anneal");
+    }
+
+    [Fact]
     public void ValidateSumTypeReturnsDict_SameStdout()
     {
         InterpretTranspilePair.AssertSameFromSource(

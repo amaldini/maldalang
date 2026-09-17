@@ -62,6 +62,19 @@ public class InterpretJsPairTests
     }
 
     [Fact]
+    public void MathAnneal_SameStdout()
+    {
+        InterpretJsPair.AssertSameFromSource(
+            """
+            math.seed(1);
+            var result = math.anneal(0.0, x => x * x, x => x, { steps: 5 });
+            io.print(result.cost == 0.0);
+            io.print(result.steps);
+            """,
+            "math-anneal-js");
+    }
+
+    [Fact]
     public void MatchConstIdentifier_SameStdout()
     {
         InterpretJsPair.AssertSameFromSource(

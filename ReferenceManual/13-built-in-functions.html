@@ -61,7 +61,7 @@ print(io.readFile("config.json"));</code></pre>
         <p>Only the flat names that have a <code>math.</code>, <code>str.</code>, or <code>io.</code> counterpart are considered deprecated aliases. Calling one produces an IDE and language-server warning from source <code>malda-style</code>, in the form <em>Prefer 'io.print(...)' instead of 'print(...)' (deprecated flat alias)</em>. The warning is advisory: nothing is removed at runtime and the transpilers accept both spellings.</p>
         <p>The affected names, mirroring <code>MaldaLang/BuiltIns/StdLibNamespaces.cs</code>:</p>
         <ul>
-            <li><strong>math:</strong> <code>abs</code>, <code>sum</code>, <code>average</code>, <code>max</code>, <code>min</code>, <code>pow</code>, <code>sqrt</code>, <code>floor</code>, <code>ceil</code>, <code>round</code>, <code>trunc</code>, <code>sign</code>, <code>exp</code>, <code>log</code>, <code>log10</code>, <code>log2</code>, <code>sin</code>, <code>cos</code>, <code>tan</code>, <code>asin</code>, <code>acos</code>, <code>atan</code>, <code>atan2</code>, <code>hypot</code>, <code>clamp</code>, <code>degToRad</code>, <code>radToDeg</code>, <code>zeros</code>, <code>rsqrt</code>, <code>randn</code>, <code>argmax</code>, <code>argmin</code>, <code>logSumExp</code>, <code>softmax</code>, <code>crossEntropyFromLogits</code>, <code>randomChoiceWeighted</code>, <code>seed</code>, <code>random</code>, <code>randomInt</code>, <code>randomFloat</code></li>
+            <li><strong>math:</strong> <code>abs</code>, <code>sum</code>, <code>average</code>, <code>max</code>, <code>min</code>, <code>pow</code>, <code>sqrt</code>, <code>floor</code>, <code>ceil</code>, <code>round</code>, <code>trunc</code>, <code>sign</code>, <code>exp</code>, <code>log</code>, <code>log10</code>, <code>log2</code>, <code>sin</code>, <code>cos</code>, <code>tan</code>, <code>asin</code>, <code>acos</code>, <code>atan</code>, <code>atan2</code>, <code>hypot</code>, <code>clamp</code>, <code>degToRad</code>, <code>radToDeg</code>, <code>zeros</code>, <code>rsqrt</code>, <code>randn</code>, <code>argmax</code>, <code>argmin</code>, <code>logSumExp</code>, <code>softmax</code>, <code>crossEntropyFromLogits</code>, <code>randomChoiceWeighted</code>, <code>seed</code>, <code>random</code>, <code>randomInt</code>, <code>randomFloat</code>, <code>anneal</code></li>
             <li><strong>str:</strong> <code>length</code>, <code>upper</code>, <code>lower</code>, <code>trim</code>, <code>text</code>, <code>trimText</code>, <code>substring</code>, <code>indexOf</code>, <code>replace</code>, <code>split</code>, <code>normalizeText</code>, <code>tokenize</code>, <code>tokenOverlap</code>, <code>similarity</code>, <code>extractNumbers</code>, <code>regexMatch</code>, <code>regexReplace</code>, <code>regexFind</code>, <code>startsWith</code>, <code>endsWith</code>, <code>padStart</code>, <code>padEnd</code>, <code>includes</code>, <code>join</code>, <code>repeat</code>, <code>base64Encode</code>, <code>base64Decode</code>, <code>md5</code>, <code>sha256</code></li>
             <li><strong>io:</strong> <code>print</code>, <code>input</code>, <code>readFile</code>, <code>writeFile</code>, <code>copyFile</code>, <code>readFileBase64</code>, <code>writeFileBase64</code>, <code>readTextFileLines</code>, <code>deleteFile</code>, <code>hasFile</code>, <code>hasDirectory</code>, <code>ensureDir</code>, <code>listDirectory</code>, <code>hasEmbeddedFolder</code>, <code>embeddedFolderRoot</code>, <code>glob</code>, <code>grep</code>, <code>replaceInFile</code>, <code>pathExists</code>, <code>pathJoin</code>, <code>pathNormalize</code>, <code>pathGetExtension</code>, <code>isPathUnder</code>, <code>getEnv</code>, <code>getEnvOr</code>, <code>hasEnv</code>, <code>getFileName</code>, <code>getDirectoryName</code>, <code>gitStatus</code>, <code>gitAdd</code>, <code>gitCommit</code>, <code>gitDiff</code>, <code>gitLog</code>, <code>gitBranch</code>, <code>gitCheckout</code>, <code>gitPull</code>, <code>gitPush</code></li>
         </ul>
@@ -159,7 +159,7 @@ g[0][0] = 1.0;                // other rows stay zero</code></pre>
         <h3>13.3.1 LLM-oriented Math Helpers (Reference)</h3>
         <p>These helpers are available as <code>math.softmax(values)</code> (preferred), flat <code>softmax(values)</code> (deprecated), and <code>Math.softmax(values)</code> (deprecated alias).</p>
         <h4>seed(seedValue)</h4>
-        <p>Sets the global pseudo-random seed used by <code>random()</code>, <code>randomInt()</code>, <code>randomFloat()</code>, <code>randn()</code>, and <code>randomChoiceWeighted()</code>. Argument must be an integer. Returns <code>null</code>.</p>
+        <p>Sets the global pseudo-random seed used by <code>random()</code>, <code>randomInt()</code>, <code>randomFloat()</code>, <code>randn()</code>, <code>randomChoiceWeighted()</code>, and <code>anneal()</code>. Argument must be an integer. Returns <code>null</code>.</p>
         <pre><code>seed(42);
 print(random());       // Deterministic across runs with same seed
 print(Math.random());</code></pre>
@@ -198,6 +198,30 @@ print(loss);</code></pre>
         <pre><code>var idx = randomChoiceWeighted([0.1, 0.7, 0.2]); // Often 1
 print(idx);</code></pre>
         <p><strong>Error behavior:</strong> these helpers throw runtime errors for invalid argument counts/types, empty arrays where not allowed, out-of-range target indices, non-positive softmax temperature, negative weights, or zero total weight.</p>
+        <h3>13.3.2 Simulated annealing</h3>
+        <p><code>math.anneal(initial, cost, neighbor, options?)</code> runs Metropolis simulated annealing. <code>cost</code> and <code>neighbor</code> are unary lambdas (or named functions): cost returns a finite number to minimize, neighbor returns a candidate state. Optional <code>options</code>:</p>
+        <ul>
+            <li><code>steps</code> — iteration count (default <code>1000</code>)</li>
+            <li><code>temp</code> / <code>temperature</code> — initial temperature (default <code>1.0</code>)</li>
+            <li><code>cooling</code> — geometric factor (default <code>0.995</code>) or a unary lambda <code>t =&gt; nextTemp</code></li>
+            <li><code>schedule</code> — same as a function <code>cooling</code></li>
+            <li><code>maximize</code> — <code>true</code> to maximize cost (default <code>false</code>)</li>
+            <li><code>copy</code> — clone arrays/dicts before each neighbor call and when saving the best state (default <code>true</code>)</li>
+        </ul>
+        <p>Returns <code>{ state, cost, steps }</code>. Acceptance uses <code>math.random()</code>, so <code>math.seed(n)</code> makes a run reproducible. Like other RNG helpers, <code>anneal</code> is <code>WF1001</code> outside a workflow <code>step</code>.</p>
+        <pre><code data-run="true" data-expect="true\n5">math.seed(1);
+var result = math.anneal(0.0, x => x * x, x => x, { steps: 5 });
+print(result.cost == 0.0);
+print(result.steps);</code></pre>
+        <pre><code>math.seed(7);
+var result = math.anneal(
+    10.0,
+    x => (x - 3.0) * (x - 3.0),
+    x => x + math.randomFloat(-1.0, 1.0),
+    { steps: 800, temp: 2.0, cooling: t => t * 0.995 }
+);
+print(result.state);
+print(result.cost);</code></pre>
         <h2>13.4 String Functions</h2>
         <p>String operations are available as <strong>flat built-in functions</strong> (e.g. <code>upper(s)</code>) and as <strong>extension-style methods</strong> on string values (e.g. <code>s.upper()</code>). Both forms work in the interpreter and in transpiled code.</p>
         <pre><code>var len = length("Hello");      // String length
@@ -805,7 +829,7 @@ var pinned = math.randomInt(1, 100);         // Always 39 after seed(7)</code></
             <strong>Reproducible Randomness:</strong>
             <ul>
                 <li><code>randomInt(min, max)</code> includes <em>both</em> endpoints, unlike the half-open ranges common in other languages.</li>
-                <li><code>math.seed(n)</code> resets the shared generator behind <code>random</code>, <code>randomInt</code>, <code>randomFloat</code> and <code>randn</code>. Seed at the top of a program to make a run deterministic, which is what makes a random program testable.</li>
+                <li><code>math.seed(n)</code> resets the shared generator behind <code>random</code>, <code>randomInt</code>, <code>randomFloat</code>, <code>randn</code>, <code>randomChoiceWeighted</code> and <code>anneal</code>. Seed at the top of a program to make a run deterministic, which is what makes a random program testable.</li>
                 <li>The flat spellings <code>randomInt(1, 10)</code> and <code>Math.randomInt(1, 10)</code> still run, but the language server reports both as deprecated aliases. Prefer <code>math.</code>, as described in <a href="#stdlib-namespaces">13.2 Stdlib Namespaces and Flat Aliases</a>.</li>
             </ul>
         </div>

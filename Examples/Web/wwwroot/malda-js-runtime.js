@@ -1414,6 +1414,110 @@
     return rows;
   }
 
+  function cloneAnnealState(value) {
+    if (Array.isArray(value)) {
+      return value.map(cloneAnnealState);
+    }
+    if (isObject(value)) {
+      const copy = {};
+      const keys = Object.keys(value);
+      for (let i = 0; i < keys.length; i++) {
+        copy[keys[i]] = cloneAnnealState(value[keys[i]]);
+      }
+      return markDict(copy);
+    }
+    return value;
+  }
+
+  function requireAnnealFunction(value, role) {
+    if (typeof value !== "function") {
+      throw new Error("anneal() " + role + " must be a function");
+    }
+    return value;
+  }
+
+  function annealAsNumber(value, message) {
+    const n = coerceToFloat(value);
+    if (!Number.isFinite(n)) {
+      throw new Error(message);
+    }
+    return n;
+  }
+
+  function mathAnneal(initial, cost, neighbor, options) {
+    if (arguments.length < 3 || arguments.length > 4) {
+      throw new Error("anneal() expects 3-4 arguments: (initial, cost, neighbor, options?)");
+    }
+    const costFn = requireAnnealFunction(cost, "cost");
+    const neighborFn = requireAnnealFunction(neighbor, "neighbor");
+    const opts = options && typeof options === "object" && !Array.isArray(options) ? options : {};
+    let steps = 1000;
+    if (Object.prototype.hasOwnProperty.call(opts, "steps")) {
+      steps = coerceToInt(opts.steps);
+    }
+    if (steps < 0) {
+      throw new Error("anneal() steps must be >= 0");
+    }
+    let temp = 1.0;
+    if (Object.prototype.hasOwnProperty.call(opts, "temp")) {
+      temp = annealAsNumber(opts.temp, "anneal() temp must be a number");
+    } else if (Object.prototype.hasOwnProperty.call(opts, "temperature")) {
+      temp = annealAsNumber(opts.temperature, "anneal() temp must be a number");
+    }
+    if (!Number.isFinite(temp) || temp < 0) {
+      throw new Error("anneal() temp must be a finite number >= 0");
+    }
+    let coolingFactor = 0.995;
+    let scheduleFn = null;
+    if (typeof opts.schedule === "function") {
+      scheduleFn = opts.schedule;
+    }
+    if (Object.prototype.hasOwnProperty.call(opts, "cooling")) {
+      if (typeof opts.cooling === "function") {
+        if (scheduleFn == null) scheduleFn = opts.cooling;
+      } else {
+        coolingFactor = annealAsNumber(opts.cooling, "anneal() cooling must be a number or a function");
+      }
+    }
+    const maximize = Object.prototype.hasOwnProperty.call(opts, "maximize") ? isTruthy(opts.maximize) : false;
+    const copy = Object.prototype.hasOwnProperty.call(opts, "copy") ? isTruthy(opts.copy) : true;
+    let current = copy ? cloneAnnealState(initial) : initial;
+    let currentCost = annealAsNumber(costFn(current), "anneal() cost must return a finite number");
+    let best = copy ? cloneAnnealState(current) : current;
+    let bestCost = currentCost;
+    for (let step = 0; step < steps; step++) {
+      const candidate = neighborFn(copy ? cloneAnnealState(current) : current);
+      const candidateCost = annealAsNumber(costFn(candidate), "anneal() cost must return a finite number");
+      const delta = maximize ? currentCost - candidateCost : candidateCost - currentCost;
+      let accept = delta <= 0;
+      if (!accept && temp > 0) {
+        accept = nextRandomUnit() < Math.exp(-delta / temp);
+      }
+      if (accept) {
+        current = candidate;
+        currentCost = candidateCost;
+        const improved = maximize ? currentCost > bestCost : currentCost < bestCost;
+        if (improved) {
+          best = copy ? cloneAnnealState(current) : current;
+          bestCost = currentCost;
+        }
+      }
+      if (scheduleFn) {
+        temp = annealAsNumber(scheduleFn(temp), "anneal() cooling/schedule must return a finite number >= 0");
+        if (temp < 0) {
+          throw new Error("anneal() cooling/schedule must return a finite number >= 0");
+        }
+      } else {
+        temp = temp * coolingFactor;
+      }
+    }
+    return markDict({
+      state: best,
+      cost: bestCost,
+      steps: steps
+    });
+  }
+
   const mathStdLib = {
     abs: mathAbs,
     sum: mathSum,
@@ -1446,7 +1550,8 @@
     random: randomBuiltin,
     randomInt: randomIntBuiltin,
     randomFloat: randomFloatBuiltin,
-    seed: seedBuiltin
+    seed: seedBuiltin,
+    anneal: mathAnneal
   };
 
   function strUpper(value) { return coerceToString(value).toUpperCase(); }

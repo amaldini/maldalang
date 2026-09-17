@@ -10754,6 +10754,28 @@ public class CSharpTranspiler
             || OptionalPackTranspilerBuiltIns.IsName(name);
     }
 
+    /// <summary>
+    /// Unary user functions must be passed as delegates so ToRuntimeValue can wrap them.
+    /// Method groups are not objects; lambdas already transpile as Func&lt;object, Task&lt;object&gt;&gt;.
+    /// </summary>
+    private void EmitToRuntimeValueArgument(Expression argument)
+    {
+        if (argument is IdentifierExpression id
+            && _functionNames.Contains(id.Name)
+            && _functionParameterTypes.TryGetValue(id.Name, out var paramTypes)
+            && paramTypes.Count == 1)
+        {
+            _output.Append("RuntimeHelpers.ToRuntimeValue((System.Func<object, System.Threading.Tasks.Task<object>>)");
+            _output.Append(EscapeIdentifier(id.Name));
+            _output.Append(")");
+            return;
+        }
+
+        _output.Append("RuntimeHelpers.ToRuntimeValue(");
+        TranspileExpression(argument);
+        _output.Append(")");
+    }
+
     private static bool IsStringExtensionMethod(string name)
     {
         return name == "length" ||
@@ -11809,6 +11831,7 @@ public class CSharpTranspiler
             case "crossEntropyFromLogits":
             case "randomChoiceWeighted":
             case "seed":
+            case "anneal":
             // Type checking functions
             case "isNumber":
             case "isString":
@@ -11910,9 +11933,7 @@ public class CSharpTranspiler
                 for (int i = 0; i < arguments.Count; i++)
                 {
                     if (i > 0) _output.Append(", ");
-                    _output.Append("RuntimeHelpers.ToRuntimeValue(");
-                    TranspileExpression(arguments[i]);
-                    _output.Append(")");
+                    EmitToRuntimeValueArgument(arguments[i]);
                 }
                 _output.Append(" }, null))");
                 break;

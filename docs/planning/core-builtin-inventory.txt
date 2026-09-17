@@ -4,13 +4,14 @@
 # Format: symbol -> tier | note
 # Optional-pack / vertical symbols must NOT appear here (enforced by OptionalPackRegistryGuardTests)
 
-# count: 368
+# count: 369
 
 abs -> tier1-core | BuiltInRegistry
 acos -> stdlib-general | BuiltInRegistry
 addDays -> stdlib-general | BuiltInRegistry
 addHours -> stdlib-general | BuiltInRegistry
 all -> stdlib-general | BuiltInRegistry
+anneal -> stdlib-general | BuiltInRegistry
 append -> stdlib-general | BuiltInRegistry
 approveWorkflowStep -> platform-workflow | BuiltInRegistry
 argmax -> stdlib-general | BuiltInRegistry

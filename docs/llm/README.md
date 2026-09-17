@@ -77,7 +77,7 @@ An agent cannot sit at a prompt, so interactive and random programs look unverif
 are not. Two facts turn "I wrote it and it looks right" into "I ran it and here is the
 output":
 
-**Seed the generator.** `math.seed(n)` pins `random`, `randomInt`, `randomFloat` and `randn`
+**Seed the generator.** `math.seed(n)` pins `random`, `randomInt`, `randomFloat`, `randn` and `anneal`
 for the whole run, so every branch becomes reachable on purpose:
 
 ```malda

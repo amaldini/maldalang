@@ -87,6 +87,7 @@ public static class BuiltInRegistry
             "crossEntropyFromLogits" or
             "randomChoiceWeighted" or
             "seed" or
+            "anneal" or
             "length" or
             "upper" or
             "lower" or
@@ -436,6 +437,7 @@ public static class BuiltInRegistry
         "randomFloat",
         "randomChoiceWeighted",
         "randn",
+        "anneal",
         "sleep"
     ];
 

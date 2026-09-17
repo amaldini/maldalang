@@ -29,7 +29,7 @@ public static class StdLibNamespaces
         "sin", "cos", "tan", "asin", "acos", "atan", "atan2",
         "hypot", "clamp", "degToRad", "radToDeg", "zeros",
         "rsqrt", "randn", "argmax", "argmin", "logSumExp", "softmax", "crossEntropyFromLogits",
-        "randomChoiceWeighted", "seed", "random", "randomInt", "randomFloat"
+        "randomChoiceWeighted", "seed", "random", "randomInt", "randomFloat", "anneal"
     };
 
     public static readonly IReadOnlySet<string> StrMethodNames = new HashSet<string>(StringComparer.Ordinal)
