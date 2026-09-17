@@ -268,7 +268,7 @@ public static class ReplSessionInventory
     {
         var decl = function.Declaration;
         if (decl != null)
-            return FormatCallable(decl.Name, decl.Parameters, decl.ReturnType);
+            return FormatCallable(name, decl.Parameters, decl.ReturnType);
         return name;
     }
 

@@ -37,8 +37,24 @@ public static class ReplSessionEdit
             return false;
 
         if (parts.Length > 1)
-            name = string.Join(" ", parts.Skip(1));
+            name = NormalizeName(string.Join(" ", parts.Skip(1)));
         return true;
+    }
+
+    /// <summary>
+    /// Binding name for <c>drop</c>/<c>replace</c>. Strips a copied signature
+    /// such as <c>add(a, b)</c> or <c>&lt;lambda&gt;(a, b)</c>.
+    /// </summary>
+    public static string NormalizeName(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return "";
+
+        name = name.Trim();
+        var paren = name.IndexOf('(');
+        if (paren > 0)
+            name = name.Substring(0, paren).TrimEnd();
+        return name;
     }
 
     public static void Write(
@@ -57,33 +73,38 @@ public static class ReplSessionEdit
             return;
         }
 
+        name = NormalizeName(name);
         if (hostNames != null && hostNames.Contains(name))
         {
             writer.WriteLine("Cannot drop host name '" + name + "'.");
             return;
         }
 
-        var previous = sessionSource.Peek(name);
-        var dropped = interpreter.TryDropUserDefinition(name, hostNames, out var kind, out var error);
+        var dropped = interpreter.TryDropUserDefinition(
+            name, hostNames, out var droppedName, out var kind, out var error);
+        var previous = sessionSource.Peek(droppedName) ?? sessionSource.Peek(name);
         if (!dropped && previous == null)
         {
             writer.WriteLine(error ?? "No user definition named '" + name + "'.");
             return;
         }
 
-        sessionSource.TryRemove(name);
+        sessionSource.TryRemove(droppedName);
+        if (!string.Equals(droppedName, name, StringComparison.Ordinal))
+            sessionSource.TryRemove(name);
+        var shownName = string.IsNullOrEmpty(droppedName) ? name : droppedName;
         var label = string.IsNullOrEmpty(kind) ? "definition" : kind;
         if (action == ReplaceAction)
         {
-            writer.WriteLine("Dropped " + label + " '" + name + "'. Previous source:");
+            writer.WriteLine("Dropped " + label + " '" + shownName + "'. Previous source:");
             writer.WriteLine();
-            writer.WriteLine(previous ?? "(no recorded source for '" + name + "')");
+            writer.WriteLine(previous ?? "(no recorded source for '" + shownName + "')");
             writer.WriteLine();
             writer.WriteLine("Enter a new definition to replace it.");
             return;
         }
 
-        writer.WriteLine("Dropped " + label + " '" + name + "'.");
+        writer.WriteLine("Dropped " + label + " '" + shownName + "'.");
     }
 
     private static bool TryVerb(string word, out string action)
@@ -106,6 +127,13 @@ public static class ReplSessionEdit
         return false;
     }
 
-    private static bool LooksLikeNameToken(string token) =>
-        token.Length > 0 && (char.IsLetter(token[0]) || token[0] == '_');
+    private static bool LooksLikeNameToken(string token)
+    {
+        if (token.Length == 0)
+            return false;
+        if (char.IsLetter(token[0]) || token[0] == '_')
+            return true;
+        // vars used to print lambdas as <lambda>(...); still accept that form.
+        return token.Length >= 3 && token[0] == '<' && char.IsLetter(token[1]);
+    }
 }

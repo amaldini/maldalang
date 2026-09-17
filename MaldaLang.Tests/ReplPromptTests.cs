@@ -407,6 +407,157 @@ public class ReplPromptTests : TestBase
     }
 
     [Fact]
+    public void DropEntry_RemovesLambda_SoNameIsUndefined()
+    {
+        var interpreter = new Interpreter.Interpreter();
+        var hostNames = ReplSessionInventory.SnapshotHostNames(interpreter);
+        var sessionSource = new ReplSessionSource();
+
+        InvokePromptInput(
+            new InputResult { Code = "var add = (a, b) => a + b;", Action = "run" },
+            interpreter, hostNames, sessionSource);
+        var (varsOut, _) = InvokePromptInput(
+            new InputResult { Code = "", Action = "vars" }, interpreter, hostNames, sessionSource);
+        var (dropOut, _) = InvokePromptInput(
+            new InputResult { Code = "add", Action = "drop" }, interpreter, hostNames, sessionSource);
+        var (callOut, _) = InvokePromptInput(
+            new InputResult { Code = "print(add(2, 3));", Action = "run" }, interpreter, hostNames, sessionSource);
+        var (sourceOut, _) = InvokePromptInput(
+            new InputResult { Code = "", Action = "source" }, interpreter, hostNames, sessionSource);
+
+        Assert.Contains("add(a, b)", varsOut);
+        Assert.DoesNotContain("<lambda>", varsOut);
+        Assert.Contains("Dropped lambda 'add'", dropOut);
+        Assert.Contains("Undefined variable", callOut);
+        Assert.Equal("(no user definitions)", sourceOut.Trim());
+    }
+
+    [Fact]
+    public void DropEntry_RemovesLambda_ByAnonymousDisplayName()
+    {
+        var interpreter = new Interpreter.Interpreter();
+        var hostNames = ReplSessionInventory.SnapshotHostNames(interpreter);
+        var sessionSource = new ReplSessionSource();
+
+        InvokePromptInput(
+            new InputResult { Code = "var add = (a, b) => a + b;", Action = "run" },
+            interpreter, hostNames, sessionSource);
+        var (dropOut, _) = InvokePromptInput(
+            new InputResult { Code = "<lambda>", Action = "drop" }, interpreter, hostNames, sessionSource);
+        var (callOut, _) = InvokePromptInput(
+            new InputResult { Code = "print(add(2, 3));", Action = "run" }, interpreter, hostNames, sessionSource);
+
+        Assert.Contains("Dropped lambda 'add'", dropOut);
+        Assert.Contains("Undefined variable", callOut);
+    }
+
+    [Fact]
+    public void DropEntry_RemovesLambda_BySignatureCopiedFromVars()
+    {
+        var interpreter = new Interpreter.Interpreter();
+        var hostNames = ReplSessionInventory.SnapshotHostNames(interpreter);
+        var sessionSource = new ReplSessionSource();
+
+        InvokePromptInput(
+            new InputResult { Code = "var add = (a, b) => a + b;", Action = "run" },
+            interpreter, hostNames, sessionSource);
+        var (dropOut, _) = InvokePromptInput(
+            new InputResult { Code = "add(a, b)", Action = "drop" }, interpreter, hostNames, sessionSource);
+
+        Assert.Contains("Dropped lambda 'add'", dropOut);
+    }
+
+    [Fact]
+    public void DropEntry_AmbiguousAnonymousLambda_ListsBindings()
+    {
+        var interpreter = new Interpreter.Interpreter();
+        var hostNames = ReplSessionInventory.SnapshotHostNames(interpreter);
+        var sessionSource = new ReplSessionSource();
+
+        InvokePromptInput(
+            new InputResult { Code = "var add = (a, b) => a + b;", Action = "run" },
+            interpreter, hostNames, sessionSource);
+        InvokePromptInput(
+            new InputResult { Code = "var mul = (a, b) => a * b;", Action = "run" },
+            interpreter, hostNames, sessionSource);
+        var (dropOut, _) = InvokePromptInput(
+            new InputResult { Code = "<lambda>", Action = "drop" }, interpreter, hostNames, sessionSource);
+
+        Assert.Contains("Ambiguous name '<lambda>'", dropOut);
+        Assert.Contains("add", dropOut);
+        Assert.Contains("mul", dropOut);
+    }
+
+    [Fact]
+    public void ReplaceEntry_PrintsPreviousLambdaSource_ThenNewDefinitionBinds()
+    {
+        var interpreter = new Interpreter.Interpreter();
+        var hostNames = ReplSessionInventory.SnapshotHostNames(interpreter);
+        var sessionSource = new ReplSessionSource();
+
+        InvokePromptInput(
+            new InputResult { Code = "var add = (a, b) => a + b;", Action = "run" },
+            interpreter, hostNames, sessionSource);
+        var (replaceOut, _) = InvokePromptInput(
+            new InputResult { Code = "add", Action = "replace" }, interpreter, hostNames, sessionSource);
+        InvokePromptInput(
+            new InputResult { Code = "var add = (a, b) => a * b;", Action = "run" },
+            interpreter, hostNames, sessionSource);
+        var (callOut, _) = InvokePromptInput(
+            new InputResult { Code = "print(add(2, 3));", Action = "run" }, interpreter, hostNames, sessionSource);
+
+        Assert.Contains("Dropped lambda 'add'", replaceOut);
+        Assert.Contains("var add = (a, b) => a + b;", replaceOut);
+        Assert.Contains("Enter a new definition to replace it.", replaceOut);
+        Assert.Contains("6", callOut);
+    }
+
+    [Fact]
+    public void ReplaceEntry_PrintsPreviousLambdaSource_ByAnonymousDisplayName()
+    {
+        var interpreter = new Interpreter.Interpreter();
+        var hostNames = ReplSessionInventory.SnapshotHostNames(interpreter);
+        var sessionSource = new ReplSessionSource();
+
+        InvokePromptInput(
+            new InputResult { Code = "var add = (a, b) => a + b;", Action = "run" },
+            interpreter, hostNames, sessionSource);
+        var (replaceOut, _) = InvokePromptInput(
+            new InputResult { Code = "<lambda>", Action = "replace" }, interpreter, hostNames, sessionSource);
+        InvokePromptInput(
+            new InputResult { Code = "var add = (a, b) => a * b;", Action = "run" },
+            interpreter, hostNames, sessionSource);
+        var (callOut, _) = InvokePromptInput(
+            new InputResult { Code = "print(add(2, 3));", Action = "run" }, interpreter, hostNames, sessionSource);
+
+        Assert.Contains("Dropped lambda 'add'", replaceOut);
+        Assert.Contains("var add = (a, b) => a + b;", replaceOut);
+        Assert.Contains("Enter a new definition to replace it.", replaceOut);
+        Assert.Contains("6", callOut);
+    }
+
+    [Fact]
+    public void RunEntries_RedefineLambdaWithoutDrop_BindsNewBody()
+    {
+        var interpreter = new Interpreter.Interpreter();
+        var hostNames = ReplSessionInventory.SnapshotHostNames(interpreter);
+        var sessionSource = new ReplSessionSource();
+
+        InvokePromptInput(
+            new InputResult { Code = "var add = (a, b) => a + b;", Action = "run" },
+            interpreter, hostNames, sessionSource);
+        var (redefineOut, redefineErr) = InvokePromptInput(
+            new InputResult { Code = "var add = (a, b) => a * b;", Action = "run" },
+            interpreter, hostNames, sessionSource);
+        var (callOut, _) = InvokePromptInput(
+            new InputResult { Code = "print(add(2, 3));", Action = "run" }, interpreter, hostNames, sessionSource);
+
+        Assert.Equal(string.Empty, redefineOut.Trim());
+        Assert.Equal(string.Empty, redefineErr.Trim());
+        Assert.Contains("6", callOut);
+    }
+
+    [Fact]
     public void ReplaceEntry_PrintsPreviousSource_ThenNewDefinitionBinds()
     {
         var interpreter = new Interpreter.Interpreter();

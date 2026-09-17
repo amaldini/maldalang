@@ -106,6 +106,17 @@ workflow SimpleStep(input) {
     }
 
     [Fact]
+    public void Format_LambdaUsesBindingNameNotAnonymousName()
+    {
+        var text = FormatAfter("var add = (a, b) => a + b;\n");
+
+        Assert.Contains("functions:", text);
+        Assert.Contains("add(a, b)", text);
+        Assert.DoesNotContain("<lambda>", text);
+        Assert.DoesNotContain("variables:", text);
+    }
+
+    [Fact]
     public void Format_FunctionsFilter_OmitsOtherKinds()
     {
         var text = FormatAfter("var x = 1;\nfunction ping() { return 1; }\n", ReplSessionInventory.Kind.Functions);

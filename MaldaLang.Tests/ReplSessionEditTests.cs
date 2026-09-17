@@ -17,6 +17,10 @@ public class ReplSessionEditTests
     [InlineData("replace add", ReplSessionEdit.ReplaceAction, "add")]
     [InlineData("edit total", ReplSessionEdit.ReplaceAction, "total")]
     [InlineData("drop", ReplSessionEdit.DropAction, "")]
+    [InlineData("drop <lambda>", ReplSessionEdit.DropAction, "<lambda>")]
+    [InlineData("drop add(a, b)", ReplSessionEdit.DropAction, "add")]
+    [InlineData("drop <lambda>(a, b)", ReplSessionEdit.DropAction, "<lambda>")]
+    [InlineData("replace add(a, b)", ReplSessionEdit.ReplaceAction, "add")]
     public void TryParseCommand_RecognizesVerbsAndNames(string line, string action, string name)
     {
         Assert.True(ReplSessionEdit.TryParseCommand(line, out var parsedAction, out var parsedName));
@@ -33,6 +37,18 @@ public class ReplSessionEditTests
     public void TryParseCommand_RejectsAssignmentsAndOrdinaryCode(string line)
     {
         Assert.False(ReplSessionEdit.TryParseCommand(line, out _, out _));
+    }
+
+    [Fact]
+    public void TryRemove_DropsRecordedLambdaSource()
+    {
+        var session = new ReplSessionSource();
+        session.Record("var add = (a, b) => a + b;");
+
+        var previous = session.TryRemove("add");
+
+        Assert.Contains("var add = (a, b) => a + b;", previous);
+        Assert.Equal("(no user definitions)", session.Format(null));
     }
 
     [Fact]
