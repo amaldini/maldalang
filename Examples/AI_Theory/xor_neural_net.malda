@@ -9,6 +9,31 @@
 // attention_is_all_you_need.malda for the 2017 Transformer,
 // and microgpt.malda for a tiny GPT.
 //
+// Forward is a composition, same idea as f(g(x)) in chain_rule.malda:
+//   z_j  = b1[j] + x[0]*w1[0][j] + x[1]*w1[1][j]     pre-activation
+//   h_j  = sigmoid(z_j)                               hidden activation
+//   zOut = b2 + sum_j h_j * w2[j]
+//   y    = sigmoid(zOut)                              prediction in (0, 1)
+//
+// Loss (the 1/2 keeps dL/dy tidy — no extra factor of 2):
+//   L     = 1/2 (y - t)^2
+//   dL/dy = y - t
+//
+// Chain rule, output layer first (outer function, then inner):
+//   dL/dzOut  = dL/dy    * sigmoid'(zOut)
+//             = (y - t)  * y * (1 - y)
+//   dL/dw2[j] = dL/dzOut * h_j          because zOut += h_j * w2[j]
+//   dL/db2    = dL/dzOut
+//
+// Then the hidden layer (same product, one step deeper):
+//   dL/dh_j      = dL/dzOut * w2[j]     because zOut += h_j * w2[j]
+//   dL/dz_j      = dL/dh_j  * sigmoid'(z_j)
+//                = dL/dh_j  * h_j * (1 - h_j)
+//   dL/dw1[i][j] = dL/dz_j  * x[i]
+//   dL/db1[j]    = dL/dz_j
+//
+// Gradient descent: parameter -= learningRate * dL/d(parameter)
+//
 // Weight shapes (row = from, column = to):
 //   w1 [2 x 4]  input  -> hidden    b1 [4]  hidden bias
 //   w2 [4 x 1]  hidden -> output    b2 [1]  output bias
@@ -25,6 +50,7 @@ function sigmoid(x: float) -> float {
 }
 
 // d(sigmoid)/dz = y * (1 - y) when y is already sigmoid(z).
+// That identity is why backprop never needs the raw z, only the activation.
 function sigmoidDerivFromOutput(y: float) -> float {
     return y * (1.0 - y);
 }
@@ -53,13 +79,15 @@ function randomVector(n: int, scale: float) -> array {
 function forward(x: array, w1: array, b1: array, w2: array, b2: array) -> object {
     var hidden = [];
     for (var j = 0; j < b1.length; j = j + 1) {
+        // z_j = b1[j] + sum_i x[i] * w1[i][j]
         var z = b1[j];
         for (var i = 0; i < x.length; i = i + 1) {
             z = z + x[i] * w1[i][j];
         }
-        hidden.append(sigmoid(z));
+        hidden.append(sigmoid(z)); // h_j
     }
 
+    // zOut = b2 + sum_j h_j * w2[j]
     var zOut = b2[0];
     for (var h = 0; h < hidden.length; h = h + 1) {
         zOut = zOut + hidden[h] * w2[h][0];
@@ -69,6 +97,10 @@ function forward(x: array, w1: array, b1: array, w2: array, b2: array) -> object
 
 function fmt(x: float) -> string {
     return string(math.round(x * 1000.0) / 1000.0);
+}
+
+function fmtWalk(x: float) -> string {
+    return string(math.round(x * 1000000.0) / 1000000.0);
 }
 
 // Pin the shared RNG so this file prints the same loss every run.
@@ -89,6 +121,13 @@ var targets = [0.0, 1.0, 1.0, 0.0];
 io.print("XOR multilayer perceptron (2 -> 4 -> 1)");
 io.print("Seeded training, mean squared error, sigmoid activations.");
 io.print("");
+io.print("The math (see chain_rule.malda for the product f'(g) * g'):");
+io.print("  y = sigmoid(zOut),  zOut = b2 + sum h_j * w2[j],  h_j = sigmoid(z_j)");
+io.print("  L = 1/2 (y - t)^2     so     dL/dy = y - t");
+io.print("  dL/dzOut = (y - t) * y * (1 - y)                 [outer sigmoid]");
+io.print("  dL/dz_j  = dL/dzOut * w2[j] * h_j * (1 - h_j)    [then hidden]");
+io.print("  dL/d(weight) = (upstream gradient) * (the input that weight multiplies)");
+io.print("");
 
 for (var epoch = 1; epoch <= epochs; epoch = epoch + 1) {
     var epochLoss = 0.0;
@@ -101,26 +140,42 @@ for (var epoch = 1; epoch <= epochs; epoch = epoch + 1) {
         var hidden = step.hidden;
         var y = step.output;
 
-        // Loss = 1/2 (y - target)^2 so dL/dy = (y - target).
-        var error = y - target;
-        epochLoss = epochLoss + 0.5 * error * error;
+        // L = 1/2 (y - t)^2 so dL/dy = (y - t).
+        var dL_dy = y - target;
+        epochLoss = epochLoss + 0.5 * dL_dy * dL_dy;
 
-        // Chain rule back to the output pre-activation, then each hidden unit.
-        var dZOut = error * sigmoidDerivFromOutput(y);
-        var dHidden = [];
+        // Outer: y = sigmoid(zOut). Same as f'(g(x)) * g'(x) in chain_rule.malda.
+        var dL_dzOut = dL_dy * sigmoidDerivFromOutput(y);
+
+        // Hidden: dL/dz_j = dL/dzOut * w2[j] * sigmoid'(z_j)
+        var dL_dz = [];
         for (var j = 0; j < hiddenSize; j = j + 1) {
-            dHidden.append(dZOut * w2[j][0] * sigmoidDerivFromOutput(hidden[j]));
+            var dL_dh = dL_dzOut * w2[j][0];
+            dL_dz.append(dL_dh * sigmoidDerivFromOutput(hidden[j]));
+        }
+
+        if (epoch == 1 && s == 0) {
+            io.print("Worked example — first XOR pair, before any update:");
+            io.print($"  x={x}  t={target}  y={fmtWalk(y)}  L={fmtWalk(0.5 * dL_dy * dL_dy)}");
+            io.print($"  hidden h = [{fmtWalk(hidden[0])}, {fmtWalk(hidden[1])}, {fmtWalk(hidden[2])}, {fmtWalk(hidden[3])}]");
+            io.print($"  dL/dy = y - t = {fmtWalk(dL_dy)}");
+            io.print($"  dL/dzOut = dL/dy * y*(1-y) = {fmtWalk(dL_dzOut)}");
+            io.print($"  dL/dz = [{fmtWalk(dL_dz[0])}, {fmtWalk(dL_dz[1])}, {fmtWalk(dL_dz[2])}, {fmtWalk(dL_dz[3])}]");
+            io.print("  Each weight's gradient is that upstream value times the input it multiplies.");
+            io.print("");
         }
 
         // Gradient descent: parameter -= learningRate * dL/d(parameter).
         for (var j = 0; j < hiddenSize; j = j + 1) {
-            w2[j][0] = w2[j][0] - learningRate * dZOut * hidden[j];
-            b1[j] = b1[j] - learningRate * dHidden[j];
+            var dL_dw2 = dL_dzOut * hidden[j];
+            w2[j][0] = w2[j][0] - learningRate * dL_dw2;
+            b1[j] = b1[j] - learningRate * dL_dz[j];
             for (var i = 0; i < 2; i = i + 1) {
-                w1[i][j] = w1[i][j] - learningRate * dHidden[j] * x[i];
+                var dL_dw1 = dL_dz[j] * x[i];
+                w1[i][j] = w1[i][j] - learningRate * dL_dw1;
             }
         }
-        b2[0] = b2[0] - learningRate * dZOut;
+        b2[0] = b2[0] - learningRate * dL_dzOut;
     }
 
     if (epoch == 1 || epoch % 500 == 0 || epoch == epochs) {

@@ -10,7 +10,7 @@ Agents and tools stay in [`Examples/Agents/`](../Agents/).
 |------|------|
 | `sarsa_cliff.malda` | SARSA vs Q-learning on a cliff (on-policy vs off-policy) |
 | `chain_rule.malda` | d/dx [f(g(x))] as a numerical vs analytic check |
-| `xor_neural_net.malda` | 2-4-1 MLP, backpropagation, XOR |
+| `xor_neural_net.malda` | 2-4-1 MLP, named chain-rule gradients, XOR |
 | `svm_linear.malda` | Soft-margin linear SVM (and why XOR needs a hidden layer) |
 | `attention_is_all_you_need.malda` | Vaswani et al. 2017 Transformer, then reverse a sequence |
 | `microgpt.malda` | Tiny decoder-only GPT (Karpathy port) |
