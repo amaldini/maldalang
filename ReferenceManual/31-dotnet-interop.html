@@ -18,6 +18,9 @@
         <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>31. .NET Interop</span></div>
         <h1>31. .NET Interop</h1>
         <p>MALDA provides native support for loading and using external .NET libraries, enabling access to the vast .NET ecosystem including NuGet packages, custom class libraries, and framework APIs. This capability allows MALDA programs to leverage existing .NET code without rewriting it.</p>
+        <div class="info-box" id="first-read">
+            <strong>First-read stop.</strong> Host-only: <code>dotnetNew</code> / <code>getDotNetType</code> for BCL types already in the runtime. Course: <a href="learn.html#after-core">Learn MALDA — After the core path</a>.
+        </div>
 
         <h2>31.1 Types already in the runtime</h2>
         <p>You do not need a custom DLL for core BCL types. Pass the fully qualified name to <code>dotnetNew</code> or <code>getDotNetType</code>. Generic types use backtick arity: <code>List`1</code> means <code>List&lt;T&gt;</code> with one type parameter.</p>

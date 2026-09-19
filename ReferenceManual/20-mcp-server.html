@@ -19,6 +19,9 @@
         <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>20. MCP Server</span></div>
         <h1>20. MCP Server</h1>
         <p>MCP (Model Context Protocol) lets an AI host — Claude Desktop, Cursor, ChatGPT, or a MALDA <code>MCPClient</code> — launch <strong>your process</strong> and talk JSON-RPC 2.0 over <strong>STDIO</strong> (stdin/stdout). Decorate ordinary functions with <code>@MCPTool</code>, call <code>new MCPServer().start()</code>, and the host can list and call them. Same file: <code>Examples/MCP/mcp_tools_server.malda</code>.</p>
+        <div class="info-box" id="first-read">
+            <strong>First-read stop.</strong> <code>@MCPTool</code> plus <code>MCPServer.start()</code> exposes functions to a host over STDIO. Smallest file: <code>Examples/MCP/mcp_schema_tool.malda</code>. Course: <a href="learn.html#after-core">Learn MALDA — After the core path</a>.
+        </div>
 
         <h2>20.1 A minimal server</h2>
         <pre><code>@MCPTool("add", "Adds two numbers together")

@@ -1,0 +1,13 @@
+// check_a_mistake.malda — the fixed program after malda check
+// Run: malda Examples/Basics/check_a_mistake.malda
+//
+// The Learn MALDA lesson shows a broken twin (fn / .length()).
+// Diagnose that twin with: malda check path.malda
+
+function add(a, b) {
+    return a + b;
+}
+
+var nums = [1, 2, 3];
+io.print("sum=" + string(add(2, 3)));
+io.print("len=" + string(nums.length));

@@ -30,7 +30,10 @@ public class StarterCatalogTests
                 "classes",
                 "try-catch",
                 "prompt-template",
-                "gradebook"
+                "gradebook",
+                "check-mistake",
+                "modules-include",
+                "prompt-eval"
             ],
             ids);
     }
@@ -59,17 +62,21 @@ public class StarterCatalogTests
         Assert.Equal("recursion", StarterCatalog.GetNextStudentStarter("Basics/dictionary_example.malda")?.Id);
         Assert.Equal("classes", StarterCatalog.GetNextStudentStarter("Basics/recursion.malda")?.Id);
         Assert.Equal("gradebook", StarterCatalog.GetNextStudentStarter("Basics/prompt_template.malda")?.Id);
-        Assert.Null(StarterCatalog.GetNextStudentStarter("Basics/gradebook.malda"));
+        Assert.Equal("check-mistake", StarterCatalog.GetNextStudentStarter("Basics/gradebook.malda")?.Id);
+        Assert.Equal("modules-include", StarterCatalog.GetNextStudentStarter("Basics/check_a_mistake.malda")?.Id);
+        Assert.Equal("prompt-eval", StarterCatalog.GetNextStudentStarter("Basics/modules_include.malda")?.Id);
+        Assert.Null(StarterCatalog.GetNextStudentStarter("Basics/prompt_eval.malda"));
         Assert.Null(StarterCatalog.GetNextStudentStarter("Basics/first_look.malda"));
     }
 
     [Fact]
-    public void IsLastStudentStarter_OnlyGradebook()
+    public void IsLastStudentStarter_OnlyPromptEval()
     {
         Assert.False(StarterCatalog.IsLastStudentStarter("Basics/hello_world.malda"));
         Assert.False(StarterCatalog.IsLastStudentStarter("Basics/input_example.malda"));
         Assert.False(StarterCatalog.IsLastStudentStarter("Basics/recursion.malda"));
-        Assert.True(StarterCatalog.IsLastStudentStarter("Basics/gradebook.malda"));
+        Assert.False(StarterCatalog.IsLastStudentStarter("Basics/gradebook.malda"));
+        Assert.True(StarterCatalog.IsLastStudentStarter("Basics/prompt_eval.malda"));
         Assert.False(StarterCatalog.IsLastStudentStarter("Prompts/basic_prompt.malda"));
     }
 

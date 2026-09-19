@@ -20,8 +20,8 @@
         
         <p>MALDA provides native support for the Actor model of concurrent programming. Actors are independent, isolated units of computation that communicate exclusively through asynchronous message passing. Each actor has its own isolated state and processes messages sequentially, ensuring thread-safe concurrent programming without explicit locking mechanisms.</p>
         <p>Actors run on the interpreter, C# transpile, and JavaScript. On JS they are process-local (same page), not a multi-process runtime. See the <a href="../docs/spec/backend-capability-matrix.md">backend capability matrix</a>.</p>
-        <div class="info-box">
-            <strong>Not runnable here:</strong> <code>send</code> is asynchronous. A snippet that waits with <code>sleep</code> is not deterministic in the manual test harness. Run <code>Examples/Actors/basic_counter.malda</code> instead.
+        <div class="info-box" id="first-read">
+            <strong>First-read stop.</strong> An <code>actor</code> is an isolated mailbox: <code>spawn</code>, <code>send</code>, <code>on</code>. <code>send</code> is asynchronous, so snippets here are not marked runnable. Smallest file: <code>Examples/Actors/basic_counter.malda</code>. Course: <a href="learn.html#after-core">Learn MALDA — After the core path</a>.
         </div>
 
         <h2>17.1 Actor Declaration</h2>

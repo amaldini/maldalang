@@ -65,6 +65,24 @@ if (checked.ok) {
                 <p><code>schema ok: Needs work</code></p>
             </details>
         </div>
+        <div class="info-box">
+            <strong>Scrivi questo:</strong> Dichiara <code>schema Item { name: string; }</code>. Valida <code>{ "name": "pen" }</code>. Se ha successo, stampa <code>schema ok:</code> più il nome. Ultima riga: <code>schema ok: pen</code>.
+            <details>
+                <summary>Risposta</summary>
+                <pre><code data-run="true" data-expect="schema ok: pen">schema Item {
+    name: string;
+}
+
+var checked = validate("Item", {
+    "name": "pen"
+});
+if (checked.ok) {
+    io.print("schema ok: " + checked.data.name);
+} else {
+    io.print("schema failed: " + checked.error);
+}</code></pre>
+            </details>
+        </div>
 
         <h2 id="hello-world">Lezione 1 — Hello World</h2>
         <p>Una chiamata scrive una riga. Capitolo: <a href="12-input-output.html#hello-world">12.1 Output sulla console</a>. Stesso file: <code>Examples/Basics/hello_world.malda</code>.</p>
@@ -74,6 +92,14 @@ if (checked.ok) {
             <details>
                 <summary>Risposta</summary>
                 <p>Il programma stampa <code>Hello, MALDA!</code> e termina.</p>
+            </details>
+        </div>
+        <div class="info-box">
+            <strong>Scrivi questo:</strong> Stampa <code>Good morning.</code> sulla prima riga e <code>Ready.</code> sulla seconda. Ultima riga: <code>Ready.</code>
+            <details>
+                <summary>Risposta</summary>
+                <pre><code data-run="true" data-expect="Good morning.\nReady.">io.print("Good morning.");
+io.print("Ready.");</code></pre>
             </details>
         </div>
 
@@ -90,6 +116,15 @@ io.print($"Product: {product}");</code></pre>
             <details>
                 <summary>Risposta</summary>
                 <p><code>27</code> (<code>7 + 20</code>).</p>
+            </details>
+        </div>
+        <div class="info-box">
+            <strong>Scrivi questo:</strong> Imposta <code>var width = 4</code> e <code>var height = 5</code>. Stampa il prodotto come <code>Area: 20</code>. Ultima riga: <code>Area: 20</code>.
+            <details>
+                <summary>Risposta</summary>
+                <pre><code data-run="true" data-expect="Area: 20">var width = 4;
+var height = 5;
+io.print("Area: " + string(width * height));</code></pre>
             </details>
         </div>
 
@@ -120,10 +155,17 @@ if (score >= 90) {
             </details>
         </div>
         <div class="info-box">
-            <strong>Scrivi questo:</strong> Cambia <code>score</code> in <code>50</code> così gira l'ultimo ramo. Qual è la riga del voto?
+            <strong>Scrivi questo:</strong> Imposta <code>var temp = 3</code>. Se <code>temp &lt; 0</code> stampa <code>ice</code>, altrimenti se <code>temp &lt; 10</code> stampa <code>cold</code>, altrimenti stampa <code>warm</code>. Ultima riga: <code>cold</code>.
             <details>
                 <summary>Risposta</summary>
-                <p><code>Grade: F</code> (50 è sotto 70).</p>
+                <pre><code data-run="true" data-expect="cold">var temp = 3;
+if (temp < 0) {
+    io.print("ice");
+} else if (temp < 10) {
+    io.print("cold");
+} else {
+    io.print("warm");
+}</code></pre>
             </details>
         </div>
 
@@ -142,6 +184,18 @@ io.print("Done!");</code></pre>
                 <p>Cinque righe: <code>Count: 1</code> fino a <code>Count: 5</code>.</p>
             </details>
         </div>
+        <div class="info-box">
+            <strong>Scrivi questo:</strong> Usa <code>while</code> per stampare <code>2</code>, poi <code>4</code>, poi <code>6</code>, poi <code>done</code>. Ultima riga: <code>done</code>.
+            <details>
+                <summary>Risposta</summary>
+                <pre><code data-run="true" data-expect="2\n4\n6\ndone">var n = 2;
+while (n <= 6) {
+    io.print(n);
+    n = n + 2;
+}
+io.print("done");</code></pre>
+            </details>
+        </div>
 
         <h2 id="for-loop">Lezione 5 — Ciclo for</h2>
         <p>Un <code>for</code> in stile C raccoglie init, condizione e incremento. Capitolo: <a href="08-control-structures.html#for-loop">8.2 For</a>. Stesso file: <code>Examples/Basics/for_loop.malda</code>.</p>
@@ -154,6 +208,15 @@ io.print("Loop finished!");</code></pre>
             <details>
                 <summary>Risposta</summary>
                 <p><code>Number: 5</code></p>
+            </details>
+        </div>
+        <div class="info-box">
+            <strong>Scrivi questo:</strong> Usa un <code>for</code> contato per stampare <code>10</code>, poi <code>9</code>, poi <code>8</code>. Ultima riga: <code>8</code>.
+            <details>
+                <summary>Risposta</summary>
+                <pre><code data-run="true" data-expect="10\n9\n8">for (var i = 10; i >= 8; i = i - 1) {
+    io.print(i);
+}</code></pre>
             </details>
         </div>
 
@@ -176,10 +239,14 @@ io.print($"10 + 2 = {result2}");</code></pre>
             </details>
         </div>
         <div class="info-box">
-            <strong>Scrivi questo:</strong> Aggiungi <code>function multiply(a, b) { return a * b; }</code> e stampa <code>multiply(3, 4)</code>. Qual è la nuova ultima riga?
+            <strong>Scrivi questo:</strong> Scrivi <code>function greet(name)</code> che restituisce <code>"Hi, " + name</code>. Stampa <code>greet("Ada")</code>. Ultima riga: <code>Hi, Ada</code>.
             <details>
                 <summary>Risposta</summary>
-                <p><code>12</code></p>
+                <pre><code data-run="true" data-expect="Hi, Ada">function greet(name) {
+    return "Hi, " + name;
+}
+
+io.print(greet("Ada"));</code></pre>
             </details>
         </div>
 
@@ -218,10 +285,12 @@ io.print("lists ok");</code></pre>
             </details>
         </div>
         <div class="info-box">
-            <strong>Scrivi questo:</strong> Cambia la prima riga in <code>var scores = [100, 88, 92, 75];</code>. Qual è il primo <code>scores[0]</code> stampato?
+            <strong>Scrivi questo:</strong> Parti da <code>var nums = [1, 2, 3]</code>. Aggiungi <code>4</code> con <code>append</code>. Stampa <code>last=</code> più l'ultimo valore. Ultima riga: <code>last=4</code>.
             <details>
                 <summary>Risposta</summary>
-                <p><code>100</code>. L'indice 0 è il nuovo primo elemento.</p>
+                <pre><code data-run="true" data-expect="last=4">var nums = [1, 2, 3];
+nums.append(4);
+io.print("last=" + string(nums[nums.length - 1]));</code></pre>
             </details>
         </div>
 
@@ -259,6 +328,18 @@ io.print($"Summary: {describeTotal(total)}");</code></pre>
                 <p><code>small order</code> (37 è sotto 40).</p>
             </details>
         </div>
+        <div class="info-box">
+            <strong>Scrivi questo:</strong> Somma <code>var prices = [5, 5, 5]</code> con <code>for-in</code> e stampa <code>Total: 15</code>. Ultima riga: <code>Total: 15</code>.
+            <details>
+                <summary>Risposta</summary>
+                <pre><code data-run="true" data-expect="Total: 15">var prices = [5, 5, 5];
+var total = 0;
+for (var price in prices) {
+    total = total + price;
+}
+io.print("Total: " + string(total));</code></pre>
+            </details>
+        </div>
 
         <h2 id="input">Lezione 9 — Input</h2>
         <p><code>io.input</code> legge una riga da stdin e restituisce sempre una <strong>string</strong>. Convertila se ti serve un numero. Questo snippet aspetta la tastiera, quindi qui non è marcato eseguibile. Capitolo: <a href="12-input-output.html#console-input">12.2 Input dalla console</a>. Stesso file: <code>Examples/Basics/input_example.malda</code>.</p>
@@ -272,6 +353,14 @@ io.print($"Hello, {name}. You are {age} years old.");</code></pre>
             <details>
                 <summary>Risposta</summary>
                 <p>Una stringa vuota <code>""</code>, non <code>null</code>.</p>
+            </details>
+        </div>
+        <div class="info-box">
+            <strong>Scrivi questo:</strong> Leggi una riga con <code>io.input("City: ")</code> in <code>city</code> e stampa <code>You live in </code> più quella stringa. Attende la tastiera, quindi qui non è marcato eseguibile. A fine file <code>city</code> è <code>""</code>.
+            <details>
+                <summary>Risposta</summary>
+                <pre><code>var city = io.input("City: ");
+io.print("You live in " + city);</code></pre>
             </details>
         </div>
 
@@ -297,6 +386,14 @@ io.print("values length: " + values.length);</code></pre>
             <details>
                 <summary>Risposta</summary>
                 <p><code>4</code></p>
+            </details>
+        </div>
+        <div class="info-box">
+            <strong>Scrivi questo:</strong> Crea un dict con chiave <code>"ok"</code> impostata a <code>true</code>. Stampa <code>ok=</code> più il valore. Ultima riga: <code>ok=true</code>.
+            <details>
+                <summary>Risposta</summary>
+                <pre><code data-run="true" data-expect="ok=true">var flags = dict { "ok": true };
+io.print("ok=" + flags["ok"]);</code></pre>
             </details>
         </div>
 
@@ -329,6 +426,20 @@ io.print("recursion ok");</code></pre>
                 <p><code>5040</code></p>
             </details>
         </div>
+        <div class="info-box">
+            <strong>Scrivi questo:</strong> Scrivi <code>function sumTo(n)</code> che restituisce <code>1</code> quando <code>n &lt;= 1</code>, altrimenti <code>n + sumTo(n - 1)</code>. Stampa <code>sumTo(4)</code>. Ultima riga: <code>10</code>.
+            <details>
+                <summary>Risposta</summary>
+                <pre><code data-run="true" data-expect="10">function sumTo(n) {
+    if (n <= 1) {
+        return 1;
+    }
+    return n + sumTo(n - 1);
+}
+
+io.print(sumTo(4));</code></pre>
+            </details>
+        </div>
 
         <h2 id="classes">Lezione 12 — Classi</h2>
         <p>Una classe è un tipo con nome, campi e metodi. <code>new ClassName(...)</code> esegue il costruttore. Dentro un metodo puoi leggere un campo come <code>name</code>; scrivi <code>this.name</code> quando un parametro maschera il campo (come fa il costruttore). Capitolo: <a href="11-classes-objects.html#first-read">11.1 Una classe funzionante</a>. Stesso file: <code>Examples/Basics/classes_intro.malda</code>.</p>
@@ -357,10 +468,22 @@ io.print("age=" + string(alice.age));</code></pre>
             </details>
         </div>
         <div class="info-box">
-            <strong>Scrivi questo:</strong> Aggiungi <code>public function birthday() { age = age + 1; }</code>, chiamalo su Alice, poi stampa <code>alice.age</code>. Qual è l'ultima riga dell'età?
+            <strong>Scrivi questo:</strong> Scrivi la classe <code>Box</code> con <code>public var w</code>, costruttore <code>Box(w)</code> e <code>public function area()</code> che restituisce <code>w * w</code>. Stampa <code>new Box(3).area()</code>. Ultima riga: <code>9</code>.
             <details>
                 <summary>Risposta</summary>
-                <p><code>age=31</code> se stampi dopo <code>birthday()</code> (oppure <code>31</code> se stampi solo il numero).</p>
+                <pre><code data-run="true" data-expect="9">class Box {
+    public var w;
+
+    function Box(w) {
+        this.w = w;
+    }
+
+    public function area() {
+        return w * w;
+    }
+}
+
+io.print(new Box(3).area());</code></pre>
             </details>
         </div>
 
@@ -393,6 +516,17 @@ try {
                 <p>Il programma si ferma con un errore non catturato. <code>catch</code> gestisce solo i throw eseguiti dentro il suo <code>try</code>.</p>
             </details>
         </div>
+        <div class="info-box">
+            <strong>Scrivi questo:</strong> In un <code>try</code>, lancia <code>"nope"</code>. In <code>catch</code>, stampa <code>err=</code> più il valore lanciato. Ultima riga: <code>err=nope</code>.
+            <details>
+                <summary>Risposta</summary>
+                <pre><code data-run="true" data-expect="err=nope">try {
+    throw "nope";
+} catch (error) {
+    io.print("err=" + error);
+}</code></pre>
+            </details>
+        </div>
 
         <h2 id="prompt-template">Lezione 14 — Prompt come template</h2>
         <p>Un <code>prompt</code> è un template richiamabile. Senza <code>await</code> non chiama un modello. Capitolo: <a href="10-prompts.html#template">10.1 Panoramica</a> passo 1. Stesso file: <code>Examples/Basics/prompt_template.malda</code>.</p>
@@ -407,6 +541,17 @@ io.print(greeting.user);</code></pre>
             <details>
                 <summary>Risposta</summary>
                 <p><code>Hello, MALDA! How are you today?</code></p>
+            </details>
+        </div>
+        <div class="info-box">
+            <strong>Scrivi questo:</strong> Scrivi <code>prompt bye(name)</code> con <code>user: "Goodbye, {name}."</code>. Stampa <code>bye("Ada").user</code>. Ultima riga: <code>Goodbye, Ada.</code>
+            <details>
+                <summary>Risposta</summary>
+                <pre><code data-run="true" data-expect="Goodbye, Ada.">prompt bye(name) {
+    user: "Goodbye, {name}."
+}
+
+io.print(bye("Ada").user);</code></pre>
             </details>
         </div>
 
@@ -461,19 +606,162 @@ if (checked.ok) {
             </details>
         </div>
         <div class="info-box">
-            <strong>Scrivi questo:</strong> Cambia <code>label()</code> così i punteggi sotto 80 restituiscono <code>"C"</code>. Che cosa restituisce <code>new Grade("Ada", 70).label()</code>?
+            <strong>Scrivi questo:</strong> Dichiara <code>schema Item { label: string; }</code>. Valida <code>{ "label": "pen" }</code>. Se ha successo, stampa <code>schema ok:</code> più l'etichetta. Ultima riga: <code>schema ok: pen</code>.
             <details>
                 <summary>Risposta</summary>
-                <p><code>C</code></p>
+                <pre><code data-run="true" data-expect="schema ok: pen">schema Item {
+    label: string;
+}
+
+var checked = validate("Item", {
+    "label": "pen"
+});
+if (checked.ok) {
+    io.print("schema ok: " + checked.data.label);
+} else {
+    io.print("schema failed: " + checked.error);
+}</code></pre>
+            </details>
+        </div>
+
+        <h2 id="check-mistake">Lezione 16 — Controlla un errore</h2>
+        <p><code>malda check</code> diagnostica un file e non lo esegue. <code>fn</code> e <code>def</code> non sono keyword di funzione — check le nomina. Capitolo: <a href="02-tools.html#check">2.1.2 Diagnosi senza eseguire</a>. Stesso file (il programma corretto): <code>Examples/Basics/check_a_mistake.malda</code>.</p>
+        <p>Incolla questo gemello rotto in un file scratch e lancia <code>malda check scratch.malda</code>. Qui non è marcato eseguibile.</p>
+        <pre><code>fn add(a, b) {
+    return a + b;
+}
+
+var nums = [1, 2, 3];
+io.print(nums.length());</code></pre>
+        <p>Check segnala <code>'fn' is not a function keyword. Use 'function'.</code> Poi apri il file corretto e lancialo:</p>
+        <pre><code data-run="true" data-expect="sum=5\nlen=3">function add(a, b) {
+    return a + b;
+}
+
+var nums = [1, 2, 3];
+io.print("sum=" + string(add(2, 3)));
+io.print("len=" + string(nums.length));</code></pre>
+        <div class="info-box">
+            <strong>Prova così:</strong> Dopo aver cambiato <code>fn</code> in <code>function</code>, che cosa segnala ancora <code>malda check</code> su <code>nums.length()</code>?
+            <details>
+                <summary>Risposta</summary>
+                <p><code>.length()</code> deve essere <code>.length</code> (una proprietà, non una chiamata). <code>malda check --fix</code> può riscrivere quello.</p>
+            </details>
+        </div>
+        <div class="info-box">
+            <strong>Scrivi questo:</strong> Scrivi <code>function double(n)</code> che restituisce <code>n * 2</code>. Stampa <code>double(4)</code> e la lunghezza di <code>[1, 2]</code> come <code>len=2</code>. Ultima riga: <code>len=2</code>.
+            <details>
+                <summary>Risposta</summary>
+                <pre><code data-run="true" data-expect="8\nlen=2">function double(n) {
+    return n * 2;
+}
+
+io.print(double(4));
+io.print("len=" + string([1, 2].length));</code></pre>
+            </details>
+        </div>
+
+        <h2 id="include-test">Lezione 17 — Due file e un test</h2>
+        <p><code>include "path";</code> unisce un altro file <code>.malda</code> al livello top (relativo a questo file). Non è <code>import</code> / <code>export</code>. Capitolo: <a href="01-introduction.html#modules">1.6 Composizione del sorgente</a>. Stesso file: <code>Examples/Basics/modules_include.malda</code> (helper: <code>Examples/Basics/helpers/greet_lib.malda</code>).</p>
+        <pre><code>include "helpers/greet_lib.malda";
+
+io.print(greet("MALDA"));
+io.print("2 + 3 = " + add(2, 3));
+io.print("Done.");</code></pre>
+        <p>Il <code>malda</code> ordinario è il comando sbagliato per i test. Esegui:</p>
+        <pre><code>malda test Examples/Testing/unit_test_basics.test.malda</code></pre>
+        <p>Quel file usa <code>assert</code>. Prima sezione del capitolo sui test: <a href="35-property-testing.html">35. Property testing</a>.</p>
+        <pre><code data-run="true" data-expect="unit_test_basics: all asserts passed">function add(a, b) {
+    return a + b;
+}
+
+function factorial(n) {
+    if (n <= 1) {
+        return 1;
+    }
+    return n * factorial(n - 1);
+}
+
+function bound(value, lo, hi) {
+    if (value < lo) {
+        return lo;
+    }
+    if (value > hi) {
+        return hi;
+    }
+    return value;
+}
+
+assert(add(2, 3) == 5, "add(2, 3) should be 5");
+assert(factorial(5) == 120, "factorial(5) should be 120");
+assert(bound(15, 0, 10) == 10, "bound should cap at hi");
+assert(bound(-3, 0, 10) == 0, "bound should floor at lo");
+assert(bound(7, 0, 10) == 7, "bound should pass through in-range values");
+
+io.print("unit_test_basics: all asserts passed");</code></pre>
+        <div class="info-box">
+            <strong>Scrivi questo:</strong> Tieni <code>function add(a, b)</code>. Aggiungi <code>assert(add(10, 5) == 15, "add(10, 5) should be 15");</code> e stampa <code>extra assert ok</code>. Ultima riga: <code>extra assert ok</code>.
+            <details>
+                <summary>Risposta</summary>
+                <pre><code data-run="true" data-expect="extra assert ok">function add(a, b) {
+    return a + b;
+}
+
+assert(add(10, 5) == 15, "add(10, 5) should be 15");
+io.print("extra assert ok");</code></pre>
+            </details>
+        </div>
+
+        <h2 id="prompt-eval">Lezione 18 — Eval offline di un prompt</h2>
+        <p><code>evalPrompt</code> esegue lo stesso percorso di validate di <code>await</code>, con un fixture al posto di un modello. Niente API key. Capitolo: <a href="10-prompts.html#evalPrompt">10. Prompt</a> dopo lo stop first-read (fixture / <code>evalPrompt</code>, non Mode B/C). Stesso file: <code>Examples/Basics/prompt_eval.malda</code>. Extra opzionale: <code>Examples/Prompts/eval_prompt.malda</code>.</p>
+        <pre><code data-run="true" data-expect="card: Ada\ncard expected failure">schema Card {
+    name: string;
+    email: string;
+}
+
+prompt extractCard(raw) -> Card {
+    system: "Extract a contact. JSON only.";
+    user: raw;
+}
+
+var instance = extractCard("Ada Lovelace — ada@example.com");
+
+var ok = evalPrompt(instance, dict { "name": "Ada", "email": "ada@example.com" });
+if (ok.ok) {
+    io.print("card: " + ok.data.name);
+} else {
+    io.print("card fail");
+}
+
+var bad = evalPrompt(instance, dict { "email": "nope" });
+if (!bad.ok) {
+    io.print("card expected failure");
+}</code></pre>
+        <div class="info-box">
+            <strong>Scrivi questo:</strong> Dichiara <code>schema Note { text: string; }</code> e <code>prompt makeNote(raw) -&gt; Note</code> con <code>user: raw</code>. Chiama <code>evalPrompt(makeNote("x"), dict { "text": "hi" })</code>. Se ha successo, stampa <code>note: hi</code>. Ultima riga: <code>note: hi</code>.
+            <details>
+                <summary>Risposta</summary>
+                <pre><code data-run="true" data-expect="note: hi">schema Note {
+    text: string;
+}
+
+prompt makeNote(raw) -> Note {
+    user: raw;
+}
+
+var checked = evalPrompt(makeNote("x"), dict { "text": "hi" });
+if (checked.ok) {
+    io.print("note: " + checked.data.text);
+} else {
+    io.print("note fail");
+}</code></pre>
             </details>
         </div>
 
         <h2 id="after-core">Dopo il percorso core</h2>
-        <p>Il corso core termina al gradebook. Poi scegli un tracciato — un file, una sezione — invece di scorrere la barra laterale:</p>
+        <p>Il corso core termina all'eval offline del prompt. Poi scegli un tracciato — un file, un riquadro first-read — invece di scorrere la barra laterale:</p>
         <ol>
             <li><strong>Algoritmi</strong> — <code>Examples/Algorithms/towers_of_hanoi.malda</code>. La ricorsione che già conosci, applicata a un puzzle. Poi il resto della lista Algorithms su <a href="../../docs/start-here.md">Start Here</a>.</li>
-            <li><strong>Due file</strong> — <code>Examples/Basics/modules_include.malda</code> unisce un file helper con <code>include</code>. Capitolo: <a href="01-introduction.html#modules">1.6 Composizione del sorgente</a>.</li>
-            <li><strong>Test</strong> — esegui <code>malda test Examples/Testing/unit_test_basics.test.malda</code> (il <code>malda</code> ordinario è il comando sbagliato). Capitolo: <a href="35-property-testing.html">35. Property testing</a>.</li>
             <li><strong>Poi un hub</strong> — fermati al riquadro first-read, poi torna:
                 <ul>
                     <li>Prompt: <a href="10-prompts.html#template">10.1</a> passo 1 (template, niente API key)</li>

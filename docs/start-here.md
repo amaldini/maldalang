@@ -44,32 +44,33 @@ The same core path in the Reference Manual is [`ReferenceManual/learn.html`](../
 13. `Examples/Basics/try_catch.malda`
 14. `Examples/Basics/prompt_template.malda`
 15. `Examples/Basics/gradebook.malda`
+16. `Examples/Basics/check_a_mistake.malda`
+17. `Examples/Basics/modules_include.malda` (then `malda test Examples/Testing/unit_test_basics.test.malda`)
+18. `Examples/Basics/prompt_eval.malda`
 
-After the gradebook, pick one next track (same list as Learn MALDA — After the core path):
+After offline prompt eval, pick one next track (same list as Learn MALDA — After the core path):
 
-- **Algorithms** — start at item 16 below
-- **Two files** — `Examples/Basics/modules_include.malda` (`include`; Reference Manual 1.6)
-- **Tests** — `malda test Examples/Testing/unit_test_basics.test.malda` (not ordinary run)
+- **Algorithms** — start at item 19 below
 - **Then one hub** — first-read only: [10.1](../ReferenceManual/10-prompts.html#template), [13.0](../ReferenceManual/13-built-in-functions.html#first-read), [18.0](../ReferenceManual/18-agent-orchestration.html#first-read), [22.0](../ReferenceManual/22-durable-workflows.html#first-read), [24](../ReferenceManual/24-web-ui-hub.html#first-read)
 
 Then the short **Algorithms** track (ideas, not an encyclopedia):
 
-16. `Examples/Algorithms/towers_of_hanoi.malda`
-17. `Examples/Algorithms/binary_search.malda`
-18. `Examples/Algorithms/merge_sort.malda`
-19. `Examples/Algorithms/bfs_dfs.malda` (hand-rolled, then the `graph` builtin)
-20. `Examples/Algorithms/knapsack.malda`
-21. `Examples/Algorithms/union_find.malda`
-22. `Examples/Algorithms/qlearn_grid.malda`
-23. `Examples/Algorithms/simulated_annealing.malda`
+19. `Examples/Algorithms/towers_of_hanoi.malda`
+20. `Examples/Algorithms/binary_search.malda`
+21. `Examples/Algorithms/merge_sort.malda`
+22. `Examples/Algorithms/bfs_dfs.malda` (hand-rolled, then the `graph` builtin)
+23. `Examples/Algorithms/knapsack.malda`
+24. `Examples/Algorithms/union_find.malda`
+25. `Examples/Algorithms/qlearn_grid.malda`
+26. `Examples/Algorithms/simulated_annealing.malda`
 
 Then the **AI theory** track (from-scratch models; no API key, no agent runtime):
 
-24. `Examples/AI_Theory/sarsa_cliff.malda` (SARSA vs Q-learning on a cliff)
-25. `Examples/AI_Theory/xor_neural_net.malda`
-26. `Examples/AI_Theory/svm_linear.malda`
-27. `Examples/AI_Theory/attention_is_all_you_need.malda`
-28. `Examples/AI_Theory/microgpt.malda`
+27. `Examples/AI_Theory/sarsa_cliff.malda` (SARSA vs Q-learning on a cliff)
+28. `Examples/AI_Theory/xor_neural_net.malda`
+29. `Examples/AI_Theory/svm_linear.malda`
+30. `Examples/AI_Theory/attention_is_all_you_need.malda`
+31. `Examples/AI_Theory/microgpt.malda`
 
 `Examples/Basics/first_look.malda` is optional if you already program (prompt + schema + `validate`, no API key). After the core path, `Examples/Basics/lambda.malda` is a useful extra before prompts.
 

@@ -19,6 +19,9 @@
         <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>31. Interop .NET</span></div>
         <h1>31. Interop .NET</h1>
         <p>MALDA offre il supporto nativo al caricamento e all'uso di librerie .NET esterne, e così consente di accedere al vasto ecosistema .NET: pacchetti NuGet, class library personalizzate e API del framework. I programmi MALDA possono riusare codice .NET esistente senza riscriverlo.</p>
+        <div class="info-box" id="first-read">
+            <strong>Stop alla prima lettura.</strong> Solo host: <code>dotnetNew</code> / <code>getDotNetType</code> per i tipi BCL già nel runtime. Corso: <a href="learn.html#after-core">Imparare MALDA — Dopo il percorso core</a>.
+        </div>
 
         <h2>31.1 Tipi già nel runtime</h2>
         <p>Non ti serve una DLL personalizzata per i tipi BCL di base. Passa il nome completamente qualificato a <code>dotnetNew</code> o <code>getDotNetType</code>. I tipi generici usano l'arietà con backtick: <code>List`1</code> significa <code>List&lt;T&gt;</code> con un parametro di tipo.</p>

@@ -198,6 +198,39 @@ public static class StarterCatalog
         },
         new StarterOption
         {
+            Id = "check-mistake",
+            Title = "16. Check a Mistake",
+            Description = "Diagnose a broken file with malda check, then run the fixed program.",
+            Track = "student",
+            RelativeExamplePath = @"Basics\check_a_mistake.malda",
+            LearningGoal = "Use malda check before you run, then fix fn and .length().",
+            EstimatedTime = "10 min",
+            Highlights = ["malda check", "function", ".length"]
+        },
+        new StarterOption
+        {
+            Id = "modules-include",
+            Title = "17. Two Files and a Test",
+            Description = "Splice a helper file with include, then prove a function with malda test.",
+            Track = "student",
+            RelativeExamplePath = @"Basics\modules_include.malda",
+            LearningGoal = "Split helpers across files and run assert-based tests.",
+            EstimatedTime = "12 min",
+            Highlights = ["include", "malda test", "assert"]
+        },
+        new StarterOption
+        {
+            Id = "prompt-eval",
+            Title = "18. Offline Prompt Eval",
+            Description = "Fixture-test a schema-bound prompt with evalPrompt. No API key.",
+            Track = "student",
+            RelativeExamplePath = @"Basics\prompt_eval.malda",
+            LearningGoal = "Check prompt JSON offline before a live model call.",
+            EstimatedTime = "10 min",
+            Highlights = ["evalPrompt", "schema", "fixture"]
+        },
+        new StarterOption
+        {
             Id = "prompt",
             Title = "First Prompt",
             Description = "Try MALDA prompts as a bridge from programming basics into AI-native workflows.",

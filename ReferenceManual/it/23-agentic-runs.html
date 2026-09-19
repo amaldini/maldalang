@@ -25,6 +25,9 @@
         <p>I capitoli <a href="10-prompts.html">10</a> e <a href="18-agent-orchestration.html">18</a> insegnano a <em>chiamare</em> un modello e a <em>orchestrare</em> agenti. Questo capitolo è lo strato delle cinture di sicurezza: come <strong>testare, registrare, limitare nel tempo, ricordare, restringere e diagnosticare</strong> quelle esecuzioni così restano economiche, ripetibili e abbastanza sicure per il lavoro quotidiano e per la CI.</p>
         <p>Una funzione ordinaria è deterministica: stesso input, stesso output. Un prompt no. Il modello può cambiare le parole, spendere token, chiamare tool, bloccarsi o inventare un path. Serve quindi un macchinario extra che la programmazione ordinaria non usava — non perché MALDA sia più difficile, ma perché l'<em>ospite</em> (il modello) è imprevedibile.</p>
         <p>Interprete e transpile C# coincidono sugli esempi offline di questo capitolo. JavaScript è solo host (<code>n/a</code>).</p>
+        <div class="info-box" id="first-read">
+            <strong>Stop alla prima lettura.</strong> Dopo la lezione 18 hai già <code>evalPrompt</code>. Questo capitolo è suite, journal e <code>malda eval</code> — non un secondo tutorial sui prompt. File più piccolo: <code>Examples/Prompts/eval_suite_offline.malda</code> (esegui con <code>malda eval</code>). Corso: <a href="learn.html#after-core">Imparare MALDA — Dopo il percorso core</a>.
+        </div>
 
         <h2 id="what-you-need">Cosa ti serve già</h2>
         <p>Leggi questo capitolo dopo aver scritto un <code>prompt</code> con uno <code>schema</code> e aver chiamato <code>evalPrompt</code> (senza API key). <em>Non</em> ti serve un modello live per imparare suite, journal, <code>context</code>, <code>policy</code>, <code>AgentError</code>, <code>stream</code> o <code>grounded.wrap</code>. Le chiamate live compaiono solo quando registri una cassetta o fai <code>await</code> di un prompt.</p>

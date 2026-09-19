@@ -1,0 +1,29 @@
+// prompt_eval.malda — offline evalPrompt on a schema-bound prompt (no API key)
+// Run: malda Examples/Basics/prompt_eval.malda
+//
+// evalPrompt runs the same validate path as await, with a fixture instead of a model.
+// Fuller file: Examples/Prompts/eval_prompt.malda
+
+schema Card {
+    name: string;
+    email: string;
+}
+
+prompt extractCard(raw) -> Card {
+    system: "Extract a contact. JSON only.";
+    user: raw;
+}
+
+var instance = extractCard("Ada Lovelace — ada@example.com");
+
+var ok = evalPrompt(instance, dict { "name": "Ada", "email": "ada@example.com" });
+if (ok.ok) {
+    io.print("card: " + ok.data.name);
+} else {
+    io.print("card fail");
+}
+
+var bad = evalPrompt(instance, dict { "email": "nope" });
+if (!bad.ok) {
+    io.print("card expected failure");
+}

@@ -25,6 +25,9 @@
         <p>Chapters <a href="10-prompts.html">10</a> and <a href="18-agent-orchestration.html">18</a> teach you to <em>call</em> a model and to <em>orchestrate</em> agents. This chapter is the seatbelt layer: how you <strong>test, record, time-limit, remember, restrict, and diagnose</strong> those runs so they stay cheap, repeatable, and safe enough for everyday work and CI.</p>
         <p>An ordinary function is deterministic: same input, same output. A prompt is not. The model can change its wording, spend tokens, call tools, hang, or invent a path. You therefore need extra machinery that ordinary programming never needed — not because MALDA is harder, but because the <em>guest</em> (the model) is unpredictable.</p>
         <p>Interpreter and C# transpile agree on the offline examples in this chapter. JavaScript is host-only (<code>n/a</code>).</p>
+        <div class="info-box" id="first-read">
+            <strong>First-read stop.</strong> After lesson 18 you already have <code>evalPrompt</code>. This chapter is suites, journals, and <code>malda eval</code> — not a second prompt tutorial. Smallest file: <code>Examples/Prompts/eval_suite_offline.malda</code> (run with <code>malda eval</code>). Course: <a href="learn.html#after-core">Learn MALDA — After the core path</a>.
+        </div>
 
         <h2 id="what-you-need">What you already need</h2>
         <p>Read this chapter after you can write a <code>prompt</code> with a <code>schema</code> and call <code>evalPrompt</code> (no API key). You do <em>not</em> need a live model to learn suites, journals, <code>context</code>, <code>policy</code>, <code>AgentError</code>, <code>stream</code>, or <code>grounded.wrap</code>. Live calls appear only when you record a cassette or you <code>await</code> a prompt.</p>

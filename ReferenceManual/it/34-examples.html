@@ -20,7 +20,7 @@
         <h1>34. Esempi</h1>
         <div class="info-box">
             <strong>Questo capitolo è un indice, non un secondo tutorial.</strong> I principianti dovrebbero usare <a href="learn.html">Imparare MALDA</a>. 34.0 è il sample caratteristico offline. 34.1 mappa le cartelle di <code>Examples/</code> sui capitoli. 34.2–34.5 sono un snippet per traccia (agente, game, UI, property). Lo scaffolding è <a href="#scaffold">34.6</a>. I listing completi stanno in <a href="../../Examples/README.md">Examples/README.md</a>.
-            Dopo il percorso core, segui <a href="learn.html#after-core">Imparare MALDA — Dopo il percorso core</a>.
+            Il corso core termina all'eval offline del prompt (<code>Examples/Basics/prompt_eval.malda</code>), non al gradebook. Dopo, segui <a href="learn.html#after-core">Imparare MALDA — Dopo il percorso core</a>.
         </div>
         <h2 id="first-look">34.0 First Look</h2>
         <p>Costrutti caratteristici, senza API key. Stesso programma di <code>Examples/Basics/first_look.malda</code> e del Quick Start in Indice. <code>-&gt; Review</code> lega il prompt allo schema. Senza <code>await</code> la chiamata è un template reso; <code>validate("Review", …)</code> è lo stesso controllo che <code>await</code> eseguirebbe sul JSON del modello. Sintassi dello schema: <a href="04-data-types.html#schema">4.6</a>.</p>
@@ -47,7 +47,7 @@ if (checked.ok) {
     io.print("schema failed: " + checked.error);
 }</code></pre>
         <h2 id="catalog">34.1 Catalogo Examples</h2>
-        <p>Il <code>metadata.json</code> di ogni cartella può etichettare <code>requires</code>: <code>offline</code> (default), <code>network</code>, <code>api-key</code> o <code>db</code>. Hello World è <code>Examples/Basics/hello_world.malda</code> — capitolo <a href="12-input-output.html">12</a>, non un secondo listing qui. Lo starter completo è <code>Examples/Basics/complete_starter_program.malda</code>. Il mini progetto del corso è <code>Examples/Basics/gradebook.malda</code>.</p>
+        <p>Il <code>metadata.json</code> di ogni cartella può etichettare <code>requires</code>: <code>offline</code> (default), <code>network</code>, <code>api-key</code> o <code>db</code>. Hello World è <code>Examples/Basics/hello_world.malda</code> — capitolo <a href="12-input-output.html">12</a>, non un secondo listing qui. Lo starter completo è <code>Examples/Basics/complete_starter_program.malda</code>. Il mini progetto del corso è <code>Examples/Basics/gradebook.malda</code>. Il corso core termina a <code>Examples/Basics/prompt_eval.malda</code>.</p>
         <table>
             <thead>
                 <tr><th>Cartella</th><th>Focus</th><th>Requires tipici</th><th>Capitolo</th></tr>
