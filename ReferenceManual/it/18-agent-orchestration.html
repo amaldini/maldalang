@@ -18,11 +18,16 @@
     <main>
         <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>18. Orchestrazione di agenti</span></div>
         <h1>18. Orchestrazione di agenti</h1>
-        <p>Questo capitolo è il runtime degli agenti: client LLM, conversazioni, tool, <code>Agent</code>, kind specializzati e team. I prompt e gli schema sono in <a href="10-prompts.html">10. Prompt</a>; cassette e <code>malda eval</code> sono in <a href="23-agentic-runs.html">23. Esecuzioni agentiche</a>.</p>
+        <p>Questo capitolo è il <strong>runtime degli agenti</strong>: client LLM, conversazioni, tool, <code>Agent</code>, <code>@Tool</code>, dashboard e team. I kind specializzati e Ralph sono <a href="#agent-kits">kit di agenti</a> — bundle di tool sopra quel runtime, non un secondo linguaggio. I prompt e gli schema sono in <a href="10-prompts.html">10. Prompt</a>; cassette e <code>malda eval</code> sono in <a href="23-agentic-runs.html">23. Esecuzioni agentiche</a>.</p>
         <p>Agenti, client LLM e tool calling girano sull'interprete e sul transpile C#. Non sono disponibili sul backend JavaScript — tieni gli agenti sull'host e chiamali via HTTP dal codice nel browser. Vedi la <a href="../../docs/spec/backend-capability-matrix.md">matrice delle capacità dei backend</a>.</p>
+        <h2 id="chapter-map">18.0 Mappa del capitolo</h2>
+        <ul>
+            <li><strong>Runtime</strong> — <a href="#disclaimer">18.1</a> rischi · <a href="#llm-client">18.2</a>–<a href="#conversation">18.5</a> client · <a href="#tool-system">18.6</a> tool · <a href="#agent-class">18.7</a> <code>Agent</code> · <a href="#custom-tools">18.8</a> <code>@Tool</code> · <a href="#agent-dashboard">18.15</a> dashboard · <a href="#multi-agent-orchestration">18.16</a>–<a href="#using-agents-with-actors">18.18</a> team e actor</li>
+            <li><strong>Kit di agenti</strong> — <a href="#agent-kits">18.9–18.14</a> <code>CodingAgent</code> / <code>GitAgent</code> / <code>HumanAgent</code> / <code>DevAgent</code> / <code>MALDACodingAgent</code> · <a href="#ralph-wiggum">18.19</a> Ralph Wiggum. Stessi file: <code>Examples/Agents/</code>, <code>Examples/RalphWiggum/</code></li>
+        </ul>
         
         <div class="warning-box">
-            <h2>18.1 ⚠️ Avvertenza critica su sicurezza e rischi</h2>
+            <h2 id="disclaimer">18.1 ⚠️ Avvertenza critica su sicurezza e rischi</h2>
             <p><strong>I sistemi di agenti autonomi con accesso ai tool comportano rischi significativi di sicurezza, safety e operatività.</strong> Prima di mettere in produzione agenti con tool, devi comprendere e mitigare questi rischi.</p>
             
             <h3>Rischi fondamentali</h3>
@@ -122,7 +127,7 @@
             <p><strong>Usando le funzionalità di orchestrazione di agenti di MALDA, riconosci di comprendere questi rischi e di essere l'unico responsabile delle azioni compiute dagli agenti che crei e metti in produzione.</strong> Gli sviluppatori di MALDA e di questo manuale di riferimento non forniscono alcuna garanzia sulla safety, sulla sicurezza o sull'affidabilità dei sistemi di agenti autonomi.</p>
         </div>
         
-        <h2>18.2 LLM Client</h2>
+        <h2 id="llm-client">18.2 LLM Client</h2>
         <p>La classe <code>LLMClient</code> offre un'interfaccia verso API LLM compatibili con OpenAI (OpenAI, OpenRouter, LMStudio, OLLAMA, ecc.).</p>
         <h3>Costruttore</h3>
         <pre><code>var client = new LLMClient(apiUrl, apiKey, model);</code></pre>
@@ -181,7 +186,7 @@ var conversation = new Conversation(client, "You are a helpful assistant.");
 conversation.addUserMessage("Explain quantum computing.");
 var response = conversation.send();
 print(response.content);</code></pre>
-        <h2>18.5 Gestione delle conversazioni</h2>
+        <h2 id="conversation">18.5 Gestione delle conversazioni</h2>
         <p>La classe <code>Conversation</code> gestisce conversazioni multi-turno con gli LLM, inclusa la gestione automatica delle tool call.</p>
         <h3>Costruttore</h3>
         <pre><code>var conversation = new Conversation(client, systemPrompt);</code></pre>
@@ -238,7 +243,7 @@ print(response.content);</code></pre>
         <pre><code>enableAgentVerboseLogging();
 setAgentStatusBanner("Nightly refactor run");
 setAgentVerbosePhase("planning");</code></pre>
-        <h2>18.6 Sistema di tool</h2>
+        <h2 id="tool-system">18.6 Sistema di tool</h2>
         <p>I tool consentono agli LLM di chiamare funzioni durante le conversazioni. Si definiscono con la classe <code>Tool</code> e seguono il formato di function calling di OpenAI.</p>
         <h3>Funzioni di creazione dei tool built-in</h3>
         <ul>
@@ -298,7 +303,7 @@ conversation.addTool(globTool);
 
 conversation.addUserMessage("Read example.txt and summarize it.");
 var response = conversation.send();  // LLM will call read_file tool automatically</code></pre>
-        <h2>18.7 Classe Agent</h2>
+        <h2 id="agent-class">18.7 Classe Agent</h2>
         <p>La classe <code>Agent</code> rappresenta un agente autonomo con un ruolo e delle istruzioni specifici.</p>
         <h3>Costruttore</h3>
         <pre><code>// With default local LLM (auto-download from Hugging Face)
@@ -336,7 +341,7 @@ agent.addTool(createWriteFileTool("."));
 
 var response = agent.think("Read example.txt and add a comment to the add function.");
 print(response.content);</code></pre>
-        <h2>18.8 Tool personalizzati con il decoratore @Tool</h2>
+        <h2 id="custom-tools">18.8 Tool personalizzati con il decoratore @Tool</h2>
         <div class="info-box">
             <strong>Default di governance:</strong> Valida i payload dei tool / a forma di LLM con uno <code>schema</code> e <code>validate()</code> prima degli effetti collaterali. Marca gli helper di normalize/derive con <code>@pure()</code> e gli handler impuri con <code>@effects(...)</code>. Golden offline: <code>Examples/Agents/agent_governance_golden.malda</code> (vedi anche <a href="09-functions.html">9.7 Decoratori</a>).
         </div>
@@ -421,7 +426,9 @@ io.deleteFile("_rm_cap_agent_note.txt");</code></pre>
             </tbody>
         </table>
         <p>Il privilegio minimo parte da <code>new Agent</code> e dai tool che aggiungi. Usa un kind specializzato quando vuoi quel bundle, non quando vuoi una sandbox. Pattern host-mint: <a href="#capability-tokens-for-tools">token di capability per i tool sui file</a> e <a href="12-input-output.html#capability-tokens">12.6</a>. Starter offline: <code>malda new agent</code>.</p>
-        <h2>18.9 CodingAgent</h2>
+        <h2 id="agent-kits">Kit di agenti</h2>
+        <p>Le sezioni sotto sono <strong>bundle di tool</strong> specializzati e un loop PRD, non sintassi extra del runtime. Stanno su <code>Agent</code> + tool (<a href="#tool-system">18.6</a>–<a href="#custom-tools">18.8</a>). Dashboard e team (<a href="#agent-dashboard">18.15</a>–<a href="#using-agents-with-actors">18.18</a>) tornano al runtime. Ralph è <a href="#ralph-wiggum">18.19</a>.</p>
+        <h2 id="coding-agent">18.9 CodingAgent</h2>
         <p>La classe <code>CodingAgent</code> è un agente specializzato per i task di coding che include automaticamente tutti i tool di operazione sui file.</p>
         <h3>Tool inclusi</h3>
         <p>CodingAgent include automaticamente i seguenti tool di operazione sui file e il tool di esecuzione comandi:</p>
@@ -723,7 +730,7 @@ var response = maldaAgent.think("List all MALDA files and improve error handling
             <li>Usa <code>GitAgent</code> quando ti servono solo le operazioni git</li>
             <li>Nessuno di questi kind è una sandbox di capability. Scegli un kind per l'elenco di tool; confina con <code>workingDirectory</code>, <code>DevAgent</code> <code>readOnly</code>, oppure <code>new Agent</code> + <code>cap.*</code> — <a href="#specialized-kinds-are-not-sandboxes">i kind specializzati non sono sandbox</a>.</li>
         </ul>
-        <h2>18.15 Dashboard degli agenti</h2>
+        <h2 id="agent-dashboard">18.15 Dashboard degli agenti</h2>
         <p>Gli agenti MALDA segnalano automaticamente le proprie attività a una dashboard centrale senza richiedere alcuna modifica agli script MALDA. Questo abilita monitoraggio e osservabilità su tutti gli agenti, anche quando girano in eseguibili o processi diversi.</p>
         <h3>Panoramica</h3>
         <p>La funzionalità dashboard degli agenti offre:</p>

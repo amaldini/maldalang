@@ -37,6 +37,15 @@
     --book-running-title: "MALDA Reference Manual";
 }
 
+.screen-only,
+.billiards-play-frame {
+    display: none !important;
+}
+
+.print-only-note {
+    display: block !important;
+}
+
 /* ------------------------------------------------- Running heads / folios */
 
 @page {

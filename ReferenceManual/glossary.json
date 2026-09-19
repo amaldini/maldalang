@@ -454,9 +454,9 @@
       "id": "game-three",
       "term": "game.* and three.*",
       "aliases": ["game", "three", "three.js", "@shader", "GLSL"],
-      "href": "27-browser-javascript-backend.html",
-      "also": ["27-browser-javascript-backend.html#three-scene-api", "27-browser-javascript-backend.html#shader-kernels"],
-      "summary": "Browser games kit (JS backend): game.* , three.* scene API, and @shader() to GLSL."
+      "href": "27-browser-javascript-backend.html#game-canvas",
+      "also": ["24-web-ui-hub.html#browser-games", "27-browser-javascript-backend.html#three-scene-api", "27-browser-javascript-backend.html#shader-kernels", "34-examples.html#game", "38-appendix-gpu-billiards.html"],
+      "summary": "Browser games kit (JS backend): game.* , three.* scene API, and @shader() to GLSL. Preview with malda play."
     },
     {
       "id": "fullstack",

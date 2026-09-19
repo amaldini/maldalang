@@ -1370,13 +1370,19 @@
   {
     "file": "18-agent-orchestration.html",
     "level": 2,
-    "id": "",
+    "id": "chapter-map",
+    "title": "18.0 Chapter map"
+  },
+  {
+    "file": "18-agent-orchestration.html",
+    "level": 2,
+    "id": "disclaimer",
     "title": "18.1 ⚠️ Critical Security and Risk Disclaimer"
   },
   {
     "file": "18-agent-orchestration.html",
     "level": 2,
-    "id": "",
+    "id": "llm-client",
     "title": "18.2 LLM Client"
   },
   {
@@ -1400,25 +1406,25 @@
   {
     "file": "18-agent-orchestration.html",
     "level": 2,
-    "id": "",
+    "id": "conversation",
     "title": "18.5 Conversation Management"
   },
   {
     "file": "18-agent-orchestration.html",
     "level": 2,
-    "id": "",
+    "id": "tool-system",
     "title": "18.6 Tool System"
   },
   {
     "file": "18-agent-orchestration.html",
     "level": 2,
-    "id": "",
+    "id": "agent-class",
     "title": "18.7 Agent Class"
   },
   {
     "file": "18-agent-orchestration.html",
     "level": 2,
-    "id": "",
+    "id": "custom-tools",
     "title": "18.8 Custom Tools with @Tool Decorator"
   },
   {
@@ -1436,7 +1442,13 @@
   {
     "file": "18-agent-orchestration.html",
     "level": 2,
-    "id": "",
+    "id": "agent-kits",
+    "title": "Agent kits"
+  },
+  {
+    "file": "18-agent-orchestration.html",
+    "level": 2,
+    "id": "coding-agent",
     "title": "18.9 CodingAgent"
   },
   {
@@ -1472,7 +1484,7 @@
   {
     "file": "18-agent-orchestration.html",
     "level": 2,
-    "id": "",
+    "id": "agent-dashboard",
     "title": "18.15 Agent Dashboard"
   },
   {
@@ -2130,6 +2142,12 @@
     "title": "24.4 Runtime boundary reminder"
   },
   {
+    "file": "24-web-ui-hub.html",
+    "level": 2,
+    "id": "browser-games",
+    "title": "24.5 Browser games"
+  },
+  {
     "file": "25-web-ui.html",
     "level": 2,
     "id": "",
@@ -2456,7 +2474,7 @@
   {
     "file": "27-browser-javascript-backend.html",
     "level": 2,
-    "id": "",
+    "id": "chapter-map",
     "title": "27.1 Chapter Map"
   },
   {
@@ -2510,7 +2528,7 @@
   {
     "file": "27-browser-javascript-backend.html",
     "level": 2,
-    "id": "",
+    "id": "game-canvas",
     "title": "27.9 Game Canvas API"
   },
   {

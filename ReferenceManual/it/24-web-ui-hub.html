@@ -56,9 +56,15 @@
             </tr>
             <tr>
                 <td><strong>JavaScript nel browser</strong></td>
-                <td>UI che gira nel browser da MALDA transpile in JavaScript (giochi, app DOM, frontend ibridi)</td>
-                <td><code>dom.*</code>, template mode, <code>@client()</code>, API canvas/game</td>
+                <td>UI che gira nel browser da MALDA transpile in JavaScript (app DOM, frontend ibridi)</td>
+                <td><code>dom.*</code>, template mode, <code>@client()</code></td>
                 <td><a href="27-browser-javascript-backend.html">27. Backend UI JavaScript nel browser</a></td>
+            </tr>
+            <tr>
+                <td><strong>Giochi nel browser</strong></td>
+                <td>Canvas / 3D / kernel GPU. Solo JS; anteprima con <code>malda play</code></td>
+                <td><code>game.*</code>, <code>three.*</code>, <code>@shader()</code></td>
+                <td><a href="27-browser-javascript-backend.html#game-canvas">27.9–27.10</a>, <a href="34-examples.html#game">34.3</a>, <a href="38-appendix-gpu-billiards.html">38</a></td>
             </tr>
         </table>
 
@@ -87,9 +93,16 @@
 
         <h3>Scegli JavaScript nel browser quando…</h3>
         <ul>
-            <li>La UI deve girare lato client (giochi canvas, interazione DOM ricca, bundle quasi offline).</li>
+            <li>La UI deve girare lato client (interazione DOM ricca, bundle quasi offline).</li>
             <li>Usi uno stack ibrido: API backend MALDA + bundle frontend MALDA o JS.</li>
             <li>Ti serve lo split <code>@client()</code> / <code>@shared()</code> da un unico file sorgente <code>.malda</code>.</li>
+        </ul>
+
+        <h3>Scegli i giochi nel browser quando…</h3>
+        <ul>
+            <li>Ti serve un loop canvas, tastiera/gamepad, <code>three.*</code> o kernel GLSL <code>@shader()</code>.</li>
+            <li>L'host è <code>malda play</code> (o <code>malda compile --mode js</code>), non l'interprete.</li>
+            <li>Vuoi l'appendice biliardo GPU giocabile come smoke test — <a href="38-appendix-gpu-billiards.html">38</a>.</li>
         </ul>
 
         <h2>24.3 Come si relazionano i modelli</h2>
@@ -119,12 +132,19 @@
         </ul>
         <p>Vedi <a href="02-tools.html">2. Strumenti e toolchain</a> (Runtime modes at a glance) per i trade-off tra interprete, transpile e JavaScript.</p>
 
+        <h2 id="browser-games">24.5 Giochi nel browser</h2>
+        <div class="hub-path-card">
+            <h3>Superficie solo JS</h3>
+            <p><code>game.*</code>, <code>three.*</code> e <code>@shader()</code> stanno in <a href="27-browser-javascript-backend.html#game-canvas">27.9–27.10</a>, non nei modelli server di questo hub. Parti da <code>malda new game</code> poi <code>malda play app.malda</code>. Snippet di catalogo: <a href="34-examples.html#game">34.3</a>. Cartella: <code>Examples/Games/</code>. Il capitolo 38 è uno showcase giocabile, non il contratto del linguaggio.</p>
+        </div>
+
         <div class="see-also">
             <h3>Vedi anche</h3>
             <ul>
                 <li><a href="25-web-ui.html">25. Componenti server Web UI</a> - Frammenti HTML e alberi <code>ui.*</code></li>
                 <li><a href="26-http-server-html-ui.html">26. HttpServer e generazione UI HTML</a> - @PAGE, @AIPAGE, cache HTML</li>
-                <li><a href="27-browser-javascript-backend.html">27. Backend UI JavaScript nel browser</a> - Transpile JS e dom.*</li>
+                <li><a href="27-browser-javascript-backend.html#game-canvas">27.9–27.10</a> — <code>game.*</code> / <code>three.*</code> / <code>@shader()</code></li>
+                <li><a href="27-browser-javascript-backend.html">27. Backend UI JavaScript nel browser</a> - Transpile JS e <code>dom.*</code></li>
                 <li><a href="30-full-stack-development.html">30. Sviluppo full-stack con MALDA</a> - Architettura end-to-end</li>
             </ul>
         </div>

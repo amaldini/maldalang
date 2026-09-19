@@ -1072,11 +1072,14 @@ const FALLBACK_GLOSSARY_EN = [
             "@shader",
             "GLSL"
         ],
-        "href": "27-browser-javascript-backend.html",
-        "summary": "Browser games kit (JS backend): game.* , three.* scene API, and @shader() to GLSL.",
+        "href": "27-browser-javascript-backend.html#game-canvas",
+        "summary": "Browser games kit (JS backend): game.* , three.* scene API, and @shader() to GLSL. Preview with malda play.",
         "also": [
+            "24-web-ui-hub.html#browser-games",
             "27-browser-javascript-backend.html#three-scene-api",
-            "27-browser-javascript-backend.html#shader-kernels"
+            "27-browser-javascript-backend.html#shader-kernels",
+            "34-examples.html#game",
+            "38-appendix-gpu-billiards.html"
         ]
     },
     {
@@ -2028,11 +2031,14 @@ const FALLBACK_GLOSSARY_IT = [
             "@shader",
             "GLSL"
         ],
-        "href": "27-browser-javascript-backend.html",
-        "summary": "Kit giochi nel browser (backend JS): game.*, API scene three.* e @shader() verso GLSL.",
+        "href": "27-browser-javascript-backend.html#game-canvas",
+        "summary": "Kit giochi nel browser (backend JS): game.*, API scene three.* e @shader() verso GLSL. Anteprima con malda play.",
         "also": [
+            "24-web-ui-hub.html#browser-games",
             "27-browser-javascript-backend.html#three-scene-api",
-            "27-browser-javascript-backend.html#shader-kernels"
+            "27-browser-javascript-backend.html#shader-kernels",
+            "34-examples.html#game",
+            "38-appendix-gpu-billiards.html"
         ]
     },
     {

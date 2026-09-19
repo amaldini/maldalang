@@ -50,7 +50,8 @@ nav,
 .breadcrumbs,
 .nav-footer,
 pre::before,
-.billiards-play-frame {
+.billiards-play-frame,
+.screen-only {
     display: none !important;
 }
 
