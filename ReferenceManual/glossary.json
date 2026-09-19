@@ -570,6 +570,14 @@
       "aliases": ["agentError", "SchemaMismatch", "ToolDenied", "Timeout"],
       "href": "23-agentic-runs.html",
       "summary": "Built-in sum type attached beside the string error on result objects. Throws still throw."
+    },
+    {
+      "id": "cli-index",
+      "term": "CLI command index",
+      "aliases": ["malda new", "malda play", "malda doctor", "malda help", "CLI"],
+      "href": "02-tools.html#cli-index",
+      "also": ["33-personal-assistant.html", "27-browser-javascript-backend.html"],
+      "summary": "Every malda verb with a pointer to the chapter that documents it. malda play serves .malda-play/, not the source folder."
     }
   ]
 }

@@ -20,6 +20,7 @@
 
         <p>Durable workflows let you run long-lived, restart-safe business processes with persisted state, replay-safe step execution, and external control points such as approvals and signals.</p>
         <p>For short fire-and-forget work (send email, call a webhook), prefer the lightweight job queue in <a href="#background-jobs">22.11</a>. Jobs use <code>./.malda/jobs.db</code> and are not workflow instances.</p>
+        <p>Durable workflows and the job queue are host-only (interpreter and C# transpile). JavaScript does not run <code>workflow</code> / <code>step</code> or <code>enqueueJob</code>. See the <a href="../docs/spec/backend-capability-matrix.md">backend capability matrix</a>.</p>
 
         <h2>22.1 Core Concepts</h2>
         <ul>

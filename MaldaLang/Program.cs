@@ -180,7 +180,16 @@ class Program
         {
             var firstArg = args[0].ToLower();
             
-            if (firstArg == "-c" || firstArg == "--compile" || firstArg == "-e" || firstArg == "--eval" || firstArg == "--check")
+            if (firstArg == "--eval")
+            {
+                Console.Error.WriteLine("'malda --eval' was removed because it collided with 'malda eval' (suite / case).");
+                Console.Error.WriteLine("  Execute a snippet:  malda -e \"<code>\"   or   malda --exec \"<code>\"");
+                Console.Error.WriteLine("  Run eval suites:    malda eval <file.malda>");
+                SystemEnvironment.Exit(2);
+                return;
+            }
+
+            if (firstArg == "-c" || firstArg == "--compile" || firstArg == "-e" || firstArg == "--exec" || firstArg == "--check")
             {
                 // Compile, execute, or validate code directly from command line
                 if (args.Length < 2)
@@ -4000,7 +4009,7 @@ class Program
         Console.WriteLine("Usage:");
         Console.WriteLine("  malda <file.malda> [--strict-types] [--profile ...]");
         Console.WriteLine("  malda <command> [options]");
-        Console.WriteLine("  malda -e \"<code>\" [--strict-types] | malda -c \"<code>\" | malda --check \"<code>\"");
+        Console.WriteLine("  malda -e \"<code>\" | malda --exec \"<code>\" [--strict-types] | malda -c \"<code>\" | malda --check \"<code>\"");
         Console.WriteLine("  --strict-types                On run: reject unknown hints, non-exhaustive match, @pure/bounds. On compile --mode transpile: default (refuse emit on Errors). Escape: --lenient-types");
         Console.WriteLine("  echo \"<code>\" | malda");
         Console.WriteLine();
@@ -4009,7 +4018,7 @@ class Program
         Console.WriteLine("  onboard     Create ~/.malda, starter config, optional model downloads");
         Console.WriteLine("  status      Show MALDA home, config, provider, and cron status");
         Console.WriteLine("  new         Scaffold a webapi, fullstack, or game project");
-        Console.WriteLine("  play        Compile a .malda file to JavaScript and serve a local canvas/JS preview");
+        Console.WriteLine("  play        Compile a .malda file to JavaScript and serve a local canvas/JS preview (live reload)");
         Console.WriteLine();
         Console.WriteLine("Build, test, and ship:");
         Console.WriteLine("  check       Diagnose a .malda file without executing (add --json / --fix)");

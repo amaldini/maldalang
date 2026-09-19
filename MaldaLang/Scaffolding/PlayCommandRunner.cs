@@ -6,6 +6,7 @@ namespace MaldaLang.Scaffolding;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Net;
 using System.Runtime.InteropServices;
@@ -17,6 +18,10 @@ using MaldaLang.Cli;
 
 public sealed class PlayCommandRunner
 {
+    internal const string LiveReloadMarker = "<!-- malda-play-reload -->";
+    internal const string GenerationPath = "/__malda_play/generation";
+    private const int WatchDebounceMs = 250;
+
     private readonly Func<string, string, JavaScriptCompileResult> _compile;
 
     public PlayCommandRunner(Func<string, string, JavaScriptCompileResult>? compile = null)
@@ -53,10 +58,20 @@ public sealed class PlayCommandRunner
             return 1;
         }
 
+        IDisposable? watch = null;
         using (server)
         {
             output.WriteLine($"Serving {prepared.PreviewDirectory}");
             output.WriteLine($"Open {server.Url}");
+            if (options.Watch)
+            {
+                watch = TryStartWatch(prepared, server, output, error);
+                if (watch != null)
+                {
+                    output.WriteLine("Watching source, index.html, and assets/ for changes.");
+                }
+            }
+
             output.WriteLine("Press Ctrl+C to stop.");
             if (options.OpenBrowser)
             {
@@ -66,6 +81,7 @@ public sealed class PlayCommandRunner
             WaitUntilCancelled(cancellationToken);
         }
 
+        watch?.Dispose();
         return 0;
     }
 
@@ -125,17 +141,11 @@ public sealed class PlayCommandRunner
         }
 
         var jsOutputPath = Path.Combine(previewDirectory, stem + ".js");
-        output.WriteLine($"Compiling {sourcePath}...");
-        var compileResult = _compile(sourcePath, jsOutputPath);
-        if (!compileResult.Success)
+        var compiledJs = CompilePreview(sourcePath, jsOutputPath, sourceDirectory, previewDirectory, output, error);
+        if (compiledJs == null)
         {
-            error.WriteLine($"Compilation failed: {compileResult.ErrorMessage}");
             return null;
         }
-
-        var compiledJs = compileResult.OutputPath ?? jsOutputPath;
-        CopyAssetsIfPresent(sourceDirectory, previewDirectory);
-        OverlayCustomHostHtml(sourceDirectory, previewDirectory, Path.GetFileName(compiledJs));
 
         var hostHtmlPath = Path.Combine(previewDirectory, "index.html");
         if (!File.Exists(hostHtmlPath) || !File.Exists(Path.Combine(previewDirectory, "malda-js-runtime.js")))
@@ -152,6 +162,42 @@ public sealed class PlayCommandRunner
             JavaScriptPath = compiledJs,
             HostHtmlPath = hostHtmlPath
         };
+    }
+
+    public bool Rebuild(PlayPrepareResult prepared, TextWriter output, TextWriter error)
+    {
+        if (!File.Exists(prepared.SourcePath))
+        {
+            error.WriteLine($"Reload skipped: source disappeared ({prepared.SourcePath}).");
+            return false;
+        }
+
+        string sourceText;
+        try
+        {
+            sourceText = File.ReadAllText(prepared.SourcePath);
+        }
+        catch (Exception ex)
+        {
+            error.WriteLine($"Reload skipped: could not read source ({ex.Message}).");
+            return false;
+        }
+
+        if (LooksLikeFullStackSource(sourceText))
+        {
+            error.WriteLine("Reload skipped: file is now fullstack (@client plus @server or a route).");
+            error.WriteLine($"  malda compile {prepared.SourcePath} --mode fullstack -o dist");
+            return false;
+        }
+
+        var sourceDirectory = Path.GetDirectoryName(prepared.SourcePath) ?? Directory.GetCurrentDirectory();
+        return CompilePreview(
+            prepared.SourcePath,
+            prepared.JavaScriptPath,
+            sourceDirectory,
+            prepared.PreviewDirectory,
+            output,
+            error) != null;
     }
 
     public PlayPreviewServer? StartServer(
@@ -214,6 +260,206 @@ public sealed class PlayCommandRunner
         {
             output.WriteLine($"Could not open a browser ({ex.Message}). Open {url} manually.");
         }
+    }
+
+    private string? CompilePreview(
+        string sourcePath,
+        string jsOutputPath,
+        string sourceDirectory,
+        string previewDirectory,
+        TextWriter output,
+        TextWriter error)
+    {
+        output.WriteLine($"Compiling {sourcePath}...");
+        var compileResult = _compile(sourcePath, jsOutputPath);
+        if (!compileResult.Success)
+        {
+            error.WriteLine($"Compilation failed: {compileResult.ErrorMessage}");
+            return null;
+        }
+
+        var compiledJs = compileResult.OutputPath ?? jsOutputPath;
+        CopyAssetsIfPresent(sourceDirectory, previewDirectory);
+        OverlayCustomHostHtml(sourceDirectory, previewDirectory, Path.GetFileName(compiledJs));
+        InjectLiveReloadScript(Path.Combine(previewDirectory, "index.html"));
+        return compiledJs;
+    }
+
+    internal static void InjectLiveReloadScript(string hostHtmlPath)
+    {
+        if (!File.Exists(hostHtmlPath))
+        {
+            return;
+        }
+
+        var html = File.ReadAllText(hostHtmlPath);
+        if (html.Contains(LiveReloadMarker, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        var snippet =
+            LiveReloadMarker +
+            "\n<script>\n(function(){var g=null;function poll(){fetch(\"" +
+            GenerationPath +
+            "\",{cache:\"no-store\"}).then(function(r){return r.ok?r.text():Promise.reject();}).then(function(t){if(g===null)g=t;else if(t!==g)location.reload();}).catch(function(){});}setInterval(poll,400);})();\n</script>\n";
+
+        var bodyClose = html.LastIndexOf("</body>", StringComparison.OrdinalIgnoreCase);
+        html = bodyClose >= 0 ? html.Insert(bodyClose, snippet) : html + snippet;
+        File.WriteAllText(hostHtmlPath, html);
+    }
+
+    private IDisposable? TryStartWatch(
+        PlayPrepareResult prepared,
+        PlayPreviewServer server,
+        TextWriter output,
+        TextWriter error)
+    {
+        var sourceDirectory = Path.GetDirectoryName(prepared.SourcePath);
+        if (string.IsNullOrWhiteSpace(sourceDirectory) || !Directory.Exists(sourceDirectory))
+        {
+            error.WriteLine("Watch disabled: could not resolve the source directory.");
+            return null;
+        }
+
+        try
+        {
+            var watcher = new FileSystemWatcher(sourceDirectory)
+            {
+                IncludeSubdirectories = true,
+                NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.LastWrite | NotifyFilters.Size,
+                Filter = "*.*"
+            };
+
+            var gate = new object();
+            var rebuildLock = new object();
+            Timer? debounce = null;
+            void Schedule()
+            {
+                lock (gate)
+                {
+                    debounce?.Change(WatchDebounceMs, Timeout.Infinite);
+                    debounce ??= new Timer(_ =>
+                    {
+                        lock (rebuildLock)
+                        {
+                            try
+                            {
+                                if (Rebuild(prepared, output, error))
+                                {
+                                    server.BumpGeneration();
+                                    output.WriteLine("Reloaded preview.");
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                error.WriteLine($"Reload failed: {ex.Message}");
+                            }
+                        }
+                    }, null, WatchDebounceMs, Timeout.Infinite);
+                }
+            }
+
+            FileSystemEventHandler onChange = (_, e) =>
+            {
+                if (IsPlayWatchTarget(e.FullPath, prepared))
+                {
+                    Schedule();
+                }
+            };
+            RenamedEventHandler onRename = (_, e) =>
+            {
+                if (IsPlayWatchTarget(e.FullPath, prepared) || IsPlayWatchTarget(e.OldFullPath, prepared))
+                {
+                    Schedule();
+                }
+            };
+
+            watcher.Changed += onChange;
+            watcher.Created += onChange;
+            watcher.Deleted += onChange;
+            watcher.Renamed += onRename;
+            watcher.EnableRaisingEvents = true;
+            return new PlayWatchSession(watcher, () =>
+            {
+                lock (gate)
+                {
+                    debounce?.Dispose();
+                    debounce = null;
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            error.WriteLine($"Watch disabled: {ex.Message}");
+            return null;
+        }
+    }
+
+    internal static bool IsPlayWatchTarget(string path, PlayPrepareResult prepared)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return false;
+        }
+
+        string full;
+        try
+        {
+            full = Path.GetFullPath(path);
+        }
+        catch
+        {
+            return false;
+        }
+
+        if (IsUnderDirectory(full, prepared.PreviewDirectory))
+        {
+            return false;
+        }
+
+        if (string.Equals(full, prepared.SourcePath, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        var sourceDirectory = Path.GetDirectoryName(prepared.SourcePath);
+        if (string.IsNullOrWhiteSpace(sourceDirectory))
+        {
+            return false;
+        }
+
+        sourceDirectory = Path.GetFullPath(sourceDirectory);
+        if (string.Equals(Path.GetFileName(full), "index.html", StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(Path.GetDirectoryName(full), sourceDirectory, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (full.EndsWith(".malda", StringComparison.OrdinalIgnoreCase) &&
+            IsUnderDirectory(full, sourceDirectory))
+        {
+            return true;
+        }
+
+        foreach (var assetsName in new[] { "assets", "Assets" })
+        {
+            if (IsUnderDirectory(full, Path.Combine(sourceDirectory, assetsName)))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsUnderDirectory(string fullPath, string directory)
+    {
+        var root = Path.GetFullPath(directory);
+        var prefix = root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                     + Path.DirectorySeparatorChar;
+        return string.Equals(fullPath, root, StringComparison.OrdinalIgnoreCase) ||
+               fullPath.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool LooksLikeFullStackSource(string source)
@@ -351,6 +597,7 @@ public sealed class PlayPreviewServer : IDisposable
     private readonly string _root;
     private readonly CancellationTokenSource _cts = new();
     private readonly Task _loop;
+    private int _generation = 1;
 
     private PlayPreviewServer(HttpListener listener, string root, string url)
     {
@@ -361,6 +608,10 @@ public sealed class PlayPreviewServer : IDisposable
     }
 
     public string Url { get; }
+
+    public int Generation => Volatile.Read(ref _generation);
+
+    public void BumpGeneration() => Interlocked.Increment(ref _generation);
 
     public static bool TryStart(string root, string bindHost, int port, out PlayPreviewServer? server, out string? error)
     {
@@ -456,6 +707,23 @@ public sealed class PlayPreviewServer : IDisposable
         try
         {
             var requestPath = context.Request.Url?.AbsolutePath ?? "/";
+            if (string.Equals(requestPath.TrimEnd('/'), PlayCommandRunner.GenerationPath, StringComparison.OrdinalIgnoreCase))
+            {
+                var text = Generation.ToString(CultureInfo.InvariantCulture);
+                var payload = Encoding.UTF8.GetBytes(text);
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "text/plain; charset=utf-8";
+                context.Response.Headers["Cache-Control"] = "no-store";
+                if (!string.Equals(context.Request.HttpMethod, "HEAD", StringComparison.OrdinalIgnoreCase))
+                {
+                    context.Response.ContentLength64 = payload.Length;
+                    context.Response.OutputStream.Write(payload, 0, payload.Length);
+                }
+
+                context.Response.Close();
+                return;
+            }
+
             if (string.IsNullOrEmpty(requestPath) || requestPath == "/")
             {
                 requestPath = "/index.html";
@@ -515,5 +783,31 @@ public sealed class PlayPreviewServer : IDisposable
         response.ContentLength64 = bytes.Length;
         response.OutputStream.Write(bytes, 0, bytes.Length);
         response.Close();
+    }
+}
+
+internal sealed class PlayWatchSession : IDisposable
+{
+    private readonly FileSystemWatcher _watcher;
+    private readonly Action _onDispose;
+    private bool _disposed;
+
+    public PlayWatchSession(FileSystemWatcher watcher, Action onDispose)
+    {
+        _watcher = watcher;
+        _onDispose = onDispose;
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        _watcher.EnableRaisingEvents = false;
+        _watcher.Dispose();
+        _onDispose();
     }
 }

@@ -158,7 +158,7 @@ internal sealed class CheckCommandRunner
         output.WriteLine("  --json              Machine-readable report on stdout (ok, counts, diagnostics).");
         output.WriteLine("  --strict-types      Full CLI suite (match / @pure / @within / @budget / const).");
         output.WriteLine("  --lenient-types     Type mismatches as warnings (IDE default is errors).");
-        output.WriteLine("  -e, --eval <code>   Check a snippet instead of a file.");
+        output.WriteLine("  -e, --exec <code>   Check a snippet instead of a file.");
         output.WriteLine("  --stdin             Read source from stdin (does not execute).");
         output.WriteLine();
         output.WriteLine("  Exit 0 if there are no errors (warnings/info still print). Exit 1 if any error.");
@@ -172,6 +172,7 @@ internal sealed class CheckCommandRunner
     {
         options = new CheckCommandOptions();
         string? evalCode = null;
+        string? evalFlagRejected = null;
         var stdin = false;
         var json = false;
         var fix = false;
@@ -202,11 +203,18 @@ internal sealed class CheckCommandRunner
             {
                 stdin = true;
             }
-            else if (arg == "-e" || arg == "--eval")
+            else if (arg == "--eval")
+            {
+                evalFlagRejected =
+                    "'malda check --eval' was removed because it collided with 'malda eval' (suite / case). Use -e or --exec for a snippet.";
+                if (i + 1 < args.Length && !args[i + 1].StartsWith("-", StringComparison.Ordinal))
+                    i++;
+            }
+            else if (arg == "-e" || arg == "--exec")
             {
                 if (i + 1 >= args.Length)
                 {
-                    options = FailedOptions(json, "Missing code after -e / --eval.");
+                    options = FailedOptions(json, "Missing code after -e / --exec.");
                     if (!json)
                         error.WriteLine(options.UsageError);
                     return true;
@@ -227,6 +235,14 @@ internal sealed class CheckCommandRunner
             }
         }
 
+        if (evalFlagRejected != null)
+        {
+            options = FailedOptions(json, evalFlagRejected);
+            if (!json)
+                error.WriteLine(options.UsageError);
+            return true;
+        }
+
         if (strict && lenient)
         {
             options = FailedOptions(json, "Cannot combine --strict-types and --lenient-types.");
@@ -242,7 +258,7 @@ internal sealed class CheckCommandRunner
 
         if (sources == 0)
         {
-            options = FailedOptions(json, "Specify a .malda file, -e \"<code>\", or --stdin.");
+            options = FailedOptions(json, "Specify a .malda file, -e / --exec \"<code>\", or --stdin.");
             if (!json)
             {
                 error.WriteLine(options.UsageError);

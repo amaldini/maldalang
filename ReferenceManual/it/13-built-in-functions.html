@@ -87,133 +87,66 @@ print(io.readFile("config.json"));</code></pre>
             <strong>Convenzione usata in questo manuale:</strong> gli esempi in tutto il manuale e in <code>Examples/</code> usano la forma piatta (<code>print(...)</code>, <code>sqrt(...)</code>) perché è più breve ed è quella del codice MALDA esistente. Leggile come equivalenti alla forma namespaced. Nel codice nuovo, preferisci la forma namespaced se vuoi che l'editor resti senza warning.
         </div>
         <h2 id="math">13.3 Funzioni matematiche</h2>
-        <p>Le operazioni math sono disponibili come <code>math.*</code> (preferito), built-in piatti deprecati e <code>Math.*</code> (alias deprecato).</p>
-        <pre><code>// Flat built-ins (deprecated flat alias; still supported)
-var absVal = abs(-5);              // Absolute value
-var total = sum([1, 2, 3, 4]);     // 10
-var avg = average([1, 2, 3, 4]);   // 2.5
-var maxVal = max(10, 20);          // Maximum of two values
-var maxArr = max([10, 20, 5]);     // Maximum in a numeric array
-var minVal = min(10, 20);          // Minimum of two values
-var minArr = min([10, 20, 5]);     // Minimum in a numeric array
-var powVal = pow(2, 3);            // Power: 2^3 = 8
-var sqrtVal = sqrt(16);            // Square root: 4
-
-// Extended math (rounding and sign)
-var f = floor(3.7);                // 3
-var c = ceil(3.2);                 // 4
-var r = round(2.5);                // 2 (banker’s rounding, .NET default)
-var t = trunc(-3.9);               // -3
-var s1 = sign(-10);                // -1
-var s2 = sign(0);                  // 0
-var s3 = sign(10);                 // 1
-
-// Extended math (exponential and logarithm)
-var e = exp(1);                    // ~2.718281828 (Math.E)
-var ln = log(Math.E);              // Natural log, ~1
-var lg = log10(1000);              // Base-10 log, 3
-var lb = log2(8);                  // Base-2 log, 3
-
-// Extended math (trigonometry, radians)
-var halfPi = degToRad(90);         // Convert degrees to radians
-var s = sin(halfPi);               // ~1.0
-var c0 = cos(0);                   // ~1.0
-var t = tan(0);                    // 0.0
-var a = atan2(1, 1);               // ~PI/4
-
-// Inverse trigonometry (single argument, result in radians)
-var as1 = asin(1);                 // ~PI/2
-var ac1 = acos(1);                 // 0.0
-var at1 = atan(1);                 // ~PI/4
-var outOfDomain = asin(2);         // NaN: no error is raised
-
-// Extended math (utility)
-var h = hypot(3, 4);               // 5 (sqrt(3*3 + 4*4))
-var cl1 = clamp(-1, 0, 10);        // 0
-var cl2 = clamp(5, 0, 3);          // 3
-var rad = degToRad(180);           // PI
-var deg = radToDeg(Math.PI / 2);   // 90
-var w0 = math.zeros(2);            // [0, 0]
-var g0 = math.zeros(3, 4);         // 3 x 4 nested array
-
-// LLM-oriented math helpers
-seed(42);                          // Deterministic random stream
-var n = randn(0.1);                // Gaussian random ~ N(0, 0.1^2)
-var inv = rsqrt(16);               // 0.25 (1/sqrt(x))
-var idxMax = argmax([0.1, 0.7, 0.2]); // 1
-var idxMin = argmin([0.1, 0.7, 0.2]); // 0
-var probs = softmax([2.0, 1.0, 0.0]); // Probability array
-var lse = logSumExp([2.0, 1.0, 0.0]); // Stable log(sum(exp(x)))
-var ce = crossEntropyFromLogits([2.0, 1.0, 0.0], 0); // NLL for target index
-var sampled = randomChoiceWeighted([0.1, 0.7, 0.2]); // Weighted sampled index
-
-// All trigonometric functions take angles in radians, accept an integer or a
-// float, and return a float. Out-of-domain input yields NaN rather than an error.
-
-// Preferred: math.* module (Math.* is deprecated alias)
-var cCirc = 2 * math.PI * r;
-var cCircLegacy = 2 * Math.PI * r; // deprecated alias
-var total2 = Math.sum([1, 2, 3]);  // Same as sum(...)
-var avg2 = Math.average([1, 2, 3]); // Same as average(...)
-var powVal2 = Math.pow(2, 3);      // 8
-var sqrtVal2 = Math.sqrt(16);      // 4
-var floorVal = Math.floor(3.7);    // 3
-var sinVal = Math.sin(degToRad(90)); // ~1.0
-var rand = Math.random();          // Random float between 0.0 and 1.0
-var randInt = Math.randomInt(1, 10);   // Random integer between 1 and 10 (inclusive)
-var randFloat = Math.randomFloat(0.0, 100.0); // Random float between 0.0 and 100.0
-var n2 = Math.randn(0.1);          // Same as randn(0.1)
-var probs2 = Math.softmax([2.0, 1.0, 0.0]); // Same as softmax(...)</code></pre>
-        <p><code>sum(values)</code> restituisce il totale di un array numerico. <code>average(values)</code> restituisce la media aritmetica di un array numerico non vuoto come float.</p>
-        <p><code>max</code> e <code>min</code> supportano sia la forma <code>(a, b)</code> sia <code>(values)</code>. Quando si passa un singolo argomento array, l'array deve essere non vuoto e contenere solo numeri.</p>
-        <p>Per gli array numerici, queste operazioni di aggregazione sono disponibili anche come metodi: <code>values.sum()</code>, <code>values.average()</code>, <code>values.min()</code> e <code>values.max()</code>.</p>
-        <h4>zeros(n) / zeros(rows, cols)</h4>
-        <p>Costruisce un vettore 1D o un array nidificato 2D riempito di <code>0.0</code>. La forma a due argomenti alloca una riga nuova per ogni riga, quindi scrivere <code>m[0][0]</code> non cambia le altre. Le dimensioni devono essere interi <code>&gt;= 0</code>. Le dimensioni vuote sono ammesse: <code>zeros(0)</code> è <code>[]</code>, e <code>zeros(2, 0)</code> è due righe vuote. Forma preferita: <code>math.zeros</code>.</p>
+        <p>La forma preferita è <code>math.*</code>. I nomi piatti e <code>Math.*</code> sono alias deprecati (vedi <a href="#stdlib-namespaces">13.2</a>).</p>
+        <p>Interprete, transpile C# e JavaScript eseguono tutti <code>math.*</code>. Vedi la <a href="../../docs/spec/backend-capability-matrix.md">matrice delle capacità dei backend</a>.</p>
+        <pre><code data-run="true" data-expect="5\n8">print(math.abs(-5));
+print(math.pow(2, 3));</code></pre>
+        <table>
+        <thead>
+        <tr><th>Chiamata</th><th>Argomenti</th><th>Ritorno</th><th>Note</th></tr>
+        </thead>
+        <tbody>
+        <tr><td><code>math.abs(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
+        <tr><td><code>math.acos(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
+        <tr><td><code>math.anneal(initial, cost, neighbor, options?)</code></td><td>3-4 arguments: (initial, cost, neighbor, options?)</td><td>{ state, cost, steps }</td><td>Metropolis search; cost/neighbor are unary lambdas (cooling may be a number or unary lambda); options: steps/temp/cooling/schedule/maximize/copy; uses math.random so math.seed pins it; WF1001 outside a workflow step</td></tr>
+        <tr><td><code>math.argmax(array)</code></td><td>1 argument: (array)</td><td>—</td><td></td></tr>
+        <tr><td><code>math.argmin(array)</code></td><td>1 argument: (array)</td><td>—</td><td></td></tr>
+        <tr><td><code>math.asin(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
+        <tr><td><code>math.atan(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
+        <tr><td><code>math.atan2(a, b)</code></td><td>2 arguments</td><td>—</td><td></td></tr>
+        <tr><td><code>math.average(array)</code></td><td>1 argument: (array)</td><td>—</td><td></td></tr>
+        <tr><td><code>math.ceil(x)</code></td><td>1 argument</td><td>—</td><td>returns a float even when whole-valued; integer sinks coerce whole floats; wrap with int() if you need an Integer-tagged value</td></tr>
+        <tr><td><code>math.clamp(x, lo, hi)</code></td><td>3 arguments</td><td>—</td><td></td></tr>
+        <tr><td><code>math.cos(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
+        <tr><td><code>math.crossEntropyFromLogits(logits, targetIndex)</code></td><td>2 arguments: (logits, targetIndex)</td><td>—</td><td></td></tr>
+        <tr><td><code>math.degToRad(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
+        <tr><td><code>math.exp(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
+        <tr><td><code>math.floor(x)</code></td><td>1 argument</td><td>—</td><td>returns a float even when whole-valued (print shows 1, not 1.0); integer sinks coerce whole floats, so str.repeat(&quot;-&quot;, math.floor(n)) works; fractional floats still fail</td></tr>
+        <tr><td><code>math.hypot(a, b)</code></td><td>2 arguments</td><td>—</td><td></td></tr>
+        <tr><td><code>math.log(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
+        <tr><td><code>math.log10(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
+        <tr><td><code>math.log2(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
+        <tr><td><code>math.logSumExp(array)</code></td><td>1 argument: (array)</td><td>—</td><td></td></tr>
+        <tr><td><code>math.max(a, b)</code></td><td>2 arguments or 1 array</td><td>—</td><td></td></tr>
+        <tr><td><code>math.min(a, b)</code></td><td>2 arguments or 1 array</td><td>—</td><td></td></tr>
+        <tr><td><code>math.pow(a, b)</code></td><td>2 arguments</td><td>—</td><td></td></tr>
+        <tr><td><code>math.radToDeg(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
+        <tr><td><code>math.randn(std?, mean?)</code></td><td>0-2 arguments: (std?, mean?)</td><td>—</td><td></td></tr>
+        <tr><td><code>math.random()</code></td><td>0 arguments</td><td>—</td><td>float in [0.0, 1.0)</td></tr>
+        <tr><td><code>math.randomChoiceWeighted(weights)</code></td><td>1 argument: (weights)</td><td>—</td><td></td></tr>
+        <tr><td><code>math.randomFloat(min, max)</code></td><td>2 arguments: (min, max)</td><td>—</td><td>min included, max excluded</td></tr>
+        <tr><td><code>math.randomInt(min, max)</code></td><td>2 arguments: (min, max)</td><td>—</td><td>min and max are BOTH included, unlike half-open ranges elsewhere; math.seed(n) pins the sequence</td></tr>
+        <tr><td><code>math.round(x)</code></td><td>1 argument</td><td>—</td><td>returns a float even when whole-valued; integer sinks coerce whole floats; wrap with int() if you need an Integer-tagged value</td></tr>
+        <tr><td><code>math.rsqrt(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
+        <tr><td><code>math.seed(x)</code></td><td>1 argument</td><td>null</td><td>resets the one generator shared by random, randomInt, randomFloat, randn, randomChoiceWeighted and anneal</td></tr>
+        <tr><td><code>math.sign(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
+        <tr><td><code>math.sin(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
+        <tr><td><code>math.softmax(array, temperature?)</code></td><td>1-2 arguments: (array, temperature?)</td><td>—</td><td></td></tr>
+        <tr><td><code>math.sqrt(x)</code></td><td>1 argument</td><td>—</td><td>returns a float even when whole-valued (sqrt(4) is 2.0); integer sinks coerce whole floats; wrap with int() if you need an Integer-tagged value</td></tr>
+        <tr><td><code>math.sum(array)</code></td><td>1 argument: (array)</td><td>—</td><td></td></tr>
+        <tr><td><code>math.tan(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
+        <tr><td><code>math.trunc(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
+        <tr><td><code>math.zeros(n, cols?)</code></td><td>1-2 arguments: (n, cols?)</td><td>array</td><td>1D math.zeros(n) or 2D math.zeros(rows, cols); each 2D row is a new array; cells are 0.0</td></tr>
+        </tbody>
+        </table>
+        <p><code>math.max</code> e <code>math.min</code> accettano <code>(a, b)</code> o un array numerico non vuoto. Gli aggregati sono anche metodi: <code>values.sum()</code>, <code>values.average()</code>, <code>values.min()</code>, <code>values.max()</code>. La trigonometria è in radianti; un input fuori dominio è <code>NaN</code>, non un errore. <code>math.round</code> usa l'arrotondamento del banchiere.</p>
+        <h4>math.zeros(n) / math.zeros(rows, cols)</h4>
+        <p>Costruisce un vettore 1D o un array nidificato 2D riempito di <code>0.0</code>. La forma a due argomenti alloca una riga nuova per riga, così scrivere <code>m[0][0]</code> non cambia le altre. Le dimensioni devono essere interi <code>&gt;= 0</code>. Le dimensioni vuote sono ammesse: <code>math.zeros(0)</code> è <code>[]</code>, e <code>math.zeros(2, 0)</code> è due righe vuote.</p>
         <pre><code>var w = math.zeros(2);        // [0, 0]
 var g = math.zeros(3, 4);     // 3 rows, 4 columns
 g[0][0] = 1.0;                // other rows stay zero</code></pre>
-        <h3>13.3.1 Helper matematici orientati agli LLM (riferimento)</h3>
-        <p>Questi helper sono disponibili come <code>math.softmax(values)</code> (preferito), <code>softmax(values)</code> piatto (deprecato) e <code>Math.softmax(values)</code> (alias deprecato).</p>
-        <h4>seed(seedValue)</h4>
-        <p>Imposta il seed pseudo-casuale globale usato da <code>random()</code>, <code>randomInt()</code>, <code>randomFloat()</code>, <code>randn()</code>, <code>randomChoiceWeighted()</code> e <code>anneal()</code>. L'argomento deve essere un intero. Restituisce <code>null</code>.</p>
-        <pre><code>seed(42);
-print(random());       // Deterministic across runs with same seed
-print(Math.random());</code></pre>
-        <h4>randn(std?, mean?)</h4>
-        <p>Genera un float casuale a distribuzione normale usando la trasformata di Box-Muller. Firma: <code>randn(std = 1.0, mean = 0.0)</code>. Restituisce un float.</p>
-        <pre><code>var z1 = randn();          // N(0, 1)
-var z2 = randn(0.1);       // N(0, 0.1^2)
-var z3 = randn(0.1, 1.5);  // N(1.5, 0.1^2)</code></pre>
-        <h4>rsqrt(x)</h4>
-        <p>Restituisce la radice quadrata reciproca: <code>1 / sqrt(x)</code>. Utile nelle formule di attention e normalizzazione. Restituisce un float.</p>
-        <pre><code>print(rsqrt(16));      // 0.25
-print(Math.rsqrt(4));  // 0.5</code></pre>
-        <h4>argmax(values)</h4>
-        <p>Restituisce l'indice del valore massimo in un array numerico non vuoto. Se più valori sono pari al massimo, restituisce il primo indice. Restituisce un intero.</p>
-        <pre><code>print(argmax([0.1, 0.7, 0.2]));   // 1
-print(argmax([3, 3, 1]));         // 0 (first max)</code></pre>
-        <h4>argmin(values)</h4>
-        <p>Restituisce l'indice del valore minimo in un array numerico non vuoto. Se più valori sono pari al minimo, restituisce il primo indice. Restituisce un intero.</p>
-        <pre><code>print(argmin([0.1, 0.7, 0.2]));   // 0
-print(argmin([3, 1, 1]));         // 1 (first min)</code></pre>
-        <h4>logSumExp(values)</h4>
-        <p>Calcola in modo numericamente stabile <code>log(sum(exp(values[i])))</code> su un array numerico non vuoto. Restituisce un float.</p>
-        <pre><code>var lse = logSumExp([2.0, 1.0, 0.0]);
-print(lse);</code></pre>
-        <h4>softmax(values, temperature?)</h4>
-        <p>Calcola le probabilità softmax da un array numerico non vuoto. <code>temperature</code> opzionale ha default <code>1.0</code> e deve essere <code>&gt; 0</code>. Restituisce un array di float che sommano approssimativamente a 1.</p>
-        <pre><code>var p1 = softmax([2.0, 1.0, 0.0]);      // temperature = 1.0
-var p2 = softmax([2.0, 1.0, 0.0], 0.5); // Sharper distribution
-print(p1);</code></pre>
-        <h4>crossEntropyFromLogits(logits, targetIndex)</h4>
-        <p>Calcola la negative log-likelihood direttamente dai logits per una classe target: <code>-log(softmax(logits)[targetIndex])</code>. <code>targetIndex</code> deve essere un indice intero valido nell'array dei logits. Restituisce un float.</p>
-        <pre><code>var loss = crossEntropyFromLogits([2.0, 1.0, 0.0], 0);
-print(loss);</code></pre>
-        <h4>randomChoiceWeighted(weights)</h4>
-        <p>Campiona e restituisce un indice da un array di pesi numerici non vuoto. Tutti i pesi devono essere <code>&gt;= 0</code> e il loro totale deve essere <code>&gt; 0</code>.</p>
-        <pre><code>var idx = randomChoiceWeighted([0.1, 0.7, 0.2]); // Often 1
-print(idx);</code></pre>
-        <p><strong>Comportamento sugli errori:</strong> questi helper sollevano errori a runtime per conteggi/tipi di argomenti non validi, array vuoti dove non ammessi, indici target fuori range, temperature softmax non positiva, pesi negativi o peso totale zero.</p>
+        <h3>13.3.1 Helper math orientati agli LLM (riferimento)</h3>
+        <p>Vedi <code>math.seed</code> fino a <code>math.anneal</code> nella tabella. Conteggi o tipi non validi, array vuoti, temperatura softmax non positiva o peso totale zero lanciano. <code>math.seed</code> fissa <code>math.random</code>, <code>math.randomInt</code>, <code>math.randomFloat</code>, <code>math.randn</code>, <code>math.randomChoiceWeighted</code> e <code>math.anneal</code>.</p>
         <h3>13.3.2 Simulated annealing</h3>
         <p><code>math.anneal(initial, cost, neighbor, options?)</code> esegue simulated annealing Metropolis. <code>cost</code> e <code>neighbor</code> sono lambda unarie (o funzioni con nome): cost restituisce un numero finito da minimizzare, neighbor restituisce uno stato candidato. <code>options</code> opzionale:</p>
         <ul>
@@ -239,95 +172,83 @@ var result = math.anneal(
 print(result.state);
 print(result.cost);</code></pre>
         <h2 id="strings">13.4 Funzioni sulle stringhe</h2>
-        <p>Le operazioni sulle stringhe sono disponibili come <strong>funzioni built-in piatte</strong> (es. <code>upper(s)</code>) e come <strong>metodi in stile extension</strong> sui valori stringa (es. <code>s.upper()</code>). Entrambe le forme funzionano nell'interprete e nel codice transpile.</p>
-        <pre><code>var len = length("Hello");      // String length
-var upper = upper("hello");     // Convert to uppercase
-var lower = lower("HELLO");     // Convert to lowercase
-var trimmed = trim("  hello  "); // Remove leading and trailing whitespace (returns "hello")
-var substr = substring("Hello", 0, 3);  // Extract substring: start at index 0, take 3 characters (returns "Hel")
-// substring(text, startIndex, length) - third parameter is COUNT/LENGTH, not end index
-var singleChar = substring("Hello", 1, 1);  // Get single character at index 1 (returns "e")
-var pos = indexOf("hello world", "world");  // Find position (returns 6, 0-indexed)
-var notFound = indexOf("hello", "xyz");     // Returns -1 if not found
-var replaced = replace("Hello world", "world", "MALDA");  // Replace all occurrences (returns "Hello MALDA")
-var parts = split("a,b,c", ",");  // Split string into array (returns ["a", "b", "c"])
-var normalized = normalizeText("  Città, 42! ");  // "citta 42"
-var words = tokenize("Uno, due, tre!");  // ["uno", "due", "tre"]
-var score = similarity("equazione lineare", "equazioni lineari");
-var numbers = extractNumbers("x=12, y=3.5");  // [12, 3.5]
-var joined = parts.join(",");  // Join array into string (returns "a,b,c")
-// Null-safe boundary helpers (prefer str.* spelling):
-var asText = str.text(maybeNull);       // null → "" (unlike string(null) → "null")
-var cleaned = str.trimText(maybeNull);  // null → ""; else string then trim</code></pre>
-        <p><code>str.text(value)</code> converte qualsiasi valore in stringa, mappando <code>null</code> su <code>""</code>. <code>str.trimText(value)</code> è <code>str.trim(str.text(value))</code>. Usale ai confini env / JSON / CLI invece di nidificare controlli su null prima di <code>str.trim</code>.</p>
+        <p>La forma preferita è <code>str.*</code>. Gli stessi nomi funzionano anche come metodi su un valore stringa (<code>"hello".upper()</code>). I globali piatti sono alias deprecati (vedi <a href="#stdlib-namespaces">13.2</a>).</p>
+        <p>Interprete, transpile C# e JavaScript eseguono tutti <code>str.*</code>. Vedi la <a href="../../docs/spec/backend-capability-matrix.md">matrice delle capacità dei backend</a>.</p>
+        <pre><code data-run="true" data-expect="hello\ntrue">print(str.lower("HELLO"));
+print(str.startsWith("Hello", "He"));</code></pre>
+        <table>
+        <thead>
+        <tr><th>Chiamata</th><th>Argomenti</th><th>Ritorno</th><th>Note</th></tr>
+        </thead>
+        <tbody>
+        <tr><td><code>str.base64Decode(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
+        <tr><td><code>str.base64Encode(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
+        <tr><td><code>str.endsWith(str, suffix)</code></td><td>2 arguments: (str, suffix)</td><td>—</td><td></td></tr>
+        <tr><td><code>str.extractNumbers(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
+        <tr><td><code>str.includes(array, value)</code></td><td>2 arguments: (array, value)</td><td>—</td><td></td></tr>
+        <tr><td><code>str.indexOf(string, string)</code></td><td>(string, string)</td><td>—</td><td></td></tr>
+        <tr><td><code>str.join(array, separator?)</code></td><td>1-2 arguments: (array, separator?)</td><td>—</td><td></td></tr>
+        <tr><td><code>str.length(x)</code></td><td>1 argument</td><td>—</td><td>accepts a string or an array</td></tr>
+        <tr><td><code>str.lower(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
+        <tr><td><code>str.md5(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
+        <tr><td><code>str.normalizeText(string, options?)</code></td><td>(string, options?)</td><td>—</td><td></td></tr>
+        <tr><td><code>str.padEnd(str, length, padChar?)</code></td><td>2-3 arguments: (str, length, padChar?)</td><td>—</td><td></td></tr>
+        <tr><td><code>str.padStart(str, length, padChar?)</code></td><td>2-3 arguments: (str, length, padChar?)</td><td>—</td><td></td></tr>
+        <tr><td><code>str.regexFind(string, string)</code></td><td>(string, string)</td><td>—</td><td></td></tr>
+        <tr><td><code>str.regexMatch(string, string)</code></td><td>(string, string)</td><td>—</td><td></td></tr>
+        <tr><td><code>str.regexReplace(string, string, string)</code></td><td>(string, string, string)</td><td>—</td><td></td></tr>
+        <tr><td><code>str.repeat(str, count)</code></td><td>2 arguments: (str, count)</td><td>—</td><td>count must be an integer or a whole-valued float; fractional floats are rejected</td></tr>
+        <tr><td><code>str.replace(string, string, string)</code></td><td>(string, string, string)</td><td>—</td><td></td></tr>
+        <tr><td><code>str.sha256(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
+        <tr><td><code>str.similarity(string, string, method?, options?)</code></td><td>(string, string, method?, options?)</td><td>—</td><td></td></tr>
+        <tr><td><code>str.split(string, string?, bool?)</code></td><td>(string, string?, bool?)</td><td>—</td><td></td></tr>
+        <tr><td><code>str.startsWith(str, prefix)</code></td><td>2 arguments: (str, prefix)</td><td>—</td><td></td></tr>
+        <tr><td><code>str.substring(string, int, int)</code></td><td>(string, int, int)</td><td>—</td><td></td></tr>
+        <tr><td><code>str.text(value)</code></td><td>1 argument: (value)</td><td>string (never null)</td><td>null → empty string (unlike string(null) → &quot;null&quot;); use at env/JSON/CLI boundaries</td></tr>
+        <tr><td><code>str.tokenize(string, options?)</code></td><td>(string, options?)</td><td>—</td><td></td></tr>
+        <tr><td><code>str.tokenOverlap(string, string, options?)</code></td><td>(string, string, options?)</td><td>—</td><td></td></tr>
+        <tr><td><code>str.trim(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
+        <tr><td><code>str.trimText(value)</code></td><td>1 argument: (value)</td><td>string (never null)</td><td>null-safe trim: str.trim(str.text(value))</td></tr>
+        <tr><td><code>str.upper(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
+        </tbody>
+        </table>
+        <p><code>str.substring(text, startIndex, length)</code> — il terzo argomento è un <strong>conteggio</strong>, non un indice di fine. <code>str.text(value)</code> mappa <code>null</code> su <code>""</code> (a differenza di <code>string(null)</code> → <code>"null"</code>). <code>str.trimText(value)</code> è <code>str.trim(str.text(value))</code>. Usali ai confini env / JSON / CLI. <code>str.repeat</code> rifiuta un conteggio frazionario.</p>
         <h3>Metodi stringa in stile extension</h3>
-        <p>Le funzioni <code>length</code>, <code>upper</code>, <code>lower</code>, <code>trim</code>, <code>substring</code>, <code>indexOf</code>, <code>replace</code>, <code>split</code>, <code>startsWith</code>, <code>endsWith</code>, <code>padStart</code>, <code>padEnd</code> e <code>repeat</code> si possono chiamare anche come metodi su qualsiasi valore stringa. Il ricevente è trattato come primo argomento. È analogo ai metodi di extension in VB.NET/C#.</p>
-        <pre><code>var name = "pippo";
-var nameUpper = string(name).upper();   // same as upper(string(name)) or upper(name)
-print("hello".upper());                 // HELLO
+        <p>Le funzioni <code>length</code>, <code>upper</code>, <code>lower</code>, <code>trim</code>, <code>substring</code>, <code>indexOf</code>, <code>replace</code>, <code>split</code>, <code>startsWith</code>, <code>endsWith</code>, <code>padStart</code>, <code>padEnd</code> e <code>repeat</code> si possono chiamare anche come metodi su qualsiasi valore stringa. Il ricevente è il primo argomento.</p>
+        <pre><code>print("hello".upper());                 // HELLO
 print("HELLO".lower());                 // hello
 var s = "Hello";
-print(s.length());                      // 5
 print(s.substring(0, 3));               // Hel
-print(s.indexOf("ll"));                 // 2
-print(s.replace("He", "Ye"));           // Yello
 print("abc".repeat(2));                 // abcabc
 var f = "world".upper;                  // method as value
 print(f());                             // WORLD</code></pre>
-        <p>Chiamare un membro non supportato su una stringa (es. <code>s.foo()</code>) causa un errore a runtime.</p>
-        <h3>Funzioni per espressioni regolari</h3>
-        <pre><code>var matches = regexMatch("test123", "\\d+");  // Check if pattern matches (returns true)
-var result = regexReplace("abc123", "\\d+", "456");  // Replace matches (returns "abc456")
-// Use $1, $2, etc. for capture groups in replacement
-var swapped = regexReplace("John Doe", "(\\w+) (\\w+)", "$2, $1");  // Returns "Doe, John"
-var matches = regexFind("test123 test456", "\\d+");  // Find all matches (returns array of match objects)</code></pre>
-        <h3>Funzioni stringa aggiuntive</h3>
-        <pre><code>var starts = startsWith("Hello", "He");      // Check if string starts with prefix (returns true)
-var ends = endsWith("Hello", "lo");         // Check if string ends with suffix (returns true)
-var padded = padStart("5", 3, "0");        // Pad string to length from left (returns "005")
-var padded2 = padEnd("5", 3, "0");          // Pad string to length from right (returns "500")
-var repeated = repeat("Hi", 3);             // Repeat string N times (returns "HiHiHi")</code></pre>
-        <h3>Helper di matching del testo</h3>
-        <pre><code>var normalizedText = normalizeText("  Città, 42! ");   // "citta 42"
-var tokens = tokenize("CPU, RAM e disco");            // ["cpu", "ram", "e", "disco"]
-var overlap = tokenOverlap("cpu memoria cache", "cache cpu");
-print(overlap.sharedCount);                           // 2
-print(overlap.jaccard);                               // 0.66...
-var sim1 = similarity("equazione lineare", "equazioni lineari");
-var sim2 = similarity("processore", "processor", "char-ngram");
-var nums = extractNumbers("x=12, y=3.5, z=-2");      // [12, 3.5, -2]</code></pre>
-        <h3>Funzioni sui path</h3>
-        <pre><code>var filename = getFileName("ReferenceManual/09-functions.html");  // Returns "09-functions.html"
-var dir = getDirectoryName("ReferenceManual/09-functions.html");  // Returns "ReferenceManual"
-var dir2 = getDirectoryName("09-functions.html");  // Returns "" (empty for files in current directory)
-var joined = pathJoin("dir1", "dir2", "file.txt");  // Join path segments (returns "dir1/dir2/file.txt" or "dir1\\dir2\\file.txt" on Windows)
-var normalized = pathNormalize("./dir/../file.txt");  // Normalize path (returns absolute path)
-var exists = pathExists("file.txt");        // Check if path exists (file or directory)
-var ext = pathGetExtension("file.txt");     // Get file extension (returns ".txt")
-var under = isPathUnder("brain", "brain/notes/a.md");  // true when path resolves under root (disk or embed:)
-var escape = isPathUnder("brain", "brain/../secret.txt");  // false</code></pre>
-        <p><code>isPathUnder(root, path)</code> — Restituisce <code>true</code> quando <code>path</code> si risolve nella stessa posizione di <code>root</code> o in un discendente. Usa il confronto sul path completo con un confine di separatore di directory (così <code>demo</code> non corrisponde a <code>demo-evil</code>). Funziona per path su disco e per root virtuali <code>embed:&lt;alias&gt;/…</code>. Restituisce <code>false</code> su coppie non valide o con scheme diversi.</p>
-        <h3>Home e config MALDA</h3>
-        <p>Queste funzioni supportano la directory di config <code>~/.malda</code> dell'<a href="33-personal-assistant.html">assistente personale e CLI</a>.</p>
-        <pre><code>var home = getMaldaHome();   // Returns "~/.malda" (e.g. C:\Users\You\.malda on Windows)
-var config = getMaldaConfig(); // Returns config object from ./.malda/config.json or ~/.malda/config.json, or null</code></pre>
-        <p><code>getMaldaHome()</code> — Restituisce il path della directory utente MALDA (nessun argomento).</p>
-        <p><code>getMaldaConfig()</code> — Legge il primo file di config esistente tra <code>./.malda/config.json</code> e <code>~/.malda/config.json</code>, lo analizza come JSON e restituisce il risultato come oggetto. Restituisce <code>null</code> se nessuno dei due file esiste o se l'analisi fallisce. Usala per leggere <code>providers.openrouter.apiKey</code>, <code>agents.defaults.model</code>, <code>tools.web.search.apiKey</code>, ecc.</p>
-        <p><code>getAssistantMemory(path?)</code> — Restituisce un'istanza <code>GraphMemory</code> inizializzata con <code>MALDA_MEMORY_EMBED</code> (default <code>hash</code>) e caricata da <code>~/.malda/memory/assistant</code> quando gli artefatti esistono. Il <code>path</code> opzionale sovrascrive il path base di storage (senza estensione).</p>
-        <h3>Skill</h3>
-        <p>Queste funzioni supportano il caricamento delle <a href="33-personal-assistant.html#skills">skill</a> da <code>~/.malda/skills/</code>.</p>
-        <pre><code>var names = getSkillNames();   // Returns array of skill base names, e.g. ["github", "weather"]
-var skill = loadSkill("github"); // Loads ~/.malda/skills/github.malda, returns object with module globals (e.g. skill.tools, skill.agent)
-var skills = loadSkillsFromDir(); // Scans ~/.malda/skills/*.malda; each entry has name + exports (or error)</code></pre>
-        <p><code>getSkillNames()</code> — Restituisce un array di stringhe: i nomi base (senza <code>.malda</code>) di tutti i file <code>.malda</code> in <code>~/.malda/skills/</code>. Restituisce <code>[]</code> se la directory non esiste o è vuota. Nessun argomento.</p>
-        <p><code>loadSkill(name)</code> — Carica il file skill <code>~/.malda/skills/&lt;name&gt;.malda</code>, lo esegue in un ambiente isolato e restituisce un oggetto le cui proprietà sono le variabili globali del modulo. Convenzione: le skill esportano un array <code>tools</code> (e opzionalmente <code>agent</code>). Restituisce <code>null</code> se il file non esiste o <code>name</code> è vuoto. Un argomento: il nome della skill (stringa).</p>
-        <p><code>loadSkillsFromDir(path?)</code> — Scansiona una directory (default <code>~/.malda/skills</code>) in cerca di file <code>*.malda</code> e restituisce un array di oggetti. Ogni oggetto include <code>name</code> più i globali del modulo skill (<code>tools</code>, <code>agent</code>, ecc.). In caso di fallimento del carico, l'oggetto ha <code>name</code> e <code>error</code> al loro posto. Primo argomento opzionale: path della directory (stringa).</p>
+        <p>Un membro non supportato su una stringa (es. <code>s.foo()</code>) è un errore di runtime. Gli helper di path (<code>io.pathJoin</code>, <code>io.isPathUnder</code>, …) sono in <a href="#files">13.8</a>. Gli helper di <code>~/.malda</code> sono in <a href="#env-host">13.5</a>.</p>
         <h2 id="env-host">13.5 Ambiente e host</h2>
-        <p>Guida pratica e l'insidia di <code>getEnv</code> / <code>str.trim</code>: <a href="12-input-output.html">12.5 Ambiente e host</a>.</p>
-        <pre><code>var apiKey = getEnv("OPENAI_API_KEY");  // string, or null when unset
-var apiKeyOr = io.getEnvOr("OPENAI_API_KEY");  // "" when unset (optional 2nd arg = default)
-var hasKey = hasEnv("API_KEY");         // Check if environment variable exists</code></pre>
-        <p><code>io.getEnvOr(name, default?)</code> — stessa ricerca di <code>getEnv</code>, ma non restituisce mai <code>null</code>: le variabili assenti producono <code>default</code> (stringa vuota se omesso). Preferiscila prima di <code>str.trim</code> / altre funzioni che si aspettano una stringa.</p>
+        <p>How-to e il footgun <code>getEnv</code> / <code>str.trim</code>: <a href="12-input-output.html">12.5 Ambiente e host</a>. Solo host (interprete e transpile C#); JavaScript non legge l'ambiente di processo e non chiama Brave / <code>webFetch</code>. Vedi la <a href="../../docs/spec/backend-capability-matrix.md">matrice delle capacità dei backend</a>.</p>
+        <table>
+        <thead>
+        <tr><th>Chiamata</th><th>Argomenti</th><th>Ritorno</th><th>Note</th></tr>
+        </thead>
+        <tbody>
+        <tr><td><code>getAssistantMemory(path?)</code></td><td>0-1 arguments: (path?)</td><td>—</td><td></td></tr>
+        <tr><td><code>getCommandLineArgs()</code></td><td>0 arguments</td><td>—</td><td></td></tr>
+        <tr><td><code>io.getEnv(x)</code></td><td>1 argument</td><td>string, or null when the variable is not set</td><td>unlike io.input (which returns empty string at EOF), missing variables yield null — prefer io.getEnvOr or str.trimText before string sinks</td></tr>
+        <tr><td><code>io.getEnvOr(name, default?)</code></td><td>1-2 arguments: (name, default?)</td><td>string (never null)</td><td>never null; missing variables yield default (empty string when omitted) — preferred before str.trim</td></tr>
+        <tr><td><code>getHostPlatform()</code></td><td>0 arguments</td><td>—</td><td></td></tr>
+        <tr><td><code>getMaldaConfig()</code></td><td>0 arguments</td><td>—</td><td></td></tr>
+        <tr><td><code>getMaldaHome()</code></td><td>0 arguments</td><td>—</td><td></td></tr>
+        <tr><td><code>getProgramDirectory()</code></td><td>0 arguments</td><td>—</td><td></td></tr>
+        <tr><td><code>getSkillNames()</code></td><td>0 arguments</td><td>—</td><td></td></tr>
+        <tr><td><code>io.hasEnv(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
+        <tr><td><code>httpAuthToken</code></td><td>request and optional options object</td><td>—</td><td></td></tr>
+        <tr><td><code>httpBearerToken(request)</code></td><td>1 argument: (request)</td><td>—</td><td></td></tr>
+        <tr><td><code>httpCookieToken</code></td><td>request, cookieName, optional cookieSecret</td><td>—</td><td></td></tr>
+        <tr><td><code>loadSkill(name)</code></td><td>1 argument: (name)</td><td>—</td><td></td></tr>
+        <tr><td><code>loadSkillsFromDir(skillsPath?)</code></td><td>0-1 arguments: (skillsPath?)</td><td>—</td><td></td></tr>
+        <tr><td><code>webFetch(urlOrToken, pathOrMaxBytes?, maxBytes?, timeoutMs?)</code></td><td>1-4 arguments: (urlOrToken, pathOrMaxBytes?, maxBytes?, timeoutMs?)</td><td>—</td><td></td></tr>
+        <tr><td><code>webSearch(query, apiKey?)</code></td><td>at least 1 string argument: (query, apiKey?)</td><td>—</td><td></td></tr>
+        </tbody>
+        </table>
         <h3>13.5.1 Informazioni sull'host</h3>
         <p>I built-in senza argomenti descrivono la macchina e l'invocazione sotto cui gira il programma. Passare un qualsiasi argomento solleva un errore.</p>
         <pre><code>var host = getHostPlatform();
@@ -373,23 +294,21 @@ var token = httpAuthToken(req, {
         <h3 id="web-fetch">13.5.4 webFetch(url, maxBytes?, timeoutMs?)</h3>
         <p>Catalogo delle firme per recuperare un URL <code>http://</code> o <code>https://</code> sullo stesso percorso host di <code>httpGet</code>. How-to, limiti e forma del risultato: <a href="12-input-output.html#web-fetch">12.9 Recupero di URL</a>. Chiamate REST tipizzate: <a href="29-rest-web-client.html">29. Client REST Web</a>. La factory per agenti è <code>createWebFetchTool</code>.</p>
         <h2 id="arrays">13.6 Funzioni di utilità sugli array</h2>
-        <pre><code>var arr = [1, 2, 3, 4, 5];
-var total = sum(arr);                       // 15
-var avg = average(arr);                     // 3.0
-var smallest = min(arr);                    // 1
-var largest = max(arr);                     // 5
-var total2 = arr.sum();                     // 15
-var avg2 = arr.average();                   // 3.0
-var smallest2 = arr.min();                  // 1
-var largest2 = arr.max();                   // 5
-var joined = join(arr, ", ");               // Join array elements into string (returns "1, 2, 3, 4, 5")
-var reversed = reverse(arr);                // Return reversed array (returns [5, 4, 3, 2, 1])
-var sorted = sort([3, 1, 4, 1, 5]);        // Sort array (returns [1, 1, 3, 4, 5])
-var sortedDesc = sort([3, 1, 2], (a, b) => b - a);  // Custom compare: descending (interpreter and transpiled)
-var hasValue = includes(arr, 3);            // Check if array contains value (returns true)</code></pre>
-        <p><strong>sort(array, compareFn?)</strong> — Con un argomento, restituisce un nuovo array ordinato con il confronto di default (numeri poi stringhe). Con un <code>compareFn</code> opzionale, il secondo argomento deve essere una funzione <code>(a, b) =&gt; number</code>: restituire negativo se a prima di b, 0 se uguali, positivo se a dopo b. Il confronto personalizzato è supportato sia nell'interprete sia in modalità transpile.</p>
-        <p><strong>sum(array)</strong> restituisce il totale di un array numerico. <strong>average(array)</strong> restituisce la media aritmetica di un array numerico non vuoto come float. <strong>min(array)</strong> e <strong>max(array)</strong> restituiscono l'elemento numerico più piccolo e più grande in un array non vuoto.</p>
-        <p>Le stesse operazioni di aggregazione supportano anche la sintassi a metodo sull'array: <code>array.sum()</code>, <code>array.average()</code>, <code>array.min()</code> e <code>array.max()</code>.</p>
+        <p><code>math.sum</code> / <code>math.average</code> / <code>math.min</code> / <code>math.max</code> sono in <a href="#math">13.3</a> e funzionano anche come metodi di array. Le righe sotto sono gli helper solo-array. Interprete, transpile C# e JavaScript li eseguono tutti.</p>
+        <pre><code data-run="true" data-expect="5, 4, 3, 2, 1\ntrue">print(str.join(reverse([1, 2, 3, 4, 5]), ", "));
+print(includes([1, 2, 3], 3));</code></pre>
+        <table>
+        <thead>
+        <tr><th>Chiamata</th><th>Argomenti</th><th>Ritorno</th><th>Note</th></tr>
+        </thead>
+        <tbody>
+        <tr><td><code>str.includes(array, value)</code></td><td>2 arguments: (array, value)</td><td>—</td><td></td></tr>
+        <tr><td><code>str.join(array, separator?)</code></td><td>1-2 arguments: (array, separator?)</td><td>—</td><td></td></tr>
+        <tr><td><code>reverse(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
+        <tr><td><code>sort(array, compareFn?)</code></td><td>1-2 arguments: (array, compareFn?)</td><td>—</td><td></td></tr>
+        <tr><td><code>toCsv(rows, columns?, options?)</code></td><td>1-3 arguments: (rows, columns?, options?)</td><td>—</td><td></td></tr>
+        </tbody>
+        </table>
         <h3>13.6.1 Helper di esportazione CSV</h3>
         <pre><code>var rows = [
   {"name": "Alice", "score": 95},
@@ -406,6 +325,20 @@ var csv3 = toCsv(rows, ["name", "score"], {
 });</code></pre>
         <p><code>toCsv(rows, columns?, options?)</code> converte un array di righe in testo CSV. Esegue l'escape delle virgolette e racchiude le celle quando serve (delimitatore/newline/virgolette). Utile per report e endpoint di esportazione dati.</p>
         <h2 id="json">13.7 Funzioni JSON</h2>
+        <p>Catalogo degli helper JSON / schema. <code>toJSON</code>, <code>parseJSON</code>, <code>validate</code> e <code>asVariant</code> girano su interprete, transpile C# e JavaScript. <code>evalPrompt</code> è solo host (prompt). Vedi la <a href="../../docs/spec/backend-capability-matrix.md">matrice delle capacità dei backend</a>.</p>
+        <table>
+        <thead>
+        <tr><th>Chiamata</th><th>Argomenti</th><th>Ritorno</th><th>Note</th></tr>
+        </thead>
+        <tbody>
+        <tr><td><code>asVariant(typeName, value)</code></td><td>2 arguments: (typeName, value)</td><td>variant</td><td>throws if typeName is not a sum type or the tagged JSON is invalid; already-a-variant is idempotent; validate() does not coerce</td></tr>
+        <tr><td><code>evalPrompt(prompt, fixture, typeName?)</code></td><td>2-3 arguments: (prompt, fixture, typeName?)</td><td>{ ok, data } | { ok: false, error }</td><td>no LLM; same extract/validate/coerce path as await; {ok,data} or {ok:false,error}; data is a variant for sum types; instance.eval(fixture) is the same helper</td></tr>
+        <tr><td><code>parseJson(value, schemaRef) and optional options object. For a plain JSON reader use parseJSON(text)</code></td><td>2 arguments (value, schemaRef) and optional options object. For a plain JSON reader use parseJSON(text)</td><td>—</td><td>schema-validating parser for LLM output, NOT a plain JSON reader</td></tr>
+        <tr><td><code>parseJSON(the JSON string). For schema-validated LLM JSON use parseJson(value, schemaRef)</code></td><td>1 argument (the JSON string). For schema-validated LLM JSON use parseJson(value, schemaRef)</td><td>—</td><td>plain JSON text to a value; note that parseJson with a lowercase s is a different built-in</td></tr>
+        <tr><td><code>toJSON(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
+        <tr><td><code>validate(schema, value)</code></td><td>2 arguments: (schema, value)</td><td>—</td><td></td></tr>
+        </tbody>
+        </table>
         <pre><code>var jsonStr = toJSON(obj);  // Convert object to JSON string
 var obj = parseJSON('{"name":"Alice","age":30}');  // Parse JSON string to object</code></pre>
         <p><code>toJSON</code> scrive dict, array e i <strong>campi di istanza pubblici</strong> di una classe (incluso un costruttore primario). I metodi e i campi <code>private</code> vengono omessi. Un ciclo solleva un'eccezione. <code>parseJSON</code> restituisce sempre un dict — non ricostruisce la classe. Crea una nuova istanza se ti servono di nuovo i metodi.</p>
@@ -508,16 +441,41 @@ print(label);</code></pre>
         <p>How-to, pipe lavorate e tabella delle firme: <a href="10-prompts.html#ai-pipeline">10.9.1 Helper di pipeline AI</a>. Indice vettoriale + <code>asRetriever</code>: <a href="15-vectordb.html">15. VectorDB</a>. Fixture offline: <a href="#evalPrompt">13.7.1.2 evalPrompt</a>.</p>
         <p>Nomi in catalogo: <code>loadDocuments</code>, <code>splitDocuments</code>, <code>indexInto</code>, <code>formatRetrievedDocs</code>, <code>composePipe</code>, <code>parallelRun</code>, <code>mergeRetrievedDocs</code>, <code>withExamples</code>, <code>evalPrompt</code>, <code>runPrompt</code>, <code>parseJson</code>.</p>
         <h2 id="files">13.8 Funzioni del file system</h2>
-        <p>Guida pratica, stili di fallimento, intervalli di righe, capability token e note sul backend: <a href="12-input-output.html">12. Input/Output</a>. Questa sezione è il catalogo delle firme.</p>
-        <pre><code>var content = readFile("example.txt");                    // Read entire file
-var lines = readFile("example.txt", 10, 20);              // Read lines 10-20 (1-indexed)
-var fromLine = readFile("example.txt", 5);                // Read from line 5 to end
-writeFile("output.txt", "Hello");                         // Write content to file
-var exists = hasFile("example.txt");                      // Check if file exists
-var dirExists = hasDirectory("mydir");                     // Check if directory exists
-ensureDir("path/to/dir");                                  // Create directory and parents if missing
-var files = listDirectory(".");                            // List directory contents</code></pre>
-        <p><code>ensureDir(path)</code> — Crea la directory e ogni directory padre mancante. Non fa nulla se la directory esiste già. Utile per creare <code>~/.malda/memory</code> prima di salvare la memoria dell'assistente.</p>
+        <p>How-to, stili di fallimento, intervalli di righe, token di capability e note sui backend: <a href="12-input-output.html">12. Input/Output</a>. Questa sezione è il catalogo delle firme. L'I/O su file è solo host (interprete e transpile C#); JavaScript ha <code>io.print</code> / <code>io.input</code> / JSON, non i file su disco. Vedi la <a href="../../docs/spec/backend-capability-matrix.md">matrice delle capacità dei backend</a>.</p>
+        <table>
+        <thead>
+        <tr><th>Chiamata</th><th>Argomenti</th><th>Ritorno</th><th>Note</th></tr>
+        </thead>
+        <tbody>
+        <tr><td><code>io.copyFile(src, dest)</code></td><td>2 arguments: (src, dest)</td><td>boolean</td><td>binary-safe overwrite; returns false on I/O failure; rejects embed: src and dest; does not create parent directories</td></tr>
+        <tr><td><code>io.deleteFile(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
+        <tr><td><code>editFile(string, array)</code></td><td>(string, array)</td><td>—</td><td></td></tr>
+        <tr><td><code>io.embeddedFolderRoot(alias)</code></td><td>1 argument: (alias)</td><td>—</td><td></td></tr>
+        <tr><td><code>io.ensureDir(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
+        <tr><td><code>extractDocxText(path)</code></td><td>1 argument: (path)</td><td>—</td><td></td></tr>
+        <tr><td><code>extractPdfText(path, password?)</code></td><td>1-2 arguments: (path, password?)</td><td>—</td><td></td></tr>
+        <tr><td><code>io.getDirectoryName(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
+        <tr><td><code>io.getFileName(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
+        <tr><td><code>io.glob(pattern, dirPath?, ...)</code></td><td>at least 1 argument: (pattern, dirPath?, ...)</td><td>—</td><td></td></tr>
+        <tr><td><code>io.grep(pattern, filePath, ...)</code></td><td>at least 2 arguments: (pattern, filePath, ...)</td><td>—</td><td></td></tr>
+        <tr><td><code>io.hasDirectory(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
+        <tr><td><code>io.hasEmbeddedFolder(alias)</code></td><td>1 argument: (alias)</td><td>—</td><td></td></tr>
+        <tr><td><code>io.hasFile(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
+        <tr><td><code>insertAtLine(filePath, lineNumber, content, ...)</code></td><td>at least 3 arguments: (filePath, lineNumber, content, ...)</td><td>—</td><td></td></tr>
+        <tr><td><code>io.isPathUnder(root, path)</code></td><td>2 arguments: (root, path)</td><td>—</td><td></td></tr>
+        <tr><td><code>io.listDirectory(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
+        <tr><td><code>io.pathExists(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
+        <tr><td><code>io.pathGetExtension(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
+        <tr><td><code>io.pathJoin</code></td><td>at least 1 argument</td><td>—</td><td></td></tr>
+        <tr><td><code>io.pathNormalize(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
+        <tr><td><code>io.readFile(string, int?, int?)</code></td><td>(string, int?, int?)</td><td>—</td><td></td></tr>
+        <tr><td><code>io.readFileBase64(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
+        <tr><td><code>io.readTextFileLines(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
+        <tr><td><code>io.replaceInFile(string, string, string, int?)</code></td><td>(string, string, string, int?)</td><td>—</td><td></td></tr>
+        <tr><td><code>io.writeFile(a, b)</code></td><td>2 arguments</td><td>—</td><td></td></tr>
+        <tr><td><code>io.writeFileBase64(path, base64Content)</code></td><td>(path, base64Content)</td><td>—</td><td></td></tr>
+        </tbody>
+        </table>
         <h3>13.8.0 Cartelle embedded (<code>embed:</code>)</h3>
         <p>Compila con <code>malda compile … --embed-folder &lt;dir[=alias]&gt;</code> per impacchettare una directory nell'eseguibile come risorse dell'assembly. A runtime, leggi quei file con lo scheme virtuale <code>embed:&lt;alias&gt;/&lt;relative&gt;</code> — nulla viene estratto su disco. Le scritture (<code>writeFile</code>, <code>ensureDir</code>, …) rifiutano i path <code>embed:</code>.</p>
         <pre><code>if (io.hasEmbeddedFolder("secondbrain")) {

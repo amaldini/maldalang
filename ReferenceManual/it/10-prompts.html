@@ -19,6 +19,7 @@
         <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>10. Prompt</span></div>
         <h1>10. Prompt</h1>
         <p>Un <code>prompt</code> è un template nominato e parametrizzato. Chiamarlo interpola i parametri e restituisce un <code>PromptInstance</code>. <code>await</code> può chiamare un LLM e validare il JSON rispetto a un tipo dichiarato. Decoratori come <code>@within</code> e <code>@budget</code> si applicano anche qui, non solo alle funzioni — vedi <a href="09-functions.html">9.7 Decoratori</a>. L'opzionale <code>@version("…")</code> è un pin informativo per <code>malda prompts --diff</code>. Ogni <code>await</code> / <code>Chat</code> passa dalle cassette quando sono impostati <code>MALDA_RECORD</code> / <code>MALDA_REPLAY</code>. <code>.usage</code> su un risultato è metadata (una chiave propria chiamata <code>usage</code> vince). Narrazione: <a href="23-agentic-runs.html">23. Esecuzioni agentiche</a>.</p>
+        <p>I template senza <code>await</code> sono linguaggio core. <code>await prompt</code>, i client LLM live e le cassette sono solo host (interprete e transpile C#). JavaScript può eseguire <code>validate</code> / <code>asVariant</code> ma non una chiamata live al modello. Vedi la <a href="../../docs/spec/backend-capability-matrix.md">matrice delle capacità dei backend</a>.</p>
         <pre><code>@version("2026-09-01")
 prompt extract(raw) -> Card {
     user: raw;

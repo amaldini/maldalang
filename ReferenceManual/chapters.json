@@ -2,7 +2,7 @@
   "chapters": [
     { "file": "index.html", "title": "Home", "isHome": true },
     { "file": "01-introduction.html", "title": "Introduction", "category": "Language Fundamentals", "description": "Language overview and features" },
-    { "file": "02-tools.html", "title": "Tools & Tooling", "category": "Language Fundamentals", "description": "Interpreter, compiler, and package manager" },
+    { "file": "02-tools.html", "title": "Tools & Tooling", "category": "Language Fundamentals", "description": "Interpreter, compiler, package manager, and CLI command index" },
     { "file": "03-lexical-structure.html", "title": "Lexical Structure", "category": "Language Fundamentals", "description": "Comments, identifiers, keywords, operators" },
     { "file": "04-data-types.html", "title": "Data Types", "category": "Language Fundamentals", "description": "Primitive types, type system, objects" },
     { "file": "05-variables.html", "title": "Variables", "category": "Language Fundamentals", "description": "Declaration, assignment, scope" },

@@ -69,7 +69,7 @@ malda compile Examples/Web/js/hello_dom.malda --target pwa -o dist/hello-dom
 # Template mode (.malda.html source)
 malda compile Examples/Web/js/hello_template.malda.html --mode js -o Examples/Web/js/hello_template.generated.js</code></pre>
         <p><code>--target js</code> is an alias for <code>--mode js</code>. <code>--target pwa</code> is an alias for <code>--mode pwa</code> and produces a directory containing the app shell, runtime, and transpiled JavaScript.</p>
-        <p>The inner loop for canvas games is <code>malda play</code>. It compiles <code>--mode js</code>, writes a host page, and serves a local URL so you do not have to author HTML. Packaging for itch.io stays <code>--mode pwa</code>.</p>
+        <p>The inner loop for canvas games is <code>malda play</code>. It compiles <code>--mode js</code>, writes a host page, and serves a local URL so you do not have to author HTML. Edits to the source, sibling <code>index.html</code>, and <code>assets/</code> rebuild and reload the browser (<code>--no-watch</code> serves the first compile only). Packaging for itch.io stays <code>--mode pwa</code>.</p>
         <pre><code>malda new game my-game
 cd my-game
 malda play app.malda</code></pre>
@@ -337,6 +337,7 @@ malda compile Examples/Games/three_shader_mandelbrot.malda --mode js -o Examples
         <div class="see-also">
             <h3>See Also</h3>
             <ul>
+                <li><a href="02-tools.html#cli-index">2.0 CLI command index</a> — <code>malda new</code> / <code>malda play</code></li>
                 <li><a href="24-web-ui-hub.html">24. Web UI Overview</a> - Which UI model to pick</li>
                 <li><a href="25-web-ui.html">25. Web UI Server Components</a> - Server-rendered UI with fragments, live updates, and <code>ui.*</code></li>
                 <li><a href="26-http-server-html-ui.html">HttpServer &amp; HTML UI Generation</a> - Route hosting and AI HTML generation</li>

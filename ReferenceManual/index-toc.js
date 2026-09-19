@@ -32,7 +32,7 @@ const TOC_CATEGORY_ORDER = [
 
 const FALLBACK_TOC_CHAPTERS = [
     { file: "01-introduction.html", title: "Introduction", num: "1", category: "Language Fundamentals", description: "Language overview and features" },
-    { file: "02-tools.html", title: "Tools & Tooling", num: "2", category: "Language Fundamentals", description: "Interpreter, compiler, and package manager" },
+    { file: "02-tools.html", title: "Tools & Tooling", num: "2", category: "Language Fundamentals", description: "Interpreter, compiler, package manager, and CLI command index" },
     { file: "03-lexical-structure.html", title: "Lexical Structure", num: "3", category: "Language Fundamentals", description: "Comments, identifiers, keywords, operators" },
     { file: "04-data-types.html", title: "Data Types", num: "4", category: "Language Fundamentals", description: "Primitive types, type system, objects" },
     { file: "05-variables.html", title: "Variables", num: "5", category: "Language Fundamentals", description: "Declaration, assignment, scope" },
@@ -73,7 +73,7 @@ const FALLBACK_TOC_CHAPTERS = [
 
 const FALLBACK_TOC_CHAPTERS_IT = [
     { file: "01-introduction.html", title: "Introduzione", num: "1", category: "Language Fundamentals", description: "Panoramica del linguaggio e delle funzionalità" },
-    { file: "02-tools.html", title: "Strumenti e toolchain", num: "2", category: "Language Fundamentals", description: "Interprete, compilatore e gestore di pacchetti" },
+    { file: "02-tools.html", title: "Strumenti e toolchain", num: "2", category: "Language Fundamentals", description: "Interprete, compilatore, gestore di pacchetti e indice dei comandi CLI" },
     { file: "03-lexical-structure.html", title: "Struttura lessicale", num: "3", category: "Language Fundamentals", description: "Commenti, identificatori, keyword, operatori" },
     { file: "04-data-types.html", title: "Tipi di dati", num: "4", category: "Language Fundamentals", description: "Tipi primitivi, sistema di tipi, oggetti" },
     { file: "05-variables.html", title: "Variabili", num: "5", category: "Language Fundamentals", description: "Dichiarazione, assegnamento, scope" },

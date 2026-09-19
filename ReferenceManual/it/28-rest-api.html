@@ -19,6 +19,7 @@
         <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>28. Server REST API</span></div>
         <h1>28. Server REST API</h1>
         <p>MALDA include il supporto nativo per REST API JSON-first. Decora le funzioni con i metodi HTTP e ospitale su <code>RestServer</code> (standalone) oppure monta quel server su <code>HttpServer</code> per un'app full-stack a una sola porta.</p>
+        <p><code>RestServer</code>, <code>HttpServer</code> e le sessioni girano sull'interprete e sul transpile C#. Non sono disponibili sul backend JavaScript — tieni il server sull'host e chiamalo dal browser (<a href="29-rest-web-client.html">29. Client REST Web</a>). Vedi la <a href="../../docs/spec/backend-capability-matrix.md">matrice delle capacità dei backend</a>. Note interprete vs transpile: 28.14.</p>
         <div class="info-box">
             <strong>Parti da qui:</strong> Sei nuovo alle API web? Leggi prima <a href="#web-concepts">28.1.1 Primer sui concetti</a> — REST, middleware, auth, JWT, CSRF, CORS, HTTPS e una mappa minaccia/difesa, senza uscire da questo manuale. Questo capitolo è il riferimento API-first. Hosting delle pagine, <code>@PAGE</code>, HTTPS, file statici, upload multipart e SSE stanno in <a href="26-http-server-html-ui.html">26. HttpServer e generazione UI HTML</a>. Chiamare API da MALDA è <a href="29-rest-web-client.html">29. Client REST Web</a>. Gli helper JWT, CSRF e password sono in <a href="#jwt-security">28.16</a> (indice dei nomi: <a href="13-built-in-functions.html#jwt-security">13.25</a>).
         </div>

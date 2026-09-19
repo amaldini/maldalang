@@ -43,7 +43,31 @@ public class PlayCommandTests : TestBase
         Assert.Equal(9001, options.Port);
         Assert.True(options.OpenBrowser);
         Assert.Equal("127.0.0.1", options.Host);
+        Assert.True(options.Watch);
         Assert.Equal(string.Empty, error.ToString());
+    }
+
+    [Fact]
+    public void TryParse_NoWatch_DisablesWatch()
+    {
+        var error = new StringWriter();
+        var ok = PlayCommandOptionsParser.TryParse(new[] { "app.malda", "--no-watch" }, error, out var options);
+
+        Assert.True(ok);
+        Assert.NotNull(options);
+        Assert.False(options!.Watch);
+        Assert.Equal(string.Empty, error.ToString());
+    }
+
+    [Fact]
+    public void TryParse_WatchAndNoWatch_Fails()
+    {
+        var error = new StringWriter();
+        var ok = PlayCommandOptionsParser.TryParse(new[] { "app.malda", "--watch", "--no-watch" }, error, out var options);
+
+        Assert.False(ok);
+        Assert.Null(options);
+        Assert.Contains("only one of --watch or --no-watch", error.ToString());
     }
 
     [Fact]
@@ -92,6 +116,8 @@ public class PlayCommandTests : TestBase
             var runtimeIdx = html.IndexOf("malda-js-runtime.js", StringComparison.Ordinal);
             var appIdx = html.IndexOf("./app.js", StringComparison.Ordinal);
             Assert.True(runtimeIdx >= 0 && appIdx > runtimeIdx);
+            Assert.Contains(PlayCommandRunner.LiveReloadMarker, html, StringComparison.Ordinal);
+            Assert.Contains(PlayCommandRunner.GenerationPath, html, StringComparison.Ordinal);
         }
         finally
         {
@@ -190,6 +216,10 @@ public class PlayCommandTests : TestBase
 
             var runtime = await client.GetAsync(new Uri(new Uri(server.Url), "malda-js-runtime.js"));
             Assert.Equal(HttpStatusCode.OK, runtime.StatusCode);
+
+            var generation = await client.GetAsync(new Uri(new Uri(server.Url), "__malda_play/generation"));
+            Assert.Equal(HttpStatusCode.OK, generation.StatusCode);
+            Assert.Equal("1", (await generation.Content.ReadAsStringAsync()).Trim());
         }
         finally
         {
@@ -236,5 +266,83 @@ public class PlayCommandTests : TestBase
         {
             SafeDeleteDirectory(root);
         }
+    }
+
+    [Fact]
+    public async Task Rebuild_UpdatesJsAndBumpsGenerationAsync()
+    {
+        var root = CreateTempDirectory("malda_play_rebuild_");
+        try
+        {
+            var sourceDir = Path.Combine(root, "game");
+            Directory.CreateDirectory(sourceDir);
+            var sourcePath = Path.Combine(sourceDir, "app.malda");
+            File.WriteAllText(sourcePath, """
+                game.createCanvas(32, 32, "#app");
+                game.setBackground("#101722");
+                """);
+
+            var runner = new PlayCommandRunner(CompileJs);
+            var preview = Path.Combine(root, "preview");
+            var prepared = runner.Prepare(
+                new PlayCommandOptions
+                {
+                    SourcePath = sourcePath,
+                    PreviewDirectory = preview
+                },
+                new StringWriter(),
+                new StringWriter());
+            Assert.NotNull(prepared);
+            Assert.Contains("#101722", File.ReadAllText(prepared!.JavaScriptPath), StringComparison.Ordinal);
+
+            using var server = runner.StartServer(
+                new PlayCommandOptions { Port = 0 },
+                prepared.PreviewDirectory,
+                new StringWriter());
+            Assert.NotNull(server);
+            Assert.Equal(1, server!.Generation);
+
+            File.WriteAllText(sourcePath, """
+                game.createCanvas(32, 32, "#app");
+                game.setBackground("#ff00aa");
+                """);
+
+            var rebuilt = runner.Rebuild(prepared, new StringWriter(), new StringWriter());
+            Assert.True(rebuilt);
+            Assert.Contains("#ff00aa", File.ReadAllText(prepared.JavaScriptPath), StringComparison.Ordinal);
+            Assert.DoesNotContain("#101722", File.ReadAllText(prepared.JavaScriptPath), StringComparison.Ordinal);
+
+            server.BumpGeneration();
+            Assert.Equal(2, server.Generation);
+
+            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+            var generation = await client.GetAsync(new Uri(new Uri(server.Url), "__malda_play/generation"));
+            Assert.Equal(HttpStatusCode.OK, generation.StatusCode);
+            Assert.Equal("2", (await generation.Content.ReadAsStringAsync()).Trim());
+        }
+        finally
+        {
+            SafeDeleteDirectory(root);
+        }
+    }
+
+    [Fact]
+    public void IsPlayWatchTarget_IgnoresPreviewDirectory()
+    {
+        var prepared = new PlayPrepareResult
+        {
+            SourcePath = Path.GetFullPath(Path.Combine("game", "app.malda")),
+            PreviewDirectory = Path.GetFullPath(Path.Combine("game", ".malda-play")),
+            JavaScriptPath = Path.GetFullPath(Path.Combine("game", ".malda-play", "app.js")),
+            HostHtmlPath = Path.GetFullPath(Path.Combine("game", ".malda-play", "index.html"))
+        };
+
+        Assert.True(PlayCommandRunner.IsPlayWatchTarget(prepared.SourcePath, prepared));
+        Assert.True(PlayCommandRunner.IsPlayWatchTarget(
+            Path.GetFullPath(Path.Combine("game", "index.html")), prepared));
+        Assert.True(PlayCommandRunner.IsPlayWatchTarget(
+            Path.GetFullPath(Path.Combine("game", "assets", "token.png")), prepared));
+        Assert.False(PlayCommandRunner.IsPlayWatchTarget(prepared.JavaScriptPath, prepared));
+        Assert.False(PlayCommandRunner.IsPlayWatchTarget(prepared.HostHtmlPath, prepared));
     }
 }

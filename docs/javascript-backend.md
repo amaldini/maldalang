@@ -249,7 +249,7 @@ malda play Examples/Games/game_bounce.malda
 malda compile Examples/Games/game_bounce.malda --mode js -o Examples/Games/game_bounce.js
 ```
 
-`malda play` is the inner loop: it compiles `--mode js` into `.malda-play/` next to the source, copies `malda-js-runtime.js` and `assets/` if present, writes a host page, and prints a local URL. Ctrl+C stops the server. `--open` may launch a browser. PWA packaging is still `malda compile --mode pwa`. `malda play` serves the preview folder, not the source tree. Fullstack score apps (`malda new game --fullstack`) are not a `play` preview — compile `--mode fullstack` and run the server with `MALDA_WEB_DIRECTORY` (see `Templates/game-fullstack/README.md`).
+`malda play` is the inner loop: it compiles `--mode js` into `.malda-play/` next to the source, copies `malda-js-runtime.js` and `assets/` if present, writes a host page, and prints a local URL. It watches the source, sibling `index.html`, and `assets/`, rebuilds in place, and reloads the browser (`--no-watch` serves the first compile only). Ctrl+C stops the server. `--open` may launch a browser. PWA packaging is still `malda compile --mode pwa`. `malda play` serves the preview folder, not the source tree. Fullstack score apps (`malda new game --fullstack`) are not a `play` preview — compile `--mode fullstack` and run the server with `MALDA_WEB_DIRECTORY` (see `Templates/game-fullstack/README.md`).
 
 Host page loading order (required):
 

@@ -10,7 +10,8 @@ namespace MaldaLang.Tests;
 
 /// <summary>
 /// Guards that keep ReferenceManual content aligned with the code it documents:
-/// reserved words versus the lexer, built-in coverage versus the registry,
+/// reserved words versus the lexer, built-in coverage versus the registry
+/// (signature <c>name(</c> or a table-row <c>&lt;code&gt;</c>, not a bare list),
 /// internal links, section numbering, navigation/TOC fallbacks, contiguous categories,
 /// chapter filenames matching display numbers, and the shipping version stamped in
 /// chapter headers.
@@ -60,32 +61,28 @@ public class ReferenceManualContentGuardTests
     }
 
     [Fact]
-    public void EveryRegistryBuiltIn_IsMentionedSomewhereInTheManual()
+    public void EveryRegistryBuiltIn_HasSignatureOrTableRow()
     {
         var builtIns = RegistryBuiltInNames();
         Assert.True(builtIns.Count > 250, $"Expected the registry parse to find the full built-in set, got {builtIns.Count}.");
 
         var manualText = string.Concat(ManualPages.Select(File.ReadAllText));
-        var mentioned = new HashSet<string>(
-            Regex.Matches(manualText, @"[A-Za-z_][A-Za-z0-9_]*").Select(m => m.Value),
-            StringComparer.Ordinal);
-
-        // The Web UI built-ins are registered flat (uiButton) but documented under the
-        // namespaced spelling users actually write (ui.button).
+        var documented = SignatureOrTableRowNames(manualText);
         var namespacedUi = new HashSet<string>(
             Regex.Matches(manualText, @"\bui\.(?<member>[A-Za-z][A-Za-z0-9_]*)").Select(m => m.Groups["member"].Value),
             StringComparer.Ordinal);
 
         var missing = builtIns
-            .Where(name => !mentioned.Contains(name))
+            .Where(name => !documented.Contains(name))
             .Where(name => !IsDocumentedAsUiMember(name, namespacedUi))
+            .Where(name => !IsDocumentedAsExtractTextAlias(name, manualText))
             .Where(name => !UndocumentedBuiltInAllowList.Contains(name))
             .OrderBy(name => name, StringComparer.Ordinal)
             .ToList();
 
         Assert.True(
             missing.Count == 0,
-            $"Built-ins registered in BuiltInRegistry but never named in the manual: {string.Join(", ", missing)}");
+            $"Built-ins registered in BuiltInRegistry without a signature (`name(`) or table-row `<code>` in the manual: {string.Join(", ", missing)}");
     }
 
     [Fact]
@@ -322,6 +319,34 @@ public class ReferenceManualContentGuardTests
         Assert.Contains("MaldaLang.csproj", script, StringComparison.Ordinal);
         Assert.Contains("$manualVersion", script, StringComparison.Ordinal);
         Assert.DoesNotContain("Version 0.1 &middot;", script, StringComparison.Ordinal);
+    }
+
+    private static HashSet<string> SignatureOrTableRowNames(string html)
+    {
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        foreach (Match match in Regex.Matches(html, @"\b([A-Za-z_][A-Za-z0-9_]*)\s*\("))
+            names.Add(match.Groups[1].Value);
+
+        foreach (Match cell in Regex.Matches(html, @"<td\b[^>]*>(.*?)</td>", RegexOptions.Singleline))
+        {
+            foreach (Match code in Regex.Matches(cell.Groups[1].Value, @"<code\b[^>]*>(.*?)</code>", RegexOptions.Singleline))
+            {
+                foreach (Match ident in Regex.Matches(code.Groups[1].Value, @"[A-Za-z_][A-Za-z0-9_]*"))
+                    names.Add(ident.Value);
+            }
+        }
+
+        return names;
+    }
+
+    private static bool IsDocumentedAsExtractTextAlias(string registryName, string html)
+    {
+        return registryName switch
+        {
+            "extractPdfText" => html.Contains("pdf.extractText(", StringComparison.Ordinal),
+            "extractDocxText" => html.Contains("doc.extractText(", StringComparison.Ordinal),
+            _ => false
+        };
     }
 
     private static bool IsDocumentedAsUiMember(string registryName, HashSet<string> namespacedUiMembers)

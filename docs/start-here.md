@@ -138,7 +138,7 @@ cd my-scores
 malda compile app.malda --mode fullstack -o dist
 ```
 
-`malda play` compiles `--mode js`, copies `malda-js-runtime.js`, writes a host page, and prints a local URL. Ctrl+C stops the server. Add `--open` to launch a browser when the OS allows it. Put images in `assets/` so relative `game.loadImage("assets/...")` works in the preview. `malda play` refuses fullstack score apps — those use `--mode fullstack` and `MALDA_WEB_DIRECTORY` (see the generated README).
+`malda play` compiles `--mode js`, copies `malda-js-runtime.js`, writes a host page, and prints a local URL. Edits to the source, sibling `index.html`, and `assets/` rebuild and reload the browser (`--no-watch` serves the first compile only). Ctrl+C stops the server. Add `--open` to launch a browser when the OS allows it. Put images in `assets/` so relative `game.loadImage("assets/...")` works in the preview. `malda play` refuses fullstack score apps — those use `--mode fullstack` and `MALDA_WEB_DIRECTORY` (see the generated README).
 
 What to expect today:
 

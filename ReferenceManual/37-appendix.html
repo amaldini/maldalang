@@ -104,10 +104,12 @@
             </ul>
         </div>
         <h2>37.4 Appendix D: Command-line reference</h2>
-        <p>Summary of <code>malda</code> CLI commands. See <a href="33-personal-assistant.html">33. Personal Assistant and CLI</a> for details on the assistant, config, and cron.</p>
+        <p>Short reminder of common flags. The canonical list of every <code>malda &lt;verb&gt;</code> is <a href="02-tools.html#cli-index">2.0 CLI command index</a>. Assistant, config, and cron how-tos: <a href="33-personal-assistant.html">33. Personal Assistant and CLI</a>.</p>
         <table>
             <tr><th>Command</th><th>Description</th></tr>
             <tr><td><code>malda &lt;file.malda&gt;</code></td><td>Run a MALDA file</td></tr>
+            <tr><td><code>malda check</code> / <code>malda eval</code> / <code>malda test</code></td><td>Diagnose; run <code>suite</code> cases; run property tests — see <a href="02-tools.html#cli-index">2.0</a></td></tr>
+            <tr><td><code>malda new</code> / <code>malda play</code></td><td>Scaffold; JS preview of <code>.malda-play/</code> — see <a href="02-tools.html#cli-index">2.0</a> and <a href="27-browser-javascript-backend.html">27</a></td></tr>
             <tr><td><code>malda &lt;file.malda&gt; --profile</code></td><td>Run a MALDA file with the built-in profiler enabled</td></tr>
             <tr><td><code>malda debug-adapter</code></td><td>Debug Adapter Protocol on stdio for editors (interpret-only). Do not mix with <code>malda-lsp</code>. See <a href="02-tools.html#interpret-mode-debug">2.6.5</a> and <a href="../docs/debugging-interpret.md"><code>docs/debugging-interpret.md</code></a>.</td></tr>
             <tr><td><code>malda compile &lt;file.malda&gt;</code></td><td>Compile to executable or DLL</td></tr>

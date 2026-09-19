@@ -19,13 +19,11 @@
 
     <main>
         <h1>Welcome to the MALDA Reference Manual</h1>
-        
-        <p><strong>MALDA: The AI-First Programming Language</strong> is a modern, object-oriented programming language designed for building AI agents and automation workflows. With native support for LLM integration, agent orchestration, and multi-agent systems, MALDA makes it simple to create intelligent, autonomous applications.</p>
 
-        <p><strong>MALDA: Multi Agent Language with Development Automation</strong> - The name MALDA reflects the core principles of the language: <strong>Multi Agent</strong> (native support for orchestrating multiple AI agents working together), <strong>Language</strong> (a complete programming language with syntax, runtime, and tooling), <strong>Development</strong> (a full toolchain - interpreter, compiler, IDEs, language server - for building and shipping real software), and <strong>Automation</strong> (coding agents can write MALDA thanks to the language pack in <code>docs/llm/</code>, and MALDA programs automate development work in turn, since prompts, agents, and durable workflows are language constructs).</p>
+        <p>MALDA is an object-oriented language with prompts, agents, and durable workflows as language constructs — not a library bolted onto another stack. The name and runtime architecture are in <a href="01-introduction.html">1. Introduction</a>.</p>
 
         <div class="info-box">
-            <strong>What ships today:</strong> MALDA <strong>1.0.22</strong> (this manual). Tier 0 language semantics are specified in <a href="../docs/spec/malda-language-1.0.md">malda-language-1.0</a>. A C# interpreter, a compiler that transpiles to C# or JavaScript, a Windows Desktop IDE, a browser playground, and a language server for cross-platform editors. Every feature described in this manual runs on the interpreter; where a feature is unavailable in one of the transpilers, the chapter says so.
+            <strong>What ships today:</strong> MALDA <strong>1.0.22</strong> (this manual). Tier 0 language semantics are specified in <a href="../docs/spec/malda-language-1.0.md">malda-language-1.0</a>. A C# interpreter, a compiler that transpiles to C# or JavaScript, a Windows Desktop IDE, a browser playground, and a language server for cross-platform editors. The interpreter is the full host surface; C# transpile shares it. JavaScript is a subset: <code>dom.*</code> / <code>game.*</code> / <code>three.*</code> / <code>@shader()</code> are JS-only, while agents, HTTP servers, file I/O, VectorDB, and workflows stay on the host. Each chapter states its backends; the table is the <a href="../docs/spec/backend-capability-matrix.md">backend capability matrix</a>.
         </div>
 
         <div class="info-box">
@@ -36,7 +34,7 @@
             <strong>Recommended onboarding:</strong> MALDA works best with a dual-track start.
             New programmers should begin with the language fundamentals path.
             Experienced builders can jump straight into prompts, agents, APIs, and full-stack showcases.
-            After the core path, branch into <strong>Testing and Quality</strong>, <strong>Data and Databases</strong>, and <strong>Browser Apps</strong>.
+            After the core path, continue from the sidebar categories: <strong>Standard Library</strong> (<a href="16-database.html">16. Database Support</a>, <a href="15-vectordb.html">15. VectorDB</a>), <strong>AI &amp; Agents</strong> (<a href="18-agent-orchestration.html">18. Agent Orchestration</a>), <strong>Web</strong> (<a href="24-web-ui-hub.html">24. Web UI Overview</a>, <a href="27-browser-javascript-backend.html">27. Browser JavaScript UI Backend</a>), and <strong>Reference</strong> (<a href="35-property-testing.html">35. Property Testing</a>).
             For runnable example paths and CLI quickstarts, see <a href="../docs/start-here.md">Start Here</a>.
         </div>
 
@@ -128,25 +126,25 @@ io.print("Summary: " + describeTotal(total));</code></pre>
         <h3>Path 1: Learn Programming With MALDA</h3>
         <p>Start here if you are learning programming for the first time. Follow this sequence:</p>
         <ol>
-            <li>Hello World</li>
-            <li>Variables and Arithmetic</li>
-            <li>Conditionals</li>
-            <li>While Loop</li>
-            <li>For Loop</li>
-            <li>Functions</li>
-            <li>Complete Starter Program</li>
-            <li>Input Example</li>
+            <li><a href="12-input-output.html">Hello World</a> — <code>Examples/Basics/hello_world.malda</code>, also <a href="34-examples.html">34.1</a></li>
+            <li><a href="05-variables.html">Variables and Arithmetic</a> — <code>Examples/Basics/variables_arithmetic.malda</code></li>
+            <li><a href="08-control-structures.html">Conditionals</a> — <code>Examples/Basics/conditionals.malda</code></li>
+            <li><a href="08-control-structures.html">While Loop</a> — <code>Examples/Basics/while_loop.malda</code></li>
+            <li><a href="08-control-structures.html">For Loop</a> — <code>Examples/Basics/for_loop.malda</code></li>
+            <li><a href="09-functions.html">Functions</a> — <code>Examples/Basics/functions.malda</code></li>
+            <li><a href="34-examples.html">Complete Starter Program</a> — <code>Examples/Basics/complete_starter_program.malda</code></li>
+            <li><a href="12-input-output.html">Input Example</a> — <code>Examples/Basics/input_example.malda</code></li>
         </ol>
-        <p>If you already program, optionally start with First Look (<code>prompt</code> + <code>schema</code> + <code>validate</code>) before Hello World. See <a href="34-examples.html">Examples</a> for runnable beginner programs.</p>
-        <p>After the core path, branch into <strong>Testing and Quality</strong>, <strong>Data and Databases</strong>, and <strong>Browser Apps</strong>.</p>
+        <p>If you already program, optionally start with First Look (<code>prompt</code> + <code>schema</code> + <code>validate</code>) before Hello World. See <a href="34-examples.html">34. Examples</a> and <a href="../Examples/README.md">Examples/README.md</a>.</p>
+        <p>After the core path, continue from the sidebar categories: <strong>Standard Library</strong> (<a href="16-database.html">16. Database Support</a>, <a href="15-vectordb.html">15. VectorDB</a>), <strong>AI &amp; Agents</strong> (<a href="18-agent-orchestration.html">18. Agent Orchestration</a>), <strong>Web</strong> (<a href="24-web-ui-hub.html">24. Web UI Overview</a>, <a href="27-browser-javascript-backend.html">27. Browser JavaScript UI Backend</a>), and <strong>Reference</strong> (<a href="35-property-testing.html">35. Property Testing</a>).</p>
 
         <h3>Path 2: Build AI Apps With MALDA</h3>
         <p>Start here if you already know the basics and want to reach prompts, agents, and full-stack AI apps quickly.</p>
         <ul>
-            <li>Prompt blocks and reusable prompting</li>
-            <li>Agents and tool-based workflows</li>
-            <li>REST APIs and UI controls</li>
-            <li>Full-stack web and API showcases</li>
+            <li><a href="10-prompts.html">10. Prompts</a> — prompt blocks and reusable prompting</li>
+            <li><a href="18-agent-orchestration.html">18. Agent Orchestration</a> — agents and tool-based workflows</li>
+            <li><a href="28-rest-api.html">28. REST API Server</a> and <a href="25-web-ui.html">25. Web UI Server Components</a> — APIs and UI controls (choose a model in <a href="24-web-ui-hub.html">24</a>)</li>
+            <li><a href="30-full-stack-development.html">30. Full-Stack Development with MALDA</a> — end-to-end web and API showcases</li>
         </ul>
 
         <div class="info-box">
@@ -155,37 +153,6 @@ io.print("Summary: " + describeTotal(total));</code></pre>
             <a href="30-full-stack-development.html">30. Full-Stack Development with MALDA</a> ties the pieces together end to end.
         </div>
 
-        <h2>Key Features</h2>
-
-        <h3>Core Language</h3>
-        <ul>
-            <li><strong>Dynamic Typing</strong> - Variables can hold values of any type</li>
-            <li><strong>Object-Oriented</strong> - Classes, inheritance, polymorphism</li>
-            <li><strong>Actors</strong> - Native actor model for concurrent programming</li>
-            <li><strong>Functions</strong> - First-class functions with recursion support</li>
-            <li><strong>Arrays</strong> - Dynamic arrays with built-in methods</li>
-            <li><strong>Control Structures</strong> - if/else, while, for, foreach loops</li>
-        </ul>
-
-        <h3>AI-First Capabilities</h3>
-        <ul>
-            <li><strong>LLM Integration</strong> - Built-in support for OpenAI, OpenRouter, LMStudio, OLLAMA</li>
-            <li><strong>Local LLMs</strong> - LlamaCppClient for local inference with GGUF models</li>
-            <li><strong>Agent System</strong> - Create autonomous agents with roles and instructions</li>
-            <li><strong>Tool System</strong> - Define custom tools with @Tool decorator</li>
-            <li><strong>Multi-Agent Orchestration</strong> - Coordinate multiple agents working together, including hierarchical systems</li>
-            <li><strong>Conversation Management</strong> - Automatic tool call handling with parallel read-only execution (default on)</li>
-        </ul>
-
-        <h3>Web & API Features</h3>
-        <ul>
-            <li><strong>Web Server</strong> - Built-in HTTP server for serving HTML</li>
-            <li><strong>REST API</strong> - Create REST APIs with decorator-based routing</li>
-            <li><strong>UI Web Framework</strong> - Use <code>@PAGE</code> and <code>@AIPAGE</code> with component library support to build full-stack applications with MALDA backend and server-rendered UI</li>
-            <li><strong>MCP Server</strong> - Expose MALDA functions as MCP tools</li>
-            <li><strong>UI Generation</strong> - Generate HTML interfaces using LLM agents</li>
-        </ul>
-
         <h2>Table of Contents</h2>
         <div id="table-of-contents">
             <!-- Table of contents will be generated dynamically -->
@@ -193,30 +160,8 @@ io.print("Summary: " + describeTotal(total));</code></pre>
 
         <h2>Getting Started</h2>
 
-        <p>To get started with MALDA, run <code>malda Examples/Basics/first_look.malda</code> from the CLI. The <strong>Desktop IDE</strong> is the Windows reference (WPF); the Web IDE is a browser playground (not Desktop parity); VS Code + LSP is the cross-platform editor. The Desktop IDE provides:</p>
-
-        <ul>
-            <li>Syntax highlighting</li>
-            <li>IntelliSense/auto-completion</li>
-            <li>Full debugger with breakpoints</li>
-            <li>Error diagnostics</li>
-            <li>Compiler to create standalone executables</li>
-            <li>Built-in profiling for bottleneck analysis in interpreted and transpiled runs</li>
-        </ul>
-
-        <p>If you are new to the language, work through the Quick Start examples above from top to bottom before jumping into agents and full-stack features.</p>
-        <p>When you are ready to tune runtime behavior, see <a href="37-appendix.html">Appendix</a> for the command-line profiling flags (including optional periodic file snapshots for long runs) and report summary.</p>
-
-        <h2>Example: Simple Agent</h2>
-
-        <p>Here's a quick example of creating an AI agent in MALDA:</p>
-
-        <pre><code>// Create an agent (pass a client; for remote models use OpenRouterClient)
-var client = new OpenRouterClient();
-var agent = new Agent("Assistant", "helper", "You are a helpful assistant.", client);
-var response = agent.think("What is 2+2?");
-io.print(response.content);</code></pre>
-        <p>When you use <code>await prompt(...)</code> or specialized agents (e.g. <code>CodingAgent</code>) without passing a client, MALDA uses a <strong>default local LLM</strong> (Qwen/Qwen2.5-0.5B-Instruct, downloaded as a GGUF build from Hugging Face on first use—no API key required).</p>
+        <p>Run <code>malda Examples/Basics/first_look.malda</code> from the CLI. The <strong>Desktop IDE</strong> is the Windows reference (WPF); the Web IDE is a browser playground (not Desktop parity); VS Code + LSP is the cross-platform editor. Tooling, debug, and <code>malda check</code> are in <a href="02-tools.html">2. Tools &amp; Tooling</a>. Profiling flags live in the <a href="37-appendix.html">Appendix</a>.</p>
+        <p>A first live agent is <a href="18-agent-orchestration.html">18. Agent Orchestration</a> (needs a client or the default local GGUF). Keep working through Quick Start before that if you are new to the language.</p>
 
         <div class="nav-footer">
             <span></span>

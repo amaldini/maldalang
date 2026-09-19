@@ -21,6 +21,7 @@
 
         <p>I workflow durevoli consentono di eseguire processi di business di lunga durata, sicuri al riavvio, con stato persistito, esecuzione degli step sicura in replay e punti di controllo esterni come approval e signal.</p>
         <p>Per lavoro breve e fire-and-forget (inviare una email, chiamare un webhook), preferisci la job queue leggera in <a href="#background-jobs">22.11</a>. I job usano <code>./.malda/jobs.db</code> e non sono istanze di workflow.</p>
+        <p>I workflow durevoli e la job queue sono solo host (interprete e transpile C#). JavaScript non esegue <code>workflow</code> / <code>step</code> né <code>enqueueJob</code>. Vedi la <a href="../../docs/spec/backend-capability-matrix.md">matrice delle capacità dei backend</a>.</p>
 
         <h2>22.1 Concetti fondamentali</h2>
         <ul>

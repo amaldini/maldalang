@@ -20,7 +20,42 @@ public class CheckCommandRunnerTests : TestBase
         var code = runner.Run(new[] { "--help" }, output, error);
         Assert.Equal(CheckCommandRunner.ExitOk, code);
         Assert.Contains("malda check", output.ToString(), StringComparison.Ordinal);
+        Assert.Contains("-e, --exec", output.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("--eval", output.ToString(), StringComparison.Ordinal);
         Assert.Equal("", error.ToString());
+    }
+
+    [Fact]
+    public void Exec_LongFlag_CleanSnippet_JsonOkAndDidNotExecute()
+    {
+        var runner = new CheckCommandRunner();
+        var output = new StringWriter();
+        var error = new StringWriter();
+        var code = runner.Run(new[] { "--exec", "io.print(\"ran\");", "--json" }, output, error);
+        Assert.Equal(CheckCommandRunner.ExitOk, code);
+        Assert.Equal("", error.ToString());
+        using var doc = JsonDocument.Parse(output.ToString());
+        var root = doc.RootElement;
+        Assert.True(root.GetProperty("ok").GetBoolean());
+        Assert.False(root.GetProperty("executed").GetBoolean());
+        Assert.Equal(0, root.GetProperty("errorCount").GetInt32());
+        Assert.Equal("<eval>", root.GetProperty("file").GetString());
+        Assert.DoesNotContain("ran", output.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Eval_LongFlag_RejectedAsCollision()
+    {
+        var runner = new CheckCommandRunner();
+        var output = new StringWriter();
+        var error = new StringWriter();
+        var code = runner.Run(new[] { "--eval", "io.print(1);", "--json" }, output, error);
+        Assert.Equal(CheckCommandRunner.ExitUsage, code);
+        using var doc = JsonDocument.Parse(output.ToString());
+        Assert.False(doc.RootElement.GetProperty("ok").GetBoolean());
+        Assert.Contains("malda eval", doc.RootElement.GetProperty("error").GetString(), StringComparison.Ordinal);
+        Assert.Contains("--exec", doc.RootElement.GetProperty("error").GetString(), StringComparison.Ordinal);
+        Assert.False(doc.RootElement.GetProperty("executed").GetBoolean());
     }
 
     [Fact]

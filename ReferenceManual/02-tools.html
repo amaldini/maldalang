@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="MALDA Tools & Tooling - Interpreter, Compiler, and Package Manager">
+    <meta name="description" content="MALDA Tools & Tooling - Interpreter, compiler, package manager, and CLI command index">
     <title>2. Tools & Tooling - MALDA Reference Manual</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="syntax.css">
@@ -22,9 +22,64 @@
 
         <h1>2. Tools & Tooling</h1>
 
-        <p>MALDA provides a complete set of development tools including an interactive interpreter, a dual-mode compiler, and a package manager. This chapter covers how to use these tools to develop, run, and deploy MALDA applications.</p>
+        <p>MALDA provides a complete set of development tools including an interactive interpreter, a dual-mode compiler, and a package manager. This chapter covers how to use these tools to develop, run, and deploy MALDA applications. The table in <a href="#cli-index">2.0</a> is the command index: every <code>malda &lt;verb&gt;</code> with a one-line pointer. How-tos stay in the sections named there. <code>malda help</code> or <code>malda help &lt;command&gt;</code> prints the same list from the binary.</p>
 
-        <h2>2.1 Interpreter</h2>
+        <h2 id="cli-index">2.0 CLI command index</h2>
+        <p>Run a file with no verb: <code>malda app.malda</code> (optional <code>--strict-types</code>, <code>--profile</code>). <code>malda -e "…"</code> / <code>--exec</code> executes a snippet — that is not <code>malda eval</code>, which runs <code>suite</code> / <code>case</code>. <code>malda --eval</code> is rejected so the two are not confused. <code>malda --check "…"</code> is a syntax-only compile check; prefer <code>malda check --json</code> for IDE/LSP diagnostics.</p>
+
+        <h3>Getting started</h3>
+        <table>
+            <thead><tr><th>Command</th><th>Does</th><th>Where</th></tr></thead>
+            <tbody>
+                <tr><td><code>malda &lt;file.malda&gt;</code></td><td>Interpret a source file</td><td><a href="#interpreter">2.1</a></td></tr>
+                <tr><td><code>malda doctor</code></td><td>Fast diagnostics for runtime, config, providers, and scaffold</td><td><a href="33-personal-assistant.html">33.1</a></td></tr>
+                <tr><td><code>malda onboard</code></td><td>Create <code>~/.malda</code>, starter config, optional model downloads</td><td><a href="33-personal-assistant.html">33.2.2</a></td></tr>
+                <tr><td><code>malda status</code></td><td>Show home, config, provider, gateway, and cron health</td><td><a href="33-personal-assistant.html">33.2.3</a></td></tr>
+                <tr><td><code>malda new webapi|fullstack|game|agent</code></td><td>Scaffold a starter. <code>game --fullstack</code> is a score API, not <code>malda play</code></td><td><a href="34-examples.html">34.11</a>, <a href="30-full-stack-development.html">30</a></td></tr>
+                <tr><td><code>malda play &lt;file.malda&gt;</code></td><td>JS preview: compile <code>--mode js</code> and serve <code>.malda-play/</code> (not the source folder; live-reloads source / <code>index.html</code> / <code>assets/</code>)</td><td><a href="27-browser-javascript-backend.html">27</a></td></tr>
+            </tbody>
+        </table>
+
+        <h3>Build, test, and ship</h3>
+        <table>
+            <thead><tr><th>Command</th><th>Does</th><th>Where</th></tr></thead>
+            <tbody>
+                <tr><td><code>malda check</code></td><td>Diagnose without executing (<code>--json</code>, <code>--fix</code>, <code>--strict-types</code>)</td><td><a href="#check">2.1.2</a>, <a href="23-agentic-runs.html">23.10</a></td></tr>
+                <tr><td><code>malda eval</code></td><td>Run <code>suite</code> / <code>case</code> (ordinary run skips them; not <code>malda test</code>)</td><td><a href="23-agentic-runs.html">23.1</a></td></tr>
+                <tr><td><code>malda prompts --diff</code></td><td>Compare prompt hashes against an eval baseline</td><td><a href="23-agentic-runs.html">23.10</a></td></tr>
+                <tr><td><code>malda compile</code> / <code>publish</code></td><td>Exe, DLL, JS, PWA, or fullstack. <code>publish</code> is <code>compile --mode transpile</code></td><td><a href="#compiler">2.2</a></td></tr>
+                <tr><td><code>malda test</code></td><td>Discover and run <code>property</code> tests and <code>*.test.malda</code></td><td><a href="35-property-testing.html">35</a>, <a href="#property-testing">2.7</a></td></tr>
+                <tr><td><code>malda db</code></td><td>Inspect / migrate / seed scaffolded local-first SQLite (not arbitrary <code>SqliteClient</code>)</td><td><a href="16-database.html">16</a></td></tr>
+                <tr><td><code>malda deploy</code></td><td>Validate deploy / profile / observability contracts (no orchestration)</td><td><a href="37-appendix.html">37.5</a></td></tr>
+                <tr><td><code>malda workflow</code></td><td>Start, inspect, approve, DLQ, and maintain durable workflows</td><td><a href="22-durable-workflows.html">22</a></td></tr>
+            </tbody>
+        </table>
+
+        <h3>AI and automation</h3>
+        <table>
+            <thead><tr><th>Command</th><th>Does</th><th>Where</th></tr></thead>
+            <tbody>
+                <tr><td><code>malda agent</code></td><td>Interactive or one-shot assistant chat</td><td><a href="33-personal-assistant.html">33.2.1</a></td></tr>
+                <tr><td><code>malda gateway</code></td><td>Long-running Telegram poller with optional in-process cron</td><td><a href="33-personal-assistant.html">33.2.4</a></td></tr>
+                <tr><td><code>malda cron</code></td><td>Add, list, remove, or install scheduled jobs</td><td><a href="33-personal-assistant.html">33.2.5</a></td></tr>
+                <tr><td><code>malda memory</code></td><td>Inspect and maintain GraphMemory artifacts</td><td><a href="19-graph-memory.html">19.3.14</a></td></tr>
+            </tbody>
+        </table>
+
+        <h3>Packages and diagnostics</h3>
+        <table>
+            <thead><tr><th>Command</th><th>Does</th><th>Where</th></tr></thead>
+            <tbody>
+                <tr><td><code>malda init</code> / <code>install</code> / <code>uninstall</code> / <code>list</code> / <code>search</code></td><td>Workspace packages; remote search/install needs <code>MALDA_REGISTRY_URL</code></td><td><a href="#packages">2.3</a></td></tr>
+                <tr><td><code>malda trace</code></td><td>Summarize, inspect, or replay session <code>.malda-trace.jsonl</code> files (not <code>MALDA_TRACE</code>)</td><td><a href="23-agentic-runs.html">23.3</a>, <a href="37-appendix.html">37.4</a></td></tr>
+                <tr><td><code>malda symbols</code></td><td>Print classes, functions, and actors from a file</td><td><a href="37-appendix.html">37.4</a></td></tr>
+                <tr><td><code>malda debug-adapter</code></td><td>DAP on stdio (interpret-only). Do not mix with <code>malda-lsp</code></td><td><a href="#interpret-mode-debug">2.6.5</a></td></tr>
+                <tr><td><code>malda help</code></td><td>Top-level help, or <code>malda help check</code> for one command</td><td><a href="#getting-help">2.1.3</a></td></tr>
+            </tbody>
+        </table>
+        <p><code>malda play</code> writes into a sibling <code>.malda-play/</code> directory and copies <code>assets/</code> when present. It watches the source, sibling <code>index.html</code>, and <code>assets/</code>, rebuilds in place, and reloads the browser. Use <code>--no-watch</code> to serve the first compile only. Full-stack score apps (<code>malda new game --fullstack</code>) are refused; compile <code>--mode fullstack</code> instead. Details: <a href="../docs/llm/malda-gotchas.md"><code>docs/llm/malda-gotchas.md</code></a>.</p>
+
+        <h2 id="interpreter">2.1 Interpreter</h2>
 
         <p>The MALDA interpreter allows you to run MALDA code interactively or execute MALDA source files. It provides both an interactive REPL (Read-Eval-Print Loop) mode and command-line execution capabilities.</p>
 
@@ -89,7 +144,7 @@ function add(a, b) { return a + b; }
 3
 > </code></pre>
 
-        <h3>2.1.2 Command-Line Usage</h3>
+        <h3 id="check">2.1.2 Command-Line Usage</h3>
 
         <p>The interpreter can also execute code from the command line:</p>
 
@@ -102,9 +157,9 @@ function add(a, b) { return a + b; }
         <h4>Execute Code Directly</h4>
 
         <pre><code>malda -e "&lt;code&gt;"
-malda --eval "&lt;code&gt;"</code></pre>
+malda --exec "&lt;code&gt;"</code></pre>
 
-        <p>Executes the provided code string directly.</p>
+        <p>Executes the provided code string directly. That is not <code>malda eval</code> (suite / case). <code>malda --eval</code> is rejected.</p>
 
         <h4>Execute from Standard Input</h4>
 
@@ -142,7 +197,7 @@ MALDA_REPLAY_STRICT=1                    malda Examples/path.malda
 MALDA_TRACE=jsonl                        malda Examples/path.malda</code></pre>
         <p>Cassettes record/replay every LLM <code>Chat</code>. A miss journals <code>cassette_miss</code> and falls through to a live call unless <code>MALDA_REPLAY_STRICT=1</code>. <code>MALDA_TRACE</code> exports the in-process run journal; it is not the existing <code>malda trace</code> CLI (session <code>.malda-trace.jsonl</code> files). See <a href="23-agentic-runs.html">23.2</a> and <a href="23-agentic-runs.html">23.3</a>.</p>
 
-        <h3>2.1.3 Getting Help</h3>
+        <h3 id="getting-help">2.1.3 Getting Help</h3>
 
         <p>To see all available commands and language features, use:</p>
 
@@ -162,7 +217,7 @@ malda -h</code></pre>
             <li>Quick examples</li>
         </ul>
 
-        <h2>2.2 Compiler</h2>
+        <h2 id="compiler">2.2 Compiler</h2>
 
         <p>The MALDA compiler can create standalone executables from MALDA source code. It supports two compilation modes: <strong>interpreter mode</strong> and <strong>transpile mode</strong>.</p>
 
@@ -307,7 +362,7 @@ Compilation successful! DLL saved to: library.dll</code></pre>
             <strong>Note:</strong> In transpile mode, the executable is a native <code>.NET</code> application and requires the <code>.NET</code> runtime to be installed on the target machine (unless published as self-contained).
         </div>
 
-        <h2>2.3 Package Manager</h2>
+        <h2 id="packages">2.3 Package Manager</h2>
 
         <p>MALDA reuses libraries through <strong>workspace packages</strong> under a local <code>packages/</code> directory, optional copies in the installed store (<code>~/.maldalang/packages</code>), and <code>import</code> in source. There is <strong>no project-hosted public package hub</strong>; remote registry commands are optional for private or self-hosted registries.</p>
 
@@ -507,7 +562,7 @@ var result = helper();</code></pre>
         <p>Files that include both a client target (<code>@client()</code> / <code>@javascript()</code>) and a host target (<code>@server()</code> / <code>@csharp()</code> or a route decorator such as <code>@GET</code> / <code>@PAGE</code>) are full-stack. Desktop IDE <strong>F5</strong> starts both sessions: the interpreter debugs the host partition (client-only functions are skipped so <code>dom.*</code> is not executed there) and Web Preview debugs the JavaScript partition. Continue / step follow whichever side last paused; Pause stops both. Combined output is labeled <code>[server]</code> and <code>[client]</code>. One current-line highlight and inspect panel is shown at a time. <code>@shared()</code> bodies can stop in either runtime.</p>
         <p>Ctrl+F5 (Run) on browser-only programs opens Web Preview without the debugger. Ctrl+F5 on full-stack files still offers the Server / Client preview / Full stack run dialog. VS Code F5 remains interpret-only. Browser DevTools still work on compiled <code>.js</code> + <code>.map</code> files. See <a href="27-browser-javascript-backend.html">27. Browser JavaScript UI Backend</a>.</p>
 
-        <h2>2.7 Property Testing (Overview)</h2>
+        <h2 id="property-testing">2.7 Property Testing (Overview)</h2>
 
         <p>MALDA provides deterministic, seed-based property testing through <code>malda test</code>. Typical usage in tooling workflows includes:</p>
         <ul>
@@ -578,6 +633,10 @@ malda test --write-regression --regression-dir ./artifacts/regressions</code></p
         <div class="see-also">
             <h3>See Also</h3>
             <ul>
+                <li><a href="#cli-index">2.0 CLI command index</a> — every <code>malda &lt;verb&gt;</code></li>
+                <li><a href="27-browser-javascript-backend.html">27. Browser JavaScript UI Backend</a> — <code>malda play</code> and <code>malda new game</code></li>
+                <li><a href="33-personal-assistant.html">33. Personal Assistant and CLI</a> — <code>agent</code>, <code>onboard</code>, <code>gateway</code>, <code>cron</code></li>
+                <li><a href="22-durable-workflows.html">22. Durable Workflows</a> — <code>malda workflow</code></li>
                 <li><a href="01-introduction.html">1. Introduction</a> - Language overview and features</li>
                 <li><a href="03-lexical-structure.html">3. Lexical Structure</a> - Language syntax and structure</li>
                 <li><a href="09-functions.html">9. Functions</a> - Function definitions and usage</li>

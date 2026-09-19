@@ -19,6 +19,7 @@
         <h1>17. Actors</h1>
         
         <p>MALDA provides native support for the Actor model of concurrent programming. Actors are independent, isolated units of computation that communicate exclusively through asynchronous message passing. Each actor has its own isolated state and processes messages sequentially, ensuring thread-safe concurrent programming without explicit locking mechanisms.</p>
+        <p>Actors run on the interpreter, C# transpile, and JavaScript. On JS they are process-local (same page), not a multi-process runtime. See the <a href="../docs/spec/backend-capability-matrix.md">backend capability matrix</a>.</p>
 
         <h2>17.1 Actor Declaration</h2>
         <p>Actors are declared using the <code>actor</code> keyword, similar to class declarations:</p>

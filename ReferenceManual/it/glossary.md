@@ -72,10 +72,12 @@ traducono.
 | Quick Start | Avvio rapido |
 | Table of Contents | Indice dei capitoli |
 | Getting Started | Per iniziare |
+| CLI command index | Indice dei comandi CLI |
 | Overview | Panoramica |
 | Examples | Esempi |
 | Version | Versione |
 | AI-First Programming Language | linguaggio di programmazione AI-First |
+| AI Unified Runtime Architecture | architettura del runtime AI unificato |
 | capability token | token di capability |
 | mint (a token) | emettere (un token) |
 | confine / attenuate | restringere |

@@ -1257,6 +1257,23 @@ const FALLBACK_GLOSSARY_EN = [
         ],
         "href": "23-agentic-runs.html",
         "summary": "Built-in sum type attached beside the string error on result objects. Throws still throw."
+    },
+    {
+        "id": "cli-index",
+        "term": "CLI command index",
+        "aliases": [
+            "malda new",
+            "malda play",
+            "malda doctor",
+            "malda help",
+            "CLI"
+        ],
+        "href": "02-tools.html#cli-index",
+        "summary": "Every malda verb with a pointer to the chapter that documents it. malda play serves .malda-play/, not the source folder.",
+        "also": [
+            "33-personal-assistant.html",
+            "27-browser-javascript-backend.html"
+        ]
     }
 ];
 
@@ -2199,6 +2216,23 @@ const FALLBACK_GLOSSARY_IT = [
         ],
         "href": "23-agentic-runs.html",
         "summary": "Sum type built-in attaccato accanto alla stringa error sugli oggetti risultato. I throw restano throw."
+    },
+    {
+        "id": "cli-index",
+        "term": "Indice dei comandi CLI",
+        "aliases": [
+            "malda new",
+            "malda play",
+            "malda doctor",
+            "malda help",
+            "CLI"
+        ],
+        "href": "02-tools.html#cli-index",
+        "summary": "Ogni verbo malda con un puntatore al capitolo che lo documenta. malda play serve .malda-play/, non la cartella sorgente.",
+        "also": [
+            "33-personal-assistant.html",
+            "27-browser-javascript-backend.html"
+        ]
     }
 ];
 

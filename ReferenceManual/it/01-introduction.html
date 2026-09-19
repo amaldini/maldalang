@@ -24,14 +24,14 @@
 
         <h2>1.1 Panoramica</h2>
 
-        <p><strong>MALDA: The AI-First Programming Language</strong> è un linguaggio di programmazione moderno e orientato agli oggetti, pensato per costruire agenti AI e workflow di automazione. Con supporto nativo all'integrazione LLM, all'orchestrazione di agenti e ai sistemi multi-agente, MALDA rende semplice creare applicazioni intelligenti e autonome.</p>
+        <p><strong>MALDA</strong>, il linguaggio di programmazione AI-First, è un linguaggio moderno e orientato agli oggetti, pensato per costruire agenti AI e workflow di automazione. Con supporto nativo all'integrazione LLM, all'orchestrazione di agenti e ai sistemi multi-agente, MALDA rende semplice creare applicazioni intelligenti e autonome.</p>
 
         <p>Il linguaggio ha una sintassi pulita e leggibile, le strutture di controllo essenziali, capacità di I/O built-in e pieno supporto alla programmazione orientata agli oggetti: classi, ereditarietà e polimorfismo. Ciò che distingue MALDA sono le <strong>capacità AI di prima classe</strong> - classi built-in per client LLM, conversazioni, agenti e tool, con cui si costruiscono applicazioni AI sofisticate con poco codice.</p>
 
         <p>L'intestazione della pagina riporta la versione della toolchain distribuita (lo stesso numero della CLI). La semantica del linguaggio core è specificata in <a href="../../docs/spec/malda-language-1.0.md">malda-language-1.0</a>.</p>
 
         <div class="info-box">
-            <strong>Come affrontare MALDA:</strong> se programmi già, parti da <a href="index.html">Indice → First Look</a> (<code>prompt</code> + <code>schema</code> + <code>validate</code>, senza API key). Se stai imparando a programmare, impara prima il linguaggio core: <code>io.print</code>, variabili, input, condizionali, cicli e funzioni. Dopo il percorso core, diramati verso <strong>Testing e qualità</strong>, <strong>Dati e database</strong> e <strong>App nel browser</strong>. Entrambi i percorsi arrivano allo stesso runtime AI-first.
+            <strong>Come affrontare MALDA:</strong> se programmi già, parti da <a href="index.html">Indice → First Look</a> (<code>prompt</code> + <code>schema</code> + <code>validate</code>, senza API key). Se stai imparando a programmare, impara prima il linguaggio core: <code>io.print</code>, variabili, input, condizionali, cicli e funzioni. Dopo il percorso core, continua dalle categorie della barra laterale: <strong>Libreria standard</strong> (<a href="16-database.html">16. Supporto database</a>, <a href="15-vectordb.html">15. VectorDB</a>), <strong>AI e agenti</strong> (<a href="18-agent-orchestration.html">18. Orchestrazione di agenti</a>), <strong>Web</strong> (<a href="24-web-ui-hub.html">24. Panoramica Web UI</a>, <a href="27-browser-javascript-backend.html">27. Backend UI JavaScript nel browser</a>) e <strong>Riferimento</strong> (<a href="35-property-testing.html">35. Property testing</a>). Entrambi i percorsi arrivano allo stesso runtime AI-first.
         </div>
 
         <h3>Che cosa significa MALDA?</h3>
@@ -47,20 +47,20 @@
 
         <p>Il runtime unificato che rende possibile tutto questo è descritto di seguito.</p>
 
-        <h2>1.2 Architettura AI Unified Runtime</h2>
+        <h2>1.2 Architettura del runtime AI unificato</h2>
 
-        <p>MALDA poggia sull'<strong>AI Unified Runtime Architecture</strong> - un sistema unificato in cui il runtime del linguaggio, le capacità AI, il framework degli agenti, l'ecosistema di tool e il deployment sono integrati in un'unica architettura coerente. A differenza degli approcci tradizionali che combinano librerie e framework separati, MALDA offre un runtime unificato in cui tutto collabora senza interruzioni.</p>
+        <p>MALDA poggia sull'<strong>architettura del runtime AI unificato</strong> - un sistema in cui il runtime del linguaggio, le capacità AI, il framework degli agenti, l'ecosistema di tool e il deployment sono integrati in un'unica architettura coerente. A differenza degli approcci tradizionali che combinano librerie e framework separati, MALDA offre un runtime unificato in cui tutto collabora senza interruzioni.</p>
 
-        <h3>Che cos'è l'AI Unified Runtime Architecture?</h3>
+        <h3>Che cos'è l'architettura del runtime AI unificato?</h3>
 
-        <p>AI Unified Runtime Architecture significa che le capacità AI non sono aggiunte come librerie o framework esterni, ma sono costruite direttamente nel runtime del linguaggio. Ne risulta un sistema unificato in cui:</p>
+        <p>Significa che le capacità AI non sono aggiunte come librerie o framework esterni, ma sono costruite direttamente nel runtime del linguaggio. Ne risulta un sistema unificato in cui:</p>
 
         <ul>
-            <li><strong>Language Runtime</strong>: l'interprete esegue il codice e gestisce lo stato del programma</li>
-            <li><strong>AI Runtime</strong>: client LLM, conversazioni, agenti e tool girano nello stesso processo</li>
+            <li><strong>Runtime del linguaggio</strong>: l'interprete esegue il codice e gestisce lo stato del programma</li>
+            <li><strong>Runtime AI</strong>: client LLM, conversazioni, agenti e tool girano nello stesso processo</li>
             <li><strong>Orchestrazione di agenti</strong>: più agenti si coordinano nello stesso ambiente di runtime</li>
             <li><strong>Ecosistema di tool</strong>: i tool fanno parte del runtime, non sono plugin esterni</li>
-            <li><strong>Deployment Runtime</strong>: gli eseguibili compilati incorporano il runtime MALDA e le capacità AI. Alcune dipendenze esterne (es. librerie client SQL Server/PostgreSQL, DLL native LLamaSharp) possono richiedere DLL aggiuntive accanto all'eseguibile</li>
+            <li><strong>Runtime di deployment</strong>: gli eseguibili compilati incorporano il runtime MALDA e le capacità AI. Alcune dipendenze esterne (es. librerie client SQL Server/PostgreSQL, DLL native LLamaSharp) possono richiedere DLL aggiuntive accanto all'eseguibile</li>
         </ul>
 
         <h3>Approccio tradizionale e runtime unificato</h3>
@@ -77,7 +77,7 @@
 
         <p>Questo introduce overhead dalle chiamate di libreria, serializzazione tra i componenti e requisiti di setup complessi.</p>
 
-        <p>Con l'AI Unified Runtime Architecture tutti questi componenti sono integrati in un unico runtime:</p>
+        <p>Con l'architettura del runtime AI unificato tutti questi componenti sono integrati in un unico runtime:</p>
 
         <ul>
             <li>Nessun setup di framework: le capacità AI sono native del linguaggio</li>
@@ -91,7 +91,7 @@
         <h4>Runtime unificato del linguaggio</h4>
         <p>L'interprete include le capacità AI come funzionalità di prima classe. Classi come <code>LLMClient</code>, <code>Agent</code> e <code>Conversation</code> sono built-in nel linguaggio, non importate da librerie esterne.</p>
 
-        <h4>Layer AI Runtime integrato</h4>
+        <h4>Layer runtime AI integrato</h4>
         <p>Le operazioni AI si eseguono nello stesso runtime del codice ordinario. Questo offre:</p>
         <ul>
             <li>Accesso diretto alla memoria, senza overhead di serializzazione</li>
@@ -138,7 +138,7 @@
 
         <h3>Come MALDA la implementa</h3>
 
-        <p>L'implementazione MALDA dell'AI Unified Runtime Architecture è composta da quattro layer:</p>
+        <p>L'implementazione MALDA dell'architettura del runtime AI unificato è composta da quattro layer:</p>
 
         <ul>
             <li><strong>Layer 1: Core Runtime</strong> - Lexer, Parser, AST, RuntimeValue, Environment, Execution Engine</li>

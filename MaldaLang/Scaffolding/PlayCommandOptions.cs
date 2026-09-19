@@ -17,6 +17,7 @@ public sealed class PlayCommandOptions
     public int? Port { get; init; }
     public string Host { get; init; } = DefaultHost;
     public bool OpenBrowser { get; init; }
+    public bool Watch { get; init; } = true;
     public string? PreviewDirectory { get; init; }
 }
 
@@ -40,6 +41,7 @@ public static class PlayCommandOptionsParser
         int? port = null;
         string host = PlayCommandOptions.DefaultHost;
         bool openBrowser = false;
+        bool? watch = null;
         var seenFlags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         for (int i = 0; i < args.Count; i++)
@@ -56,6 +58,19 @@ public static class PlayCommandOptionsParser
                 if (string.Equals(token, "--open", StringComparison.OrdinalIgnoreCase))
                 {
                     openBrowser = true;
+                    continue;
+                }
+
+                if (string.Equals(token, "--watch", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(token, "--no-watch", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (watch.HasValue)
+                    {
+                        error.WriteLine("Specify only one of --watch or --no-watch.");
+                        return false;
+                    }
+
+                    watch = string.Equals(token, "--watch", StringComparison.OrdinalIgnoreCase);
                     continue;
                 }
 
@@ -125,7 +140,8 @@ public static class PlayCommandOptionsParser
             SourcePath = sourcePath,
             Port = port,
             Host = host,
-            OpenBrowser = openBrowser
+            OpenBrowser = openBrowser,
+            Watch = watch ?? true
         };
         return true;
     }
@@ -138,6 +154,8 @@ public static class PlayCommandOptionsParser
         output.WriteLine("    --port <n>   Bind port (default 8765; tries the next ports if that one is busy)");
         output.WriteLine("    --host <h>   Bind host (default 127.0.0.1)");
         output.WriteLine("    --open       Open the default browser when the OS allows it");
+        output.WriteLine("    --watch      Rebuild on source / index.html / assets/ changes (default)");
+        output.WriteLine("    --no-watch   Serve the first compile only");
         output.WriteLine("  Examples:");
         output.WriteLine("    malda play app.malda");
         output.WriteLine("    malda play app.malda --open");
