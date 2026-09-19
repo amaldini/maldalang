@@ -1,0 +1,17 @@
+class Person {
+    public var name;
+    public var age;
+
+    function Person(name, age) {
+        this.name = name;
+        this.age = age;
+    }
+
+    public function introduce() {
+        io.print("Hi, I'm " + name + " and I'm " + string(age) + " years old.");
+    }
+}
+
+var alice = new Person("Alice", 30);
+alice.introduce();
+io.print("age=" + string(alice.age));

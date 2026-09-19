@@ -18,9 +18,9 @@
     <main>
         <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>11. Classi e oggetti</span></div>
         <h1>11. Classi e oggetti</h1>
-        <p>Una classe è un tipo con nome, campi (stato) e metodi (comportamento). <code>new ClassName(...)</code> esegue il costruttore e restituisce un'istanza. Stesso file: <code>Examples/OOP/classes_objects.malda</code>.</p>
+        <p>Una classe è un tipo con nome, campi (stato) e metodi (comportamento). <code>new ClassName(...)</code> esegue il costruttore e restituisce un'istanza. Stesso file della lezione del corso: <code>Examples/Basics/classes_intro.malda</code>. Elenco più completo: <code>Examples/OOP/classes_objects.malda</code>.</p>
 
-        <h2>11.1 Una classe funzionante</h2>
+        <h2 id="first-read">11.1 Una classe funzionante</h2>
         <p>Il costruttore ha lo stesso nome della classe. Usa <code>this.field</code> quando un parametro o una variabile locale nasconde un campo; altrove l'accesso ai membri può essere implicito. Un binding con lo stesso nome nel modulo circostante <strong>non</strong> nasconde il campo. I metodi sono funzioni dichiarate dentro la classe.</p>
         <pre><code data-run="true" data-expect="Hi, I'm Alice and I'm 30 years old.\nHi, I'm Bob and I'm 25 years old.\nAlice's age: 30\nAlice's new age: 31">class Person {
     public var name;
@@ -55,7 +55,7 @@ print("Alice's new age: " + string(person1.getAge()));</code></pre>
             <strong>Non</strong> chiamare <code>new Person(...)</code> se <code>class Person</code> non è dichiarata nello stesso programma (o importata). Uno snippet che mostra solo <code>new Person</code> non è un esempio completo.
         </div>
         <div class="info-box">
-            <strong>Stop alla prima lettura.</strong> Ereditarietà e il resto del capitolo sono sotto. Torna a <a href="learn.html">Imparare MALDA</a> se questo è il primo passaggio.
+            <strong>Stop alla prima lettura.</strong> Ereditarietà e il resto del capitolo sono sotto. La lezione del corso è <a href="learn.html#classes">Imparare MALDA — Lezione 12</a>.
         </div>
 
         <h2>11.2 Modificatori di accesso</h2>

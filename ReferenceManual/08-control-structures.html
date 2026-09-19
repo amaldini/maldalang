@@ -131,7 +131,7 @@ for await (var chunk in stream("hello world from malda")) {
     }
 }</code></pre>
         <div class="info-box">
-            <strong>First-read stop.</strong> Pattern matching, <code>try</code>, and <code>within</code> are below. Return to <a href="learn.html">Learn MALDA</a> if this is your first pass.
+            <strong>First-read stop.</strong> Pattern matching, <code>try</code>, and <code>within</code> are below. The course lesson for <code>try</code> / <code>catch</code> is <a href="learn.html#try-catch">Learn MALDA — Lesson 13</a>.
         </div>
         <h2>8.3 Pattern Matching</h2>
         <p>Pattern matching allows you to match values against patterns and execute code based on the match. It's similar to switch statements in other languages but more powerful, supporting pattern matching on arrays, objects, and nested structures.</p>
@@ -333,7 +333,8 @@ match response {
             </ul>
         </div>
         
-        <h2>8.4 Exception Handling</h2>
+        <h2 id="try-catch">8.4 Exception Handling</h2>
+        <p>Same file as the course lesson: <code>Examples/Basics/try_catch.malda</code>.</p>
         <h3>Throw Statement</h3>
         <p>The <code>throw</code> statement throws an exception. The expression can be any value (string, object, etc.).</p>
         <pre><code>throw expression;</code></pre>

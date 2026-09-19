@@ -68,7 +68,17 @@ v.add("World");
 v.add(dict { "type": "string", "value": "Example" });</code></pre>
 
         <h3>15.2.2 Adding with Explicit Vector</h3>
-        <p>You can also provide the vector explicitly:</p>
+        <p>You can also provide the vector explicitly. This snippet stays offline: a tiny calculator returns the query array as-is so <code>searchSimilar</code> can run:</p>
+        <pre><code data-run="true" data-expect="east">function asVector(data) {
+    return data;
+}
+
+var v = new VectorDB(2, "double");
+v.init(asVector);
+v.add([1.0, 0.0], "east");
+v.add([0.0, 1.0], "north");
+var results = v.searchSimilar([1.0, 0.0], 1);
+io.print(results[0].data);</code></pre>
         <pre><code>var v = new VectorDB(3, "double");
 
 // Add a vector with associated data

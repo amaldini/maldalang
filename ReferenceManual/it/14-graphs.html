@@ -23,7 +23,17 @@
         <p>I grafi sono strutture dati che rappresentano relazioni tra nodi (vertici) collegati da archi. MALDA supporta sia grafi diretti sia grafi non diretti, con archi pesati e proprietà opzionali sugli archi. Le chiavi extra su un oggetto arco letterale oltre a <code>from</code>, <code>to</code>, <code>weight</code> e <code>properties</code> (per esempio <code>rel</code> e <code>contract</code>) vengono copiate sulle proprietà di quell'arco così <code>agents.team</code> può leggerle — vedi <a href="18-agent-orchestration.html#declarative-agent-teams">18.17 Team dichiarativi di agenti</a>.</p>
 
         <h2>14.1 Sintassi letterale Graph</h2>
-        <p>I grafi si creano con la sintassi letterale <code>graph directed { ... }</code> o <code>graph undirected { ... }</code>:</p>
+        <p>I grafi si creano con la sintassi letterale <code>graph directed { ... }</code> o <code>graph undirected { ... }</code>. Questo snippet è offline ed eseguibile:</p>
+        <pre><code data-run="true" data-expect="nodes=3\nA-B=true">var g = graph directed {
+  nodes: ["A", "B", "C"],
+  edges: [
+    { from: "A", to: "B", weight: 4 },
+    { from: "B", to: "C", weight: 1 }
+  ]
+};
+io.print("nodes=" + string(g.nodeCount()));
+io.print("A-B=" + string(g.hasEdge("A", "B")));</code></pre>
+        <p>Lo stesso letterale può contenere più di un grafo nello stesso programma:</p>
         <pre><code>// Create a directed graph
 var g = graph directed {
   nodes: ["A", "B", "C", "D"],

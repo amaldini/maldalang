@@ -132,7 +132,7 @@ for await (var chunk in stream("hello world from malda")) {
     }
 }</code></pre>
         <div class="info-box">
-            <strong>Stop alla prima lettura.</strong> Pattern matching, <code>try</code> e <code>within</code> sono più sotto. Torna a <a href="learn.html">Imparare MALDA</a> se questo è il primo passaggio.
+            <strong>Stop alla prima lettura.</strong> Pattern matching, <code>try</code> e <code>within</code> sono più sotto. La lezione del corso per <code>try</code> / <code>catch</code> è <a href="learn.html#try-catch">Imparare MALDA — Lezione 13</a>.
         </div>
         <h2>8.3 Pattern matching</h2>
         <p>Il pattern matching permette di confrontare valori con pattern ed eseguire codice in base alla corrispondenza. È simile alle istruzioni switch di altri linguaggi, ma più potente: supporta il matching su array, oggetti e strutture nidificate.</p>
@@ -334,7 +334,8 @@ match response {
             </ul>
         </div>
         
-        <h2>8.4 Gestione delle eccezioni</h2>
+        <h2 id="try-catch">8.4 Gestione delle eccezioni</h2>
+        <p>Stesso file della lezione del corso: <code>Examples/Basics/try_catch.malda</code>.</p>
         <h3>Istruzione throw</h3>
         <p>L'istruzione <code>throw</code> solleva un'eccezione. L'espressione può essere qualsiasi valore (stringa, oggetto, ecc.).</p>
         <pre><code>throw expression;</code></pre>

@@ -1,0 +1,13 @@
+try {
+    throw "something went wrong";
+} catch (error) {
+    io.print("caught: " + error);
+}
+
+try {
+    io.print("in try");
+} catch (error) {
+    io.print("caught: " + error);
+} finally {
+    io.print("cleanup");
+}

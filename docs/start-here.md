@@ -40,25 +40,29 @@ The same core path in the Reference Manual is [`ReferenceManual/learn.html`](../
 9. `Examples/Basics/lists_indexing.malda`
 10. `Examples/Basics/dictionary_example.malda`
 11. `Examples/Basics/recursion.malda`
+12. `Examples/Basics/classes_intro.malda`
+13. `Examples/Basics/try_catch.malda`
+14. `Examples/Basics/prompt_template.malda`
+15. `Examples/Basics/gradebook.malda`
 
 Then the short **Algorithms** track (ideas, not an encyclopedia):
 
-12. `Examples/Algorithms/towers_of_hanoi.malda`
-13. `Examples/Algorithms/binary_search.malda`
-14. `Examples/Algorithms/merge_sort.malda`
-15. `Examples/Algorithms/bfs_dfs.malda` (hand-rolled, then the `graph` builtin)
-16. `Examples/Algorithms/knapsack.malda`
-17. `Examples/Algorithms/union_find.malda`
-18. `Examples/Algorithms/qlearn_grid.malda`
-19. `Examples/Algorithms/simulated_annealing.malda`
+16. `Examples/Algorithms/towers_of_hanoi.malda`
+17. `Examples/Algorithms/binary_search.malda`
+18. `Examples/Algorithms/merge_sort.malda`
+19. `Examples/Algorithms/bfs_dfs.malda` (hand-rolled, then the `graph` builtin)
+20. `Examples/Algorithms/knapsack.malda`
+21. `Examples/Algorithms/union_find.malda`
+22. `Examples/Algorithms/qlearn_grid.malda`
+23. `Examples/Algorithms/simulated_annealing.malda`
 
 Then the **AI theory** track (from-scratch models; no API key, no agent runtime):
 
-20. `Examples/AI_Theory/sarsa_cliff.malda` (SARSA vs Q-learning on a cliff)
-21. `Examples/AI_Theory/xor_neural_net.malda`
-22. `Examples/AI_Theory/svm_linear.malda`
-23. `Examples/AI_Theory/attention_is_all_you_need.malda`
-24. `Examples/AI_Theory/microgpt.malda`
+24. `Examples/AI_Theory/sarsa_cliff.malda` (SARSA vs Q-learning on a cliff)
+25. `Examples/AI_Theory/xor_neural_net.malda`
+26. `Examples/AI_Theory/svm_linear.malda`
+27. `Examples/AI_Theory/attention_is_all_you_need.malda`
+28. `Examples/AI_Theory/microgpt.malda`
 
 `Examples/Basics/first_look.malda` is optional if you already program (prompt + schema + `validate`, no API key). After the core path, `Examples/Basics/lambda.malda` is a useful extra before prompts.
 

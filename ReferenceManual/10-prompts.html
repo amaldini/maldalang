@@ -25,8 +25,11 @@ prompt extract(raw) -> Card {
     user: raw;
 }</code></pre>
 
-        <h2>10.1 Overview</h2>
-        <p>Prompt blocks are reusable prompt templates. Start with a template that does not call a model, then <code>await</code> with a <code>schema</code>, then tools. Same files: <code>Examples/Prompts/basic_prompt.malda</code>, <code>Examples/Prompts/schema_prompt_structured.malda</code>, <code>Examples/Prompts/prompt_tools_mode.malda</code>, <code>Examples/Prompts/prompt_tools_then_structured.malda</code>.</p>
+        <h2 id="template">10.1 Overview</h2>
+        <p>Prompt blocks are reusable prompt templates. Start with a template that does not call a model, then <code>await</code> with a <code>schema</code>, then tools. Same file as the course lesson: <code>Examples/Basics/prompt_template.malda</code>. Further files: <code>Examples/Prompts/basic_prompt.malda</code>, <code>Examples/Prompts/schema_prompt_structured.malda</code>, <code>Examples/Prompts/prompt_tools_mode.malda</code>, <code>Examples/Prompts/prompt_tools_then_structured.malda</code>.</p>
+        <div class="info-box">
+            <strong>First-read stop.</strong> Step 1 (template, no API key) is the course lesson: <a href="learn.html#prompt-template">Learn MALDA — Lesson 14</a>. <code>await</code>, tools, and cassettes stay in this chapter.
+        </div>
         <table>
             <thead>
                 <tr><th>Step</th><th>What you write</th><th>Calls a model?</th></tr>

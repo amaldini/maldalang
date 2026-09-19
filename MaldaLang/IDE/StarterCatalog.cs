@@ -154,6 +154,50 @@ public static class StarterCatalog
         },
         new StarterOption
         {
+            Id = "classes",
+            Title = "12. Classes",
+            Description = "Declare a class with fields and a constructor, then construct an instance and call a method.",
+            Track = "student",
+            RelativeExamplePath = @"Basics\classes_intro.malda",
+            LearningGoal = "See how MALDA groups state and behavior on a named type.",
+            EstimatedTime = "12 min",
+            Highlights = ["class", "constructor", "new"]
+        },
+        new StarterOption
+        {
+            Id = "try-catch",
+            Title = "13. try / catch",
+            Description = "Handle a thrown value with try, catch, and finally.",
+            Track = "student",
+            RelativeExamplePath = @"Basics\try_catch.malda",
+            LearningGoal = "Recover from a failure without stopping the program.",
+            EstimatedTime = "10 min",
+            Highlights = ["try", "catch", "finally"]
+        },
+        new StarterOption
+        {
+            Id = "prompt-template",
+            Title = "14. Prompt as a Template",
+            Description = "Call a prompt block as a template. Without await it does not call a model.",
+            Track = "student",
+            RelativeExamplePath = @"Basics\prompt_template.malda",
+            LearningGoal = "Treat a prompt as a reusable callable after you know functions.",
+            EstimatedTime = "8 min",
+            Highlights = ["prompt", "template", "no await"]
+        },
+        new StarterOption
+        {
+            Id = "gradebook",
+            Title = "15. Mini Project",
+            Description = "Combine a class, try/catch, and offline schema validate in one linear program.",
+            Track = "student",
+            RelativeExamplePath = @"Basics\gradebook.malda",
+            LearningGoal = "Put classes, errors, and validate together before leaving the core path.",
+            EstimatedTime = "12 min",
+            Highlights = ["class", "try", "validate"]
+        },
+        new StarterOption
+        {
             Id = "prompt",
             Title = "First Prompt",
             Description = "Try MALDA prompts as a bridge from programming basics into AI-native workflows.",

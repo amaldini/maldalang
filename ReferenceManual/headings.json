@@ -494,7 +494,7 @@
   {
     "file": "08-control-structures.html",
     "level": 2,
-    "id": "",
+    "id": "try-catch",
     "title": "8.4 Exception Handling"
   },
   {
@@ -554,7 +554,7 @@
   {
     "file": "10-prompts.html",
     "level": 2,
-    "id": "",
+    "id": "template",
     "title": "10.1 Overview"
   },
   {
@@ -632,7 +632,7 @@
   {
     "file": "11-classes-objects.html",
     "level": 2,
-    "id": "",
+    "id": "first-read",
     "title": "11.1 A working class"
   },
   {

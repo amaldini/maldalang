@@ -26,7 +26,11 @@ public class StarterCatalogTests
                 "input-output",
                 "lists",
                 "dictionaries",
-                "recursion"
+                "recursion",
+                "classes",
+                "try-catch",
+                "prompt-template",
+                "gradebook"
             ],
             ids);
     }
@@ -52,16 +56,19 @@ public class StarterCatalogTests
         Assert.Equal("input-output", StarterCatalog.GetNextStudentStarter("Basics/complete_starter_program.malda")?.Id);
         Assert.Equal("lists", StarterCatalog.GetNextStudentStarter("Basics/input_example.malda")?.Id);
         Assert.Equal("recursion", StarterCatalog.GetNextStudentStarter("Basics/dictionary_example.malda")?.Id);
-        Assert.Null(StarterCatalog.GetNextStudentStarter("Basics/recursion.malda"));
+        Assert.Equal("classes", StarterCatalog.GetNextStudentStarter("Basics/recursion.malda")?.Id);
+        Assert.Equal("gradebook", StarterCatalog.GetNextStudentStarter("Basics/prompt_template.malda")?.Id);
+        Assert.Null(StarterCatalog.GetNextStudentStarter("Basics/gradebook.malda"));
         Assert.Null(StarterCatalog.GetNextStudentStarter("Basics/first_look.malda"));
     }
 
     [Fact]
-    public void IsLastStudentStarter_OnlyRecursion()
+    public void IsLastStudentStarter_OnlyGradebook()
     {
         Assert.False(StarterCatalog.IsLastStudentStarter("Basics/hello_world.malda"));
         Assert.False(StarterCatalog.IsLastStudentStarter("Basics/input_example.malda"));
-        Assert.True(StarterCatalog.IsLastStudentStarter("Basics/recursion.malda"));
+        Assert.False(StarterCatalog.IsLastStudentStarter("Basics/recursion.malda"));
+        Assert.True(StarterCatalog.IsLastStudentStarter("Basics/gradebook.malda"));
         Assert.False(StarterCatalog.IsLastStudentStarter("Prompts/basic_prompt.malda"));
     }
 

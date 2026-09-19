@@ -113,6 +113,18 @@ COMPLETED, FAILED, CANCELLED, COMPENSATED</code></pre>
 COMPENSATING, COMPENSATED, COMPENSATION_FAILED</code></pre>
 
         <h2>22.4 Operazioni a runtime (built-in)</h2>
+        <p>L'avvio offline più piccolo: un <code>step</code>, poi <code>startWorkflow</code>. La persistenza è un file SQLite locale sotto <code>.malda/</code>.</p>
+        <pre><code data-run="true" data-expect="status=COMPLETED">function twice(n) {
+    return n * 2;
+}
+
+workflow DoubleIt(input) {
+    step doubled = twice(input);
+    return doubled;
+}
+
+var id = startWorkflow("DoubleIt", 21);
+io.print("status=" + getWorkflowStatus(id));</code></pre>
         <pre><code>var id = startWorkflow("OnboardCustomer", {"customerId": 101, "correlationId": "corr-101"});
 var status = getWorkflowStatus(id);
 var wf = getWorkflow(id);

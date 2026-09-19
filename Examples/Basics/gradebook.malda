@@ -1,0 +1,41 @@
+schema Score {
+    name: string;
+    points: int;
+}
+
+class Grade {
+    public var name;
+    public var points;
+
+    function Grade(name, points) {
+        this.name = name;
+        this.points = points;
+    }
+
+    public function label() {
+        if (points >= 90) {
+            return "A";
+        }
+
+        return "B";
+    }
+}
+
+var ada = new Grade("Ada", 92);
+io.print(ada.name + ": " + ada.label());
+
+try {
+    int("not-a-number");
+} catch (error) {
+    io.print("caught bad score");
+}
+
+var checked = validate("Score", {
+    "name": "Ada",
+    "points": 92
+});
+if (checked.ok) {
+    io.print("schema ok: " + checked.data.name);
+} else {
+    io.print("schema failed: " + checked.error);
+}

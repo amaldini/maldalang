@@ -25,8 +25,11 @@ prompt extract(raw) -> Card {
     user: raw;
 }</code></pre>
 
-        <h2>10.1 Panoramica</h2>
-        <p>I blocchi prompt sono template di prompt riusabili. Parti da un template che non chiama un modello, poi <code>await</code> con uno <code>schema</code>, poi i tool. Stessi file: <code>Examples/Prompts/basic_prompt.malda</code>, <code>Examples/Prompts/schema_prompt_structured.malda</code>, <code>Examples/Prompts/prompt_tools_mode.malda</code>, <code>Examples/Prompts/prompt_tools_then_structured.malda</code>.</p>
+        <h2 id="template">10.1 Panoramica</h2>
+        <p>I blocchi prompt sono template di prompt riusabili. Parti da un template che non chiama un modello, poi <code>await</code> con uno <code>schema</code>, poi i tool. Stesso file della lezione del corso: <code>Examples/Basics/prompt_template.malda</code>. Altri file: <code>Examples/Prompts/basic_prompt.malda</code>, <code>Examples/Prompts/schema_prompt_structured.malda</code>, <code>Examples/Prompts/prompt_tools_mode.malda</code>, <code>Examples/Prompts/prompt_tools_then_structured.malda</code>.</p>
+        <div class="info-box">
+            <strong>Stop alla prima lettura.</strong> Il passo 1 (template, senza chiave API) è la lezione del corso: <a href="learn.html#prompt-template">Imparare MALDA — Lezione 14</a>. <code>await</code>, tool e cassette restano in questo capitolo.
+        </div>
         <table>
             <thead>
                 <tr><th>Passo</th><th>Cosa scrivi</th><th>Chiama un modello?</th></tr>

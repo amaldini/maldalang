@@ -21,6 +21,9 @@
         
         <p>MALDA offre il supporto nativo al modello ad actor per la programmazione concorrente. Gli actor sono unità di computazione indipendenti e isolate che comunicano esclusivamente tramite message passing asincrono. Ogni actor ha il proprio stato isolato e processa i messaggi in sequenza, garantendo una programmazione concorrente thread-safe senza meccanismi di locking espliciti.</p>
         <p>Gli actor girano sull'interprete, sul transpile C# e su JavaScript. In JS sono process-local (stessa pagina), non un runtime multi-processo. Vedi la <a href="../../docs/spec/backend-capability-matrix.md">matrice delle capacità dei backend</a>.</p>
+        <div class="info-box">
+            <strong>Non eseguibile qui:</strong> <code>send</code> è asincrono. Uno snippet che aspetta con <code>sleep</code> non è deterministico nel test harness del manuale. Esegui invece <code>Examples/Actors/basic_counter.malda</code>.
+        </div>
 
         <h2>17.1 Dichiarazione degli actor</h2>
         <p>Gli actor si dichiarano con la keyword <code>actor</code>, in modo analogo alle dichiarazioni di classe:</p>

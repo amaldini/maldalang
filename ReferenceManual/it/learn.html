@@ -302,6 +302,123 @@ io.print("recursion ok");</code></pre>
             </details>
         </div>
 
+        <h2 id="classes">Lezione 12 — Classi</h2>
+        <p>Una classe è un tipo con nome, campi e metodi. <code>new ClassName(...)</code> esegue il costruttore. Capitolo: <a href="11-classes-objects.html#first-read">11.1 Una classe funzionante</a>. Stesso file: <code>Examples/Basics/classes_intro.malda</code>.</p>
+        <pre><code data-run="true" data-expect="Hi, I'm Alice and I'm 30 years old.\nage=30">class Person {
+    public var name;
+    public var age;
+
+    function Person(name, age) {
+        this.name = name;
+        this.age = age;
+    }
+
+    public function introduce() {
+        io.print("Hi, I'm " + name + " and I'm " + string(age) + " years old.");
+    }
+}
+
+var alice = new Person("Alice", 30);
+alice.introduce();
+io.print("age=" + string(alice.age));</code></pre>
+        <div class="info-box">
+            <strong>Prova così:</strong> Crea una seconda persona <code>new Person("Bob", 25)</code> e chiama <code>introduce()</code>. Qual è la nuova ultima riga di introduce?
+            <details>
+                <summary>Risposta</summary>
+                <p><code>Hi, I'm Bob and I'm 25 years old.</code></p>
+            </details>
+        </div>
+
+        <h2 id="try-catch">Lezione 13 — try / catch</h2>
+        <p><code>try</code> esegue codice che può fallire. <code>catch</code> gestisce il valore lanciato. <code>finally</code> viene eseguito sempre. Capitolo: <a href="08-control-structures.html#try-catch">8.4 Gestione delle eccezioni</a>. Stesso file: <code>Examples/Basics/try_catch.malda</code>.</p>
+        <pre><code data-run="true" data-expect="caught: something went wrong\nin try\ncleanup">try {
+    throw "something went wrong";
+} catch (error) {
+    io.print("caught: " + error);
+}
+
+try {
+    io.print("in try");
+} catch (error) {
+    io.print("caught: " + error);
+} finally {
+    io.print("cleanup");
+}</code></pre>
+        <div class="info-box">
+            <strong>Prova così:</strong> Cambia la stringa lanciata in <code>"disk full"</code>. Qual è la prima riga stampata?
+            <details>
+                <summary>Risposta</summary>
+                <p><code>caught: disk full</code></p>
+            </details>
+        </div>
+
+        <h2 id="prompt-template">Lezione 14 — Prompt come template</h2>
+        <p>Un <code>prompt</code> è un template richiamabile. Senza <code>await</code> non chiama un modello. Capitolo: <a href="10-prompts.html#template">10.1 Panoramica</a> passo 1. Stesso file: <code>Examples/Basics/prompt_template.malda</code>.</p>
+        <pre><code data-run="true" data-expect="Hello, Alice! How are you today?">prompt greet(name) {
+    user: "Hello, {name}! How are you today?"
+}
+
+var greeting = greet("Alice");
+io.print(greeting.user);</code></pre>
+        <div class="info-box">
+            <strong>Prova così:</strong> Chiama <code>greet("MALDA")</code> al posto di Alice. Cosa stampa?
+            <details>
+                <summary>Risposta</summary>
+                <p><code>Hello, MALDA! How are you today?</code></p>
+            </details>
+        </div>
+
+        <h2 id="gradebook">Lezione 15 — Mini progetto</h2>
+        <p>Una classe, un <code>try</code> e <code>schema</code> + <code>validate</code> offline in un programma lineare. Nota di catalogo: <a href="34-examples.html#catalog">34.1</a>. Stesso file: <code>Examples/Basics/gradebook.malda</code>.</p>
+        <pre><code data-run="true" data-expect="Ada: A\ncaught bad score\nschema ok: Ada">schema Score {
+    name: string;
+    points: int;
+}
+
+class Grade {
+    public var name;
+    public var points;
+
+    function Grade(name, points) {
+        this.name = name;
+        this.points = points;
+    }
+
+    public function label() {
+        if (points >= 90) {
+            return "A";
+        }
+
+        return "B";
+    }
+}
+
+var ada = new Grade("Ada", 92);
+io.print(ada.name + ": " + ada.label());
+
+try {
+    int("not-a-number");
+} catch (error) {
+    io.print("caught bad score");
+}
+
+var checked = validate("Score", {
+    "name": "Ada",
+    "points": 92
+});
+if (checked.ok) {
+    io.print("schema ok: " + checked.data.name);
+} else {
+    io.print("schema failed: " + checked.error);
+}</code></pre>
+        <div class="info-box">
+            <strong>Prova così:</strong> Cambia i punti di Ada da <code>92</code> a <code>88</code>. Qual è la prima riga stampata?
+            <details>
+                <summary>Risposta</summary>
+                <p><code>Ada: B</code></p>
+            </details>
+        </div>
+
         <h2 id="after-core">Dopo il percorso core</h2>
         <p>Il corso core termina qui. Algoritmi e teoria AI da zero restano su <a href="../../docs/start-here.md">Start Here</a> — non trattare questa pagina come quel catalogo. Poi apri la barra laterale e scegli una categoria:</p>
         <ul>

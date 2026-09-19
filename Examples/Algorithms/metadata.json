@@ -9,7 +9,7 @@
       "minutes": 10,
       "requires": ["offline"],
       "concepts": ["recursion", "divide and conquer", "stacks"],
-      "prerequisites": ["Basics/recursion.malda"],
+      "prerequisites": ["Basics/gradebook.malda"],
       "learningGoal": "See a base case plus two smaller self-calls, and check that 2^n - 1 moves empty the start peg.",
       "expectedOutput": "Prints seven moves for n=3 and towers of hanoi ok.",
       "next": "Algorithms/binary_search.malda",

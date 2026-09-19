@@ -302,6 +302,123 @@ io.print("recursion ok");</code></pre>
             </details>
         </div>
 
+        <h2 id="classes">Lesson 12 — Classes</h2>
+        <p>A class is a named type with fields and methods. <code>new ClassName(...)</code> runs the constructor. Chapter: <a href="11-classes-objects.html#first-read">11.1 A working class</a>. Same file: <code>Examples/Basics/classes_intro.malda</code>.</p>
+        <pre><code data-run="true" data-expect="Hi, I'm Alice and I'm 30 years old.\nage=30">class Person {
+    public var name;
+    public var age;
+
+    function Person(name, age) {
+        this.name = name;
+        this.age = age;
+    }
+
+    public function introduce() {
+        io.print("Hi, I'm " + name + " and I'm " + string(age) + " years old.");
+    }
+}
+
+var alice = new Person("Alice", 30);
+alice.introduce();
+io.print("age=" + string(alice.age));</code></pre>
+        <div class="info-box">
+            <strong>Try this:</strong> Construct a second person <code>new Person("Bob", 25)</code> and call <code>introduce()</code>. What is the new last introduce line?
+            <details>
+                <summary>Answer</summary>
+                <p><code>Hi, I'm Bob and I'm 25 years old.</code></p>
+            </details>
+        </div>
+
+        <h2 id="try-catch">Lesson 13 — try / catch</h2>
+        <p><code>try</code> runs code that may fail. <code>catch</code> handles the thrown value. <code>finally</code> always runs. Chapter: <a href="08-control-structures.html#try-catch">8.4 Exception handling</a>. Same file: <code>Examples/Basics/try_catch.malda</code>.</p>
+        <pre><code data-run="true" data-expect="caught: something went wrong\nin try\ncleanup">try {
+    throw "something went wrong";
+} catch (error) {
+    io.print("caught: " + error);
+}
+
+try {
+    io.print("in try");
+} catch (error) {
+    io.print("caught: " + error);
+} finally {
+    io.print("cleanup");
+}</code></pre>
+        <div class="info-box">
+            <strong>Try this:</strong> Change the thrown string to <code>"disk full"</code>. What is the first printed line?
+            <details>
+                <summary>Answer</summary>
+                <p><code>caught: disk full</code></p>
+            </details>
+        </div>
+
+        <h2 id="prompt-template">Lesson 14 — Prompt as a template</h2>
+        <p>A <code>prompt</code> is a callable template. Without <code>await</code> it does not call a model. Chapter: <a href="10-prompts.html#template">10.1 Overview</a> step 1. Same file: <code>Examples/Basics/prompt_template.malda</code>.</p>
+        <pre><code data-run="true" data-expect="Hello, Alice! How are you today?">prompt greet(name) {
+    user: "Hello, {name}! How are you today?"
+}
+
+var greeting = greet("Alice");
+io.print(greeting.user);</code></pre>
+        <div class="info-box">
+            <strong>Try this:</strong> Call <code>greet("MALDA")</code> instead. What prints?
+            <details>
+                <summary>Answer</summary>
+                <p><code>Hello, MALDA! How are you today?</code></p>
+            </details>
+        </div>
+
+        <h2 id="gradebook">Lesson 15 — Mini project</h2>
+        <p>A class, a <code>try</code>, and offline <code>schema</code> + <code>validate</code> in one linear program. Catalog note: <a href="34-examples.html#catalog">34.1</a>. Same file: <code>Examples/Basics/gradebook.malda</code>.</p>
+        <pre><code data-run="true" data-expect="Ada: A\ncaught bad score\nschema ok: Ada">schema Score {
+    name: string;
+    points: int;
+}
+
+class Grade {
+    public var name;
+    public var points;
+
+    function Grade(name, points) {
+        this.name = name;
+        this.points = points;
+    }
+
+    public function label() {
+        if (points >= 90) {
+            return "A";
+        }
+
+        return "B";
+    }
+}
+
+var ada = new Grade("Ada", 92);
+io.print(ada.name + ": " + ada.label());
+
+try {
+    int("not-a-number");
+} catch (error) {
+    io.print("caught bad score");
+}
+
+var checked = validate("Score", {
+    "name": "Ada",
+    "points": 92
+});
+if (checked.ok) {
+    io.print("schema ok: " + checked.data.name);
+} else {
+    io.print("schema failed: " + checked.error);
+}</code></pre>
+        <div class="info-box">
+            <strong>Try this:</strong> Change Ada's points from <code>92</code> to <code>88</code>. What is the first printed line?
+            <details>
+                <summary>Answer</summary>
+                <p><code>Ada: B</code></p>
+            </details>
+        </div>
+
         <h2 id="after-core">After the core path</h2>
         <p>The core course ends here. Algorithms and from-scratch AI theory stay on <a href="../docs/start-here.md">Start Here</a> — do not treat this page as that catalog. Then open the sidebar and pick a category:</p>
         <ul>
