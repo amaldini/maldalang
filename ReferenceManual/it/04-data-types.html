@@ -174,7 +174,7 @@ print(first[1]);          // value</code></pre>
 
         <p>Negli eseguibili transpile, i letterali dizionario usano <code>Dictionary&lt;string, object?&gt;</code> come backing ma espongono lo stesso comportamento dell'interprete.</p>
 
-        <h2>4.5 Tipi somma (unioni etichettate)</h2>
+        <h2 id="sum-types">4.5 Tipi somma (unioni etichettate)</h2>
 
         <p>I tipi somma consentono di definire un valore che può essere una di diverse varianti, ciascuna con dati di payload opzionali. Sono utili per risultati strutturati (es. successo vs errore) e dati in stile protocollo.</p>
 
@@ -214,7 +214,37 @@ var result = match r {
 print(result);   // "ok: 5"</code></pre>
         <p>Vedi <a href="08-control-structures.html">8. Strutture di controllo</a> per la sintassi completa di <code>match</code>. I moduli della libreria standard <code>result</code> e <code>option</code> incapsulano gli stessi tag <code>Ok</code>/<code>Err</code> e <code>Some</code>/<code>None</code> senza una dichiarazione <code>type</code> — vedi <a href="13-built-in-functions.html#result-option">13.19.1</a>.</p>
 
-        <h2>4.6 Controllo dei tipi</h2>
+        <h2 id="schema">4.6 Dichiarazioni schema</h2>
+        <p>Uno <code>schema</code> nomina una forma di oggetto JSON. Non è una classe: non c'è costruttore, non ci sono metodi, e <code>parseJSON</code> non ne ricostruisce mai uno. Lo stesso nome non può essere anche un <code>type</code> somma o un <code>api</code>. Interprete, transpile C# e JavaScript eseguono tutti <code>schema</code> + <code>validate</code>. L'<code>await prompt … -&gt; Schema</code> live è solo host — vedi <a href="10-prompts.html">10. Prompt</a>.</p>
+        <pre><code>schema Answer {
+    text: string;
+    sources: string[];
+    score: float?;
+}
+
+schema Address {
+    city: string;
+}
+
+schema Person {
+    name: string;
+    address: Address;
+}</code></pre>
+        <p>I tipi di campo sono primitivi JSON (<code>string</code>, <code>int</code>, <code>float</code>, <code>bool</code>, <code>object</code>, <code>array</code>), array come <code>string[]</code> o <code>Address[]</code>, un altro nome di schema dichiarato (gli oggetti nested si espandono inline), oppure un tipo somma dichiarato (<code>intent: Intent</code> / <code>Intent[]</code> — JSON tagged <code>oneOf</code>). Aggiungi <code>?</code> per i campi opzionali. Nomi di tipo sconosciuti e riferimenti ciclici danno errore quando lo schema viene risolto. Stessi file: <code>Examples/Basics/schema_nested_validate.malda</code>, <code>Examples/Basics/schema_sumtype_validate.malda</code>.</p>
+        <p><code>validate("Answer", value)</code> controlla un valore che hai già. Un mismatch <strong>non</strong> è un'eccezione: il risultato è <code>{ ok: true, data }</code> oppure <code>{ ok: false, error }</code>. Un nome sconosciuto lancia. Il <code>data</code> in caso di successo è il valore originale (un dict tagged resta un dict). Usa <a href="13-built-in-functions.html#asVariant"><code>asVariant</code></a> quando ti serve una variante per <code>match</code>.</p>
+        <pre><code data-run="true" data-expect="ok">schema Answer {
+    text: string;
+    sources: string[];
+}
+
+var candidate = dict { "text": "ok", "sources": ["a.md"] };
+var checked = validate("Answer", candidate);
+if (checked.ok) {
+    print(checked.data.text);
+}</code></pre>
+        <p><code>parseJSON(text)</code> è un lettore JSON semplice. <code>parseJson(text, "Answer")</code> fa parse e valida rispetto a uno schema registrato e <strong>lancia</strong> in caso di mismatch. Prompt <code>-&gt; Answer</code>, Mode B/C e <code>evalPrompt</code> restano in <a href="10-prompts.html">10.6–10.7</a>.</p>
+
+        <h2 id="type-checking">4.7 Controllo dei tipi</h2>
 
         <p>Anche se MALDA è a typing dinamico, puoi ispezionare i tipi a runtime con gli helper built-in (vedi <a href="13-built-in-functions.html">Funzioni built-in</a>):</p>
         <pre><code>var x = 10;
@@ -243,7 +273,9 @@ if (x == null) {
                 <li><a href="14-graphs.html">14. Grafi</a> - Strutture dati a grafo</li>
                 <li><a href="11-classes-objects.html">11. Classi e oggetti</a> - Creare tipi oggetto personalizzati</li>
                 <li><a href="13-built-in-functions.html">13. Funzioni built-in</a> - Funzioni di conversione di tipo</li>
-                <li><a href="10-prompts.html">10. Prompt</a> - Ritorni tipizzati dei prompt e schema</li>
+                <li><a href="10-prompts.html">10. Prompt</a> — <code>await</code> + <code>-&gt; Schema</code> (Mode A/B/C)</li>
+                <li><a href="13-built-in-functions.html#validate">13.7.1 validate</a> — <code>validate</code> / <code>asVariant</code> / <code>evalPrompt</code></li>
+                <li><a href="34-examples.html#first-look">34.0 First Look</a> — <code>prompt</code> + <code>schema</code> + <code>validate</code> offline</li>
             </ul>
         </div>
 

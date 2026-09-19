@@ -18,11 +18,11 @@
         <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>34. Examples</span></div>
         <h1>34. Examples</h1>
         <div class="info-box">
-            <strong>Suggested order:</strong> start with 34.0 if you already program. If you are learning programming, continue with 34.1, 34.4, 34.6, 34.7, and 34.8 before the AI and full-stack examples later in this chapter.
-            After the core path, continue from the sidebar categories: <strong>Standard Library</strong> (<a href="16-database.html">16. Database Support</a>, <a href="15-vectordb.html">15. VectorDB</a>), <strong>AI &amp; Agents</strong> (<a href="18-agent-orchestration.html">18. Agent Orchestration</a>), <strong>Web</strong> (<a href="24-web-ui-hub.html">24. Web UI Overview</a>, <a href="27-browser-javascript-backend.html">27. Browser JavaScript UI Backend</a>), and <strong>Reference</strong> (<a href="35-property-testing.html">35. Property Testing</a>). Catalog: <a href="../Examples/README.md">Examples/README.md</a>.
+            <strong>This chapter is an index, not a second tutorial.</strong> 34.0 is the offline characteristic sample. 34.1 maps <code>Examples/</code> folders to chapters. 34.2–34.5 are one snippet per track (agent, game, UI, property). Scaffolding is <a href="#scaffold">34.6</a>. Full listings live under <a href="../Examples/README.md">Examples/README.md</a>.
+            After the core path, continue from the sidebar: <strong>Standard Library</strong> (<a href="16-database.html">16</a>, <a href="15-vectordb.html">15</a>), <strong>AI &amp; Agents</strong> (<a href="18-agent-orchestration.html">18</a>), <strong>Web</strong> (<a href="24-web-ui-hub.html">24</a>, <a href="27-browser-javascript-backend.html">27</a>), <strong>Reference</strong> (<a href="35-property-testing.html">35</a>).
         </div>
-        <h2>34.0 First Look</h2>
-        <p>Characteristic constructs, no API key. Same program as <code>Examples/Basics/first_look.malda</code> and the Home Quick Start. <code>-&gt; Review</code> binds the prompt to the schema. Without <code>await</code>, the call is a rendered template; <code>validate("Review", …)</code> is the same check <code>await</code> would run on the model JSON.</p>
+        <h2 id="first-look">34.0 First Look</h2>
+        <p>Characteristic constructs, no API key. Same program as <code>Examples/Basics/first_look.malda</code> and the Home Quick Start. <code>-&gt; Review</code> binds the prompt to the schema. Without <code>await</code>, the call is a rendered template; <code>validate("Review", …)</code> is the same check <code>await</code> would run on the model JSON. Schema syntax: <a href="04-data-types.html#schema">4.6</a>.</p>
         <pre><code data-run="true" data-expect="Review this javascript code:\n\nfunction add(a, b) { return a + b; }\nschema ok: Looks fine">schema Review {
     summary: string;
     issues: string[];
@@ -45,127 +45,32 @@ if (checked.ok) {
 } else {
     io.print("schema failed: " + checked.error);
 }</code></pre>
-        <h2>34.1 Hello World</h2>
-        <pre><code>io.print("Hello, World!");</code></pre>
-        <h2>34.2 Simple Class Example</h2>
-        <p>Walkthrough: <a href="11-classes-objects.html">11. Classes &amp; Objects</a>.</p>
-        <pre><code>class Person {
-    public var name;
-    public var age;
-    
-    function Person(name, age) {
-        this.name = name;
-        this.age = age;
-    }
-    
-    public function introduce() {
-        io.print($"Hi, I'm {this.name} and I'm {this.age} years old.");
-    }
-}
-
-var person = new Person("Alice", 25);
-person.introduce();</code></pre>
-        <h2>34.3 Inheritance Example</h2>
-        <p>Walkthrough: <a href="11-classes-objects.html">11. Classes &amp; Objects</a> §11.3.</p>
-        <pre><code>class Animal {
-    public var name;
-    
-    function Animal(name) {
-        this.name = name;
-    }
-    
-    public function speak() {
-        io.print(this.name + " makes a sound");
-    }
-}
-
-class Dog extends Animal {
-    function Dog(name) {
-        super(name);
-    }
-    
-    public function speak() {
-        io.print($"{this.name} barks: Woof!");
-    }
-}
-
-var dog = new Dog("Buddy");
-dog.speak();</code></pre>
-        <h2>34.4 Factorial Function</h2>
-        <pre><code>function factorial(n) {
-    if (n <= 1) {
-        return 1;
-    }
-    return n * factorial(n - 1);
-}
-
-var result = factorial(5);
-io.print($"Factorial of 5: {result}");</code></pre>
-        <h2>34.5 Calculator Class</h2>
-        <pre><code>class Calculator {
-    private var result;
-    
-    function Calculator() {
-        this.result = 0;
-    }
-    
-    public function add(value) {
-        this.result = this.result + value;
-        return this;
-    }
-    
-    public function getResult() {
-        return this.result;
-    }
-}
-
-var calc = new Calculator();
-calc.add(10).add(20);
-io.print($"Result: {calc.getResult()}");</code></pre>
-        <h2>34.6 FizzBuzz</h2>
-        <pre><code>function fizzBuzz(n) {
-    var i = 1;
-    while (i <= n) {
-        if (i % 15 == 0) {
-            io.print("FizzBuzz");
-        } else if (i % 3 == 0) {
-            io.print("Fizz");
-        } else if (i % 5 == 0) {
-            io.print("Buzz");
-        } else {
-            io.print(i);
-        }
-        i = i + 1;
-    }
-}
-
-fizzBuzz(20);</code></pre>
-        <h2>34.7 Array Manipulation</h2>
-        <pre><code>var numbers = [1, 2, 3, 4, 5];
-var sum = 0;
-var i = 0;
-
-while (i < numbers.length) {
-    sum = sum + numbers[i];
-    i = i + 1;
-}
-
-io.print($"Sum: {sum}");</code></pre>
-        <h2>34.8 Input/Output Example</h2>
-        <p>Console input plus conversion. File, path, and environment how-to: <a href="12-input-output.html">12. Input/Output</a>.</p>
-        <pre><code>var name = io.input("What is your name? ");
-var ageStr = io.input("What is your age? ");
-var age = int(ageStr);
-
-io.print($"Hello, {name}! You are {age} years old.");
-
-if (age >= 18) {
-    io.print("You are an adult.");
-} else {
-    io.print("You are a minor.");
-}</code></pre>
-        <h2>34.9 Simple Agent Example</h2>
-        <p>This is a good transition point after the language fundamentals. It shows how MALDA's first-class AI features build on the same syntax introduced in the earlier examples.</p>
+        <h2 id="catalog">34.1 Examples catalog</h2>
+        <p>Each folder’s <code>metadata.json</code> may tag <code>requires</code>: <code>offline</code> (default), <code>network</code>, <code>api-key</code>, or <code>db</code>. Hello World is <code>Examples/Basics/hello_world.malda</code> — chapter <a href="12-input-output.html">12</a>, not a second listing here. The complete starter is <code>Examples/Basics/complete_starter_program.malda</code>.</p>
+        <table>
+            <thead>
+                <tr><th>Folder</th><th>Focus</th><th>Typical requires</th><th>Chapter</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>Basics/</code></td><td>Syntax, control flow, functions, <code>schema</code> + <code>validate</code></td><td>offline</td><td><a href="03-lexical-structure.html">3</a>–<a href="12-input-output.html">12</a>, <a href="04-data-types.html#schema">4.6</a></td></tr>
+                <tr><td><code>Algorithms/</code></td><td>Hanoi, search, sort, DP</td><td>offline</td><td><a href="08-control-structures.html">8</a>, <a href="09-functions.html">9</a></td></tr>
+                <tr><td><code>OOP/</code></td><td>Classes and inheritance</td><td>offline</td><td><a href="11-classes-objects.html">11</a></td></tr>
+                <tr><td><code>Prompts/</code></td><td><code>prompt</code>, RAG pipes, <code>evalPrompt</code></td><td>api-key (most)</td><td><a href="10-prompts.html">10</a></td></tr>
+                <tr><td><code>Agents/</code>, <code>AI_LLM/</code></td><td>Agents, tools, LLM clients</td><td>api-key</td><td><a href="18-agent-orchestration.html">18</a></td></tr>
+                <tr><td><code>Web/</code></td><td>HttpServer, REST, <code>ui.*</code>, JS DOM</td><td>network / offline</td><td><a href="24-web-ui-hub.html">24</a>–<a href="30-full-stack-development.html">30</a></td></tr>
+                <tr><td><code>Games/</code></td><td><code>game.*</code> / <code>three.*</code> (JS target)</td><td>offline</td><td><a href="27-browser-javascript-backend.html">27</a></td></tr>
+                <tr><td><code>Workflows/</code></td><td>Durable <code>workflow</code> / <code>step</code></td><td>offline</td><td><a href="22-durable-workflows.html">22</a></td></tr>
+                <tr><td><code>Testing/</code></td><td><code>malda test</code>, properties</td><td>offline</td><td><a href="35-property-testing.html">35</a></td></tr>
+                <tr><td><code>Actors/</code></td><td><code>spawn</code> / <code>send</code> / <code>on</code></td><td>offline</td><td><a href="17-actors.html">17</a></td></tr>
+                <tr><td><code>ACP/</code>, <code>MCP/</code></td><td>Agent / Model Context Protocol</td><td>network / api-key</td><td><a href="21-acp.html">21</a>, <a href="20-mcp-server.html">20</a></td></tr>
+                <tr><td><code>Databases/</code>, <code>Graphs/</code>, <code>VectorDB/</code></td><td>SQL, graphs, embeddings</td><td>db / offline</td><td><a href="16-database.html">16</a>, <a href="14-graphs.html">14</a>, <a href="15-vectordb.html">15</a></td></tr>
+                <tr><td><code>Memory/</code>, <code>Tools/</code>, <code>Plan/</code></td><td>GraphMemory, file tools, plans</td><td>api-key / offline</td><td><a href="19-graph-memory.html">19</a>, <a href="18-agent-orchestration.html">18</a></td></tr>
+                <tr><td><code>Assistant/</code>, <code>Arduino/</code></td><td>Assistant + skills; device sketches</td><td>api-key / hardware</td><td><a href="33-personal-assistant.html">33</a>, <a href="32-device-integration.html">32</a></td></tr>
+            </tbody>
+        </table>
+        <p>More folders (<code>AI_Theory/</code>, <code>SpectreConsole/</code>, <code>RalphWiggum/</code>, …) are listed in <code>Examples/README.md</code>. RAG pipes: <code>Examples/Prompts/rag_pipeline.malda</code> — chapters <a href="10-prompts.html">10</a> and <a href="15-vectordb.html">15</a>, not a dump here.</p>
+        <h2 id="agent">34.2 Agent</h2>
+        <p>Host-only: needs an LLM client. Same idea as <code>Examples/Agents/</code>. Language: <a href="18-agent-orchestration.html">18. Agent Orchestration</a>.</p>
         <pre><code>var client = new OpenRouterClient();
 var agent = new Agent(
     "Assistant",
@@ -176,83 +81,8 @@ var agent = new Agent(
 
 var response = agent.think("What is 2+2?");
 io.print(response.content);</code></pre>
-        <h2>34.10 Test Command Output Modes</h2>
-        <pre><code># Human-readable (default)
-malda test
-
-# Structured CI payload
-malda test --format ci
-
-# Write deterministic regression artifacts for failing properties
-malda test --write-regression
-
-# Write regressions to a custom directory
-malda test --write-regression --regression-dir ./artifacts/regressions</code></pre>
-        <h2>34.11 Scaffolding Starters</h2>
-        <pre><code># Scaffold a secure web API starter
-malda new webapi my-api
-
-# Scaffold a fullstack starter
-malda new fullstack my-app
-
-# Scaffold a browser canvas game
-malda new game my-game
-
-# Scaffold a canvas game plus @GET/@POST scores
-malda new game my-scores --fullstack
-
-# Scaffold an offline cap-confined file-tool agent (no API key)
-malda new agent my-agent
-
-# Override generated project naming tokens
-malda new webapi my-api --name SalesPortal
-
-# Overwrite scaffold files in an existing directory
-malda new fullstack . --force
-
-# Skip tests scaffolding
-malda new webapi api-lite --no-tests</code></pre>
-        <p>Generated starters include default <code>malda test</code> conventions, reusable security helper patterns, baseline security/rate-limit config examples, environment profile files in <code>config/environments/</code>, and deploy/observability placeholder configs. The <code>game</code> template skips those HTTP configs; next step is <code>malda play app.malda</code>. <code>malda new game --fullstack</code> also skips HTTP configs and compiles with <code>--mode fullstack</code> instead of <code>malda play</code>. The <code>agent</code> template also skips HTTP configs; next step is <code>malda app.malda</code> (host-minted <code>cap.fileRead</code> for <code>notes/</code>, relative tool args, <code>cap.confine</code>).</p>
-        <h2>34.12 JavaScript Backend (API mode)</h2>
-        <p>Compile MALDA source to browser JavaScript and use the DOM helper API:</p>
-        <pre><code>malda compile Examples/Web/js/hello_dom.malda --mode js -o Examples/Web/js/hello_dom.js
-malda compile Examples/Web/js/counter.malda --target js -o Examples/Web/js/counter.js</code></pre>
-        <pre><code>var root = dom.query("#app");
-if (root != null) {
-    dom.clear(root);
-
-    var button = dom.create("button");
-    dom.setText(button, "Click");
-    dom.append(root, button);
-
-    function handleClick() {
-        println("clicked");
-    }
-
-    dom.on(button, "click", handleClick);
-}</code></pre>
-        <p>The JavaScript backend also supports sum types and <code>match</code> patterns in API mode:</p>
-        <pre><code>type Response = Ok(value) | Err(message);
-
-var r = Ok(42);
-var text = match r {
-    case Ok(v): "value: " + v;
-    case Err(msg): "error: " + msg;
-};
-
-println(text);</code></pre>
-        <h2>34.13 JavaScript Backend (template mode)</h2>
-        <p>Template mode source files use the <code>.malda.html</code> extension and support interpolation plus statement blocks:</p>
-        <pre><code>malda compile Examples/Web/js/hello_template.malda.html --mode js -o Examples/Web/js/hello_template.generated.js</code></pre>
-        <pre><code>&lt;div class="hello-template"&gt;
-  &lt;p&gt;Message: {{ "Hello" }}&lt;/p&gt;
-  {% var count = 2; %}
-  &lt;p&gt;Count: {{ count }}&lt;/p&gt;
-&lt;/div&gt;</code></pre>
-        <p>Load <code>malda-js-runtime.js</code> before the compiled template script in your host page.</p>
-        <h2>34.14 JavaScript Backend (game canvas API)</h2>
-        <p>Build a first interactive browser game using <code>game.*</code> in JavaScript mode:</p>
-        <pre><code>malda compile Examples/Games/game_bounce.malda --mode js -o Examples/Games/game_bounce.js</code></pre>
+        <h2 id="game">34.3 Game</h2>
+        <p>JavaScript target only. Preview with <code>malda play app.malda</code> (live reload unless <code>--no-watch</code>). Canvas / <code>three.*</code> / <code>@shader()</code> stay in <a href="27-browser-javascript-backend.html">27</a>. Same paddle as <code>Examples/Games/game_bounce.malda</code>:</p>
         <pre><code>var x = 100;
 var speed = 220;
 
@@ -275,168 +105,46 @@ function render() {
 game.createCanvas(640, 360, "#app");
 game.setBackground("#202830");
 game.start(update, render);</code></pre>
-        <p>Key points: create the canvas before drawing/starting, scale movement by <code>dtMs</code>, and load <code>malda-js-runtime.js</code> before the compiled script. See <code>Examples/Games/game_runtime_smoke_test.html</code> for a direct browser smoke test host page. For PNG atlas blit and a scrolling camera (plus <code>drawImageEx</code> tint / <code>setBlend</code>), compile <code>Examples/Games/game_sprite_smoke.malda</code>. For key edges, touches, and gamepad, compile <code>Examples/Games/game_input_smoke.malda</code>. For AABB overlap and swept AABB, compile <code>Examples/Games/game_collision_smoke.malda</code>. For a nested grid plus <code>drawTiles</code> / <code>tileAt</code> / <code>sweepTiles</code>, compile <code>Examples/Games/game_tiles_smoke.malda</code>. For a short side-scroller that uses images, camera, AABB, key edges, sample SFX, and <code>startFixed</code> together, compile <code>Examples/Games/malda_platform.malda</code>. For a larger tile-cave showcase (Boulder Dash-style gravity, <code>drawTiles</code> atlas, <code>followCamera</code>, <code>drawImageEx</code> actors, <code>sweepTiles</code> sparks), compile <code>Examples/Games/maldadash.malda</code>.</p>
-        <h3>34.14.1 Game Audio (v1 quick sample)</h3>
-        <pre><code>var startedAudio = false;
-
-function update(dtMs) {
-    if (!startedAudio && (game.isKeyDown(" ") || game.isMouseDown(0))) {
-        game.audioInit();
-        game.audioSetMasterVolume(0.4);
-        startedAudio = true;
-    }
-
-    if (game.isKeyDown("a")) {
-        game.audioPlayTone(440, 80, "square", 0.2);
-    }
-}
-
-game.createCanvas(640, 360, "#app");
-game.setBackground("#202830");
-game.start(update, null);</code></pre>
-        <p>Audio v1 uses <code>game.audio*</code> APIs in JavaScript mode. The API surface is intentionally stable for existing MALDA game scripts.</p>
-        <h3>34.14.2 Pixel buffer blit</h3>
-        <p>Write a CPU frame with <code>game.setPixel</code>, then upload it in one <code>putImageData</code> via <code>game.blitPixels()</code>. Packed RGB/RGBA arrays are also accepted. Compile the ray-tracer sample with:</p>
-        <pre><code>malda compile Examples/Games/ray_tracer.malda --mode js -o Examples/Games/ray_tracer.js</code></pre>
-        <pre><code>game.createCanvas(320, 180, "#app");
-game.createPixelBuffer();
-
-function renderScanline(y) {
-    var x = 0;
-    while (x &lt; 320) {
-        game.setPixel(x, y, x % 256, y % 256, 80);
-        x = x + 1;
-    }
-}
-
-function update(dtMs) {
-    renderScanline(0);
-}
-
-function render() {
-    game.blitPixels();
-}
-
-game.start(update, render);</code></pre>
-        <p>Colors are 0–255. Out-of-bounds <code>setPixel</code> writes are ignored. Prefer this path over per-pixel <code>fillRect</code>. See <code>Examples/Games/ray_tracer.malda</code>.</p>
-        <h2>34.15 JavaScript Backend (three.js scene API)</h2>
-        <p>Build a first 3D browser scene using <code>three.*</code> in JavaScript mode. The scene API, loop, loading order, and shader kernels are in <a href="27-browser-javascript-backend.html#three-scene-api">27.10 three.js Scene API</a>:</p>
-        <pre><code>malda compile Examples/Games/three_cube.malda --mode js -o Examples/Games/three_cube.js</code></pre>
-        <pre><code>var width = 800;
-var height = 500;
-var renderer = three.createRenderer(width, height, "#app");
-three.setClearColor(renderer, "#101722");
-
-var scene = three.createScene();
-var camera = three.createPerspectiveCamera(70, width / height, 0.1, 100.0);
-three.setPosition(camera, 0, 0, 5);
-
-var geometry = three.createBoxGeometry(1, 1, 1);
-var material = three.createStandardMaterial({ "color": "#44aaff" });
-var cube = three.createMesh(geometry, material);
-three.add(scene, cube);
-
-var light = three.createDirectionalLight("#ffffff", 1.1);
-three.setPosition(light, 2, 3, 4);
-three.add(scene, light);
-
-function render() {
-    three.render(renderer, scene, camera);
-}</code></pre>
-        <p>Key points: load <code>Examples/Web/wwwroot/vendor/three.min.js</code> before <code>malda-js-runtime.js</code>, then the compiled MALDA script, then call <code>MaldaApp.main()</code>. See <code>Examples/Games/three_runtime_smoke_test.html</code> for a direct host page. For a PNG material map, a glTF cube, and <code>lookAt</code>, compile <code>Examples/Games/three_textured.malda</code>.</p>
-        <h3>34.15.1 Shader materials</h3>
-        <p>Move per-pixel work onto the GPU with <code>three.createShaderMaterial</code> and <code>three.setUniform</code>. The contract (types, subset, <code>glsl.compile</code> keys, IDE rename) is in <a href="27-browser-javascript-backend.html#shader-kernels">27.10.1 Shader kernels</a>. Compile the realtime tracer with:</p>
-        <pre><code>malda compile Examples/Games/three_shader_raytracer.malda --mode js -o Examples/Games/three_shader_raytracer.js
-malda compile Examples/Games/three_shader_billiards.malda --mode js -o Examples/Games/three_shader_billiards.js
-malda compile Examples/Games/three_shader_path_tunnel.malda --mode js -o Examples/Games/three_shader_path_tunnel.js
-malda compile Examples/Games/three_shader_mandelbrot.malda --mode js -o Examples/Games/three_shader_mandelbrot.js</code></pre>
-        <pre><code>@shader()
-function vertexMain() {
-    vUv = uv;
-    gl_Position = vec4(position.xy, 0.0, 1.0);
-}
-
-var vert = glsl.compile({
-    varyings: ["vec2 vUv"],
-    functions: ["vertexMain"],
-    main: "vertexMain"
+        <p>Create the canvas before drawing. Scale movement by <code>dtMs</code>. Load <code>malda-js-runtime.js</code> before the compiled script. Playable GPU billiards: <a href="38-appendix-gpu-billiards.html">38</a>.</p>
+        <h2 id="ui">34.4 Server-driven UI</h2>
+        <p>Language API: <a href="25-web-ui.html">25</a> (start at <a href="24-web-ui-hub.html">24</a>). Offline samples under <code>Examples/Web/</code>: <code>ui_event_loop.malda</code>, <code>ui_counter_dashboard.malda</code>, <code>ui_form_workflow.malda</code>.</p>
+        <pre><code>var tree = ui.column({
+    "children": [
+        ui.text({ "text": "Hello" }),
+        ui.button({ "id": "ok", "text": "OK" })
+    ]
 });
-
-var material = three.createShaderMaterial({
-    "vertexShader": vert,
-    "fragmentShader": frag,
-    "uniforms": { "uTime": 0 }
-});
-three.setUniform(material, "uTime", t);</code></pre>
-        <p>Use <code>three.createOrthographicCamera(-1, 1, 1, -1, 0, 1)</code> and <code>PlaneGeometry(2, 2)</code> for a fullscreen pass. See <code>Examples/Games/three_shader_raytracer.malda</code>. A playable felt-and-spheres pool table on the same path is <code>Examples/Games/three_shader_billiards.malda</code> (host physics with zoom, orbit stop, and restitution/friction sliders; GPU trace). The compiled table is playable in <a href="38-appendix-gpu-billiards.html">38. Appendix: GPU Billiards</a>. A ShaderToy-style path-marching tunnel is <code>Examples/Games/three_shader_path_tunnel.malda</code> (Frostbyte, CC-BY-NC-SA-4.0). An infinite Seahorse Valley Mandelbrot zoom with a BigInt reference orbit, GPU perturbation, and sliders for iterate budget and wrap decades is <code>Examples/Games/three_shader_mandelbrot.malda</code>.</p>
-        <h2>34.16 Property Testing Quick Example</h2>
+ui.mount("root", tree);
+ui.render();</code></pre>
+        <h2 id="property">34.5 Property tests</h2>
         <pre><code>property intIdentity(x) {
     return (x + 0) == x;
-}
-
-malda test --iterations 80 --seed 1337</code></pre>
-        <p>For full property-testing guidance (capability decorators, parity semantics, shrinking, and regression workflows), see <a href="35-property-testing.html">Property Testing</a>.</p>
-        <h2>34.17 AI Pipeline (RAG)</h2>
-        <p>End-to-end retrieval-augmented generation using the pipe operator (<code>|&gt;</code>), VectorDB retriever, prompts, and typed JSON output. Examples:</p>
-        <ul>
-            <li><code>Examples/Prompts/rag_pipeline.malda</code> — inline pipes</li>
-            <li><code>Examples/Prompts/rag_function_pipeline.malda</code> — named <code>function</code> pipelines</li>
-        </ul>
-        <pre><code>dotnet run --project MaldaLang -- Examples/Prompts/rag_pipeline.malda
-dotnet run --project MaldaLang -- Examples/Prompts/rag_function_pipeline.malda</code></pre>
-        <p>Pipeline sketch:</p>
-        <pre><code>schema Answer {
-    text: string;
-    sources: string[];
-}
-
-prompt answerPrompt(question, context) -> Answer {
-    system: "Answer using only the provided context.";
-    user: "Context:\n{context}\n\nQuestion: {question}"
-}
-
-function embedText(text) {
-    return embedBagOfWords(text, 16);
-}
-
-var vdb = new VectorDB(16, "single");
-vdb.init(embedText);
-indexInto(vdb, docs);
-var retriever = vdb.asRetriever({ topK: 2 });
-
-var context = question |> retriever.get |> formatRetrievedDocs;
-var parsed = mockResponse |> parseJson("Answer");
-
-// With an LLM client (inline pipe or named function):
-// await (question |> retriever.get |> formatRetrievedDocs
-//     |> (ctx) => answerPrompt(question, ctx) |> runPrompt(client) |> parseJson("Answer"));
-
-function ragAnswer(question, client) -> Answer {
-    return question |> retriever.get |> formatRetrievedDocs
-        |> (ctx) => answerPrompt(question, ctx) |> runPrompt(client) |> parseJson("Answer");
-}
-// var result = await ragAnswer(question, client);</code></pre>
-        <p>See also: <a href="07-expressions.html">7. Expressions</a> (pipe operator), <a href="13-built-in-functions.html">13. Built-in Functions</a> (AI pipeline helpers), <a href="15-vectordb.html">15. VectorDB</a> (<code>asRetriever</code>), and <a href="10-prompts.html">10. Prompts</a> (schema declarations).</p>
-        <h2>34.18 Server-driven UI (<code>ui.*</code>)</h2>
-        <p>Language API: <a href="25-web-ui.html">25. Web UI Server Components</a> (start at <a href="24-web-ui-hub.html">24. Web UI Overview</a>). Offline samples under <code>Examples/Web/</code>:</p>
-        <ul>
-            <li><code>ui_event_loop.malda</code> — correct mount → dispatch → pull → setState → render loop</li>
-            <li><code>ui_counter_dashboard.malda</code> — counter plus lifecycle hooks and snapshot</li>
-            <li><code>ui_state_lifecycle.malda</code> — peek vs get-or-create, pin, poison defaults</li>
-            <li><code>ui_form_workflow.malda</code> / <code>ui_controls_showcase_minimal.malda</code> — forms and control catalog</li>
-            <li><code>ui_resync_flow.malda</code> — snapshot / resync when trees diverge</li>
-        </ul>
-        <pre><code>dotnet run --project MaldaLang -- Examples/Web/ui_event_loop.malda
-dotnet run --project MaldaLang -- Examples/Web/ui_counter_dashboard.malda</code></pre>
+}</code></pre>
+        <pre><code>malda test --iterations 80 --seed 1337
+malda test --format ci
+malda test --write-regression --regression-dir ./artifacts/regressions</code></pre>
+        <p>Full guidance: <a href="35-property-testing.html">35. Property Testing</a>. Samples: <code>Examples/Testing/</code>.</p>
+        <h2 id="scaffold">34.6 Scaffolding</h2>
+        <p>CLI index: <a href="02-tools.html#cli-index">2.0</a>. Full-stack flow: <a href="30-full-stack-development.html">30</a>.</p>
+        <pre><code>malda new webapi my-api
+malda new fullstack my-app
+malda new game my-game
+malda new game my-scores --fullstack
+malda new agent my-agent
+malda new webapi my-api --name SalesPortal
+malda new fullstack . --force
+malda new webapi api-lite --no-tests</code></pre>
+        <p>Generated starters include default <code>malda test</code> conventions and config placeholders. The <code>game</code> template’s next step is <code>malda play app.malda</code>. <code>malda new game --fullstack</code> is a score API compiled with <code>--mode fullstack</code>, not <code>malda play</code>. The <code>agent</code> template is offline and cap-confined; next step is <code>malda app.malda</code>.</p>
         <div class="see-also">
             <h3>See Also</h3>
             <ul>
-                <li><a href="11-classes-objects.html">11. Classes & Objects</a> - More class examples</li>
-                <li><a href="16-database.html">16. Database Support</a> - SQLite, Postgres, SQL Server</li>
-                <li><a href="35-property-testing.html">35. Property Testing</a> - Properties, shrinking, regression</li>
-                <li><a href="15-vectordb.html">15. VectorDB</a> - Vector search and retriever API</li>
-                <li><a href="13-built-in-functions.html">13. Built-in Functions</a> - <code>loadDocuments</code>, <code>indexInto</code>, <code>runPrompt</code>, <code>parseJson</code></li>
-                <li><a href="25-web-ui.html">25. Web UI Server Components</a> - <code>ui.*</code> trees, fragments, and control props</li>
+                <li><a href="04-data-types.html#schema">4.6 Schema</a> — <code>schema { }</code> + <code>validate</code></li>
+                <li><a href="11-classes-objects.html">11. Classes &amp; Objects</a> — OOP walkthrough (<code>Examples/OOP/</code>)</li>
+                <li><a href="16-database.html">16. Database Support</a> — SQLite, Postgres, SQL Server</li>
+                <li><a href="18-agent-orchestration.html">18. Agent Orchestration</a> — agents and tools</li>
+                <li><a href="25-web-ui.html">25. Web UI Server Components</a> — <code>ui.*</code></li>
+                <li><a href="27-browser-javascript-backend.html">27. Browser JavaScript UI Backend</a> — <code>game.*</code> / <code>three.*</code></li>
+                <li><a href="35-property-testing.html">35. Property Testing</a> — shrinking and regressions</li>
             </ul>
         </div>
         <div class="nav-footer">

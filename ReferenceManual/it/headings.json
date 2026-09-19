@@ -284,14 +284,20 @@
   {
     "file": "04-data-types.html",
     "level": 2,
-    "id": "",
+    "id": "sum-types",
     "title": "4.5 Tipi somma (unioni etichettate)"
   },
   {
     "file": "04-data-types.html",
     "level": 2,
-    "id": "",
-    "title": "4.6 Controllo dei tipi"
+    "id": "schema",
+    "title": "4.6 Dichiarazioni schema"
+  },
+  {
+    "file": "04-data-types.html",
+    "level": 2,
+    "id": "type-checking",
+    "title": "4.7 Controllo dei tipi"
   },
   {
     "file": "05-variables.html",
@@ -3236,134 +3242,44 @@
   {
     "file": "34-examples.html",
     "level": 2,
-    "id": "",
+    "id": "first-look",
     "title": "34.0 First Look"
   },
   {
     "file": "34-examples.html",
     "level": 2,
-    "id": "",
-    "title": "34.1 Hello World"
+    "id": "catalog",
+    "title": "34.1 Catalogo Examples"
   },
   {
     "file": "34-examples.html",
     "level": 2,
-    "id": "",
-    "title": "34.2 Esempio di classe semplice"
+    "id": "agent",
+    "title": "34.2 Agente"
   },
   {
     "file": "34-examples.html",
     "level": 2,
-    "id": "",
-    "title": "34.3 Esempio di ereditarietà"
+    "id": "game",
+    "title": "34.3 Game"
   },
   {
     "file": "34-examples.html",
     "level": 2,
-    "id": "",
-    "title": "34.4 Funzione fattoriale"
+    "id": "ui",
+    "title": "34.4 UI guidata dal server"
   },
   {
     "file": "34-examples.html",
     "level": 2,
-    "id": "",
-    "title": "34.5 Classe Calculator"
+    "id": "property",
+    "title": "34.5 Property test"
   },
   {
     "file": "34-examples.html",
     "level": 2,
-    "id": "",
-    "title": "34.6 FizzBuzz"
-  },
-  {
-    "file": "34-examples.html",
-    "level": 2,
-    "id": "",
-    "title": "34.7 Manipolazione di array"
-  },
-  {
-    "file": "34-examples.html",
-    "level": 2,
-    "id": "",
-    "title": "34.8 Esempio di Input/Output"
-  },
-  {
-    "file": "34-examples.html",
-    "level": 2,
-    "id": "",
-    "title": "34.9 Esempio di agente semplice"
-  },
-  {
-    "file": "34-examples.html",
-    "level": 2,
-    "id": "",
-    "title": "34.10 Modalità di output del comando test"
-  },
-  {
-    "file": "34-examples.html",
-    "level": 2,
-    "id": "",
-    "title": "34.11 Starter di scaffolding"
-  },
-  {
-    "file": "34-examples.html",
-    "level": 2,
-    "id": "",
-    "title": "34.12 Backend JavaScript (modalità API)"
-  },
-  {
-    "file": "34-examples.html",
-    "level": 2,
-    "id": "",
-    "title": "34.13 Backend JavaScript (modalità template)"
-  },
-  {
-    "file": "34-examples.html",
-    "level": 2,
-    "id": "",
-    "title": "34.14 Backend JavaScript (API canvas di gioco)"
-  },
-  {
-    "file": "34-examples.html",
-    "level": 3,
-    "id": "",
-    "title": "34.14.1 Audio di gioco (campione rapido v1)"
-  },
-  {
-    "file": "34-examples.html",
-    "level": 3,
-    "id": "",
-    "title": "34.14.2 Blit del buffer pixel"
-  },
-  {
-    "file": "34-examples.html",
-    "level": 2,
-    "id": "",
-    "title": "34.15 Backend JavaScript (API scena three.js)"
-  },
-  {
-    "file": "34-examples.html",
-    "level": 3,
-    "id": "",
-    "title": "34.15.1 Materiali shader"
-  },
-  {
-    "file": "34-examples.html",
-    "level": 2,
-    "id": "",
-    "title": "34.16 Esempio rapido di property testing"
-  },
-  {
-    "file": "34-examples.html",
-    "level": 2,
-    "id": "",
-    "title": "34.17 Pipeline AI (RAG)"
-  },
-  {
-    "file": "34-examples.html",
-    "level": 2,
-    "id": "",
-    "title": "34.18 UI server-driven (ui.*)"
+    "id": "scaffold",
+    "title": "34.6 Scaffolding"
   },
   {
     "file": "35-property-testing.html",

@@ -41,8 +41,8 @@
       "id": "schema",
       "term": "schema",
       "aliases": ["schemas", "structured output"],
-      "href": "10-prompts.html",
-      "summary": "Named shape for prompt / LLM JSON. validate(schema, value) checks a payload against it."
+      "href": "04-data-types.html#schema",
+      "summary": "Named JSON object shape. validate(name, value) checks a payload. Prompt -> Schema stays in chapter 10."
     },
     {
       "id": "validate",

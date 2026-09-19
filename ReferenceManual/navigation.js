@@ -378,8 +378,8 @@ const FALLBACK_GLOSSARY_EN = [
             "schemas",
             "structured output"
         ],
-        "href": "10-prompts.html",
-        "summary": "Named shape for prompt / LLM JSON. validate(schema, value) checks a payload against it."
+        "href": "04-data-types.html#schema",
+        "summary": "Named JSON object shape. validate(name, value) checks a payload. Prompt -> Schema stays in chapter 10."
     },
     {
         "id": "validate",
@@ -1326,8 +1326,8 @@ const FALLBACK_GLOSSARY_IT = [
             "schemas",
             "output strutturato"
         ],
-        "href": "10-prompts.html",
-        "summary": "Forma nominata per il JSON di prompt / LLM. validate(schema, value) controlla un payload rispetto allo schema."
+        "href": "04-data-types.html#schema",
+        "summary": "Forma di oggetto JSON nominata. validate(name, value) controlla un payload. Prompt -> Schema resta nel capitolo 10."
     },
     {
         "id": "validate",

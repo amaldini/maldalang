@@ -262,7 +262,7 @@ three.start(update, render);</code></pre>
         <p><strong>Scope MVP:</strong> orbit control e interop JS grezzo generico restano fuori da questa API. Texture e caricamento glTF ci sono: vedi <code>Examples/Games/three_textured.malda</code>. Le mesh illuminate usano <code>three.createStandardMaterial</code>. Il GLSL custom usa <code>three.createShaderMaterial</code> e <code>three.setUniform</code> — vedi <a href="#shader-kernels">27.10.1</a>.</p>
         <p>Compila il demo del cubo con:</p>
         <pre><code>malda compile Examples/Games/three_cube.malda --mode js -o Examples/Games/three_cube.js</code></pre>
-        <p>Vedi <code>Examples/Games/three_cube.malda</code> e <code>Examples/Games/three_runtime_smoke_test.html</code> per la pagina host end-to-end. Per una <code>map</code> PNG, un cubo glTF e <code>lookAt</code>, vedi <code>Examples/Games/three_textured.malda</code>. Un listing più breve è in <a href="34-examples.html">34.15 Backend JavaScript (API scena three.js)</a>. Note operative: <code>docs/javascript-backend.md</code>.</p>
+        <p>Vedi <code>Examples/Games/three_cube.malda</code> e <code>Examples/Games/three_runtime_smoke_test.html</code> per la pagina host end-to-end. Per una <code>map</code> PNG, un cubo glTF e <code>lookAt</code>, vedi <code>Examples/Games/three_textured.malda</code>. Indice cartella: <a href="34-examples.html#game">34.3 Game</a>. Note operative: <code>docs/javascript-backend.md</code>.</p>
 
         <h3 id="shader-kernels">27.10.1 Kernel shader (MALDA verso GLSL)</h3>
         <p>Quando <code>game.setPixel</code> sulla CPU è troppo lento, sposta il lavoro per-pixel sulla GPU. Questo è un <strong>sottoinsieme a compile-time JavaScript</strong>, non un quarto backend di esecuzione. Il MALDA host continua a possedere il loop <code>three.*</code> e gli aggiornamenti delle uniform. Il kernel possiede i raggi.</p>
@@ -313,7 +313,7 @@ three.setUniform(material, "uTime", t);</code></pre>
 malda compile Examples/Games/three_shader_billiards.malda --mode js -o Examples/Games/three_shader_billiards.js
 malda compile Examples/Games/three_shader_path_tunnel.malda --mode js -o Examples/Games/three_shader_path_tunnel.js
 malda compile Examples/Games/three_shader_mandelbrot.malda --mode js -o Examples/Games/three_shader_mandelbrot.js</code></pre>
-        <p>Carica <code>three.min.js</code> per primo, come negli altri demo <code>three.*</code>. Un listing breve è in <a href="34-examples.html">34.15.1 Materiali shader</a>. Note operative: <code>docs/javascript-backend.md</code>. Il sample biliardo è giocabile: il MALDA host fa la fisica 2D (zoom, stop orbita e slider di restituzione sponde/palle e attrito feltro) e il kernel traccia le uniform di palle e stecca. Il tavolo compilato è in appendice: <a href="38-appendix-gpu-billiards.html">38. Appendice: biliardo GPU</a>. Il sample path-tunnel è CC-BY-NC-SA-4.0 (Frostbyte). Il sample Mandelbrot è uno zoom infinito nella Seahorse Valley: l'host costruisce un'orbita di riferimento BigInt (<code>three.mandelbrotOrbit</code>) e il kernel applica perturbazione scalata così l'immersione resta nitida oltre l'ulp float32. Slider in pagina impostano il budget di iterate e le decadi di wrap.</p>
+        <p>Carica <code>three.min.js</code> per primo, come negli altri demo <code>three.*</code>. I sample stanno in <code>Examples/Games/</code> — vedi <a href="34-examples.html#game">34.3</a>. Note operative: <code>docs/javascript-backend.md</code>. Il sample biliardo è giocabile: il MALDA host fa la fisica 2D (zoom, stop orbita e slider di restituzione sponde/palle e attrito feltro) e il kernel traccia le uniform di palle e stecca. Il tavolo compilato è in appendice: <a href="38-appendix-gpu-billiards.html">38. Appendice: biliardo GPU</a>. Il sample path-tunnel è CC-BY-NC-SA-4.0 (Frostbyte). Il sample Mandelbrot è uno zoom infinito nella Seahorse Valley: l'host costruisce un'orbita di riferimento BigInt (<code>three.mandelbrotOrbit</code>) e il kernel applica perturbazione scalata così l'immersione resta nitida oltre l'ulp float32. Slider in pagina impostano il budget di iterate e le decadi di wrap.</p>
 
         <h2>27.11 Errori comuni e indicazioni</h2>
         <ul>
@@ -342,7 +342,7 @@ malda compile Examples/Games/three_shader_mandelbrot.malda --mode js -o Examples
                 <li><a href="24-web-ui-hub.html">24. Panoramica Web UI</a> - Quale modello UI scegliere</li>
                 <li><a href="25-web-ui.html">25. Componenti server Web UI</a> - UI renderizzata sul server con fragment, aggiornamenti live e <code>ui.*</code></li>
                 <li><a href="26-http-server-html-ui.html">HttpServer e generazione UI HTML</a> - Hosting delle route e generazione HTML AI</li>
-                <li><a href="34-examples.html">34.15 Backend JavaScript (three.js)</a> - Listing del cubo e schizzo materiale shader</li>
+                <li><a href="34-examples.html#game">34.3 Game</a> — catalogo <code>Examples/Games/</code></li>
                 <li><a href="30-full-stack-development.html">Sviluppo full-stack con MALDA</a> - Scegliere tra UI renderizzata sul server, API-first e UI ospitata nel browser</li>
             </ul>
         </div>

@@ -174,7 +174,7 @@ print(first[1]);          // value</code></pre>
 
         <p>In transpiled executables, dictionary literals are backed by <code>Dictionary&lt;string, object?&gt;</code> but expose the same behavior as in the interpreter.</p>
 
-        <h2>4.5 Sum Types (Tagged Unions)</h2>
+        <h2 id="sum-types">4.5 Sum Types (Tagged Unions)</h2>
 
         <p>Sum types let you define a value that can be one of several variants, each carrying optional payload data. They are useful for structured results (e.g. success vs error) and protocol-style data.</p>
 
@@ -214,7 +214,37 @@ var result = match r {
 print(result);   // "ok: 5"</code></pre>
         <p>See <a href="08-control-structures.html">8. Control Structures</a> for the full <code>match</code> syntax. The stdlib modules <code>result</code> and <code>option</code> wrap the same <code>Ok</code>/<code>Err</code> and <code>Some</code>/<code>None</code> tags without a <code>type</code> declaration — see <a href="13-built-in-functions.html#result-option">13.19.1</a>.</p>
 
-        <h2>4.6 Type Checking</h2>
+        <h2 id="schema">4.6 Schema declarations</h2>
+        <p>A <code>schema</code> names a JSON object shape. It is not a class: there is no constructor, no methods, and <code>parseJSON</code> never rebuilds one. The same name cannot also be a sum <code>type</code> or an <code>api</code>. Interpreter, C# transpile, and JavaScript all run <code>schema</code> + <code>validate</code>. Live <code>await prompt … -&gt; Schema</code> is host-only — see <a href="10-prompts.html">10. Prompts</a>.</p>
+        <pre><code>schema Answer {
+    text: string;
+    sources: string[];
+    score: float?;
+}
+
+schema Address {
+    city: string;
+}
+
+schema Person {
+    name: string;
+    address: Address;
+}</code></pre>
+        <p>Field types are JSON primitives (<code>string</code>, <code>int</code>, <code>float</code>, <code>bool</code>, <code>object</code>, <code>array</code>), arrays such as <code>string[]</code> or <code>Address[]</code>, another declared schema name (nested objects expand inline), or a declared sum type (<code>intent: Intent</code> / <code>Intent[]</code> — tagged JSON <code>oneOf</code>). Append <code>?</code> for optional fields. Unknown field type names and cyclic references error when the schema is resolved. Same files: <code>Examples/Basics/schema_nested_validate.malda</code>, <code>Examples/Basics/schema_sumtype_validate.malda</code>.</p>
+        <p><code>validate("Answer", value)</code> checks a value you already have. A mismatch is <strong>not</strong> an exception: the result is <code>{ ok: true, data }</code> or <code>{ ok: false, error }</code>. An unknown name throws. Success <code>data</code> is the original value (a tagged dict stays a dict). Use <a href="13-built-in-functions.html#asVariant"><code>asVariant</code></a> when you need a variant for <code>match</code>.</p>
+        <pre><code data-run="true" data-expect="ok">schema Answer {
+    text: string;
+    sources: string[];
+}
+
+var candidate = dict { "text": "ok", "sources": ["a.md"] };
+var checked = validate("Answer", candidate);
+if (checked.ok) {
+    print(checked.data.text);
+}</code></pre>
+        <p><code>parseJSON(text)</code> is a plain JSON reader. <code>parseJson(text, "Answer")</code> parses and validates against a registered schema and <strong>throws</strong> on mismatch. Prompt <code>-&gt; Answer</code>, Mode B/C, and <code>evalPrompt</code> stay in <a href="10-prompts.html">10.6–10.7</a>.</p>
+
+        <h2 id="type-checking">4.7 Type Checking</h2>
 
         <p>While MALDA is dynamically typed, you can inspect types at runtime with built-in helpers (see <a href="13-built-in-functions.html">Built-in Functions</a>):</p>
         <pre><code>var x = 10;
@@ -243,7 +273,9 @@ if (x == null) {
                 <li><a href="14-graphs.html">14. Graphs</a> - Graph data structures</li>
                 <li><a href="11-classes-objects.html">11. Classes & Objects</a> - Creating custom object types</li>
                 <li><a href="13-built-in-functions.html">13. Built-in Functions</a> - Type conversion functions</li>
-                <li><a href="10-prompts.html">10. Prompts</a> - Typed prompt returns and schemas</li>
+                <li><a href="10-prompts.html">10. Prompts</a> — <code>await</code> + <code>-&gt; Schema</code> (Mode A/B/C)</li>
+                <li><a href="13-built-in-functions.html#validate">13.7.1 validate</a> — <code>validate</code> / <code>asVariant</code> / <code>evalPrompt</code></li>
+                <li><a href="34-examples.html#first-look">34.0 First Look</a> — offline <code>prompt</code> + <code>schema</code> + <code>validate</code></li>
             </ul>
         </div>
 

@@ -261,7 +261,7 @@ three.start(update, render);</code></pre>
         <p><strong>MVP scope:</strong> orbit controls and generic raw JS interop stay outside this API. Textures and glTF loading are in: see <code>Examples/Games/three_textured.malda</code>. Lit meshes use <code>three.createStandardMaterial</code>. Custom GLSL uses <code>three.createShaderMaterial</code> and <code>three.setUniform</code> — see <a href="#shader-kernels">27.10.1</a>.</p>
         <p>Compile the cube demo with:</p>
         <pre><code>malda compile Examples/Games/three_cube.malda --mode js -o Examples/Games/three_cube.js</code></pre>
-        <p>See <code>Examples/Games/three_cube.malda</code> and <code>Examples/Games/three_runtime_smoke_test.html</code> for the end-to-end host page. For a PNG material map, a glTF cube, and <code>lookAt</code>, see <code>Examples/Games/three_textured.malda</code>. A shorter listing is in <a href="34-examples.html">34.15 JavaScript Backend (three.js scene API)</a>. Working notes: <code>docs/javascript-backend.md</code>.</p>
+        <p>See <code>Examples/Games/three_cube.malda</code> and <code>Examples/Games/three_runtime_smoke_test.html</code> for the end-to-end host page. For a PNG material map, a glTF cube, and <code>lookAt</code>, see <code>Examples/Games/three_textured.malda</code>. Folder index: <a href="34-examples.html#game">34.3 Game</a>. Working notes: <code>docs/javascript-backend.md</code>.</p>
 
         <h3 id="shader-kernels">27.10.1 Shader kernels (MALDA to GLSL)</h3>
         <p>When CPU <code>game.setPixel</code> is too slow, put per-pixel work on the GPU. This is a <strong>JavaScript compile-time subset</strong>, not a fourth execution backend. Host MALDA still owns the <code>three.*</code> loop and uniform updates. The kernel owns the rays.</p>
@@ -312,7 +312,7 @@ three.setUniform(material, "uTime", t);</code></pre>
 malda compile Examples/Games/three_shader_billiards.malda --mode js -o Examples/Games/three_shader_billiards.js
 malda compile Examples/Games/three_shader_path_tunnel.malda --mode js -o Examples/Games/three_shader_path_tunnel.js
 malda compile Examples/Games/three_shader_mandelbrot.malda --mode js -o Examples/Games/three_shader_mandelbrot.js</code></pre>
-        <p>Load <code>three.min.js</code> first, same as other <code>three.*</code> demos. A short listing is in <a href="34-examples.html">34.15.1 Shader materials</a>. Working notes: <code>docs/javascript-backend.md</code>. The billiards sample is playable: host MALDA steps 2D physics (zoom, orbit stop, and sliders for cushion/ball restitution and felt friction) and the kernel traces ball/cue uniforms. The compiled table is an appendix: <a href="38-appendix-gpu-billiards.html">38. Appendix: GPU Billiards</a>. The path-tunnel sample is CC-BY-NC-SA-4.0 (Frostbyte). The Mandelbrot sample is an infinite Seahorse Valley zoom: the host builds a BigInt reference orbit (<code>three.mandelbrotOrbit</code>) and the kernel applies scaled perturbation so the dive stays sharp past float32 ulp. Page sliders set iterate budget and wrap decades.</p>
+        <p>Load <code>three.min.js</code> first, same as other <code>three.*</code> demos. Samples live under <code>Examples/Games/</code> — see <a href="34-examples.html#game">34.3</a>. Working notes: <code>docs/javascript-backend.md</code>. The billiards sample is playable: host MALDA steps 2D physics (zoom, orbit stop, and sliders for cushion/ball restitution and felt friction) and the kernel traces ball/cue uniforms. The compiled table is an appendix: <a href="38-appendix-gpu-billiards.html">38. Appendix: GPU Billiards</a>. The path-tunnel sample is CC-BY-NC-SA-4.0 (Frostbyte). The Mandelbrot sample is an infinite Seahorse Valley zoom: the host builds a BigInt reference orbit (<code>three.mandelbrotOrbit</code>) and the kernel applies scaled perturbation so the dive stays sharp past float32 ulp. Page sliders set iterate budget and wrap decades.</p>
 
         <h2>27.11 Common Pitfalls and Guidance</h2>
         <ul>
@@ -341,7 +341,7 @@ malda compile Examples/Games/three_shader_mandelbrot.malda --mode js -o Examples
                 <li><a href="24-web-ui-hub.html">24. Web UI Overview</a> - Which UI model to pick</li>
                 <li><a href="25-web-ui.html">25. Web UI Server Components</a> - Server-rendered UI with fragments, live updates, and <code>ui.*</code></li>
                 <li><a href="26-http-server-html-ui.html">HttpServer &amp; HTML UI Generation</a> - Route hosting and AI HTML generation</li>
-                <li><a href="34-examples.html">34.15 JavaScript Backend (three.js)</a> - Cube listing and shader-material sketch</li>
+                <li><a href="34-examples.html#game">34.3 Game</a> — <code>Examples/Games/</code> catalog</li>
                 <li><a href="30-full-stack-development.html">Full-Stack Development with MALDA</a> - Choosing between server-rendered, API-first, and browser-hosted UI</li>
             </ul>
         </div>

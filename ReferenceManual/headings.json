@@ -284,14 +284,20 @@
   {
     "file": "04-data-types.html",
     "level": 2,
-    "id": "",
+    "id": "sum-types",
     "title": "4.5 Sum Types (Tagged Unions)"
   },
   {
     "file": "04-data-types.html",
     "level": 2,
-    "id": "",
-    "title": "4.6 Type Checking"
+    "id": "schema",
+    "title": "4.6 Schema declarations"
+  },
+  {
+    "file": "04-data-types.html",
+    "level": 2,
+    "id": "type-checking",
+    "title": "4.7 Type Checking"
   },
   {
     "file": "05-variables.html",
@@ -3236,134 +3242,44 @@
   {
     "file": "34-examples.html",
     "level": 2,
-    "id": "",
+    "id": "first-look",
     "title": "34.0 First Look"
   },
   {
     "file": "34-examples.html",
     "level": 2,
-    "id": "",
-    "title": "34.1 Hello World"
+    "id": "catalog",
+    "title": "34.1 Examples catalog"
   },
   {
     "file": "34-examples.html",
     "level": 2,
-    "id": "",
-    "title": "34.2 Simple Class Example"
+    "id": "agent",
+    "title": "34.2 Agent"
   },
   {
     "file": "34-examples.html",
     "level": 2,
-    "id": "",
-    "title": "34.3 Inheritance Example"
+    "id": "game",
+    "title": "34.3 Game"
   },
   {
     "file": "34-examples.html",
     "level": 2,
-    "id": "",
-    "title": "34.4 Factorial Function"
+    "id": "ui",
+    "title": "34.4 Server-driven UI"
   },
   {
     "file": "34-examples.html",
     "level": 2,
-    "id": "",
-    "title": "34.5 Calculator Class"
+    "id": "property",
+    "title": "34.5 Property tests"
   },
   {
     "file": "34-examples.html",
     "level": 2,
-    "id": "",
-    "title": "34.6 FizzBuzz"
-  },
-  {
-    "file": "34-examples.html",
-    "level": 2,
-    "id": "",
-    "title": "34.7 Array Manipulation"
-  },
-  {
-    "file": "34-examples.html",
-    "level": 2,
-    "id": "",
-    "title": "34.8 Input/Output Example"
-  },
-  {
-    "file": "34-examples.html",
-    "level": 2,
-    "id": "",
-    "title": "34.9 Simple Agent Example"
-  },
-  {
-    "file": "34-examples.html",
-    "level": 2,
-    "id": "",
-    "title": "34.10 Test Command Output Modes"
-  },
-  {
-    "file": "34-examples.html",
-    "level": 2,
-    "id": "",
-    "title": "34.11 Scaffolding Starters"
-  },
-  {
-    "file": "34-examples.html",
-    "level": 2,
-    "id": "",
-    "title": "34.12 JavaScript Backend (API mode)"
-  },
-  {
-    "file": "34-examples.html",
-    "level": 2,
-    "id": "",
-    "title": "34.13 JavaScript Backend (template mode)"
-  },
-  {
-    "file": "34-examples.html",
-    "level": 2,
-    "id": "",
-    "title": "34.14 JavaScript Backend (game canvas API)"
-  },
-  {
-    "file": "34-examples.html",
-    "level": 3,
-    "id": "",
-    "title": "34.14.1 Game Audio (v1 quick sample)"
-  },
-  {
-    "file": "34-examples.html",
-    "level": 3,
-    "id": "",
-    "title": "34.14.2 Pixel buffer blit"
-  },
-  {
-    "file": "34-examples.html",
-    "level": 2,
-    "id": "",
-    "title": "34.15 JavaScript Backend (three.js scene API)"
-  },
-  {
-    "file": "34-examples.html",
-    "level": 3,
-    "id": "",
-    "title": "34.15.1 Shader materials"
-  },
-  {
-    "file": "34-examples.html",
-    "level": 2,
-    "id": "",
-    "title": "34.16 Property Testing Quick Example"
-  },
-  {
-    "file": "34-examples.html",
-    "level": 2,
-    "id": "",
-    "title": "34.17 AI Pipeline (RAG)"
-  },
-  {
-    "file": "34-examples.html",
-    "level": 2,
-    "id": "",
-    "title": "34.18 Server-driven UI (ui.*)"
+    "id": "scaffold",
+    "title": "34.6 Scaffolding"
   },
   {
     "file": "35-property-testing.html",
