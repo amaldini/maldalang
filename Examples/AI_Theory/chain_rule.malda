@@ -1,0 +1,49 @@
+// Chain rule: d/dx [f(g(x))] = f'(g(x)) * g'(x)
+//
+// Backprop in xor_neural_net.malda is this product stacked: each layer's
+// local derivative multiplies the incoming gradient. Here the composite
+// is f(g(x)) = (2x + 1)^3. A numerical slope is checked against the
+// analytic product f'(g(x)) * g'(x). Offline — no API key.
+// After sarsa_cliff.malda (tabular RL). Next: xor_neural_net.malda.
+
+// Inner and outer functions: f(g(x)) = (2x + 1)^3
+var g = x => 2 * x + 1;
+var f = u => u * u * u;
+var composite = x => f(g(x));
+
+// Forward-difference slope: [h(x + dx) - h(x)] / dx
+var derive = (h, x, dx) => (h(x + dx) - h(x)) / dx;
+var compositeDerived = x => derive(composite, x, 0.0001);
+
+function fmt(x) {
+    return string(math.round(x * 10000.0) / 10000.0);
+}
+
+io.print("Chain rule: d/dx [f(g(x))] = f'(g(x)) * g'(x)");
+io.print("composite(x) = (2x + 1)^3");
+io.print("");
+
+var maxError = 0.0;
+range(10).forEach(x => {
+    // f'(u) = 3u^2, so f'(g(x)) = 3 * (2x + 1)^2
+    // g'(x) = 2
+    var fPrimeOfG = 3 * math.pow(g(x), 2);
+    var gPrime = 2;
+    var derivedAnalytic = fPrimeOfG * gPrime; // 6 * (2x + 1)^2
+
+    var numeric = compositeDerived(x);
+    var error = numeric - derivedAnalytic;
+    var absError = math.abs(error);
+    if (absError > maxError) {
+        maxError = absError;
+    }
+
+    io.print($"{x} => Numeric: {fmt(numeric)} | Analytic: {fmt(derivedAnalytic)} | Error: {fmt(error)}");
+});
+
+io.print("");
+if (maxError < 0.1) {
+    io.print("chain rule ok");
+} else {
+    io.print("chain rule mismatch — numeric slope drifted from the analytic product");
+}

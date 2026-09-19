@@ -67,10 +67,11 @@ Then the short **Algorithms** track (ideas, not an encyclopedia):
 Then the **AI theory** track (from-scratch models; no API key, no agent runtime):
 
 27. `Examples/AI_Theory/sarsa_cliff.malda` (SARSA vs Q-learning on a cliff)
-28. `Examples/AI_Theory/xor_neural_net.malda`
-29. `Examples/AI_Theory/svm_linear.malda`
-30. `Examples/AI_Theory/attention_is_all_you_need.malda`
-31. `Examples/AI_Theory/microgpt.malda`
+28. `Examples/AI_Theory/chain_rule.malda` (why backprop multiplies local derivatives)
+29. `Examples/AI_Theory/xor_neural_net.malda`
+30. `Examples/AI_Theory/svm_linear.malda`
+31. `Examples/AI_Theory/attention_is_all_you_need.malda`
+32. `Examples/AI_Theory/microgpt.malda`
 
 `Examples/Basics/first_look.malda` is optional if you already program (prompt + schema + `validate`, no API key). After the core path, `Examples/Basics/lambda.malda` is a useful extra before prompts.
 

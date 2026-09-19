@@ -18,6 +18,7 @@ not a complete algorithms encyclopedia.
 All are offline and (where random) seeded with `math.seed`. After the
 annealing sample, the path continues to
 `Examples/AI_Theory/sarsa_cliff.malda` (on-policy vs off-policy), then
+`Examples/AI_Theory/chain_rule.malda` (the derivative product), then
 `Examples/AI_Theory/xor_neural_net.malda` (gradient learning).
 
 Builtin graph algorithms stay in [`Examples/Graphs/`](../Graphs/).

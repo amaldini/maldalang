@@ -8,7 +8,7 @@
 // Epsilon-greedy training makes the cliff edge dangerous, so SARSA stays
 // inland while Q-learning hugs the optimal rim. Seeded, no API key.
 // Change this: print both greedy walks after 50 episodes.
-// Next: xor_neural_net.malda (gradient learning)
+// Next: chain_rule.malda (the derivative product used in backprop)
 
 function bestAction(q, state) {
     var best = 0;
