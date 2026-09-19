@@ -1,6 +1,7 @@
 {
   "chapters": [
     { "file": "index.html", "title": "Indice", "isHome": true },
+    { "file": "learn.html", "title": "Imparare MALDA", "isCourse": true },
     { "file": "01-introduction.html", "title": "Introduzione", "category": "Language Fundamentals", "description": "Panoramica del linguaggio e delle funzionalità" },
     { "file": "02-tools.html", "title": "Strumenti e toolchain", "category": "Language Fundamentals", "description": "Interprete, compilatore, gestore di pacchetti e indice dei comandi CLI" },
     { "file": "03-lexical-structure.html", "title": "Struttura lessicale", "category": "Language Fundamentals", "description": "Commenti, identificatori, keyword, operatori" },

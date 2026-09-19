@@ -69,17 +69,17 @@ if (checked.ok) {
         <p>Poi il percorso della sintassi, se vuoi il linguaggio core prima di agenti e API. Preferisci le chiamate namespaced (<code>io.print</code>, <code>math.sqrt</code>, <code>str.upper</code>); il <code>print</code> piatto continua a funzionare.</p>
 
         <h3>2. Output a stampa</h3>
-        <pre><code>io.print("Hello, World!");</code></pre>
+        <pre><code data-run="true" data-expect="Hello, World!">io.print("Hello, World!");</code></pre>
 
         <h3>3. Variabili e aritmetica</h3>
-        <pre><code>var price = 12;
+        <pre><code data-run="true" data-expect="Total: 36">var price = 12;
 var quantity = 3;
 var total = price * quantity;
 
 io.print("Total: " + total);</code></pre>
 
         <h3>4. Condizionali</h3>
-        <pre><code>var score = 82;
+        <pre><code data-run="true" data-expect="Pass">var score = 82;
 
 if (score >= 60) {
     io.print("Pass");
@@ -88,7 +88,7 @@ if (score >= 60) {
 }</code></pre>
 
         <h3>5. Cicli e funzioni</h3>
-        <pre><code>function printCountdown(start) {
+        <pre><code data-run="true" data-expect="3\n2\n1\nGo!">function printCountdown(start) {
     var current = start;
     while (current > 0) {
         io.print(current);
@@ -134,6 +134,9 @@ io.print("Summary: " + describeTotal(total));</code></pre>
             <li><a href="learn.html#functions">Funzioni</a> — <code>Examples/Basics/functions.malda</code></li>
             <li><a href="learn.html#complete-starter">Programma iniziale completo</a> — <code>Examples/Basics/complete_starter_program.malda</code></li>
             <li><a href="learn.html#input">Esempio di input</a> — <code>Examples/Basics/input_example.malda</code></li>
+            <li><a href="learn.html#lists">Liste e indicizzazione</a> — <code>Examples/Basics/lists_indexing.malda</code></li>
+            <li><a href="learn.html#dictionaries">Dizionari</a> — <code>Examples/Basics/dictionary_example.malda</code></li>
+            <li><a href="learn.html#recursion">Ricorsione</a> — <code>Examples/Basics/recursion.malda</code></li>
         </ol>
         <p>Se programmi già, puoi partire opzionalmente da First Look (<code>prompt</code> + <code>schema</code> + <code>validate</code>) prima di Hello World. Vedi <a href="learn.html#first-look">Imparare MALDA — Lezione 0</a> e <a href="../../Examples/README.md">Examples/README.md</a>.</p>
         <p>Dopo il percorso core, continua dalle categorie della barra laterale: <strong>Libreria standard</strong> (<a href="16-database.html">16. Supporto database</a>, <a href="15-vectordb.html">15. VectorDB</a>), <strong>AI e agenti</strong> (<a href="18-agent-orchestration.html">18. Orchestrazione di agenti</a>), <strong>Web</strong> (<a href="24-web-ui-hub.html">24. Panoramica Web UI</a>, <a href="24-web-ui-hub.html#browser-games">giochi nel browser</a>, <a href="27-browser-javascript-backend.html">27. Backend UI JavaScript nel browser</a>) e <strong>Riferimento</strong> (<a href="35-property-testing.html">35. Property testing</a>).</p>
@@ -168,9 +171,10 @@ io.print("Summary: " + describeTotal(total));</code></pre>
         <p>Esegui <code>malda Examples/Basics/first_look.malda</code> dalla CLI. Il <strong>Desktop IDE</strong> è il riferimento Windows (WPF); il Web IDE è un playground nel browser (non a parità con il Desktop); VS Code + LSP è l'editor cross-platform. Tooling, debug e <code>malda check</code> sono in <a href="02-tools.html">2. Strumenti e toolchain</a>. I flag di profiling stanno nell'<a href="37-appendix.html">Appendice</a>.</p>
         <p>Un primo agente live è <a href="18-agent-orchestration.html">18. Orchestrazione di agenti</a> (serve un client o il GGUF locale di default). Se sei nuovo al linguaggio, percorri prima l'Avvio rapido.</p>
 
+        <p>Architettura e riferimento numerato partono da <a href="01-introduction.html">1. Introduzione</a>.</p>
         <div class="nav-footer">
             <span></span>
-            <a href="01-introduction.html">Successivo: 1. Introduzione→</a>
+            <a href="learn.html">Successivo: Imparare MALDA→</a>
         </div>
 
         <footer>

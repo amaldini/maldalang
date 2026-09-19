@@ -223,7 +223,10 @@ public class ReferenceManualContentGuardTests
     [Fact]
     public void IndexTocFallback_MatchesChaptersJson()
     {
-        var expected = ChaptersJsonEntries().Where(e => !e.StartsWith("index.html::", StringComparison.Ordinal)).ToList();
+        var expected = ChaptersJsonEntries()
+            .Where(e => !e.StartsWith("index.html::", StringComparison.Ordinal)
+                        && !e.StartsWith("learn.html::", StringComparison.Ordinal))
+            .ToList();
         var actual = IndexTocFallbackEntries();
 
         Assert.True(
@@ -420,9 +423,8 @@ public class ReferenceManualContentGuardTests
         {
             var file = chapter.GetProperty("file").GetString()!;
             var title = chapter.GetProperty("title").GetString()!;
-            var isHome = chapter.TryGetProperty("isHome", out var home) && home.GetBoolean();
 
-            if (isHome)
+            if (IsUnnumbered(chapter))
             {
                 entries.Add($"{file}::{title}");
                 continue;
@@ -473,7 +475,7 @@ public class ReferenceManualContentGuardTests
         var number = 0;
         foreach (var chapter in doc.RootElement.GetProperty("chapters").EnumerateArray())
         {
-            if (chapter.TryGetProperty("isHome", out var home) && home.GetBoolean())
+            if (IsUnnumbered(chapter))
                 continue;
 
             number++;
@@ -496,4 +498,8 @@ public class ReferenceManualContentGuardTests
             .Select(m => m.Groups["value"].Value)
             .ToList();
     }
+
+    private static bool IsUnnumbered(JsonElement chapter) =>
+        (chapter.TryGetProperty("isHome", out var home) && home.GetBoolean())
+        || (chapter.TryGetProperty("isCourse", out var course) && course.GetBoolean());
 }

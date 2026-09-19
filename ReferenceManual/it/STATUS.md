@@ -11,18 +11,19 @@ python3 scripts/sync-reference-manual-it-status.py
 
 | File | EN SHA-256 |
 |------|------------|
-| index.html | 5e45be843f41036647b8413eb7e16ac5534ee51d46ec296cd8167c4f0e47371e |
-| 01-introduction.html | 5303401633f687b53083ef671bf53fca68e5cecc94b71a00133dff9a86f6c310 |
+| index.html | 46fc716757e678a816406ec017c0d54777186e38b97988b4d5a2b6fe1c5da466 |
+| learn.html | 8f7591aae9e47ae50a5e8c0f30295263111905bd6d8f9546fbb04f8066bb74d4 |
+| 01-introduction.html | b039af664bfa87db34b4612bac1d794e041184108ab903bbf2805a22e4a0f227 |
 | 02-tools.html | 3639b8d6a126fd5dd10746faa92a0a454e7eb94b234a51bd0a4a56c76e03ca75 |
-| 03-lexical-structure.html | e7075a436d1fbbaebadafd270f3c66ddd14e08a76993deb0af2053b2daa22754 |
-| 04-data-types.html | dae3a2688e6ebff71f2f0e4cac63d67a793e2d52ccff3a69a0c76483f13d9828 |
+| 03-lexical-structure.html | 3da2779adff2ae76307c1404a3b4b6e0bb18c7c1d25f9b3633034443552a6882 |
+| 04-data-types.html | ead2a9263370d7eee4d99e36666bad701e5e0304529b4256a985a6e1c7e75f1a |
 | 05-variables.html | 10497d78b519fc06c0f1bdde4043c05aba8ef3041ae866d92eebdf30fdf8aba0 |
-| 06-arrays.html | a707d5ca77923de9479b378ed8a37151fa9a1ede82118a76147a4cbfdb9506d5 |
-| 07-expressions.html | 03f095bbb89c9c70b1ec94017a5f3d17561371c8e5846adf03b7a3511eb787e4 |
+| 06-arrays.html | 762b978d87995b0bb22f14cc24b042ceaf40323dd5f834320502ca82ea25754a |
+| 07-expressions.html | 21cce6928f34d7e65533a57c547ba3d22e4989b2910c43939d0e43831be4f8c7 |
 | 08-control-structures.html | e565b52ff2e24939a8857c6e78b9ac197bfe4effc2d0f28d27a6bb1a2a0af589 |
-| 09-functions.html | 9b4cbf6676cb3131887bf7fcb4dd13f2f670811c0e7e8779f69a06bf58fb613e |
+| 09-functions.html | 871c09b648987e481ee7ee0684df18955a086a2119f20c133c44c03f0917ef30 |
 | 10-prompts.html | 9b308506e8be143647cff9e5e4d58dbb31c75308b67ce7a20e2a3dfc388e253f |
-| 11-classes-objects.html | bfc4e4c08a10efc730565642f0efa18e99e8c31a0c6982252eae706a2e946602 |
+| 11-classes-objects.html | f93e6297e76898a367b833c8dc6fe71d36e73c9f5f5e46031bd3e8e7d5163d45 |
 | 12-input-output.html | 76af4bec969d742bbfedc1a5a4d48a7231e33008cca53bd7357198373d2a4b9e |
 | 13-built-in-functions.html | e0d76ab9e39165be9a778e5fece5e85a0434c3d8b47006f13cc6b82af690d6de |
 | 14-graphs.html | 6d0056a2a92c132fb1bbd69bf128b10150877568ccf9b5e7cfd4810bf82b4a53 |

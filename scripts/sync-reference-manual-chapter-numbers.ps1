@@ -10,7 +10,7 @@ $config = Get-Content $configPath -Raw | ConvertFrom-Json
 $ordered = @()
 $num = 0
 foreach ($chapter in $config.chapters) {
-    if ($chapter.isHome) { continue }
+    if ($chapter.isHome -or $chapter.isCourse) { continue }
     $num++
     $ordered += [pscustomobject]@{
         Num   = $num

@@ -208,9 +208,20 @@ if (-not (Test-Path -LiteralPath $configPath)) {
 $config = Get-Content $configPath -Raw | ConvertFrom-Json
 
 $chapters = @()
+$frontMatter = @()
 $num = 0
 foreach ($chapter in $config.chapters) {
     if ($chapter.isHome) { continue }
+    if ($chapter.isCourse) {
+        $frontMatter += [pscustomobject]@{
+            Num     = $null
+            File    = $chapter.file
+            Title   = $chapter.title
+            Label   = $chapter.title
+            Anchor  = "ch-learn"
+        }
+        continue
+    }
     $num++
     $chapters += [pscustomobject]@{
         Num     = $num
@@ -220,6 +231,7 @@ foreach ($chapter in $config.chapters) {
         Anchor  = "ch-$num"
     }
 }
+$chapters = $frontMatter + $chapters
 
 # file name -> anchor, so cross-chapter links become internal jumps
 $anchorByFile = @{}

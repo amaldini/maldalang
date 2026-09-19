@@ -116,7 +116,7 @@ function chaptersToTocItems(chapters) {
     const items = [];
     let num = 0;
     chapters.forEach(function(chapter) {
-        if (chapter.isHome) {
+        if (chapter.isHome || chapter.isCourse) {
             return;
         }
         num += 1;

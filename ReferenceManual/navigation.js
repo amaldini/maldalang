@@ -229,6 +229,15 @@ function buildNavItemsFromChapters(chapters) {
         if (chapter.isHome) {
             return;
         }
+        if (chapter.isCourse) {
+            items.push({
+                href: chapter.file,
+                text: chapter.title,
+                category: null,
+                num: null
+            });
+            return;
+        }
         num += 1;
         items.push({
             href: chapter.file,
@@ -247,6 +256,7 @@ function getFallbackNavItems() {
 
 const FALLBACK_NAV_ITEMS = [
         { href: "index.html", text: "Home", category: null },
+        { href: "learn.html", text: "Learn MALDA", category: null },
         { href: "01-introduction.html", text: "1. Introduction", category: "Language Fundamentals" },
         { href: "02-tools.html", text: "2. Tools & Tooling", category: "Language Fundamentals" },
         { href: "03-lexical-structure.html", text: "3. Lexical Structure", category: "Language Fundamentals" },
@@ -289,6 +299,7 @@ const FALLBACK_NAV_ITEMS = [
 
 const FALLBACK_NAV_ITEMS_IT = [
         { href: "index.html", text: "Indice", category: null },
+        { href: "learn.html", text: "Imparare MALDA", category: null },
         { href: "01-introduction.html", text: "1. Introduzione", category: "Language Fundamentals" },
         { href: "02-tools.html", text: "2. Strumenti e toolchain", category: "Language Fundamentals" },
         { href: "03-lexical-structure.html", text: "3. Struttura lessicale", category: "Language Fundamentals" },
@@ -2244,7 +2255,12 @@ const FALLBACK_GLOSSARY_IT = [
 
 function renderCollapsibleNav(nav, items) {
     const homeItem = items.find(function(item) { return item.href === 'index.html'; });
-    const chapterItems = items.filter(function(item) { return item.href !== 'index.html'; });
+    const courseItems = items.filter(function(item) {
+        return item.href !== 'index.html' && !item.category;
+    });
+    const chapterItems = items.filter(function(item) {
+        return item.href !== 'index.html' && item.category;
+    });
     const strings = manualStrings();
 
     let navHTML = '<div class="nav-search" role="search">';
@@ -2259,6 +2275,10 @@ function renderCollapsibleNav(nav, items) {
     if (homeItem) {
         navHTML += '<li class="nav-home"><a href="index.html">' + homeItem.text + '</a></li>';
     }
+
+    courseItems.forEach(function(item) {
+        navHTML += '<li class="nav-home"><a href="' + escapeAttr(item.href) + '">' + escapeHtml(item.text) + '</a></li>';
+    });
 
     navHTML += '<li class="nav-utility"><a href="glossary.html">' + escapeHtml(strings.browseGlossary) + '</a></li>';
 

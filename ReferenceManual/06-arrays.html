@@ -17,7 +17,7 @@
     <main>
         <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>6. Arrays</span></div>
         <h1>6. Arrays</h1>
-        <p>Arrays in MALDA are dynamic, zero-indexed collections that can hold values of any type.</p>
+        <p>Arrays in MALDA are dynamic, zero-indexed collections that can hold values of any type. Learning the language? Start at <a href="learn.html">Learn MALDA</a>.</p>
         <h2>6.1 Array Declaration</h2>
         <p>Arrays are created using square brackets with comma-separated values:</p>
         <pre><code>var arr = [1, 2, 3, 4, 5];
@@ -26,11 +26,11 @@ var empty = [];
 var mixed = [1, "two", 3.0, true];  // Arrays can hold mixed types</code></pre>
         <h2>6.2 Array Access</h2>
         <p>Array elements are accessed using zero-based indexing:</p>
-        <pre><code>var arr = [10, 20, 30];
-var first = arr[0];   // first = 10
-var second = arr[1];  // second = 20
-arr[2] = 40;          // Modify element
-var length = arr.length;  // Built-in property returns array length</code></pre>
+        <pre><code data-run="true" data-expect="10\n3\n4">var arr = [10, 20, 30];
+io.print(arr[0]);
+io.print(arr.length);
+arr.append(40);
+io.print(arr.length);</code></pre>
         <div class="warning-box">
             <strong>Note:</strong> Accessing an index beyond the array bounds causes a runtime error.
         </div>
@@ -49,8 +49,12 @@ matrix[1][0] = 5;          // matrix is now [[1, 2], [5, 4]]</code></pre>
         <p>Arrays are objects with built-in methods:</p>
         <h3>append(item)</h3>
         <p>Adds an item to the end of the array and returns the array:</p>
-        <pre><code>var arr = [1, 2];
-arr.append(3);  // arr is now [1, 2, 3]</code></pre>
+        <pre><code data-run="true" data-expect="3">var arr = [1, 2];
+arr.append(3);
+io.print(arr.length);</code></pre>
+        <div class="info-box">
+            <strong>First-read stop.</strong> <code>map</code>, <code>filter</code>, and <code>reduce</code> are below. Return to <a href="learn.html">Learn MALDA</a> if this is your first pass.
+        </div>
         <h3>pop()</h3>
         <p>Removes and returns the last element:</p>
         <pre><code>var arr = [1, 2, 3];

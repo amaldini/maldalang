@@ -22,7 +22,7 @@
 
         <h1>4. Data Types</h1>
 
-        <p>MALDA is a dynamically-typed language with support for primitive types, arrays, and objects. Variables can hold values of any type, and types are inferred from values.</p>
+        <p>MALDA is a dynamically-typed language with support for primitive types, arrays, and objects. Variables can hold values of any type, and types are inferred from values. Learning the language? Start at <a href="learn.html">Learn MALDA</a>.</p>
 
         <h2>4.1 Primitive Types</h2>
 
@@ -130,7 +130,7 @@ var person2 = person1;  // person2 refers to the same object
 person2.name = "Bob";
 print(person1.name);    // Prints "Bob" (same object)</code></pre>
 
-        <h2>4.4 Dictionaries</h2>
+        <h2 id="dictionaries">4.4 Dictionaries</h2>
 
         <p>Dictionaries are mutable key–value maps with <strong>string keys</strong> and values of any type. They are useful for configuration objects, dynamic maps, and aggregating data.</p>
 
@@ -142,6 +142,11 @@ print(d["missing"] == null);</code></pre>
 
         <h3>Dictionary Methods</h3>
         <p>Dictionaries are objects with built-in methods:</p>
+        <pre><code data-run="true" data-expect="10\ntrue\nfalse">var d = dict { "x": 10 };
+d.set("y", 20);
+io.print(d.get("x"));
+io.print(d.containsKey("y"));
+io.print(d.containsKey("z"));</code></pre>
         <pre><code>var d = dict { "x": 10 };
 
 // get(key) – returns value or null
@@ -173,6 +178,9 @@ print(first[0]);          // key
 print(first[1]);          // value</code></pre>
 
         <p>In transpiled executables, dictionary literals are backed by <code>Dictionary&lt;string, object?&gt;</code> but expose the same behavior as in the interpreter.</p>
+        <div class="info-box">
+            <strong>First-read stop.</strong> Sum types and <code>schema</code> are below. Return to <a href="learn.html">Learn MALDA</a> if this is your first pass. First Look uses <code>schema</code> when you want that construct.
+        </div>
 
         <h2 id="sum-types">4.5 Sum Types (Tagged Unions)</h2>
 

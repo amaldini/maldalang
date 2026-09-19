@@ -18,7 +18,7 @@
     <main>
         <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>6. Array</span></div>
         <h1>6. Array</h1>
-        <p>In MALDA gli array sono collezioni dinamiche, indicizzate da zero, che possono contenere valori di qualsiasi tipo.</p>
+        <p>In MALDA gli array sono collezioni dinamiche, indicizzate da zero, che possono contenere valori di qualsiasi tipo. Stai imparando il linguaggio? Parti da <a href="learn.html">Imparare MALDA</a>.</p>
         <h2>6.1 Dichiarazione di array</h2>
         <p>Gli array si creano con parentesi quadre e valori separati da virgola:</p>
         <pre><code>var arr = [1, 2, 3, 4, 5];
@@ -27,11 +27,11 @@ var empty = [];
 var mixed = [1, "two", 3.0, true];  // Arrays can hold mixed types</code></pre>
         <h2>6.2 Accesso agli array</h2>
         <p>Gli elementi si accedono con indicizzazione a base zero:</p>
-        <pre><code>var arr = [10, 20, 30];
-var first = arr[0];   // first = 10
-var second = arr[1];  // second = 20
-arr[2] = 40;          // Modify element
-var length = arr.length;  // Built-in property returns array length</code></pre>
+        <pre><code data-run="true" data-expect="10\n3\n4">var arr = [10, 20, 30];
+io.print(arr[0]);
+io.print(arr.length);
+arr.append(40);
+io.print(arr.length);</code></pre>
         <div class="warning-box">
             <strong>Nota:</strong> accedere a un indice oltre i limiti dell'array causa un errore a runtime.
         </div>
@@ -50,8 +50,12 @@ matrix[1][0] = 5;          // matrix is now [[1, 2], [5, 4]]</code></pre>
         <p>Gli array sono oggetti con metodi built-in:</p>
         <h3>append(item)</h3>
         <p>Aggiunge un elemento in fondo all'array e restituisce l'array:</p>
-        <pre><code>var arr = [1, 2];
-arr.append(3);  // arr is now [1, 2, 3]</code></pre>
+        <pre><code data-run="true" data-expect="3">var arr = [1, 2];
+arr.append(3);
+io.print(arr.length);</code></pre>
+        <div class="info-box">
+            <strong>Stop alla prima lettura.</strong> <code>map</code>, <code>filter</code> e <code>reduce</code> sono sotto. Torna a <a href="learn.html">Imparare MALDA</a> se questo è il primo passaggio.
+        </div>
         <h3>pop()</h3>
         <p>Rimuove e restituisce l'ultimo elemento:</p>
         <pre><code>var arr = [1, 2, 3];

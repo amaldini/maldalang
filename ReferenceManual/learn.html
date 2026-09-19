@@ -51,10 +51,24 @@ if (checked.ok) {
 } else {
     io.print("schema failed: " + checked.error);
 }</code></pre>
+        <div class="info-box">
+            <strong>Try this:</strong> Change the validated <code>summary</code> to <code>"Needs work"</code> and re-run. What is the last printed line?
+            <details>
+                <summary>Answer</summary>
+                <p><code>schema ok: Needs work</code></p>
+            </details>
+        </div>
 
         <h2 id="hello-world">Lesson 1 — Hello World</h2>
         <p>One call writes one line. Chapter: <a href="12-input-output.html#hello-world">12.1 Console output</a>. Same file: <code>Examples/Basics/hello_world.malda</code>.</p>
         <pre><code data-run="true" data-expect="Hello, World!">io.print("Hello, World!");</code></pre>
+        <div class="info-box">
+            <strong>Try this:</strong> Change the string to <code>"Hello, MALDA!"</code> and re-run.
+            <details>
+                <summary>Answer</summary>
+                <p>The program prints <code>Hello, MALDA!</code> and exits.</p>
+            </details>
+        </div>
 
         <h2 id="variables">Lesson 2 — Variables and arithmetic</h2>
         <p><code>var</code> declares a binding. The type comes from the value. Chapter: <a href="05-variables.html#first-read">5.1 Variable declaration</a>. Same file: <code>Examples/Basics/variables_arithmetic.malda</code>.</p>
@@ -64,6 +78,13 @@ var sum = x + y;
 var product = x * y;
 io.print($"Sum: {sum}");
 io.print($"Product: {product}");</code></pre>
+        <div class="info-box">
+            <strong>Try this:</strong> Change <code>10</code> to <code>7</code> and re-run. What is the new sum?
+            <details>
+                <summary>Answer</summary>
+                <p><code>27</code> (<code>7 + 20</code>).</p>
+            </details>
+        </div>
 
         <h2 id="conditionals">Lesson 3 — Conditionals</h2>
         <p><code>if</code> / <code>else if</code> / <code>else</code> choose a branch. Chapter: <a href="08-control-structures.html#conditionals">8.1 Conditional statements</a>. Same file: <code>Examples/Basics/conditionals.malda</code>.</p>
@@ -84,6 +105,13 @@ if (score >= 90) {
 } else {
     io.print("Grade: F");
 }</code></pre>
+        <div class="info-box">
+            <strong>Try this:</strong> Change <code>age</code> to <code>16</code>. What prints first?
+            <details>
+                <summary>Answer</summary>
+                <p><code>You are a minor</code></p>
+            </details>
+        </div>
 
         <h2 id="while-loop">Lesson 4 — While loop</h2>
         <p>A <code>while</code> loop repeats while the condition is true. Update the loop variable yourself. Chapter: <a href="08-control-structures.html#while-loop">8.2 While</a>. Same file: <code>Examples/Basics/while_loop.malda</code>.</p>
@@ -93,6 +121,13 @@ while (i <= 10) {
     i = i + 1;
 }
 io.print("Done!");</code></pre>
+        <div class="info-box">
+            <strong>Try this:</strong> Change the loop to stop at <code>5</code>. How many <code>Count:</code> lines print?
+            <details>
+                <summary>Answer</summary>
+                <p>Five lines: <code>Count: 1</code> through <code>Count: 5</code>.</p>
+            </details>
+        </div>
 
         <h2 id="for-loop">Lesson 5 — For loop</h2>
         <p>A C-style <code>for</code> packs init, condition, and increment. Chapter: <a href="08-control-structures.html#for-loop">8.2 For</a>. Same file: <code>Examples/Basics/for_loop.malda</code>.</p>
@@ -100,6 +135,13 @@ io.print("Done!");</code></pre>
     io.print($"Number: {i}");
 }
 io.print("Loop finished!");</code></pre>
+        <div class="info-box">
+            <strong>Try this:</strong> Change the loop to start at <code>5</code>. What is the first <code>Number:</code> line?
+            <details>
+                <summary>Answer</summary>
+                <p><code>Number: 5</code></p>
+            </details>
+        </div>
 
         <h2 id="functions">Lesson 6 — Functions</h2>
         <p>The only function keyword is <code>function</code>. <code>fn</code> and <code>def</code> are syntax errors. Chapter: <a href="09-functions.html#first-read">9.1 Function declaration</a>. Same file: <code>Examples/Basics/functions.malda</code>.</p>
@@ -112,6 +154,13 @@ io.print($"5 + 3 = {result1}");
 
 var result2 = add(10, 2);
 io.print($"10 + 2 = {result2}");</code></pre>
+        <div class="info-box">
+            <strong>Try this:</strong> Add <code>io.print(add(1, 1));</code> after the existing prints. What is the last line?
+            <details>
+                <summary>Answer</summary>
+                <p><code>2</code></p>
+            </details>
+        </div>
 
         <h2 id="complete-starter">Lesson 7 — Complete starter</h2>
         <p>Variables, a <code>for-in</code> loop, a function, and an <code>if</code> in one linear program. Catalog note: <a href="34-examples.html#catalog">34.1</a>. Same file: <code>Examples/Basics/complete_starter_program.malda</code>.</p>
@@ -133,6 +182,20 @@ function describeTotal(amount) {
 io.print($"Items: {cart.length}");
 io.print($"Total: {total}");
 io.print($"Summary: {describeTotal(total)}");</code></pre>
+        <div class="info-box">
+            <strong>Try this:</strong> Change the last cart item from <code>7</code> to <code>4</code>. Is it still a big order?
+            <details>
+                <summary>Answer</summary>
+                <p>Yes. The total becomes <code>34</code>, which is still <code>&gt;= 30</code>.</p>
+            </details>
+        </div>
+        <div class="info-box">
+            <strong>Try this:</strong> Keep the original cart and change the threshold from <code>30</code> to <code>40</code>. What is the summary?
+            <details>
+                <summary>Answer</summary>
+                <p><code>small order</code> (37 is below 40).</p>
+            </details>
+        </div>
 
         <h2 id="input">Lesson 8 — Input</h2>
         <p><code>io.input</code> reads one line from stdin and always returns a <strong>string</strong>. Convert it if you need a number. This snippet waits for a keyboard, so it is not marked runnable here. Chapter: <a href="12-input-output.html#console-input">12.2 Console input</a>. Same file: <code>Examples/Basics/input_example.malda</code>.</p>
@@ -141,9 +204,106 @@ var ageStr = io.input("Enter your age: ");
 var age = int(ageStr);
 io.print($"Hello, {name}. You are {age} years old.");</code></pre>
         <p>At end of input every later <code>io.input</code> returns <code>""</code>, not <code>null</code>. Prefer <code>toIntOr(raw, fallback)</code> over bare <code>int(...)</code> when the line may be blank.</p>
+        <div class="info-box">
+            <strong>Try this:</strong> What does every later <code>io.input</code> return at end of file?
+            <details>
+                <summary>Answer</summary>
+                <p>An empty string <code>""</code>, not <code>null</code>.</p>
+            </details>
+        </div>
+
+        <h2 id="lists">Lesson 9 — Lists and indexing</h2>
+        <p>Arrays are zero-indexed and grow with <code>append</code>. A counted <code>for</code> walks indexes; <code>for-in</code> walks values. Chapter: <a href="06-arrays.html">6. Arrays</a>. Same file: <code>Examples/Basics/lists_indexing.malda</code>.</p>
+        <pre><code data-run="true" data-expect="first=88\nlength=3\nafter append length=4\npopped=80\nlength after pop=3\nscores[0]=88\nscores[1]=92\nscores[2]=75\nsum=255\nfor-in count=3\nlists ok">var scores = [88, 92, 75];
+io.print("first=" + string(scores[0]));
+io.print("length=" + string(scores.length));
+
+scores.append(80);
+io.print("after append length=" + string(scores.length));
+
+var last = scores.pop();
+io.print("popped=" + string(last));
+io.print("length after pop=" + string(scores.length));
+
+var total = 0;
+for (var i = 0; i < scores.length; i = i + 1) {
+    io.print("scores[" + string(i) + "]=" + string(scores[i]));
+    total = total + scores[i];
+}
+
+var walked = 0;
+for (var score in scores) {
+    walked = walked + 1;
+}
+
+io.print("sum=" + string(total));
+io.print("for-in count=" + string(walked));
+io.print("lists ok");</code></pre>
+        <div class="info-box">
+            <strong>Try this:</strong> After the existing <code>append</code>, append another score <code>100</code> and do not <code>pop</code> it. What is the new printed sum?
+            <details>
+                <summary>Answer</summary>
+                <p><code>355</code> (<code>88 + 92 + 75 + 100</code>). The original file pops the appended <code>80</code> before summing.</p>
+            </details>
+        </div>
+
+        <h2 id="dictionaries">Lesson 10 — Dictionaries</h2>
+        <p>A <code>dict</code> maps string keys to values. Index to read or write; <code>containsKey</code>, <code>keys</code>, and <code>values</code> inspect the map. Chapter: <a href="04-data-types.html#dictionaries">4.4 Dictionaries</a>. Same file: <code>Examples/Basics/dictionary_example.malda</code>.</p>
+        <pre><code data-run="true" data-expect="a = 1\nb = 2\nc = 3\nhas b: true\nhas missing: false\nkeys length: 3\nvalues length: 3">var d = dict { "a": 1, "b": 2 };
+io.print("a = " + d["a"]);
+io.print("b = " + d["b"]);
+
+d["c"] = 3;
+io.print("c = " + d["c"]);
+
+io.print("has b: " + d.containsKey("b"));
+io.print("has missing: " + d.containsKey("missing"));
+
+var keys = d.keys();
+var values = d.values();
+
+io.print("keys length: " + keys.length);
+io.print("values length: " + values.length);</code></pre>
+        <div class="info-box">
+            <strong>Try this:</strong> Add <code>d["d"] = 4;</code> and print it. What is <code>keys.length</code> after that?
+            <details>
+                <summary>Answer</summary>
+                <p><code>4</code></p>
+            </details>
+        </div>
+
+        <h2 id="recursion">Lesson 11 — Recursion</h2>
+        <p>A function may call itself. Write a base case that stops, then a smaller argument. Chapter: <a href="09-functions.html#recursion">9.4 Recursion</a>. Same file: <code>Examples/Basics/recursion.malda</code>.</p>
+        <pre><code data-run="true" data-expect="factorial(5)=120\ncountdown from 3:\n3\n2\n1\nliftoff\nrecursion ok">function factorial(n) {
+    if (n <= 1) {
+        return 1;
+    }
+    return n * factorial(n - 1);
+}
+
+function countdown(n) {
+    if (n <= 0) {
+        io.print("liftoff");
+        return 0;
+    }
+    io.print(n);
+    return countdown(n - 1);
+}
+
+io.print("factorial(5)=" + string(factorial(5)));
+io.print("countdown from 3:");
+countdown(3);
+io.print("recursion ok");</code></pre>
+        <div class="info-box">
+            <strong>Try this:</strong> Print <code>factorial(7)</code>. What is the value?
+            <details>
+                <summary>Answer</summary>
+                <p><code>5040</code></p>
+            </details>
+        </div>
 
         <h2 id="after-core">After the core path</h2>
-        <p>Next two Basics files, still offline: <code>Examples/Basics/lists_indexing.malda</code> and <code>Examples/Basics/dictionary_example.malda</code>. Then open the sidebar and pick a category — do not keep reading this page as a catalog.</p>
+        <p>The core course ends here. Algorithms and from-scratch AI theory stay on <a href="../docs/start-here.md">Start Here</a> — do not treat this page as that catalog. Then open the sidebar and pick a category:</p>
         <ul>
             <li><strong>Standard Library</strong> — <a href="16-database.html">16. Database</a>, <a href="15-vectordb.html">15. VectorDB</a></li>
             <li><strong>AI &amp; Agents</strong> — <a href="10-prompts.html">10. Prompts</a>, then <a href="18-agent-orchestration.html">18. Agent Orchestration</a></li>

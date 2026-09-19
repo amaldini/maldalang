@@ -20,7 +20,7 @@ public class ReferenceManualChapterSyncTests
         var num = 0;
         foreach (var chapter in doc.RootElement.GetProperty("chapters").EnumerateArray())
         {
-            if (chapter.TryGetProperty("isHome", out var isHome) && isHome.GetBoolean())
+            if (IsUnnumbered(chapter))
                 continue;
 
             num++;
@@ -52,7 +52,7 @@ public class ReferenceManualChapterSyncTests
         var num = 0;
         foreach (var chapter in doc.RootElement.GetProperty("chapters").EnumerateArray())
         {
-            if (chapter.TryGetProperty("isHome", out var isHome) && isHome.GetBoolean())
+            if (IsUnnumbered(chapter))
                 continue;
 
             num++;
@@ -70,4 +70,8 @@ public class ReferenceManualChapterSyncTests
 
         Assert.Equal(38, num);
     }
+
+    private static bool IsUnnumbered(JsonElement chapter) =>
+        (chapter.TryGetProperty("isHome", out var home) && home.GetBoolean())
+        || (chapter.TryGetProperty("isCourse", out var course) && course.GetBoolean());
 }

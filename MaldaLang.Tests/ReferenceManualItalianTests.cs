@@ -54,12 +54,12 @@ public class ReferenceManualItalianTests
 
         var enCats = english.RootElement.GetProperty("chapters")
             .EnumerateArray()
-            .Where(ch => !(ch.TryGetProperty("isHome", out var home) && home.GetBoolean()))
+            .Where(ch => !IsUnnumbered(ch))
             .Select(ch => ch.GetProperty("category").GetString()!)
             .ToList();
         var itCats = italian.RootElement.GetProperty("chapters")
             .EnumerateArray()
-            .Where(ch => !(ch.TryGetProperty("isHome", out var home) && home.GetBoolean()))
+            .Where(ch => !IsUnnumbered(ch))
             .Select(ch => ch.GetProperty("category").GetString()!)
             .ToList();
 
@@ -206,7 +206,8 @@ public class ReferenceManualItalianTests
     public void ItalianIndexTocFallback_MatchesChaptersJson()
     {
         var expected = ItalianChaptersJsonEntries()
-            .Where(e => !e.StartsWith("index.html::", StringComparison.Ordinal))
+            .Where(e => !e.StartsWith("index.html::", StringComparison.Ordinal)
+                        && !e.StartsWith("learn.html::", StringComparison.Ordinal))
             .ToList();
         var actual = IndexTocFallbackEntries();
 
@@ -302,9 +303,8 @@ public class ReferenceManualItalianTests
         {
             var file = chapter.GetProperty("file").GetString()!;
             var title = chapter.GetProperty("title").GetString()!;
-            var isHome = chapter.TryGetProperty("isHome", out var home) && home.GetBoolean();
 
-            if (isHome)
+            if (IsUnnumbered(chapter))
             {
                 entries.Add($"{file}::{title}");
                 continue;
@@ -381,4 +381,8 @@ public class ReferenceManualItalianTests
 
         return output.ToArray();
     }
+
+    private static bool IsUnnumbered(JsonElement chapter) =>
+        (chapter.TryGetProperty("isHome", out var home) && home.GetBoolean())
+        || (chapter.TryGetProperty("isCourse", out var course) && course.GetBoolean());
 }

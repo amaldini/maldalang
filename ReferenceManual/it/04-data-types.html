@@ -22,7 +22,7 @@
 
         <h1>4. Tipi di dati</h1>
 
-        <p>MALDA è un linguaggio a typing dinamico, con supporto per tipi primitivi, array e oggetti. Le variabili possono contenere valori di qualsiasi tipo, e i tipi vengono inferiti dai valori.</p>
+        <p>MALDA è un linguaggio a typing dinamico, con supporto per tipi primitivi, array e oggetti. Le variabili possono contenere valori di qualsiasi tipo, e i tipi vengono inferiti dai valori. Stai imparando il linguaggio? Parti da <a href="learn.html">Imparare MALDA</a>.</p>
 
         <h2>4.1 Tipi primitivi</h2>
 
@@ -130,7 +130,7 @@ var person2 = person1;  // person2 refers to the same object
 person2.name = "Bob";
 print(person1.name);    // Prints "Bob" (same object)</code></pre>
 
-        <h2>4.4 Dizionari</h2>
+        <h2 id="dictionaries">4.4 Dizionari</h2>
 
         <p>I dizionari sono mappe chiave–valore mutabili con <strong>chiavi stringa</strong> e valori di qualsiasi tipo. Sono utili per oggetti di configurazione, mappe dinamiche e aggregazione di dati.</p>
 
@@ -142,6 +142,11 @@ print(d["missing"] == null);</code></pre>
 
         <h3>Metodi dei dizionari</h3>
         <p>I dizionari sono oggetti con metodi built-in:</p>
+        <pre><code data-run="true" data-expect="10\ntrue\nfalse">var d = dict { "x": 10 };
+d.set("y", 20);
+io.print(d.get("x"));
+io.print(d.containsKey("y"));
+io.print(d.containsKey("z"));</code></pre>
         <pre><code>var d = dict { "x": 10 };
 
 // get(key) – returns value or null
@@ -173,6 +178,9 @@ print(first[0]);          // key
 print(first[1]);          // value</code></pre>
 
         <p>Negli eseguibili transpile, i letterali dizionario usano <code>Dictionary&lt;string, object?&gt;</code> come backing ma espongono lo stesso comportamento dell'interprete.</p>
+        <div class="info-box">
+            <strong>Stop alla prima lettura.</strong> Tipi somma e <code>schema</code> sono sotto. Torna a <a href="learn.html">Imparare MALDA</a> se questo è il primo passaggio. First Look usa <code>schema</code> quando vuoi quel costrutto.
+        </div>
 
         <h2 id="sum-types">4.5 Tipi somma (unioni etichettate)</h2>
 
