@@ -683,6 +683,29 @@ public class JavaScriptBackendTests : TestBase
     }
 
     [Fact]
+    public void JsTranspiler_ChessExample_EmitsKitCalls()
+    {
+        var sourcePath = PlanningPaths.ResolveRepoFile("Examples", "Games", "chess.malda");
+        var compiler = new Compiler.Compiler();
+        var js = compiler.TranspileToJavaScript(sourcePath);
+
+        Assert.Contains("mlRuntime.game.startFixed(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.wasMousePressed(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.wasKeyPressed(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.pointInRect(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.fillRect(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.fillCircle(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.strokeCircle(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.strokeRect(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.save(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.load(", js, StringComparison.Ordinal);
+        Assert.Contains("chess_save", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("mlRuntime.game.start(updateGame, renderGame)", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("mlRuntime.game.loadImage(", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("mlRuntime.three.", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void JsTranspiler_MaldadashExample_EmitsGameLoopCalls()
     {
         var sourcePath = PlanningPaths.ResolveRepoFile("Examples", "Games", "maldadash.malda");

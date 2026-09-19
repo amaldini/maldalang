@@ -308,6 +308,33 @@
       "documentationTitle": "Browser Track"
     },
     {
+      "name": "JS Canvas Game Chess",
+      "description": "Turn-based chess on the primitive-draw track: click/touch moves, legal highlights, castling / en passant / queen promotion, checkmate, optional 2-ply CPU, and a saved position",
+      "file": "chess.malda",
+      "track": "showcase",
+      "difficulty": "advanced",
+      "minutes": 20,
+      "concepts": [
+        "game.*",
+        "turn-based",
+        "mouse",
+        "touch",
+        "pointInRect",
+        "fixed timestep",
+        "localStorage",
+        "minimax",
+        "browser gameplay"
+      ],
+      "prerequisites": [
+        "Games/game_bounce.malda"
+      ],
+      "learningGoal": "Show a complete rules game on fillRect/fillCircle that uses wasMousePressed, pointInRect hit tests, startFixed, and save/load instead of an arcade loop.",
+      "expectedOutput": "Runs a playable chess board: click a piece then a highlighted square, optional computer opponent, undo, and a position plus score that survive reload.",
+      "next": "Games/maldanoid.malda",
+      "documentationPath": "/?lesson=browser-track#lesson-browser-track",
+      "documentationTitle": "Browser Track"
+    },
+    {
       "name": "JS Canvas Game Maldanoid",
       "description": "Arkanoid-style breakout on the primitive-draw track: calmer aimed serves, velocity-axis brick bounces, combo bar, shaped power-ups, and a saved high/combo blob",
       "file": "maldanoid.malda",

@@ -1,0 +1,1049 @@
+var root = dom.query("#app");
+
+if (root == null) {
+    println("No #app container found.");
+} else {
+    dom.clear(root);
+
+    var head = dom.query("head");
+    if (head != null) {
+        var styleNode = dom.create("style");
+        var styleText = "body { margin: 0; background: #0f172a; color: #e2e8f0; font-family: sans-serif; }\n";
+        styleText = styleText + "h1, p { max-width: 960px; margin: 12px auto; padding: 0 12px; }\n";
+        styleText = styleText + "#app canvas { width: 100%; max-width: 960px; height: auto; display: block; margin: 0 auto; touch-action: none; }\n";
+        dom.setText(styleNode, styleText);
+        dom.append(head, styleNode);
+    }
+
+    var title = dom.create("h1");
+    dom.setText(title, "MALDA Game: Chess");
+    dom.append(root, title);
+
+    var hint = dom.create("p");
+    dom.setText(hint, "Click or tap a piece, then a highlighted square. R new game. U undo. C toggle computer (Black). Pawns promote to queen.");
+    dom.append(root, hint);
+
+    var canvasWidth = 960;
+    var canvasHeight = 640;
+    var tile = 68;
+    var boardX = 28;
+    var boardY = 28;
+    var panelX = 600;
+
+    var board = [];
+    var side = 1;
+    var castleWK = true;
+    var castleWQ = true;
+    var castleBK = true;
+    var castleBQ = true;
+    var epSq = -1;
+    var selSq = -1;
+    var legalForSel = [];
+    var lastFrom = -1;
+    var lastTo = -1;
+    var status = "play";
+    var vsCpu = true;
+    var aiWaitMs = 0;
+    var aiThinking = false;
+    var history = [];
+    var winsW = 0;
+    var winsB = 0;
+    var gameOverLogged = false;
+    var audioBooted = false;
+    var hoverSq = -1;
+
+    var files = ["a", "b", "c", "d", "e", "f", "g", "h"];
+    var knDr = [-2, -2, -1, -1, 1, 1, 2, 2];
+    var knDc = [-1, 1, -2, 2, -2, 2, -1, 1];
+    var kgDr = [-1, -1, -1, 0, 0, 1, 1, 1];
+    var kgDc = [-1, 0, 1, -1, 1, -1, 0, 1];
+    var slDr = [-1, 1, 0, 0, -1, -1, 1, 1];
+    var slDc = [0, 0, -1, 1, -1, 1, -1, 1];
+    var values = [0, 100, 320, 330, 500, 900, 0];
+
+    var saved = game.load("chess_save");
+    if (saved != null) {
+        if (saved.winsW != null) {
+            winsW = saved.winsW;
+        }
+        if (saved.winsB != null) {
+            winsB = saved.winsB;
+        }
+        if (saved.vsCpu != null) {
+            vsCpu = saved.vsCpu;
+        }
+    }
+
+    function kind(p) {
+        if (p < 0) {
+            return 0 - p;
+        }
+        return p;
+    }
+
+    function cloneBoard() {
+        var out = [];
+        var i = 0;
+        while (i < 64) {
+            out.append(board[i]);
+            i = i + 1;
+        }
+        return out;
+    }
+
+    function snapshot() {
+        return {
+            "board": cloneBoard(),
+            "side": side,
+            "wk": castleWK,
+            "wq": castleWQ,
+            "bk": castleBK,
+            "bq": castleBQ,
+            "ep": epSq,
+            "lastFrom": lastFrom,
+            "lastTo": lastTo,
+            "status": status,
+            "logged": gameOverLogged
+        };
+    }
+
+    function restore(s) {
+        var i = 0;
+        while (i < 64) {
+            board[i] = s.board[i];
+            i = i + 1;
+        }
+        side = s.side;
+        castleWK = s.wk;
+        castleWQ = s.wq;
+        castleBK = s.bk;
+        castleBQ = s.bq;
+        epSq = s.ep;
+        lastFrom = s.lastFrom;
+        lastTo = s.lastTo;
+        status = s.status;
+        gameOverLogged = s.logged;
+    }
+
+    function setupStart() {
+        board = [];
+        var i = 0;
+        while (i < 64) {
+            board.append(0);
+            i = i + 1;
+        }
+        var back = [4, 2, 3, 5, 6, 3, 2, 4];
+        i = 0;
+        while (i < 8) {
+            board[i] = 0 - back[i];
+            var blackPawn = 8 + i;
+            var whitePawn = 48 + i;
+            var whiteBack = 56 + i;
+            board[blackPawn] = -1;
+            board[whitePawn] = 1;
+            board[whiteBack] = back[i];
+            i = i + 1;
+        }
+        side = 1;
+        castleWK = true;
+        castleWQ = true;
+        castleBK = true;
+        castleBQ = true;
+        epSq = -1;
+        selSq = -1;
+        legalForSel = [];
+        lastFrom = -1;
+        lastTo = -1;
+        status = "play";
+        history = [];
+        gameOverLogged = false;
+        aiWaitMs = 0;
+        aiThinking = false;
+    }
+
+    function persist() {
+        game.save("chess_save", {
+            "board": cloneBoard(),
+            "side": side,
+            "wk": castleWK,
+            "wq": castleWQ,
+            "bk": castleBK,
+            "bq": castleBQ,
+            "ep": epSq,
+            "lastFrom": lastFrom,
+            "lastTo": lastTo,
+            "status": status,
+            "vsCpu": vsCpu,
+            "winsW": winsW,
+            "winsB": winsB,
+            "logged": gameOverLogged
+        });
+    }
+
+    function tryLoadGame() {
+        if (saved == null) {
+            return false;
+        }
+        if (saved.board == null) {
+            return false;
+        }
+        if (saved.board.length != 64) {
+            return false;
+        }
+        board = [];
+        var i = 0;
+        while (i < 64) {
+            board.append(saved.board[i]);
+            i = i + 1;
+        }
+        side = saved.side;
+        castleWK = saved.wk;
+        castleWQ = saved.wq;
+        castleBK = saved.bk;
+        castleBQ = saved.bq;
+        epSq = saved.ep;
+        lastFrom = saved.lastFrom;
+        lastTo = saved.lastTo;
+        status = saved.status;
+        gameOverLogged = saved.logged;
+        if (gameOverLogged == null) {
+            gameOverLogged = false;
+        }
+        if (status == null) {
+            status = "play";
+        }
+        return true;
+    }
+
+    function onBoard(r, c) {
+        return r >= 0 and r < 8 and c >= 0 and c < 8;
+    }
+
+    function findKing(who) {
+        var want = 6 * who;
+        var i = 0;
+        while (i < 64) {
+            if (board[i] == want) {
+                return i;
+            }
+            i = i + 1;
+        }
+        return -1;
+    }
+
+    function slideHits(sq, dr, dc, wantA, wantB) {
+        var r = math.floor(sq / 8) + dr;
+        var c = (sq % 8) + dc;
+        while (onBoard(r, c)) {
+            var p = board[r * 8 + c];
+            if (p != 0) {
+                return p == wantA or p == wantB;
+            }
+            r = r + dr;
+            c = c + dc;
+        }
+        return false;
+    }
+
+    function isAttacked(sq, bySide) {
+        if (sq < 0) {
+            return false;
+        }
+        var r = math.floor(sq / 8);
+        var c = sq % 8;
+        var pdr = 1;
+        if (bySide < 0) {
+            pdr = -1;
+        }
+        var dc = -1;
+        while (dc <= 1) {
+            if (dc != 0) {
+                var pr = r + pdr;
+                var pc = c + dc;
+                if (onBoard(pr, pc) and board[pr * 8 + pc] == bySide) {
+                    return true;
+                }
+            }
+            dc = dc + 1;
+        }
+        var i = 0;
+        while (i < 8) {
+            var nr = r + knDr[i];
+            var nc = c + knDc[i];
+            if (onBoard(nr, nc) and board[nr * 8 + nc] == 2 * bySide) {
+                return true;
+            }
+            i = i + 1;
+        }
+        i = 0;
+        while (i < 8) {
+            var kr = r + kgDr[i];
+            var kc = c + kgDc[i];
+            if (onBoard(kr, kc) and board[kr * 8 + kc] == 6 * bySide) {
+                return true;
+            }
+            i = i + 1;
+        }
+        var bishop = 3 * bySide;
+        var queen = 5 * bySide;
+        var rook = 4 * bySide;
+        i = 4;
+        while (i < 8) {
+            if (slideHits(sq, slDr[i], slDc[i], bishop, queen)) {
+                return true;
+            }
+            i = i + 1;
+        }
+        i = 0;
+        while (i < 4) {
+            if (slideHits(sq, slDr[i], slDc[i], rook, queen)) {
+                return true;
+            }
+            i = i + 1;
+        }
+        return false;
+    }
+
+    function pushMove(moves, from, to, flag) {
+        moves.append({ "from": from, "to": to, "flag": flag });
+    }
+
+    function addPawnMoves(moves, from, who) {
+        var r = math.floor(from / 8);
+        var c = from % 8;
+        var dr = -1;
+        var startRow = 6;
+        var promoRow = 0;
+        if (who < 0) {
+            dr = 1;
+            startRow = 1;
+            promoRow = 7;
+        }
+        var nr = r + dr;
+        if (!onBoard(nr, c)) {
+            return;
+        }
+        var ahead = nr * 8 + c;
+        if (board[ahead] == 0) {
+            if (nr == promoRow) {
+                pushMove(moves, from, ahead, 4);
+            } else {
+                pushMove(moves, from, ahead, 0);
+                if (r == startRow) {
+                    var jump = (r + dr + dr) * 8 + c;
+                    if (board[jump] == 0) {
+                        pushMove(moves, from, jump, 0);
+                    }
+                }
+            }
+        }
+        var d = -1;
+        while (d <= 1) {
+            if (d != 0) {
+                var nc = c + d;
+                if (onBoard(nr, nc)) {
+                    var dest = nr * 8 + nc;
+                    var victim = board[dest];
+                    if (victim != 0 and victim * who < 0) {
+                        if (nr == promoRow) {
+                            pushMove(moves, from, dest, 4);
+                        } else {
+                            pushMove(moves, from, dest, 0);
+                        }
+                    }
+                    if (dest == epSq) {
+                        pushMove(moves, from, dest, 3);
+                    }
+                }
+            }
+            d = d + 1;
+        }
+    }
+
+    function addStepMoves(moves, from, who, drs, dcs) {
+        var r = math.floor(from / 8);
+        var c = from % 8;
+        var i = 0;
+        while (i < drs.length) {
+            var nr = r + drs[i];
+            var nc = c + dcs[i];
+            if (onBoard(nr, nc)) {
+                var dest = nr * 8 + nc;
+                var victim = board[dest];
+                if (victim == 0 or victim * who < 0) {
+                    pushMove(moves, from, dest, 0);
+                }
+            }
+            i = i + 1;
+        }
+    }
+
+    function addSlideMoves(moves, from, who, start, stop) {
+        var r0 = math.floor(from / 8);
+        var c0 = from % 8;
+        var i = start;
+        while (i < stop) {
+            var r = r0 + slDr[i];
+            var c = c0 + slDc[i];
+            while (onBoard(r, c)) {
+                var dest = r * 8 + c;
+                var victim = board[dest];
+                if (victim == 0) {
+                    pushMove(moves, from, dest, 0);
+                } else {
+                    if (victim * who < 0) {
+                        pushMove(moves, from, dest, 0);
+                    }
+                    break;
+                }
+                r = r + slDr[i];
+                c = c + slDc[i];
+            }
+            i = i + 1;
+        }
+    }
+
+    function addCastleMoves(moves, who) {
+        var k = findKing(who);
+        if (k < 0) {
+            return;
+        }
+        if (isAttacked(k, 0 - who)) {
+            return;
+        }
+        if (who > 0) {
+            if (castleWK and board[61] == 0 and board[62] == 0 and board[63] == 4) {
+                if (!isAttacked(61, -1) and !isAttacked(62, -1)) {
+                    pushMove(moves, 60, 62, 1);
+                }
+            }
+            if (castleWQ and board[59] == 0 and board[58] == 0 and board[57] == 0 and board[56] == 4) {
+                if (!isAttacked(59, -1) and !isAttacked(58, -1)) {
+                    pushMove(moves, 60, 58, 2);
+                }
+            }
+        } else {
+            if (castleBK and board[5] == 0 and board[6] == 0 and board[7] == -4) {
+                if (!isAttacked(5, 1) and !isAttacked(6, 1)) {
+                    pushMove(moves, 4, 6, 1);
+                }
+            }
+            if (castleBQ and board[3] == 0 and board[2] == 0 and board[1] == 0 and board[0] == -4) {
+                if (!isAttacked(3, 1) and !isAttacked(2, 1)) {
+                    pushMove(moves, 4, 2, 2);
+                }
+            }
+        }
+    }
+
+    function genPseudo(who) {
+        var moves = [];
+        var i = 0;
+        while (i < 64) {
+            var p = board[i];
+            if (p != 0 and p * who > 0) {
+                var t = kind(p);
+                if (t == 1) {
+                    addPawnMoves(moves, i, who);
+                } else if (t == 2) {
+                    addStepMoves(moves, i, who, knDr, knDc);
+                } else if (t == 3) {
+                    addSlideMoves(moves, i, who, 4, 8);
+                } else if (t == 4) {
+                    addSlideMoves(moves, i, who, 0, 4);
+                } else if (t == 5) {
+                    addSlideMoves(moves, i, who, 0, 8);
+                } else if (t == 6) {
+                    addStepMoves(moves, i, who, kgDr, kgDc);
+                }
+            }
+            i = i + 1;
+        }
+        addCastleMoves(moves, who);
+        return moves;
+    }
+
+    function applyMove(m) {
+        var from = m.from;
+        var to = m.to;
+        var flag = m.flag;
+        var piece = board[from];
+        board[to] = piece;
+        board[from] = 0;
+        if (flag == 3) {
+            if (piece > 0) {
+                var epDown = to + 8;
+                board[epDown] = 0;
+            } else {
+                var epUp = to - 8;
+                board[epUp] = 0;
+            }
+        }
+        if (flag == 4) {
+            if (piece > 0) {
+                board[to] = 5;
+            } else {
+                board[to] = -5;
+            }
+        }
+        if (flag == 1) {
+            if (piece > 0) {
+                board[63] = 0;
+                board[61] = 4;
+            } else {
+                board[7] = 0;
+                board[5] = -4;
+            }
+        }
+        if (flag == 2) {
+            if (piece > 0) {
+                board[56] = 0;
+                board[59] = 4;
+            } else {
+                board[0] = 0;
+                board[3] = -4;
+            }
+        }
+        if (from == 60 or to == 60) {
+            castleWK = false;
+            castleWQ = false;
+        }
+        if (from == 4 or to == 4) {
+            castleBK = false;
+            castleBQ = false;
+        }
+        if (from == 63 or to == 63) {
+            castleWK = false;
+        }
+        if (from == 56 or to == 56) {
+            castleWQ = false;
+        }
+        if (from == 7 or to == 7) {
+            castleBK = false;
+        }
+        if (from == 0 or to == 0) {
+            castleBQ = false;
+        }
+        epSq = -1;
+        if (kind(piece) == 1) {
+            var fr = math.floor(from / 8);
+            var tr = math.floor(to / 8);
+            if (math.abs(tr - fr) == 2) {
+                epSq = (from + to) / 2;
+            }
+        }
+        side = 0 - side;
+    }
+
+    function genLegal(who) {
+        var raw = genPseudo(who);
+        var out = [];
+        var i = 0;
+        while (i < raw.length) {
+            var snap = snapshot();
+            applyMove(raw[i]);
+            var k = findKing(who);
+            if (!isAttacked(k, 0 - who)) {
+                out.append(raw[i]);
+            }
+            restore(snap);
+            i = i + 1;
+        }
+        return out;
+    }
+
+    function refreshStatus() {
+        var moves = genLegal(side);
+        var k = findKing(side);
+        var check = isAttacked(k, 0 - side);
+        if (moves.length == 0) {
+            if (check) {
+                status = "mate";
+            } else {
+                status = "stale";
+            }
+        } else if (check) {
+            status = "check";
+        } else {
+            status = "play";
+        }
+        if (status == "mate" and !gameOverLogged) {
+            if (side > 0) {
+                winsB = winsB + 1;
+            } else {
+                winsW = winsW + 1;
+            }
+            gameOverLogged = true;
+        }
+    }
+
+    function bootAudio() {
+        if (!audioBooted) {
+            game.audioInit();
+            game.audioSetMasterVolume(0.35);
+            audioBooted = true;
+        }
+    }
+
+    function playSfx(m, captured) {
+        if (!audioBooted) {
+            return;
+        }
+        if (status == "mate") {
+            game.audioPlayTone(420, 140, "sawtooth", 0.14);
+            game.audioPlayTone(280, 180, "sawtooth", 0.12);
+            return;
+        }
+        if (status == "check") {
+            game.audioPlayTone(880, 70, "square", 0.12);
+            game.audioPlayTone(660, 80, "square", 0.10);
+            return;
+        }
+        if (captured or m.flag == 3) {
+            game.audioPlayTone(320, 50, "triangle", 0.12);
+        } else {
+            game.audioPlayTone(540, 36, "triangle", 0.09);
+        }
+    }
+
+    function playMove(m) {
+        var captured = board[m.to] != 0 or m.flag == 3;
+        history.append(snapshot());
+        applyMove(m);
+        lastFrom = m.from;
+        lastTo = m.to;
+        selSq = -1;
+        legalForSel = [];
+        refreshStatus();
+        playSfx(m, captured);
+        persist();
+    }
+
+    function evaluate() {
+        var score = 0;
+        var i = 0;
+        while (i < 64) {
+            var p = board[i];
+            if (p != 0) {
+                var t = kind(p);
+                var v = values[t];
+                var r = math.floor(i / 8);
+                var c = i % 8;
+                var dist = math.abs(r - 3.5) + math.abs(c - 3.5);
+                v = v + (4 - dist) * 3;
+                if (t == 1) {
+                    if (p > 0) {
+                        v = v + (6 - r) * 6;
+                    } else {
+                        v = v + (r - 1) * 6;
+                    }
+                }
+                if (p > 0) {
+                    score = score + v;
+                } else {
+                    score = score - v;
+                }
+            }
+            i = i + 1;
+        }
+        return score;
+    }
+
+    function negamax(depth, who) {
+        if (depth <= 0) {
+            return evaluate() * who;
+        }
+        var moves = genLegal(who);
+        if (moves.length == 0) {
+            if (isAttacked(findKing(who), 0 - who)) {
+                return -20000 - depth;
+            }
+            return 0;
+        }
+        var best = -1000000;
+        var i = 0;
+        while (i < moves.length) {
+            var snap = snapshot();
+            applyMove(moves[i]);
+            var sc = 0 - negamax(depth - 1, 0 - who);
+            restore(snap);
+            if (sc > best) {
+                best = sc;
+            }
+            i = i + 1;
+        }
+        return best;
+    }
+
+    function pickAiMove() {
+        var moves = genLegal(side);
+        if (moves.length == 0) {
+            return null;
+        }
+        var bestScore = -1000000;
+        var best = moves[0];
+        var i = 0;
+        while (i < moves.length) {
+            var snap = snapshot();
+            applyMove(moves[i]);
+            var sc = 0 - negamax(1, side);
+            restore(snap);
+            sc = sc + (i % 5);
+            if (sc > bestScore) {
+                bestScore = sc;
+                best = moves[i];
+            }
+            i = i + 1;
+        }
+        return best;
+    }
+
+    function newGame() {
+        setupStart();
+        persist();
+    }
+
+    function undoMove() {
+        if (history.length == 0) {
+            return;
+        }
+        restore(history[history.length - 1]);
+        history.pop();
+        if (vsCpu and side < 0 and history.length > 0) {
+            restore(history[history.length - 1]);
+            history.pop();
+        }
+        selSq = -1;
+        legalForSel = [];
+        aiWaitMs = 0;
+        aiThinking = false;
+        refreshStatus();
+        persist();
+    }
+
+    function selectSquare(sq) {
+        var p = board[sq];
+        if (p == 0 or p * side <= 0) {
+            selSq = -1;
+            legalForSel = [];
+            return;
+        }
+        selSq = sq;
+        legalForSel = [];
+        var all = genLegal(side);
+        var i = 0;
+        while (i < all.length) {
+            if (all[i].from == sq) {
+                legalForSel.append(all[i]);
+            }
+            i = i + 1;
+        }
+    }
+
+    function moveIfLegal(sq) {
+        var i = 0;
+        while (i < legalForSel.length) {
+            if (legalForSel[i].to == sq) {
+                playMove(legalForSel[i]);
+                return true;
+            }
+            i = i + 1;
+        }
+        return false;
+    }
+
+    function squareAt(mx, my) {
+        var c = math.floor((mx - boardX) / tile);
+        var r = math.floor((my - boardY) / tile);
+        if (!onBoard(r, c)) {
+            return -1;
+        }
+        return r * 8 + c;
+    }
+
+    function btnNewY() {
+        return 248;
+    }
+
+    function btnUndoY() {
+        return 298;
+    }
+
+    function btnCpuY() {
+        return 348;
+    }
+
+    function handleClick(mx, my) {
+        if (game.pointInRect(mx, my, panelX, btnNewY(), 320, 40)) {
+            newGame();
+            return;
+        }
+        if (game.pointInRect(mx, my, panelX, btnUndoY(), 320, 40)) {
+            undoMove();
+            return;
+        }
+        if (game.pointInRect(mx, my, panelX, btnCpuY(), 320, 40)) {
+            vsCpu = !vsCpu;
+            persist();
+            return;
+        }
+        if (status == "mate" or status == "stale") {
+            return;
+        }
+        if (aiThinking) {
+            return;
+        }
+        if (vsCpu and side < 0) {
+            return;
+        }
+        var sq = squareAt(mx, my);
+        if (sq < 0) {
+            return;
+        }
+        if (selSq >= 0) {
+            if (moveIfLegal(sq)) {
+                return;
+            }
+        }
+        selectSquare(sq);
+    }
+
+    function pieceFill(p) {
+        if (p > 0) {
+            return "#f7f1e4";
+        }
+        return "#2b3139";
+    }
+
+    function pieceStroke(p) {
+        if (p > 0) {
+            return "#4a3828";
+        }
+        return "#d7c7af";
+    }
+
+    function drawPiece(cx, cy, p) {
+        var t = kind(p);
+        var fill = pieceFill(p);
+        var ink = pieceStroke(p);
+        if (t == 1) {
+            game.fillCircle(cx, cy - 6, 11, fill);
+            game.fillRect(cx - 9, cy + 4, 18, 10, fill);
+            game.strokeCircle(cx, cy - 6, 11, ink, 2);
+            return;
+        }
+        if (t == 2) {
+            game.fillRect(cx - 10, cy - 2, 22, 16, fill);
+            game.fillCircle(cx + 4, cy - 10, 10, fill);
+            game.fillRect(cx - 4, cy - 16, 8, 10, fill);
+            game.strokeRect(cx - 10, cy - 2, 22, 16, ink, 2);
+            return;
+        }
+        if (t == 3) {
+            game.fillCircle(cx, cy - 8, 8, fill);
+            game.fillRect(cx - 8, cy - 2, 16, 16, fill);
+            game.fillRect(cx - 2, cy - 18, 4, 10, fill);
+            game.strokeCircle(cx, cy - 8, 8, ink, 2);
+            return;
+        }
+        if (t == 4) {
+            game.fillRect(cx - 13, cy - 14, 8, 8, fill);
+            game.fillRect(cx - 4, cy - 14, 8, 8, fill);
+            game.fillRect(cx + 5, cy - 14, 8, 8, fill);
+            game.fillRect(cx - 12, cy - 6, 24, 20, fill);
+            game.strokeRect(cx - 12, cy - 6, 24, 20, ink, 2);
+            return;
+        }
+        if (t == 5) {
+            game.fillCircle(cx - 10, cy - 12, 5, fill);
+            game.fillCircle(cx, cy - 16, 5, fill);
+            game.fillCircle(cx + 10, cy - 12, 5, fill);
+            game.fillCircle(cx, cy - 2, 12, fill);
+            game.fillRect(cx - 12, cy + 8, 24, 8, fill);
+            game.strokeCircle(cx, cy - 2, 12, ink, 2);
+            return;
+        }
+        game.fillCircle(cx, cy - 2, 13, fill);
+        game.fillRect(cx - 3, cy - 20, 6, 14, fill);
+        game.fillRect(cx - 10, cy - 16, 20, 6, fill);
+        game.strokeCircle(cx, cy - 2, 13, ink, 2);
+    }
+
+    function statusText() {
+        if (aiThinking) {
+            return "Black is thinking…";
+        }
+        if (status == "mate") {
+            if (side > 0) {
+                return "Checkmate — Black wins";
+            }
+            return "Checkmate — White wins";
+        }
+        if (status == "stale") {
+            return "Stalemate";
+        }
+        var turn = "White to move";
+        if (side < 0) {
+            turn = "Black to move";
+        }
+        if (status == "check") {
+            return turn + " — check";
+        }
+        return turn;
+    }
+
+    function drawButton(x, y, w, h, label, hot) {
+        var bg = "#1e293b";
+        if (hot) {
+            bg = "#334155";
+        }
+        game.fillRect(x, y, w, h, bg);
+        game.strokeRect(x, y, w, h, "#64748b", 1);
+        game.drawText(label, x + 14, y + 26, "#e2e8f0", "16px sans-serif");
+    }
+
+    function updateGame(dtMs) {
+        hoverSq = squareAt(game.getMouseX(), game.getMouseY());
+
+        if (game.wasMousePressed(0) or game.wasKeyPressed("r") or game.wasKeyPressed("u") or game.wasKeyPressed("c")) {
+            bootAudio();
+        }
+
+        if (game.wasKeyPressed("r")) {
+            newGame();
+        }
+        if (game.wasKeyPressed("u")) {
+            undoMove();
+        }
+        if (game.wasKeyPressed("c")) {
+            vsCpu = !vsCpu;
+            persist();
+        }
+        if (game.wasMousePressed(0)) {
+            handleClick(game.getMouseX(), game.getMouseY());
+        }
+
+        if (vsCpu and side < 0 and (status == "play" or status == "check") and !aiThinking) {
+            aiThinking = true;
+            aiWaitMs = 220;
+        }
+
+        if (aiThinking) {
+            aiWaitMs = aiWaitMs - dtMs;
+            if (aiWaitMs <= 0) {
+                var m = pickAiMove();
+                aiThinking = false;
+                if (m != null) {
+                    playMove(m);
+                }
+            }
+        }
+    }
+
+    function renderGame() {
+        game.clear();
+        game.fillRect(0, 0, canvasWidth, canvasHeight, "#0f172a");
+
+        var r = 0;
+        while (r < 8) {
+            var c = 0;
+            while (c < 8) {
+                var sq = r * 8 + c;
+                var x = boardX + c * tile;
+                var y = boardY + r * tile;
+                var light = ((r + c) % 2) == 0;
+                var color = "#edd4a2";
+                if (!light) {
+                    color = "#8b5a2b";
+                }
+                if (sq == lastFrom or sq == lastTo) {
+                    if (light) {
+                        color = "#f0d36a";
+                    } else {
+                        color = "#c9a227";
+                    }
+                }
+                if (sq == selSq) {
+                    color = "#6ea8fe";
+                }
+                game.fillRect(x, y, tile, tile, color);
+
+                if (status == "check" or status == "mate") {
+                    if (board[sq] == 6 * side) {
+                        game.setAlpha(0.35);
+                        game.fillRect(x, y, tile, tile, "#ef4444");
+                        game.setAlpha(1);
+                    }
+                }
+
+                var i = 0;
+                while (i < legalForSel.length) {
+                    if (legalForSel[i].to == sq) {
+                        if (board[sq] != 0 or legalForSel[i].flag == 3) {
+                            game.strokeCircle(x + tile / 2, y + tile / 2, 22, "#14532d", 3);
+                        } else {
+                            game.fillCircle(x + tile / 2, y + tile / 2, 8, "#166534");
+                        }
+                    }
+                    i = i + 1;
+                }
+
+                if (board[sq] != 0) {
+                    drawPiece(x + tile / 2, y + tile / 2 + 4, board[sq]);
+                }
+                c = c + 1;
+            }
+            r = r + 1;
+        }
+
+        game.strokeRect(boardX, boardY, tile * 8, tile * 8, "#0f172a", 3);
+
+        r = 0;
+        while (r < 8) {
+            game.drawText(string(8 - r), 8, boardY + r * tile + 40, "#94a3b8", "13px monospace");
+            game.drawText(files[r], boardX + r * tile + 28, boardY + tile * 8 + 20, "#94a3b8", "13px monospace");
+            r = r + 1;
+        }
+
+        if (hoverSq >= 0) {
+            var hx = boardX + (hoverSq % 8) * tile;
+            var hy = boardY + math.floor(hoverSq / 8) * tile;
+            game.strokeRect(hx, hy, tile, tile, "#f8fafc", 1);
+        }
+
+        game.drawText("Chess", panelX, 48, "#f8fafc", "32px sans-serif");
+        game.drawText(statusText(), panelX, 84, "#fde68a", "18px sans-serif");
+
+        var mode = "Human vs computer";
+        if (!vsCpu) {
+            mode = "Human vs human";
+        }
+        game.drawText(mode, panelX, 114, "#cbd5e1", "16px sans-serif");
+        game.drawText("White " + string(winsW) + "  —  Black " + string(winsB), panelX, 142, "#93c5fd", "16px sans-serif");
+        game.drawText("Click a piece, then a green square.", panelX, 178, "#94a3b8", "14px sans-serif");
+        game.drawText("Castling, en passant, queen promo.", panelX, 200, "#94a3b8", "14px sans-serif");
+
+        var mx = game.getMouseX();
+        var my = game.getMouseY();
+        drawButton(panelX, btnNewY(), 320, 40, "New game  (R)", game.pointInRect(mx, my, panelX, btnNewY(), 320, 40));
+        drawButton(panelX, btnUndoY(), 320, 40, "Undo  (U)", game.pointInRect(mx, my, panelX, btnUndoY(), 320, 40));
+        var cpuLabel = "Play vs computer  (C)";
+        if (vsCpu) {
+            cpuLabel = "Play vs human  (C)";
+        }
+        drawButton(panelX, btnCpuY(), 320, 40, cpuLabel, game.pointInRect(mx, my, panelX, btnCpuY(), 320, 40));
+
+        game.drawText("Local two-player or a 2-ply CPU.", panelX, 420, "#64748b", "14px sans-serif");
+        game.drawText("Position and score survive reload.", panelX, 442, "#64748b", "14px sans-serif");
+    }
+
+    if (!tryLoadGame()) {
+        setupStart();
+    } else {
+        refreshStatus();
+    }
+
+    game.createCanvas(canvasWidth, canvasHeight, "#app");
+    game.setBackground("#0f172a");
+    game.startFixed(updateGame, renderGame);
+}
