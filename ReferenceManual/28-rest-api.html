@@ -20,7 +20,7 @@
         <h1>28. REST API Server</h1>
         <p>MALDA includes native support for JSON-first REST APIs. Decorate functions with HTTP methods, then host them on <code>RestServer</code> (standalone) or mount that server on <code>HttpServer</code> for a single-port full-stack app.</p>
         <div class="info-box">
-            <strong>Start here:</strong> New to web APIs? Read <a href="#web-concepts">28.1.1 Concepts primer</a> first — REST, middleware, auth, JWT, CSRF, CORS, HTTPS, and a threat-to-defense map, without leaving this manual. This chapter is the API-first reference. Page hosting, <code>@PAGE</code>, HTTPS, static files, multipart uploads, and SSE live in <a href="26-http-server-html-ui.html">26. HttpServer &amp; HTML UI Generation</a>. Calling APIs from MALDA is <a href="29-rest-web-client.html">29. REST Web Client</a>. JWT, CSRF, and password helpers are in <a href="13-built-in-functions.html#jwt-security">13. Built-in Functions</a> §13.16.1.
+            <strong>Start here:</strong> New to web APIs? Read <a href="#web-concepts">28.1.1 Concepts primer</a> first — REST, middleware, auth, JWT, CSRF, CORS, HTTPS, and a threat-to-defense map, without leaving this manual. This chapter is the API-first reference. Page hosting, <code>@PAGE</code>, HTTPS, static files, multipart uploads, and SSE live in <a href="26-http-server-html-ui.html">26. HttpServer &amp; HTML UI Generation</a>. Calling APIs from MALDA is <a href="29-rest-web-client.html">29. REST Web Client</a>. JWT, CSRF, and password helpers are in <a href="#jwt-security">28.16</a> (name index: <a href="13-built-in-functions.html#jwt-security">13.25</a>).
         </div>
 
         <h2>28.1 Chapter Map</h2>
@@ -40,6 +40,7 @@
             <li><strong>28.13</strong> Mounting on <code>HttpServer</code></li>
             <li><strong>28.14</strong> Interpret vs transpile notes</li>
             <li><strong>28.15</strong> Complete example and templates</li>
+            <li><strong>28.16</strong> Password, JWT, and cookie helpers</li>
         </ul>
 
         <h3 id="web-concepts">28.1.1 Concepts primer</h3>
@@ -86,10 +87,10 @@ server.use(requireAuth, { "except": ["/api/health"] });</code></pre>
         <h4 id="concept-jwt">JWT and Bearer tokens</h4>
         <p>A <strong>JWT</strong> (JSON Web Token) is a signed string: a JSON payload (claims such as <code>sub</code>, <code>role</code>, expiry) plus a signature the server verifies with a secret. The client usually sends it as <code>Authorization: Bearer &lt;token&gt;</code>.</p>
         <p>Three words that are easy to mix up: <strong>encoding</strong> (Base64, reversible, not a secret), <strong>hashing</strong> (one-way, for passwords — next heading), <strong>signing</strong> (proves the token was minted with your secret; MALDA JWTs are signed, not encrypted). Anyone who has the JWT can <em>read</em> the claims, so do not put passwords in them, treat the token like a password, keep the signing secret off the client, and set a short expiry.</p>
-        <p>Create tokens with <code>createJwt</code> (<a href="13-built-in-functions.html#jwt-security">13.16.1</a>); verify them in middleware with <code>authenticateBearerJwt</code>. Cookie-based JWTs use <code>authenticateCookieJwt</code> instead of the Authorization header.</p>
+        <p>Create tokens with <code>createJwt</code> (<a href="#jwt-security">28.16</a>); verify them in middleware with <code>authenticateBearerJwt</code>. Cookie-based JWTs use <code>authenticateCookieJwt</code> instead of the Authorization header.</p>
 
         <h4 id="concept-password">Password hashing</h4>
-        <p>Never store a login password as plaintext. A <strong>password hash</strong> is a one-way value: given the hash you cannot recover the password, but <code>verifyPassword</code> can check a later login against it. MALDA uses salted PBKDF2 (<code>hashPassword</code> / <code>verifyPassword</code> in <a href="13-built-in-functions.html#jwt-security">13.16.1</a>). A <strong>salt</strong> is random data mixed in so two users with the same password do not get the same hash. This is not JWT signing and not HTTPS encryption — it is only for credentials at rest.</p>
+        <p>Never store a login password as plaintext. A <strong>password hash</strong> is a one-way value: given the hash you cannot recover the password, but <code>verifyPassword</code> can check a later login against it. MALDA uses salted PBKDF2 (<code>hashPassword</code> / <code>verifyPassword</code> in <a href="#jwt-security">28.16</a>). A <strong>salt</strong> is random data mixed in so two users with the same password do not get the same hash. This is not JWT signing and not HTTPS encryption — it is only for credentials at rest.</p>
 
         <h4 id="concept-session">Sessions and cookies</h4>
         <p>A <strong>cookie</strong> is a small name/value the server sets on the response; the browser sends it back on later requests to the same site. Flags that matter:</p>
@@ -327,7 +328,7 @@ function updatePost(@PathParam("id") userId, @PathParam("postId") postId,
         </table>
 
         <h3 id="req-auth">28.6.2 req.auth</h3>
-        <p>Prefer <code>req.auth.authenticateBearerJwt(secret)</code> (APIs) or <code>authenticateCookieJwt(cookieName, jwtSecret, cookieSecret?)</code> (browser sessions). Both verify the JWT, populate claims/roles/permissions, and throw a standardized 401 on failure. Create tokens with <code>createJwt</code> (chapter 13).</p>
+        <p>Prefer <code>req.auth.authenticateBearerJwt(secret)</code> (APIs) or <code>authenticateCookieJwt(cookieName, jwtSecret, cookieSecret?)</code> (browser sessions). Both verify the JWT, populate claims/roles/permissions, and throw a standardized 401 on failure. Create tokens with <code>createJwt</code> (<a href="#jwt-security">28.16</a>).</p>
         <table>
             <thead>
                 <tr><th>Member</th><th>Notes</th></tr>
@@ -573,11 +574,56 @@ while (server.isRunning) {
             <li><code>malda new webapi</code> — API-only template</li>
             <li><code>malda new fullstack</code> — mounted <code>RestServer</code> + <code>HttpServer</code></li>
         </ul>
+        <h2 id="jwt-security">28.16 Password, JWT, and cookie helpers</h2>
+        <p>These helpers implement the tokens and hashes that this chapter and <a href="26-http-server-html-ui.html">26. HttpServer</a> wire into HTTP. Primers: <a href="#concept-password">password hashing</a>, <a href="#concept-jwt">JWT</a>, <a href="#concept-csrf">CSRF</a>. Handler surface: <a href="#req-auth">28.6.2 req.auth</a>. Name index: <a href="13-built-in-functions.html#jwt-security">13.25</a>.</p>
+        <pre><code>var passwordHash = hashPassword("my-password");              // PBKDF2-SHA256 hash
+var isValid = verifyPassword("my-password", passwordHash);   // true/false
+
+var claims = {"sub": "user-123", "role": "admin"};
+var token = createJwt(claims, "my-jwt-secret", 3600);        // expires in 3600s
+var token2 = createJwt(claims, "my-jwt-secret", {
+  "expiresInSeconds": 3600,
+  "issuer": "malda-core",
+  "audience": "malda-apps",
+  "notBeforeSeconds": 0
+});
+var verifiedClaims = verifyJwt(token2, "my-jwt-secret", {
+  "issuer": "malda-core",
+  "audience": "malda-apps"
+});
+print(verifiedClaims.sub);
+
+var csrfToken = generateCsrfToken("csrf-secret", 3600);
+var csrfOk = verifyCsrfToken(csrfToken, "csrf-secret");      // true/false
+
+var setCookieHeader = createSecureCookie("session", "user-123", "cookie-secret");
+// send with res.header("Set-Cookie", setCookieHeader) or use res.cookie(...)
+var cookieValue = split(split(setCookieHeader, ";")[0], "=")[1];
+var session = readSecureCookie(urlDecode(cookieValue), "cookie-secret");</code></pre>
+        <div class="info-box">
+            <strong>Security function notes:</strong>
+            <ul>
+                <li><code>hashPassword(password, iterations?)</code> uses PBKDF2 with SHA-256 and random salt</li>
+                <li><code>verifyPassword(password, passwordHash)</code> performs constant-time comparison</li>
+                <li><code>createJwt(payload, secret, expiresInSeconds? | options?)</code> signs HS256 tokens and adds <code>iat</code>; options may set <code>expiresInSeconds</code>, <code>issuer</code> (<code>iss</code>), <code>audience</code> (<code>aud</code>), and <code>notBeforeSeconds</code> (<code>nbf</code>)</li>
+                <li><code>verifyJwt(token, secret, options?)</code> validates signature, <code>nbf</code>, <code>exp</code>, and optional expected <code>issuer</code>/<code>audience</code></li>
+                <li><code>verifyJwt</code> throws standardized auth errors for missing, invalid, not-yet-valid, or expired tokens</li>
+                <li>In HTTP/REST handlers prefer <code>req.auth.authenticateBearerJwt(secret)</code> or <code>req.auth.authenticateCookieJwt(cookieName, jwtSecret, cookieSecret?)</code> — they verify the token and populate <code>req.auth</code> claims/roles. Use <code>req.auth.requireRole</code> / <code>requirePermission</code> for authorization. <code>setVerifiedSub</code> remains for ingress/gateway cases without a local JWT.</li>
+                <li><code>generateCsrfToken(secret, ttlSeconds?)</code> creates signed CSRF tokens for form and API mutation flows</li>
+                <li><code>verifyCsrfToken(token, secret)</code> validates signature + expiration and returns boolean</li>
+                <li><code>csrfField(secret, ttlSeconds?)</code> returns a hidden <code>_csrf</code> input HTML fragment for forms (token matches <code>enableCsrf</code>)</li>
+                <li><code>bindForm(body, fields)</code> binds/validates form fields (<code>name</code>, <code>required</code>, <code>trim</code>, <code>minLength</code>/<code>maxLength</code>, <code>pattern: "email"</code>) into <code>{ ok, values, errors }</code></li>
+                <li><code>formErrors(errors)</code> renders an escaped HTML error list</li>
+                <li><code>pageLayout(title, bodyHtml, options?)</code> thin full-document HTML chrome for <code>@PAGE</code> string apps (prefer <code>ui.layout</code> for rich layouts)</li>
+                <li><code>createSecureCookie(name, value, secret, options?)</code> returns a signed <code>Set-Cookie</code> header string with secure defaults</li>
+                <li><code>readSecureCookie(cookieValue, secret)</code> verifies a signed cookie value and returns plaintext or <code>null</code></li>
+            </ul>
+        </div>
         <div class="see-also">
             <h3>See Also</h3>
             <ul>
                 <li><a href="09-functions.html">9. Functions</a> - Function decorators</li>
-                <li><a href="13-built-in-functions.html">13. Built-in Functions</a> - <code>createJwt</code>, <code>hashPassword</code>, <code>generateCsrfToken</code>, <code>csrfField</code></li>
+                <li><a href="13-built-in-functions.html#jwt-security">13.25 Password, JWT, and request auth</a> — name index</li>
                 <li><a href="25-web-ui.html">25. Web UI Server Components</a> - @ACTION, fragments, and <code>ui.*</code> controls</li>
                 <li><a href="26-http-server-html-ui.html">26. HttpServer &amp; HTML UI Generation</a> - Pages, HTTPS, static files, mount host</li>
                 <li><a href="29-rest-web-client.html">29. REST Web Client</a> - Calling APIs from MALDA with RestClient</li>

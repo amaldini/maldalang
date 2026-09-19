@@ -369,9 +369,71 @@ var answer = await ragAnswer("How does retrieval work?", client);</code></pre>
     var text = formatRetrievedDocs(hits);
     return text;
 }</code></pre>
-        <p>Stream tokens during <code>runPrompt</code> in interpreted and transpiled mode: pass <code>{ onToken: (token) =&gt; ... }</code> for content and <code>{ onReasoning: (token) =&gt; ... }</code> for reasoning deltas (see <a href="13-built-in-functions.html">13. Built-in Functions</a>).</p>
+        <p>Stream tokens during <code>runPrompt</code> in interpreted and transpiled mode: pass <code>{ onToken: (token) =&gt; ... }</code> for content and <code>{ onReasoning: (token) =&gt; ... }</code> for reasoning deltas (see <a href="#ai-pipeline">10.9.1</a>).</p>
         <p>See <a href="07-expressions.html">7. Expressions</a> (pipe operator) and <code>Examples/Prompts/rag_function_pipeline.malda</code>.</p>
-        <p><strong>Advanced composition:</strong> <code>composePipe</code>, <code>parallelRun</code>, and <code>mergeRetrievedDocs</code> compose with functions and pipes for parallel retrieval and reusable pipeline functions. See <code>Examples/Prompts/rag_compose_pipeline.malda</code> and <a href="13-built-in-functions.html">13. Built-in Functions</a>.</p>
+        <p><strong>Advanced composition:</strong> <code>composePipe</code>, <code>parallelRun</code>, and <code>mergeRetrievedDocs</code> compose with functions and pipes for parallel retrieval and reusable pipeline functions. See <code>Examples/Prompts/rag_compose_pipeline.malda</code> and the catalog below.</p>
+
+        <h3 id="ai-pipeline">10.9.1 AI pipeline helpers</h3>
+        <p>These built-ins compose with the pipe operator (<code>|&gt;</code>) for retrieval-augmented generation (RAG) and structured LLM output. Indexing into a VectorDB: <a href="15-vectordb.html">15. VectorDB</a> (<code>asRetriever</code>, <code>indexInto</code>). Offline fixtures: <a href="13-built-in-functions.html#evalPrompt">13.7.1.2 evalPrompt</a>. Worked files: <code>Examples/Prompts/rag_pipeline.malda</code>, <code>Examples/Prompts/rag_compose_pipeline.malda</code>.</p>
+        <pre><code>// Load text files matching a glob pattern (default directory: current)
+var docs = loadDocuments("**/*.md", "docs/");
+
+// Split long documents into overlapping chunks
+var chunks = splitDocuments(docs, 512, 64);
+
+// Index documents into a VectorDB (embeds content, preserves metadata)
+indexInto(vdb, chunks);
+
+// Format retrieved documents for prompt context
+var context = query |> retriever.get |> formatRetrievedDocs;
+
+// Execute a PromptInstance with the default or supplied LLM client
+var response = await (promptInstance |> runPrompt(client));
+
+// Stream tokens while the model responds
+var seen = "";
+function onTok(token) { seen = seen + token; }
+var response = await runPrompt(promptInstance, client, { onToken: onTok });
+
+// Stream model reasoning/thinking deltas (OpenRouter-compatible providers)
+var reasoning = "";
+function onReason(token) { reasoning = reasoning + token; }
+var response = await runPrompt(promptInstance, client, { onReasoning: onReason });
+
+// Attach runtime few-shot examples to a prompt instance
+var p = classify("query") |> withExamples(dynamicExamples);
+
+// Validate LLM JSON output against a schema
+var parsed = response |> parseJson("Answer");
+
+// Advanced composition: sequence + parallel branches
+var pipeline = composePipe(formatRetrievedDocs, (ctx) => answerPrompt(q, ctx));
+var context = question |> pipeline;
+
+var branches = parallelRun(question, {
+    context: (q) => q |> retriever.get,
+    tags: classifyIntent
+});
+var merged = mergeRetrievedDocs(branches.context, branches.tags);</code></pre>
+        <table>
+            <thead>
+                <tr><th>Function</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>loadDocuments(pattern, dirPath?)</code></td><td>Glob-matches files under <code>dirPath</code> (default <code>"."</code>); returns <code>{ content, metadata: { source } }</code> per file</td></tr>
+                <tr><td><code>splitDocuments(docs, chunkSize, overlap?)</code></td><td>Splits document content into overlapping chunks; copies metadata to each chunk</td></tr>
+                <tr><td><code>indexInto(vdb, docs)</code></td><td>Embeds and adds each document to a VectorDB via its calculator; stores metadata with hits</td></tr>
+                <tr><td><code>formatRetrievedDocs(docs)</code></td><td>Formats document arrays as <code>[source: …]</code> blocks joined for prompt context</td></tr>
+                <tr><td><code>composePipe(step1, step2, …)</code></td><td>Composes 2+ callables (functions, lambdas, built-ins, prompts) left-to-right into a reusable function <code>(input) =&gt; …</code>. Awaits async steps. Pipe-friendly: <code>input |> composePipe(f, g)</code></td></tr>
+                <tr><td><code>parallelRun(input, branches)</code></td><td>RunnableParallel: feeds the same <code>input</code> to each named branch concurrently; returns an object/map of results. Use <code>await</code> when branches include async steps.</td></tr>
+                <tr><td><code>mergeRetrievedDocs(docArrays…)</code></td><td>Flattens multiple <code>Document[]</code> arrays (e.g. from <code>parallelRun</code>) into one array; dedupes by <code>source+chunk</code> metadata or content</td></tr>
+                <tr><td><code>withExamples(prompt, examples, options?)</code></td><td>Returns a copy of a <code>PromptInstance</code> with runtime few-shot examples. Pass <code>{ merge: true }</code> to append after any static <code>examples</code> from the prompt declaration. Pipe-friendly.</td></tr>
+                <tr><td><code>evalPrompt(prompt, fixture, typeName?)</code></td><td>Offline fixture in/out on a <code>PromptInstance</code> (no LLM). Returns <code>{ ok, data }</code> or <code>{ ok: false, error }</code>. <code>data</code> matches <code>await</code> (variant for sum types). Fixture: dict or LLM-shaped JSON string. <code>instance.eval(fixture)</code> is the same helper. See <a href="13-built-in-functions.html#evalPrompt">13.7.1.2</a>.</td></tr>
+                <tr><td><code>runPrompt(prompt, client?, options?)</code></td><td>Async: runs a <code>PromptInstance</code> through an LLM; returns response text. Optional <code>options</code>: <code>{ onToken: (token) =&gt; ... }</code> for streamed content tokens; <code>{ onReasoning: (token) =&gt; ... }</code> for streamed reasoning/thinking tokens. Both work in interpreted and transpiled mode with <code>await</code> and pipe steps.</td></tr>
+                <tr><td><code>parseJson(json, schemaName)</code></td><td>Parses and validates JSON against a <code>schema</code> declaration; returns a typed object</td></tr>
+            </tbody>
+        </table>
+        <p>Name index: <a href="13-built-in-functions.html#ai-pipeline">13.7.2</a>.</p>
 
         <h4>Typed Await Example (Validated Output)</h4>
         <pre><code>prompt planTask(task) -&gt; Plan {

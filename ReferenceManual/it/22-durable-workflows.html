@@ -20,7 +20,7 @@
         <h1>22. Workflow durevoli</h1>
 
         <p>I workflow durevoli consentono di eseguire processi di business di lunga durata, sicuri al riavvio, con stato persistito, esecuzione degli step sicura in replay e punti di controllo esterni come approval e signal.</p>
-        <p>Per lavoro breve e fire-and-forget (inviare una email, chiamare un webhook), preferisci i built-in della job queue leggera (<code>enqueueJob</code> / <code>claimJob</code> / <code>completeJob</code> / <code>failJob</code>) documentati in <a href="13-built-in-functions.html">Funzioni built-in</a>. I job usano <code>./.malda/jobs.db</code> e non sono istanze di workflow.</p>
+        <p>Per lavoro breve e fire-and-forget (inviare una email, chiamare un webhook), preferisci la job queue leggera in <a href="#background-jobs">22.11</a>. I job usano <code>./.malda/jobs.db</code> e non sono istanze di workflow.</p>
 
         <h2>22.1 Concetti fondamentali</h2>
         <ul>
@@ -270,6 +270,27 @@ setx MALDA_WORKFLOW_CONNECTION "Data Source=C:\ProgramData\malda\workflows.db"</
         </ul>
         <p>Matrice completa dei failure mode e note di migration: <code>docs/workflows-ha.md</code> nel repository.</p>
         <p><strong>WF1006:</strong> mutare un <code>context</code> dichiarato (inclusa la compaction) dentro un body <code>workflow</code> deve stare in uno <code>step</code>. I callee importati o sconosciuti restano Info, come WF1005. Gli step riusciti sono anche specchiati nel journal in-process così <code>trace.journal()</code> li vede. Narrazione: <a href="23-agentic-runs.html">23. Esecuzioni agentiche</a> §23.3 e §23.5.</p>
+
+        <h2 id="background-jobs">22.11 Coda di job leggera</h2>
+        <p>Unità async brevi (email, webhook) usano una coda SQLite in <code>./.malda/jobs.db</code>. Sovrascrivi la connessione con <code>MALDA_JOBS_CONNECTION</code> (stessa forma di <code>MALDA_WORKFLOW_CONNECTION</code>). È separata dai processi <code>workflow</code> durevoli. Indice dei nomi: <a href="13-built-in-functions.html#background-jobs">13.26</a>.</p>
+        <pre><code>var jobId = enqueueJob("mail", {"to": "user@example.com"}, {"maxAttempts": 3});
+var job = claimJob("mail", "worker-1");
+if (job != null) {
+    // ... do work with job.payload ...
+    completeJob(job.id, {"sent": true});
+    // or: failJob(job.id, "SMTP timeout", true);
+}
+var open = listJobs("mail", "pending", 20);
+var one = getJob(jobId);</code></pre>
+        <div class="info-box">
+            <strong>Helper dei job:</strong>
+            <ul>
+                <li><code>enqueueJob(queue, payload, options?)</code> — options: <code>runAt</code>, <code>maxAttempts</code>, <code>correlationId</code></li>
+                <li><code>claimJob(queue, workerId?)</code> — restituisce un job in esecuzione o <code>null</code></li>
+                <li><code>completeJob(jobId, result?)</code> / <code>failJob(jobId, error?, retry?)</code></li>
+                <li><code>getJob(jobId)</code> / <code>listJobs(queue?, status?, limit?)</code></li>
+            </ul>
+        </div>
 
         <div class="see-also">
             <h3>Vedi anche</h3>

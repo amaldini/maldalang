@@ -17,8 +17,23 @@
     <main>
         <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>13. Built-in Functions</span></div>
         <h1>13. Built-in Functions</h1>
-        <p>This chapter is the <strong>stdlib catalog</strong>: conversion, math, strings, files, JSON, dates, and error helpers. Agent tools, task plans, durable workflow operations, and <code>ui.*</code> are indexed at the end of the chapter and documented in their home chapters.</p>
-        <h2>13.1 Type Conversion</h2>
+        <p>This chapter is the <strong>stdlib catalog</strong>: conversion, math, strings, files, JSON, dates, and error helpers. How-to for I/O, prompts, jobs, JWT, and UI lives in those chapters; this page keeps signatures and a numbered index.</p>
+        <h2 id="chapter-map">13.0 Chapter map</h2>
+        <ul>
+            <li><a href="#type-conversion">13.1</a> Type conversion</li>
+            <li><a href="#stdlib-namespaces">13.2</a> Stdlib namespaces and flat aliases</li>
+            <li><a href="#math">13.3</a> Mathematical functions</li>
+            <li><a href="#strings">13.4</a> String functions</li>
+            <li><a href="#env-host">13.5</a> Environment and host (<code>webSearch</code>, <code>webFetch</code>)</li>
+            <li><a href="#arrays">13.6</a> Array utilities</li>
+            <li><a href="#json">13.7</a> JSON, <code>validate</code>, <code>evalPrompt</code> — <a href="#ai-pipeline">13.7.2</a> AI pipeline index</li>
+            <li><a href="#files">13.8</a> File system — <a href="#git">13.9</a> Git — <a href="#commands">13.10</a> Commands — <a href="#malda-execution">13.11</a> MALDA execution</li>
+            <li><a href="#spectre">13.12</a> Spectre.Console — <a href="#datetime">13.13</a> Date/time — <a href="#random">13.14</a> Random — <a href="#type-check">13.15</a> Type checks</li>
+            <li><a href="#encoding">13.16</a> Encoding — <a href="#hash">13.17</a> Hash — <a href="#range">13.18</a> Range — <a href="#error-handling">13.19</a> Errors, <code>result</code>/<code>option</code>, <code>cap</code></li>
+            <li><a href="#agent-teams">13.20</a>–<a href="#web-ui-fns">13.24</a> Indexes into agents, workflows, and UI</li>
+            <li><a href="#jwt-security">13.25</a> Password, JWT, and <code>req.auth</code> — <a href="#background-jobs">13.26</a> Background jobs — <a href="#optional-pack-builtins">13.27</a> Optional packs</li>
+        </ul>
+        <h2 id="type-conversion">13.1 Type Conversion</h2>
         <pre><code>var num = int("123");      // Convert string to integer
 var floatVal = float("3.14");  // Convert string to float
 var str = string(42);      // Convert number to string</code></pre>
@@ -70,7 +85,7 @@ print(io.readFile("config.json"));</code></pre>
         <div class="info-box">
             <strong>Convention used in this manual:</strong> examples throughout the manual and in <code>Examples/</code> use the flat spelling (<code>print(...)</code>, <code>sqrt(...)</code>) because it is shorter and it is what existing MALDA code looks like. Read those as equivalent to the namespaced form. In new code, prefer the namespaced spelling if you want the editor to stay warning-free.
         </div>
-        <h2>13.3 Mathematical Functions</h2>
+        <h2 id="math">13.3 Mathematical Functions</h2>
         <p>Math operations are available as <code>math.*</code> (preferred), deprecated flat built-ins, and <code>Math.*</code> (deprecated alias).</p>
         <pre><code>// Flat built-ins (deprecated flat alias; still supported)
 var absVal = abs(-5);              // Absolute value
@@ -222,7 +237,7 @@ var result = math.anneal(
 );
 print(result.state);
 print(result.cost);</code></pre>
-        <h2>13.4 String Functions</h2>
+        <h2 id="strings">13.4 String Functions</h2>
         <p>String operations are available as <strong>flat built-in functions</strong> (e.g. <code>upper(s)</code>) and as <strong>extension-style methods</strong> on string values (e.g. <code>s.upper()</code>). Both forms work in the interpreter and in transpiled code.</p>
         <pre><code>var len = length("Hello");      // String length
 var upper = upper("hello");     // Convert to uppercase
@@ -306,7 +321,7 @@ var skills = loadSkillsFromDir(); // Scans ~/.malda/skills/*.malda; each entry h
         <p><code>getSkillNames()</code> — Returns an array of strings: the base names (without <code>.malda</code>) of all <code>.malda</code> files in <code>~/.malda/skills/</code>. Returns <code>[]</code> if the directory does not exist or is empty. No arguments.</p>
         <p><code>loadSkill(name)</code> — Loads the skill file <code>~/.malda/skills/&lt;name&gt;.malda</code>, runs it in an isolated environment, and returns an object whose properties are the module’s global variables. Convention: skills export a <code>tools</code> array (and optionally <code>agent</code>). Returns <code>null</code> if the file does not exist or <code>name</code> is empty. One argument: the skill name (string).</p>
         <p><code>loadSkillsFromDir(path?)</code> — Scans a directory (default <code>~/.malda/skills</code>) for <code>*.malda</code> files and returns an array of objects. Each object includes <code>name</code> plus the skill module globals (<code>tools</code>, <code>agent</code>, etc.). On load failure, the object has <code>name</code> and <code>error</code> instead. Optional first argument: directory path (string).</p>
-        <h2>13.5 Environment and Host</h2>
+        <h2 id="env-host">13.5 Environment and Host</h2>
         <p>How-to and the <code>getEnv</code> / <code>str.trim</code> footgun: <a href="12-input-output.html">12.5 Environment and Host</a>.</p>
         <pre><code>var apiKey = getEnv("OPENAI_API_KEY");  // string, or null when unset
 var apiKeyOr = io.getEnvOr("OPENAI_API_KEY");  // "" when unset (optional 2nd arg = default)
@@ -353,7 +368,10 @@ var token = httpAuthToken(req, {
             <li><code>httpCookieToken(request, cookieName, cookieSecret?)</code> - returns decoded cookie token (or verified secure-cookie value when secret is provided), otherwise empty string.</li>
             <li><code>httpAuthToken(request, options?)</code> - tries bearer/cookie/body in order and returns first non-empty token.</li>
         </ul>
-        <h2>13.6 Array Utility Functions</h2>
+        <p>Wire these into handlers with <code>req.auth</code> — see <a href="#jwt-security">13.25</a> and <a href="28-rest-api.html#req-auth">28.6.2</a>.</p>
+        <h3 id="web-fetch">13.5.4 webFetch(url, maxBytes?, timeoutMs?)</h3>
+        <p>Signature catalog for fetching an <code>http://</code> or <code>https://</code> URL on the host path used by <code>httpGet</code>. How-to, caps, and the return shape: <a href="12-input-output.html#web-fetch">12.9 Fetching URLs</a>. Typed REST calls: <a href="29-rest-web-client.html">29. REST Web Client</a>. The agent factory is <code>createWebFetchTool</code>.</p>
+        <h2 id="arrays">13.6 Array Utility Functions</h2>
         <pre><code>var arr = [1, 2, 3, 4, 5];
 var total = sum(arr);                       // 15
 var avg = average(arr);                     // 3.0
@@ -386,7 +404,7 @@ var csv3 = toCsv(rows, ["name", "score"], {
   "newline": "\n"
 });</code></pre>
         <p><code>toCsv(rows, columns?, options?)</code> converts an array of rows to CSV text. It escapes quotes and wraps cells when required (delimiter/newlines/quotes). Useful for reports and data export endpoints.</p>
-        <h2>13.7 JSON Functions</h2>
+        <h2 id="json">13.7 JSON Functions</h2>
         <pre><code>var jsonStr = toJSON(obj);  // Convert object to JSON string
 var obj = parseJSON('{"name":"Alice","age":30}');  // Parse JSON string to object</code></pre>
         <p><code>toJSON</code> writes dicts, arrays, and the <strong>public instance fields</strong> of a class (including a primary constructor). Methods and <code>private</code> fields are omitted. A cycle throws. <code>parseJSON</code> always returns a dict — it does not reconstruct the class. Build a new instance yourself if you need methods again.</p>
@@ -485,67 +503,10 @@ var label = match checked.data {
 print(label);</code></pre>
         <p>See <code>Examples/Prompts/eval_prompt.malda</code> and <code>docs/llm/few-shot/27_eval_prompt.malda</code>.</p>
 
-        <h2>13.7.2 AI Pipeline Functions</h2>
-        <p>These built-ins compose with the pipe operator (<code>|&gt;</code>) for retrieval-augmented generation (RAG) and structured LLM output. See also <a href="15-vectordb.html">15. VectorDB</a> (<code>asRetriever</code>) and <code>Examples/Prompts/rag_pipeline.malda</code>.</p>
-        <pre><code>// Load text files matching a glob pattern (default directory: current)
-var docs = loadDocuments("**/*.md", "docs/");
-
-// Split long documents into overlapping chunks
-var chunks = splitDocuments(docs, 512, 64);
-
-// Index documents into a VectorDB (embeds content, preserves metadata)
-indexInto(vdb, chunks);
-
-// Format retrieved documents for prompt context
-var context = query |> retriever.get |> formatRetrievedDocs;
-
-// Execute a PromptInstance with the default or supplied LLM client
-var response = await (promptInstance |> runPrompt(client));
-
-// Stream tokens while the model responds
-var seen = "";
-function onTok(token) { seen = seen + token; }
-var response = await runPrompt(promptInstance, client, { onToken: onTok });
-
-// Stream model reasoning/thinking deltas (OpenRouter-compatible providers)
-var reasoning = "";
-function onReason(token) { reasoning = reasoning + token; }
-var response = await runPrompt(promptInstance, client, { onReasoning: onReason });
-
-// Attach runtime few-shot examples to a prompt instance
-var p = classify("query") |> withExamples(dynamicExamples);
-
-// Validate LLM JSON output against a schema
-var parsed = response |> parseJson("Answer");
-
-// Advanced composition: sequence + parallel branches
-var pipeline = composePipe(formatRetrievedDocs, (ctx) => answerPrompt(q, ctx));
-var context = question |> pipeline;
-
-var branches = parallelRun(question, {
-    context: (q) => q |> retriever.get,
-    tags: classifyIntent
-});
-var merged = mergeRetrievedDocs(branches.context, branches.tags);</code></pre>
-        <table>
-            <thead>
-                <tr><th>Function</th><th>Description</th></tr>
-            </thead>
-            <tbody>
-                <tr><td><code>loadDocuments(pattern, dirPath?)</code></td><td>Glob-matches files under <code>dirPath</code> (default <code>"."</code>); returns <code>{ content, metadata: { source } }</code> per file</td></tr>
-                <tr><td><code>splitDocuments(docs, chunkSize, overlap?)</code></td><td>Splits document content into overlapping chunks; copies metadata to each chunk</td></tr>
-                <tr><td><code>indexInto(vdb, docs)</code></td><td>Embeds and adds each document to a VectorDB via its calculator; stores metadata with hits</td></tr>
-                <tr><td><code>formatRetrievedDocs(docs)</code></td><td>Formats document arrays as <code>[source: …]</code> blocks joined for prompt context</td></tr>
-                <tr><td><code>composePipe(step1, step2, …)</code></td><td>Composes 2+ callables (functions, lambdas, built-ins, prompts) left-to-right into a reusable function <code>(input) =&gt; …</code>. Awaits async steps. Pipe-friendly: <code>input |> composePipe(f, g)</code></td></tr>
-                <tr><td><code>parallelRun(input, branches)</code></td><td>RunnableParallel: feeds the same <code>input</code> to each named branch concurrently; returns an object/map of results. Use <code>await</code> when branches include async steps.</td></tr>
-                <tr><td><code>mergeRetrievedDocs(docArrays…)</code></td><td>Flattens multiple <code>Document[]</code> arrays (e.g. from <code>parallelRun</code>) into one array; dedupes by <code>source+chunk</code> metadata or content</td></tr>
-                <tr><td><code>withExamples(prompt, examples, options?)</code></td><td>Returns a copy of a <code>PromptInstance</code> with runtime few-shot examples. Pass <code>{ merge: true }</code> to append after any static <code>examples</code> from the prompt declaration. Pipe-friendly.</td></tr>
-                <tr><td><code>evalPrompt(prompt, fixture, typeName?)</code></td><td>Offline fixture in/out on a <code>PromptInstance</code> (no LLM). Returns <code>{ ok, data }</code> or <code>{ ok: false, error }</code>. <code>data</code> matches <code>await</code> (variant for sum types). Fixture: dict or LLM-shaped JSON string. <code>instance.eval(fixture)</code> is the same helper. See <a href="#evalPrompt">13.7.1.2</a>.</td></tr>
-                <tr><td><code>runPrompt(prompt, client?, options?)</code></td><td>Async: runs a <code>PromptInstance</code> through an LLM; returns response text. Optional <code>options</code>: <code>{ onToken: (token) =&gt; ... }</code> for streamed content tokens; <code>{ onReasoning: (token) =&gt; ... }</code> for streamed reasoning/thinking tokens. Both work in interpreted and transpiled mode with <code>await</code> and pipe steps.</td></tr>
-                <tr><td><code>parseJson(json, schemaName)</code></td><td>Parses and validates JSON against a <code>schema</code> declaration; returns a typed object</td></tr>
-            </tbody>
-        </table>
-        <h2>13.8 File System Functions</h2>
+        <h3 id="ai-pipeline">13.7.2 AI Pipeline Functions</h3>
+        <p>How-to, worked pipes, and the signature table live in <a href="10-prompts.html#ai-pipeline">10.9.1 AI pipeline helpers</a>. Vector index + <code>asRetriever</code>: <a href="15-vectordb.html">15. VectorDB</a>. Offline fixtures: <a href="#evalPrompt">13.7.1.2 evalPrompt</a>.</p>
+        <p>Catalog names: <code>loadDocuments</code>, <code>splitDocuments</code>, <code>indexInto</code>, <code>formatRetrievedDocs</code>, <code>composePipe</code>, <code>parallelRun</code>, <code>mergeRetrievedDocs</code>, <code>withExamples</code>, <code>evalPrompt</code>, <code>runPrompt</code>, <code>parseJson</code>.</p>
+        <h2 id="files">13.8 File System Functions</h2>
         <p>How-to, failure styles, line ranges, capability tokens, and backend notes: <a href="12-input-output.html">12. Input/Output</a>. This section is the signature catalog.</p>
         <pre><code>var content = readFile("example.txt");                    // Read entire file
 var lines = readFile("example.txt", 10, 20);              // Read lines 10-20 (1-indexed)
@@ -640,7 +601,7 @@ if (typeOf(result) == "string") {
     print("search failed: " + result);
 }</code></pre>
 
-        <h2>13.9 Git Functions</h2>
+        <h2 id="git">13.9 Git Functions</h2>
         <pre><code>var status = gitStatus(".");                         // Get repository status
 gitAdd(".", ".");                                     // Stage files
 gitCommit(".", "Fix bug");                            // Create commit
@@ -652,7 +613,7 @@ gitBranch(".", "create", "feature-x");                // Create new branch
 gitCheckout(".", "main", false);                      // Switch to branch
 gitPush(".", "origin", "main");                       // Push to remote
 gitPull(".", "origin", "main");                       // Pull from remote</code></pre>
-        <h2>13.10 Command Execution Functions</h2>
+        <h2 id="commands">13.10 Command Execution Functions</h2>
         <pre><code>// Execute shell commands
         var result = runCommand("dotnet", ["build"], ".", 30000);  // Run dotnet build with 30s timeout
         // Returns: {exitCode: 0, stdout: "...", stderr: ""}
@@ -664,7 +625,7 @@ gitPull(".", "origin", "main");                       // Pull from remote</code>
         // - exitCode (integer): Process exit code (0 typically indicates success)
         // - stdout (string): Standard output from the command
         // - stderr (string): Standard error output from the command</code></pre>
-        <h2>13.11 MALDA Execution Functions</h2>
+        <h2 id="malda-execution">13.11 MALDA Execution Functions</h2>
         <pre><code>        // Execute MALDA code from file or string
         var result = runMALDA("example.malda");                    // Execute from file
         var result = runMALDA("print('Hello');");               // Execute from string
@@ -679,28 +640,22 @@ gitPull(".", "origin", "main");                       // Pull from remote</code>
         // Compile a .malda program to an executable (optional embed folder = CLI --embed-folder)
         var packed = compileMALDA("app.malda", "dist/app.exe", "transpile", "secondbrain");
         // embedFolder may be "path" or "path=alias"; result: { success, outputPath, error, errors }</code></pre>
-        <h3>13.10.1 getSymbols(sourceOrFilePath)</h3>
+        <h3>13.11.1 getSymbols(sourceOrFilePath)</h3>
         <p>Parses MALDA code and extracts structured symbol information (classes, functions, actors, prompts) with line numbers and signatures. Accepts one string argument: a file path to a <code>.malda</code> file or MALDA source code. If the string looks like a file path (contains path separators or ends with <code>.malda</code>) and the file exists, the file is read and its content is parsed; otherwise the argument is treated as source code. Path traversal (<code>..</code>, <code>~</code>) is rejected. Returns an object with <code>classes</code>, <code>functions</code>, <code>actors</code>, <code>prompts</code>, <code>imports</code>, and <code>parseErrors</code> (all arrays). Each class/actor has <code>name</code>, <code>line</code>, <code>column</code>, <code>members</code>; each function has <code>name</code>, <code>line</code>, <code>column</code>, <code>parameters</code>, <code>signature</code>; each prompt has <code>name</code>, <code>line</code>, <code>column</code>, <code>parameters</code>, <code>returnType?</code>, <code>signature</code>. Each import has <code>file?</code>, <code>resolvedPath?</code>, <code>package?</code>, <code>alias?</code>; unresolved modules are not flagged here (use <code>checkMalda</code>, whose <code>malda-import</code> warning names the missing path). Parse errors have <code>line</code>, <code>column</code>, <code>message</code>.</p>
         <pre><code>var sym = getSymbols("Examples/OOP/classes_objects.malda");   // From file
 var sym2 = getSymbols("function f() { } class C { }");        // From source
 // sym.classes, sym.functions, sym.actors, sym.prompts, sym.imports, sym.parseErrors</code></pre>
-        <h3>13.10.2 getParseErrors(sourceOrFilePath)</h3>
+        <h3>13.11.2 getParseErrors(sourceOrFilePath)</h3>
         <p>Parses MALDA code and returns only parse errors (no execution). Accepts the same argument as <code>getSymbols</code>: file path or source string. Path resolution and security checks are the same. Returns <code>{ parseErrors: [{ line, column, message }, ...] }</code>. Use to validate syntax without running or compiling.</p>
         <pre><code>var errs = getParseErrors("var x = ;");   // Invalid: empty rhs
 // errs.parseErrors is non-empty with line, column, message
 var ok = getParseErrors("var x = 1;");   // Valid: parseErrors is []</code></pre>
-        <h3>13.10.3 checkMalda(sourceOrFilePath, typeMode?, workingDir?)</h3>
+        <h3>13.11.3 checkMalda(sourceOrFilePath, typeMode?, workingDir?)</h3>
         <p>Diagnoses MALDA code with the same LanguageService diagnostics as <code>malda check --json</code> (parser, types, schema/sum-type names, interpolation). Does not execute the program. Accepts a file path or inline source (same path heuristic as <code>getParseErrors</code>). Optional <code>typeMode</code> is <code>default</code> (IDE: type mismatches are errors), <code>strict</code> (full CLI suite), or <code>lenient</code> (type mismatches as warnings). Returns <code>{ ok, executed: false, file, errorCount, warningCount, infoCount, error?, diagnostics }</code>. Each diagnostic has <code>severity</code>, <code>code</code>, <code>message</code>, <code>file?</code>, <code>line</code>, <code>column</code> (1-based), <code>length</code>, <code>hint?</code>, <code>suggestedFix?</code>. The agent factory is <code>createCheckMaldaTool</code>.</p>
         <pre><code>var report = checkMalda("var x = 1;");
 print(report.ok);          // true
 var typed = checkMalda("var n: int = \"abc\";", "lenient");
 print(typed.ok);           // true (mismatch is a warning)</code></pre>
-        <h3>13.10.4 webFetch(url, maxBytes?, timeoutMs?)</h3>
-        <p>Fetches an <code>http://</code> or <code>https://</code> URL using the same host path as <code>httpGet</code>. Other schemes (including <code>file://</code>), empty URLs, and URLs without a host are rejected. Optional <code>maxBytes</code> defaults to 100000 (hard cap 500000); longer bodies are truncated and <code>truncated</code> is set. Optional <code>timeoutMs</code> defaults to 15000 (hard cap 60000). Returns <code>{ ok, status, url, content, truncated, error? }</code>. <code>content</code> is always a string: a text body is used as-is; a JSON object or array body is JSON-stringified. The agent factory is <code>createWebFetchTool</code> (no working directory; parallel-safe).</p>
-        <pre><code>var page = webFetch("https://example.com/");
-print(page.ok);
-print(page.status);
-print(page.truncated);</code></pre>
         <div class="info-box">
             <strong>Command Execution Safety:</strong> The <code>runCommand</code> function includes comprehensive safety checks:
             <ul>
@@ -711,7 +666,7 @@ print(page.truncated);</code></pre>
                 <li>Path traversal attempts (<code>..</code>, <code>~</code>) are detected and blocked</li>
             </ul>
         </div>
-        <h2>13.12 Spectre.Console Integration</h2>
+        <h2 id="spectre">13.12 Spectre.Console Integration</h2>
         <p>MALDA exposes a global <code>AnsiConsole</code> object that wraps the .NET <code>Spectre.Console</code> library and provides rich console output:</p>
         <pre><code>// Markup (colors, bold, links, etc.)
 AnsiConsole.markupLine("[green]Hello[/] [bold red]Spectre.Console[/]!");   // Appends a newline
@@ -804,7 +759,7 @@ AnsiConsole.progress({
                 <li><strong>Desktop IDE:</strong> The IDE output panel is plain text. On first use of <code>AnsiConsole</code>, MALDA automatically opens a separate console window and routes output to both the IDE panel (plain text) and the console (rich Spectre.Console rendering).</li>
             </ul>
         </div>
-        <h2>13.13 Date and Time Functions</h2>
+        <h2 id="datetime">13.13 Date and Time Functions</h2>
         <pre><code>var timestamp = now();                       // Get current timestamp in milliseconds (Unix epoch)
 var formatted = formatDate(timestamp, "yyyy-MM-dd HH:mm:ss");  // Format timestamp (default: "yyyy-MM-dd HH:mm:ss")
 var parsed = parseDate("2026-01-26 10:30:00");  // Parse date string to timestamp
@@ -818,7 +773,7 @@ var inHours = addHours(timestamp, 2);        // Add hours to timestamp</code></p
                 <li><code>parseDate</code> accepts common date formats and converts to timestamp</li>
             </ul>
         </div>
-        <h2>13.14 Random Number Functions</h2>
+        <h2 id="random">13.14 Random Number Functions</h2>
         <pre><code>var rand = math.random();                    // Random float between 0.0 and 1.0
 var randInt = math.randomInt(1, 10);         // Random integer, 1 and 10 both included
 var randFloat = math.randomFloat(0.0, 100.0); // Random float between 0.0 and 100.0
@@ -833,19 +788,19 @@ var pinned = math.randomInt(1, 100);         // Always 39 after seed(7)</code></
                 <li>The flat spellings <code>randomInt(1, 10)</code> and <code>Math.randomInt(1, 10)</code> still run, but the language server reports both as deprecated aliases. Prefer <code>math.</code>, as described in <a href="#stdlib-namespaces">13.2 Stdlib Namespaces and Flat Aliases</a>.</li>
             </ul>
         </div>
-        <h2>13.15 Type Checking Functions</h2>
+        <h2 id="type-check">13.15 Type Checking Functions</h2>
         <pre><code>var isNum = isNumber(42);                    // Check if value is a number (integer or float)
 var isStr = isString("hello");               // Check if value is a string
 var isArr = isArray([1, 2, 3]);              // Check if value is an array
 var isObj = isObject({name: "Alice"});       // Check if value is an object
 var type = typeOf(42);                       // Canonical tag ("int", "string", "dict", "object", "variant", "task", "null", ...)
 var isInt = isTag(42, "int");                 // true; isTag also accepts legacy names like "integer" during deprecation</code></pre>
-        <h2>13.16 Encoding and Decoding Functions</h2>
+        <h2 id="encoding">13.16 Encoding and Decoding Functions</h2>
         <pre><code>var encoded = base64Encode("Hello World");    // Base64 encode string
 var decoded = base64Decode(encoded);         // Base64 decode string
 var urlEncoded = urlEncode("Hello World");   // URL encode string (returns "Hello%20World")
 var urlDecoded = urlDecode(urlEncoded);      // URL decode string</code></pre>
-        <h2>13.17 Hash Functions</h2>
+        <h2 id="hash">13.17 Hash Functions</h2>
         <pre><code>var md5Hash = md5("Hello World");             // Calculate MD5 hash (returns hex string)
 var sha256Hash = sha256("Hello World");      // Calculate SHA-256 hash (returns hex string)</code></pre>
         <div class="info-box">
@@ -856,90 +811,13 @@ var sha256Hash = sha256("Hello World");      // Calculate SHA-256 hash (returns 
                 <li>SHA-256 produces 64-character hex strings</li>
             </ul>
         </div>
-        <h3 id="jwt-security">13.16.1 Password and JWT Security Functions</h3>
-        <p>These helpers implement the tokens and hashes that chapters 26–28 wire into HTTP. A <strong>password hash</strong> is a one-way value (salted PBKDF2 here): store the hash, never the plaintext, then <code>verifyPassword</code> on login; primer: <a href="28-rest-api.html#concept-password">28.1.1 Password hashing</a>. A <strong>JWT</strong> is a signed claims blob the client sends back; primer: <a href="28-rest-api.html#concept-jwt">28.1.1 JWT</a>. A <strong>CSRF token</strong> is a secret the real page can present and a forged cross-site request cannot; primer: <a href="28-rest-api.html#concept-csrf">28.1.1 CSRF</a>.</p>
-        <pre><code>var passwordHash = hashPassword("my-password");              // PBKDF2-SHA256 hash
-var isValid = verifyPassword("my-password", passwordHash);   // true/false
-
-var claims = {"sub": "user-123", "role": "admin"};
-var token = createJwt(claims, "my-jwt-secret", 3600);        // expires in 3600s
-var token2 = createJwt(claims, "my-jwt-secret", {
-  "expiresInSeconds": 3600,
-  "issuer": "malda-core",
-  "audience": "malda-apps",
-  "notBeforeSeconds": 0
-});
-var verifiedClaims = verifyJwt(token2, "my-jwt-secret", {
-  "issuer": "malda-core",
-  "audience": "malda-apps"
-});
-print(verifiedClaims.sub);
-
-var csrfToken = generateCsrfToken("csrf-secret", 3600);
-var csrfOk = verifyCsrfToken(csrfToken, "csrf-secret");      // true/false
-
-var setCookieHeader = createSecureCookie("session", "user-123", "cookie-secret");
-// send with res.header("Set-Cookie", setCookieHeader) or use res.cookie(...)
-var cookieValue = split(split(setCookieHeader, ";")[0], "=")[1];
-var session = readSecureCookie(urlDecode(cookieValue), "cookie-secret");</code></pre>
-        <div class="info-box">
-            <strong>Security Function Notes:</strong>
-            <ul>
-                <li><code>hashPassword(password, iterations?)</code> uses PBKDF2 with SHA-256 and random salt</li>
-                <li><code>verifyPassword(password, passwordHash)</code> performs constant-time comparison</li>
-                <li><code>createJwt(payload, secret, expiresInSeconds? | options?)</code> signs HS256 tokens and adds <code>iat</code>; options may set <code>expiresInSeconds</code>, <code>issuer</code> (<code>iss</code>), <code>audience</code> (<code>aud</code>), and <code>notBeforeSeconds</code> (<code>nbf</code>)</li>
-                <li><code>verifyJwt(token, secret, options?)</code> validates signature, <code>nbf</code>, <code>exp</code>, and optional expected <code>issuer</code>/<code>audience</code></li>
-                <li><code>verifyJwt</code> throws standardized auth errors for missing, invalid, not-yet-valid, or expired tokens</li>
-                <li>In HTTP/REST handlers prefer <code>req.auth.authenticateBearerJwt(secret)</code> or <code>req.auth.authenticateCookieJwt(cookieName, jwtSecret, cookieSecret?)</code> — they verify the token and populate <code>req.auth</code> claims/roles. Use <code>req.auth.requireRole</code> / <code>requirePermission</code> for authorization. <code>setVerifiedSub</code> remains for ingress/gateway cases without a local JWT.</li>
-                <li><code>generateCsrfToken(secret, ttlSeconds?)</code> creates signed CSRF tokens for form and API mutation flows</li>
-                <li><code>verifyCsrfToken(token, secret)</code> validates signature + expiration and returns boolean</li>
-                <li><code>csrfField(secret, ttlSeconds?)</code> returns a hidden <code>_csrf</code> input HTML fragment for forms (token matches <code>enableCsrf</code>)</li>
-                <li><code>bindForm(body, fields)</code> binds/validates form fields (<code>name</code>, <code>required</code>, <code>trim</code>, <code>minLength</code>/<code>maxLength</code>, <code>pattern: "email"</code>) into <code>{ ok, values, errors }</code></li>
-                <li><code>formErrors(errors)</code> renders an escaped HTML error list</li>
-                <li><code>pageLayout(title, bodyHtml, options?)</code> thin full-document HTML chrome for <code>@PAGE</code> string apps (prefer <code>ui.layout</code> for rich layouts)</li>
-                <li><code>createSecureCookie(name, value, secret, options?)</code> returns a signed <code>Set-Cookie</code> header string with secure defaults</li>
-                <li><code>readSecureCookie(cookieValue, secret)</code> verifies a signed cookie value and returns plaintext or <code>null</code></li>
-            </ul>
-        </div>
-        <h3>13.16.1a Background jobs (lightweight queue)</h3>
-        <p>Short async units (email, webhooks) use a SQLite queue at <code>./.malda/jobs.db</code>. Override the connection with <code>MALDA_JOBS_CONNECTION</code> (same shape as <code>MALDA_WORKFLOW_CONNECTION</code>). This is separate from durable <code>workflow</code> processes.</p>
-        <pre><code>var jobId = enqueueJob("mail", {"to": "user@example.com"}, {"maxAttempts": 3});
-var job = claimJob("mail", "worker-1");
-if (job != null) {
-    // ... do work with job.payload ...
-    completeJob(job.id, {"sent": true});
-    // or: failJob(job.id, "SMTP timeout", true);
-}
-var open = listJobs("mail", "pending", 20);
-var one = getJob(jobId);</code></pre>
-        <div class="info-box">
-            <strong>Job helpers:</strong>
-            <ul>
-                <li><code>enqueueJob(queue, payload, options?)</code> — options: <code>runAt</code>, <code>maxAttempts</code>, <code>correlationId</code></li>
-                <li><code>claimJob(queue, workerId?)</code> — returns a running job or <code>null</code></li>
-                <li><code>completeJob(jobId, result?)</code> / <code>failJob(jobId, error?, retry?)</code></li>
-                <li><code>getJob(jobId)</code> / <code>listJobs(queue?, status?, limit?)</code></li>
-            </ul>
-        </div>
-        <h3>13.16.2 Request auth context (<code>req.auth</code>)</h3>
-        <p>Both <code>HttpServer</code> and <code>RestServer</code> expose the same <code>req.auth</code> surface on each request:</p>
-        <ul>
-            <li>State: <code>verified</code>, <code>sub</code>/<code>subject</code>, <code>claims</code>, <code>roles</code>, <code>permissions</code>, <code>token</code></li>
-            <li>AuthN: <code>authenticateBearerJwt(secret)</code>, <code>authenticateCookieJwt(cookieName, jwtSecret, cookieSecret?)</code>, <code>setVerifiedSub(sub)</code>, <code>setAnonymous()</code>/<code>clear()</code></li>
-            <li>AuthZ: <code>claim(name, default?)</code>, <code>hasClaim</code>, <code>hasRole</code>/<code>requireRole</code>, <code>hasPermission</code>/<code>requirePermission</code>, <code>requireVerified()</code></li>
-        </ul>
-        <pre><code>function requireAuth(req, res, next) {
-    req.auth.authenticateBearerJwt(getEnv("MALDA_JWT_SECRET"));
-    next();
-}
-
-server.use(requireAuth, { "except": ["/api/health", "/metrics"] });</code></pre>
-        <h2>13.18 Range Generation</h2>
+        <p>Password hashes, JWT, CSRF, and signed cookies are not digest helpers — see <a href="#jwt-security">13.25</a>.</p>
+        <h2 id="range">13.18 Range Generation</h2>
         <pre><code>var range1 = range(5);                        // Generate [0, 1, 2, 3, 4]
 var range2 = range(1, 10);                   // Generate [1, 2, 3, 4, 5, 6, 7, 8, 9]
 var range3 = range(0, 10, 2);                // Generate [0, 2, 4, 6, 8] (step of 2)
 var range4 = range(10, 0, -1);               // Generate [10, 9, 8, 7, 6, 5, 4, 3, 2, 1] (negative step)</code></pre>
-        <h2>13.19 Error Handling Functions</h2>
+        <h2 id="error-handling">13.19 Error Handling Functions</h2>
         <pre><code>exit(0);                                      // Exit program with exit code 0 (success)
 exit(1);                                      // Exit program with exit code 1 (error)
 error("Something went wrong");                // Throw runtime error with message
@@ -1050,17 +928,22 @@ var spend = trace.lastUsage();</code></pre>
         <pre><code>AgentError = Refused(reason) | Unparsable(raw, attempts) | SchemaMismatch(schema, error)
            | BudgetExceeded(kind, limit) | ToolDenied(tool, reason) | Timeout(ms)
            | Upstream(status, body)</code></pre>
-        <h2>13.20 Structured Task Planning</h2>
+        <h2 id="task-planning">13.20 Structured Task Planning</h2>
         <p id="agent-teams"><code>decomposeTask</code>, <code>executePlan</code>, <code>createSubmitPlanTool</code>, <code>createUpdatePlanTool</code>, and <code>createMarkStepTool</code> live in <a href="18-agent-orchestration.html">18. Agent Orchestration</a> (§ 18.13). <code>agents.define</code> / <code>agents.team</code> bind role specs to a directed graph; <code>executePlan(plan, team)</code> honors <code>step.role</code> and declared hops, branches <code>reject</code> hops on the predecessor <code>approved</code> verdict, and accepts <code>plan.think: false</code> to stay offline — see <a href="18-agent-orchestration.html#declarative-agent-teams">§ 18.17</a>. <code>team.handoff</code> / <code>team.review</code> / <code>team.reject</code> / <code>team.consult</code> are typed hops and stay validate-only unless <code>think</code> is true. <code>runProgram</code> runs a closed <code>api</code> / <code>program(ApiName)</code> value with no further LLM calls — see <a href="10-prompts.html">10. Prompts</a> (§ 10.8 Closed APIs and Deterministic Programs).</p>
-        <h2>13.21 Tool Creation Functions</h2>
+        <h2 id="tool-creation">13.21 Tool Creation Functions</h2>
         <p>Agent tool factories (<code>createReadFileTool</code>, <code>createWriteFileTool</code>, <code>createReplaceInFileTool</code>, <code>createEditFileTool</code>, <code>createInsertAtLineTool</code>, <code>createGrepTool</code>, <code>createListDirectoryTool</code>, <code>createAskUserTool</code>, <code>createWebSearchTool</code>, <code>createWebFetchTool</code>, <code>createGitStatusTool</code>, <code>createGitAddTool</code>, <code>createGitCommitTool</code>, <code>createGitLogTool</code>, <code>createGitDiffTool</code>, <code>createGitBranchTool</code>, <code>createGitCheckoutTool</code>, <code>createGitPushTool</code>, <code>createGitPullTool</code>, <code>createRunCommandTool</code>, <code>createRunMALDATool</code>, <code>createCompileMALDATool</code>, <code>createGetSymbolsTool</code>, <code>createGetParseErrorsTool</code>, <code>createCheckMaldaTool</code>, <code>createValidateJsonTool</code>, <code>createTestMaldaTool</code>, <code>createSubmitPlanTool</code>, <code>createUpdatePlanTool</code>, <code>createMarkStepTool</code>, <code>createGlobTool</code>, <code>createCreateMcpAgentScriptTool</code>, <code>createDeleteFileTool</code>, <code>createCopyFileTool</code>, <code>createEnsureDirTool</code>) live in <a href="18-agent-orchestration.html">18. Agent Orchestration</a> (§ 18.6). <code>createNativeCallback</code> wraps a MALDA function as a .NET delegate — see <a href="31-dotnet-interop.html">31. .NET Interop</a>.</p>
-        <h2>13.22 Durable Workflow Operations</h2>
+        <h2 id="workflow-ops">13.22 Durable Workflow Operations</h2>
         <p>Runtime, query, and control helpers (<code>startWorkflow</code>, <code>getWorkflowStatus</code>, <code>getWorkflow</code>, <code>getWorkflowSteps</code>, <code>getWorkflowEvents</code>, <code>getWorkflowMetrics</code>, <code>listWorkflows</code>, <code>listWorkflowDeadLetters</code>, <code>requeueDeadLetter</code>, <code>runWorkflowInstance</code>) live in <a href="22-durable-workflows.html">22. Durable Workflows</a>.</p>
-        <h2>13.23 Agent Runtime Logging</h2>
+        <h2 id="agent-logging">13.23 Agent Runtime Logging</h2>
         <p>Diagnostic helpers (<code>enableAgentVerboseLogging</code>, <code>setAgentVerbosePhase</code>, <code>setAgentStatusBanner</code>, <code>reportRalphStatus</code>) live in <a href="18-agent-orchestration.html">18. Agent Orchestration</a> (§ 18.5 and <a href="18-agent-orchestration.html#ralph-wiggum">18.19 Ralph Wiggum</a>). They affect presentation only and never change an agent's result.</p>
-        <h2>13.24 Web UI Functions</h2>
+        <h2 id="web-ui-fns">13.24 Web UI Functions</h2>
         <p>Server component helpers (<code>renderTemplate</code>, <code>componentFragment</code>, <code>componentLiveEmit</code>, <code>componentState*</code>, <code>onAgentProgress</code>, <code>clearAgentProgress</code>, <code>cancelThink</code>) and <code>ui.*</code> controls live in <a href="25-web-ui.html">25. Web UI Server Components</a>. Start from <a href="24-web-ui-hub.html">24. Web UI Overview</a> if you are choosing a UI model.</p>
-        <h2 id="optional-pack-builtins">13.25 Optional packs (not in core)</h2>
+        <h2 id="jwt-security">13.25 Password, JWT, and request auth</h2>
+        <p>Signature how-to for HTTP lives in <a href="28-rest-api.html#jwt-security">28.16 Password, JWT, and cookie helpers</a>. Request principal: <a href="28-rest-api.html#req-auth">28.6.2 req.auth</a>. Primers: <a href="28-rest-api.html#concept-password">password hashing</a>, <a href="28-rest-api.html#concept-jwt">JWT</a>, <a href="28-rest-api.html#concept-csrf">CSRF</a>.</p>
+        <p>Catalog names: <code>hashPassword</code>, <code>verifyPassword</code>, <code>createJwt</code>, <code>verifyJwt</code>, <code>generateCsrfToken</code>, <code>verifyCsrfToken</code>, <code>csrfField</code>, <code>createSecureCookie</code>, <code>readSecureCookie</code>, <code>httpBearerToken</code>, <code>httpCookieToken</code>, <code>httpAuthToken</code>, <code>bindForm</code>, <code>formErrors</code>, <code>pageLayout</code>. Handler surface: <code>req.auth.authenticateBearerJwt</code>, <code>authenticateCookieJwt</code>, <code>requireRole</code>, <code>requirePermission</code>, <code>setVerifiedSub</code>.</p>
+        <h2 id="background-jobs">13.26 Background jobs</h2>
+        <p>Lightweight SQLite queue (<code>enqueueJob</code>, <code>claimJob</code>, <code>completeJob</code>, <code>failJob</code>, <code>getJob</code>, <code>listJobs</code>) — not a durable <code>workflow</code>. How-to: <a href="22-durable-workflows.html#background-jobs">22.11 Lightweight job queue</a>.</p>
+        <h2 id="optional-pack-builtins">13.27 Optional packs (not in core)</h2>
         <p>Core <code>BuiltInRegistry</code> lists only open-source core symbols. Domain-specific builtins may ship in separately distributed packs; load them with <code>loadNativeModule(...)</code> and ship any required assemblies beside your app. Core does not auto-register pack globals.</p>
         <div class="see-also">
             <h3>See Also</h3>
@@ -1068,11 +951,13 @@ var spend = trace.lastUsage();</code></pre>
                 <li><a href="37-appendix.html#optional-packs">Appendix — Optional packs</a></li>
                 <li><a href="12-input-output.html">Input/Output</a> — console, files, paths, environment, host I/O; prefer <code>io.*</code></li>
                 <li><a href="12-input-output.html#capability-tokens">12.6 Capability tokens</a> — how-to for <code>cap.*</code> (this chapter is the catalog)</li>
-                <li><a href="10-prompts.html">Prompts</a> — <code>runProgram</code> and closed <code>api</code> / <code>program(ApiName)</code></li>
+                <li><a href="10-prompts.html#ai-pipeline">10.9.1 AI pipeline helpers</a> — <code>loadDocuments</code>, <code>runPrompt</code>, <code>composePipe</code></li>
+                <li><a href="12-input-output.html#web-fetch">12.9 Fetching URLs</a> — <code>webFetch</code></li>
                 <li><a href="25-web-ui.html">Web UI Server Components</a> — Server-side UI and component APIs</li>
                 <li><a href="18-agent-orchestration.html">Agent Orchestration</a> — Tools, task plans, and agent logging</li>
-                <li><a href="22-durable-workflows.html">Durable Workflows</a> — Workflow runtime built-ins</li>
+                <li><a href="22-durable-workflows.html#background-jobs">22.11 Lightweight job queue</a> — <code>enqueueJob</code> and friends</li>
                 <li><a href="23-agentic-runs.html">23. Agentic Runs</a> — <code>expect</code>, <code>stream</code>, <code>race</code> / <code>firstOk</code>, <code>trace.*</code>, <code>AgentError</code></li>
+                <li><a href="28-rest-api.html#jwt-security">28.16 Password, JWT, and cookie helpers</a></li>
             </ul>
         </div>
         <div class="nav-footer">

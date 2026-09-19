@@ -583,6 +583,12 @@
   },
   {
     "file": "10-prompts.html",
+    "level": 3,
+    "id": "ai-pipeline",
+    "title": "10.9.1 AI pipeline helpers"
+  },
+  {
+    "file": "10-prompts.html",
     "level": 2,
     "id": "",
     "title": "10.10 PromptInstance Properties"
@@ -764,13 +770,25 @@
   {
     "file": "12-input-output.html",
     "level": 2,
+    "id": "web-fetch",
+    "title": "12.9 Fetching URLs"
+  },
+  {
+    "file": "12-input-output.html",
+    "level": 2,
     "id": "",
-    "title": "12.9 What This Chapter Is Not"
+    "title": "12.10 What This Chapter Is Not"
   },
   {
     "file": "13-built-in-functions.html",
     "level": 2,
-    "id": "",
+    "id": "chapter-map",
+    "title": "13.0 Chapter map"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 2,
+    "id": "type-conversion",
     "title": "13.1 Type Conversion"
   },
   {
@@ -788,7 +806,7 @@
   {
     "file": "13-built-in-functions.html",
     "level": 2,
-    "id": "",
+    "id": "math",
     "title": "13.3 Mathematical Functions"
   },
   {
@@ -799,14 +817,20 @@
   },
   {
     "file": "13-built-in-functions.html",
-    "level": 2,
+    "level": 3,
     "id": "",
+    "title": "13.3.2 Simulated annealing"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 2,
+    "id": "strings",
     "title": "13.4 String Functions"
   },
   {
     "file": "13-built-in-functions.html",
     "level": 2,
-    "id": "",
+    "id": "env-host",
     "title": "13.5 Environment and Host"
   },
   {
@@ -829,8 +853,14 @@
   },
   {
     "file": "13-built-in-functions.html",
+    "level": 3,
+    "id": "web-fetch",
+    "title": "13.5.4 webFetch(url, maxBytes?, timeoutMs?)"
+  },
+  {
+    "file": "13-built-in-functions.html",
     "level": 2,
-    "id": "",
+    "id": "arrays",
     "title": "13.6 Array Utility Functions"
   },
   {
@@ -842,7 +872,7 @@
   {
     "file": "13-built-in-functions.html",
     "level": 2,
-    "id": "",
+    "id": "json",
     "title": "13.7 JSON Functions"
   },
   {
@@ -865,14 +895,14 @@
   },
   {
     "file": "13-built-in-functions.html",
-    "level": 2,
-    "id": "",
+    "level": 3,
+    "id": "ai-pipeline",
     "title": "13.7.2 AI Pipeline Functions"
   },
   {
     "file": "13-built-in-functions.html",
     "level": 2,
-    "id": "",
+    "id": "files",
     "title": "13.8 File System Functions"
   },
   {
@@ -896,109 +926,85 @@
   {
     "file": "13-built-in-functions.html",
     "level": 2,
-    "id": "",
+    "id": "git",
     "title": "13.9 Git Functions"
   },
   {
     "file": "13-built-in-functions.html",
     "level": 2,
-    "id": "",
+    "id": "commands",
     "title": "13.10 Command Execution Functions"
   },
   {
     "file": "13-built-in-functions.html",
     "level": 2,
-    "id": "",
+    "id": "malda-execution",
     "title": "13.11 MALDA Execution Functions"
   },
   {
     "file": "13-built-in-functions.html",
     "level": 3,
     "id": "",
-    "title": "13.10.1 getSymbols(sourceOrFilePath)"
+    "title": "13.11.1 getSymbols(sourceOrFilePath)"
   },
   {
     "file": "13-built-in-functions.html",
     "level": 3,
     "id": "",
-    "title": "13.10.2 getParseErrors(sourceOrFilePath)"
+    "title": "13.11.2 getParseErrors(sourceOrFilePath)"
   },
   {
     "file": "13-built-in-functions.html",
     "level": 3,
     "id": "",
-    "title": "13.10.3 checkMalda(sourceOrFilePath, typeMode?, workingDir?)"
-  },
-  {
-    "file": "13-built-in-functions.html",
-    "level": 3,
-    "id": "",
-    "title": "13.10.4 webFetch(url, maxBytes?, timeoutMs?)"
+    "title": "13.11.3 checkMalda(sourceOrFilePath, typeMode?, workingDir?)"
   },
   {
     "file": "13-built-in-functions.html",
     "level": 2,
-    "id": "",
+    "id": "spectre",
     "title": "13.12 Spectre.Console Integration"
   },
   {
     "file": "13-built-in-functions.html",
     "level": 2,
-    "id": "",
+    "id": "datetime",
     "title": "13.13 Date and Time Functions"
   },
   {
     "file": "13-built-in-functions.html",
     "level": 2,
-    "id": "",
+    "id": "random",
     "title": "13.14 Random Number Functions"
   },
   {
     "file": "13-built-in-functions.html",
     "level": 2,
-    "id": "",
+    "id": "type-check",
     "title": "13.15 Type Checking Functions"
   },
   {
     "file": "13-built-in-functions.html",
     "level": 2,
-    "id": "",
+    "id": "encoding",
     "title": "13.16 Encoding and Decoding Functions"
   },
   {
     "file": "13-built-in-functions.html",
     "level": 2,
-    "id": "",
+    "id": "hash",
     "title": "13.17 Hash Functions"
   },
   {
     "file": "13-built-in-functions.html",
-    "level": 3,
-    "id": "jwt-security",
-    "title": "13.16.1 Password and JWT Security Functions"
-  },
-  {
-    "file": "13-built-in-functions.html",
-    "level": 3,
-    "id": "",
-    "title": "13.16.1a Background jobs (lightweight queue)"
-  },
-  {
-    "file": "13-built-in-functions.html",
-    "level": 3,
-    "id": "",
-    "title": "13.16.2 Request auth context (req.auth)"
-  },
-  {
-    "file": "13-built-in-functions.html",
     "level": 2,
-    "id": "",
+    "id": "range",
     "title": "13.18 Range Generation"
   },
   {
     "file": "13-built-in-functions.html",
     "level": 2,
-    "id": "",
+    "id": "error-handling",
     "title": "13.19 Error Handling Functions"
   },
   {
@@ -1052,38 +1058,50 @@
   {
     "file": "13-built-in-functions.html",
     "level": 2,
-    "id": "",
+    "id": "task-planning",
     "title": "13.20 Structured Task Planning"
   },
   {
     "file": "13-built-in-functions.html",
     "level": 2,
-    "id": "",
+    "id": "tool-creation",
     "title": "13.21 Tool Creation Functions"
   },
   {
     "file": "13-built-in-functions.html",
     "level": 2,
-    "id": "",
+    "id": "workflow-ops",
     "title": "13.22 Durable Workflow Operations"
   },
   {
     "file": "13-built-in-functions.html",
     "level": 2,
-    "id": "",
+    "id": "agent-logging",
     "title": "13.23 Agent Runtime Logging"
   },
   {
     "file": "13-built-in-functions.html",
     "level": 2,
-    "id": "",
+    "id": "web-ui-fns",
     "title": "13.24 Web UI Functions"
   },
   {
     "file": "13-built-in-functions.html",
     "level": 2,
+    "id": "jwt-security",
+    "title": "13.25 Password, JWT, and request auth"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 2,
+    "id": "background-jobs",
+    "title": "13.26 Background jobs"
+  },
+  {
+    "file": "13-built-in-functions.html",
+    "level": 2,
     "id": "optional-pack-builtins",
-    "title": "13.25 Optional packs (not in core)"
+    "title": "13.27 Optional packs (not in core)"
   },
   {
     "file": "14-graphs.html",
@@ -1926,6 +1944,12 @@
     "title": "22.10 High Availability and Multi-Worker"
   },
   {
+    "file": "22-durable-workflows.html",
+    "level": 2,
+    "id": "background-jobs",
+    "title": "22.11 Lightweight job queue"
+  },
+  {
     "file": "23-agentic-runs.html",
     "level": 2,
     "id": "what-you-need",
@@ -2686,6 +2710,12 @@
     "level": 2,
     "id": "",
     "title": "28.15 Complete Example"
+  },
+  {
+    "file": "28-rest-api.html",
+    "level": 2,
+    "id": "jwt-security",
+    "title": "28.16 Password, JWT, and cookie helpers"
   },
   {
     "file": "29-rest-web-client.html",

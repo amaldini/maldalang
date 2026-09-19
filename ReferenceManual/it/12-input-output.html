@@ -304,13 +304,20 @@ io.print("awake");</code></pre>
             <strong>Workflow:</strong> <code>sleep</code>, <code>io.writeFile</code> e altri effetti in deny-list sollevano <code>WF1001</code> / <code>WF1002</code> quando girano in una sezione deterministica di un workflow — anche se annidati in un helper. Metti orologio, sleep e I/O dentro uno <code>step</code>. Vedi <a href="22-durable-workflows.html">22. Workflow durevoli</a>.
         </div>
 
-        <h2>12.9 Cosa non copre questo capitolo</h2>
+        <h2 id="web-fetch">12.9 Recupero di URL</h2>
+        <p><code>webFetch(url, maxBytes?, timeoutMs?)</code> recupera un URL <code>http://</code> o <code>https://</code> usando lo stesso percorso host di <code>httpGet</code>. Altri schemi (incluso <code>file://</code>), URL vuoti e URL senza host vengono rifiutati. <code>maxBytes</code> opzionale: default 100000 (limite 500000); i body più lunghi vengono troncati e <code>truncated</code> è impostato. <code>timeoutMs</code> opzionale: default 15000 (limite 60000). Restituisce <code>{ ok, status, url, content, truncated, error? }</code>. <code>content</code> è sempre una stringa: un body di testo viene usato così com'è; un body JSON oggetto o array viene serializzato. La factory per agenti è <code>createWebFetchTool</code> (nessuna directory di lavoro; sicuro in parallelo).</p>
+        <pre><code>var page = webFetch("https://example.com/");
+print(page.ok);
+print(page.status);
+print(page.truncated);</code></pre>
+        <p>Per API JSON con header, auth e retry preferisci <a href="29-rest-web-client.html">29. Client REST Web</a>. Un capability token usa <code>cap.httpGet</code> + <code>cap.fetch</code> / <code>webFetch(token)</code> — vedi <a href="#capability-tokens">12.6</a>. Indice dei nomi: <a href="13-built-in-functions.html#web-fetch">13.5.4</a>.</p>
+        <h2>12.10 Cosa non copre questo capitolo</h2>
         <table>
             <thead>
                 <tr><th>Serve</th><th>Vai a</th></tr>
             </thead>
             <tbody>
-                <tr><td>Client HTTP / chiamate REST</td><td><a href="29-rest-web-client.html">29. Client REST Web</a></td></tr>
+                <tr><td>Client HTTP / chiamate REST</td><td><a href="29-rest-web-client.html">29. Client REST Web</a> (<code>webFetch</code> è <a href="#web-fetch">12.9</a>)</td></tr>
                 <tr><td>Server HTTP / HTML / <code>ui.*</code></td><td><a href="24-web-ui-hub.html">24. Panoramica Web UI</a></td></tr>
                 <tr><td>Client SQL</td><td><a href="16-database.html">16. Supporto database</a></td></tr>
                 <tr><td>Comandi shell</td><td><code>runCommand</code> in <a href="13-built-in-functions.html">13.10</a> (nomi pericolosi bloccati, timeout massimo di 1 ora)</td></tr>

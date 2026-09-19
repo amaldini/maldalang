@@ -19,7 +19,7 @@
         <h1>22. Durable Workflows</h1>
 
         <p>Durable workflows let you run long-lived, restart-safe business processes with persisted state, replay-safe step execution, and external control points such as approvals and signals.</p>
-        <p>For short fire-and-forget work (send email, call a webhook), prefer the lightweight job queue builtins (<code>enqueueJob</code> / <code>claimJob</code> / <code>completeJob</code> / <code>failJob</code>) documented in <a href="13-built-in-functions.html">Built-in Functions</a>. Jobs use <code>./.malda/jobs.db</code> and are not workflow instances.</p>
+        <p>For short fire-and-forget work (send email, call a webhook), prefer the lightweight job queue in <a href="#background-jobs">22.11</a>. Jobs use <code>./.malda/jobs.db</code> and are not workflow instances.</p>
 
         <h2>22.1 Core Concepts</h2>
         <ul>
@@ -269,6 +269,27 @@ setx MALDA_WORKFLOW_CONNECTION "Data Source=C:\ProgramData\malda\workflows.db"</
         </ul>
         <p>Full failure-mode matrix and migration notes: <code>docs/workflows-ha.md</code> in the repository.</p>
         <p><strong>WF1006:</strong> mutating a declared <code>context</code> (including compaction) inside a <code>workflow</code> body must sit in a <code>step</code>. Imported or unknown callees stay Info, same as WF1005. Successful steps are also mirrored into the in-process run journal so <code>trace.journal()</code> sees them. Narrative: <a href="23-agentic-runs.html">23. Agentic Runs</a> §23.3 and §23.5.</p>
+
+        <h2 id="background-jobs">22.11 Lightweight job queue</h2>
+        <p>Short async units (email, webhooks) use a SQLite queue at <code>./.malda/jobs.db</code>. Override the connection with <code>MALDA_JOBS_CONNECTION</code> (same shape as <code>MALDA_WORKFLOW_CONNECTION</code>). This is separate from durable <code>workflow</code> processes. Name index: <a href="13-built-in-functions.html#background-jobs">13.26</a>.</p>
+        <pre><code>var jobId = enqueueJob("mail", {"to": "user@example.com"}, {"maxAttempts": 3});
+var job = claimJob("mail", "worker-1");
+if (job != null) {
+    // ... do work with job.payload ...
+    completeJob(job.id, {"sent": true});
+    // or: failJob(job.id, "SMTP timeout", true);
+}
+var open = listJobs("mail", "pending", 20);
+var one = getJob(jobId);</code></pre>
+        <div class="info-box">
+            <strong>Job helpers:</strong>
+            <ul>
+                <li><code>enqueueJob(queue, payload, options?)</code> — options: <code>runAt</code>, <code>maxAttempts</code>, <code>correlationId</code></li>
+                <li><code>claimJob(queue, workerId?)</code> — returns a running job or <code>null</code></li>
+                <li><code>completeJob(jobId, result?)</code> / <code>failJob(jobId, error?, retry?)</code></li>
+                <li><code>getJob(jobId)</code> / <code>listJobs(queue?, status?, limit?)</code></li>
+            </ul>
+        </div>
 
         <div class="see-also">
             <h3>See Also</h3>

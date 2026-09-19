@@ -20,7 +20,7 @@
         <h1>29. Client REST Web</h1>
         <p>MALDA può chiamare API HTTP dal runtime host con <code>RestClient</code> e le funzioni one-shot <code>httpGet</code> / <code>httpPost</code> / <code>httpPut</code> / <code>httpDelete</code> / <code>httpPatch</code>. Questo capitolo è il riferimento lato client. Progettare e ospitare quelle API è <a href="28-rest-api.html">28. Server REST API</a>. Il <code>fetch</code> del browser verso un'API MALDA è <a href="30-full-stack-development.html">30. Sviluppo full-stack con MALDA</a>.</p>
         <div class="info-box">
-            <strong>Non è lo stesso nome:</strong> <code>httpGet(url, ...)</code> è il client HTTP di questo capitolo. <code>cap.httpGet(origin)</code> crea un token GET non contraffabile per <code>cap.fetch</code> / <code>webFetch</code> — vedi <a href="12-input-output.html">12. Input/Output</a> §12.6.
+            <strong>Non è lo stesso nome:</strong> <code>httpGet(url, ...)</code> è il client HTTP di questo capitolo. <code>webFetch</code> è il fetch one-shot dell'host in <a href="12-input-output.html#web-fetch">12.9</a>. <code>cap.httpGet(origin)</code> crea un token GET non contraffabile per <code>cap.fetch</code> / <code>webFetch</code> — vedi <a href="12-input-output.html#capability-tokens">12.6</a>.
         </div>
 
         <h2>29.1 Mappa del capitolo</h2>
