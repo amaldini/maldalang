@@ -1,0 +1,48 @@
+// context_turns.malda — declared context notebook (offline)
+//
+// A `context Name` object stores and trims turns. You pass `.turns` to a
+// prompt yourself. Agent.think() / Conversation.send() do NOT read this
+// object; they trim via MALDA_AGENT_CONTEXT_BUDGET_TOKENS instead.
+//
+// `budget:` is informational. Compaction is driven by `retain` (turn count).
+// `compact: prompt summarize` is a live/cassette model call — omit it here
+// so the file stays offline.
+//
+// In a workflow, `.add` must sit in a `step` (WF1006).
+// Run: malda Examples/Prompts/context_turns.malda
+
+context Session {
+    budget: 800 tokens;
+    pin: systemFacts;
+    retain: last 2;
+    evict: oldest;
+}
+
+prompt answer(notebook) {
+    user: "Answer using only this notebook:\n{notebook}"
+}
+
+function formatTurns(turns) {
+    var out = "";
+    for (var i = 0; i < turns.length; i = i + 1) {
+        var t = turns[i];
+        if (i > 0) {
+            out = out + "\n";
+        }
+        out = out + string(t.role) + ": " + string(t.content);
+    }
+    return out;
+}
+
+var s = new Session();
+s.add("system", "You are a helper.");
+s.add("user", "hi");
+s.add("user", "there");
+s.add("user", "again");
+
+var notebook = formatTurns(s.turns);
+io.print(s.turns.length);
+io.print(notebook);
+
+var inst = answer(notebook);
+io.print(inst.user);

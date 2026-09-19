@@ -37,6 +37,7 @@ public class InterpretTranspilePairTests
     [InlineData("Examples/Agents/phase6_pure_validate.malda")]
     [InlineData("Examples/Prompts/api_program_calc.malda")]
     [InlineData("Examples/Prompts/prompt_budget.malda")]
+    [InlineData("Examples/Prompts/context_turns.malda")]
     [InlineData("Examples/Prompts/multimodal_attachments.malda")]
     [InlineData("docs/llm/few-shot/31_mcptool_schema.malda")]
     [InlineData("docs/llm/few-shot/32_mcptool_validate.malda")]

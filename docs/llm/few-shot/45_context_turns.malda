@@ -1,5 +1,7 @@
 // Declared context — contextual keyword (var context = 1 still parses).
 // new Session() + .add + .turns. Compaction inside a workflow needs a step (WF1006).
+// Full offline recipe (retain eviction + pass .turns to a prompt):
+// Examples/Prompts/context_turns.malda
 
 context Session {
     budget: 800 tokens;

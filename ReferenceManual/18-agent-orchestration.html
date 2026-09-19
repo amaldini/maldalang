@@ -197,6 +197,7 @@ print(response.content);</code></pre>
 conversation.addUserMessage("What is 2+2?");
 var response = conversation.send();
 print(response.content);</code></pre>
+        <p>Declared <code>context Name { … }</code> is a separate notebook you pass to a prompt yourself; <code>Conversation</code> does not read it. See <a href="23-agentic-runs.html#declared-context">23.5</a>.</p>
         <h3>Parallel read-only tool calls</h3>
         <p>When the LLM returns multiple read-only tool calls in a single response, <code>Conversation</code> executes them <strong>in parallel by default</strong>. This applies to all agents (<code>Agent</code>, <code>DevAgent</code>, Ralph Wiggum loops, IDE chat) because they share the same runtime.</p>
         <p><strong>Parallel-safe built-in tools:</strong> <code>read_file</code>, <code>grep</code>, <code>list_directory</code>, <code>glob</code>, <code>get_symbols</code>, <code>get_parse_errors</code>, <code>check_malda</code>, <code>validate_json</code>, <code>web_search</code>, <code>web_fetch</code>, <code>recall_progress</code>, and read-only git tools (<code>git_status</code>, <code>git_log</code>, <code>git_diff</code>, <code>git_branch</code>).</p>

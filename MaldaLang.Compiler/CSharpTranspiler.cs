@@ -3233,6 +3233,16 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("}");
         WriteIndent();
+        _output.AppendLine("else if (instance is MaldaLang.BuiltIns.DeclaredContextInstance declaredContext)");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("result = declaredContext.CallMethod(methodName, runtimeArgs, MaldaLang.Runtime.TranspiledBuiltinRuntime.GetOrCreateInterpreter());");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+        WriteIndent();
         _output.AppendLine("else if (instance is MaldaLang.BuiltIns.AgentInstance agent)");
         WriteIndent();
         _output.AppendLine("{");

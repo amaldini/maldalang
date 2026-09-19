@@ -36,6 +36,7 @@ Templates (`malda new`) and README showcases must appear below even when `n/a`.
 | `Examples/Prompts/within_sleep.malda` | pair | InterpretTranspilePairTests | both sides Timeout |
 | `Examples/Prompts/api_program_calc.malda` | pair | InterpretTranspilePairTests | |
 | `Examples/Prompts/prompt_budget.malda` | pair | InterpretTranspilePairTests | no `await` |
+| `Examples/Prompts/context_turns.malda` | pair | InterpretTranspilePairTests | declared context + prompt instance; no LLM |
 | `Examples/Prompts/multimodal_attachments.malda` | pair | InterpretTranspilePairTests | builds instance only |
 | `Examples/Prompts/prompt_tools_then_structured.malda` | n/a | TranspileSmokeTests | offline print works; C# construct NRE; live await is llm-await |
 | `Examples/Agents/phase6_pure_validate.malda` | pair | InterpretTranspilePairTests | |

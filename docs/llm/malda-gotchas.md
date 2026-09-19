@@ -89,7 +89,7 @@ claim a program works.
 | `within (30) { … }` | Parser expects a unit: `30s`, `10ms`, or `1m`. Bare `30` is a parse error. | `within (30s) { … }`. Decorator `@within(ms)` is milliseconds only and is **not** this statement |
 | `@within(5000)` on a function treated as a `within` block | Decorator is a per-function / per-think deadline. It does not wrap a statement subtree. | `within (5s) { … }` for a cancel scope. See `docs/llm/few-shot/44_within_sleep.malda` (times out) |
 | `policy { shell: deny }` confused with `@effects("pure")` | `@effects` is a static check. `policy` is a runtime deny list on cap consume. | Use both if you need both. `approve` needs `MALDA_POLICY_APPROVE=1` or a host callback; otherwise it denies |
-| Compacting / mutating `context` in a `workflow` body | **WF1006** — must sit in a `step`. Imported/unknown callees stay Info (like WF1005). | `step _ = s.add("user", text);` inside the workflow |
+| Compacting / mutating `context` in a `workflow` body | **WF1006** — must sit in a `step`. Imported/unknown callees stay Info (like WF1005). | `step _ = s.add("user", text);` inside the workflow. Offline recipe: `Examples/Prompts/context_turns.malda` |
 | Reading `.usage` when the schema already has a `usage` field | The own object key wins. Metadata `.usage` is hidden. | Do not name a schema field `usage` if you need spend metadata |
 | `MALDA_REPLAY=…` without `MALDA_REPLAY_STRICT` | A cassette miss journals `cassette_miss` and **calls the live model**. | Set `MALDA_REPLAY_STRICT=1` in CI. Record with `MALDA_RECORD` |
 | `stream(...)` on in-process GGUF expecting live tokens | LlamaCpp / LLamaSharp is **buffered** — chunks are carved from the finished text. | Treat `for await` as a materialized array. HTTP clients may stream |

@@ -239,6 +239,7 @@ print(s.turns.length >= 1);</code></pre>
             </tbody>
         </table>
         <p><strong>WF1006:</strong> compaction / mutazione del context dentro il body di un <code>workflow</code> deve stare in uno <code>step</code>. Altrimenti il replay aggiungerebbe lo stesso turno due volte. I callee importati o sconosciuti restano Info, come WF1005. Vedi <a href="22-durable-workflows.html">22. Workflow durevoli</a>.</p>
+        <p>Questo oggetto non si attacca a <code>Agent</code> o <code>Conversation</code>. <code>agent.think()</code> taglia la propria cronologia con <code>MALDA_AGENT_CONTEXT_BUDGET_TOKENS</code>; il campo <code>budget:</code> qui non è quella variabile d'ambiente. Stesso file: <code>Examples/Prompts/context_turns.malda</code>. Snippet per agenti: <code>docs/llm/few-shot/45_context_turns.malda</code>.</p>
         <div class="info-box">
             <strong>Non è il <code>this</code> / context di JavaScript, e non è una variabile MALDA nominata <code>context</code>.</strong> <code>var context = 1;</code> resta una variabile normale. Solo la forma di dichiarazione <code>context Name { … }</code> crea questo oggetto.
         </div>

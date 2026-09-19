@@ -381,6 +381,7 @@ context Session {                 // then new Session(); .add / .turns
     evict: oldest;                // oldest | lowestScore | none
     compact: prompt summarize;    // optional; journaled model call
 }
+// Example: Examples/Prompts/context_turns.malda (offline retain + pass .turns)
 
 policy {                          // file-level; enforced on cap consume
     fs:    readOnly under "./work";

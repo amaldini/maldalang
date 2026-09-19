@@ -239,6 +239,7 @@ print(s.turns.length >= 1);</code></pre>
             </tbody>
         </table>
         <p><strong>WF1006:</strong> compaction / context mutation inside a <code>workflow</code> body must sit in a <code>step</code>. Replay would otherwise add the same turn twice. Imported or unknown callees stay Info, same as WF1005. See <a href="22-durable-workflows.html">22. Durable Workflows</a>.</p>
+        <p>This object does not attach to <code>Agent</code> or <code>Conversation</code>. <code>agent.think()</code> trims its own history with <code>MALDA_AGENT_CONTEXT_BUDGET_TOKENS</code>; the <code>budget:</code> field here is not that env var. Same file: <code>Examples/Prompts/context_turns.malda</code>. Agent snippet: <code>docs/llm/few-shot/45_context_turns.malda</code>.</p>
         <div class="info-box">
             <strong>Not the JavaScript <code>this</code> context, and not a MALDA variable named <code>context</code>.</strong> <code>var context = 1;</code> is still a normal variable. Only the declaration form <code>context Name { … }</code> creates this object.
         </div>

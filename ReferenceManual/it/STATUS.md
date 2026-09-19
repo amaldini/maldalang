@@ -29,12 +29,12 @@ python3 scripts/sync-reference-manual-it-status.py
 | 15-vectordb.html | ae14c009892eeeff8dfee3d662e6477a17cce5ec86ff79f582c219e11d3e3e88 |
 | 16-database.html | 1135d01b02ff20c2dba32d72f576928cbf6d1b212c64799e2d58b4bf8698b7e6 |
 | 17-actors.html | 4159f0b4c8e43356d72cda0870ecaf0349de60fff6c1705f350c2b7eac236dc0 |
-| 18-agent-orchestration.html | 884ee566dc3c41849b732e961948512ef1970c2a04cd46b2ac0b66ec50a8bf40 |
+| 18-agent-orchestration.html | dd691dcc698c94bc1abfe8ffe430baebef0c11d8c6555a70ac52fc53802c6a00 |
 | 19-graph-memory.html | 2782af3364b7d01edfb1f31bbe5f6aa4b63d799886c5ffcbbd405e537cec22dd |
 | 20-mcp-server.html | 6811669af074756655e0232f75d93cecd3bc555ee2d15f3ee53cc118d8b2e2bd |
 | 21-acp.html | 05bf83e84d7854c312bfaa8495c17dfc70c7d5e1e39fdaeb5e6ac15f4bd53e29 |
 | 22-durable-workflows.html | 1d3440f76d74394184eee896eea2920d457d3e5d6e43dc195ac5ccda5d3ba6d8 |
-| 23-agentic-runs.html | 2095e9462f3645750d6198e55b14cb94eede68d8bcfd5323746d397f2ed0a01e |
+| 23-agentic-runs.html | e4a638786fd6d70e83d17a604a24aa27d96cc76bfb946be7b33489e4f600f0e8 |
 | 24-web-ui-hub.html | 5ef36fbdc02af952dcc298371f340ff825708aebf89e0099cb5266b48838794f |
 | 25-web-ui.html | 21f88b63a160a67d51bbf187f6fbc481273e9b666a122e222490b5433f00ec67 |
 | 26-http-server-html-ui.html | c5b32243ea9eaeb54fe662be014e6f04454522f0ee246a8ef43f708a0a438a87 |

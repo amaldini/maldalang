@@ -80,6 +80,11 @@
       "file": "prompt_budget.malda"
     },
     {
+      "name": "Declared context turns",
+      "description": "context Session + retain eviction + pass .turns to a prompt (offline)",
+      "file": "context_turns.malda"
+    },
+    {
       "name": "Closed API program",
       "description": "api + program JSON + runProgram (offline, no LLM)",
       "file": "api_program_calc.malda"
