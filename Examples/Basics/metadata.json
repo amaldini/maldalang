@@ -44,7 +44,7 @@
       "prerequisites": ["Basics/complete_starter_program.malda"],
       "learningGoal": "Capture user input, convert text to numbers, and respond with computed output.",
       "expectedOutput": "Prompts for a name and age, then prints a personalized message.",
-      "next": "Basics/lists_indexing.malda",
+      "next": "Basics/dictionary_example.malda",
       "documentationPath": "/?lesson=input-output#lesson-input-output",
       "documentationTitle": "Input and Output"
     },
@@ -120,7 +120,7 @@
       "prerequisites": ["Basics/for_loop.malda"],
       "learningGoal": "Organize repeated logic into reusable functions.",
       "expectedOutput": "Calls add twice and prints both sums.",
-      "next": "Basics/complete_starter_program.malda",
+      "next": "Basics/lists_indexing.malda",
       "documentationPath": "/?lesson=functions#lesson-functions",
       "documentationTitle": "Functions",
       "featured": true
@@ -196,10 +196,10 @@
       "minutes": 10,
       "requires": ["offline"],
       "concepts": ["arrays", "indexing", "append", "for-in"],
-      "prerequisites": ["Basics/input_example.malda"],
+      "prerequisites": ["Basics/functions.malda"],
       "learningGoal": "Treat a list as data you can index and grow, before algorithms need one.",
       "expectedOutput": "Prints first item, length changes, a sum, and lists ok.",
-      "next": "Basics/dictionary_example.malda",
+      "next": "Basics/complete_starter_program.malda",
       "documentationPath": "/?lesson=lists#lesson-lists",
       "documentationTitle": "Lists and Indexing"
     },
@@ -291,11 +291,11 @@
       "difficulty": "beginner",
       "minutes": 12,
       "concepts": ["arrays", "for-in", "function", "if"],
-      "prerequisites": ["Basics/functions.malda"],
+      "prerequisites": ["Basics/lists_indexing.malda"],
       "learningGoal": "See how the basic MALDA syntax fits together in one small real program.",
       "expectedOutput": "Prints the number of items, the total cost, and a small summary label.",
       "next": "Basics/input_example.malda",
-      "documentationPath": "/?lesson=hello-world#lesson-hello-world",
+      "documentationPath": "/?lesson=complete-starter#lesson-complete-starter",
       "documentationTitle": "Quick Start"
     },
     {
@@ -306,7 +306,7 @@
       "difficulty": "beginner",
       "minutes": 10,
       "concepts": ["dict", "indexing", "keys", "values"],
-      "prerequisites": ["Basics/lists_indexing.malda"],
+      "prerequisites": ["Basics/input_example.malda"],
       "learningGoal": "Learn how MALDA stores and updates key-value data.",
       "expectedOutput": "Prints dictionary values, key presence checks, and collection lengths.",
       "next": "Basics/recursion.malda",

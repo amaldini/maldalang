@@ -22,7 +22,14 @@
         <p>Lo stesso ordine è <strong>Start With MALDA</strong> nel Desktop, il percorso student della Web IDE e <a href="../../docs/start-here.md">Start Here</a>.</p>
 
         <h2 id="how-to-run">Come eseguire un file</h2>
-        <p>L'interprete è il default. Dalla root del repository:</p>
+        <h3 id="how-to-get">Come ottenere MALDA</h3>
+        <p>Ti serve il comando <code>malda</code>, oppure un IDE che lo include già:</p>
+        <ul>
+            <li><strong>Zip di release</strong> — scarica da GitHub Releases (vedi il <a href="../../README.md">README</a> in root, «Install without cloning»). Decomprimi ed esegui <code>malda.bat</code> (Windows) o <code>./malda</code> (Linux). Opzionale: aggiungi <code>bin/malda</code> al <code>PATH</code>.</li>
+            <li><strong>Dai sorgenti</strong> — clona questo repository, poi dalla root: <code>dotnet run --project MaldaLang -- Examples/Basics/hello_world.malda</code>.</li>
+            <li><strong>Senza installazione</strong> — Desktop <strong>Start With MALDA</strong> (Windows) o il playground della Web IDE (browser; non ha la parità con il Desktop).</li>
+        </ul>
+        <p>L'interprete è il default. Dopo che <code>malda</code> è nel path, dalla root del repository:</p>
         <pre><code>malda Examples/Basics/hello_world.malda</code></pre>
         <p>Stampa <code>Hello, World!</code> e termina. Per questo percorso non servono <code>compile</code>, una API key o uno scaffold di progetto. Diagnostica senza eseguire con <code>malda check</code>. Editor: il Desktop IDE è il riferimento Windows; la Web IDE è un playground nel browser (non ha la parità con il Desktop); VS Code + LSP è l'editor cross-platform. L'indice completo dei comandi è <a href="02-tools.html">2. Strumenti e toolchain</a>.</p>
         <p>Preferisci le chiamate con namespace (<code>io.print</code>, <code>math.sqrt</code>, <code>str.upper</code>). Il <code>print</code> piatto continua a funzionare.</p>
@@ -71,7 +78,7 @@ if (checked.ok) {
         </div>
 
         <h2 id="variables">Lezione 2 — Variabili e aritmetica</h2>
-        <p><code>var</code> dichiara un binding. Il tipo arriva dal valore. Capitolo: <a href="05-variables.html#first-read">5.1 Dichiarazione di variabili</a>. Stesso file: <code>Examples/Basics/variables_arithmetic.malda</code>.</p>
+        <p><code>var</code> dichiara un binding. Il tipo arriva dal valore. <code>$"Sum: {sum}"</code> inserisce l'espressione nella stringa; <code>"Sum: " + string(sum)</code> è lo stesso. Capitolo: <a href="05-variables.html#first-read">5.1 Dichiarazione di variabili</a>. Stesso file: <code>Examples/Basics/variables_arithmetic.malda</code>.</p>
         <pre><code data-run="true" data-expect="Sum: 30\nProduct: 200">var x = 10;
 var y = 20;
 var sum = x + y;
@@ -110,6 +117,13 @@ if (score >= 90) {
             <details>
                 <summary>Risposta</summary>
                 <p><code>You are a minor</code></p>
+            </details>
+        </div>
+        <div class="info-box">
+            <strong>Scrivi questo:</strong> Cambia <code>score</code> in <code>50</code> così gira l'ultimo ramo. Qual è la riga del voto?
+            <details>
+                <summary>Risposta</summary>
+                <p><code>Grade: F</code> (50 è sotto 70).</p>
             </details>
         </div>
 
@@ -161,9 +175,58 @@ io.print($"10 + 2 = {result2}");</code></pre>
                 <p><code>2</code></p>
             </details>
         </div>
+        <div class="info-box">
+            <strong>Scrivi questo:</strong> Aggiungi <code>function multiply(a, b) { return a * b; }</code> e stampa <code>multiply(3, 4)</code>. Qual è la nuova ultima riga?
+            <details>
+                <summary>Risposta</summary>
+                <p><code>12</code></p>
+            </details>
+        </div>
 
-        <h2 id="complete-starter">Lezione 7 — Starter completo</h2>
-        <p>Variabili, un ciclo <code>for-in</code>, una funzione e un <code>if</code> in un programma lineare. Nota di catalogo: <a href="34-examples.html#catalog">34.1</a>. Stesso file: <code>Examples/Basics/complete_starter_program.malda</code>.</p>
+        <h2 id="lists">Lezione 7 — Liste e indicizzazione</h2>
+        <p>Gli array sono indicizzati da zero e crescono con <code>append</code>. Un <code>for</code> contato percorre gli indici; <code>for-in</code> percorre i valori. Capitolo: <a href="06-arrays.html">6. Array</a>. Stesso file: <code>Examples/Basics/lists_indexing.malda</code>.</p>
+        <pre><code data-run="true" data-expect="first=88\nlength=3\nafter append length=4\npopped=80\nlength after pop=3\nscores[0]=88\nscores[1]=92\nscores[2]=75\nsum=255\nfor-in count=3\nlists ok">var scores = [88, 92, 75];
+io.print("first=" + string(scores[0]));
+io.print("length=" + string(scores.length));
+
+scores.append(80);
+io.print("after append length=" + string(scores.length));
+
+var last = scores.pop();
+io.print("popped=" + string(last));
+io.print("length after pop=" + string(scores.length));
+
+var total = 0;
+for (var i = 0; i < scores.length; i = i + 1) {
+    io.print("scores[" + string(i) + "]=" + string(scores[i]));
+    total = total + scores[i];
+}
+
+var walked = 0;
+for (var score in scores) {
+    walked = walked + 1;
+}
+
+io.print("sum=" + string(total));
+io.print("for-in count=" + string(walked));
+io.print("lists ok");</code></pre>
+        <div class="info-box">
+            <strong>Prova così:</strong> Dopo l'<code>append</code> esistente, aggiungi un altro punteggio <code>100</code> e non fare <code>pop</code>. Qual è la nuova somma stampata?
+            <details>
+                <summary>Risposta</summary>
+                <p><code>355</code> (<code>88 + 92 + 75 + 100</code>). Il file originale fa pop dell'<code>80</code> aggiunto prima di sommare.</p>
+            </details>
+        </div>
+        <div class="info-box">
+            <strong>Scrivi questo:</strong> Cambia la prima riga in <code>var scores = [100, 88, 92, 75];</code>. Qual è il primo <code>scores[0]</code> stampato?
+            <details>
+                <summary>Risposta</summary>
+                <p><code>100</code>. L'indice 0 è il nuovo primo elemento.</p>
+            </details>
+        </div>
+
+        <h2 id="complete-starter">Lezione 8 — Starter completo</h2>
+        <p>Variabili, un ciclo <code>for-in</code>, una funzione e un <code>if</code> in un programma lineare — ora che le liste sono familiari. Nota di catalogo: <a href="34-examples.html#catalog">34.1</a>. Stesso file: <code>Examples/Basics/complete_starter_program.malda</code>.</p>
         <pre><code data-run="true" data-expect="Items: 3\nTotal: 37\nSummary: big order">var cart = [12, 18, 7];
 var total = 0;
 
@@ -197,7 +260,7 @@ io.print($"Summary: {describeTotal(total)}");</code></pre>
             </details>
         </div>
 
-        <h2 id="input">Lezione 8 — Input</h2>
+        <h2 id="input">Lezione 9 — Input</h2>
         <p><code>io.input</code> legge una riga da stdin e restituisce sempre una <strong>string</strong>. Convertila se ti serve un numero. Questo snippet aspetta la tastiera, quindi qui non è marcato eseguibile. Capitolo: <a href="12-input-output.html#console-input">12.2 Input dalla console</a>. Stesso file: <code>Examples/Basics/input_example.malda</code>.</p>
         <pre><code>var name = io.input("Enter your name: ");
 var ageStr = io.input("Enter your age: ");
@@ -209,41 +272,6 @@ io.print($"Hello, {name}. You are {age} years old.");</code></pre>
             <details>
                 <summary>Risposta</summary>
                 <p>Una stringa vuota <code>""</code>, non <code>null</code>.</p>
-            </details>
-        </div>
-
-        <h2 id="lists">Lezione 9 — Liste e indicizzazione</h2>
-        <p>Gli array sono indicizzati da zero e crescono con <code>append</code>. Un <code>for</code> contato percorre gli indici; <code>for-in</code> percorre i valori. Capitolo: <a href="06-arrays.html">6. Array</a>. Stesso file: <code>Examples/Basics/lists_indexing.malda</code>.</p>
-        <pre><code data-run="true" data-expect="first=88\nlength=3\nafter append length=4\npopped=80\nlength after pop=3\nscores[0]=88\nscores[1]=92\nscores[2]=75\nsum=255\nfor-in count=3\nlists ok">var scores = [88, 92, 75];
-io.print("first=" + string(scores[0]));
-io.print("length=" + string(scores.length));
-
-scores.append(80);
-io.print("after append length=" + string(scores.length));
-
-var last = scores.pop();
-io.print("popped=" + string(last));
-io.print("length after pop=" + string(scores.length));
-
-var total = 0;
-for (var i = 0; i < scores.length; i = i + 1) {
-    io.print("scores[" + string(i) + "]=" + string(scores[i]));
-    total = total + scores[i];
-}
-
-var walked = 0;
-for (var score in scores) {
-    walked = walked + 1;
-}
-
-io.print("sum=" + string(total));
-io.print("for-in count=" + string(walked));
-io.print("lists ok");</code></pre>
-        <div class="info-box">
-            <strong>Prova così:</strong> Dopo l'<code>append</code> esistente, aggiungi un altro punteggio <code>100</code> e non fare <code>pop</code>. Qual è la nuova somma stampata?
-            <details>
-                <summary>Risposta</summary>
-                <p><code>355</code> (<code>88 + 92 + 75 + 100</code>). Il file originale fa pop dell'<code>80</code> aggiunto prima di sommare.</p>
             </details>
         </div>
 
@@ -303,7 +331,7 @@ io.print("recursion ok");</code></pre>
         </div>
 
         <h2 id="classes">Lezione 12 — Classi</h2>
-        <p>Una classe è un tipo con nome, campi e metodi. <code>new ClassName(...)</code> esegue il costruttore. Capitolo: <a href="11-classes-objects.html#first-read">11.1 Una classe funzionante</a>. Stesso file: <code>Examples/Basics/classes_intro.malda</code>.</p>
+        <p>Una classe è un tipo con nome, campi e metodi. <code>new ClassName(...)</code> esegue il costruttore. Dentro un metodo puoi leggere un campo come <code>name</code>; scrivi <code>this.name</code> quando un parametro maschera il campo (come fa il costruttore). Capitolo: <a href="11-classes-objects.html#first-read">11.1 Una classe funzionante</a>. Stesso file: <code>Examples/Basics/classes_intro.malda</code>.</p>
         <pre><code data-run="true" data-expect="Hi, I'm Alice and I'm 30 years old.\nage=30">class Person {
     public var name;
     public var age;
@@ -328,6 +356,13 @@ io.print("age=" + string(alice.age));</code></pre>
                 <p><code>Hi, I'm Bob and I'm 25 years old.</code></p>
             </details>
         </div>
+        <div class="info-box">
+            <strong>Scrivi questo:</strong> Aggiungi <code>public function birthday() { age = age + 1; }</code>, chiamalo su Alice, poi stampa <code>alice.age</code>. Qual è l'ultima riga dell'età?
+            <details>
+                <summary>Risposta</summary>
+                <p><code>age=31</code> se stampi dopo <code>birthday()</code> (oppure <code>31</code> se stampi solo il numero).</p>
+            </details>
+        </div>
 
         <h2 id="try-catch">Lezione 13 — try / catch</h2>
         <p><code>try</code> esegue codice che può fallire. <code>catch</code> gestisce il valore lanciato. <code>finally</code> viene eseguito sempre. Capitolo: <a href="08-control-structures.html#try-catch">8.4 Gestione delle eccezioni</a>. Stesso file: <code>Examples/Basics/try_catch.malda</code>.</p>
@@ -349,6 +384,13 @@ try {
             <details>
                 <summary>Risposta</summary>
                 <p><code>caught: disk full</code></p>
+            </details>
+        </div>
+        <div class="info-box">
+            <strong>Correggi così:</strong> Sposta <code>throw "something went wrong";</code> prima del blocco <code>try</code>. Che cosa succede?
+            <details>
+                <summary>Risposta</summary>
+                <p>Il programma si ferma con un errore non catturato. <code>catch</code> gestisce solo i throw eseguiti dentro il suo <code>try</code>.</p>
             </details>
         </div>
 
@@ -418,15 +460,30 @@ if (checked.ok) {
                 <p><code>Ada: B</code></p>
             </details>
         </div>
+        <div class="info-box">
+            <strong>Scrivi questo:</strong> Cambia <code>label()</code> così i punteggi sotto 80 restituiscono <code>"C"</code>. Che cosa restituisce <code>new Grade("Ada", 70).label()</code>?
+            <details>
+                <summary>Risposta</summary>
+                <p><code>C</code></p>
+            </details>
+        </div>
 
         <h2 id="after-core">Dopo il percorso core</h2>
-        <p>Il corso core termina qui. Algoritmi e teoria AI da zero restano su <a href="../../docs/start-here.md">Start Here</a> — non trattare questa pagina come quel catalogo. Poi apri la barra laterale e scegli una categoria:</p>
-        <ul>
-            <li><strong>Libreria standard</strong> — <a href="16-database.html">16. Database</a>, <a href="15-vectordb.html">15. VectorDB</a></li>
-            <li><strong>AI e agenti</strong> — <a href="10-prompts.html">10. Prompt</a>, poi <a href="18-agent-orchestration.html">18. Orchestrazione di agenti</a></li>
-            <li><strong>Web</strong> — parti da <a href="24-web-ui-hub.html">24. Panoramica Web UI</a></li>
-            <li><strong>Riferimento</strong> — <a href="34-examples.html">34. Esempi</a> è un indice, non un secondo corso</li>
-        </ul>
+        <p>Il corso core termina al gradebook. Poi scegli un tracciato — un file, una sezione — invece di scorrere la barra laterale:</p>
+        <ol>
+            <li><strong>Algoritmi</strong> — <code>Examples/Algorithms/towers_of_hanoi.malda</code>. La ricorsione che già conosci, applicata a un puzzle. Poi il resto della lista Algorithms su <a href="../../docs/start-here.md">Start Here</a>.</li>
+            <li><strong>Due file</strong> — <code>Examples/Basics/modules_include.malda</code> unisce un file helper con <code>include</code>. Capitolo: <a href="01-introduction.html#modules">1.6 Composizione del sorgente</a>.</li>
+            <li><strong>Test</strong> — esegui <code>malda test Examples/Testing/unit_test_basics.test.malda</code> (il <code>malda</code> ordinario è il comando sbagliato). Capitolo: <a href="35-property-testing.html">35. Property testing</a>.</li>
+            <li><strong>Poi un hub</strong> — fermati al riquadro first-read, poi torna:
+                <ul>
+                    <li>Prompt: <a href="10-prompts.html#template">10.1</a> passo 1 (template, niente API key)</li>
+                    <li>Stdlib: <a href="13-built-in-functions.html#first-read">13.0</a> chiamate con namespace</li>
+                    <li>Agenti: <a href="18-agent-orchestration.html#first-read">18.0</a> (salta il saggio sulla sicurezza alla prima lettura)</li>
+                    <li>Workflow: <a href="22-durable-workflows.html#first-read">22.0</a></li>
+                    <li>Web: <a href="24-web-ui-hub.html#first-read">24</a> — scegli una riga della tabella</li>
+                </ul>
+            </li>
+        </ol>
 
         <div class="see-also">
             <h3>Vedi anche</h3>

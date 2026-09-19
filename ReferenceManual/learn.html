@@ -22,7 +22,14 @@
         <p>The same order is Desktop <strong>Start With MALDA</strong>, the Web IDE student track, and <a href="../docs/start-here.md">Start Here</a>.</p>
 
         <h2 id="how-to-run">How to run a file</h2>
-        <p>The interpreter is the default. From the repo root:</p>
+        <h3 id="how-to-get">How to get MALDA</h3>
+        <p>You need the <code>malda</code> command, or an IDE that already has it:</p>
+        <ul>
+            <li><strong>Release zip</strong> — download from GitHub Releases (see the root <a href="../README.md">README</a> “Install without cloning”). Unzip and run <code>malda.bat</code> (Windows) or <code>./malda</code> (Linux). Optional: add <code>bin/malda</code> to your <code>PATH</code>.</li>
+            <li><strong>From source</strong> — clone this repo, then from the root: <code>dotnet run --project MaldaLang -- Examples/Basics/hello_world.malda</code>.</li>
+            <li><strong>No install</strong> — Desktop <strong>Start With MALDA</strong> (Windows) or the Web IDE playground (browser; not Desktop parity).</li>
+        </ul>
+        <p>The interpreter is the default. After <code>malda</code> is on your path, from the repo root:</p>
         <pre><code>malda Examples/Basics/hello_world.malda</code></pre>
         <p>That prints <code>Hello, World!</code> and exits. You do not need <code>compile</code>, an API key, or a project scaffold for this path. Diagnose without running with <code>malda check</code>. Editors: Desktop IDE is the Windows reference; Web IDE is a browser playground (not Desktop parity); VS Code + LSP is the cross-platform editor. The full command index is <a href="02-tools.html">2. Tools &amp; Tooling</a>.</p>
         <p>Prefer namespaced calls (<code>io.print</code>, <code>math.sqrt</code>, <code>str.upper</code>). Flat <code>print</code> still runs.</p>
@@ -71,7 +78,7 @@ if (checked.ok) {
         </div>
 
         <h2 id="variables">Lesson 2 — Variables and arithmetic</h2>
-        <p><code>var</code> declares a binding. The type comes from the value. Chapter: <a href="05-variables.html#first-read">5.1 Variable declaration</a>. Same file: <code>Examples/Basics/variables_arithmetic.malda</code>.</p>
+        <p><code>var</code> declares a binding. The type comes from the value. <code>$"Sum: {sum}"</code> inserts the expression into the string; <code>"Sum: " + string(sum)</code> is the same. Chapter: <a href="05-variables.html#first-read">5.1 Variable declaration</a>. Same file: <code>Examples/Basics/variables_arithmetic.malda</code>.</p>
         <pre><code data-run="true" data-expect="Sum: 30\nProduct: 200">var x = 10;
 var y = 20;
 var sum = x + y;
@@ -110,6 +117,13 @@ if (score >= 90) {
             <details>
                 <summary>Answer</summary>
                 <p><code>You are a minor</code></p>
+            </details>
+        </div>
+        <div class="info-box">
+            <strong>Write this:</strong> Change <code>score</code> to <code>50</code> so the last branch runs. What is the grade line?
+            <details>
+                <summary>Answer</summary>
+                <p><code>Grade: F</code> (50 is below 70).</p>
             </details>
         </div>
 
@@ -161,9 +175,58 @@ io.print($"10 + 2 = {result2}");</code></pre>
                 <p><code>2</code></p>
             </details>
         </div>
+        <div class="info-box">
+            <strong>Write this:</strong> Add <code>function multiply(a, b) { return a * b; }</code> and print <code>multiply(3, 4)</code>. What is the new last line?
+            <details>
+                <summary>Answer</summary>
+                <p><code>12</code></p>
+            </details>
+        </div>
 
-        <h2 id="complete-starter">Lesson 7 — Complete starter</h2>
-        <p>Variables, a <code>for-in</code> loop, a function, and an <code>if</code> in one linear program. Catalog note: <a href="34-examples.html#catalog">34.1</a>. Same file: <code>Examples/Basics/complete_starter_program.malda</code>.</p>
+        <h2 id="lists">Lesson 7 — Lists and indexing</h2>
+        <p>Arrays are zero-indexed and grow with <code>append</code>. A counted <code>for</code> walks indexes; <code>for-in</code> walks values. Chapter: <a href="06-arrays.html">6. Arrays</a>. Same file: <code>Examples/Basics/lists_indexing.malda</code>.</p>
+        <pre><code data-run="true" data-expect="first=88\nlength=3\nafter append length=4\npopped=80\nlength after pop=3\nscores[0]=88\nscores[1]=92\nscores[2]=75\nsum=255\nfor-in count=3\nlists ok">var scores = [88, 92, 75];
+io.print("first=" + string(scores[0]));
+io.print("length=" + string(scores.length));
+
+scores.append(80);
+io.print("after append length=" + string(scores.length));
+
+var last = scores.pop();
+io.print("popped=" + string(last));
+io.print("length after pop=" + string(scores.length));
+
+var total = 0;
+for (var i = 0; i < scores.length; i = i + 1) {
+    io.print("scores[" + string(i) + "]=" + string(scores[i]));
+    total = total + scores[i];
+}
+
+var walked = 0;
+for (var score in scores) {
+    walked = walked + 1;
+}
+
+io.print("sum=" + string(total));
+io.print("for-in count=" + string(walked));
+io.print("lists ok");</code></pre>
+        <div class="info-box">
+            <strong>Try this:</strong> After the existing <code>append</code>, append another score <code>100</code> and do not <code>pop</code> it. What is the new printed sum?
+            <details>
+                <summary>Answer</summary>
+                <p><code>355</code> (<code>88 + 92 + 75 + 100</code>). The original file pops the appended <code>80</code> before summing.</p>
+            </details>
+        </div>
+        <div class="info-box">
+            <strong>Write this:</strong> Change the first line to <code>var scores = [100, 88, 92, 75];</code>. What is the first printed <code>scores[0]</code>?
+            <details>
+                <summary>Answer</summary>
+                <p><code>100</code>. Index 0 is the new first item.</p>
+            </details>
+        </div>
+
+        <h2 id="complete-starter">Lesson 8 — Complete starter</h2>
+        <p>Variables, a <code>for-in</code> loop, a function, and an <code>if</code> in one linear program — now that lists are familiar. Catalog note: <a href="34-examples.html#catalog">34.1</a>. Same file: <code>Examples/Basics/complete_starter_program.malda</code>.</p>
         <pre><code data-run="true" data-expect="Items: 3\nTotal: 37\nSummary: big order">var cart = [12, 18, 7];
 var total = 0;
 
@@ -197,7 +260,7 @@ io.print($"Summary: {describeTotal(total)}");</code></pre>
             </details>
         </div>
 
-        <h2 id="input">Lesson 8 — Input</h2>
+        <h2 id="input">Lesson 9 — Input</h2>
         <p><code>io.input</code> reads one line from stdin and always returns a <strong>string</strong>. Convert it if you need a number. This snippet waits for a keyboard, so it is not marked runnable here. Chapter: <a href="12-input-output.html#console-input">12.2 Console input</a>. Same file: <code>Examples/Basics/input_example.malda</code>.</p>
         <pre><code>var name = io.input("Enter your name: ");
 var ageStr = io.input("Enter your age: ");
@@ -209,41 +272,6 @@ io.print($"Hello, {name}. You are {age} years old.");</code></pre>
             <details>
                 <summary>Answer</summary>
                 <p>An empty string <code>""</code>, not <code>null</code>.</p>
-            </details>
-        </div>
-
-        <h2 id="lists">Lesson 9 — Lists and indexing</h2>
-        <p>Arrays are zero-indexed and grow with <code>append</code>. A counted <code>for</code> walks indexes; <code>for-in</code> walks values. Chapter: <a href="06-arrays.html">6. Arrays</a>. Same file: <code>Examples/Basics/lists_indexing.malda</code>.</p>
-        <pre><code data-run="true" data-expect="first=88\nlength=3\nafter append length=4\npopped=80\nlength after pop=3\nscores[0]=88\nscores[1]=92\nscores[2]=75\nsum=255\nfor-in count=3\nlists ok">var scores = [88, 92, 75];
-io.print("first=" + string(scores[0]));
-io.print("length=" + string(scores.length));
-
-scores.append(80);
-io.print("after append length=" + string(scores.length));
-
-var last = scores.pop();
-io.print("popped=" + string(last));
-io.print("length after pop=" + string(scores.length));
-
-var total = 0;
-for (var i = 0; i < scores.length; i = i + 1) {
-    io.print("scores[" + string(i) + "]=" + string(scores[i]));
-    total = total + scores[i];
-}
-
-var walked = 0;
-for (var score in scores) {
-    walked = walked + 1;
-}
-
-io.print("sum=" + string(total));
-io.print("for-in count=" + string(walked));
-io.print("lists ok");</code></pre>
-        <div class="info-box">
-            <strong>Try this:</strong> After the existing <code>append</code>, append another score <code>100</code> and do not <code>pop</code> it. What is the new printed sum?
-            <details>
-                <summary>Answer</summary>
-                <p><code>355</code> (<code>88 + 92 + 75 + 100</code>). The original file pops the appended <code>80</code> before summing.</p>
             </details>
         </div>
 
@@ -303,7 +331,7 @@ io.print("recursion ok");</code></pre>
         </div>
 
         <h2 id="classes">Lesson 12 — Classes</h2>
-        <p>A class is a named type with fields and methods. <code>new ClassName(...)</code> runs the constructor. Chapter: <a href="11-classes-objects.html#first-read">11.1 A working class</a>. Same file: <code>Examples/Basics/classes_intro.malda</code>.</p>
+        <p>A class is a named type with fields and methods. <code>new ClassName(...)</code> runs the constructor. Inside a method you can read a field as <code>name</code>; write <code>this.name</code> when a parameter shadows the field (as the constructor does). Chapter: <a href="11-classes-objects.html#first-read">11.1 A working class</a>. Same file: <code>Examples/Basics/classes_intro.malda</code>.</p>
         <pre><code data-run="true" data-expect="Hi, I'm Alice and I'm 30 years old.\nage=30">class Person {
     public var name;
     public var age;
@@ -328,6 +356,13 @@ io.print("age=" + string(alice.age));</code></pre>
                 <p><code>Hi, I'm Bob and I'm 25 years old.</code></p>
             </details>
         </div>
+        <div class="info-box">
+            <strong>Write this:</strong> Add <code>public function birthday() { age = age + 1; }</code>, call it on Alice, then print <code>alice.age</code>. What is the last age line?
+            <details>
+                <summary>Answer</summary>
+                <p><code>age=31</code> if you print after <code>birthday()</code> (or <code>31</code> if you print only the number).</p>
+            </details>
+        </div>
 
         <h2 id="try-catch">Lesson 13 — try / catch</h2>
         <p><code>try</code> runs code that may fail. <code>catch</code> handles the thrown value. <code>finally</code> always runs. Chapter: <a href="08-control-structures.html#try-catch">8.4 Exception handling</a>. Same file: <code>Examples/Basics/try_catch.malda</code>.</p>
@@ -349,6 +384,13 @@ try {
             <details>
                 <summary>Answer</summary>
                 <p><code>caught: disk full</code></p>
+            </details>
+        </div>
+        <div class="info-box">
+            <strong>Fix this:</strong> Move <code>throw "something went wrong";</code> to before the <code>try</code> block. What happens?
+            <details>
+                <summary>Answer</summary>
+                <p>The program stops with an uncaught error. <code>catch</code> only handles throws that run inside its <code>try</code>.</p>
             </details>
         </div>
 
@@ -418,15 +460,30 @@ if (checked.ok) {
                 <p><code>Ada: B</code></p>
             </details>
         </div>
+        <div class="info-box">
+            <strong>Write this:</strong> Change <code>label()</code> so scores below 80 return <code>"C"</code>. What does <code>new Grade("Ada", 70).label()</code> return?
+            <details>
+                <summary>Answer</summary>
+                <p><code>C</code></p>
+            </details>
+        </div>
 
         <h2 id="after-core">After the core path</h2>
-        <p>The core course ends here. Algorithms and from-scratch AI theory stay on <a href="../docs/start-here.md">Start Here</a> — do not treat this page as that catalog. Then open the sidebar and pick a category:</p>
-        <ul>
-            <li><strong>Standard Library</strong> — <a href="16-database.html">16. Database</a>, <a href="15-vectordb.html">15. VectorDB</a></li>
-            <li><strong>AI &amp; Agents</strong> — <a href="10-prompts.html">10. Prompts</a>, then <a href="18-agent-orchestration.html">18. Agent Orchestration</a></li>
-            <li><strong>Web</strong> — start at <a href="24-web-ui-hub.html">24. Web UI Overview</a></li>
-            <li><strong>Reference</strong> — <a href="34-examples.html">34. Examples</a> is an index, not a second course</li>
-        </ul>
+        <p>The core course ends at the gradebook. Next, pick one track — one file, one section — instead of scanning the sidebar:</p>
+        <ol>
+            <li><strong>Algorithms</strong> — <code>Examples/Algorithms/towers_of_hanoi.malda</code>. Recursion you already know, applied to a puzzle. Then the rest of the short Algorithms list on <a href="../docs/start-here.md">Start Here</a>.</li>
+            <li><strong>Two files</strong> — <code>Examples/Basics/modules_include.malda</code> splices a helper file with <code>include</code>. Chapter: <a href="01-introduction.html#modules">1.6 Source composition</a>.</li>
+            <li><strong>Tests</strong> — run <code>malda test Examples/Testing/unit_test_basics.test.malda</code> (ordinary <code>malda</code> run is the wrong command). Chapter: <a href="35-property-testing.html">35. Property Testing</a>.</li>
+            <li><strong>Then one hub</strong> — stop at the first-read box, then come back:
+                <ul>
+                    <li>Prompts: <a href="10-prompts.html#template">10.1</a> step 1 (template, no API key)</li>
+                    <li>Stdlib: <a href="13-built-in-functions.html#first-read">13.0</a> namespaced calls</li>
+                    <li>Agents: <a href="18-agent-orchestration.html#first-read">18.0</a> (skip the security essay on first read)</li>
+                    <li>Workflows: <a href="22-durable-workflows.html#first-read">22.0</a></li>
+                    <li>Web: <a href="24-web-ui-hub.html#first-read">24</a> — pick one row in the table</li>
+                </ul>
+            </li>
+        </ol>
 
         <div class="see-also">
             <h3>See Also</h3>

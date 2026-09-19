@@ -19,7 +19,20 @@
         <h1>18. Agent Orchestration</h1>
         <p>This chapter is the <strong>agent runtime</strong>: LLM clients, conversations, tools, <code>Agent</code>, <code>@Tool</code>, dashboard, and teams. Specialized kinds and Ralph are <a href="#agent-kits">Agent kits</a> — tool bundles on top of that runtime, not a second language. Prompts and schemas are in <a href="10-prompts.html">10. Prompts</a>; cassettes and <code>malda eval</code> are in <a href="23-agentic-runs.html">23. Agentic Runs</a>.</p>
         <p>Agents, LLM clients, and tool calling run on the interpreter and C# transpile. They are not available on the JavaScript backend — keep agents on the host and call them over HTTP from browser code. See the <a href="../docs/spec/backend-capability-matrix.md">backend capability matrix</a>.</p>
-        <h2 id="chapter-map">18.0 Chapter map</h2>
+        <h2 id="first-read">18.0 First read</h2>
+        <p>An <code>Agent</code> is a named runtime object: instructions, an LLM client, and optional tools. Agents are host-only. A live <code>agent.think</code> needs a client or API key. Start at <code>Examples/Prompts/prompt_with_agent.malda</code> or <code>malda new agent</code>. Skip <a href="#disclaimer">18.1</a> on this pass — it is the production risk list, not the first lesson.</p>
+        <div class="info-box">
+            <strong>First-read stop.</strong> <code>agents.define</code> constructs a kit without calling a model. The rest of this chapter is the runtime catalog.
+        </div>
+        <pre><code data-run="true" data-expect="CodingAgent">var coder = agents.define({
+    name: "Coder",
+    kind: "CodingAgent",
+    role: "programmer",
+    instructions: "Write small diffs.",
+    workingDirectory: "."
+});
+io.print(coder.kind);</code></pre>
+        <h2 id="chapter-map">Chapter map</h2>
         <ul>
             <li><strong>Runtime</strong> — <a href="#disclaimer">18.1</a> risks · <a href="#llm-client">18.2</a>–<a href="#conversation">18.5</a> clients · <a href="#tool-system">18.6</a> tools · <a href="#agent-class">18.7</a> <code>Agent</code> · <a href="#custom-tools">18.8</a> <code>@Tool</code> · <a href="#agent-dashboard">18.15</a> dashboard · <a href="#multi-agent-orchestration">18.16</a>–<a href="#using-agents-with-actors">18.18</a> teams and actors</li>
             <li><strong>Agent kits</strong> — <a href="#agent-kits">18.9–18.14</a> <code>CodingAgent</code> / <code>GitAgent</code> / <code>HumanAgent</code> / <code>DevAgent</code> / <code>MALDACodingAgent</code> · <a href="#ralph-wiggum">18.19</a> Ralph Wiggum. Same files: <code>Examples/Agents/</code>, <code>Examples/RalphWiggum/</code></li>

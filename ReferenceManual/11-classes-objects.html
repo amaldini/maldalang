@@ -21,7 +21,7 @@
         <p>A class is a named type with fields (state) and methods (behavior). <code>new ClassName(...)</code> runs the constructor and returns an instance. Same file as the course lesson: <code>Examples/Basics/classes_intro.malda</code>. Fuller listing: <code>Examples/OOP/classes_objects.malda</code>.</p>
 
         <h2 id="first-read">11.1 A working class</h2>
-        <p>The constructor has the same name as the class. Use <code>this.field</code> when a parameter or local shadows a field; elsewhere, member access can be implicit. A same-named binding in the enclosing module does <strong>not</strong> shadow the field. Methods are functions declared inside the class.</p>
+        <p>The constructor has the same name as the class. Inside a method you can read a field as <code>name</code>; write <code>this.name</code> when a parameter or local shadows the field (as the constructor does). A same-named binding in the enclosing module does <strong>not</strong> shadow the field. Methods are functions declared inside the class.</p>
         <pre><code data-run="true" data-expect="Hi, I'm Alice and I'm 30 years old.\nHi, I'm Bob and I'm 25 years old.\nAlice's age: 30\nAlice's new age: 31">class Person {
     public var name;
     public var age;
@@ -32,7 +32,7 @@
     }
 
     public function introduce() {
-        print("Hi, I'm " + name + " and I'm " + string(age) + " years old.");
+        io.print("Hi, I'm " + name + " and I'm " + string(age) + " years old.");
     }
 
     public function getAge() {
@@ -48,9 +48,9 @@ var person1 = new Person("Alice", 30);
 var person2 = new Person("Bob", 25);
 person1.introduce();
 person2.introduce();
-print("Alice's age: " + string(person1.getAge()));
+io.print("Alice's age: " + string(person1.getAge()));
 person1.setAge(31);
-print("Alice's new age: " + string(person1.getAge()));</code></pre>
+io.print("Alice's new age: " + string(person1.getAge()));</code></pre>
         <div class="warning-box">
             <strong>Do not</strong> call <code>new Person(...)</code> unless <code>class Person</code> is declared in the same program (or imported). A snippet that only shows <code>new Person</code> is not a complete example.
         </div>

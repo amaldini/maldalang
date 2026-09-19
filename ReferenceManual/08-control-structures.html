@@ -85,12 +85,12 @@ io.print("Loop finished!");</code></pre>
         <p><strong>Example:</strong></p>
         <pre><code>var numbers = [1, 2, 3, 4, 5];
 for (var num in numbers) {
-    print(num);  // Prints: 1, 2, 3, 4, 5
+    io.print(num);  // Prints: 1, 2, 3, 4, 5
 }
 
 var names = ["Alice", "Bob", "Charlie"];
 for (var name in names) {
-    print("Hello, " + name);
+    io.print("Hello, " + name);
 }</code></pre>
         <p><strong>Notes:</strong></p>
         <ul>
@@ -107,7 +107,7 @@ for (var name in names) {
         <p><strong>Example:</strong></p>
         <pre><code>var results = [10, 20, 30];
 foreach (var x in results) {
-    print(x);  // Prints: 10, 20, 30
+    io.print(x);  // Prints: 10, 20, 30
 }</code></pre>
         <p>The same rules as for-in apply: the loop variable is declared with <code>var</code>, the collection must be an array, and <code>break</code> and <code>continue</code> work as in other loops.</p>
         <h3>For-await</h3>

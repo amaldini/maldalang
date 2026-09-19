@@ -1382,8 +1382,14 @@
   {
     "file": "18-agent-orchestration.html",
     "level": 2,
+    "id": "first-read",
+    "title": "18.0 Prima lettura"
+  },
+  {
+    "file": "18-agent-orchestration.html",
+    "level": 2,
     "id": "chapter-map",
-    "title": "18.0 Mappa del capitolo"
+    "title": "Mappa del capitolo"
   },
   {
     "file": "18-agent-orchestration.html",
@@ -1918,6 +1924,12 @@
     "level": 2,
     "id": "",
     "title": "21.12 Gestione degli errori"
+  },
+  {
+    "file": "22-durable-workflows.html",
+    "level": 2,
+    "id": "first-read",
+    "title": "22.0 Prima lettura"
   },
   {
     "file": "22-durable-workflows.html",

@@ -25,7 +25,7 @@ var name = "Alice";
 var isActive = true;
 var pi = 3.14159;</code></pre>
         <p>Variables must be declared before use. The type is inferred from the initial value. For bindings that must never be reassigned, use <code>const</code> instead of <code>var</code> (see <a href="#const">5.3 Constant Declarations</a>).</p>
-        <p>Same file as the course lesson: <code>Examples/Basics/variables_arithmetic.malda</code>.</p>
+        <p>Same file as the course lesson: <code>Examples/Basics/variables_arithmetic.malda</code>. <code>$"Sum: {sum}"</code> inserts the expression into the string; <code>"Sum: " + string(sum)</code> is the same.</p>
         <pre><code data-run="true" data-expect="Sum: 30\nProduct: 200">var x = 10;
 var y = 20;
 var sum = x + y;

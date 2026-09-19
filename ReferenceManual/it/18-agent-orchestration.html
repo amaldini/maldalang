@@ -20,7 +20,20 @@
         <h1>18. Orchestrazione di agenti</h1>
         <p>Questo capitolo è il <strong>runtime degli agenti</strong>: client LLM, conversazioni, tool, <code>Agent</code>, <code>@Tool</code>, dashboard e team. I kind specializzati e Ralph sono <a href="#agent-kits">kit di agenti</a> — bundle di tool sopra quel runtime, non un secondo linguaggio. I prompt e gli schema sono in <a href="10-prompts.html">10. Prompt</a>; cassette e <code>malda eval</code> sono in <a href="23-agentic-runs.html">23. Esecuzioni agentiche</a>.</p>
         <p>Agenti, client LLM e tool calling girano sull'interprete e sul transpile C#. Non sono disponibili sul backend JavaScript — tieni gli agenti sull'host e chiamali via HTTP dal codice nel browser. Vedi la <a href="../../docs/spec/backend-capability-matrix.md">matrice delle capacità dei backend</a>.</p>
-        <h2 id="chapter-map">18.0 Mappa del capitolo</h2>
+        <h2 id="first-read">18.0 Prima lettura</h2>
+        <p>Un <code>Agent</code> è un oggetto runtime con nome: istruzioni, un client LLM e tool opzionali. Gli agenti sono solo host. Un <code>agent.think</code> live richiede un client o una API key. Parti da <code>Examples/Prompts/prompt_with_agent.malda</code> o <code>malda new agent</code>. Salta <a href="#disclaimer">18.1</a> in questo passaggio — è l'elenco dei rischi di produzione, non la prima lezione.</p>
+        <div class="info-box">
+            <strong>Stop alla prima lettura.</strong> <code>agents.define</code> costruisce un kit senza chiamare un modello. Il resto del capitolo è il catalogo del runtime.
+        </div>
+        <pre><code data-run="true" data-expect="CodingAgent">var coder = agents.define({
+    name: "Coder",
+    kind: "CodingAgent",
+    role: "programmer",
+    instructions: "Write small diffs.",
+    workingDirectory: "."
+});
+io.print(coder.kind);</code></pre>
+        <h2 id="chapter-map">Mappa del capitolo</h2>
         <ul>
             <li><strong>Runtime</strong> — <a href="#disclaimer">18.1</a> rischi · <a href="#llm-client">18.2</a>–<a href="#conversation">18.5</a> client · <a href="#tool-system">18.6</a> tool · <a href="#agent-class">18.7</a> <code>Agent</code> · <a href="#custom-tools">18.8</a> <code>@Tool</code> · <a href="#agent-dashboard">18.15</a> dashboard · <a href="#multi-agent-orchestration">18.16</a>–<a href="#using-agents-with-actors">18.18</a> team e actor</li>
             <li><strong>Kit di agenti</strong> — <a href="#agent-kits">18.9–18.14</a> <code>CodingAgent</code> / <code>GitAgent</code> / <code>HumanAgent</code> / <code>DevAgent</code> / <code>MALDACodingAgent</code> · <a href="#ralph-wiggum">18.19</a> Ralph Wiggum. Stessi file: <code>Examples/Agents/</code>, <code>Examples/RalphWiggum/</code></li>

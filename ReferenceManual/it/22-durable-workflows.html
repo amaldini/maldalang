@@ -22,6 +22,19 @@
         <p>I workflow durevoli consentono di eseguire processi di business di lunga durata, sicuri al riavvio, con stato persistito, esecuzione degli step sicura in replay e punti di controllo esterni come approval e signal.</p>
         <p>Per lavoro breve e fire-and-forget (inviare una email, chiamare un webhook), preferisci la job queue leggera in <a href="#background-jobs">22.11</a>. I job usano <code>./.malda/jobs.db</code> e non sono istanze di workflow.</p>
         <p>I workflow durevoli e la job queue sono solo host (interprete e transpile C#). JavaScript non esegue <code>workflow</code> / <code>step</code> né <code>enqueueJob</code>. Vedi la <a href="../../docs/spec/backend-capability-matrix.md">matrice delle capacità dei backend</a>.</p>
+        <h2 id="first-read">22.0 Prima lettura</h2>
+        <p>Un body <code>workflow</code> registra i risultati di <code>step</code> così un riavvio non ripete il lavoro già finito. Stessa idea: <code>Examples/Workflows/simple_step.malda</code>. Questo schizzo è solo host e qui non è marcato eseguibile — serve il runtime dei workflow, non il ciclo di stampa dell'interprete. Il resto del capitolo è il catalogo operativo.</p>
+        <div class="info-box">
+            <strong>Stop alla prima lettura.</strong> Corso: <a href="learn.html#after-core">Imparare MALDA — Dopo il percorso core</a>.
+        </div>
+        <pre><code>function double(x) {
+    return x * 2;
+}
+
+workflow SimpleStep(input) {
+    step result = double(input);
+    return result;
+}</code></pre>
 
         <h2>22.1 Concetti fondamentali</h2>
         <ul>

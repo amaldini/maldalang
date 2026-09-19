@@ -19,6 +19,12 @@
         <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>13. Funzioni built-in</span></div>
         <h1>13. Funzioni built-in</h1>
         <p>Questo capitolo è il <strong>catalogo della stdlib</strong>: conversioni, math, stringhe, file, JSON, date e helper di errore. I how-to di I/O, prompt, job, JWT e UI stanno in quei capitoli; questa pagina tiene le firme e un indice numerato.</p>
+        <div class="info-box" id="first-read">
+            <strong>Stop alla prima lettura.</strong> Preferisci le chiamate con namespace. Il resto del capitolo è il catalogo. Corso: <a href="learn.html#after-core">Imparare MALDA — Dopo il percorso core</a>.
+        </div>
+        <pre><code data-run="true" data-expect="4\nMALDA\n1">io.print(math.sqrt(16));
+io.print(str.upper("malda"));
+io.print(toIntOr("", 1));</code></pre>
         <h2 id="chapter-map">13.0 Mappa del capitolo</h2>
         <ul>
             <li><a href="#type-conversion">13.1</a> Conversioni di tipo</li>

@@ -22,9 +22,9 @@ public class StarterCatalogTests
                 "loops",
                 "for-loop",
                 "functions",
+                "lists",
                 "complete-starter",
                 "input-output",
-                "lists",
                 "dictionaries",
                 "recursion",
                 "classes",
@@ -53,8 +53,9 @@ public class StarterCatalogTests
     {
         Assert.Equal("variables", StarterCatalog.GetNextStudentStarter("Basics/hello_world.malda")?.Id);
         Assert.Equal("for-loop", StarterCatalog.GetNextStudentStarter(@"Basics\while_loop.malda")?.Id);
+        Assert.Equal("complete-starter", StarterCatalog.GetNextStudentStarter("Basics/lists_indexing.malda")?.Id);
         Assert.Equal("input-output", StarterCatalog.GetNextStudentStarter("Basics/complete_starter_program.malda")?.Id);
-        Assert.Equal("lists", StarterCatalog.GetNextStudentStarter("Basics/input_example.malda")?.Id);
+        Assert.Equal("dictionaries", StarterCatalog.GetNextStudentStarter("Basics/input_example.malda")?.Id);
         Assert.Equal("recursion", StarterCatalog.GetNextStudentStarter("Basics/dictionary_example.malda")?.Id);
         Assert.Equal("classes", StarterCatalog.GetNextStudentStarter("Basics/recursion.malda")?.Id);
         Assert.Equal("gradebook", StarterCatalog.GetNextStudentStarter("Basics/prompt_template.malda")?.Id);

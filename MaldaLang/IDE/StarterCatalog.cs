@@ -99,8 +99,19 @@ public static class StarterCatalog
         },
         new StarterOption
         {
+            Id = "lists",
+            Title = "7. Lists and Indexing",
+            Description = "Store several values in one array, index them, append and pop, then walk with for and for-in.",
+            Track = "student",
+            RelativeExamplePath = @"Basics\lists_indexing.malda",
+            LearningGoal = "Treat a list as data you can index and grow.",
+            EstimatedTime = "10 min",
+            Highlights = ["arrays", "append", "for-in"]
+        },
+        new StarterOption
+        {
             Id = "complete-starter",
-            Title = "7. Complete Starter Program",
+            Title = "8. Complete Starter Program",
             Description = "Put the basics together in one linear example with variables, arrays, a loop, a function, and an if statement.",
             Track = "student",
             RelativeExamplePath = @"Basics\complete_starter_program.malda",
@@ -111,24 +122,13 @@ public static class StarterCatalog
         new StarterOption
         {
             Id = "input-output",
-            Title = "8. Input and Output",
+            Title = "9. Input and Output",
             Description = "Read from the user, convert values, and print meaningful feedback once the earlier syntax feels familiar.",
             Track = "student",
             RelativeExamplePath = @"Basics\input_example.malda",
             LearningGoal = "Connect program input to visible output.",
             EstimatedTime = "10 min",
             Highlights = ["io.input", "int()", "user interaction"]
-        },
-        new StarterOption
-        {
-            Id = "lists",
-            Title = "9. Lists and Indexing",
-            Description = "Store several values in one array, index them, append and pop, then walk with for and for-in.",
-            Track = "student",
-            RelativeExamplePath = @"Basics\lists_indexing.malda",
-            LearningGoal = "Treat a list as data you can index and grow.",
-            EstimatedTime = "10 min",
-            Highlights = ["arrays", "append", "for-in"]
         },
         new StarterOption
         {

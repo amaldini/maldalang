@@ -86,12 +86,12 @@ io.print("Loop finished!");</code></pre>
         <p><strong>Esempio:</strong></p>
         <pre><code>var numbers = [1, 2, 3, 4, 5];
 for (var num in numbers) {
-    print(num);  // Prints: 1, 2, 3, 4, 5
+    io.print(num);  // Prints: 1, 2, 3, 4, 5
 }
 
 var names = ["Alice", "Bob", "Charlie"];
 for (var name in names) {
-    print("Hello, " + name);
+    io.print("Hello, " + name);
 }</code></pre>
         <p><strong>Note:</strong></p>
         <ul>
@@ -108,7 +108,7 @@ for (var name in names) {
         <p><strong>Esempio:</strong></p>
         <pre><code>var results = [10, 20, 30];
 foreach (var x in results) {
-    print(x);  // Prints: 10, 20, 30
+    io.print(x);  // Prints: 10, 20, 30
 }</code></pre>
         <p>Valgono le stesse regole del for-in: la variabile di ciclo si dichiara con <code>var</code>, la collezione deve essere un array, e <code>break</code> e <code>continue</code> funzionano come negli altri cicli.</p>
         <h3>For-await</h3>

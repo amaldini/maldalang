@@ -35,15 +35,22 @@ The same core path in the Reference Manual is [`ReferenceManual/learn.html`](../
 4. `Examples/Basics/while_loop.malda`
 5. `Examples/Basics/for_loop.malda`
 6. `Examples/Basics/functions.malda`
-7. `Examples/Basics/complete_starter_program.malda`
-8. `Examples/Basics/input_example.malda`
-9. `Examples/Basics/lists_indexing.malda`
+7. `Examples/Basics/lists_indexing.malda`
+8. `Examples/Basics/complete_starter_program.malda`
+9. `Examples/Basics/input_example.malda`
 10. `Examples/Basics/dictionary_example.malda`
 11. `Examples/Basics/recursion.malda`
 12. `Examples/Basics/classes_intro.malda`
 13. `Examples/Basics/try_catch.malda`
 14. `Examples/Basics/prompt_template.malda`
 15. `Examples/Basics/gradebook.malda`
+
+After the gradebook, pick one next track (same list as Learn MALDA — After the core path):
+
+- **Algorithms** — start at item 16 below
+- **Two files** — `Examples/Basics/modules_include.malda` (`include`; Reference Manual 1.6)
+- **Tests** — `malda test Examples/Testing/unit_test_basics.test.malda` (not ordinary run)
+- **Then one hub** — first-read only: [10.1](../ReferenceManual/10-prompts.html#template), [13.0](../ReferenceManual/13-built-in-functions.html#first-read), [18.0](../ReferenceManual/18-agent-orchestration.html#first-read), [22.0](../ReferenceManual/22-durable-workflows.html#first-read), [24](../ReferenceManual/24-web-ui-hub.html#first-read)
 
 Then the short **Algorithms** track (ideas, not an encyclopedia):
 
