@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Learn MALDA — a short course through the core language, one lesson at a time">
+    <title>Learn MALDA - MALDA Reference Manual</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="syntax.css">
+    <link rel="stylesheet" href="print.css" media="print">
+</head>
+<body>
+    <header>
+        <h1>MALDA&trade; Reference Manual</h1>
+        <p>The AI-First Programming Language - Version 1.0.22</p>
+    </header>
+    <nav></nav>
+    <main>
+        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>Learn MALDA</span></div>
+        <h1>Learn MALDA</h1>
+        <p>A short course through the core language. Each lesson is one idea, one runnable file, and one chapter section. The numbered chapters stay the reference; this page is the spine.</p>
+        <p>The same order is Desktop <strong>Start With MALDA</strong>, the Web IDE student track, and <a href="../docs/start-here.md">Start Here</a>.</p>
+
+        <h2 id="how-to-run">How to run a file</h2>
+        <p>The interpreter is the default. From the repo root:</p>
+        <pre><code>malda Examples/Basics/hello_world.malda</code></pre>
+        <p>That prints <code>Hello, World!</code> and exits. You do not need <code>compile</code>, an API key, or a project scaffold for this path. Diagnose without running with <code>malda check</code>. Editors: Desktop IDE is the Windows reference; Web IDE is a browser playground (not Desktop parity); VS Code + LSP is the cross-platform editor. The full command index is <a href="02-tools.html">2. Tools &amp; Tooling</a>.</p>
+        <p>Prefer namespaced calls (<code>io.print</code>, <code>math.sqrt</code>, <code>str.upper</code>). Flat <code>print</code> still runs.</p>
+
+        <h2 id="first-look">Lesson 0 — First Look (optional)</h2>
+        <p>If you already program, start here. <code>-&gt; Review</code> binds the <code>prompt</code> to the <code>schema</code>. Without <code>await</code>, the call is a rendered template (no API key). <code>validate("Review", …)</code> is the same check <code>await</code> would run on the model JSON. Schema syntax: <a href="04-data-types.html#schema">4.6</a>. Same file: <code>Examples/Basics/first_look.malda</code>.</p>
+        <pre><code data-run="true" data-expect="Review this javascript code:\n\nfunction add(a, b) { return a + b; }\nschema ok: Looks fine">schema Review {
+    summary: string;
+    issues: string[];
+}
+
+prompt codeReview(code, language) -> Review {
+    system: "You are an expert reviewer of {language}.",
+    user: "Review this {language} code:\n\n{code}"
+}
+
+var rendered = codeReview("function add(a, b) { return a + b; }", "javascript");
+io.print(rendered.user);
+
+var checked = validate("Review", {
+    "summary": "Looks fine",
+    "issues": []
+});
+if (checked.ok) {
+    io.print("schema ok: " + checked.data.summary);
+} else {
+    io.print("schema failed: " + checked.error);
+}</code></pre>
+
+        <h2 id="hello-world">Lesson 1 — Hello World</h2>
+        <p>One call writes one line. Chapter: <a href="12-input-output.html#hello-world">12.1 Console output</a>. Same file: <code>Examples/Basics/hello_world.malda</code>.</p>
+        <pre><code data-run="true" data-expect="Hello, World!">io.print("Hello, World!");</code></pre>
+
+        <h2 id="variables">Lesson 2 — Variables and arithmetic</h2>
+        <p><code>var</code> declares a binding. The type comes from the value. Chapter: <a href="05-variables.html#first-read">5.1 Variable declaration</a>. Same file: <code>Examples/Basics/variables_arithmetic.malda</code>.</p>
+        <pre><code data-run="true" data-expect="Sum: 30\nProduct: 200">var x = 10;
+var y = 20;
+var sum = x + y;
+var product = x * y;
+io.print($"Sum: {sum}");
+io.print($"Product: {product}");</code></pre>
+
+        <h2 id="conditionals">Lesson 3 — Conditionals</h2>
+        <p><code>if</code> / <code>else if</code> / <code>else</code> choose a branch. Chapter: <a href="08-control-structures.html#conditionals">8.1 Conditional statements</a>. Same file: <code>Examples/Basics/conditionals.malda</code>.</p>
+        <pre><code data-run="true" data-expect="You are an adult\nGrade: B">var age = 18;
+if (age >= 18) {
+    io.print("You are an adult");
+} else {
+    io.print("You are a minor");
+}
+
+var score = 85;
+if (score >= 90) {
+    io.print("Grade: A");
+} else if (score >= 80) {
+    io.print("Grade: B");
+} else if (score >= 70) {
+    io.print("Grade: C");
+} else {
+    io.print("Grade: F");
+}</code></pre>
+
+        <h2 id="while-loop">Lesson 4 — While loop</h2>
+        <p>A <code>while</code> loop repeats while the condition is true. Update the loop variable yourself. Chapter: <a href="08-control-structures.html#while-loop">8.2 While</a>. Same file: <code>Examples/Basics/while_loop.malda</code>.</p>
+        <pre><code data-run="true" data-expect="Count: 1\nCount: 2\nCount: 3\nCount: 4\nCount: 5\nCount: 6\nCount: 7\nCount: 8\nCount: 9\nCount: 10\nDone!">var i = 1;
+while (i <= 10) {
+    io.print($"Count: {i}");
+    i = i + 1;
+}
+io.print("Done!");</code></pre>
+
+        <h2 id="for-loop">Lesson 5 — For loop</h2>
+        <p>A C-style <code>for</code> packs init, condition, and increment. Chapter: <a href="08-control-structures.html#for-loop">8.2 For</a>. Same file: <code>Examples/Basics/for_loop.malda</code>.</p>
+        <pre><code data-run="true" data-expect="Number: 1\nNumber: 2\nNumber: 3\nNumber: 4\nNumber: 5\nNumber: 6\nNumber: 7\nNumber: 8\nNumber: 9\nNumber: 10\nLoop finished!">for (var i = 1; i <= 10; i = i + 1) {
+    io.print($"Number: {i}");
+}
+io.print("Loop finished!");</code></pre>
+
+        <h2 id="functions">Lesson 6 — Functions</h2>
+        <p>The only function keyword is <code>function</code>. <code>fn</code> and <code>def</code> are syntax errors. Chapter: <a href="09-functions.html#first-read">9.1 Function declaration</a>. Same file: <code>Examples/Basics/functions.malda</code>.</p>
+        <pre><code data-run="true" data-expect="5 + 3 = 8\n10 + 2 = 12">function add(a, b) {
+    return a + b;
+}
+
+var result1 = add(5, 3);
+io.print($"5 + 3 = {result1}");
+
+var result2 = add(10, 2);
+io.print($"10 + 2 = {result2}");</code></pre>
+
+        <h2 id="complete-starter">Lesson 7 — Complete starter</h2>
+        <p>Variables, a <code>for-in</code> loop, a function, and an <code>if</code> in one linear program. Catalog note: <a href="34-examples.html#catalog">34.1</a>. Same file: <code>Examples/Basics/complete_starter_program.malda</code>.</p>
+        <pre><code data-run="true" data-expect="Items: 3\nTotal: 37\nSummary: big order">var cart = [12, 18, 7];
+var total = 0;
+
+for (var item in cart) {
+    total = total + item;
+}
+
+function describeTotal(amount) {
+    if (amount >= 30) {
+        return "big order";
+    }
+
+    return "small order";
+}
+
+io.print($"Items: {cart.length}");
+io.print($"Total: {total}");
+io.print($"Summary: {describeTotal(total)}");</code></pre>
+
+        <h2 id="input">Lesson 8 — Input</h2>
+        <p><code>io.input</code> reads one line from stdin and always returns a <strong>string</strong>. Convert it if you need a number. This snippet waits for a keyboard, so it is not marked runnable here. Chapter: <a href="12-input-output.html#console-input">12.2 Console input</a>. Same file: <code>Examples/Basics/input_example.malda</code>.</p>
+        <pre><code>var name = io.input("Enter your name: ");
+var ageStr = io.input("Enter your age: ");
+var age = int(ageStr);
+io.print($"Hello, {name}. You are {age} years old.");</code></pre>
+        <p>At end of input every later <code>io.input</code> returns <code>""</code>, not <code>null</code>. Prefer <code>toIntOr(raw, fallback)</code> over bare <code>int(...)</code> when the line may be blank.</p>
+
+        <h2 id="after-core">After the core path</h2>
+        <p>Next two Basics files, still offline: <code>Examples/Basics/lists_indexing.malda</code> and <code>Examples/Basics/dictionary_example.malda</code>. Then open the sidebar and pick a category — do not keep reading this page as a catalog.</p>
+        <ul>
+            <li><strong>Standard Library</strong> — <a href="16-database.html">16. Database</a>, <a href="15-vectordb.html">15. VectorDB</a></li>
+            <li><strong>AI &amp; Agents</strong> — <a href="10-prompts.html">10. Prompts</a>, then <a href="18-agent-orchestration.html">18. Agent Orchestration</a></li>
+            <li><strong>Web</strong> — start at <a href="24-web-ui-hub.html">24. Web UI Overview</a></li>
+            <li><strong>Reference</strong> — <a href="34-examples.html">34. Examples</a> is an index, not a second course</li>
+        </ul>
+
+        <div class="see-also">
+            <h3>See Also</h3>
+            <ul>
+                <li><a href="index.html">Home</a> — Quick Start and Path 2 (AI apps)</li>
+                <li><a href="../docs/start-here.md">Start Here</a> — Algorithms and AI theory tracks after Basics</li>
+                <li><a href="02-tools.html">2. Tools &amp; Tooling</a> — CLI index</li>
+                <li><a href="glossary.html">Glossary</a> — jump to a concept</li>
+            </ul>
+        </div>
+        <div class="nav-footer">
+            <a href="index.html">← Home</a>
+            <a href="01-introduction.html">Next: 1. Introduction→</a>
+        </div>
+        <footer>
+            <p>Copyright (c) 2026 Andrea Maldini. Licensed under the <a href="https://opensource.org/license/mit">MIT License</a> or the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>, at your option.</p>
+        </footer>
+    </main>
+    <script src="malda-highlight.js"></script>
+    <script src="navigation.js"></script>
+</body>
+</html>

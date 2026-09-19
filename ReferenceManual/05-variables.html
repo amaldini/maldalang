@@ -17,24 +17,32 @@
     <main>
         <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>5. Variables</span></div>
         <h1>5. Variables</h1>
-        <h2>5.1 Variable Declaration</h2>
+        <p>Learning the language? Start at <a href="learn.html">Learn MALDA</a>. This chapter is the full reference.</p>
+        <h2 id="first-read">5.1 Variable Declaration</h2>
         <p>Variables in MALDA are declared using the <code>var</code> keyword followed by the variable name and an optional initial value:</p>
         <pre><code>var x = 10;
 var name = "Alice";
 var isActive = true;
 var pi = 3.14159;</code></pre>
         <p>Variables must be declared before use. The type is inferred from the initial value. For bindings that must never be reassigned, use <code>const</code> instead of <code>var</code> (see <a href="#const">5.3 Constant Declarations</a>).</p>
-        <p>You may optionally add an informational <strong>type hint</strong> after the name. At interpret-time hints are documentation for you and the IDE, not runtime checks:</p>
-        <pre><code>var name: Type? = value;</code></pre>
-        <p>Example: <code>var count: int = 0;</code>, <code>var msg: string = "hello";</code>, or <code>var p: Person = new Person();</code></p>
-        <div class="info-box">
-            <strong>Toolchain:</strong> CLI <code>--strict-types</code> turns hint mismatches into analysis Errors. <code>malda compile --mode transpile</code> and <code>publish</code> refuse emit when analysis reports Errors; <code>--lenient-types</code> skips that gate. Known hint names include Tier 0 primitives (<code>int</code>, <code>string</code>, …), declared class/schema/sum-type names (same unit or imported modules), and built-in host classes (for example <code>RestServer</code>). The language server emits an <strong>Error</strong> by default when a hint disagrees with a literal, a <code>new ClassName()</code> expression, another identifier that carries a known hint, or a call result whose callee declares a return hint (for example <code>var n: int = "abc";</code>, <code>var p: Person = 1;</code>, <code>n = s;</code> when <code>s: string</code>, or <code>var n: int = make();</code> when <code>make() -&gt; string</code>). The same check covers assignments, call arguments, and <code>return</code> values against parameter/<code>-&gt;</code> hints. Operators and built-in return types are not inferred.
-        </div>
+        <p>Same file as the course lesson: <code>Examples/Basics/variables_arithmetic.malda</code>.</p>
+        <pre><code data-run="true" data-expect="Sum: 30\nProduct: 200">var x = 10;
+var y = 20;
+var sum = x + y;
+var product = x * y;
+io.print($"Sum: {sum}");
+io.print($"Product: {product}");</code></pre>
         <h2>5.2 Variable Assignment</h2>
         <p>After declaration, variables can be reassigned using the assignment operator <code>=</code>:</p>
         <pre><code>x = 20;
 name = "Bob";
 x = x + 1;</code></pre>
+        <p>You may optionally add an informational <strong>type hint</strong> after the name. At interpret-time hints are documentation for you and the IDE, not runtime checks:</p>
+        <pre><code>var name: Type? = value;</code></pre>
+        <p>Example: <code>var count: int = 0;</code>, <code>var msg: string = "hello";</code>, or <code>var p: Person = new Person();</code></p>
+        <div class="info-box">
+            <strong>Toolchain — skip on first read:</strong> CLI <code>--strict-types</code> turns hint mismatches into analysis Errors. <code>malda compile --mode transpile</code> and <code>publish</code> refuse emit when analysis reports Errors; <code>--lenient-types</code> skips that gate. Known hint names include Tier 0 primitives (<code>int</code>, <code>string</code>, …), declared class/schema/sum-type names (same unit or imported modules), and built-in host classes (for example <code>RestServer</code>). The language server emits an <strong>Error</strong> by default when a hint disagrees with a literal, a <code>new ClassName()</code> expression, another identifier that carries a known hint, or a call result whose callee declares a return hint (for example <code>var n: int = "abc";</code>, <code>var p: Person = 1;</code>, <code>n = s;</code> when <code>s: string</code>, or <code>var n: int = make();</code> when <code>make() -&gt; string</code>). The same check covers assignments, call arguments, and <code>return</code> values against parameter/<code>-&gt;</code> hints. Operators and built-in return types are not inferred.
+        </div>
         <h2 id="const">5.3 Constant Declarations</h2>
         <p>A binding declared with <code>const</code> instead of <code>var</code> cannot be reassigned. Write an initializer, or omit it when the value should be the identifier name as a string:</p>
         <pre><code data-run="true" data-expect="3">const MAX_RETRIES = 3;

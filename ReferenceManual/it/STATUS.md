@@ -11,19 +11,19 @@ python3 scripts/sync-reference-manual-it-status.py
 
 | File | EN SHA-256 |
 |------|------------|
-| index.html | 3996a39eafe369294ca0bf2f864595fa8f6c8a939dd10bb39d816c44eb7178f8 |
-| 01-introduction.html | ba215e2e773b52b57e727ac75baa4f50cebc11537f357a2777d6b41e7252141c |
-| 02-tools.html | eb9a7c62553dab896962286ba3764d7d891b77ef9a930ec25d3a991d96e4ad1e |
+| index.html | 5e45be843f41036647b8413eb7e16ac5534ee51d46ec296cd8167c4f0e47371e |
+| 01-introduction.html | 5303401633f687b53083ef671bf53fca68e5cecc94b71a00133dff9a86f6c310 |
+| 02-tools.html | 3639b8d6a126fd5dd10746faa92a0a454e7eb94b234a51bd0a4a56c76e03ca75 |
 | 03-lexical-structure.html | e7075a436d1fbbaebadafd270f3c66ddd14e08a76993deb0af2053b2daa22754 |
 | 04-data-types.html | dae3a2688e6ebff71f2f0e4cac63d67a793e2d52ccff3a69a0c76483f13d9828 |
-| 05-variables.html | 45411eb63f6035e2cac4943d9a329bdcd5c52a71f83bb523d0ba7a94f6c3af06 |
+| 05-variables.html | 10497d78b519fc06c0f1bdde4043c05aba8ef3041ae866d92eebdf30fdf8aba0 |
 | 06-arrays.html | a707d5ca77923de9479b378ed8a37151fa9a1ede82118a76147a4cbfdb9506d5 |
 | 07-expressions.html | 03f095bbb89c9c70b1ec94017a5f3d17561371c8e5846adf03b7a3511eb787e4 |
-| 08-control-structures.html | 14f9e539ffb87791b1c48007a50935f906e043248305429db1d05d26556981e8 |
-| 09-functions.html | ce47443ab92805864f51cff331cafd773428b2acfefd8204a9593e639f7f1915 |
+| 08-control-structures.html | e565b52ff2e24939a8857c6e78b9ac197bfe4effc2d0f28d27a6bb1a2a0af589 |
+| 09-functions.html | 9b4cbf6676cb3131887bf7fcb4dd13f2f670811c0e7e8779f69a06bf58fb613e |
 | 10-prompts.html | 9b308506e8be143647cff9e5e4d58dbb31c75308b67ce7a20e2a3dfc388e253f |
 | 11-classes-objects.html | bfc4e4c08a10efc730565642f0efa18e99e8c31a0c6982252eae706a2e946602 |
-| 12-input-output.html | 94650091609ea096f14cf10e09e4d5ec808d058384d17d6de2f7974b8bd38eda |
+| 12-input-output.html | 76af4bec969d742bbfedc1a5a4d48a7231e33008cca53bd7357198373d2a4b9e |
 | 13-built-in-functions.html | e0d76ab9e39165be9a778e5fece5e85a0434c3d8b47006f13cc6b82af690d6de |
 | 14-graphs.html | 6d0056a2a92c132fb1bbd69bf128b10150877568ccf9b5e7cfd4810bf82b4a53 |
 | 15-vectordb.html | 25402e740dca3177186c0089dc06caa77945729e94c8bc0c65fad3683bf99e16 |
@@ -45,7 +45,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | 31-dotnet-interop.html | 06aed0859ea49b90a656c1c427ec64062e00e51aa63cc3070264ece3d0247ba8 |
 | 32-device-integration.html | 44abf76f864803c3a4421834ccf4f9eb9e8a0143ac1527d44cd3e9370bd89b3d |
 | 33-personal-assistant.html | 4a13b0f9a2f90ddbf5b42a8ca003174ff55d0cb1bf43b8e310e0e835c77d0323 |
-| 34-examples.html | 516312bf6e4ffe43e574af2d589c40e3ee2f77d8f1c4fbe60c313f52ba03e916 |
+| 34-examples.html | d9411075720775603ed6253e84c60b147c6b0e48425fd55cea04ea43803c59b6 |
 | 35-property-testing.html | 8010e4cb701eb6841c5b8b159088f81f56454bc9eedde2323299a25e8a6d1381 |
 | 36-grammar.html | bc8efe0893d5c73cdfa3f3a87ee6ef6aca7b531de0df189272472d24a7a94b22 |
 | 37-appendix.html | b533631300e789165d340361096bbdf96ac27df784b5778e91cc845c32d31f9f |

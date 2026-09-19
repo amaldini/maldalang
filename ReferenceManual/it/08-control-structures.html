@@ -18,8 +18,8 @@
     <main>
         <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>8. Strutture di controllo</span></div>
         <h1>8. Strutture di controllo</h1>
-        <p>Le strutture di controllo permettono di governare il flusso di esecuzione del programma con condizionali e cicli.</p>
-        <h2>8.1 Istruzioni condizionali</h2>
+        <p>Le strutture di controllo permettono di governare il flusso di esecuzione del programma con condizionali e cicli. Stai imparando il linguaggio? Parti da <a href="learn.html">Imparare MALDA</a>.</p>
+        <h2 id="conditionals">8.1 Istruzioni condizionali</h2>
         <h3>Istruzione if</h3>
         <pre><code>if (condition) {
     // code block
@@ -38,16 +38,46 @@
 } else {
     // code block
 }</code></pre>
+        <p>Stesso file della lezione del corso: <code>Examples/Basics/conditionals.malda</code>.</p>
+        <pre><code data-run="true" data-expect="You are an adult\nGrade: B">var age = 18;
+if (age >= 18) {
+    io.print("You are an adult");
+} else {
+    io.print("You are a minor");
+}
+
+var score = 85;
+if (score >= 90) {
+    io.print("Grade: A");
+} else if (score >= 80) {
+    io.print("Grade: B");
+} else if (score >= 70) {
+    io.print("Grade: C");
+} else {
+    io.print("Grade: F");
+}</code></pre>
         <h2>8.2 Cicli</h2>
-        <h3>Ciclo while</h3>
+        <h3 id="while-loop">Ciclo while</h3>
         <pre><code>while (condition) {
     // code block
 }</code></pre>
-        <h3>Ciclo for</h3>
+        <p>Stesso file: <code>Examples/Basics/while_loop.malda</code>.</p>
+        <pre><code data-run="true" data-expect="Count: 1\nCount: 2\nCount: 3\nCount: 4\nCount: 5\nCount: 6\nCount: 7\nCount: 8\nCount: 9\nCount: 10\nDone!">var i = 1;
+while (i <= 10) {
+    io.print($"Count: {i}");
+    i = i + 1;
+}
+io.print("Done!");</code></pre>
+        <h3 id="for-loop">Ciclo for</h3>
         <p>Il ciclo for tradizionale con inizializzazione, condizione e incremento:</p>
         <pre><code>for (var i = 0; i < 10; i = i + 1) {
     // code block
 }</code></pre>
+        <p>Stesso file: <code>Examples/Basics/for_loop.malda</code>.</p>
+        <pre><code data-run="true" data-expect="Number: 1\nNumber: 2\nNumber: 3\nNumber: 4\nNumber: 5\nNumber: 6\nNumber: 7\nNumber: 8\nNumber: 9\nNumber: 10\nLoop finished!">for (var i = 1; i <= 10; i = i + 1) {
+    io.print($"Number: {i}");
+}
+io.print("Loop finished!");</code></pre>
         <h3>Ciclo for-in</h3>
         <p>Il ciclo for-in itera su ogni elemento di un array:</p>
         <pre><code>for (var component in components) {
@@ -101,6 +131,9 @@ for await (var chunk in stream("hello world from malda")) {
         continue;  // Skip to next iteration
     }
 }</code></pre>
+        <div class="info-box">
+            <strong>Stop alla prima lettura.</strong> Pattern matching, <code>try</code> e <code>within</code> sono più sotto. Torna a <a href="learn.html">Imparare MALDA</a> se questo è il primo passaggio.
+        </div>
         <h2>8.3 Pattern matching</h2>
         <p>Il pattern matching permette di confrontare valori con pattern ed eseguire codice in base alla corrispondenza. È simile alle istruzioni switch di altri linguaggi, ma più potente: supporta il matching su array, oggetti e strutture nidificate.</p>
         

@@ -17,10 +17,12 @@
     <main>
         <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>12. Input/Output</span></div>
         <h1>12. Input/Output</h1>
+        <p>Learning the language? Hello World and console input are on <a href="learn.html">Learn MALDA</a>. This chapter is the full I/O how-to.</p>
         <p>This chapter is the <strong>I/O how-to</strong>: console, files, paths, environment variables, host process facts, and <a href="#capability-tokens">capability tokens</a> (permission objects so a tool cannot invent a path). Prefer the <code>io.*</code> namespace. Flat aliases such as <code>print</code> and <code>readFile</code> still run, but the editor warns <code>malda-style</code>. Signatures, git helpers, <code>glob</code> / <code>grep</code>, document extractors, and Spectre.Console live in <a href="13-built-in-functions.html">13. Built-in Functions</a>.</p>
         <p>File I/O is a host capability. The interpreter and C# transpile support it; the JavaScript backend does not (<code>file-io</code> is <code>no</code> on the <a href="../docs/spec/backend-capability-matrix.md">backend capability matrix</a>).</p>
 
-        <h2>12.1 Console Output</h2>
+        <h2 id="console-output">12.1 Console Output</h2>
+        <p id="hello-world">Hello World is one call: <code>io.print("Hello, World!");</code> — same file: <code>Examples/Basics/hello_world.malda</code>.</p>
         <p><code>io.print(value)</code> takes <strong>exactly one</strong> argument, converts it with <code>string(value)</code>, and writes a line (a trailing newline). There is no <code>println</code>. Concatenate or interpolate before the call if you need several pieces on one line.</p>
         <pre><code data-run="true" data-expect="Hello, World!\nHello, Alice!\nn is {n}">io.print("Hello, World!");
 
@@ -34,7 +36,7 @@ io.print("n is {n}");          // literal braces: a plain string does not interp
             <li>When stdout is not a terminal, Spectre.Console strips ANSI and Unicode panel borders fall back to square corners. That is expected for pipes and redirected files.</li>
         </ul>
 
-        <h2>12.2 Console Input</h2>
+        <h2 id="console-input">12.2 Console Input</h2>
         <p><code>io.input(prompt?)</code> writes an optional prompt (no extra newline) and reads one line from stdin. The result is always a <strong>string</strong>. Convert it if you need a number.</p>
         <pre><code>var name = io.input("Enter your name: ");
 var age = int(io.input("Enter your age: "));

@@ -18,11 +18,22 @@
     <main>
         <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>9. Funzioni</span></div>
         <h1>9. Funzioni</h1>
-        <h2>9.1 Dichiarazione di funzione</h2>
+        <p>Stai imparando il linguaggio? Parti da <a href="learn.html">Imparare MALDA</a>. Questo capitolo è il riferimento completo.</p>
+        <h2 id="first-read">9.1 Dichiarazione di funzione</h2>
         <pre><code>function functionName(param1, param2) {
     // function body
     return value;  // optional
 }</code></pre>
+        <p>Stesso file della lezione del corso: <code>Examples/Basics/functions.malda</code>.</p>
+        <pre><code data-run="true" data-expect="5 + 3 = 8\n10 + 2 = 12">function add(a, b) {
+    return a + b;
+}
+
+var result1 = add(5, 3);
+io.print($"5 + 3 = {result1}");
+
+var result2 = add(10, 2);
+io.print($"10 + 2 = {result2}");</code></pre>
         <p>Per le funzioni che consistono in una sola espressione, puoi omettere le graffe e usare un punto e virgola:</p>
         <pre><code>function square(x) x*x;
 function double(n) -> int n * 2;</code></pre>

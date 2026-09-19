@@ -302,7 +302,7 @@
   {
     "file": "05-variables.html",
     "level": 2,
-    "id": "",
+    "id": "first-read",
     "title": "5.1 Dichiarazione di variabili"
   },
   {
@@ -464,7 +464,7 @@
   {
     "file": "08-control-structures.html",
     "level": 2,
-    "id": "",
+    "id": "conditionals",
     "title": "8.1 Istruzioni condizionali"
   },
   {
@@ -472,6 +472,18 @@
     "level": 2,
     "id": "",
     "title": "8.2 Cicli"
+  },
+  {
+    "file": "08-control-structures.html",
+    "level": 3,
+    "id": "while-loop",
+    "title": "Ciclo while"
+  },
+  {
+    "file": "08-control-structures.html",
+    "level": 3,
+    "id": "for-loop",
+    "title": "Ciclo for"
   },
   {
     "file": "08-control-structures.html",
@@ -494,7 +506,7 @@
   {
     "file": "09-functions.html",
     "level": 2,
-    "id": "",
+    "id": "first-read",
     "title": "9.1 Dichiarazione di funzione"
   },
   {
@@ -662,13 +674,13 @@
   {
     "file": "12-input-output.html",
     "level": 2,
-    "id": "",
+    "id": "console-output",
     "title": "12.1 Output sulla console"
   },
   {
     "file": "12-input-output.html",
     "level": 2,
-    "id": "",
+    "id": "console-input",
     "title": "12.2 Input dalla console"
   },
   {

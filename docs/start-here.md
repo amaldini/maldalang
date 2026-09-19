@@ -27,7 +27,7 @@ Use the route below that matches your immediate goal.
 
 Choose this path if you are new to programming, new to MALDA syntax, or want to teach the basics first.
 
-Start with the Desktop **Start With MALDA** student path (same order in the Web IDE starters):
+The same core path in the Reference Manual is [`ReferenceManual/learn.html`](../ReferenceManual/learn.html). Start with the Desktop **Start With MALDA** student path (same order in the Web IDE starters):
 
 1. `Examples/Basics/hello_world.malda`
 2. `Examples/Basics/variables_arithmetic.malda`

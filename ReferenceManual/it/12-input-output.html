@@ -18,10 +18,12 @@
     <main>
         <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>12. Input/Output</span></div>
         <h1>12. Input/Output</h1>
+        <p>Stai imparando il linguaggio? Hello World e l'input da console sono in <a href="learn.html">Imparare MALDA</a>. Questo capitolo è la guida I/O completa.</p>
         <p>Questo capitolo è la <strong>guida pratica all'I/O</strong>: console, file, path, variabili d'ambiente, fatti sul processo host e <a href="#capability-tokens">token di capability</a> (oggetti-permesso così un tool non può inventare un path). Preferisci il namespace <code>io.*</code>. Gli alias piatti come <code>print</code> e <code>readFile</code> continuano a funzionare, ma l'editor avvisa con <code>malda-style</code>. Firme, helper git, <code>glob</code> / <code>grep</code>, estrattori di documenti e Spectre.Console stanno in <a href="13-built-in-functions.html">13. Funzioni built-in</a>.</p>
         <p>L'I/O su file è una capacità dell'host. L'interprete e il transpile C# la supportano; il backend JavaScript no (<code>file-io</code> è <code>no</code> nella <a href="../../docs/spec/backend-capability-matrix.md">matrice delle capacità dei backend</a>).</p>
 
-        <h2>12.1 Output sulla console</h2>
+        <h2 id="console-output">12.1 Output sulla console</h2>
+        <p id="hello-world">Hello World è una chiamata: <code>io.print("Hello, World!");</code> — stesso file: <code>Examples/Basics/hello_world.malda</code>.</p>
         <p><code>io.print(value)</code> prende <strong>esattamente un</strong> argomento, lo converte con <code>string(value)</code> e scrive una riga (con newline finale). Non esiste <code>println</code>. Concatena o interpola prima della chiamata se ti servono più pezzi sulla stessa riga.</p>
         <pre><code data-run="true" data-expect="Hello, World!\nHello, Alice!\nn is {n}">io.print("Hello, World!");
 
@@ -35,7 +37,7 @@ io.print("n is {n}");          // literal braces: a plain string does not interp
             <li>Quando stdout non è un terminale, Spectre.Console toglie l'ANSI e i bordi Unicode dei pannelli tornano agli angoli a squadra. È il comportamento atteso per pipe e file reindirizzati.</li>
         </ul>
 
-        <h2>12.2 Input dalla console</h2>
+        <h2 id="console-input">12.2 Input dalla console</h2>
         <p><code>io.input(prompt?)</code> scrive un prompt opzionale (senza newline extra) e legge una riga da stdin. Il risultato è sempre una <strong>string</strong>. Convertilo se ti serve un numero.</p>
         <pre><code>var name = io.input("Enter your name: ");
 var age = int(io.input("Enter your age: "));

@@ -23,6 +23,9 @@
         <h1>2. Strumenti e toolchain</h1>
 
         <p>MALDA offre un set completo di strumenti di sviluppo: un interprete interattivo, un compilatore dual-mode e un gestore di pacchetti. Questo capitolo spiega come usarli per sviluppare, eseguire e distribuire applicazioni MALDA. La tabella in <a href="#cli-index">2.0</a> è l'indice dei comandi: ogni <code>malda &lt;verb&gt;</code> con un puntatore di una riga. I how-to restano nelle sezioni indicate. <code>malda help</code> o <code>malda help &lt;command&gt;</code> stampa lo stesso elenco dal binario.</p>
+        <div class="info-box">
+            <strong>A uno studente basta questo:</strong> esegui un file con <code>malda file.malda</code>. Diagnostica senza eseguire con <code>malda check</code>. Il Desktop IDE è il riferimento Windows; la Web IDE è un playground nel browser (non ha la parità con il Desktop). Il resto del capitolo è l'indice dei comandi. Il corso che usa quei tre fatti è <a href="learn.html">Imparare MALDA</a>.
+        </div>
 
         <h2 id="cli-index">2.0 Indice dei comandi CLI</h2>
         <p>Esegui un file senza verbo: <code>malda app.malda</code> (opzionali <code>--strict-types</code>, <code>--profile</code>). <code>malda -e "…"</code> / <code>--exec</code> esegue uno snippet — non è <code>malda eval</code>, che lancia <code>suite</code> / <code>case</code>. <code>malda --eval</code> viene rifiutato così i due non si confondono. <code>malda --check "…"</code> è un controllo di compile solo-sintassi; per le diagnostiche IDE/LSP preferisci <code>malda check --json</code>.</p>
