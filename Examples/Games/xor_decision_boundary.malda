@@ -63,39 +63,44 @@ function shade(y: float) -> string {
     return "rgb(" + string(40 + t) + "," + string(70) + "," + string(220 - t) + ")";
 }
 
-var net = trainXor();
-var canvas = 420;
-var pad = 40;
-var grid = 42;
-var cell = (canvas - pad * 2) / grid;
+function startBoundary() {
+    var net = trainXor();
+    var canvas = 420;
+    var pad = 40;
+    var grid = 42;
+    var cell = (canvas - pad * 2) / grid;
 
-function render() {
-    game.fillRect(0, 0, canvas, canvas, "#101018");
-    for (var i = 0; i < grid; i = i + 1) {
-        for (var j = 0; j < grid; j = j + 1) {
-            var x0 = i / (grid - 1);
-            var x1 = 1.0 - j / (grid - 1);
-            var y = forwardY(net, x0, x1);
-            game.fillRect(pad + i * cell, pad + j * cell, cell + 0.5, cell + 0.5, shade(y));
+    function render() {
+        game.fillRect(0, 0, canvas, canvas, "#101018");
+        for (var i = 0; i < grid; i = i + 1) {
+            for (var j = 0; j < grid; j = j + 1) {
+                var x0 = i / (grid - 1);
+                var x1 = 1.0 - j / (grid - 1);
+                var y = forwardY(net, x0, x1);
+                game.fillRect(pad + i * cell, pad + j * cell, cell + 0.5, cell + 0.5, shade(y));
+            }
         }
+
+        var points = [[0.0, 0.0, 0.0], [0.0, 1.0, 1.0], [1.0, 0.0, 1.0], [1.0, 1.0, 0.0]];
+        for (var p = 0; p < points.length; p = p + 1) {
+            var px = pad + points[p][0] * (canvas - pad * 2) - 6;
+            var py = pad + (1.0 - points[p][1]) * (canvas - pad * 2) - 6;
+            var color = "#ffe08a";
+            if (points[p][2] < 0.5) {
+                color = "#8ad7ff";
+            }
+            game.fillRect(px, py, 12, 12, color);
+        }
+
+        game.drawText("XOR decision boundary  loss=" + string(math.round(net.loss * 1000.0) / 1000.0), 16, 18, "#f4f4f4", "14px sans-serif");
+        game.drawText("Blue=0  Yellow=1   malda play", 16, canvas - 16, "#c8c8d0", "12px sans-serif");
     }
 
-    var points = [[0.0, 0.0, 0.0], [0.0, 1.0, 1.0], [1.0, 0.0, 1.0], [1.0, 1.0, 0.0]];
-    for (var p = 0; p < points.length; p = p + 1) {
-        var px = pad + points[p][0] * (canvas - pad * 2) - 6;
-        var py = pad + (1.0 - points[p][1]) * (canvas - pad * 2) - 6;
-        var color = "#ffe08a";
-        if (points[p][2] < 0.5) {
-            color = "#8ad7ff";
-        }
-        game.fillRect(px, py, 12, 12, color);
+    function update(_dtMs) {
     }
 
-    game.drawText("XOR decision boundary  loss=" + string(math.round(net.loss * 1000.0) / 1000.0), 16, 18, "#f4f4f4", "14px sans-serif");
-    game.drawText("Blue=0  Yellow=1   malda play", 16, canvas - 16, "#c8c8d0", "12px sans-serif");
+    game.createCanvas(canvas, canvas, "#app");
+    game.start(update, render);
 }
 
-function update(_dtMs) {
-}
-
-game.start(update, render);
+startBoundary();
