@@ -23,25 +23,115 @@ if (root == null) {
     dom.setText(hint, "Click or tap a piece, then a highlighted square. R new game. U undo. C toggle computer (Black). Pawns promote to queen.");
     dom.append(root, hint);
 
-    var canvasWidth = 960;
-    var canvasHeight = 640;
-    var tile = 68;
-    var boardX = 28;
-    var boardY = 28;
-    var panelX = 600;
+    // ---------------------------------------------------------------------------
+    // How to read this file
+    //
+    // The board is a 64-slot array. Index 0 is a8 (top-left on screen), 63 is h1.
+    // Row 0 is rank 8; row 7 is rank 1. Column 0 is file a.
+    //
+    // A cell is EMPTY (0) or kind * side:
+    //   kind   PAWN=1 KNIGHT=2 BISHOP=3 ROOK=4 QUEEN=5 KING=6
+    //   side   WHITE=+1  BLACK=-1
+    // White's king is +6, Black's king is -6. Same-side test: piece * side > 0.
+    // Integers (not sum types) so color is the sign, captures use arithmetic,
+    // and game.save stores a plain JSON array.
+    //
+    // Move flags and game status are named `const` values — MALDA's enum style.
+    // `const NAME;` means the string "NAME"; `match` compares those consts with ==.
+    // Status strings stay "play"/"check"/"mate"/"stale" so old saves still load.
+    //
+    // Specials: king-side / queen-side castle, en passant, always-queen promotion.
+    // Castling rights are four booleans. `epSq` is the square a capturing pawn
+    // would land on (the jumped-over square), or NO_SQUARE.
+    // ---------------------------------------------------------------------------
+
+    const EMPTY = 0;
+    const PAWN = 1;
+    const KNIGHT = 2;
+    const BISHOP = 3;
+    const ROOK = 4;
+    const QUEEN = 5;
+    const KING = 6;
+
+    const WHITE = 1;
+    const BLACK = -1;
+    const NO_SQUARE = -1;
+
+    // Algebraic indices for the squares the rules actually name (castling).
+    const A8 = 0;
+    const B8 = 1;
+    const C8 = 2;
+    const D8 = 3;
+    const E8 = 4;
+    const F8 = 5;
+    const G8 = 6;
+    const H8 = 7;
+    const A1 = 56;
+    const B1 = 57;
+    const C1 = 58;
+    const D1 = 59;
+    const E1 = 60;
+    const F1 = 61;
+    const G1 = 62;
+    const H1 = 63;
+
+    const WHITE_PAWN_ROW = 6;
+    const BLACK_PAWN_ROW = 1;
+    const WHITE_PROMO_ROW = 0;
+    const BLACK_PROMO_ROW = 7;
+
+    const MOVE_NORMAL, MOVE_CASTLE_KING, MOVE_CASTLE_QUEEN, MOVE_EN_PASSANT, MOVE_PROMOTE;
+    const STATUS_PLAY = "play";
+    const STATUS_CHECK = "check";
+    const STATUS_MATE = "mate";
+    const STATUS_STALE = "stale";
+
+    const CANVAS_W = 960;
+    const CANVAS_H = 640;
+    const TILE = 68;
+    const BOARD_X = 28;
+    const BOARD_Y = 28;
+    const PANEL_X = 600;
+    const BTN_W = 320;
+    const BTN_H = 40;
+    const BTN_NEW_Y = 248;
+    const BTN_UNDO_Y = 298;
+    const BTN_CPU_Y = 348;
+
+    const AI_THINK_MS = 220;
+    const AI_EXTRA_PLY = 1;
+    const MATE_SCORE = 20000;
+
+    const FILES = ["a", "b", "c", "d", "e", "f", "g", "h"];
+
+    // Knight leaps: pair KNIGHT_DR[i] with KNIGHT_DC[i].
+    const KNIGHT_DR = [-2, -2, -1, -1, 1, 1, 2, 2];
+    const KNIGHT_DC = [-1, 1, -2, 2, -2, 2, -1, 1];
+    const KING_DR = [-1, -1, -1, 0, 0, 1, 1, 1];
+    const KING_DC = [-1, 0, 1, -1, 1, -1, 0, 1];
+    // Slider rays: 0..3 rook (N,S,W,E), 4..7 bishop.
+    const SLIDE_DR = [-1, 1, 0, 0, -1, -1, 1, 1];
+    const SLIDE_DC = [0, 0, -1, 1, -1, 1, -1, 1];
+    const RAY_ROOK_START = 0;
+    const RAY_ROOK_STOP = 4;
+    const RAY_BISHOP_START = 4;
+    const RAY_BISHOP_STOP = 8;
+
+    // Centipawns by pieceKind. King is 0 — mate is a search terminal, not material.
+    const MATERIAL = [0, 100, 320, 330, 500, 900, 0];
 
     var board = [];
-    var side = 1;
+    var side = WHITE;
     var castleWK = true;
     var castleWQ = true;
     var castleBK = true;
     var castleBQ = true;
-    var epSq = -1;
-    var selSq = -1;
+    var epSq = NO_SQUARE;
+    var selSq = NO_SQUARE;
     var legalForSel = [];
-    var lastFrom = -1;
-    var lastTo = -1;
-    var status = "play";
+    var lastFrom = NO_SQUARE;
+    var lastTo = NO_SQUARE;
+    var status = STATUS_PLAY;
     var vsCpu = true;
     var aiWaitMs = 0;
     var aiThinking = false;
@@ -50,16 +140,7 @@ if (root == null) {
     var winsB = 0;
     var gameOverLogged = false;
     var audioBooted = false;
-    var hoverSq = -1;
-
-    var files = ["a", "b", "c", "d", "e", "f", "g", "h"];
-    var knDr = [-2, -2, -1, -1, 1, 1, 2, 2];
-    var knDc = [-1, 1, -2, 2, -2, 2, -1, 1];
-    var kgDr = [-1, -1, -1, 0, 0, 1, 1, 1];
-    var kgDc = [-1, 0, 1, -1, 1, -1, 0, 1];
-    var slDr = [-1, 1, 0, 0, -1, -1, 1, 1];
-    var slDc = [0, 0, -1, 1, -1, 1, -1, 1];
-    var values = [0, 100, 320, 330, 500, 900, 0];
+    var hoverSq = NO_SQUARE;
 
     var saved = game.load("chess_save");
     if (saved != null) {
@@ -74,19 +155,61 @@ if (root == null) {
         }
     }
 
-    function kind(p) {
-        if (p < 0) {
-            return 0 - p;
-        }
-        return p;
+    // --- squares and pieces ---------------------------------------------------
+
+    function rowOf(sq) {
+        return math.floor(sq / 8);
     }
+
+    function colOf(sq) {
+        return sq % 8;
+    }
+
+    function at(row, col) {
+        return row * 8 + col;
+    }
+
+    function onBoard(row, col) {
+        return row >= 0 and row < 8 and col >= 0 and col < 8;
+    }
+
+    function pieceKind(piece) {
+        if (piece < 0) {
+            return 0 - piece;
+        }
+        return piece;
+    }
+
+    function coded(kind, who) {
+        return kind * who;
+    }
+
+    function opponent(who) {
+        return 0 - who;
+    }
+
+    function isEmpty(piece) {
+        return piece == EMPTY;
+    }
+
+    function isWhite(piece) {
+        return piece > 0;
+    }
+
+    function isFriendly(piece, who) {
+        return piece * who > 0;
+    }
+
+    function isEnemy(piece, who) {
+        return piece != EMPTY and piece * who < 0;
+    }
+
+    // --- position snapshot (search, undo, save) -------------------------------
 
     function cloneBoard() {
         var out = [];
-        var i = 0;
-        while (i < 64) {
+        for (var i = 0; i < 64; i = i + 1) {
             out.append(board[i]);
-            i = i + 1;
         }
         return out;
     }
@@ -108,10 +231,8 @@ if (root == null) {
     }
 
     function restore(s) {
-        var i = 0;
-        while (i < 64) {
+        for (var i = 0; i < 64; i = i + 1) {
             board[i] = s.board[i];
-            i = i + 1;
         }
         side = s.side;
         castleWK = s.wk;
@@ -127,34 +248,27 @@ if (root == null) {
 
     function setupStart() {
         board = [];
-        var i = 0;
-        while (i < 64) {
-            board.append(0);
-            i = i + 1;
+        for (var i = 0; i < 64; i = i + 1) {
+            board.append(EMPTY);
         }
-        var back = [4, 2, 3, 5, 6, 3, 2, 4];
-        i = 0;
-        while (i < 8) {
-            board[i] = 0 - back[i];
-            var blackPawn = 8 + i;
-            var whitePawn = 48 + i;
-            var whiteBack = 56 + i;
-            board[blackPawn] = -1;
-            board[whitePawn] = 1;
-            board[whiteBack] = back[i];
-            i = i + 1;
+        var backRank = [ROOK, KNIGHT, BISHOP, QUEEN, KING, BISHOP, KNIGHT, ROOK];
+        for (var file = 0; file < 8; file = file + 1) {
+            board[at(0, file)] = coded(backRank[file], BLACK);
+            board[at(BLACK_PAWN_ROW, file)] = coded(PAWN, BLACK);
+            board[at(WHITE_PAWN_ROW, file)] = coded(PAWN, WHITE);
+            board[at(7, file)] = coded(backRank[file], WHITE);
         }
-        side = 1;
+        side = WHITE;
         castleWK = true;
         castleWQ = true;
         castleBK = true;
         castleBQ = true;
-        epSq = -1;
-        selSq = -1;
+        epSq = NO_SQUARE;
+        selSq = NO_SQUARE;
         legalForSel = [];
-        lastFrom = -1;
-        lastTo = -1;
-        status = "play";
+        lastFrom = NO_SQUARE;
+        lastTo = NO_SQUARE;
+        status = STATUS_PLAY;
         history = [];
         gameOverLogged = false;
         aiWaitMs = 0;
@@ -191,10 +305,8 @@ if (root == null) {
             return false;
         }
         board = [];
-        var i = 0;
-        while (i < 64) {
+        for (var i = 0; i < 64; i = i + 1) {
             board.append(saved.board[i]);
-            i = i + 1;
         }
         side = saved.side;
         castleWK = saved.wk;
@@ -210,33 +322,29 @@ if (root == null) {
             gameOverLogged = false;
         }
         if (status == null) {
-            status = "play";
+            status = STATUS_PLAY;
         }
         return true;
     }
 
-    function onBoard(r, c) {
-        return r >= 0 and r < 8 and c >= 0 and c < 8;
-    }
+    // --- attacks --------------------------------------------------------------
 
     function findKing(who) {
-        var want = 6 * who;
-        var i = 0;
-        while (i < 64) {
+        var want = coded(KING, who);
+        for (var i = 0; i < 64; i = i + 1) {
             if (board[i] == want) {
                 return i;
             }
-            i = i + 1;
         }
-        return -1;
+        return NO_SQUARE;
     }
 
     function slideHits(sq, dr, dc, wantA, wantB) {
-        var r = math.floor(sq / 8) + dr;
-        var c = (sq % 8) + dc;
+        var r = rowOf(sq) + dr;
+        var c = colOf(sq) + dc;
         while (onBoard(r, c)) {
-            var p = board[r * 8 + c];
-            if (p != 0) {
+            var p = board[at(r, c)];
+            if (!isEmpty(p)) {
                 return p == wantA or p == wantB;
             }
             r = r + dr;
@@ -246,93 +354,91 @@ if (root == null) {
     }
 
     function isAttacked(sq, bySide) {
-        if (sq < 0) {
+        if (sq == NO_SQUARE) {
             return false;
         }
-        var r = math.floor(sq / 8);
-        var c = sq % 8;
-        var pdr = 1;
-        if (bySide < 0) {
-            pdr = -1;
+        var r = rowOf(sq);
+        var c = colOf(sq);
+
+        // A pawn attacks one row forward. Look one row backward from the target.
+        var pawnBack = 1;
+        if (bySide == BLACK) {
+            pawnBack = -1;
         }
         var dc = -1;
         while (dc <= 1) {
             if (dc != 0) {
-                var pr = r + pdr;
+                var pr = r + pawnBack;
                 var pc = c + dc;
-                if (onBoard(pr, pc) and board[pr * 8 + pc] == bySide) {
+                if (onBoard(pr, pc) and board[at(pr, pc)] == coded(PAWN, bySide)) {
                     return true;
                 }
             }
             dc = dc + 1;
         }
-        var i = 0;
-        while (i < 8) {
-            var nr = r + knDr[i];
-            var nc = c + knDc[i];
-            if (onBoard(nr, nc) and board[nr * 8 + nc] == 2 * bySide) {
+
+        for (var i = 0; i < 8; i = i + 1) {
+            var nr = r + KNIGHT_DR[i];
+            var nc = c + KNIGHT_DC[i];
+            if (onBoard(nr, nc) and board[at(nr, nc)] == coded(KNIGHT, bySide)) {
                 return true;
             }
-            i = i + 1;
         }
-        i = 0;
-        while (i < 8) {
-            var kr = r + kgDr[i];
-            var kc = c + kgDc[i];
-            if (onBoard(kr, kc) and board[kr * 8 + kc] == 6 * bySide) {
+        for (var i = 0; i < 8; i = i + 1) {
+            var kr = r + KING_DR[i];
+            var kc = c + KING_DC[i];
+            if (onBoard(kr, kc) and board[at(kr, kc)] == coded(KING, bySide)) {
                 return true;
             }
-            i = i + 1;
         }
-        var bishop = 3 * bySide;
-        var queen = 5 * bySide;
-        var rook = 4 * bySide;
-        i = 4;
-        while (i < 8) {
-            if (slideHits(sq, slDr[i], slDc[i], bishop, queen)) {
+
+        var bishop = coded(BISHOP, bySide);
+        var queen = coded(QUEEN, bySide);
+        var rook = coded(ROOK, bySide);
+        for (var i = RAY_BISHOP_START; i < RAY_BISHOP_STOP; i = i + 1) {
+            if (slideHits(sq, SLIDE_DR[i], SLIDE_DC[i], bishop, queen)) {
                 return true;
             }
-            i = i + 1;
         }
-        i = 0;
-        while (i < 4) {
-            if (slideHits(sq, slDr[i], slDc[i], rook, queen)) {
+        for (var i = RAY_ROOK_START; i < RAY_ROOK_STOP; i = i + 1) {
+            if (slideHits(sq, SLIDE_DR[i], SLIDE_DC[i], rook, queen)) {
                 return true;
             }
-            i = i + 1;
         }
         return false;
     }
+
+    // --- move generation ------------------------------------------------------
 
     function pushMove(moves, from, to, flag) {
         moves.append({ "from": from, "to": to, "flag": flag });
     }
 
     function addPawnMoves(moves, from, who) {
-        var r = math.floor(from / 8);
-        var c = from % 8;
-        var dr = -1;
-        var startRow = 6;
-        var promoRow = 0;
-        if (who < 0) {
-            dr = 1;
-            startRow = 1;
-            promoRow = 7;
+        var r = rowOf(from);
+        var c = colOf(from);
+        var forward = -1;
+        var startRow = WHITE_PAWN_ROW;
+        var promoRow = WHITE_PROMO_ROW;
+        if (who == BLACK) {
+            forward = 1;
+            startRow = BLACK_PAWN_ROW;
+            promoRow = BLACK_PROMO_ROW;
         }
-        var nr = r + dr;
+        var nr = r + forward;
         if (!onBoard(nr, c)) {
             return;
         }
-        var ahead = nr * 8 + c;
-        if (board[ahead] == 0) {
+        var ahead = at(nr, c);
+        if (isEmpty(board[ahead])) {
             if (nr == promoRow) {
-                pushMove(moves, from, ahead, 4);
+                pushMove(moves, from, ahead, MOVE_PROMOTE);
             } else {
-                pushMove(moves, from, ahead, 0);
+                pushMove(moves, from, ahead, MOVE_NORMAL);
                 if (r == startRow) {
-                    var jump = (r + dr + dr) * 8 + c;
-                    if (board[jump] == 0) {
-                        pushMove(moves, from, jump, 0);
+                    var jump = at(r + forward + forward, c);
+                    if (isEmpty(board[jump])) {
+                        pushMove(moves, from, jump, MOVE_NORMAL);
                     }
                 }
             }
@@ -342,17 +448,17 @@ if (root == null) {
             if (d != 0) {
                 var nc = c + d;
                 if (onBoard(nr, nc)) {
-                    var dest = nr * 8 + nc;
+                    var dest = at(nr, nc);
                     var victim = board[dest];
-                    if (victim != 0 and victim * who < 0) {
+                    if (isEnemy(victim, who)) {
                         if (nr == promoRow) {
-                            pushMove(moves, from, dest, 4);
+                            pushMove(moves, from, dest, MOVE_PROMOTE);
                         } else {
-                            pushMove(moves, from, dest, 0);
+                            pushMove(moves, from, dest, MOVE_NORMAL);
                         }
                     }
                     if (dest == epSq) {
-                        pushMove(moves, from, dest, 3);
+                        pushMove(moves, from, dest, MOVE_EN_PASSANT);
                     }
                 }
             }
@@ -361,76 +467,73 @@ if (root == null) {
     }
 
     function addStepMoves(moves, from, who, drs, dcs) {
-        var r = math.floor(from / 8);
-        var c = from % 8;
-        var i = 0;
-        while (i < drs.length) {
+        var r = rowOf(from);
+        var c = colOf(from);
+        for (var i = 0; i < drs.length; i = i + 1) {
             var nr = r + drs[i];
             var nc = c + dcs[i];
             if (onBoard(nr, nc)) {
-                var dest = nr * 8 + nc;
+                var dest = at(nr, nc);
                 var victim = board[dest];
-                if (victim == 0 or victim * who < 0) {
-                    pushMove(moves, from, dest, 0);
+                if (isEmpty(victim) or isEnemy(victim, who)) {
+                    pushMove(moves, from, dest, MOVE_NORMAL);
                 }
             }
-            i = i + 1;
         }
     }
 
     function addSlideMoves(moves, from, who, start, stop) {
-        var r0 = math.floor(from / 8);
-        var c0 = from % 8;
-        var i = start;
-        while (i < stop) {
-            var r = r0 + slDr[i];
-            var c = c0 + slDc[i];
+        var r0 = rowOf(from);
+        var c0 = colOf(from);
+        for (var i = start; i < stop; i = i + 1) {
+            var r = r0 + SLIDE_DR[i];
+            var c = c0 + SLIDE_DC[i];
             while (onBoard(r, c)) {
-                var dest = r * 8 + c;
+                var dest = at(r, c);
                 var victim = board[dest];
-                if (victim == 0) {
-                    pushMove(moves, from, dest, 0);
+                if (isEmpty(victim)) {
+                    pushMove(moves, from, dest, MOVE_NORMAL);
                 } else {
-                    if (victim * who < 0) {
-                        pushMove(moves, from, dest, 0);
+                    if (isEnemy(victim, who)) {
+                        pushMove(moves, from, dest, MOVE_NORMAL);
                     }
                     break;
                 }
-                r = r + slDr[i];
-                c = c + slDc[i];
+                r = r + SLIDE_DR[i];
+                c = c + SLIDE_DC[i];
             }
-            i = i + 1;
         }
     }
 
     function addCastleMoves(moves, who) {
         var k = findKing(who);
-        if (k < 0) {
+        if (k == NO_SQUARE) {
             return;
         }
-        if (isAttacked(k, 0 - who)) {
+        // Cannot castle out of check (through / into check is tested on the path).
+        if (isAttacked(k, opponent(who))) {
             return;
         }
-        if (who > 0) {
-            if (castleWK and board[61] == 0 and board[62] == 0 and board[63] == 4) {
-                if (!isAttacked(61, -1) and !isAttacked(62, -1)) {
-                    pushMove(moves, 60, 62, 1);
+        if (who == WHITE) {
+            if (castleWK and isEmpty(board[F1]) and isEmpty(board[G1]) and board[H1] == coded(ROOK, WHITE)) {
+                if (!isAttacked(F1, BLACK) and !isAttacked(G1, BLACK)) {
+                    pushMove(moves, E1, G1, MOVE_CASTLE_KING);
                 }
             }
-            if (castleWQ and board[59] == 0 and board[58] == 0 and board[57] == 0 and board[56] == 4) {
-                if (!isAttacked(59, -1) and !isAttacked(58, -1)) {
-                    pushMove(moves, 60, 58, 2);
+            if (castleWQ and isEmpty(board[D1]) and isEmpty(board[C1]) and isEmpty(board[B1]) and board[A1] == coded(ROOK, WHITE)) {
+                if (!isAttacked(D1, BLACK) and !isAttacked(C1, BLACK)) {
+                    pushMove(moves, E1, C1, MOVE_CASTLE_QUEEN);
                 }
             }
         } else {
-            if (castleBK and board[5] == 0 and board[6] == 0 and board[7] == -4) {
-                if (!isAttacked(5, 1) and !isAttacked(6, 1)) {
-                    pushMove(moves, 4, 6, 1);
+            if (castleBK and isEmpty(board[F8]) and isEmpty(board[G8]) and board[H8] == coded(ROOK, BLACK)) {
+                if (!isAttacked(F8, WHITE) and !isAttacked(G8, WHITE)) {
+                    pushMove(moves, E8, G8, MOVE_CASTLE_KING);
                 }
             }
-            if (castleBQ and board[3] == 0 and board[2] == 0 and board[1] == 0 and board[0] == -4) {
-                if (!isAttacked(3, 1) and !isAttacked(2, 1)) {
-                    pushMove(moves, 4, 2, 2);
+            if (castleBQ and isEmpty(board[D8]) and isEmpty(board[C8]) and isEmpty(board[B8]) and board[A8] == coded(ROOK, BLACK)) {
+                if (!isAttacked(D8, WHITE) and !isAttacked(C8, WHITE)) {
+                    pushMove(moves, E8, C8, MOVE_CASTLE_QUEEN);
                 }
             }
         }
@@ -438,30 +541,38 @@ if (root == null) {
 
     function genPseudo(who) {
         var moves = [];
-        var i = 0;
-        while (i < 64) {
+        for (var i = 0; i < 64; i = i + 1) {
             var p = board[i];
-            if (p != 0 and p * who > 0) {
-                var t = kind(p);
-                if (t == 1) {
-                    addPawnMoves(moves, i, who);
-                } else if (t == 2) {
-                    addStepMoves(moves, i, who, knDr, knDc);
-                } else if (t == 3) {
-                    addSlideMoves(moves, i, who, 4, 8);
-                } else if (t == 4) {
-                    addSlideMoves(moves, i, who, 0, 4);
-                } else if (t == 5) {
-                    addSlideMoves(moves, i, who, 0, 8);
-                } else if (t == 6) {
-                    addStepMoves(moves, i, who, kgDr, kgDc);
+            if (isFriendly(p, who)) {
+                match pieceKind(p) {
+                    case PAWN: {
+                        addPawnMoves(moves, i, who);
+                    }
+                    case KNIGHT: {
+                        addStepMoves(moves, i, who, KNIGHT_DR, KNIGHT_DC);
+                    }
+                    case BISHOP: {
+                        addSlideMoves(moves, i, who, RAY_BISHOP_START, RAY_BISHOP_STOP);
+                    }
+                    case ROOK: {
+                        addSlideMoves(moves, i, who, RAY_ROOK_START, RAY_ROOK_STOP);
+                    }
+                    case QUEEN: {
+                        addSlideMoves(moves, i, who, RAY_ROOK_START, RAY_BISHOP_STOP);
+                    }
+                    case KING: {
+                        addStepMoves(moves, i, who, KING_DR, KING_DC);
+                    }
+                    default: {
+                    }
                 }
             }
-            i = i + 1;
         }
         addCastleMoves(moves, who);
         return moves;
     }
+
+    // --- make move ------------------------------------------------------------
 
     function applyMove(m) {
         var from = m.from;
@@ -469,85 +580,88 @@ if (root == null) {
         var flag = m.flag;
         var piece = board[from];
         board[to] = piece;
-        board[from] = 0;
-        if (flag == 3) {
-            if (piece > 0) {
-                var epDown = to + 8;
-                board[epDown] = 0;
-            } else {
-                var epUp = to - 8;
-                board[epUp] = 0;
+        board[from] = EMPTY;
+
+        match flag {
+            case MOVE_EN_PASSANT: {
+                // Captured pawn sits one rank behind the landing (jumped-over) square.
+                if (isWhite(piece)) {
+                    board[to + 8] = EMPTY;
+                } else {
+                    board[to - 8] = EMPTY;
+                }
+            }
+            case MOVE_PROMOTE: {
+                if (isWhite(piece)) {
+                    board[to] = coded(QUEEN, WHITE);
+                } else {
+                    board[to] = coded(QUEEN, BLACK);
+                }
+            }
+            case MOVE_CASTLE_KING: {
+                if (isWhite(piece)) {
+                    board[H1] = EMPTY;
+                    board[F1] = coded(ROOK, WHITE);
+                } else {
+                    board[H8] = EMPTY;
+                    board[F8] = coded(ROOK, BLACK);
+                }
+            }
+            case MOVE_CASTLE_QUEEN: {
+                if (isWhite(piece)) {
+                    board[A1] = EMPTY;
+                    board[D1] = coded(ROOK, WHITE);
+                } else {
+                    board[A8] = EMPTY;
+                    board[D8] = coded(ROOK, BLACK);
+                }
+            }
+            default: {
+                // MOVE_NORMAL: the piece already moved onto `to` above.
             }
         }
-        if (flag == 4) {
-            if (piece > 0) {
-                board[to] = 5;
-            } else {
-                board[to] = -5;
-            }
-        }
-        if (flag == 1) {
-            if (piece > 0) {
-                board[63] = 0;
-                board[61] = 4;
-            } else {
-                board[7] = 0;
-                board[5] = -4;
-            }
-        }
-        if (flag == 2) {
-            if (piece > 0) {
-                board[56] = 0;
-                board[59] = 4;
-            } else {
-                board[0] = 0;
-                board[3] = -4;
-            }
-        }
-        if (from == 60 or to == 60) {
+
+        if (from == E1 or to == E1) {
             castleWK = false;
             castleWQ = false;
         }
-        if (from == 4 or to == 4) {
+        if (from == E8 or to == E8) {
             castleBK = false;
             castleBQ = false;
         }
-        if (from == 63 or to == 63) {
+        if (from == H1 or to == H1) {
             castleWK = false;
         }
-        if (from == 56 or to == 56) {
+        if (from == A1 or to == A1) {
             castleWQ = false;
         }
-        if (from == 7 or to == 7) {
+        if (from == H8 or to == H8) {
             castleBK = false;
         }
-        if (from == 0 or to == 0) {
+        if (from == A8 or to == A8) {
             castleBQ = false;
         }
-        epSq = -1;
-        if (kind(piece) == 1) {
-            var fr = math.floor(from / 8);
-            var tr = math.floor(to / 8);
-            if (math.abs(tr - fr) == 2) {
+
+        epSq = NO_SQUARE;
+        if (pieceKind(piece) == PAWN) {
+            if (math.abs(rowOf(to) - rowOf(from)) == 2) {
                 epSq = (from + to) / 2;
             }
         }
-        side = 0 - side;
+        side = opponent(side);
     }
 
     function genLegal(who) {
         var raw = genPseudo(who);
         var out = [];
-        var i = 0;
-        while (i < raw.length) {
+        for (var i = 0; i < raw.length; i = i + 1) {
             var snap = snapshot();
             applyMove(raw[i]);
             var k = findKing(who);
-            if (!isAttacked(k, 0 - who)) {
+            if (!isAttacked(k, opponent(who))) {
                 out.append(raw[i]);
             }
             restore(snap);
-            i = i + 1;
         }
         return out;
     }
@@ -555,26 +669,30 @@ if (root == null) {
     function refreshStatus() {
         var moves = genLegal(side);
         var k = findKing(side);
-        var check = isAttacked(k, 0 - side);
+        var check = isAttacked(k, opponent(side));
         if (moves.length == 0) {
             if (check) {
-                status = "mate";
+                status = STATUS_MATE;
             } else {
-                status = "stale";
+                status = STATUS_STALE;
             }
         } else if (check) {
-            status = "check";
+            status = STATUS_CHECK;
         } else {
-            status = "play";
+            status = STATUS_PLAY;
         }
-        if (status == "mate" and !gameOverLogged) {
-            if (side > 0) {
+        if (status == STATUS_MATE and !gameOverLogged) {
+            if (side == WHITE) {
                 winsB = winsB + 1;
             } else {
                 winsW = winsW + 1;
             }
             gameOverLogged = true;
         }
+    }
+
+    function isGameOver() {
+        return status == STATUS_MATE or status == STATUS_STALE;
     }
 
     function bootAudio() {
@@ -589,17 +707,17 @@ if (root == null) {
         if (!audioBooted) {
             return;
         }
-        if (status == "mate") {
+        if (status == STATUS_MATE) {
             game.audioPlayTone(420, 140, "sawtooth", 0.14);
             game.audioPlayTone(280, 180, "sawtooth", 0.12);
             return;
         }
-        if (status == "check") {
+        if (status == STATUS_CHECK) {
             game.audioPlayTone(880, 70, "square", 0.12);
             game.audioPlayTone(660, 80, "square", 0.10);
             return;
         }
-        if (captured or m.flag == 3) {
+        if (captured or m.flag == MOVE_EN_PASSANT) {
             game.audioPlayTone(320, 50, "triangle", 0.12);
         } else {
             game.audioPlayTone(540, 36, "triangle", 0.09);
@@ -607,44 +725,44 @@ if (root == null) {
     }
 
     function playMove(m) {
-        var captured = board[m.to] != 0 or m.flag == 3;
+        var captured = !isEmpty(board[m.to]) or m.flag == MOVE_EN_PASSANT;
         history.append(snapshot());
         applyMove(m);
         lastFrom = m.from;
         lastTo = m.to;
-        selSq = -1;
+        selSq = NO_SQUARE;
         legalForSel = [];
         refreshStatus();
         playSfx(m, captured);
         persist();
     }
 
+    // --- small CPU: material + centre, then 2-ply negamax ---------------------
+
     function evaluate() {
         var score = 0;
-        var i = 0;
-        while (i < 64) {
+        for (var i = 0; i < 64; i = i + 1) {
             var p = board[i];
-            if (p != 0) {
-                var t = kind(p);
-                var v = values[t];
-                var r = math.floor(i / 8);
-                var c = i % 8;
+            if (!isEmpty(p)) {
+                var t = pieceKind(p);
+                var v = MATERIAL[t];
+                var r = rowOf(i);
+                var c = colOf(i);
                 var dist = math.abs(r - 3.5) + math.abs(c - 3.5);
                 v = v + (4 - dist) * 3;
-                if (t == 1) {
-                    if (p > 0) {
+                if (t == PAWN) {
+                    if (isWhite(p)) {
                         v = v + (6 - r) * 6;
                     } else {
                         v = v + (r - 1) * 6;
                     }
                 }
-                if (p > 0) {
+                if (isWhite(p)) {
                     score = score + v;
                 } else {
                     score = score - v;
                 }
             }
-            i = i + 1;
         }
         return score;
     }
@@ -655,22 +773,20 @@ if (root == null) {
         }
         var moves = genLegal(who);
         if (moves.length == 0) {
-            if (isAttacked(findKing(who), 0 - who)) {
-                return -20000 - depth;
+            if (isAttacked(findKing(who), opponent(who))) {
+                return 0 - MATE_SCORE - depth;
             }
             return 0;
         }
         var best = -1000000;
-        var i = 0;
-        while (i < moves.length) {
+        for (var i = 0; i < moves.length; i = i + 1) {
             var snap = snapshot();
             applyMove(moves[i]);
-            var sc = 0 - negamax(depth - 1, 0 - who);
+            var sc = 0 - negamax(depth - 1, opponent(who));
             restore(snap);
             if (sc > best) {
                 best = sc;
             }
-            i = i + 1;
         }
         return best;
     }
@@ -682,18 +798,16 @@ if (root == null) {
         }
         var bestScore = -1000000;
         var best = moves[0];
-        var i = 0;
-        while (i < moves.length) {
+        for (var i = 0; i < moves.length; i = i + 1) {
             var snap = snapshot();
             applyMove(moves[i]);
-            var sc = 0 - negamax(1, side);
+            var sc = 0 - negamax(AI_EXTRA_PLY, side);
             restore(snap);
             sc = sc + (i % 5);
             if (sc > bestScore) {
                 bestScore = sc;
                 best = moves[i];
             }
-            i = i + 1;
         }
         return best;
     }
@@ -709,11 +823,11 @@ if (root == null) {
         }
         restore(history[history.length - 1]);
         history.pop();
-        if (vsCpu and side < 0 and history.length > 0) {
+        if (vsCpu and side == BLACK and history.length > 0) {
             restore(history[history.length - 1]);
             history.pop();
         }
-        selSq = -1;
+        selSq = NO_SQUARE;
         legalForSel = [];
         aiWaitMs = 0;
         aiThinking = false;
@@ -723,84 +837,68 @@ if (root == null) {
 
     function selectSquare(sq) {
         var p = board[sq];
-        if (p == 0 or p * side <= 0) {
-            selSq = -1;
+        if (!isFriendly(p, side)) {
+            selSq = NO_SQUARE;
             legalForSel = [];
             return;
         }
         selSq = sq;
         legalForSel = [];
         var all = genLegal(side);
-        var i = 0;
-        while (i < all.length) {
+        for (var i = 0; i < all.length; i = i + 1) {
             if (all[i].from == sq) {
                 legalForSel.append(all[i]);
             }
-            i = i + 1;
         }
     }
 
     function moveIfLegal(sq) {
-        var i = 0;
-        while (i < legalForSel.length) {
+        for (var i = 0; i < legalForSel.length; i = i + 1) {
             if (legalForSel[i].to == sq) {
                 playMove(legalForSel[i]);
                 return true;
             }
-            i = i + 1;
         }
         return false;
     }
 
     function squareAt(mx, my) {
-        var c = math.floor((mx - boardX) / tile);
-        var r = math.floor((my - boardY) / tile);
+        var c = math.floor((mx - BOARD_X) / TILE);
+        var r = math.floor((my - BOARD_Y) / TILE);
         if (!onBoard(r, c)) {
-            return -1;
+            return NO_SQUARE;
         }
-        return r * 8 + c;
-    }
-
-    function btnNewY() {
-        return 248;
-    }
-
-    function btnUndoY() {
-        return 298;
-    }
-
-    function btnCpuY() {
-        return 348;
+        return at(r, c);
     }
 
     function handleClick(mx, my) {
-        if (game.pointInRect(mx, my, panelX, btnNewY(), 320, 40)) {
+        if (game.pointInRect(mx, my, PANEL_X, BTN_NEW_Y, BTN_W, BTN_H)) {
             newGame();
             return;
         }
-        if (game.pointInRect(mx, my, panelX, btnUndoY(), 320, 40)) {
+        if (game.pointInRect(mx, my, PANEL_X, BTN_UNDO_Y, BTN_W, BTN_H)) {
             undoMove();
             return;
         }
-        if (game.pointInRect(mx, my, panelX, btnCpuY(), 320, 40)) {
+        if (game.pointInRect(mx, my, PANEL_X, BTN_CPU_Y, BTN_W, BTN_H)) {
             vsCpu = !vsCpu;
             persist();
             return;
         }
-        if (status == "mate" or status == "stale") {
+        if (isGameOver()) {
             return;
         }
         if (aiThinking) {
             return;
         }
-        if (vsCpu and side < 0) {
+        if (vsCpu and side == BLACK) {
             return;
         }
         var sq = squareAt(mx, my);
-        if (sq < 0) {
+        if (sq == NO_SQUARE) {
             return;
         }
-        if (selSq >= 0) {
+        if (selSq != NO_SQUARE) {
             if (moveIfLegal(sq)) {
                 return;
             }
@@ -808,36 +906,38 @@ if (root == null) {
         selectSquare(sq);
     }
 
+    // --- drawing (glyphs only; rules live above) ------------------------------
+
     function pieceFill(p) {
-        if (p > 0) {
+        if (isWhite(p)) {
             return "#f4ead6";
         }
         return "#1c212b";
     }
 
     function pieceShade(p) {
-        if (p > 0) {
+        if (isWhite(p)) {
             return "#d4c3a4";
         }
         return "#0f1218";
     }
 
     function pieceGlint(p) {
-        if (p > 0) {
+        if (isWhite(p)) {
             return "#fff8ea";
         }
         return "#4b5568";
     }
 
     function pieceStroke(p) {
-        if (p > 0) {
+        if (isWhite(p)) {
             return "#3a2818";
         }
         return "#e8d7b8";
     }
 
     function pieceGold(p) {
-        if (p > 0) {
+        if (isWhite(p)) {
             return "#b45309";
         }
         return "#fbbf24";
@@ -992,53 +1092,53 @@ if (root == null) {
     }
 
     function drawPiece(cx, cy, p) {
-        var t = kind(p);
         var fill = pieceFill(p);
         var shade = pieceShade(p);
         var ink = pieceStroke(p);
         var gold = pieceGold(p);
         drawPieceShadow(cx, cy);
-        if (t == 1) {
-            drawPawn(cx, cy, fill, shade, ink, p);
-            return;
+        match pieceKind(p) {
+            case PAWN: {
+                drawPawn(cx, cy, fill, shade, ink, p);
+            }
+            case KNIGHT: {
+                drawKnight(cx, cy, fill, shade, ink, p);
+            }
+            case BISHOP: {
+                drawBishop(cx, cy, fill, shade, ink, gold, p);
+            }
+            case ROOK: {
+                drawRook(cx, cy, fill, shade, ink, p);
+            }
+            case QUEEN: {
+                drawQueen(cx, cy, fill, shade, ink, gold, p);
+            }
+            case KING: {
+                drawKing(cx, cy, fill, shade, ink, gold, p);
+            }
+            default: {
+            }
         }
-        if (t == 2) {
-            drawKnight(cx, cy, fill, shade, ink, p);
-            return;
-        }
-        if (t == 3) {
-            drawBishop(cx, cy, fill, shade, ink, gold, p);
-            return;
-        }
-        if (t == 4) {
-            drawRook(cx, cy, fill, shade, ink, p);
-            return;
-        }
-        if (t == 5) {
-            drawQueen(cx, cy, fill, shade, ink, gold, p);
-            return;
-        }
-        drawKing(cx, cy, fill, shade, ink, gold, p);
     }
 
     function statusText() {
         if (aiThinking) {
             return "Black is thinking…";
         }
-        if (status == "mate") {
-            if (side > 0) {
+        if (status == STATUS_MATE) {
+            if (side == WHITE) {
                 return "Checkmate — Black wins";
             }
             return "Checkmate — White wins";
         }
-        if (status == "stale") {
+        if (status == STATUS_STALE) {
             return "Stalemate";
         }
         var turn = "White to move";
-        if (side < 0) {
+        if (side == BLACK) {
             turn = "Black to move";
         }
-        if (status == "check") {
+        if (status == STATUS_CHECK) {
             return turn + " — check";
         }
         return turn;
@@ -1075,9 +1175,9 @@ if (root == null) {
             handleClick(game.getMouseX(), game.getMouseY());
         }
 
-        if (vsCpu and side < 0 and (status == "play" or status == "check") and !aiThinking) {
+        if (vsCpu and side == BLACK and (status == STATUS_PLAY or status == STATUS_CHECK) and !aiThinking) {
             aiThinking = true;
-            aiWaitMs = 220;
+            aiWaitMs = AI_THINK_MS;
         }
 
         if (aiThinking) {
@@ -1094,15 +1194,13 @@ if (root == null) {
 
     function renderGame() {
         game.clear();
-        game.fillRect(0, 0, canvasWidth, canvasHeight, "#0f172a");
+        game.fillRect(0, 0, CANVAS_W, CANVAS_H, "#0f172a");
 
-        var r = 0;
-        while (r < 8) {
-            var c = 0;
-            while (c < 8) {
-                var sq = r * 8 + c;
-                var x = boardX + c * tile;
-                var y = boardY + r * tile;
+        for (var r = 0; r < 8; r = r + 1) {
+            for (var c = 0; c < 8; c = c + 1) {
+                var sq = at(r, c);
+                var x = BOARD_X + c * TILE;
+                var y = BOARD_Y + r * TILE;
                 var light = ((r + c) % 2) == 0;
                 var color = "#edd4a2";
                 if (!light) {
@@ -1118,75 +1216,69 @@ if (root == null) {
                 if (sq == selSq) {
                     color = "#6ea8fe";
                 }
-                game.fillRect(x, y, tile, tile, color);
+                game.fillRect(x, y, TILE, TILE, color);
 
-                if (status == "check" or status == "mate") {
-                    if (board[sq] == 6 * side) {
+                if (status == STATUS_CHECK or status == STATUS_MATE) {
+                    if (board[sq] == coded(KING, side)) {
                         game.setAlpha(0.35);
-                        game.fillRect(x, y, tile, tile, "#ef4444");
+                        game.fillRect(x, y, TILE, TILE, "#ef4444");
                         game.setAlpha(1);
                     }
                 }
 
-                var i = 0;
-                while (i < legalForSel.length) {
+                for (var i = 0; i < legalForSel.length; i = i + 1) {
                     if (legalForSel[i].to == sq) {
-                        if (board[sq] != 0 or legalForSel[i].flag == 3) {
-                            game.strokeCircle(x + tile / 2, y + tile / 2, 22, "#14532d", 3);
+                        if (!isEmpty(board[sq]) or legalForSel[i].flag == MOVE_EN_PASSANT) {
+                            game.strokeCircle(x + TILE / 2, y + TILE / 2, 22, "#14532d", 3);
                         } else {
-                            game.fillCircle(x + tile / 2, y + tile / 2, 8, "#166534");
+                            game.fillCircle(x + TILE / 2, y + TILE / 2, 8, "#166534");
                         }
                     }
-                    i = i + 1;
                 }
 
-                if (board[sq] != 0) {
-                    drawPiece(x + tile / 2, y + tile / 2 + 4, board[sq]);
+                if (!isEmpty(board[sq])) {
+                    drawPiece(x + TILE / 2, y + TILE / 2 + 4, board[sq]);
                 }
-                c = c + 1;
             }
-            r = r + 1;
         }
 
-        game.strokeRect(boardX, boardY, tile * 8, tile * 8, "#0f172a", 3);
+        game.strokeRect(BOARD_X, BOARD_Y, TILE * 8, TILE * 8, "#0f172a", 3);
 
-        r = 0;
-        while (r < 8) {
-            game.drawText(string(8 - r), 8, boardY + r * tile + 40, "#94a3b8", "13px monospace");
-            game.drawText(files[r], boardX + r * tile + 28, boardY + tile * 8 + 20, "#94a3b8", "13px monospace");
-            r = r + 1;
+        for (var i = 0; i < 8; i = i + 1) {
+            game.drawText(string(8 - i), 8, BOARD_Y + i * TILE + 40, "#94a3b8", "13px monospace");
+            game.drawText(FILES[i], BOARD_X + i * TILE + 28, BOARD_Y + TILE * 8 + 20, "#94a3b8", "13px monospace");
         }
 
-        if (hoverSq >= 0) {
-            var hx = boardX + (hoverSq % 8) * tile;
-            var hy = boardY + math.floor(hoverSq / 8) * tile;
-            game.strokeRect(hx, hy, tile, tile, "#f8fafc", 1);
+        if (hoverSq != NO_SQUARE) {
+            var hx = BOARD_X + colOf(hoverSq) * TILE;
+            var hy = BOARD_Y + rowOf(hoverSq) * TILE;
+            game.strokeRect(hx, hy, TILE, TILE, "#f8fafc", 1);
         }
 
-        game.drawText("Chess", panelX, 48, "#f8fafc", "32px sans-serif");
-        game.drawText(statusText(), panelX, 84, "#fde68a", "18px sans-serif");
+        game.drawText("Chess", PANEL_X, 48, "#f8fafc", "32px sans-serif");
+        game.drawText(statusText(), PANEL_X, 84, "#fde68a", "18px sans-serif");
 
         var mode = "Human vs computer";
         if (!vsCpu) {
             mode = "Human vs human";
         }
-        game.drawText(mode, panelX, 114, "#cbd5e1", "16px sans-serif");
-        game.drawText("White " + string(winsW) + "  —  Black " + string(winsB), panelX, 142, "#93c5fd", "16px sans-serif");
-        game.drawText("Click a piece, then a green square.", panelX, 178, "#94a3b8", "14px sans-serif");
-        game.drawText("Castling, en passant, queen promo.", panelX, 200, "#94a3b8", "14px sans-serif");
+        game.drawText(mode, PANEL_X, 114, "#cbd5e1", "16px sans-serif");
+        game.drawText($"White {winsW}  —  Black {winsB}", PANEL_X, 142, "#93c5fd", "16px sans-serif");
+        game.drawText("Click a piece, then a green square.", PANEL_X, 178, "#94a3b8", "14px sans-serif");
+        game.drawText("Castling, en passant, queen promo.", PANEL_X, 200, "#94a3b8", "14px sans-serif");
 
         var mx = game.getMouseX();
         var my = game.getMouseY();
-        drawButton(panelX, btnNewY(), 320, 40, "New game  (R)", game.pointInRect(mx, my, panelX, btnNewY(), 320, 40));
-        drawButton(panelX, btnUndoY(), 320, 40, "Undo  (U)", game.pointInRect(mx, my, panelX, btnUndoY(), 320, 40));
+        drawButton(PANEL_X, BTN_NEW_Y, BTN_W, BTN_H, "New game  (R)", game.pointInRect(mx, my, PANEL_X, BTN_NEW_Y, BTN_W, BTN_H));
+        drawButton(PANEL_X, BTN_UNDO_Y, BTN_W, BTN_H, "Undo  (U)", game.pointInRect(mx, my, PANEL_X, BTN_UNDO_Y, BTN_W, BTN_H));
         var cpuLabel = "Play vs computer  (C)";
         if (vsCpu) {
             cpuLabel = "Play vs human  (C)";
         }
-        drawButton(panelX, btnCpuY(), 320, 40, cpuLabel, game.pointInRect(mx, my, panelX, btnCpuY(), 320, 40));
+        drawButton(PANEL_X, BTN_CPU_Y, BTN_W, BTN_H, cpuLabel, game.pointInRect(mx, my, PANEL_X, BTN_CPU_Y, BTN_W, BTN_H));
 
-        game.drawText("Local two-player or a 2-ply CPU.", panelX, 420, "#64748b", "14px sans-serif");
-        game.drawText("Position and score survive reload.", panelX, 442, "#64748b", "14px sans-serif");
+        game.drawText("Local two-player or a 2-ply CPU.", PANEL_X, 420, "#64748b", "14px sans-serif");
+        game.drawText("Position and score survive reload.", PANEL_X, 442, "#64748b", "14px sans-serif");
     }
 
     if (!tryLoadGame()) {
@@ -1195,7 +1287,7 @@ if (root == null) {
         refreshStatus();
     }
 
-    game.createCanvas(canvasWidth, canvasHeight, "#app");
+    game.createCanvas(CANVAS_W, CANVAS_H, "#app");
     game.setBackground("#0f172a");
     game.startFixed(updateGame, renderGame);
 }
