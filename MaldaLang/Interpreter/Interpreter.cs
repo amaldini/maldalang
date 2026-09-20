@@ -3821,6 +3821,10 @@ public partial class Interpreter
         {
             return await CreateLlamaEmbedderAsync(expr.Arguments);
         }
+        else if (expr.ClassName == "OnnxModel")
+        {
+            return await CreateOnnxModelAsync(expr.Arguments);
+        }
         else if (expr.ClassName == "Conversation")
         {
             return await CreateConversationAsync(expr.Arguments);
@@ -4022,6 +4026,18 @@ public partial class Interpreter
         embedder.ModelPath = modelPath.AsString();
         
         return RuntimeValue.Object(embedder);
+    }
+
+    private async Task<RuntimeValue> CreateOnnxModelAsync(List<Expression> args)
+    {
+        if (args.Count != 1)
+            throw new RuntimeException("OnnxModel() expects 1 argument: (path)");
+
+        var pathValue = await EvaluateAsync(args[0]);
+        if (pathValue.Type != ValueType.String)
+            throw new RuntimeException("OnnxModel() expects 1 argument: (path)");
+
+        return RuntimeValue.Object(new BuiltIns.OnnxModelInstance(pathValue.AsString()));
     }
     
     private async Task<RuntimeValue> CreateConversationAsync(List<Expression> args)
@@ -4254,6 +4270,10 @@ public partial class Interpreter
         else if (instance is BuiltIns.LlamaEmbedderInstance llamaEmbedder)
         {
             return llamaEmbedder.CallMethod(methodName, arguments, this);
+        }
+        else if (instance is BuiltIns.OnnxModelInstance onnxModel)
+        {
+            return onnxModel.CallMethod(methodName, arguments, this);
         }
         else if (instance is BuiltIns.LLMClientBridge.LLMClientBridgeInstance bridgeClient)
         {

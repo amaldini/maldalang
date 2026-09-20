@@ -3159,6 +3159,16 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("}");
         WriteIndent();
+        _output.AppendLine("else if (instance is MaldaLang.BuiltIns.OnnxModelInstance onnxModel)");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("result = onnxModel.CallMethod(methodName, runtimeArgs, MaldaLang.Runtime.TranspiledBuiltinRuntime.GetOrCreateInterpreter());");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+        WriteIndent();
         _output.AppendLine("else if (instance is MaldaLang.BuiltIns.GraphMemoryInstance graphMemory)");
         WriteIndent();
         _output.AppendLine("{");
@@ -12120,6 +12130,14 @@ public class CSharpTranspiler
             _output.Append(") })");
             return;
         }
+
+        if (className == "OnnxModel" && newExpr.Arguments.Count == 1)
+        {
+            _output.Append("(new MaldaLang.BuiltIns.OnnxModelInstance(RuntimeHelpers.CoerceToString(");
+            TranspileExpression(newExpr.Arguments[0]);
+            _output.Append(")))");
+            return;
+        }
         
         if (className == "LLMClient" && newExpr.Arguments.Count == 3)
         {
@@ -12487,6 +12505,7 @@ public class CSharpTranspiler
             "OpenRouterClient" => "MaldaLang.BuiltIns.OpenRouterClientInstance",
             "LlamaCppClient" => "MaldaLang.BuiltIns.LlamaCppClientInstance",
             "LlamaEmbedder" => "MaldaLang.BuiltIns.LlamaEmbedderInstance",
+            "OnnxModel" => "MaldaLang.BuiltIns.OnnxModelInstance",
             "Conversation" => "MaldaLang.BuiltIns.ConversationInstance",
             "Tool" => "MaldaLang.BuiltIns.ToolInstance",
             "Agent" => "MaldaLang.BuiltIns.AgentInstance",

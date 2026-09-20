@@ -83,7 +83,7 @@ print(io.readFile("config.json"));</code></pre>
         <p>Solo i nomi piatti che hanno una controparte <code>math.</code>, <code>str.</code> o <code>io.</code> sono considerati alias deprecati. Chiamarne uno produce un warning nell'IDE e nel language server dalla sorgente <code>malda-style</code>, nella forma <em>Prefer 'io.print(...)' instead of 'print(...)' (deprecated flat alias)</em>. Il warning è solo un avviso: a runtime non viene rimosso nulla e i transpiler accettano entrambe le forme.</p>
         <p>I nomi interessati, che rispecchiano <code>MaldaLang/BuiltIns/StdLibNamespaces.cs</code>:</p>
         <ul>
-            <li><strong>math:</strong> <code>abs</code>, <code>sum</code>, <code>average</code>, <code>max</code>, <code>min</code>, <code>pow</code>, <code>sqrt</code>, <code>floor</code>, <code>ceil</code>, <code>round</code>, <code>trunc</code>, <code>sign</code>, <code>exp</code>, <code>log</code>, <code>log10</code>, <code>log2</code>, <code>sin</code>, <code>cos</code>, <code>tan</code>, <code>asin</code>, <code>acos</code>, <code>atan</code>, <code>atan2</code>, <code>hypot</code>, <code>clamp</code>, <code>degToRad</code>, <code>radToDeg</code>, <code>zeros</code>, <code>rsqrt</code>, <code>randn</code>, <code>argmax</code>, <code>argmin</code>, <code>logSumExp</code>, <code>softmax</code>, <code>crossEntropyFromLogits</code>, <code>randomChoiceWeighted</code>, <code>seed</code>, <code>random</code>, <code>randomInt</code>, <code>randomFloat</code>, <code>anneal</code></li>
+            <li><strong>math:</strong> <code>abs</code>, <code>sum</code>, <code>average</code>, <code>max</code>, <code>min</code>, <code>pow</code>, <code>sqrt</code>, <code>floor</code>, <code>ceil</code>, <code>round</code>, <code>trunc</code>, <code>sign</code>, <code>exp</code>, <code>log</code>, <code>log10</code>, <code>log2</code>, <code>sin</code>, <code>cos</code>, <code>tan</code>, <code>asin</code>, <code>acos</code>, <code>atan</code>, <code>atan2</code>, <code>hypot</code>, <code>clamp</code>, <code>degToRad</code>, <code>radToDeg</code>, <code>zeros</code>, <code>rsqrt</code>, <code>randn</code>, <code>argmax</code>, <code>argmin</code>, <code>logSumExp</code>, <code>softmax</code>, <code>crossEntropyFromLogits</code>, <code>dot</code>, <code>matmul</code>, <code>transpose</code>, <code>relu</code>, <code>sigmoid</code>, <code>tanh</code>, <code>mse</code>, <code>randomChoiceWeighted</code>, <code>seed</code>, <code>random</code>, <code>randomInt</code>, <code>randomFloat</code>, <code>anneal</code></li>
             <li><strong>str:</strong> <code>length</code>, <code>upper</code>, <code>lower</code>, <code>trim</code>, <code>text</code>, <code>trimText</code>, <code>substring</code>, <code>indexOf</code>, <code>replace</code>, <code>split</code>, <code>normalizeText</code>, <code>tokenize</code>, <code>tokenOverlap</code>, <code>similarity</code>, <code>extractNumbers</code>, <code>regexMatch</code>, <code>regexReplace</code>, <code>regexFind</code>, <code>startsWith</code>, <code>endsWith</code>, <code>padStart</code>, <code>padEnd</code>, <code>includes</code>, <code>join</code>, <code>repeat</code>, <code>base64Encode</code>, <code>base64Decode</code>, <code>md5</code>, <code>sha256</code></li>
             <li><strong>io:</strong> <code>print</code>, <code>input</code>, <code>readFile</code>, <code>writeFile</code>, <code>copyFile</code>, <code>readFileBase64</code>, <code>writeFileBase64</code>, <code>readTextFileLines</code>, <code>deleteFile</code>, <code>hasFile</code>, <code>hasDirectory</code>, <code>ensureDir</code>, <code>listDirectory</code>, <code>hasEmbeddedFolder</code>, <code>embeddedFolderRoot</code>, <code>glob</code>, <code>grep</code>, <code>replaceInFile</code>, <code>pathExists</code>, <code>pathJoin</code>, <code>pathNormalize</code>, <code>pathGetExtension</code>, <code>isPathUnder</code>, <code>getEnv</code>, <code>getEnvOr</code>, <code>hasEnv</code>, <code>getFileName</code>, <code>getDirectoryName</code>, <code>gitStatus</code>, <code>gitAdd</code>, <code>gitCommit</code>, <code>gitDiff</code>, <code>gitLog</code>, <code>gitBranch</code>, <code>gitCheckout</code>, <code>gitPull</code>, <code>gitPush</code></li>
         </ul>
@@ -116,6 +116,7 @@ print(math.pow(2, 3));</code></pre>
         <tr><td><code>math.cos(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
         <tr><td><code>math.crossEntropyFromLogits(logits, targetIndex)</code></td><td>2 arguments: (logits, targetIndex)</td><td>—</td><td></td></tr>
         <tr><td><code>math.degToRad(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
+        <tr><td><code>math.dot(a, b)</code></td><td>2 arguments: (a, b)</td><td>float</td><td>vettori 1D, stessa lunghezza</td></tr>
         <tr><td><code>math.exp(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
         <tr><td><code>math.floor(x)</code></td><td>1 argument</td><td>—</td><td>returns a float even when whole-valued (print shows 1, not 1.0); integer sinks coerce whole floats, so str.repeat(&quot;-&quot;, math.floor(n)) works; fractional floats still fail</td></tr>
         <tr><td><code>math.hypot(a, b)</code></td><td>2 arguments</td><td>—</td><td></td></tr>
@@ -124,7 +125,9 @@ print(math.pow(2, 3));</code></pre>
         <tr><td><code>math.log2(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
         <tr><td><code>math.logSumExp(array)</code></td><td>1 argument: (array)</td><td>—</td><td></td></tr>
         <tr><td><code>math.max(a, b)</code></td><td>2 arguments or 1 array</td><td>—</td><td></td></tr>
+        <tr><td><code>math.matmul(a, b)</code></td><td>2 arguments: (a, b)</td><td>array</td><td>2D@2D, 2D@1D o 1D@2D</td></tr>
         <tr><td><code>math.min(a, b)</code></td><td>2 arguments or 1 array</td><td>—</td><td></td></tr>
+        <tr><td><code>math.mse(pred, target)</code></td><td>2 arguments: (pred, target)</td><td>float</td><td>scalari o vettori 1D della stessa lunghezza</td></tr>
         <tr><td><code>math.pow(a, b)</code></td><td>2 arguments</td><td>—</td><td></td></tr>
         <tr><td><code>math.radToDeg(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
         <tr><td><code>math.randn(std?, mean?)</code></td><td>0-2 arguments: (std?, mean?)</td><td>—</td><td></td></tr>
@@ -132,15 +135,19 @@ print(math.pow(2, 3));</code></pre>
         <tr><td><code>math.randomChoiceWeighted(weights)</code></td><td>1 argument: (weights)</td><td>—</td><td></td></tr>
         <tr><td><code>math.randomFloat(min, max)</code></td><td>2 arguments: (min, max)</td><td>—</td><td>min included, max excluded</td></tr>
         <tr><td><code>math.randomInt(min, max)</code></td><td>2 arguments: (min, max)</td><td>—</td><td>min and max are BOTH included, unlike half-open ranges elsewhere; math.seed(n) pins the sequence</td></tr>
+        <tr><td><code>math.relu(x)</code></td><td>1 argument: (x)</td><td>—</td><td>scalare o elementwise 1D/2D</td></tr>
         <tr><td><code>math.round(x)</code></td><td>1 argument</td><td>—</td><td>returns a float even when whole-valued; integer sinks coerce whole floats; wrap with int() if you need an Integer-tagged value</td></tr>
         <tr><td><code>math.rsqrt(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
         <tr><td><code>math.seed(x)</code></td><td>1 argument</td><td>null</td><td>resets the one generator shared by random, randomInt, randomFloat, randn, randomChoiceWeighted and anneal</td></tr>
+        <tr><td><code>math.sigmoid(x)</code></td><td>1 argument: (x)</td><td>—</td><td>scalare o elementwise 1D/2D</td></tr>
         <tr><td><code>math.sign(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
         <tr><td><code>math.sin(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
         <tr><td><code>math.softmax(array, temperature?)</code></td><td>1-2 arguments: (array, temperature?)</td><td>—</td><td></td></tr>
         <tr><td><code>math.sqrt(x)</code></td><td>1 argument</td><td>—</td><td>returns a float even when whole-valued (sqrt(4) is 2.0); integer sinks coerce whole floats; wrap with int() if you need an Integer-tagged value</td></tr>
         <tr><td><code>math.sum(array)</code></td><td>1 argument: (array)</td><td>—</td><td></td></tr>
         <tr><td><code>math.tan(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
+        <tr><td><code>math.tanh(x)</code></td><td>1 argument: (x)</td><td>—</td><td>scalare o elementwise 1D/2D</td></tr>
+        <tr><td><code>math.transpose(matrix)</code></td><td>1 argument: (matrix)</td><td>array</td><td>matrice 2D nidificata</td></tr>
         <tr><td><code>math.trunc(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
         <tr><td><code>math.zeros(n, cols?)</code></td><td>1-2 arguments: (n, cols?)</td><td>array</td><td>1D math.zeros(n) or 2D math.zeros(rows, cols); each 2D row is a new array; cells are 0.0</td></tr>
         </tbody>

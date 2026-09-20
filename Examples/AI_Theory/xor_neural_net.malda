@@ -40,13 +40,7 @@
 
 // Squash any real number into (0, 1). Clamps avoid math.exp overflow.
 function sigmoid(x: float) -> float {
-    if (x < -20.0) {
-        return 0.0;
-    }
-    if (x > 20.0) {
-        return 1.0;
-    }
-    return 1.0 / (1.0 + math.exp(-x));
+    return math.sigmoid(x);
 }
 
 // d(sigmoid)/dz = y * (1 - y) when y is already sigmoid(z).
@@ -77,22 +71,19 @@ function randomVector(n: int, scale: float) -> array {
 
 // One forward pass. Returns hidden activations (needed for backprop) and y.
 function forward(x: array, w1: array, b1: array, w2: array, b2: array) -> object {
+    // z = x W1 + b1, then h = sigmoid(z). Gradients below stay named by hand.
+    var preact = math.matmul(x, w1);
     var hidden = [];
     for (var j = 0; j < b1.length; j = j + 1) {
-        // z_j = b1[j] + sum_i x[i] * w1[i][j]
-        var z = b1[j];
-        for (var i = 0; i < x.length; i = i + 1) {
-            z = z + x[i] * w1[i][j];
-        }
-        hidden.append(sigmoid(z)); // h_j
+        hidden.append(math.sigmoid(preact[j] + b1[j]));
     }
 
-    // zOut = b2 + sum_j h_j * w2[j]
-    var zOut = b2[0];
+    var w2col = [];
     for (var h = 0; h < hidden.length; h = h + 1) {
-        zOut = zOut + hidden[h] * w2[h][0];
+        w2col.append(w2[h][0]);
     }
-    return { "hidden": hidden, "output": sigmoid(zOut) };
+    var zOut = b2[0] + math.dot(hidden, w2col);
+    return { "hidden": hidden, "output": math.sigmoid(zOut) };
 }
 
 function fmt(x: float) -> string {

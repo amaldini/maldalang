@@ -68,10 +68,17 @@ Then the **AI theory** track (from-scratch models; no API key, no agent runtime)
 
 27. `Examples/AI_Theory/sarsa_cliff.malda` (SARSA vs Q-learning on a cliff)
 28. `Examples/AI_Theory/chain_rule.malda` (why backprop multiplies local derivatives)
-29. `Examples/AI_Theory/xor_neural_net.malda`
-30. `Examples/AI_Theory/svm_linear.malda`
-31. `Examples/AI_Theory/attention_is_all_you_need.malda`
-32. `Examples/AI_Theory/microgpt.malda`
+29. `Examples/AI_Theory/perceptron.malda` (one neuron; AND/OR vs XOR)
+30. `Examples/AI_Theory/xor_neural_net.malda`
+31. `Examples/AI_Theory/softmax_classifier.malda` (3-class softmax on 2D blobs)
+32. `Examples/AI_Theory/svm_linear.malda`
+33. `Examples/AI_Theory/attention_is_all_you_need.malda`
+34. `Examples/AI_Theory/microgpt.malda`
+35. `Examples/AI_Theory/embedding_2d.malda` (hash embeddings projected to 2D)
+36. `Examples/AI_Theory/onnx_inspect.malda` (host ONNX inspect + forward)
+37. `Examples/Games/xor_decision_boundary.malda` (`malda play` — see the XOR net)
+
+The neural-nets kit (`math.matmul` / `relu` / `OnnxModel`, not a training framework) is tracked in [`docs/roadmap-neural.md`](roadmap-neural.md).
 
 `Examples/Basics/first_look.malda` is optional if you already program (prompt + schema + `validate`, no API key). After the core path, `Examples/Basics/lambda.malda` is a useful extra before prompts.
 

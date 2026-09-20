@@ -1622,6 +1622,248 @@
     return rows;
   }
 
+  function neuralIsNumeric(value) {
+    return typeof value === "number" && Number.isFinite(value);
+  }
+
+  function neuralAsNumeric(name, value) {
+    const n = coerceToFloat(value);
+    if (!Number.isFinite(n)) {
+      throw new Error(name + "() expects numeric values");
+    }
+    return n;
+  }
+
+  function neuralIsVector(value) {
+    return Array.isArray(value) && (value.length === 0 || !Array.isArray(value[0]));
+  }
+
+  function neuralIsMatrix(value) {
+    return Array.isArray(value) && value.length > 0 && Array.isArray(value[0]);
+  }
+
+  function neuralRequireVector(name, value, which) {
+    if (!Array.isArray(value) || neuralIsMatrix(value)) {
+      throw new Error(name + "() expects a numeric vector as " + which + " argument");
+    }
+    const vector = [];
+    for (let i = 0; i < value.length; i++) {
+      vector.push(neuralAsNumeric(name, value[i]));
+    }
+    return vector;
+  }
+
+  function neuralRequireMatrix(name, value, which) {
+    if (!neuralIsMatrix(value)) {
+      throw new Error(name + "() expects a 2D numeric matrix as " + which + " argument");
+    }
+    const matrix = [];
+    let width = -1;
+    for (let i = 0; i < value.length; i++) {
+      if (!Array.isArray(value[i])) {
+        throw new Error(name + "() expects a 2D numeric matrix as " + which + " argument");
+      }
+      if (width < 0) {
+        width = value[i].length;
+      } else if (value[i].length !== width) {
+        throw new Error(name + "() matrix rows must have the same length");
+      }
+      const row = [];
+      for (let j = 0; j < value[i].length; j++) {
+        row.push(neuralAsNumeric(name, value[i][j]));
+      }
+      matrix.push(row);
+    }
+    return matrix;
+  }
+
+  function mathDot(a, b) {
+    if (arguments.length !== 2) {
+      throw new Error("dot() expects 2 arguments: (a, b)");
+    }
+    const left = neuralRequireVector("dot", a, "first");
+    const right = neuralRequireVector("dot", b, "second");
+    if (left.length === 0 || right.length === 0 || left.length !== right.length) {
+      throw new Error("dot() expects two non-empty numeric vectors of the same length");
+    }
+    let sum = 0;
+    for (let i = 0; i < left.length; i++) {
+      sum += left[i] * right[i];
+    }
+    return sum;
+  }
+
+  function mathMatMul(a, b) {
+    if (arguments.length !== 2) {
+      throw new Error("matmul() expects 2 arguments: (a, b)");
+    }
+    const leftIsMatrix = neuralIsMatrix(a);
+    const rightIsMatrix = neuralIsMatrix(b);
+    if (!leftIsMatrix && !neuralIsVector(a)) {
+      throw new Error("matmul() expects numeric vectors or 2D matrices");
+    }
+    if (!rightIsMatrix && !neuralIsVector(b)) {
+      throw new Error("matmul() expects numeric vectors or 2D matrices");
+    }
+    if (leftIsMatrix && rightIsMatrix) {
+      const left = neuralRequireMatrix("matmul", a, "first");
+      const right = neuralRequireMatrix("matmul", b, "second");
+      if (left.length === 0 || right.length === 0 || left[0].length === 0 || right[0].length === 0) {
+        throw new Error("matmul() expects non-empty matrices");
+      }
+      if (left[0].length !== right.length) {
+        throw new Error("matmul() inner dimensions must match");
+      }
+      const out = [];
+      for (let i = 0; i < left.length; i++) {
+        const row = [];
+        for (let j = 0; j < right[0].length; j++) {
+          let sum = 0;
+          for (let k = 0; k < right.length; k++) {
+            sum += left[i][k] * right[k][j];
+          }
+          row.push(sum);
+        }
+        out.push(row);
+      }
+      return out;
+    }
+    if (leftIsMatrix) {
+      const left = neuralRequireMatrix("matmul", a, "first");
+      const x = neuralRequireVector("matmul", b, "second");
+      if (left.length === 0 || left[0].length === 0 || x.length === 0) {
+        throw new Error("matmul() expects non-empty matrices");
+      }
+      if (left[0].length !== x.length) {
+        throw new Error("matmul() inner dimensions must match");
+      }
+      const out = [];
+      for (let i = 0; i < left.length; i++) {
+        let sum = 0;
+        for (let k = 0; k < x.length; k++) {
+          sum += left[i][k] * x[k];
+        }
+        out.push(sum);
+      }
+      return out;
+    }
+    const v = neuralRequireVector("matmul", a, "first");
+    const m = neuralRequireMatrix("matmul", b, "second");
+    if (v.length === 0 || m.length === 0 || m[0].length === 0) {
+      throw new Error("matmul() expects non-empty matrices");
+    }
+    if (v.length !== m.length) {
+      throw new Error("matmul() inner dimensions must match");
+    }
+    const out = [];
+    for (let j = 0; j < m[0].length; j++) {
+      let sum = 0;
+      for (let k = 0; k < v.length; k++) {
+        sum += v[k] * m[k][j];
+      }
+      out.push(sum);
+    }
+    return out;
+  }
+
+  function mathTranspose(matrix) {
+    if (arguments.length !== 1) {
+      throw new Error("transpose() expects 1 argument: (matrix)");
+    }
+    const src = neuralRequireMatrix("transpose", matrix, "first");
+    if (src.length === 0) {
+      return [];
+    }
+    const out = [];
+    for (let j = 0; j < src[0].length; j++) {
+      const row = [];
+      for (let i = 0; i < src.length; i++) {
+        row.push(src[i][j]);
+      }
+      out.push(row);
+    }
+    return out;
+  }
+
+  function mathSigmoidScalar(x) {
+    if (x < -20) {
+      return 0;
+    }
+    if (x > 20) {
+      return 1;
+    }
+    return 1 / (1 + Math.exp(-x));
+  }
+
+  function mathMapNumeric(name, value, fn) {
+    if (neuralIsNumeric(coerceToFloat(value)) && !Array.isArray(value)) {
+      return fn(neuralAsNumeric(name, value));
+    }
+    if (neuralIsMatrix(value)) {
+      const matrix = neuralRequireMatrix(name, value, "first");
+      const out = [];
+      for (let i = 0; i < matrix.length; i++) {
+        const row = [];
+        for (let j = 0; j < matrix[i].length; j++) {
+          row.push(fn(matrix[i][j]));
+        }
+        out.push(row);
+      }
+      return out;
+    }
+    if (Array.isArray(value)) {
+      const vector = neuralRequireVector(name, value, "first");
+      const out = [];
+      for (let i = 0; i < vector.length; i++) {
+        out.push(fn(vector[i]));
+      }
+      return out;
+    }
+    throw new Error(name + "() expects a number or a numeric array");
+  }
+
+  function mathRelu(x) {
+    if (arguments.length !== 1) {
+      throw new Error("relu() expects 1 argument: (x)");
+    }
+    return mathMapNumeric("relu", x, (n) => n > 0 ? n : 0);
+  }
+
+  function mathSigmoid(x) {
+    if (arguments.length !== 1) {
+      throw new Error("sigmoid() expects 1 argument: (x)");
+    }
+    return mathMapNumeric("sigmoid", x, mathSigmoidScalar);
+  }
+
+  function mathTanh(x) {
+    if (arguments.length !== 1) {
+      throw new Error("tanh() expects 1 argument: (x)");
+    }
+    return mathMapNumeric("tanh", x, Math.tanh);
+  }
+
+  function mathMse(pred, target) {
+    if (arguments.length !== 2) {
+      throw new Error("mse() expects 2 arguments: (pred, target)");
+    }
+    if (!Array.isArray(pred) && !Array.isArray(target)) {
+      const d = neuralAsNumeric("mse", pred) - neuralAsNumeric("mse", target);
+      return d * d;
+    }
+    const a = neuralRequireVector("mse", pred, "first");
+    const b = neuralRequireVector("mse", target, "second");
+    if (a.length === 0 || b.length === 0 || a.length !== b.length) {
+      throw new Error("mse() expects two non-empty numeric vectors of the same length");
+    }
+    let sum = 0;
+    for (let i = 0; i < a.length; i++) {
+      const d = a[i] - b[i];
+      sum += d * d;
+    }
+    return sum / a.length;
+  }
+
   function cloneAnnealState(value) {
     if (Array.isArray(value)) {
       return value.map(cloneAnnealState);
@@ -1755,6 +1997,13 @@
     degToRad: (value) => coerceToFloat(value) * Math.PI / 180,
     radToDeg: (value) => coerceToFloat(value) * 180 / Math.PI,
     zeros: mathZeros,
+    dot: mathDot,
+    matmul: mathMatMul,
+    transpose: mathTranspose,
+    relu: mathRelu,
+    sigmoid: mathSigmoid,
+    tanh: mathTanh,
+    mse: mathMse,
     random: randomBuiltin,
     randomInt: randomIntBuiltin,
     randomFloat: randomFloatBuiltin,

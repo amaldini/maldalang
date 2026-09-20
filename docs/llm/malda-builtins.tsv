@@ -88,6 +88,7 @@ csrfField	csrfField	secret and optional ttlSeconds
 decomposeTask	decomposeTask	1-3 arguments: (instruction, client?, team?)		
 degToRad	math.degToRad	1 argument		
 deleteFile	io.deleteFile	1 argument		
+dot	math.dot	2 arguments: (a, b)		
 dotnetNew	dotnetNew	at least 1 argument: (typeOrTypeName, ...ctorArgs)		
 editFile	editFile	(string, array)		
 embedBagOfWords	embedBagOfWords	at least 1 argument (text, dimension?, vocabulary?)		
@@ -199,10 +200,12 @@ lower	str.lower	1 argument
 markdownToHtml	markdownToHtml	1 argument: (markdown)	Markdig HTML fragment; advanced MD (tables etc.); raw HTML in input disabled	string HTML fragment
 markup	AnsiConsole.markup	1 string argument	NO trailing newline - consecutive calls run together on one line; use markupLine for a whole line	
 markupLine	AnsiConsole.markupLine	1 string argument	appends a newline; parses [bold] [green] [/] tags; double a literal bracket as [[ or ]]	
+matmul	math.matmul	2 arguments: (a, b)		
 max	math.max	2 arguments or 1 array		
 md5	str.md5	1 argument		
 mergeRetrievedDocs	mergeRetrievedDocs	one or more document arrays		
 min	math.min	2 arguments or 1 array		
+mse	math.mse	2 arguments: (pred, target)		
 normalizeText	str.normalizeText	(string, options?)		
 now	now	0 arguments		
 onAgentProgress	onAgentProgress	1 argument: (handlerOrChannel)		
@@ -240,6 +243,7 @@ RedirectTo	RedirectTo	1 string argument: (location)
 regexFind	str.regexFind	(string, string)		
 regexMatch	str.regexMatch	(string, string)		
 regexReplace	str.regexReplace	(string, string, string)		
+relu	math.relu	1 argument: (x)		
 renderTemplate	renderTemplate	template string and optional object model		
 repeat	str.repeat	2 arguments: (str, count)	count must be an integer or a whole-valued float; fractional floats are rejected	
 replace	str.replace	(string, string, string)		
@@ -264,6 +268,7 @@ setAgentVerbosePhase	setAgentVerbosePhase	1 string argument (phase label)
 setDefaultAgent	setDefaultAgent	an Agent instance		
 sha256	str.sha256	1 argument		
 shift	<array>.shift	0 arguments	method on the array: items.shift(); not a free function; <array> marks a receiver method, not a namespace	
+sigmoid	math.sigmoid	1 argument: (x)		
 sign	math.sign	1 argument		
 signalWorkflow	signalWorkflow	at least 2 arguments: (instanceId, signalName, payload?)		
 similarity	str.similarity	(string, string, method?, options?)		
@@ -284,6 +289,7 @@ substring	str.substring	(string, int, int)
 sum	math.sum	1 argument: (array)		
 table	AnsiConsole.table	at least 1 argument: (data, title?, columns?)	data must be an array of objects or an array of arrays; cell values and headers parse markup	
 tan	math.tan	1 argument		
+tanh	math.tanh	1 argument: (x)		
 text	str.text	1 argument: (value)	null → empty string (unlike string(null) → "null"); use at env/JSON/CLI boundaries	string (never null)
 toCsv	toCsv	1-3 arguments: (rows, columns?, options?)		
 toIntOr	toIntOr	2 arguments: (value, fallback)	returns the fallback instead of throwing	
@@ -291,6 +297,7 @@ toIntOrNull	toIntOrNull	1 argument	returns null instead of throwing
 toJSON	toJSON	1 argument		
 tokenize	str.tokenize	(string, options?)		
 tokenOverlap	str.tokenOverlap	(string, string, options?)		
+transpose	math.transpose	1 argument: (matrix)		
 tree	AnsiConsole.tree	at least 1 string argument: (label, items?)	items is an array of strings or { label, children? }; children may be strings (nested objects are skipped)	null
 trim	str.trim	1 argument		
 trimText	str.trimText	1 argument: (value)	null-safe trim: str.trim(str.text(value))	string (never null)

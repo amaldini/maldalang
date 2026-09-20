@@ -586,3 +586,4 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 | 2026-08-25 | MINOR: `malda new game` uses `startFixed` (G15) |
 | 2026-08-27 | MINOR: JS `game.setBlend` / `drawImageEx` tint / `tintFill` (G16) |
 | 2026-08-27 | MINOR: JS `game.drawTiles` / `tileAt` / `sweepTiles` (G17) |
+| 2026-09-20 | MINOR: neural-nets kit — `math.dot` / `matmul` / `transpose` / `relu` / `sigmoid` / `tanh` / `mse`; host `OnnxModel` inspect+forward (`docs/roadmap-neural.md`) |

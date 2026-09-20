@@ -1,0 +1,79 @@
+// Project hash embeddings onto two axes and ask VectorDB who is nearby.
+// Offline — embedHash, no GGUF. OnnxModel / LlamaEmbedder stay optional extras.
+// See docs/roadmap-neural.md (N4).
+
+function hashEmbed(text) {
+    return embedHash(text, 32);
+}
+
+function center(vectors: array) -> array {
+    var dim = vectors[0].length;
+    var mean = math.zeros(dim);
+    for (var i = 0; i < vectors.length; i = i + 1) {
+        for (var d = 0; d < dim; d = d + 1) {
+            mean[d] = mean[d] + vectors[i][d];
+        }
+    }
+    for (var d = 0; d < dim; d = d + 1) {
+        mean[d] = mean[d] / vectors.length;
+    }
+    var out = [];
+    for (var i = 0; i < vectors.length; i = i + 1) {
+        var row = [];
+        for (var d = 0; d < dim; d = d + 1) {
+            row.append(vectors[i][d] - mean[d]);
+        }
+        out.append(row);
+    }
+    return out;
+}
+
+function unit(v: array) -> array {
+    var n = math.sqrt(math.dot(v, v));
+    if (n < 0.000001) {
+        return v;
+    }
+    var out = [];
+    for (var i = 0; i < v.length; i = i + 1) {
+        out.append(v[i] / n);
+    }
+    return out;
+}
+
+math.seed(11);
+
+var words = [
+    "car", "automobile", "vehicle",
+    "cat", "feline", "kitten",
+    "bank", "finance", "money"
+];
+
+var vectors = [];
+for (var i = 0; i < words.length; i = i + 1) {
+    vectors.append(hashEmbed(words[i]));
+}
+
+var centered = center(vectors);
+var axisX = unit(centered[0]);
+var axisY = unit(centered[3]);
+io.print("Hash embeddings projected onto two document axes");
+io.print("word            x      y");
+for (var i = 0; i < words.length; i = i + 1) {
+    var x = math.dot(centered[i], axisX);
+    var y = math.dot(centered[i], axisY);
+    io.print(str.padEnd(words[i], 14) + " " + string(math.round(x * 100.0) / 100.0) + "  " + string(math.round(y * 100.0) / 100.0));
+}
+
+var db = new VectorDB(32, "double");
+db.init(hashEmbed);
+for (var i = 0; i < words.length; i = i + 1) {
+    db.add(words[i]);
+}
+
+io.print("");
+io.print("Nearest to 'car':");
+var near = db.searchSimilar("car", 3);
+for (var i = 0; i < near.length; i = i + 1) {
+    io.print("  " + string(near[i].data) + "  " + string(math.round(near[i].similarity * 1000.0) / 1000.0));
+}
+io.print("embedding 2d ok");

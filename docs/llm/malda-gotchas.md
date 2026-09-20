@@ -79,6 +79,7 @@ claim a program works.
 | `api` methods `_add`/`_mul` but the model emits `add`/`mul` or `+`/`*` | Validation used to fail (or the repair loop kept asking for `_add`). The host maps unique aliases, `Api.` prefixes, and operators, and treats a bare `t0` as `"$t0"`. | Keep the underscore names on the `function`s; the program JSON may say `add`. Structured-output schema uses `api` not `@api` so providers do not drop `response_format` |
 | `api` / `runProgram` with `--mode js` | JS transpile rejects `api` declarations (host-only, same as prompts). | Interpreter or `malda compile --mode transpile` |
 | `new VectorDB(...)` with `--mode js` | JS has no VectorDB runtime (`malda-js-runtime.js`). Emit is a bare `new VectorDB(...)` that fails at run time. | Interpreter or `malda compile --mode transpile` |
+| `new OnnxModel(...)` with `--mode js` | Host-only inspect + forward (`Microsoft.ML.OnnxRuntime`). JS has no ONNX runtime. | Interpreter or `malda compile --mode transpile` (auto-includes OnnxRuntime) |
 | `api` method without a top-level `function` of the same name | `runProgram` fails at the call step. | Declare `function add(a, b) { … }` matching the signature |
 | `result.map(r, (x) => result.ok(x + 1))` (or `option.map` returning `Some`/`None`) | `map` transforms a **payload**. Interpreter, C#, and JS all wrap as `Ok(Ok(...))` / `Some(Some(...))`. Sequencing fallible steps this way is wrong. | `result.andThen(r, (x) => result.ok(x + 1))` — `fn` must return `Ok`/`Err` (or `Some`/`None` on `option.andThen`) |
 | `pdf.extractText(scanned.pdf)` expecting OCR | Extracts the **digital text layer** only (PdfPig). Image-only / scanned PDFs often return empty or near-empty text with no error. | OCR first, or convert to `.md` / `.txt` before BUILD |
@@ -162,6 +163,9 @@ seeds, `str.repeat`, …) coerce whole-valued floats automatically, so
 `str.repeat("-", math.floor(n / 2))` works. The value is still tagged float: `print` shows
 `1` not `1.0`, and a fractional float such as `2.7` is still rejected. Use `int(...)` when
 you want an integer value, not only an integer-accepting call.
+
+**`math.matmul` inner dimensions must match.** `math.dot` is 1D only; `math.matmul` is 2D@2D,
+2D@1D, or 1D@2D. A shape mismatch throws rather than broadcasting.
 
 **Flat built-in names are deprecated aliases.** `sqrt(16)` and `Math.sqrt(16)` both run, but
 the language server reports both as deprecated. Prefer `math.sqrt(16)`. See the namespace

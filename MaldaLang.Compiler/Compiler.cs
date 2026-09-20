@@ -31,6 +31,7 @@ public class Compiler
 {
     private const string EmbeddedUiHostStartMarker = "RegisterDecoratedFunctions();";
     private static readonly Regex EmbedAliasPattern = new("^[a-zA-Z0-9_-]+$", RegexOptions.Compiled);
+    private bool _includeOnnxRuntime;
 
     public class CompilationResult
     {
@@ -80,6 +81,18 @@ public class Compiler
         return source.Contains("LlamaEmbedder", StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// True when the MALDA source needs Microsoft.ML.OnnxRuntime at publish time —
+    /// e.g. <c>new OnnxModel(...)</c>. Without this, the managed ONNX assembly is
+    /// missing from the published folder (malda.dll is referenced as a raw DLL).
+    /// </summary>
+    public static bool SourceRequiresOnnxRuntime(string source)
+    {
+        if (string.IsNullOrEmpty(source))
+            return false;
+        return source.Contains("OnnxModel", StringComparison.Ordinal);
+    }
+
     public CompilationResult Compile(string sourcePath, string outputPath, CompilationMode mode, bool includeLLamaSharp, bool includeUiHost, ProfilingOptions? profilingOptions, int typedTranspileLevel, bool includeOptionalPacks, string[]? embedFolderArgs)
     {
         IReadOnlyList<EmbeddedFolderSpec> folders;
@@ -96,16 +109,19 @@ public class Compiler
             };
         }
 
-        if (!includeLLamaSharp && File.Exists(sourcePath))
+        _includeOnnxRuntime = false;
+        if (File.Exists(sourcePath))
         {
             try
             {
-                if (SourceRequiresLLamaSharp(File.ReadAllText(sourcePath)))
+                var sourceText = File.ReadAllText(sourcePath);
+                if (!includeLLamaSharp && SourceRequiresLLamaSharp(sourceText))
                     includeLLamaSharp = true;
+                _includeOnnxRuntime = SourceRequiresOnnxRuntime(sourceText);
             }
             catch
             {
-                // Keep caller-provided flag when the source cannot be probed.
+                // Keep caller-provided flags when the source cannot be probed.
             }
         }
 
@@ -950,7 +966,8 @@ public class Compiler
         
         // Disable single-file publishing when LLamaSharp is included to avoid conflicts
         // with multiple native DLLs (avx, avx2, avx512, noavx variants)
-        string publishSingleFile = includeLLamaSharp ? "false" : "true";
+        string publishSingleFile = includeLLamaSharp || _includeOnnxRuntime ? "false" : "true";
+        packageReferences = WithOnnxRuntimePackage(packageReferences);
         
         // Generate embedded resource items for all package files
         var embeddedResources = new StringBuilder();
@@ -1097,7 +1114,7 @@ class Program
         Directory.CreateDirectory(publishOutputDir);
         var csprojPath = Path.Combine(tempDir, "MaldaLang.Executable.csproj");
         // Optional native trading/timeseries packs need companion assemblies beside the executable.
-        var shouldPublishSingleFile = !includeLLamaSharp && !includeOptionalPacks;
+        var shouldPublishSingleFile = !includeLLamaSharp && !includeOptionalPacks && !_includeOnnxRuntime;
         var publishSingleFileArg = shouldPublishSingleFile
             ? "/p:PublishSingleFile=true"
             : "/p:PublishSingleFile=false";
@@ -2560,7 +2577,8 @@ self.addEventListener("fetch", (event) => {
         
         // Disable single-file publishing when LLamaSharp is included to avoid conflicts
         // with multiple native DLLs (avx, avx2, avx512, noavx variants)
-        string publishSingleFile = includeLLamaSharp ? "false" : "true";
+        string publishSingleFile = includeLLamaSharp || _includeOnnxRuntime ? "false" : "true";
+        packageReferences = WithOnnxRuntimePackage(packageReferences);
         
         var uiHostFrameworkReference = includeUiHost
             ? @"  <ItemGroup>
@@ -2937,6 +2955,16 @@ internal static class EmbeddedUiHostRuntime
         return "@\"" + value.Replace("\"", "\"\"") + "\"";
     }
 
+    private string WithOnnxRuntimePackage(string packageReferences)
+    {
+        if (!_includeOnnxRuntime)
+            return packageReferences;
+        return packageReferences.Replace(
+            "  <ItemGroup>",
+            "  <ItemGroup>\n    <PackageReference Include=\"Microsoft.ML.OnnxRuntime\" Version=\"1.20.1\" />",
+            StringComparison.Ordinal);
+    }
+
     private string GenerateDllCsprojContent(string tempDir, string? MaldaLangDllPath, string assemblyName, bool includeLLamaSharp = false)
     {
         string projectReference;
@@ -2974,8 +3002,10 @@ internal static class EmbeddedUiHostRuntime
     <PackageReference Include=""Microsoft.Data.Sqlite"" Version=""10.0.3"" />
     <PackageReference Include=""Microsoft.Extensions.FileSystemGlobbing"" Version=""8.0.0"" />
     <PackageReference Include=""Spectre.Console"" Version=""0.49.1"" />
-  </ItemGroup>";
+            </ItemGroup>";
         }
+
+        packageReferences = WithOnnxRuntimePackage(packageReferences);
         
         return $@"<Project Sdk=""Microsoft.NET.Sdk"">
   <PropertyGroup>

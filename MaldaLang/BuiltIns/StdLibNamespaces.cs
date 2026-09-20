@@ -29,6 +29,7 @@ public static class StdLibNamespaces
         "sin", "cos", "tan", "asin", "acos", "atan", "atan2",
         "hypot", "clamp", "degToRad", "radToDeg", "zeros",
         "rsqrt", "randn", "argmax", "argmin", "logSumExp", "softmax", "crossEntropyFromLogits",
+        "dot", "matmul", "transpose", "relu", "sigmoid", "tanh", "mse",
         "randomChoiceWeighted", "seed", "random", "randomInt", "randomFloat", "anneal"
     };
 

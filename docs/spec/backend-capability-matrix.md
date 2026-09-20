@@ -54,6 +54,7 @@ These strings are what `@property` / `runProperty` use via `GetRequiredCapabilit
 | `@budget` resource bounds (tokens / tools / cost) | yes | yes | n/a |
 | Grounded values (`grounded.wrap` / GraphMemory `ask`) | yes | yes | wrap only (GraphMemory n/a) |
 | VectorDB (`new VectorDB` / `add` / `searchSimilar` / `asRetriever`) | yes | yes | no |
+| ONNX inspect (`new OnnxModel` / `inputs` / `outputs` / `run`) | yes | yes | no |
 | Capability tokens (`cap.fileRead` / `cap.httpGet` / `cap.mcpCall` / `cap.shell`) | yes | yes | mint / `is` / `confine` (consume host-only) |
 | HttpServer / RestServer / sessions | yes | yes | no |
 | UIHost / `ui.*` server-driven UI | yes† | yes† | no |

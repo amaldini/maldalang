@@ -1,0 +1,57 @@
+// One-neuron perceptron: AND and OR are linearly separable; XOR is not.
+// After chain_rule.malda. Next: xor_neural_net.malda (a hidden layer).
+// Offline and seeded — no API key.
+
+function step(z: float) -> float {
+    if (z >= 0.0) {
+        return 1.0;
+    }
+    return 0.0;
+}
+
+function train(inputs: array, targets: array, epochs: int, learningRate: float) -> object {
+    var w = [math.randomFloat(-0.5, 0.5), math.randomFloat(-0.5, 0.5)];
+    var b = math.randomFloat(-0.5, 0.5);
+    for (var epoch = 1; epoch <= epochs; epoch = epoch + 1) {
+        for (var s = 0; s < inputs.length; s = s + 1) {
+            var x = inputs[s];
+            var y = step(math.dot(x, w) + b);
+            var err = targets[s] - y;
+            w[0] = w[0] + learningRate * err * x[0];
+            w[1] = w[1] + learningRate * err * x[1];
+            b = b + learningRate * err;
+        }
+    }
+    return { "w": w, "b": b };
+}
+
+function accuracy(model: object, inputs: array, targets: array) -> int {
+    var correct = 0;
+    for (var s = 0; s < inputs.length; s = s + 1) {
+        var y = step(math.dot(inputs[s], model.w) + model.b);
+        if (y == targets[s]) {
+            correct = correct + 1;
+        }
+    }
+    return correct;
+}
+
+math.seed(7);
+
+var bits = [[0.0, 0.0], [0.0, 1.0], [1.0, 0.0], [1.0, 1.0]];
+var andTargets = [0.0, 0.0, 0.0, 1.0];
+var orTargets = [0.0, 1.0, 1.0, 1.0];
+var xorTargets = [0.0, 1.0, 1.0, 0.0];
+
+var andModel = train(bits, andTargets, 20, 0.5);
+var orModel = train(bits, orTargets, 20, 0.5);
+var xorModel = train(bits, xorTargets, 40, 0.5);
+
+io.print("Perceptron (one neuron, step activation)");
+io.print("AND accuracy: " + string(accuracy(andModel, bits, andTargets)) + "/4");
+io.print("OR  accuracy: " + string(accuracy(orModel, bits, orTargets)) + "/4");
+io.print("XOR accuracy: " + string(accuracy(xorModel, bits, xorTargets)) + "/4");
+io.print("A line can cut AND/OR; XOR needs a hidden layer (xor_neural_net.malda).");
+if (accuracy(andModel, bits, andTargets) == 4 && accuracy(orModel, bits, orTargets) == 4 && accuracy(xorModel, bits, xorTargets) < 4) {
+    io.print("perceptron ok");
+}

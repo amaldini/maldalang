@@ -1,0 +1,36 @@
+// Inspect a tiny Identity ONNX graph, then optionally the memory cross-encoder.
+// Host-only (interpreter / C# transpile). See docs/roadmap-neural.md (N4).
+// Offline for identity.onnx; the MiniLM cross-encoder needs
+//   malda memory download-rerank
+
+var identityPath = io.pathJoin(getProgramDirectory(), "data", "identity.onnx");
+io.print("OnnxModel inspect + forward");
+io.print("identity: " + identityPath);
+
+var model = new OnnxModel(identityPath);
+var ins = model.inputs();
+var outs = model.outputs();
+io.print("inputs: " + string(ins.length) + "  first=" + string(ins[0].name) + "  type=" + string(ins[0].type));
+io.print("outputs: " + string(outs.length) + "  first=" + string(outs[0].name));
+
+var result = model.run({ "X": [[1.0, 2.0], [3.0, 4.0]] });
+var y = result.Y;
+io.print("Y[0][0]=" + string(y[0][0]) + "  Y[1][1]=" + string(y[1][1]));
+
+var rerankDir = io.pathJoin(getMaldaHome(), "models", "cross-encoder");
+var rerankPath = io.pathJoin(rerankDir, "model.onnx");
+if (io.hasFile(rerankPath)) {
+    var rerank = new OnnxModel(rerankPath);
+    var rin = rerank.inputs();
+    io.print("cross-encoder inputs:");
+    for (var i = 0; i < rin.length; i = i + 1) {
+        io.print("  " + string(rin[i].name) + "  " + string(rin[i].type));
+    }
+    io.print("A real BERT-style graph — score pairs with GraphMemory rerankMode onnx, not by training here.");
+} else {
+    io.print("No ~/.malda/models/cross-encoder/model.onnx — run: malda memory download-rerank");
+}
+
+if (y[0][0] == 1.0 && y[1][1] == 4.0) {
+    io.print("onnx inspect ok");
+}

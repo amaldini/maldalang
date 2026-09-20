@@ -52,32 +52,11 @@ function copyMatrix(matrix: array) -> array {
 }
 
 function transpose(matrix: array) -> array {
-    var rows = matrix.length;
-    var cols = matrix[0].length;
-    var out = math.zeros(cols, rows);
-    for (var i = 0; i < rows; i = i + 1) {
-        for (var j = 0; j < cols; j = j + 1) {
-            out[j][i] = matrix[i][j];
-        }
-    }
-    return out;
+    return math.transpose(matrix);
 }
 
 function matMul(a: array, b: array) -> array {
-    var rows = a.length;
-    var inner = b.length;
-    var cols = b[0].length;
-    var out = math.zeros(rows, cols);
-    for (var i = 0; i < rows; i = i + 1) {
-        for (var j = 0; j < cols; j = j + 1) {
-            var sum = 0.0;
-            for (var k = 0; k < inner; k = k + 1) {
-                sum = sum + a[i][k] * b[k][j];
-            }
-            out[i][j] = sum;
-        }
-    }
-    return out;
+    return math.matmul(a, b);
 }
 
 function matScale(matrix: array, scale: float) -> array {
@@ -230,11 +209,7 @@ function feedForward(x: array, w1: array, b1: array, w2: array, b2: array) -> ar
     var hidden = matMul(x, w1);
     for (var t = 0; t < hidden.length; t = t + 1) {
         for (var j = 0; j < hidden[t].length; j = j + 1) {
-            var z = hidden[t][j] + b1[j];
-            if (z < 0.0) {
-                z = 0.0;
-            }
-            hidden[t][j] = z;
+            hidden[t][j] = math.relu(hidden[t][j] + b1[j]);
         }
     }
     var out = matMul(hidden, w2);

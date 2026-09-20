@@ -1,0 +1,70 @@
+// Softmax linear classifier on three 2D blobs.
+// After xor_neural_net.malda. Uses math.matmul / softmax / crossEntropyFromLogits.
+// Offline and seeded — no API key.
+
+function addBiasRow(x: array) -> array {
+    return [x[0], x[1], 1.0];
+}
+
+function logitsOf(x: array, w: array) -> array {
+    return math.matmul(addBiasRow(x), w);
+}
+
+function predict(x: array, w: array) -> int {
+    return math.argmax(logitsOf(x, w));
+}
+
+math.seed(3);
+
+var points = [];
+var labels = [];
+var centers = [[-1.5, -1.2], [1.6, -0.8], [0.1, 1.7]];
+for (var c = 0; c < 3; c = c + 1) {
+    for (var n = 0; n < 12; n = n + 1) {
+        points.append([centers[c][0] + math.randn(0.25), centers[c][1] + math.randn(0.25)]);
+        labels.append(c);
+    }
+}
+
+var w = [
+    [math.randn(0.3), math.randn(0.3), math.randn(0.3)],
+    [math.randn(0.3), math.randn(0.3), math.randn(0.3)],
+    [math.randn(0.3), math.randn(0.3), math.randn(0.3)]
+];
+var learningRate = 0.15;
+var epochs = 80;
+
+for (var epoch = 1; epoch <= epochs; epoch = epoch + 1) {
+    for (var i = 0; i < points.length; i = i + 1) {
+        var x = addBiasRow(points[i]);
+        var logits = math.matmul(x, w);
+        var probs = math.softmax(logits);
+        var target = labels[i];
+        for (var k = 0; k < 3; k = k + 1) {
+            var grad = probs[k];
+            if (k == target) {
+                grad = grad - 1.0;
+            }
+            for (var d = 0; d < 3; d = d + 1) {
+                w[d][k] = w[d][k] - learningRate * grad * x[d];
+            }
+        }
+    }
+}
+
+var correct = 0;
+var loss = 0.0;
+for (var i = 0; i < points.length; i = i + 1) {
+    var logits = logitsOf(points[i], w);
+    loss = loss + math.crossEntropyFromLogits(logits, labels[i]);
+    if (predict(points[i], w) == labels[i]) {
+        correct = correct + 1;
+    }
+}
+
+io.print("Softmax classifier (3 classes, 2D blobs)");
+io.print("Accuracy: " + string(correct) + "/" + string(points.length));
+io.print("Mean cross-entropy: " + string(math.round((loss / points.length) * 1000.0) / 1000.0));
+if (correct >= 30) {
+    io.print("softmax classifier ok");
+}

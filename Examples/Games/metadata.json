@@ -450,6 +450,28 @@
       ],
       "learningGoal": "Provide a high-ceiling browser/3D showcase after the learner has seen smaller JS-target examples.",
       "expectedOutput": "Runs a playable 3D breakout-style browser demo."
+    },
+    {
+      "name": "XOR Decision Boundary",
+      "description": "Train a 2-4-1 XOR MLP then paint the 2D decision surface on a canvas",
+      "file": "xor_decision_boundary.malda",
+      "track": "student",
+      "difficulty": "intermediate",
+      "minutes": 10,
+      "requires": ["offline"],
+      "concepts": [
+        "neural network",
+        "decision boundary",
+        "game.*",
+        "JavaScript target"
+      ],
+      "prerequisites": [
+        "AI_Theory/xor_neural_net.malda"
+      ],
+      "learningGoal": "See the XOR regions a hidden layer carves, instead of only printed accuracies.",
+      "expectedOutput": "Fills a canvas with a blue/yellow XOR field and four training points.",
+      "documentationPath": "/docs/roadmap-neural.md",
+      "documentationTitle": "Neural-nets kit"
     }
   ]
 }

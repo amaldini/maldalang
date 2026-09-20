@@ -1300,7 +1300,7 @@ public class LanguageService : ILanguageService
 
     private static bool IsArrayReturningBuiltInFunction(string name)
     {
-        return name is "split" or "regexFind" or "listDirectory" or "range" or "reverse" or "sort" or "softmax" or "getSkillNames";
+        return name is "split" or "regexFind" or "listDirectory" or "range" or "reverse" or "sort" or "softmax" or "matmul" or "transpose" or "relu" or "sigmoid" or "tanh" or "getSkillNames";
     }
 
     private static bool IsArrayReturningArrayMethod(string name)

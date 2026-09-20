@@ -43,7 +43,7 @@ Built-in classes you instantiate with `new`: `LLMClient`, `OpenRouterClient`,
 `GitAgent`, `HumanAgent`, `Tool`, `Conversation`, `VectorDB`, `GraphMemory`, `SqliteClient`,
 `PostgresClient`, `SqlServerClient`, `HttpServer`, `RestServer`, `RestClient`, `LLMServer`,
 `MCPClient`, `MCPServer`, `ACPClient`, `ACPServer`, `ACPAgentTool`, `HTMLCache`,
-`SerialConnection`, `ArduinoConnection`.
+`SerialConnection`, `ArduinoConnection`, `OnnxModel`.
 
 ## I/O and basics
 
@@ -95,6 +95,8 @@ different convention from `str.length(s)` / `math.sqrt(x)`. There is no `arr` na
 |------|------|
 | `math.abs/round/floor/ceil/sqrt/pow/min/max/sum/average` | Arithmetic |
 | `math.zeros(n)` / `math.zeros(rows, cols)` | 1D or 2D nested array of `0.0`; each 2D row is a fresh array |
+| `math.dot` / `matmul` / `transpose` | Vector dot; 2D@2D / 2D@1D / 1D@2D; 2D transpose |
+| `math.relu` / `sigmoid` / `tanh` / `mse` | Activations (scalar or elementwise 1D/2D); mean squared error |
 | `math.floor` / `round` / `ceil` / `sqrt` | Always return a **float**; whole-valued results coerce at integer sinks (`repeat`, indexes, …) |
 | `math.randomInt(min, max)` | Random integer, **both endpoints included** |
 | `math.random()` / `math.randomFloat(min, max)` | Random floats |

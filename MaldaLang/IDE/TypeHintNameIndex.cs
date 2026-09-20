@@ -51,6 +51,7 @@ public sealed class TypeHintNameIndex
         "ArduinoConnection",
         "VectorDB",
         "GraphMemory",
+        "OnnxModel",
     };
 
     private static readonly HashSet<string> HostClassSet =

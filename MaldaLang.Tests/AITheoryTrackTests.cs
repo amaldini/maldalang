@@ -17,7 +17,7 @@ public class AITheoryTrackTests : TestBase
             .Where(example => example.Category == "AI_Theory")
             .ToList();
 
-        Assert.Equal(6, examples.Count);
+        Assert.Equal(10, examples.Count);
         Assert.All(examples, example =>
         {
             Assert.Equal("student", example.Track);
@@ -37,12 +37,17 @@ public class AITheoryTrackTests : TestBase
 
         var chain = ExampleProgramsService.GetExampleByRelativePath("AI_Theory/chain_rule.malda");
         Assert.NotNull(chain);
-        Assert.Equal("AI_Theory/xor_neural_net.malda", chain!.Next);
+        Assert.Equal("AI_Theory/perceptron.malda", chain!.Next);
         Assert.Contains("AI_Theory/sarsa_cliff.malda", chain.Prerequisites);
+
+        var perceptron = ExampleProgramsService.GetExampleByRelativePath("AI_Theory/perceptron.malda");
+        Assert.NotNull(perceptron);
+        Assert.Equal("AI_Theory/xor_neural_net.malda", perceptron!.Next);
 
         var xor = ExampleProgramsService.GetExampleByRelativePath("AI_Theory/xor_neural_net.malda");
         Assert.NotNull(xor);
-        Assert.Contains("AI_Theory/chain_rule.malda", xor!.Prerequisites);
+        Assert.Contains("AI_Theory/perceptron.malda", xor!.Prerequisites);
+        Assert.Equal("AI_Theory/softmax_classifier.malda", xor.Next);
     }
 
     [Fact]
@@ -63,5 +68,37 @@ public class AITheoryTrackTests : TestBase
         Assert.Contains("Numeric:", output);
         Assert.Contains("Analytic:", output);
         Assert.Contains("chain rule ok", output);
+    }
+
+    [Fact]
+    public async Task Perceptron_PrintsOkLine()
+    {
+        var path = PlanningPaths.ResolveRepoPath("Examples", "AI_Theory", "perceptron.malda");
+        var output = await CaptureInterpretAsync(File.ReadAllText(path), path);
+        Assert.Contains("perceptron ok", output);
+    }
+
+    [Fact]
+    public async Task SoftmaxClassifier_PrintsOkLine()
+    {
+        var path = PlanningPaths.ResolveRepoPath("Examples", "AI_Theory", "softmax_classifier.malda");
+        var output = await CaptureInterpretAsync(File.ReadAllText(path), path);
+        Assert.Contains("softmax classifier ok", output);
+    }
+
+    [Fact]
+    public async Task Embedding2d_PrintsOkLine()
+    {
+        var path = PlanningPaths.ResolveRepoPath("Examples", "AI_Theory", "embedding_2d.malda");
+        var output = await CaptureInterpretAsync(File.ReadAllText(path), path);
+        Assert.Contains("embedding 2d ok", output);
+    }
+
+    [Fact]
+    public async Task OnnxInspect_PrintsOkLine()
+    {
+        var path = PlanningPaths.ResolveRepoPath("Examples", "AI_Theory", "onnx_inspect.malda");
+        var output = await CaptureInterpretAsync(File.ReadAllText(path), path);
+        Assert.Contains("onnx inspect ok", output);
     }
 }

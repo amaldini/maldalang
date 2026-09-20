@@ -61,6 +61,7 @@ public class BackendCapabilityMatrixGuardTests
         AssertContains(markdown, "`@budget`", "@budget resource bounds row");
         AssertContains(markdown, "`grounded.wrap`", "grounded values row");
         AssertContains(markdown, "`new VectorDB`", "VectorDB row");
+        AssertContains(markdown, "`new OnnxModel`", "OnnxModel row");
         AssertContains(markdown, "`cap.fileRead`", "capability tokens row");
         AssertContains(markdown, "`agents.team`", "agent teams row");
         AssertContains(markdown, "call-graph determinism", "workflow call-graph determinism row");

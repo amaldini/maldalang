@@ -1,0 +1,101 @@
+// XOR MLP decision boundary. JS canvas — run: malda play Examples/Games/xor_decision_boundary.malda
+// Same 2-4-1 net as Examples/AI_Theory/xor_neural_net.malda, drawn instead of printed.
+
+function trainXor() -> object {
+    math.seed(42);
+    var hiddenSize = 4;
+    var learningRate = 0.8;
+    var w1 = [
+        [math.randomFloat(-1.0, 1.0), math.randomFloat(-1.0, 1.0), math.randomFloat(-1.0, 1.0), math.randomFloat(-1.0, 1.0)],
+        [math.randomFloat(-1.0, 1.0), math.randomFloat(-1.0, 1.0), math.randomFloat(-1.0, 1.0), math.randomFloat(-1.0, 1.0)]
+    ];
+    var b1 = [math.randomFloat(-0.5, 0.5), math.randomFloat(-0.5, 0.5), math.randomFloat(-0.5, 0.5), math.randomFloat(-0.5, 0.5)];
+    var w2 = [
+        [math.randomFloat(-1.0, 1.0)],
+        [math.randomFloat(-1.0, 1.0)],
+        [math.randomFloat(-1.0, 1.0)],
+        [math.randomFloat(-1.0, 1.0)]
+    ];
+    var b2 = [math.randomFloat(-0.5, 0.5)];
+    var inputs = [[0.0, 0.0], [0.0, 1.0], [1.0, 0.0], [1.0, 1.0]];
+    var targets = [0.0, 1.0, 1.0, 0.0];
+    var lastLoss = 0.0;
+
+    for (var epoch = 1; epoch <= 2500; epoch = epoch + 1) {
+        var epochLoss = 0.0;
+        for (var s = 0; s < inputs.length; s = s + 1) {
+            var x = inputs[s];
+            var hidden = math.sigmoid(math.matmul(x, w1));
+            for (var j = 0; j < hiddenSize; j = j + 1) {
+                hidden[j] = math.sigmoid(hidden[j] + b1[j]);
+            }
+            var zOut = b2[0] + math.dot(hidden, [w2[0][0], w2[1][0], w2[2][0], w2[3][0]]);
+            var y = math.sigmoid(zOut);
+            var dL_dy = y - targets[s];
+            epochLoss = epochLoss + 0.5 * dL_dy * dL_dy;
+            var dL_dzOut = dL_dy * y * (1.0 - y);
+            for (var j = 0; j < hiddenSize; j = j + 1) {
+                var dL_dz = dL_dzOut * w2[j][0] * hidden[j] * (1.0 - hidden[j]);
+                w2[j][0] = w2[j][0] - learningRate * dL_dzOut * hidden[j];
+                b1[j] = b1[j] - learningRate * dL_dz;
+                w1[0][j] = w1[0][j] - learningRate * dL_dz * x[0];
+                w1[1][j] = w1[1][j] - learningRate * dL_dz * x[1];
+            }
+            b2[0] = b2[0] - learningRate * dL_dzOut;
+        }
+        lastLoss = epochLoss / 4.0;
+    }
+
+    return { "w1": w1, "b1": b1, "w2": w2, "b2": b2, "loss": lastLoss };
+}
+
+function forwardY(net: object, x0: float, x1: float) -> float {
+    var hidden = math.sigmoid(math.matmul([x0, x1], net.w1));
+    for (var j = 0; j < 4; j = j + 1) {
+        hidden[j] = math.sigmoid(hidden[j] + net.b1[j]);
+    }
+    var zOut = net.b2[0] + hidden[0] * net.w2[0][0] + hidden[1] * net.w2[1][0] + hidden[2] * net.w2[2][0] + hidden[3] * net.w2[3][0];
+    return math.sigmoid(zOut);
+}
+
+function shade(y: float) -> string {
+    var t = int(math.clamp(y, 0.0, 1.0) * 180.0);
+    return "rgb(" + string(40 + t) + "," + string(70) + "," + string(220 - t) + ")";
+}
+
+var net = trainXor();
+var canvas = 420;
+var pad = 40;
+var grid = 42;
+var cell = (canvas - pad * 2) / grid;
+
+function render() {
+    game.fillRect(0, 0, canvas, canvas, "#101018");
+    for (var i = 0; i < grid; i = i + 1) {
+        for (var j = 0; j < grid; j = j + 1) {
+            var x0 = i / (grid - 1);
+            var x1 = 1.0 - j / (grid - 1);
+            var y = forwardY(net, x0, x1);
+            game.fillRect(pad + i * cell, pad + j * cell, cell + 0.5, cell + 0.5, shade(y));
+        }
+    }
+
+    var points = [[0.0, 0.0, 0.0], [0.0, 1.0, 1.0], [1.0, 0.0, 1.0], [1.0, 1.0, 0.0]];
+    for (var p = 0; p < points.length; p = p + 1) {
+        var px = pad + points[p][0] * (canvas - pad * 2) - 6;
+        var py = pad + (1.0 - points[p][1]) * (canvas - pad * 2) - 6;
+        var color = "#ffe08a";
+        if (points[p][2] < 0.5) {
+            color = "#8ad7ff";
+        }
+        game.fillRect(px, py, 12, 12, color);
+    }
+
+    game.drawText("XOR decision boundary  loss=" + string(math.round(net.loss * 1000.0) / 1000.0), 16, 18, "#f4f4f4", "14px sans-serif");
+    game.drawText("Blue=0  Yellow=1   malda play", 16, canvas - 16, "#c8c8d0", "12px sans-serif");
+}
+
+function update(_dtMs) {
+}
+
+game.start(update, render);

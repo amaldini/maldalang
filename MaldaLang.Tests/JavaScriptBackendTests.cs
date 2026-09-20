@@ -5385,6 +5385,7 @@ const missingModel = three.loadGLTF("missing.gltf");
             println(str.upper("ada"));
             io.print(math.sqrt(9));
             println(math.zeros(2, 3)[1].length);
+            println(math.matmul([[1.0, 2.0]], [[3.0], [4.0]])[0][0]);
             var parsed = parseJSON("{\"k\":1}");
             println(toJSON(parsed));
             """;
@@ -5393,6 +5394,7 @@ const missingModel = three.loadGLTF("missing.gltf");
 
         Assert.Contains("mlRuntime.math.abs(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.math.zeros(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.math.matmul(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.str.upper(\"ada\")", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.io.print(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.parseJSON(", js, StringComparison.Ordinal);
