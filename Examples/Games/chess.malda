@@ -810,63 +810,215 @@ if (root == null) {
 
     function pieceFill(p) {
         if (p > 0) {
-            return "#f7f1e4";
+            return "#f4ead6";
         }
-        return "#2b3139";
+        return "#1c212b";
+    }
+
+    function pieceShade(p) {
+        if (p > 0) {
+            return "#d4c3a4";
+        }
+        return "#0f1218";
+    }
+
+    function pieceGlint(p) {
+        if (p > 0) {
+            return "#fff8ea";
+        }
+        return "#4b5568";
     }
 
     function pieceStroke(p) {
         if (p > 0) {
-            return "#4a3828";
+            return "#3a2818";
         }
-        return "#d7c7af";
+        return "#e8d7b8";
+    }
+
+    function pieceGold(p) {
+        if (p > 0) {
+            return "#b45309";
+        }
+        return "#fbbf24";
+    }
+
+    function drawPieceShadow(cx, cy) {
+        game.setAlpha(0.24);
+        game.fillCircle(cx, cy + 22, 12, "#020617");
+        game.fillRect(cx - 16, cy + 20, 32, 7, "#020617");
+        game.setAlpha(1);
+    }
+
+    function drawPieceFoot(cx, cy, fill, shade, ink) {
+        game.fillRect(cx - 13, cy + 12, 26, 5, shade);
+        game.fillRect(cx - 16, cy + 16, 32, 4, fill);
+        game.fillRect(cx - 18, cy + 19, 36, 5, fill);
+        game.strokeRect(cx - 18, cy + 19, 36, 5, ink, 1.5);
+        game.drawLine(cx - 14, cy + 17, cx + 14, cy + 17, ink, 1);
+    }
+
+    function drawPieceStem(cx, yTop, yBot, wTop, wBot, fill, shade) {
+        var steps = 6;
+        var i = 0;
+        while (i < steps) {
+            var t = i / steps;
+            var y = yTop + (yBot - yTop) * t;
+            var h = (yBot - yTop) / steps + 1;
+            var w = wTop + (wBot - wTop) * t;
+            var color = fill;
+            if (i >= 4) {
+                color = shade;
+            }
+            game.fillRect(cx - w, y, w * 2, h, color);
+            i = i + 1;
+        }
+    }
+
+    function drawPieceRing(cx, y, half, fill, ink) {
+        game.fillRect(cx - half, y, half * 2, 4, fill);
+        game.strokeRect(cx - half, y, half * 2, 4, ink, 1);
+    }
+
+    function drawPieceGlint(cx, cy, r, p) {
+        game.setAlpha(0.42);
+        game.fillCircle(cx, cy, r, pieceGlint(p));
+        game.setAlpha(1);
+    }
+
+    function drawPawn(cx, cy, fill, shade, ink, p) {
+        drawPieceStem(cx, cy + 2, cy + 14, 6, 10, fill, shade);
+        drawPieceRing(cx, cy + 1, 10, fill, ink);
+        drawPieceFoot(cx, cy, fill, shade, ink);
+        game.fillCircle(cx, cy - 10, 11, fill);
+        game.strokeCircle(cx, cy - 10, 11, ink, 2);
+        drawPieceGlint(cx - 4, cy - 14, 4, p);
+    }
+
+    function drawKnight(cx, cy, fill, shade, ink, p) {
+        drawPieceStem(cx - 2, cy + 2, cy + 14, 8, 11, fill, shade);
+        drawPieceRing(cx, cy + 2, 12, fill, ink);
+        drawPieceFoot(cx, cy, fill, shade, ink);
+
+        game.fillCircle(cx - 8, cy - 4, 6, fill);
+        game.fillCircle(cx - 9, cy - 12, 6, fill);
+        game.fillRect(cx - 8, cy - 8, 10, 16, fill);
+        game.fillCircle(cx + 1, cy - 11, 11, fill);
+        game.fillCircle(cx + 11, cy - 8, 7, fill);
+        game.fillRect(cx + 4, cy - 12, 12, 9, fill);
+        game.fillCircle(cx + 8, cy - 2, 6, fill);
+        game.fillRect(cx - 4, cy - 23, 7, 11, fill);
+        game.fillCircle(cx - 1, cy - 23, 4, fill);
+
+        game.strokeCircle(cx + 1, cy - 11, 11, ink, 2);
+        game.strokeCircle(cx + 11, cy - 8, 7, ink, 1.5);
+        game.drawLine(cx - 4, cy - 22, cx + 2, cy - 12, ink, 1.5);
+        game.fillCircle(cx + 5, cy - 13, 2, ink);
+        game.fillCircle(cx + 14, cy - 7, 1.5, ink);
+        drawPieceGlint(cx - 2, cy - 15, 3, p);
+        game.setAlpha(0.35);
+        game.fillCircle(cx + 8, cy - 4, 3, shade);
+        game.setAlpha(1);
+    }
+
+    function drawBishop(cx, cy, fill, shade, ink, gold, p) {
+        drawPieceStem(cx, cy + 1, cy + 14, 6, 10, fill, shade);
+        drawPieceRing(cx, cy + 1, 11, fill, ink);
+        drawPieceFoot(cx, cy, fill, shade, ink);
+        game.fillCircle(cx, cy - 6, 10, fill);
+        game.fillRect(cx - 7, cy - 16, 14, 12, fill);
+        game.fillCircle(cx, cy - 16, 7, fill);
+        game.fillRect(cx - 3, cy - 24, 6, 8, fill);
+        game.fillCircle(cx, cy - 26, 3, fill);
+        game.strokeCircle(cx, cy - 6, 10, ink, 2);
+        game.strokeCircle(cx, cy - 16, 7, ink, 1.5);
+        game.strokeCircle(cx, cy - 26, 3, ink, 1);
+        game.drawLine(cx - 3, cy - 18, cx + 4, cy - 6, gold, 2);
+        drawPieceGlint(cx - 4, cy - 18, 3, p);
+    }
+
+    function drawRook(cx, cy, fill, shade, ink, p) {
+        drawPieceStem(cx, cy - 2, cy + 14, 10, 12, fill, shade);
+        drawPieceRing(cx, cy + 2, 13, fill, ink);
+        drawPieceFoot(cx, cy, fill, shade, ink);
+        game.fillRect(cx - 13, cy - 12, 26, 16, fill);
+        game.strokeRect(cx - 13, cy - 12, 26, 16, ink, 2);
+        game.fillRect(cx - 15, cy - 18, 8, 9, fill);
+        game.fillRect(cx - 4, cy - 18, 8, 9, fill);
+        game.fillRect(cx + 7, cy - 18, 8, 9, fill);
+        game.strokeRect(cx - 15, cy - 18, 8, 9, ink, 1.5);
+        game.strokeRect(cx - 4, cy - 18, 8, 9, ink, 1.5);
+        game.strokeRect(cx + 7, cy - 18, 8, 9, ink, 1.5);
+        game.drawLine(cx - 11, cy - 6, cx + 11, cy - 6, ink, 1);
+        drawPieceGlint(cx - 7, cy - 8, 3, p);
+    }
+
+    function drawQueen(cx, cy, fill, shade, ink, gold, p) {
+        drawPieceStem(cx, cy + 2, cy + 14, 8, 12, fill, shade);
+        drawPieceRing(cx, cy + 2, 13, gold, ink);
+        drawPieceFoot(cx, cy, fill, shade, ink);
+        game.fillCircle(cx, cy - 4, 12, fill);
+        game.strokeCircle(cx, cy - 4, 12, ink, 2);
+        game.fillRect(cx - 14, cy - 12, 28, 6, fill);
+        game.strokeRect(cx - 14, cy - 12, 28, 6, ink, 1);
+
+        game.fillCircle(cx - 14, cy - 16, 4, fill);
+        game.fillCircle(cx - 7, cy - 20, 4, fill);
+        game.fillCircle(cx, cy - 23, 5, fill);
+        game.fillCircle(cx + 7, cy - 20, 4, fill);
+        game.fillCircle(cx + 14, cy - 16, 4, fill);
+        game.strokeCircle(cx - 14, cy - 16, 4, ink, 1);
+        game.strokeCircle(cx - 7, cy - 20, 4, ink, 1);
+        game.strokeCircle(cx, cy - 23, 5, ink, 1);
+        game.strokeCircle(cx + 7, cy - 20, 4, ink, 1);
+        game.strokeCircle(cx + 14, cy - 16, 4, ink, 1);
+        game.fillCircle(cx, cy - 23, 2, gold);
+        drawPieceGlint(cx - 5, cy - 8, 4, p);
+    }
+
+    function drawKing(cx, cy, fill, shade, ink, gold, p) {
+        drawPieceStem(cx, cy + 2, cy + 14, 9, 12, fill, shade);
+        drawPieceRing(cx, cy + 2, 14, gold, ink);
+        drawPieceFoot(cx, cy, fill, shade, ink);
+        game.fillCircle(cx, cy - 4, 13, fill);
+        game.strokeCircle(cx, cy - 4, 13, ink, 2);
+        game.fillRect(cx - 14, cy - 12, 28, 7, fill);
+        game.strokeRect(cx - 14, cy - 12, 28, 7, ink, 1);
+        game.fillRect(cx - 3, cy - 28, 6, 18, gold);
+        game.fillRect(cx - 10, cy - 23, 20, 6, gold);
+        game.strokeRect(cx - 3, cy - 28, 6, 18, ink, 1);
+        game.strokeRect(cx - 10, cy - 23, 20, 6, ink, 1);
+        drawPieceGlint(cx - 5, cy - 8, 4, p);
     }
 
     function drawPiece(cx, cy, p) {
         var t = kind(p);
         var fill = pieceFill(p);
+        var shade = pieceShade(p);
         var ink = pieceStroke(p);
+        var gold = pieceGold(p);
+        drawPieceShadow(cx, cy);
         if (t == 1) {
-            game.fillCircle(cx, cy - 6, 11, fill);
-            game.fillRect(cx - 9, cy + 4, 18, 10, fill);
-            game.strokeCircle(cx, cy - 6, 11, ink, 2);
+            drawPawn(cx, cy, fill, shade, ink, p);
             return;
         }
         if (t == 2) {
-            game.fillRect(cx - 10, cy - 2, 22, 16, fill);
-            game.fillCircle(cx + 4, cy - 10, 10, fill);
-            game.fillRect(cx - 4, cy - 16, 8, 10, fill);
-            game.strokeRect(cx - 10, cy - 2, 22, 16, ink, 2);
+            drawKnight(cx, cy, fill, shade, ink, p);
             return;
         }
         if (t == 3) {
-            game.fillCircle(cx, cy - 8, 8, fill);
-            game.fillRect(cx - 8, cy - 2, 16, 16, fill);
-            game.fillRect(cx - 2, cy - 18, 4, 10, fill);
-            game.strokeCircle(cx, cy - 8, 8, ink, 2);
+            drawBishop(cx, cy, fill, shade, ink, gold, p);
             return;
         }
         if (t == 4) {
-            game.fillRect(cx - 13, cy - 14, 8, 8, fill);
-            game.fillRect(cx - 4, cy - 14, 8, 8, fill);
-            game.fillRect(cx + 5, cy - 14, 8, 8, fill);
-            game.fillRect(cx - 12, cy - 6, 24, 20, fill);
-            game.strokeRect(cx - 12, cy - 6, 24, 20, ink, 2);
+            drawRook(cx, cy, fill, shade, ink, p);
             return;
         }
         if (t == 5) {
-            game.fillCircle(cx - 10, cy - 12, 5, fill);
-            game.fillCircle(cx, cy - 16, 5, fill);
-            game.fillCircle(cx + 10, cy - 12, 5, fill);
-            game.fillCircle(cx, cy - 2, 12, fill);
-            game.fillRect(cx - 12, cy + 8, 24, 8, fill);
-            game.strokeCircle(cx, cy - 2, 12, ink, 2);
+            drawQueen(cx, cy, fill, shade, ink, gold, p);
             return;
         }
-        game.fillCircle(cx, cy - 2, 13, fill);
-        game.fillRect(cx - 3, cy - 20, 6, 14, fill);
-        game.fillRect(cx - 10, cy - 16, 20, 6, fill);
-        game.strokeCircle(cx, cy - 2, 13, ink, 2);
+        drawKing(cx, cy, fill, shade, ink, gold, p);
     }
 
     function statusText() {
