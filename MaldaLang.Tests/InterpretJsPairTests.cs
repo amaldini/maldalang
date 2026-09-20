@@ -185,6 +185,30 @@ public class InterpretJsPairTests
     }
 
     [Fact]
+    public void ArrayPopShiftConcat_SameStdout()
+    {
+        InterpretJsPair.AssertSameFromSource(
+            """
+            var stack = [1, 2, 3];
+            io.print(stack.pop());
+            io.print(stack.length);
+            io.print(stack.join(","));
+            var queued = [10, 20, 30];
+            io.print(queued.shift());
+            io.print(queued.join(","));
+            var left = [1, 2];
+            var merged = left.concat([3, 4]);
+            io.print(merged.join(","));
+            io.print(left.join(","));
+            var stack2 = [8, 9, 10];
+            var piped = stack2 |> pop();
+            io.print(piped);
+            io.print(stack2.join(","));
+            """,
+            "array-pop-shift-concat-js");
+    }
+
+    [Fact]
     public void SubclassWithoutConstructor_ForwardsArgsToBase_SameStdout()
     {
         InterpretJsPair.AssertSameFromSource(

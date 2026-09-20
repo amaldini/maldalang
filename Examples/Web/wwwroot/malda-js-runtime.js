@@ -271,6 +271,40 @@
     return [];
   }
 
+  function requireReceiverArray(value, methodName) {
+    if (!Array.isArray(value)) {
+      throw new Error(methodName + "() expects an array");
+    }
+    return value;
+  }
+
+  function requireCallArity(methodName, callArgs, min, max, signature) {
+    if (callArgs.length < min || callArgs.length > max) {
+      if (min === max && min === 0) {
+        throw new Error(methodName + "() expects 0 arguments");
+      }
+      if (min === max) {
+        throw new Error(methodName + "() expects " + min + " argument" + (min === 1 ? "" : "s") + (signature ? ": (" + signature + ")" : ""));
+      }
+      throw new Error(methodName + "() expects " + min + " or " + max + " arguments");
+    }
+  }
+
+  function requireCallback(methodName, value) {
+    if (typeof value !== "function") {
+      throw new Error(methodName + "() expects a function argument");
+    }
+    return value;
+  }
+
+  function normalizeArrayIndex(index, length) {
+    let resolved = coerceToInt(index);
+    if (resolved < 0) {
+      resolved = length + resolved;
+    }
+    return resolved;
+  }
+
   function rangeBuiltin(...args) {
     let start = 0;
     let end = 0;
@@ -334,13 +368,186 @@
   }
 
   function callArrayMethod(arrayValue, methodName, args) {
-    const array = getArray(arrayValue);
     const callArgs = Array.isArray(args) ? args : [];
     switch (methodName) {
+      case "pop": {
+        requireCallArity("pop", callArgs, 0, 0);
+        const array = requireReceiverArray(arrayValue, "pop");
+        if (array.length === 0) {
+          throw new Error("Cannot pop from empty array");
+        }
+        return array.pop();
+      }
+      case "shift": {
+        requireCallArity("shift", callArgs, 0, 0);
+        const array = requireReceiverArray(arrayValue, "shift");
+        if (array.length === 0) {
+          throw new Error("Cannot shift from empty array");
+        }
+        return array.shift();
+      }
+      case "concat": {
+        requireCallArity("concat", callArgs, 1, 1);
+        const array = requireReceiverArray(arrayValue, "concat");
+        if (!Array.isArray(callArgs[0])) {
+          throw new Error("concat() expects an array argument");
+        }
+        return array.concat(callArgs[0]);
+      }
+      case "popOrNull": {
+        requireCallArity("popOrNull", callArgs, 0, 0);
+        const array = requireReceiverArray(arrayValue, "popOrNull");
+        return array.length === 0 ? null : array.pop();
+      }
+      case "shiftOrNull": {
+        requireCallArity("shiftOrNull", callArgs, 0, 0);
+        const array = requireReceiverArray(arrayValue, "shiftOrNull");
+        return array.length === 0 ? null : array.shift();
+      }
+      case "get": {
+        requireCallArity("get", callArgs, 1, 2);
+        const array = requireReceiverArray(arrayValue, "get");
+        const index = normalizeArrayIndex(callArgs[0], array.length);
+        if (index < 0 || index >= array.length) {
+          return callArgs.length === 2 ? callArgs[1] : null;
+        }
+        return array[index];
+      }
+      case "at": {
+        requireCallArity("at", callArgs, 1, 1);
+        const array = requireReceiverArray(arrayValue, "at");
+        const index = normalizeArrayIndex(callArgs[0], array.length);
+        if (index < 0 || index >= array.length) {
+          return null;
+        }
+        return array[index];
+      }
+      case "reverse": {
+        requireCallArity("reverse", callArgs, 0, 0);
+        const array = requireReceiverArray(arrayValue, "reverse");
+        array.reverse();
+        return array;
+      }
+      case "slice": {
+        requireCallArity("slice", callArgs, 1, 2);
+        const array = requireReceiverArray(arrayValue, "slice");
+        return callArgs.length === 1
+          ? array.slice(coerceToInt(callArgs[0]))
+          : array.slice(coerceToInt(callArgs[0]), coerceToInt(callArgs[1]));
+      }
+      case "indexOf": {
+        requireCallArity("indexOf", callArgs, 1, 1);
+        const array = requireReceiverArray(arrayValue, "indexOf");
+        for (let i = 0; i < array.length; i++) {
+          if (equals(array[i], callArgs[0])) {
+            return i;
+          }
+        }
+        return -1;
+      }
+      case "includes": {
+        requireCallArity("includes", callArgs, 1, 1);
+        const array = requireReceiverArray(arrayValue, "includes");
+        for (let i = 0; i < array.length; i++) {
+          if (equals(array[i], callArgs[0])) {
+            return true;
+          }
+        }
+        return false;
+      }
+      case "map": {
+        requireCallArity("map", callArgs, 1, 1);
+        const array = requireReceiverArray(arrayValue, "map");
+        const mapper = requireCallback("map", callArgs[0]);
+        return array.map((item) => mapper(item));
+      }
+      case "filter": {
+        requireCallArity("filter", callArgs, 1, 1);
+        const array = requireReceiverArray(arrayValue, "filter");
+        const predicate = requireCallback("filter", callArgs[0]);
+        return array.filter((item) => isTruthy(predicate(item)));
+      }
+      case "reduce": {
+        requireCallArity("reduce", callArgs, 1, 2);
+        const array = requireReceiverArray(arrayValue, "reduce");
+        const reducer = requireCallback("reduce", callArgs[0]);
+        if (callArgs.length === 1) {
+          if (array.length === 0) {
+            throw new Error("reduce() on empty array requires initial value");
+          }
+          return array.reduce((acc, item) => reducer(acc, item));
+        }
+        return array.reduce((acc, item) => reducer(acc, item), callArgs[1]);
+      }
+      case "forEach": {
+        requireCallArity("forEach", callArgs, 1, 1);
+        const array = requireReceiverArray(arrayValue, "forEach");
+        const visitor = requireCallback("forEach", callArgs[0]);
+        for (let i = 0; i < array.length; i++) {
+          visitor(array[i]);
+        }
+        return null;
+      }
+      case "find": {
+        requireCallArity("find", callArgs, 1, 1);
+        const array = requireReceiverArray(arrayValue, "find");
+        const predicate = requireCallback("find", callArgs[0]);
+        for (let i = 0; i < array.length; i++) {
+          if (isTruthy(predicate(array[i]))) {
+            return array[i];
+          }
+        }
+        return null;
+      }
+      case "findIndex": {
+        requireCallArity("findIndex", callArgs, 1, 1);
+        const array = requireReceiverArray(arrayValue, "findIndex");
+        const predicate = requireCallback("findIndex", callArgs[0]);
+        for (let i = 0; i < array.length; i++) {
+          if (isTruthy(predicate(array[i]))) {
+            return i;
+          }
+        }
+        return -1;
+      }
+      case "some": {
+        requireCallArity("some", callArgs, 1, 1);
+        const array = requireReceiverArray(arrayValue, "some");
+        const predicate = requireCallback("some", callArgs[0]);
+        for (let i = 0; i < array.length; i++) {
+          if (isTruthy(predicate(array[i]))) {
+            return true;
+          }
+        }
+        return false;
+      }
+      case "every": {
+        requireCallArity("every", callArgs, 1, 1);
+        const array = requireReceiverArray(arrayValue, "every");
+        const predicate = requireCallback("every", callArgs[0]);
+        for (let i = 0; i < array.length; i++) {
+          if (!isTruthy(predicate(array[i]))) {
+            return false;
+          }
+        }
+        return true;
+      }
+      case "sum":
+        requireCallArity("sum", callArgs, 0, 0);
+        return mathSum(requireReceiverArray(arrayValue, "sum"));
+      case "average":
+        requireCallArity("average", callArgs, 0, 0);
+        return mathAverage(requireReceiverArray(arrayValue, "average"));
+      case "min":
+        requireCallArity("min", callArgs, 0, 0);
+        return mathMin(requireReceiverArray(arrayValue, "min"));
+      case "max":
+        requireCallArity("max", callArgs, 0, 0);
+        return mathMax(requireReceiverArray(arrayValue, "max"));
       case "sort":
-        return sortBuiltin(array, callArgs[0]);
+        return sortBuiltin(getArray(arrayValue), callArgs[0]);
       case "join":
-        return joinBuiltin(array, callArgs[0]);
+        return joinBuiltin(getArray(arrayValue), callArgs[0]);
       case "except": {
         if (callArgs.length !== 1) {
           throw new Error("except() expects 1 argument");
@@ -348,6 +555,7 @@
         if (!Array.isArray(callArgs[0])) {
           throw new Error("except() expects an array argument");
         }
+        const array = getArray(arrayValue);
         const other = callArgs[0];
         return array.filter((item) => !other.some((candidate) => equals(item, candidate)));
       }

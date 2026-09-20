@@ -700,6 +700,7 @@ public class JavaScriptBackendTests : TestBase
         Assert.Contains("mlRuntime.game.save(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.load(", js, StringComparison.Ordinal);
         Assert.Contains("chess_save", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.callArrayMethod(history, \"pop\")", js, StringComparison.Ordinal);
         Assert.DoesNotContain("mlRuntime.game.start(updateGame, renderGame)", js, StringComparison.Ordinal);
         Assert.DoesNotContain("mlRuntime.game.loadImage(", js, StringComparison.Ordinal);
         Assert.DoesNotContain("mlRuntime.three.", js, StringComparison.Ordinal);
