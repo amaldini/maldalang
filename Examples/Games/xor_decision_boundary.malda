@@ -25,9 +25,11 @@ function trainXor() -> object {
         var epochLoss = 0.0;
         for (var s = 0; s < inputs.length; s = s + 1) {
             var x = inputs[s];
-            var hidden = math.sigmoid(math.matmul(x, w1));
+            // h = sigmoid(x W1 + b1) — do not sigmoid the pre-activation first.
+            var preact = math.matmul(x, w1);
+            var hidden = [];
             for (var j = 0; j < hiddenSize; j = j + 1) {
-                hidden[j] = math.sigmoid(hidden[j] + b1[j]);
+                hidden.append(math.sigmoid(preact[j] + b1[j]));
             }
             var zOut = b2[0] + math.dot(hidden, [w2[0][0], w2[1][0], w2[2][0], w2[3][0]]);
             var y = math.sigmoid(zOut);
@@ -50,9 +52,10 @@ function trainXor() -> object {
 }
 
 function forwardY(net: object, x0: float, x1: float) -> float {
-    var hidden = math.sigmoid(math.matmul([x0, x1], net.w1));
+    var preact = math.matmul([x0, x1], net.w1);
+    var hidden = [];
     for (var j = 0; j < 4; j = j + 1) {
-        hidden[j] = math.sigmoid(hidden[j] + net.b1[j]);
+        hidden.append(math.sigmoid(preact[j] + net.b1[j]));
     }
     var zOut = net.b2[0] + hidden[0] * net.w2[0][0] + hidden[1] * net.w2[1][0] + hidden[2] * net.w2[2][0] + hidden[3] * net.w2[3][0];
     return math.sigmoid(zOut);
