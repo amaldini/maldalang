@@ -20,7 +20,7 @@ if (root == null) {
     dom.append(root, title);
 
     var hint = dom.create("p");
-    dom.setText(hint, "Click or tap a piece, then a highlighted square. R new game. U undo. C toggle computer (Black). Pawns promote to queen.");
+    dom.setText(hint, "Click or tap a piece, then a highlighted square. R new game. U undo. C toggle computer (Black). P cycle CPU ply (1–3). Pawns promote to queen.");
     dom.append(root, hint);
 
     // ---------------------------------------------------------------------------
@@ -97,9 +97,12 @@ if (root == null) {
     const BTN_NEW_Y = 248;
     const BTN_UNDO_Y = 298;
     const BTN_CPU_Y = 348;
+    const BTN_PLY_Y = 398;
 
     const AI_THINK_MS = 220;
-    const AI_EXTRA_PLY = 1;
+    const AI_PLY_MIN = 1;
+    const AI_PLY_MAX = 3;
+    const AI_PLY_DEFAULT = 1;
     const MATE_SCORE = 20000;
 
     const FILES = ["a", "b", "c", "d", "e", "f", "g", "h"];
@@ -133,6 +136,7 @@ if (root == null) {
     var lastTo = NO_SQUARE;
     var status = STATUS_PLAY;
     var vsCpu = true;
+    var aiPly = AI_PLY_DEFAULT;
     var aiWaitMs = 0;
     var aiThinking = false;
     var history = [];
@@ -152,6 +156,9 @@ if (root == null) {
         }
         if (saved.vsCpu != null) {
             vsCpu = saved.vsCpu;
+        }
+        if (saved.aiPly == 2 or saved.aiPly == 3) {
+            aiPly = saved.aiPly;
         }
     }
 
@@ -288,6 +295,7 @@ if (root == null) {
             "lastTo": lastTo,
             "status": status,
             "vsCpu": vsCpu,
+            "aiPly": aiPly,
             "winsW": winsW,
             "winsB": winsB,
             "logged": gameOverLogged
@@ -737,7 +745,15 @@ if (root == null) {
         persist();
     }
 
-    // --- small CPU: material + centre, then 2-ply negamax ---------------------
+    function cycleAiPly() {
+        aiPly = aiPly + 1;
+        if (aiPly > AI_PLY_MAX) {
+            aiPly = AI_PLY_MIN;
+        }
+        persist();
+    }
+
+    // --- small CPU: material + centre, then N-ply negamax ---------------------
 
     function evaluate() {
         var score = 0;
@@ -801,7 +817,7 @@ if (root == null) {
         for (var i = 0; i < moves.length; i = i + 1) {
             var snap = snapshot();
             applyMove(moves[i]);
-            var sc = 0 - negamax(AI_EXTRA_PLY, side);
+            var sc = 0 - negamax(aiPly - 1, side);
             restore(snap);
             sc = sc + (i % 5);
             if (sc > bestScore) {
@@ -883,6 +899,10 @@ if (root == null) {
         if (game.pointInRect(mx, my, PANEL_X, BTN_CPU_Y, BTN_W, BTN_H)) {
             vsCpu = !vsCpu;
             persist();
+            return;
+        }
+        if (game.pointInRect(mx, my, PANEL_X, BTN_PLY_Y, BTN_W, BTN_H)) {
+            cycleAiPly();
             return;
         }
         if (isGameOver()) {
@@ -1157,7 +1177,7 @@ if (root == null) {
     function updateGame(dtMs) {
         hoverSq = squareAt(game.getMouseX(), game.getMouseY());
 
-        if (game.wasMousePressed(0) or game.wasKeyPressed("r") or game.wasKeyPressed("u") or game.wasKeyPressed("c")) {
+        if (game.wasMousePressed(0) or game.wasKeyPressed("r") or game.wasKeyPressed("u") or game.wasKeyPressed("c") or game.wasKeyPressed("p")) {
             bootAudio();
         }
 
@@ -1170,6 +1190,9 @@ if (root == null) {
         if (game.wasKeyPressed("c")) {
             vsCpu = !vsCpu;
             persist();
+        }
+        if (game.wasKeyPressed("p")) {
+            cycleAiPly();
         }
         if (game.wasMousePressed(0)) {
             handleClick(game.getMouseX(), game.getMouseY());
@@ -1258,7 +1281,7 @@ if (root == null) {
         game.drawText("Chess", PANEL_X, 48, "#f8fafc", "32px sans-serif");
         game.drawText(statusText(), PANEL_X, 84, "#fde68a", "18px sans-serif");
 
-        var mode = "Human vs computer";
+        var mode = "Human vs computer  ·  ply " + string(aiPly);
         if (!vsCpu) {
             mode = "Human vs human";
         }
@@ -1276,9 +1299,10 @@ if (root == null) {
             cpuLabel = "Play vs human  (C)";
         }
         drawButton(PANEL_X, BTN_CPU_Y, BTN_W, BTN_H, cpuLabel, game.pointInRect(mx, my, PANEL_X, BTN_CPU_Y, BTN_W, BTN_H));
+        drawButton(PANEL_X, BTN_PLY_Y, BTN_W, BTN_H, "CPU ply  " + string(aiPly) + "  (P)", game.pointInRect(mx, my, PANEL_X, BTN_PLY_Y, BTN_W, BTN_H));
 
-        game.drawText("Local two-player or a 2-ply CPU.", PANEL_X, 420, "#64748b", "14px sans-serif");
-        game.drawText("Position and score survive reload.", PANEL_X, 442, "#64748b", "14px sans-serif");
+        game.drawText("Local two-player or a 1–3 ply CPU.", PANEL_X, 470, "#64748b", "14px sans-serif");
+        game.drawText("Position and score survive reload.", PANEL_X, 492, "#64748b", "14px sans-serif");
     }
 
     if (!tryLoadGame()) {
