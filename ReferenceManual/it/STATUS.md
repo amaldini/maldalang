@@ -11,10 +11,10 @@ python3 scripts/sync-reference-manual-it-status.py
 
 | File | EN SHA-256 |
 |------|------------|
-| index.html | af0391d8670971d5f724ad97541cbb2496f112740f9a7115b60bc2b4577bfb4d |
-| learn.html | 365a3a37ee1035fa0dd2f89f55e697f141b04abf4271ec0e96dbef8ca3137db0 |
+| index.html | 0e0ddb00709aafa954ac34498557285cda9dc95ed6d88ac83d42363f1d91d602 |
+| learn.html | e68c30151e0d98c406c88519261ba5c0906a0c934e6fef236ac6150ab835ec2a |
 | 01-introduction.html | 82e2fd03e2a5e06c098027970dcbbfbb2893f256450430f82aaea50e24244ec3 |
-| 02-tools.html | 8bbe1644eea33a31da9e206619fe2a97d31328ccb3d6b61620ae13556028c238 |
+| 02-tools.html | 7f01f7ea84f99ec68038193f0204e2c6d4346ccd8239310237387cc6248744b2 |
 | 03-lexical-structure.html | aebc6c9d63a36f8148e8ed344fa1e0da584140316945ffccc5b718b8ac8c797c |
 | 04-data-types.html | 7debd0bce6fe5eb81355dc54f598461d81b1d83ce4cae976ba3599e3356e53ff |
 | 05-variables.html | 0e9610d36315039e98665b6c736c611d32caf59cf005ca966e7df899b4c5635b |
@@ -39,7 +39,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | 24-web-ui-hub.html | 2652bf7f1d5b1b3d466c0bbedfb8b933f1f81d64a1e5517a93c701650bc1ffc8 |
 | 25-web-ui.html | eed62ad86ea8d31e02197dac44667ad21abfbcb1842f3dd0ffd6e69352d548c9 |
 | 26-http-server-html-ui.html | 0ce2e4b32df0dceb6e951b1385764b202862588b1ad0779ae7a57fb84184a6eb |
-| 27-browser-javascript-backend.html | 545e01bf6cc4cc19854962007265f6053ddfd8d800cd87858e321343fc4dab7c |
+| 27-browser-javascript-backend.html | a88866360a4f3513f13f5f5bbdccab79cf48efe3959497c67f89417c1785597e |
 | 28-rest-api.html | 9a24dfe4e534d829d0521aeef44712c371f080e0386dfd71b43871adf5ae7896 |
 | 29-rest-web-client.html | d9b944783dbe97bcaba04de71acae3cf00a9b60e6f90e1479b83f59318ebcad8 |
 | 30-full-stack-development.html | a4dbe5728a112651c0df775b9cb187d521a538aeaff570d0fd5fc22b416bad3d |

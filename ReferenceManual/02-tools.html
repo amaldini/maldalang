@@ -24,7 +24,7 @@
 
         <p>MALDA provides a complete set of development tools including an interactive interpreter, a dual-mode compiler, and a package manager. This chapter covers how to use these tools to develop, run, and deploy MALDA applications. The table in <a href="#cli-index">2.0</a> is the command index: every <code>malda &lt;verb&gt;</code> with a one-line pointer. How-tos stay in the sections named there. <code>malda help</code> or <code>malda help &lt;command&gt;</code> prints the same list from the binary.</p>
         <div class="info-box">
-            <strong>Student need only this:</strong> get <code>malda</code> from a Release zip (root <a href="../README.md">README</a> “Install without cloning”), from source with <code>dotnet run --project MaldaLang -- file.malda</code>, or skip the CLI and use Desktop <strong>Start With MALDA</strong> / the Web IDE playground. Then run a file with <code>malda file.malda</code>. Diagnose without executing with <code>malda check</code>. The rest of this chapter is the command index. The course that uses those facts is <a href="learn.html">Learn MALDA</a>.
+            <strong>Student need only this:</strong> on Windows, get the win-x64 zip from <a href="https://github.com/amaldini/maldalang/releases">GitHub Releases</a> and run <code>MaldaDesktop.bat</code> (CLI + Desktop IDE), then <strong>Start With MALDA</strong>. Linux: unzip the linux-x64 zip and run <code>./malda</code>. From source: <code>dotnet run --project MaldaLang -- file.malda</code>. No install: the Web IDE playground. Then run a file with <code>malda file.malda</code>. Diagnose without executing with <code>malda check</code>. The rest of this chapter is the command index. The course that uses those facts is <a href="learn.html">Learn MALDA</a>.
         </div>
 
         <h2 id="cli-index">2.0 CLI command index</h2>
@@ -458,7 +458,7 @@ var result = helper();</code></pre>
         <p>MALDA ships more than one editor surface. They are not feature-equivalent:</p>
 
         <ul>
-            <li><strong>Desktop IDE</strong>: Native Windows application — the <strong>reference</strong> IDE (full project workflows, package UI, local models / MCP where available, virtual <code>@malda-section</code> tabs, richer compile)</li>
+            <li><strong>Desktop IDE</strong>: Native Windows application — the <strong>reference</strong> IDE (full project workflows, package UI, local models / MCP where available, virtual <code>@malda-section</code> tabs, richer compile). Install it from the win-x64 GitHub Release zip and run <code>MaldaDesktop.bat</code></li>
             <li><strong>Web IDE</strong>: Browser learning playground (Monaco) for edit / run / debug and examples — useful cross-platform, but <strong>not</strong> Desktop parity</li>
             <li><strong>VS Code / LSP</strong>: Cross-platform editing via the language server, plus interpret-mode F5 debugging through <code>vscode-malda</code> (see <a href="#interpret-mode-debug">2.6.5</a>)</li>
         </ul>

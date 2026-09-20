@@ -73,19 +73,20 @@ Longer version, with objections and current weaknesses stated up front:
 
 ## Install without cloning the sources
 
-GitHub Releases ship **self-contained zips** (no separate .NET install needed):
+GitHub Releases ship **self-contained zips** (no separate .NET install needed).
+On Windows the win-x64 zip is the install: unzip and run `MaldaDesktop.bat`.
 
 1. Open [Releases](https://github.com/amaldini/maldalang/releases) and download
    `malda-<version>-win-x64.zip` or `malda-<version>-linux-x64.zip`.
 2. Unzip, then:
 
 ```bash
+# Windows — Desktop IDE (the Windows install; included in the win-x64 zip)
+MaldaDesktop.bat
+
 # Windows — CLI
 malda.bat Examples\Basics\first_look.malda
 # or: bin\malda\malda.exe Examples\Basics\first_look.malda
-
-# Windows — Desktop IDE (included in the win-x64 zip)
-MaldaDesktop.bat
 
 # Linux — CLI only (no WPF Desktop IDE)
 ./malda Examples/Basics/first_look.malda

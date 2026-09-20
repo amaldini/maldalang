@@ -25,9 +25,10 @@
         <h3 id="how-to-get">How to get MALDA</h3>
         <p>You need the <code>malda</code> command, or an IDE that already has it:</p>
         <ul>
-            <li><strong>Release zip</strong> — download from GitHub Releases (see the root <a href="../README.md">README</a> “Install without cloning”). Unzip and run <code>malda.bat</code> (Windows) or <code>./malda</code> (Linux). Optional: add <code>bin/malda</code> to your <code>PATH</code>.</li>
+            <li><strong>Windows</strong> — download <code>malda-&lt;version&gt;-win-x64.zip</code> from <a href="https://github.com/amaldini/maldalang/releases">GitHub Releases</a> (CLI + Desktop IDE; no separate .NET install). Unzip and run <code>MaldaDesktop.bat</code>, then <strong>Start With MALDA</strong>. For the CLI: <code>malda.bat</code>, or add <code>bin/malda</code> to your <code>PATH</code>. Details: root <a href="../README.md">README</a> “Install without cloning”.</li>
+            <li><strong>Linux zip</strong> — download <code>malda-&lt;version&gt;-linux-x64.zip</code>, unzip, and run <code>./malda</code>. Optional: add <code>bin/malda</code> to your <code>PATH</code>.</li>
             <li><strong>From source</strong> — clone this repo, then from the root: <code>dotnet run --project MaldaLang -- Examples/Basics/hello_world.malda</code>.</li>
-            <li><strong>No install</strong> — Desktop <strong>Start With MALDA</strong> (Windows) or the Web IDE playground (browser; not Desktop parity).</li>
+            <li><strong>No install</strong> — the Web IDE playground (browser; not Desktop parity).</li>
         </ul>
         <p>The interpreter is the default. After <code>malda</code> is on your path, from the repo root:</p>
         <pre><code>malda Examples/Basics/hello_world.malda</code></pre>
