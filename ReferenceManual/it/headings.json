@@ -512,8 +512,14 @@
   {
     "file": "09-functions.html",
     "level": 2,
-    "id": "",
+    "id": "function-call",
     "title": "9.2 Chiamata di funzione"
+  },
+  {
+    "file": "09-functions.html",
+    "level": 3,
+    "id": "argument-passing",
+    "title": "9.2.1 Passaggio degli argomenti"
   },
   {
     "file": "09-functions.html",

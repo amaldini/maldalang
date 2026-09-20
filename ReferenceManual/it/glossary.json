@@ -118,6 +118,13 @@
       "summary": "Cleanup deterministico: defer gira all'uscita dello scope; using rilascia una risorsa."
     },
     {
+      "id": "argument-passing",
+      "term": "Passaggio degli argomenti",
+      "aliases": ["per valore", "per riferimento", "by value", "by reference", "by ref", "pass by value", "pass by sharing"],
+      "href": "09-functions.html#argument-passing",
+      "summary": "I parametri sono nuovi binding locali (niente ref/out). La riassegnazione resta nel callee; mutare array, dict e oggetti è visibile al caller."
+    },
+    {
       "id": "lambda",
       "term": "Espressioni lambda",
       "aliases": ["lambda", "=>", "arrow"],

@@ -49,9 +49,32 @@ function double(n) -> int n * 2;</code></pre>
 function add(a: int, b: int) -> int {
     return a + b;
 }</code></pre>
-        <h2>9.2 Function Call</h2>
+        <h2 id="function-call">9.2 Function Call</h2>
         <pre><code>var result = functionName(arg1, arg2);
 functionName();  // No return value needed</code></pre>
+        <h3 id="argument-passing">9.2.1 Argument passing</h3>
+        <p>Arguments are passed <strong>by sharing</strong> (the same model as Java, Python, JavaScript, and C# default parameters). There is no <code>ref</code>, <code>out</code>, or <code>inout</code> keyword. The callee receives a new local binding; it does not alias the caller’s variable.</p>
+        <ul>
+            <li><strong>Reassigning a parameter</strong> (<code>n = n + 1;</code>) updates only the callee’s local. The caller’s variable is unchanged.</li>
+            <li><strong>Mutating a shared object</strong> (array <code>append</code> / index write, dict field write, class instance fields) is visible to the caller — both sides hold the same object.</li>
+            <li>Integers, floats, booleans, strings, and <code>null</code> are immutable values, so they behave as if passed by value.</li>
+        </ul>
+        <p>The same rule applies to methods and lambdas. Interpreter, C# transpile, and JavaScript agree. To change a primitive for the caller, return the new value and assign it: <code>x = bump(x);</code>.</p>
+        <pre><code data-run="true" data-expect="10\n[0, 1]">function bump(n) {
+    n = n + 1;
+}
+
+function pushOne(xs) {
+    xs.append(1);
+}
+
+var x = 10;
+bump(x);
+io.print(x);
+
+var items = [0];
+pushOne(items);
+io.print(items);</code></pre>
         <h2>9.3 Return Statement</h2>
         <p>Return statements are <strong>optional</strong> in MALDA functions. A function can:</p>
         <ul>

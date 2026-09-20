@@ -512,8 +512,14 @@
   {
     "file": "09-functions.html",
     "level": 2,
-    "id": "",
+    "id": "function-call",
     "title": "9.2 Function Call"
+  },
+  {
+    "file": "09-functions.html",
+    "level": 3,
+    "id": "argument-passing",
+    "title": "9.2.1 Argument passing"
   },
   {
     "file": "09-functions.html",
@@ -1234,6 +1240,12 @@
     "level": 3,
     "id": "",
     "title": "15.8.1 Real-World VectorDB Applications"
+  },
+  {
+    "file": "15-vectordb.html",
+    "level": 2,
+    "id": "",
+    "title": "15.10 ONNX inspect (OnnxModel)"
   },
   {
     "file": "15-vectordb.html",

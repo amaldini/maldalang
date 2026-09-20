@@ -506,6 +506,20 @@ const FALLBACK_GLOSSARY_EN = [
         "summary": "Deterministic cleanup: defer runs at scope exit; using disposes a resource."
     },
     {
+        "id": "argument-passing",
+        "term": "Argument passing",
+        "aliases": [
+            "by value",
+            "by reference",
+            "by ref",
+            "pass by value",
+            "pass by reference",
+            "pass by sharing"
+        ],
+        "href": "09-functions.html#argument-passing",
+        "summary": "Parameters are new local bindings (no ref/out). Reassignment stays in the callee; mutating arrays, dicts, and objects is visible to the caller."
+    },
+    {
         "id": "lambda",
         "term": "Lambda expressions",
         "aliases": [
@@ -1459,6 +1473,21 @@ const FALLBACK_GLOSSARY_IT = [
         ],
         "href": "08-control-structures.html#cleanup",
         "summary": "Cleanup deterministico: defer gira all'uscita dello scope; using rilascia una risorsa."
+    },
+    {
+        "id": "argument-passing",
+        "term": "Passaggio degli argomenti",
+        "aliases": [
+            "per valore",
+            "per riferimento",
+            "by value",
+            "by reference",
+            "by ref",
+            "pass by value",
+            "pass by sharing"
+        ],
+        "href": "09-functions.html#argument-passing",
+        "summary": "I parametri sono nuovi binding locali (niente ref/out). La riassegnazione resta nel callee; mutare array, dict e oggetti è visibile al caller."
     },
     {
         "id": "lambda",
