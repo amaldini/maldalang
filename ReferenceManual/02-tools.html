@@ -105,11 +105,11 @@ Type 'exit' to quit, 'vars' to list definitions, 'source' to print their code, '
             <li><strong>Session state</strong>: Variables, functions, and classes defined in one entry stay visible in later entries. A later <code>class Name { … }</code> or brace-less <code>class Name function …</code> for a name already defined in this session <strong>augments</strong> that class (same rules as in a file: no primary constructor, no changing <code>extends</code>, no repeated member names). Instances created before the later entry see the new methods. <code>schema</code>, sum-type, and <code>api</code> declarations are not carried across entries — declare them in the same entry that uses them.</li>
             <li><strong>Bare expressions</strong>: An expression with no trailing <code>;</code> and no assignment echoes its value, so <code>1 + 2</code> prints <code>3</code>.</li>
             <li><strong><code>vars</code></strong> (aliases <code>defs</code>, <code>who</code>): List user-defined variables, functions, classes, prompts, actors, and workflows. Host names such as <code>math</code> / <code>str</code> / <code>io</code> are omitted. Optional filter: <code>vars functions</code>, <code>vars classes</code>, and so on. This is a REPL command, not a language built-in. Typing a name still inspects that one binding.</li>
-            <li><strong><code>source</code></strong> (alias <code>src</code>): Print those definitions in source form, as they were entered. Optional filter by kind (<code>source functions</code>) or by name (<code>source add</code>). Later class augmentations are concatenated so the dump can recreate the class. This is the original text, not a live-value dump — use <code>vars</code> for current values. Failed entries are omitted.</li>
+            <li><strong><code>source</code></strong> (alias <code>src</code>): Print those definitions in source form, as they were entered. Optional filter by kind (<code>source functions</code>) or by name (<code>source add</code>). A name prints line numbers starting at 1; <code>editline</code> and <code>insert</code> use those numbers, and <code>editline add</code> or <code>insert add</code> without a line number prints the same listing. A kind filter or a full dump stays the original text so it can be re-entered. Later class augmentations are concatenated so the dump can recreate the class. This is the original text, not a live-value dump — use <code>vars</code> for current values. Failed entries are omitted.</li>
             <li><strong><code>drop</code></strong> (alias <code>undef</code>): Remove a user definition from the session by name (<code>drop add</code>, <code>drop Point</code>). Lambdas bound to a variable (<code>var add = (a, b) =&gt; a + b</code>) appear under functions as <code>add(a, b)</code> and are dropped with that variable name. Host names such as <code>math</code> cannot be dropped. After dropping a class, a later <code>class Point(x, y);</code> is a first declaration again (it does not augment). Existing instances keep the old class object.</li>
             <li><strong><code>replace</code></strong> (alias <code>edit</code>): Drop the named definition and reprint its recorded source so you can paste or retype a new one. Functions can also be replaced by entering <code>function name …</code> again without <code>drop</code>. A non-const lambda can be overwritten the same way with another <code>var add = …</code>; <code>replace add</code> reprints the original assignment. Classes cannot be overwritten in place — use <code>replace Point</code> first.</li>
-            <li><strong><code>editline</code></strong>: Replace one line of a recorded definition. Count lines in <code>source add</code>, starting at 1. A successful patch prints the definition with those numbers. <code>editline add 2 return a - b;</code> replaces line 2. Omit the text to type several lines in its place; a blank line on <code>..&gt;</code> finishes, and an immediate blank line deletes that line. The result has to stay a definition of the same name, or the previous definition is kept. A class is dropped and defined again from the patched source, so existing instances keep the previous class object.</li>
-            <li><strong><code>insert</code></strong>: Insert one or more lines after a source line. <code>insert add after 2</code> opens the continuation prompt; a blank line finishes. On a one-line function such as <code>function add(a, b) a + b;</code>, <code>insert add after 1</code> wraps it in a block, places the new lines first, and keeps the original expression as the final <code>return</code>.</li>
+            <li><strong><code>editline</code></strong>: Replace one line of a recorded definition. The line number is the one <code>source add</code> prints, starting at 1. The same listing is printed again above the continuation prompt. A successful patch prints the definition with those numbers. <code>editline add 2 return a - b;</code> replaces line 2. Omit the text to type several lines in its place; a blank line on <code>..&gt;</code> finishes, and an immediate blank line deletes that line. The result has to stay a definition of the same name, or the previous definition is kept. A class is dropped and defined again from the patched source, so existing instances keep the previous class object.</li>
+            <li><strong><code>insert</code></strong>: Insert one or more lines after a source line. <code>insert add</code> prints the numbered listing; <code>insert add after 2</code> opens the continuation prompt under that listing, and a blank line finishes. On a one-line function such as <code>function add(a, b) a + b;</code>, <code>insert add after 1</code> wraps it in a block, places the new lines first, and keeps the original expression as the final <code>return</code>.</li>
             <li><strong><code>run</code></strong>: Execute the buffered code</li>
             <li><strong><code>compile</code></strong>: Compile the buffered code to an executable (interpreter mode)</li>
             <li><strong><code>transpile</code></strong>: Compile the buffered code to an executable (transpiled to C#)</li>
@@ -144,7 +144,14 @@ function add(a, b) { return a + b; }
 ..&gt;     return a + b;
 ..&gt; }
 ..&gt;
+&gt; source add
+1| function add(a, b) {
+2|     return a + b;
+3| }
 &gt; editline add 2
+1| function add(a, b) {
+2|     return a + b;
+3| }
 ..&gt;     return a - b;
 ..&gt;
 Updated function 'add'.
@@ -154,6 +161,9 @@ Updated function 'add'.
 &gt; add(5, 2)
 3
 &gt; insert add after 1
+1| function add(a, b) {
+2|     return a - b;
+3| }
 ..&gt;     if (a &lt; 0) return 0;
 ..&gt;
 &gt; add(-1, 4)

@@ -106,7 +106,7 @@ public static class ReplSessionPatch
         var match = pattern.Match(rest);
         if (!match.Success || !int.TryParse(match.Groups["line"].Value, out var lineNumber))
         {
-            command = Usage(usage);
+            command = Usage(usage, action, ReplSessionEdit.NormalizeName(first));
             return true;
         }
 
@@ -412,6 +412,42 @@ public static class ReplSessionPatch
         return source.Substring(startIndex, endIndex - startIndex);
     }
 
+    /// <summary>
+    /// Prints the recorded definition with the 1-based line numbers
+    /// <c>editline</c> and <c>insert</c> use. A missing name prints
+    /// <paramref name="usage"/>; a known name prints only the listing.
+    /// </summary>
+    public static void WriteListing(
+        TextWriter writer,
+        string usage,
+        string name,
+        ISet<string>? hostNames,
+        ReplSessionSource sessionSource)
+    {
+        name = ReplSessionEdit.NormalizeName(name);
+        if (name.Length == 0)
+        {
+            writer.WriteLine(usage);
+            return;
+        }
+
+        if (hostNames != null && hostNames.Contains(name))
+        {
+            writer.WriteLine("Cannot edit host name '" + name + "'.");
+            return;
+        }
+
+        var previous = sessionSource.Peek(name);
+        if (previous == null)
+        {
+            writer.WriteLine("No recorded source for '" + name + "'.");
+            writer.WriteLine(usage);
+            return;
+        }
+
+        writer.WriteLine(Numbered(previous));
+    }
+
     public static string Numbered(string source)
     {
         var lines = SplitLines(source);
@@ -441,7 +477,8 @@ public static class ReplSessionPatch
         return lines;
     }
 
-    private static Parse Usage(string usage) => new() { IsUsage = true, Usage = usage };
+    private static Parse Usage(string usage, string action = "", string name = "") =>
+        new() { IsUsage = true, Usage = usage, Action = action, Name = name };
 
     private static int IndexOfWhitespace(string text)
     {

@@ -105,11 +105,11 @@ Type 'exit' to quit, 'vars' to list definitions, 'source' to print their code, '
             <li><strong>Stato della sessione</strong>: variabili, funzioni e classi definite in una voce restano visibili nelle voci successive. Una successiva <code>class Name { … }</code> o <code>class Name function …</code> senza graffe per un nome già definito in questa sessione <strong>aumenta</strong> quella classe (stesse regole di un file: niente costruttore primario, niente cambio di <code>extends</code>, niente nomi di membro ripetuti). Le istanze create prima della voce successiva vedono i nuovi metodi. Le dichiarazioni <code>schema</code>, di sum type e <code>api</code> non vengono conservate tra le voci — dichiarale nella stessa voce che le usa.</li>
             <li><strong>Espressioni pure</strong>: un'espressione senza <code>;</code> finale e senza assegnazione ne stampa il valore, quindi <code>1 + 2</code> mostra <code>3</code>.</li>
             <li><strong><code>vars</code></strong> (alias <code>defs</code>, <code>who</code>): elenca variabili, funzioni, classi, prompt, actor e workflow definiti nella sessione. I nomi host come <code>math</code> / <code>str</code> / <code>io</code> sono omessi. Filtro opzionale: <code>vars functions</code>, <code>vars classes</code>, e così via. È un comando REPL, non un built-in del linguaggio. Digitare un nome continua a ispezionare quel binding.</li>
-            <li><strong><code>source</code></strong> (alias <code>src</code>): stampa quelle definizioni in forma sorgente, come sono state immesse. Filtro opzionale per tipo (<code>source functions</code>) o per nome (<code>source add</code>). Le successive aumentazioni di classe sono concatenate così il dump può ricreare la classe. È il testo originale, non un dump dei valori correnti — usa <code>vars</code> per i valori. Le voci fallite sono omesse.</li>
+            <li><strong><code>source</code></strong> (alias <code>src</code>): stampa quelle definizioni in forma sorgente, come sono state immesse. Filtro opzionale per tipo (<code>source functions</code>) o per nome (<code>source add</code>). Un nome stampa i numeri di riga a partire da 1; <code>editline</code> e <code>insert</code> usano quei numeri, e <code>editline add</code> o <code>insert add</code> senza numero di riga stampano lo stesso elenco. Un filtro per tipo o il dump completo restano il testo originale, così si può reimmettere. Le successive aumentazioni di classe sono concatenate così il dump può ricreare la classe. È il testo originale, non un dump dei valori correnti — usa <code>vars</code> per i valori. Le voci fallite sono omesse.</li>
             <li><strong><code>drop</code></strong> (alias <code>undef</code>): rimuove una definizione utente dalla sessione per nome (<code>drop add</code>, <code>drop Point</code>). Le lambda legate a una variabile (<code>var add = (a, b) =&gt; a + b</code>) compaiono tra le funzioni come <code>add(a, b)</code> e si rimuovono con quel nome di variabile. I nomi host come <code>math</code> non si possono rimuovere. Dopo aver rimosso una classe, una successiva <code>class Point(x, y);</code> è di nuovo una prima dichiarazione (non aumenta). Le istanze esistenti tengono l'oggetto classe precedente.</li>
             <li><strong><code>replace</code></strong> (alias <code>edit</code>): rimuove la definizione indicata e ristampa il sorgente registrato così puoi incollare o ridigitare una nuova versione. Le funzioni si possono anche sostituire immettendo di nuovo <code>function name …</code> senza <code>drop</code>. Una lambda non-<code>const</code> si può sovrascrivere allo stesso modo con un altro <code>var add = …</code>; <code>replace add</code> ristampa l'assegnazione originale. Le classi non si possono sovrascrivere sul posto — usa prima <code>replace Point</code>.</li>
-            <li><strong><code>editline</code></strong>: sostituisce una riga di una definizione registrata. Le righe si contano sul sorgente di quella definizione (<code>source add</code>), a partire da 1. <code>editline add 2 return a - b;</code> sostituisce la riga 2. Senza testo, le righe successive sostituiscono quella riga e una riga vuota su <code>..&gt;</code> chiude l'immissione; una riga vuota immediata elimina la riga. Il risultato deve restare una definizione con lo stesso nome, altrimenti resta la definizione precedente. Una classe viene rimossa e ridefinita dal sorgente modificato, quindi le istanze già create tengono l'oggetto classe precedente.</li>
-            <li><strong><code>insert</code></strong>: inserisce una o più righe dopo una riga del sorgente. <code>insert add after 2</code> apre il prompt di continuazione; una riga vuota chiude l'inserimento. Su una funzione di una sola riga (<code>function add(a, b) a + b;</code>), <code>insert add after 1</code> la avvolge in un blocco, mette le righe nuove per prime e tiene l'espressione originale come <code>return</code> finale.</li>
+            <li><strong><code>editline</code></strong>: sostituisce una riga di una definizione registrata. Il numero di riga è quello che stampa <code>source add</code>, a partire da 1. Lo stesso elenco viene stampato di nuovo sopra il prompt di continuazione. <code>editline add 2 return a - b;</code> sostituisce la riga 2. Senza testo, le righe successive sostituiscono quella riga e una riga vuota su <code>..&gt;</code> chiude l'immissione; una riga vuota immediata elimina la riga. Il risultato deve restare una definizione con lo stesso nome, altrimenti resta la definizione precedente. Una classe viene rimossa e ridefinita dal sorgente modificato, quindi le istanze già create tengono l'oggetto classe precedente.</li>
+            <li><strong><code>insert</code></strong>: inserisce una o più righe dopo una riga del sorgente. <code>insert add</code> stampa l'elenco numerato; <code>insert add after 2</code> apre il prompt di continuazione sotto quell'elenco, e una riga vuota chiude l'inserimento. Su una funzione di una sola riga (<code>function add(a, b) a + b;</code>), <code>insert add after 1</code> la avvolge in un blocco, mette le righe nuove per prime e tiene l'espressione originale come <code>return</code> finale.</li>
             <li><strong><code>run</code></strong>: esegue il codice nel buffer</li>
             <li><strong><code>compile</code></strong>: compila il codice nel buffer in un eseguibile (modalità interpreter)</li>
             <li><strong><code>transpile</code></strong>: compila il codice nel buffer in un eseguibile (transpile verso C#)</li>
@@ -144,7 +144,14 @@ function add(a, b) { return a + b; }
 ..&gt;     return a + b;
 ..&gt; }
 ..&gt;
+&gt; source add
+1| function add(a, b) {
+2|     return a + b;
+3| }
 &gt; editline add 2
+1| function add(a, b) {
+2|     return a + b;
+3| }
 ..&gt;     return a - b;
 ..&gt;
 Updated function 'add'.
@@ -154,6 +161,9 @@ Updated function 'add'.
 &gt; add(5, 2)
 3
 &gt; insert add after 1
+1| function add(a, b) {
+2|     return a - b;
+3| }
 ..&gt;     if (a &lt; 0) return 0;
 ..&gt;
 &gt; add(-1, 4)

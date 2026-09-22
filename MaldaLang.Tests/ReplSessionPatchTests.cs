@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Andrea Maldini
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
+using System.IO;
 using MaldaLang.Cli;
 using Xunit;
 
@@ -37,14 +38,32 @@ public class ReplSessionPatchTests
     }
 
     [Theory]
-    [InlineData("editline")]
-    [InlineData("editline add")]
-    [InlineData("insert add before 2")]
-    public void TryParseCommand_MalformedPatch_IsUsage(string line)
+    [InlineData("editline", "")]
+    [InlineData("editline add", "add")]
+    [InlineData("insert add", "add")]
+    [InlineData("insert add before 2", "add")]
+    public void TryParseCommand_MissingLine_IsUsageAndKeepsTheName(string line, string name)
     {
         Assert.True(ReplSessionPatch.TryParseCommand(line, out var command));
         Assert.True(command.IsUsage);
+        Assert.Equal(name, command.Name ?? "");
         Assert.False(string.IsNullOrWhiteSpace(command.Usage));
+    }
+
+    [Fact]
+    public void WriteListing_PrintsNumberedSource()
+    {
+        var session = new ReplSessionSource();
+        session.Record("function add(a, b) {\n    return a + b;\n}");
+        var writer = new StringWriter();
+
+        ReplSessionPatch.WriteListing(writer, ReplSessionPatch.EditLineUsage, "add", null, session);
+
+        var text = writer.ToString().Replace("\r", "");
+        Assert.Contains("1| function add(a, b) {", text);
+        Assert.Contains("2|     return a + b;", text);
+        Assert.Contains("3| }", text);
+        Assert.DoesNotContain("Usage:", text);
     }
 
     [Theory]

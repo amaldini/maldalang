@@ -59,7 +59,11 @@ public class ReplPromptTests : TestBase
         }
     }
 
-    private static InputResult? InvokeReadMultilineInput(string consoleInput)
+    private static InputResult? InvokeReadMultilineInput(string consoleInput) =>
+        InvokeReadMultilineInputCapturing(consoleInput, null).Result;
+
+    private static (InputResult? Result, string StdOut) InvokeReadMultilineInputCapturing(
+        string consoleInput, ReplSessionSource? sessionSource)
     {
         lock (_consoleLock)
         {
@@ -71,7 +75,8 @@ public class ReplPromptTests : TestBase
             Console.SetOut(output);
             try
             {
-                return (InputResult?)ReadMultilineInput.Invoke(null, null);
+                var result = (InputResult?)ReadMultilineInput.Invoke(null, new object?[] { sessionSource });
+                return (result, output.ToString().Replace("\r", ""));
             }
             finally
             {
@@ -89,8 +94,8 @@ public class ReplPromptTests : TestBase
         Assert.Contains("MALDA CLI", stdOut);
         Assert.Contains("REPL commands:", stdOut);
         Assert.Contains("run | compile | transpile | vars | source | drop | replace | editline | insert | help | exit", stdOut);
-        Assert.Contains("editline <name> <line> [text]", stdOut);
-        Assert.Contains("insert <name> after <line>", stdOut);
+        Assert.Contains("editline <name> [<line> [text]]", stdOut);
+        Assert.Contains("insert <name> [after <line>]", stdOut);
         Assert.Contains("vars [kind]", stdOut);
         Assert.Contains("source [kind|name]", stdOut);
         Assert.Contains("drop <name>", stdOut);
@@ -913,6 +918,43 @@ public class ReplPromptTests : TestBase
         Assert.Equal("add", result.Code);
         Assert.Equal(2, result.PatchLine);
         Assert.Equal("return a - b;", result.PatchText);
+    }
+
+    [Fact]
+    public void EditLine_WithoutALine_PrintsNumberedSource()
+    {
+        var interpreter = new Interpreter.Interpreter();
+        var sessionSource = new ReplSessionSource();
+        InvokePromptInput(
+            new InputResult { Code = "function add(a, b) {\n    return a + b;\n}", Action = "run" },
+            interpreter, sessionSource: sessionSource);
+
+        var (listed, _) = InvokePromptInput(
+            new InputResult
+            {
+                Action = ReplSessionPatch.UsageAction,
+                Code = "add",
+                PatchText = ReplSessionPatch.EditLineUsage
+            },
+            interpreter, sessionSource: sessionSource);
+
+        Assert.Contains("1| function add(a, b) {", listed);
+        Assert.Contains("2|     return a + b;", listed);
+        Assert.DoesNotContain("Usage:", listed);
+    }
+
+    [Fact]
+    public void EditLine_Continuation_PrintsNumberedSourceBeforeThePrompt()
+    {
+        var session = new ReplSessionSource();
+        session.Record("function add(a, b) {\n    return a + b;\n}");
+        var (result, stdOut) = InvokeReadMultilineInputCapturing(
+            "editline add 2\n    return a - b;\n\n", session);
+
+        Assert.NotNull(result);
+        Assert.Equal("    return a - b;", result!.PatchText);
+        Assert.Contains("1| function add(a, b) {", stdOut);
+        Assert.Contains("2|     return a + b;", stdOut);
     }
 
     [Fact]

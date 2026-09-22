@@ -14,7 +14,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | index.html | f11b736dfa3d6870825abb4b314b43321e7893b97ab987d00116dbba1eebe531 |
 | learn.html | db740b93dd664beb576807ae3a17676bfaf875689f81eb2cfbddf1130e3bda07 |
 | 01-introduction.html | 3ca9dee1c40e151e6da8d6027d8a9e3b3703f8e05a49f7fac563996b0250a912 |
-| 02-tools.html | 342b5b1e443bcb51a8a218c70ade821284c265f160517797aee4cfdf12e5ce20 |
+| 02-tools.html | b1a5433dd9392f696a7168080827862c768fe35f24bc8f144391d84e0d13cd1d |
 | 03-lexical-structure.html | 03434e840ad1732a0135b787da6c4e148f1bab711f48bc314104b03a522bc143 |
 | 04-data-types.html | 9e4915a91737b2e466ee959ca1b5610ab6c96597ec8523309be87dc6d9b1c256 |
 | 05-variables.html | 5c45a8f496df0cc641727a14ea06cfc0626b9e342dbb43404e3e6dd5d77a9f89 |

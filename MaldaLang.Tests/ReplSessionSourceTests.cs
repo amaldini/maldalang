@@ -133,7 +133,7 @@ public class ReplSessionSourceTests
 
         var text = session.Format("ping");
 
-        Assert.Contains("function ping() { return 1; }", text);
+        Assert.Equal("1| function ping() { return 1; }", text);
         Assert.DoesNotContain("var x", text);
     }
 

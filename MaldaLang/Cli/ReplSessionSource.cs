@@ -127,7 +127,7 @@ public sealed class ReplSessionSource
             var named = items.ToList();
             if (named.Count == 0)
                 return "(no definition named '" + name + "')";
-            return JoinSources(named);
+            return ReplSessionPatch.Numbered(JoinSources(named));
         }
 
         if (kind != Kind.All)
