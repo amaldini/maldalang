@@ -52,7 +52,11 @@ class CronFile
 class InputResult
 {
     public string? Code { get; set; }
-    public string Action { get; set; } = "run"; // "run", "compile", "transpile", "exit", "help", "vars", "source", "drop", "replace"
+    public string Action { get; set; } = "run"; // "run", "compile", "transpile", "exit", "help", "vars", "source", "drop", "replace", "editline", "insert"
+    /// <summary>1-based source line for <c>editline</c> / <c>insert</c>.</summary>
+    public int PatchLine { get; set; }
+    /// <summary>Replacement or inserted text for a line patch.</summary>
+    public string? PatchText { get; set; }
 }
 
 sealed class CliProfilingSettings
@@ -4064,12 +4068,16 @@ class Program
         Console.WriteLine("  malda help deploy");
         Console.WriteLine();
         Console.WriteLine("REPL commands:");
-        Console.WriteLine("  run | compile | transpile | vars | source | drop | replace | help | exit");
+        Console.WriteLine("  run | compile | transpile | vars | source | drop | replace | editline | insert | help | exit");
         Console.WriteLine("  vars [kind]                List session definitions (aliases: defs, who)");
         Console.WriteLine("                             kind: variables, functions, classes, prompts, actors, workflows");
         Console.WriteLine("  source [kind|name]         Print definition source as entered (alias: src)");
         Console.WriteLine("  drop <name>                Remove a definition (alias: undef)");
         Console.WriteLine("  replace <name>             Drop and reprint source so you can re-enter it (alias: edit)");
+        Console.WriteLine("  editline <name> <line> [text]");
+        Console.WriteLine("                             Replace one source line. Omit text to enter several lines;");
+        Console.WriteLine("                             a blank line finishes. An invalid patch keeps the definition.");
+        Console.WriteLine("  insert <name> after <line> Insert lines after a source line (a blank line finishes)");
         Console.WriteLine();
         Console.WriteLine("Use 'malda help <command>' for command-specific usage.");
         Console.WriteLine();
@@ -4365,6 +4373,25 @@ class Program
                     hostNames,
                     sessionSource);
             }
+            else if (result.Action == ReplSessionPatch.UsageAction)
+            {
+                Console.WriteLine(result.Code);
+            }
+            else if (result.Action == ReplSessionPatch.EditLineAction
+                     || result.Action == ReplSessionPatch.InsertAction)
+            {
+                sessionSource ??= new ReplSessionSource();
+                ReplSessionPatch.Write(
+                    Console.Out,
+                    result.Action,
+                    result.Code ?? "",
+                    result.PatchLine,
+                    result.PatchText ?? "",
+                    interpreter,
+                    hostNames,
+                    sessionSource,
+                    code => Run(code, interpreter));
+            }
             else if (string.IsNullOrWhiteSpace(result.Code))
             {
                 return;
@@ -4462,6 +4489,8 @@ class Program
             return new InputResult { Code = sourceFilter, Action = "source" };
         if (ReplSessionEdit.TryParseCommand(trimmedFirst, out var editAction, out var editName))
             return new InputResult { Code = editName, Action = editAction };
+        if (TryConsumePatchCommand(trimmedFirst, out var patchResult))
+            return patchResult;
         
         // Check if we need multiline input
         if (!NeedsMoreInput(firstLine))
@@ -4514,6 +4543,10 @@ class Program
             {
                 return new InputResult { Code = contEditName, Action = contEditAction };
             }
+            else if (TryConsumePatchCommand(trimmed, out var contPatchResult))
+            {
+                return contPatchResult;
+            }
             
             if (string.IsNullOrWhiteSpace(line))
                 return new InputResult { Code = sb.ToString(), Action = "run" };
@@ -4523,6 +4556,63 @@ class Program
         }
     }
     
+    /// <summary>
+    /// <c>editline</c> / <c>insert</c>. A command with no inline text reads
+    /// replacement lines until a blank line. Those lines are source, so
+    /// <c>run</c> inside the buffer is not a REPL command. EOF ends the session.
+    /// </summary>
+    static bool TryConsumePatchCommand(string line, out InputResult? result)
+    {
+        result = null;
+        if (!ReplSessionPatch.TryParseCommand(line, out var patch))
+            return false;
+
+        if (patch.IsUsage)
+        {
+            result = new InputResult { Action = ReplSessionPatch.UsageAction, Code = patch.Usage };
+            return true;
+        }
+
+        if (patch.NeedsBody)
+        {
+            result = ReadPatchBody(patch.Action, patch.Name, patch.LineNumber);
+            return true;
+        }
+
+        result = new InputResult
+        {
+            Action = patch.Action,
+            Code = patch.Name,
+            PatchLine = patch.LineNumber,
+            PatchText = patch.InlineText ?? ""
+        };
+        return true;
+    }
+
+    static InputResult? ReadPatchBody(string action, string name, int lineNumber)
+    {
+        var lines = new List<string>();
+        while (true)
+        {
+            Console.Write("..> ");
+            var line = Console.ReadLine();
+            if (line == null)
+                return null;
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                return new InputResult
+                {
+                    Action = action,
+                    Code = name,
+                    PatchLine = lineNumber,
+                    PatchText = string.Join("\n", lines)
+                };
+            }
+
+            lines.Add(line);
+        }
+    }
+
     static bool NeedsMoreInput(string code)
     {
         var trimmed = code.TrimEnd();

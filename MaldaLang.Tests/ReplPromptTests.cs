@@ -88,7 +88,9 @@ public class ReplPromptTests : TestBase
 
         Assert.Contains("MALDA CLI", stdOut);
         Assert.Contains("REPL commands:", stdOut);
-        Assert.Contains("run | compile | transpile | vars | source | drop | replace | help | exit", stdOut);
+        Assert.Contains("run | compile | transpile | vars | source | drop | replace | editline | insert | help | exit", stdOut);
+        Assert.Contains("editline <name> <line> [text]", stdOut);
+        Assert.Contains("insert <name> after <line>", stdOut);
         Assert.Contains("vars [kind]", stdOut);
         Assert.Contains("source [kind|name]", stdOut);
         Assert.Contains("drop <name>", stdOut);
@@ -678,5 +680,281 @@ public class ReplPromptTests : TestBase
 
         Assert.NotNull(result);
         Assert.Equal("run", result!.Action);
+    }
+
+    [Fact]
+    public void EditLine_ReplacesAFunctionLine()
+    {
+        var interpreter = new Interpreter.Interpreter();
+        var sessionSource = new ReplSessionSource();
+        InvokePromptInput(
+            new InputResult { Code = "function add(a, b) {\n    return a + b;\n}", Action = "run" },
+            interpreter, sessionSource: sessionSource);
+
+        var (edited, editErr) = InvokePromptInput(
+            new InputResult
+            {
+                Action = "editline",
+                Code = "add",
+                PatchLine = 2,
+                PatchText = "    return a - b;"
+            },
+            interpreter, sessionSource: sessionSource);
+        var (stdOut, _) = InvokePromptInput(
+            new InputResult { Code = "add(5, 2)", Action = "run" }, interpreter, sessionSource: sessionSource);
+
+        Assert.Equal(string.Empty, editErr.Trim());
+        Assert.Contains("Updated function 'add'.", edited);
+        Assert.Contains("2|     return a - b;", edited);
+        Assert.Equal("3", stdOut.Trim());
+        Assert.Contains("return a - b;", sessionSource.Format("add"));
+    }
+
+    [Fact]
+    public void EditLine_ReplacesOneLineWithSeveral()
+    {
+        var interpreter = new Interpreter.Interpreter();
+        var sessionSource = new ReplSessionSource();
+        InvokePromptInput(
+            new InputResult { Code = "function add(a, b) {\n    return a + b;\n}", Action = "run" },
+            interpreter, sessionSource: sessionSource);
+
+        InvokePromptInput(
+            new InputResult
+            {
+                Action = "editline",
+                Code = "add",
+                PatchLine = 2,
+                PatchText = "    if (a < 0) return 0;\n    return a + b;"
+            },
+            interpreter, sessionSource: sessionSource);
+        var (negative, _) = InvokePromptInput(
+            new InputResult { Code = "add(-1, 4)", Action = "run" }, interpreter, sessionSource: sessionSource);
+        var (positive, _) = InvokePromptInput(
+            new InputResult { Code = "add(2, 3)", Action = "run" }, interpreter, sessionSource: sessionSource);
+
+        Assert.Equal("0", negative.Trim());
+        Assert.Equal("5", positive.Trim());
+    }
+
+    [Fact]
+    public void Insert_AddsLinesAfterTheNamedLine()
+    {
+        var interpreter = new Interpreter.Interpreter();
+        var sessionSource = new ReplSessionSource();
+        InvokePromptInput(
+            new InputResult { Code = "function add(a, b) {\n    return a + b;\n}", Action = "run" },
+            interpreter, sessionSource: sessionSource);
+
+        var (edited, editErr) = InvokePromptInput(
+            new InputResult
+            {
+                Action = "insert",
+                Code = "add",
+                PatchLine = 1,
+                PatchText = "    if (a < 0) return 0;"
+            },
+            interpreter, sessionSource: sessionSource);
+        var (negative, _) = InvokePromptInput(
+            new InputResult { Code = "add(-1, 4)", Action = "run" }, interpreter, sessionSource: sessionSource);
+        var (positive, _) = InvokePromptInput(
+            new InputResult { Code = "add(2, 3)", Action = "run" }, interpreter, sessionSource: sessionSource);
+
+        Assert.Equal(string.Empty, editErr.Trim());
+        Assert.Contains("Updated function 'add'.", edited);
+        Assert.Equal("0", negative.Trim());
+        Assert.Equal("5", positive.Trim());
+    }
+
+    [Fact]
+    public void Insert_WrapsAOneLineFunction()
+    {
+        var interpreter = new Interpreter.Interpreter();
+        var sessionSource = new ReplSessionSource();
+        InvokePromptInput(
+            new InputResult { Code = "function add(a, b) a + b;", Action = "run" },
+            interpreter, sessionSource: sessionSource);
+
+        InvokePromptInput(
+            new InputResult
+            {
+                Action = "insert",
+                Code = "add",
+                PatchLine = 1,
+                PatchText = "if (a < 0) return 0;"
+            },
+            interpreter, sessionSource: sessionSource);
+        var (negative, _) = InvokePromptInput(
+            new InputResult { Code = "add(-4, 9)", Action = "run" }, interpreter, sessionSource: sessionSource);
+        var (positive, _) = InvokePromptInput(
+            new InputResult { Code = "add(2, 3)", Action = "run" }, interpreter, sessionSource: sessionSource);
+
+        Assert.Equal("0", negative.Trim());
+        Assert.Equal("5", positive.Trim());
+        Assert.Contains("return a + b;", sessionSource.Format("add"));
+    }
+
+    [Fact]
+    public void EditLine_InvalidPatch_KeepsThePreviousFunction()
+    {
+        var interpreter = new Interpreter.Interpreter();
+        var sessionSource = new ReplSessionSource();
+        InvokePromptInput(
+            new InputResult { Code = "function add(a, b) {\n    return a + b;\n}", Action = "run" },
+            interpreter, sessionSource: sessionSource);
+
+        var (edited, _) = InvokePromptInput(
+            new InputResult
+            {
+                Action = "editline",
+                Code = "add",
+                PatchLine = 2,
+                PatchText = "not valid +++"
+            },
+            interpreter, sessionSource: sessionSource);
+        var (stdOut, _) = InvokePromptInput(
+            new InputResult { Code = "add(2, 3)", Action = "run" }, interpreter, sessionSource: sessionSource);
+
+        Assert.Contains("Kept the previous definition.", edited);
+        Assert.Equal("5", stdOut.Trim());
+        Assert.Contains("return a + b;", sessionSource.Format("add"));
+    }
+
+    [Fact]
+    public void EditLine_RenamedFunction_KeepsThePreviousFunction()
+    {
+        var interpreter = new Interpreter.Interpreter();
+        var sessionSource = new ReplSessionSource();
+        InvokePromptInput(
+            new InputResult { Code = "function add(a, b) a + b;", Action = "run" },
+            interpreter, sessionSource: sessionSource);
+
+        var (edited, _) = InvokePromptInput(
+            new InputResult
+            {
+                Action = "editline",
+                Code = "add",
+                PatchLine = 1,
+                PatchText = "function sub(a, b) a - b;"
+            },
+            interpreter, sessionSource: sessionSource);
+        var (stdOut, _) = InvokePromptInput(
+            new InputResult { Code = "add(2, 3)", Action = "run" }, interpreter, sessionSource: sessionSource);
+
+        Assert.Contains("must keep the name 'add'", edited);
+        Assert.Equal("5", stdOut.Trim());
+    }
+
+    [Fact]
+    public void EditLine_RuntimeFailure_RestoresThePreviousDefinition()
+    {
+        var interpreter = new Interpreter.Interpreter();
+        var sessionSource = new ReplSessionSource();
+        InvokePromptInput(
+            new InputResult { Code = "var add = 1;", Action = "run" },
+            interpreter, sessionSource: sessionSource);
+
+        var (edited, _) = InvokePromptInput(
+            new InputResult
+            {
+                Action = "editline",
+                Code = "add",
+                PatchLine = 1,
+                PatchText = "var add = missing;"
+            },
+            interpreter, sessionSource: sessionSource);
+        var (stdOut, _) = InvokePromptInput(
+            new InputResult { Code = "add", Action = "run" }, interpreter, sessionSource: sessionSource);
+
+        Assert.Contains("Kept the previous definition.", edited);
+        Assert.Contains("Undefined variable 'missing'", edited);
+        Assert.Equal("1", stdOut.Trim());
+    }
+
+    [Fact]
+    public void EditLine_RebuildsAClassFromThePatchedSource()
+    {
+        var interpreter = new Interpreter.Interpreter();
+        var sessionSource = new ReplSessionSource();
+        InvokePromptInput(
+            new InputResult { Code = "class Point(x, y);", Action = "run" },
+            interpreter, sessionSource: sessionSource);
+
+        var (edited, editErr) = InvokePromptInput(
+            new InputResult
+            {
+                Action = "editline",
+                Code = "Point",
+                PatchLine = 1,
+                PatchText = "class Point(x, y) {\n    function total() { return this.x + this.y; }\n}"
+            },
+            interpreter, sessionSource: sessionSource);
+        InvokePromptInput(
+            new InputResult { Code = "var later = new Point(3, 4);", Action = "run" },
+            interpreter, sessionSource: sessionSource);
+        var (stdOut, stdErr) = InvokePromptInput(
+            new InputResult { Code = "print(later.total());", Action = "run" },
+            interpreter, sessionSource: sessionSource);
+
+        Assert.Equal(string.Empty, editErr.Trim());
+        Assert.Contains("Updated class 'Point'.", edited);
+        Assert.Contains("Existing instances keep the previous class object.", edited);
+        Assert.Equal(string.Empty, stdErr.Trim());
+        Assert.Contains("7", stdOut);
+    }
+
+    [Fact]
+    public void EditLine_InlineText_DoesNotReadFurtherLines()
+    {
+        var result = InvokeReadMultilineInput("editline add 2 return a - b;\nthis should not be included\n");
+
+        Assert.NotNull(result);
+        Assert.Equal("editline", result!.Action);
+        Assert.Equal("add", result.Code);
+        Assert.Equal(2, result.PatchLine);
+        Assert.Equal("return a - b;", result.PatchText);
+    }
+
+    [Fact]
+    public void EditLine_Continuation_CollectsLinesUntilBlank()
+    {
+        var result = InvokeReadMultilineInput(
+            "editline add 2\n    if (a < 0) return 0;\n    return a + b;\n\n");
+
+        Assert.NotNull(result);
+        Assert.Equal("editline", result!.Action);
+        Assert.Equal("add", result.Code);
+        Assert.Equal(2, result.PatchLine);
+        Assert.Equal("    if (a < 0) return 0;\n    return a + b;", result.PatchText);
+    }
+
+    [Fact]
+    public void EditLine_ContinuationTreatsRunAsSource()
+    {
+        var result = InvokeReadMultilineInput("editline add 2\nrun\n\n");
+
+        Assert.NotNull(result);
+        Assert.Equal("editline", result!.Action);
+        Assert.Equal("run", result.PatchText);
+    }
+
+    [Fact]
+    public void Insert_Continuation_CollectsLinesUntilBlank()
+    {
+        var result = InvokeReadMultilineInput("insert add after 2\n    if (a < 0) return 0;\n\n");
+
+        Assert.NotNull(result);
+        Assert.Equal("insert", result!.Action);
+        Assert.Equal("add", result.Code);
+        Assert.Equal(2, result.PatchLine);
+        Assert.Equal("    if (a < 0) return 0;", result.PatchText);
+    }
+
+    [Fact]
+    public void EditLine_ContinuationEof_EndsTheSession()
+    {
+        var result = InvokeReadMultilineInput("editline add 2\n    return 1;\n");
+
+        Assert.Null(result);
     }
 }
