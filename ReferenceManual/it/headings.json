@@ -1245,6 +1245,12 @@
     "file": "15-vectordb.html",
     "level": 2,
     "id": "",
+    "title": "15.10 Ispezione ONNX (OnnxModel)"
+  },
+  {
+    "file": "15-vectordb.html",
+    "level": 2,
+    "id": "",
     "title": "15.9 Considerazioni sulle prestazioni"
   },
   {

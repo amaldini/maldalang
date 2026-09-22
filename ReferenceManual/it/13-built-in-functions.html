@@ -158,6 +158,10 @@ print(math.pow(2, 3));</code></pre>
         <pre><code>var w = math.zeros(2);        // [0, 0]
 var g = math.zeros(3, 4);     // 3 rows, 4 columns
 g[0][0] = 1.0;                // other rows stay zero</code></pre>
+        <h4>Helper per reti neurali</h4>
+        <p>Algebra lineare e attivazioni usate dal percorso offline <a href="34-examples.html">AI_Theory</a>. Le dimensioni interne di <code>math.matmul</code> devono coincidere. Le attivazioni accettano uno scalare o un array numerico 1D/2D (elemento per elemento). Vedi <a href="../../docs/roadmap-neural.md">il kit reti neurali</a>.</p>
+        <pre><code data-run="true" data-expect="5\n1">print(math.dot([1.0, 2.0], [3.0, 1.0]));
+print(int(math.relu(-2.0) + math.relu(1.0)));</code></pre>
         <h3>13.3.1 Helper math orientati agli LLM (riferimento)</h3>
         <p>Vedi <code>math.seed</code> fino a <code>math.anneal</code> nella tabella. Conteggi o tipi non validi, array vuoti, temperatura softmax non positiva o peso totale zero lanciano. <code>math.seed</code> fissa <code>math.random</code>, <code>math.randomInt</code>, <code>math.randomFloat</code>, <code>math.randn</code>, <code>math.randomChoiceWeighted</code> e <code>math.anneal</code>.</p>
         <h3>13.3.2 Simulated annealing</h3>

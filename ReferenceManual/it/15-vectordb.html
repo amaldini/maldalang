@@ -528,6 +528,15 @@ var context = question |> retriever.getFormatted;</code></pre>
             </li>
         </ol>
 
+        <h2>15.10 Ispezione ONNX (<code>OnnxModel</code>)</h2>
+        <p>Solo host (interprete e transpile C#). Carica un file <code>.onnx</code>, elenca nomi e shape di input e output, ed esegue un feed di array numerici nidificati. È ispezione più forward, non training. JavaScript non ha <code>OnnxModel</code> — tieni l'inferenza sull'host. Vedi la <a href="../../docs/spec/backend-capability-matrix.md">matrice delle capacità dei backend</a> e <a href="../../docs/roadmap-neural.md">il kit reti neurali</a>.</p>
+        <pre><code>var model = new OnnxModel("Examples/AI_Theory/data/identity.onnx");
+var ins = model.inputs();   // [{ name, type, shape }, ...]
+var outs = model.outputs();
+var result = model.run({ "X": [[1.0, 2.0], [3.0, 4.0]] });
+print(result.Y[0][0]);      // 1</code></pre>
+        <p><code>OnnxModel(path)</code> accetta anche una directory che contiene <code>model.onnx</code>, ed espande <code>~/.malda/...</code>. Il cross-encoder opzionale di GraphMemory da <code>malda memory download-rerank</code> si ispeziona allo stesso modo; lo scoring delle coppie query/documento resta su <code>rerankMode: onnx</code>.</p>
+
         <h2>15.9 Considerazioni sulle prestazioni</h2>
         <ul>
             <li><strong>Precisione:</strong> Usa <code>"single"</code> per l'efficienza di memoria, <code>"double"</code> per una precisione più alta</li>
