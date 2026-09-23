@@ -133,6 +133,7 @@ public static class BuiltInFunctions
         env.Define(StdLibNamespaces.CapModule, RuntimeValue.Object(new CapInstance()));
         env.Define(StdLibNamespaces.AgentsModule, RuntimeValue.Object(new AgentsInstance()));
         env.Define(StdLibNamespaces.TraceModule, RuntimeValue.Object(new TraceInstance()));
+        env.Define(StdLibNamespaces.NnModule, RuntimeValue.Object(new NnInstance()));
         AgentErrorStdLib.BindGlobals(env);
     }
     

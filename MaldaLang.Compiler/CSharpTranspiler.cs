@@ -10027,6 +10027,11 @@ public class CSharpTranspiler
                 return;
             }
 
+            if (TryTranspileNnStdLibCall(memberAccess2, call))
+            {
+                return;
+            }
+
             // math.* / Math.* (deprecated alias) — map to existing built-ins
             if (memberAccess2.Object is IdentifierExpression mathIdExpr &&
                 (mathIdExpr.Name == StdLibNamespaces.MathModule || mathIdExpr.Name == StdLibNamespaces.DeprecatedMathModuleAlias) &&
@@ -14551,6 +14556,30 @@ public class CSharpTranspiler
         }
 
         _output.Append(" }, MaldaLang.Runtime.TranspiledBuiltinRuntime.GetOrCreateInterpreter()))");
+        return true;
+    }
+
+    private bool TryTranspileNnStdLibCall(MemberAccessExpression memberAccess, FunctionCallExpression call)
+    {
+        if (memberAccess.Object is not IdentifierExpression moduleId)
+            return false;
+        if (moduleId.Name != StdLibNamespaces.NnModule
+            || !StdLibNamespaces.NnMethodNames.Contains(memberAccess.Member))
+            return false;
+
+        _output.Append("RuntimeHelpers.UnwrapRuntimeValue(MaldaLang.BuiltIns.NnStdLib.Call(\"");
+        _output.Append(memberAccess.Member);
+        _output.Append("\", new List<MaldaLang.Interpreter.RuntimeValue> { ");
+        for (int i = 0; i < call.Arguments.Count; i++)
+        {
+            if (i > 0)
+                _output.Append(", ");
+            _output.Append("RuntimeHelpers.ToRuntimeValue(");
+            TranspileExpression(call.Arguments[i]);
+            _output.Append(")");
+        }
+
+        _output.Append(" }))");
         return true;
     }
 

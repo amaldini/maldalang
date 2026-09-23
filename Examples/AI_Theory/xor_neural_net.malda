@@ -8,6 +8,7 @@
 // See svm_linear.malda for a max-margin linear separator,
 // attention_is_all_you_need.malda for the 2017 Transformer,
 // and microgpt.malda for a tiny GPT.
+// nn_dense.malda is the same net with nn.dense / nn.denseBackward.
 //
 // Forward is a composition, same idea as f(g(x)) in chain_rule.malda:
 //   z_j  = b1[j] + x[0]*w1[0][j] + x[1]*w1[1][j]     pre-activation

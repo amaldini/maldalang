@@ -587,3 +587,4 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 | 2026-08-27 | MINOR: JS `game.setBlend` / `drawImageEx` tint / `tintFill` (G16) |
 | 2026-08-27 | MINOR: JS `game.drawTiles` / `tileAt` / `sweepTiles` (G17) |
 | 2026-09-20 | MINOR: neural-nets kit — `math.dot` / `matmul` / `transpose` / `relu` / `sigmoid` / `tanh` / `mse`; host `OnnxModel` inspect+forward (`docs/roadmap-neural.md`) |
+| 2026-09-23 | MINOR: `nn.*` groups activations, local derivatives, `dense` / `denseBackward`, `mseGrad`, `softmaxGrad`. `math.relu` / `sigmoid` / `tanh` / `mse` stay |

@@ -4451,6 +4451,10 @@ public partial class Interpreter
         {
             return traceModule.CallMethod(methodName, arguments, this);
         }
+        else if (instance is BuiltIns.NnInstance nnModule)
+        {
+            return nnModule.CallMethod(methodName, arguments, this);
+        }
         else if (instance is BuiltIns.DeclaredContextInstance declaredContext)
         {
             return declaredContext.CallMethod(methodName, arguments, this);

@@ -88,9 +88,20 @@ csrfField	csrfField	secret and optional ttlSeconds
 decomposeTask	decomposeTask	1-3 arguments: (instruction, client?, team?)		
 degToRad	math.degToRad	1 argument		
 deleteFile	io.deleteFile	1 argument		
+dElu	nn.dElu	1-2 arguments: (x, alpha?)		
+dense	nn.dense	2-4 arguments: (x, weights, bias?, activation?)	weights are [in, out]; returns pre-activation and activation; leakyRelu/elu inside dense use default alpha	{ pre, out }
+denseBackward	nn.denseBackward	3-5 arguments: (x, weights, upstream, activation?, pre?)	pass forward pre when activation is not linear; derivatives are w.r.t. pre-activation	{ dInput, dWeights, dBias }
+dGelu	nn.dGelu	1 argument: (x)		
+dLeakyRelu	nn.dLeakyRelu	1-2 arguments: (x, alpha?)		
 dot	math.dot	2 arguments: (a, b)		
 dotnetNew	dotnetNew	at least 1 argument: (typeOrTypeName, ...ctorArgs)		
+dRelu	nn.dRelu	1 argument: (x)		
+dSigmoid	nn.dSigmoid	1 argument: (x)	derivative of sigmoid at the pre-activation, s*(1-s)	float or array
+dSilu	nn.dSilu	1 argument: (x)		
+dSoftplus	nn.dSoftplus	1 argument: (x)		
+dTanh	nn.dTanh	1 argument: (x)		
 editFile	editFile	(string, array)		
+elu	nn.elu	1-2 arguments: (x, alpha?)	alpha defaults to 1; scalar or elementwise 1D/2D	float or array
 embedBagOfWords	embedBagOfWords	at least 1 argument (text, dimension?, vocabulary?)		
 embedCharacterNGrams	embedCharacterNGrams	at least 1 argument (text, n?, dimension?)		
 embeddedFolderRoot	io.embeddedFolderRoot	1 argument: (alias)		
@@ -120,6 +131,7 @@ formatDate	formatDate	1-2 arguments: (timestamp, format?)
 formatNumber	formatNumber	2 arguments (number, decimalPlaces)		
 formatRetrievedDocs	formatRetrievedDocs	a document array		
 formErrors	formErrors	1 argument (array of strings or {field,message} objects)		
+gelu	nn.gelu	1 argument: (x)		
 generateCsrfToken	generateCsrfToken	secret and optional ttlSeconds		
 generateUI	generateUI	at least 1 string argument		
 getAssistantMemory	getAssistantMemory	0-1 arguments: (path?)		
@@ -182,6 +194,7 @@ isTag	isTag	2 arguments: (value, tag)
 join	str.join	1-2 arguments: (array, separator?)		
 journal	trace.journal	0 arguments	in-process run events (prompt/tool/cap/hop/step); not malda trace session files	
 lastUsage	trace.lastUsage	0 arguments	last token/cost/ms object, or null	
+leakyRelu	nn.leakyRelu	1-2 arguments: (x, alpha?)	alpha defaults to 0.01; scalar or elementwise 1D/2D	float or array
 length	str.length	1 argument	accepts a string or an array	
 listDirectory	io.listDirectory	1 argument		
 listJobs	listJobs	0-3 arguments: (queue?, status?, limit?)		
@@ -206,6 +219,7 @@ md5	str.md5	1 argument
 mergeRetrievedDocs	mergeRetrievedDocs	one or more document arrays		
 min	math.min	2 arguments or 1 array		
 mse	math.mse	2 arguments: (pred, target)		
+mseGrad	nn.mseGrad	2 arguments: (pred, target)	elementwise pred-target; gradient of 1/2 (p-t)^2, not of averaged mse	same rank as pred
 normalizeText	str.normalizeText	(string, options?)		
 now	now	0 arguments		
 onAgentProgress	onAgentProgress	1 argument: (handlerOrChannel)		
@@ -271,10 +285,13 @@ shift	<array>.shift	0 arguments	method on the array: items.shift(); not a free f
 sigmoid	math.sigmoid	1 argument: (x)		
 sign	math.sign	1 argument		
 signalWorkflow	signalWorkflow	at least 2 arguments: (instanceId, signalName, payload?)		
+silu	nn.silu	1 argument: (x)		
 similarity	str.similarity	(string, string, method?, options?)		
 sin	math.sin	1 argument		
 sleep	sleep	1 argument: (milliseconds)	real-time delay; prefer it over busy-wait loops	
 softmax	math.softmax	1-2 arguments: (array, temperature?)		
+softmaxGrad	nn.softmaxGrad	2 arguments: (logits, target)	softmax(logits) minus a class index or a same-length vector	array
+softplus	nn.softplus	1 argument: (x)		
 sort	sort	1-2 arguments: (array, compareFn?)		
 span	trace.span	2 arguments: (name, fn)	nest journal events under that span name	
 split	str.split	(string, string?, bool?)		

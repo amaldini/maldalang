@@ -48,6 +48,7 @@ public static class ReplSessionInventory
         StdLibNamespaces.CapModule,
         StdLibNamespaces.AgentsModule,
         StdLibNamespaces.TraceModule,
+        StdLibNamespaces.NnModule,
         StdLibNamespaces.DeprecatedMathModuleAlias,
         "ui",
         "AnsiConsole",

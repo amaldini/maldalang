@@ -78,7 +78,7 @@ Then the **AI theory** track (from-scratch models; no API key, no agent runtime)
 36. `Examples/AI_Theory/onnx_inspect.malda` (host ONNX inspect + forward)
 37. `Examples/Games/xor_decision_boundary.malda` (`malda play` — see the XOR net)
 
-The neural-nets kit (`math.matmul` / `relu` / `OnnxModel`, not a training framework) is tracked in [`docs/roadmap-neural.md`](roadmap-neural.md).
+The neural-nets kit (`math.matmul`, `nn.dense` / activations, `OnnxModel`) is tracked in [`docs/roadmap-neural.md`](roadmap-neural.md).
 
 `Examples/Basics/first_look.malda` is optional if you already program (prompt + schema + `validate`, no API key). After the core path, `Examples/Basics/lambda.malda` is a useful extra before prompts.
 

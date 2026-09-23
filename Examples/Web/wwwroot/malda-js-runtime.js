@@ -1968,6 +1968,417 @@
     });
   }
 
+  const NN_ACTIVATIONS = "relu, leakyRelu, elu, gelu, silu, softplus, sigmoid, tanh, or linear";
+  const NN_GELU_K = 0.7978845608028654;
+  const NN_GELU_C = 0.044715;
+
+  function nnArity(name, length, min, max, signature) {
+    if (length < min || length > max) {
+      const suffix = signature ? ": (" + signature + ")" : "";
+      let count;
+      if (min === max) {
+        const plural = min === 1 ? "argument" : "arguments";
+        count = min + " " + plural;
+      } else {
+        count = min + "-" + max + " arguments";
+      }
+      throw new Error(name + "() expects " + count + suffix);
+    }
+  }
+
+  function nnAlpha(name, supplied, value, fallback) {
+    return supplied ? neuralAsNumeric(name, value) : fallback;
+  }
+
+  function nnSoftplusScalar(x) {
+    if (x > 20) return x;
+    if (x < -20) return Math.exp(x);
+    return Math.log(1 + Math.exp(x));
+  }
+
+  function nnGeluScalar(x) {
+    const inner = NN_GELU_K * (x + NN_GELU_C * x * x * x);
+    return 0.5 * x * (1 + Math.tanh(inner));
+  }
+
+  function nnDGeluScalar(x) {
+    const inner = NN_GELU_K * (x + NN_GELU_C * x * x * x);
+    const tanh = Math.tanh(inner);
+    const dInner = NN_GELU_K * (1 + 3 * NN_GELU_C * x * x);
+    return 0.5 * (1 + tanh) + 0.5 * x * (1 - tanh * tanh) * dInner;
+  }
+
+  function nnDSiluScalar(x) {
+    const s = mathSigmoidScalar(x);
+    return s * (1 + x * (1 - s));
+  }
+
+  function nnLeakyRelu(x, alpha) {
+    nnArity("leakyRelu", arguments.length, 1, 2, "x, alpha?");
+    const a = nnAlpha("leakyRelu", arguments.length >= 2, alpha, 0.01);
+    return mathMapNumeric("leakyRelu", x, (n) => n > 0 ? n : a * n);
+  }
+
+  function nnElu(x, alpha) {
+    nnArity("elu", arguments.length, 1, 2, "x, alpha?");
+    const a = nnAlpha("elu", arguments.length >= 2, alpha, 1);
+    return mathMapNumeric("elu", x, (n) => n > 0 ? n : a * (Math.exp(n) - 1));
+  }
+
+  function nnGelu(x) {
+    nnArity("gelu", arguments.length, 1, 1, "x");
+    return mathMapNumeric("gelu", x, nnGeluScalar);
+  }
+
+  function nnSilu(x) {
+    nnArity("silu", arguments.length, 1, 1, "x");
+    return mathMapNumeric("silu", x, (n) => n * mathSigmoidScalar(n));
+  }
+
+  function nnSoftplus(x) {
+    nnArity("softplus", arguments.length, 1, 1, "x");
+    return mathMapNumeric("softplus", x, nnSoftplusScalar);
+  }
+
+  function nnDRelu(x) {
+    nnArity("dRelu", arguments.length, 1, 1, "x");
+    return mathMapNumeric("dRelu", x, (n) => n > 0 ? 1 : 0);
+  }
+
+  function nnDLeakyRelu(x, alpha) {
+    nnArity("dLeakyRelu", arguments.length, 1, 2, "x, alpha?");
+    const a = nnAlpha("dLeakyRelu", arguments.length >= 2, alpha, 0.01);
+    return mathMapNumeric("dLeakyRelu", x, (n) => n > 0 ? 1 : a);
+  }
+
+  function nnDElu(x, alpha) {
+    nnArity("dElu", arguments.length, 1, 2, "x, alpha?");
+    const a = nnAlpha("dElu", arguments.length >= 2, alpha, 1);
+    return mathMapNumeric("dElu", x, (n) => n > 0 ? 1 : a * Math.exp(n));
+  }
+
+  function nnDGelu(x) {
+    nnArity("dGelu", arguments.length, 1, 1, "x");
+    return mathMapNumeric("dGelu", x, nnDGeluScalar);
+  }
+
+  function nnDSilu(x) {
+    nnArity("dSilu", arguments.length, 1, 1, "x");
+    return mathMapNumeric("dSilu", x, nnDSiluScalar);
+  }
+
+  function nnDSoftplus(x) {
+    nnArity("dSoftplus", arguments.length, 1, 1, "x");
+    return mathMapNumeric("dSoftplus", x, mathSigmoidScalar);
+  }
+
+  function nnDSigmoid(x) {
+    nnArity("dSigmoid", arguments.length, 1, 1, "x");
+    return mathMapNumeric("dSigmoid", x, (n) => {
+      const s = mathSigmoidScalar(n);
+      return s * (1 - s);
+    });
+  }
+
+  function nnDTanh(x) {
+    nnArity("dTanh", arguments.length, 1, 1, "x");
+    return mathMapNumeric("dTanh", x, (n) => {
+      const t = Math.tanh(n);
+      return 1 - t * t;
+    });
+  }
+
+  function nnNormalizeActivation(name, activation) {
+    if (activation === undefined || activation === null || activation === "linear") return null;
+    if (activation === "relu" || activation === "leakyRelu" || activation === "elu" || activation === "gelu" ||
+        activation === "silu" || activation === "softplus" || activation === "sigmoid" || activation === "tanh") {
+      return activation;
+    }
+    throw new Error(name + "() unknown activation '" + activation + "'; expected " + NN_ACTIVATIONS);
+  }
+
+  function nnApplyActivation(activation, x) {
+    if (activation == null) return x;
+    if (activation === "relu") return x > 0 ? x : 0;
+    if (activation === "leakyRelu") return x > 0 ? x : 0.01 * x;
+    if (activation === "elu") return x > 0 ? x : (Math.exp(x) - 1);
+    if (activation === "gelu") return nnGeluScalar(x);
+    if (activation === "silu") return x * mathSigmoidScalar(x);
+    if (activation === "softplus") return nnSoftplusScalar(x);
+    if (activation === "sigmoid") return mathSigmoidScalar(x);
+    if (activation === "tanh") return Math.tanh(x);
+    throw new Error("dense() unknown activation '" + activation + "'");
+  }
+
+  function nnApplyDerivative(activation, x) {
+    if (activation == null) return 1;
+    if (activation === "relu") return x > 0 ? 1 : 0;
+    if (activation === "leakyRelu") return x > 0 ? 1 : 0.01;
+    if (activation === "elu") return x > 0 ? 1 : Math.exp(x);
+    if (activation === "gelu") return nnDGeluScalar(x);
+    if (activation === "silu") return nnDSiluScalar(x);
+    if (activation === "softplus") return mathSigmoidScalar(x);
+    if (activation === "sigmoid") {
+      const s = mathSigmoidScalar(x);
+      return s * (1 - s);
+    }
+    if (activation === "tanh") {
+      const t = Math.tanh(x);
+      return 1 - t * t;
+    }
+    throw new Error("denseBackward() unknown activation '" + activation + "'");
+  }
+
+  function nnResolveBias(name, biasValue, outFeatures) {
+    if (biasValue == null) {
+      const zeros = [];
+      for (let j = 0; j < outFeatures; j++) zeros.push(0);
+      return zeros;
+    }
+    const bias = neuralRequireVector(name, biasValue, "bias");
+    if (bias.length !== outFeatures) {
+      throw new Error(name + "() bias length must match the output size");
+    }
+    return bias;
+  }
+
+  function nnDense(x, weights, bias, activation) {
+    nnArity("dense", arguments.length, 2, 4, "x, weights, bias?, activation?");
+    let biasValue = null;
+    let activationValue = null;
+    if (arguments.length >= 3) {
+      if (typeof bias === "string") {
+        if (arguments.length > 3) throw new Error("dense() activation is the last argument");
+        activationValue = bias;
+      } else {
+        biasValue = bias;
+        if (arguments.length === 4) {
+          if (typeof activation !== "string") throw new Error("dense() activation must be a string");
+          activationValue = activation;
+        }
+      }
+    }
+    const act = nnNormalizeActivation("dense", activationValue);
+    const w = neuralRequireMatrix("dense", weights, "weights");
+    const b = nnResolveBias("dense", biasValue, w[0].length);
+    if (neuralIsMatrix(x)) {
+      const batch = neuralRequireMatrix("dense", x, "x");
+      if (batch[0].length !== w.length) throw new Error("dense() inner dimensions must match");
+      const pre = [];
+      const out = [];
+      for (let row = 0; row < batch.length; row++) {
+        const preRow = [];
+        const outRow = [];
+        for (let j = 0; j < b.length; j++) {
+          let sum = b[j];
+          for (let i = 0; i < w.length; i++) sum += batch[row][i] * w[i][j];
+          preRow.push(sum);
+          outRow.push(nnApplyActivation(act, sum));
+        }
+        pre.push(preRow);
+        out.push(outRow);
+      }
+      return markDict({ pre: pre, out: out });
+    }
+    const vector = neuralRequireVector("dense", x, "x");
+    if (vector.length === 0) throw new Error("dense() expects non-empty input");
+    if (vector.length !== w.length) throw new Error("dense() inner dimensions must match");
+    const pre = [];
+    const out = [];
+    for (let j = 0; j < b.length; j++) {
+      let sum = b[j];
+      for (let i = 0; i < w.length; i++) sum += vector[i] * w[i][j];
+      pre.push(sum);
+      out.push(nnApplyActivation(act, sum));
+    }
+    return markDict({ pre: pre, out: out });
+  }
+
+  function nnDenseBackward(x, weights, upstream, activation, pre) {
+    nnArity("denseBackward", arguments.length, 3, 5, "x, weights, upstream, activation?, pre?");
+    let activationValue = null;
+    let preValue = null;
+    if (arguments.length >= 4) {
+      if (typeof activation !== "string") throw new Error("denseBackward() activation must be a string");
+      activationValue = activation;
+      if (arguments.length === 5) preValue = pre;
+    }
+    const act = nnNormalizeActivation("denseBackward", activationValue);
+    if (act != null && preValue == null) {
+      throw new Error("denseBackward() pre is required when activation is not linear");
+    }
+    const w = neuralRequireMatrix("denseBackward", weights, "weights");
+    const outFeatures = w[0].length;
+    if (neuralIsMatrix(x)) {
+      const batch = neuralRequireMatrix("denseBackward", x, "x");
+      if (batch[0].length !== w.length) throw new Error("denseBackward() inner dimensions must match");
+      const up = neuralRequireMatrix("denseBackward", upstream, "upstream");
+      if (up.length !== batch.length || up[0].length !== outFeatures) {
+        throw new Error("denseBackward() upstream shape must match the layer output");
+      }
+      const preMatrix = preValue == null ? up : neuralRequireMatrix("denseBackward", preValue, "pre");
+      if (preValue != null && (preMatrix.length !== up.length || preMatrix[0].length !== up[0].length)) {
+        throw new Error("denseBackward() pre shape must match upstream");
+      }
+      const dZ = [];
+      for (let row = 0; row < up.length; row++) {
+        const dzRow = [];
+        for (let j = 0; j < outFeatures; j++) {
+          dzRow.push(up[row][j] * nnApplyDerivative(act, preMatrix[row][j]));
+        }
+        dZ.push(dzRow);
+      }
+      const dW = [];
+      for (let i = 0; i < w.length; i++) {
+        const row = [];
+        for (let j = 0; j < outFeatures; j++) {
+          let sum = 0;
+          for (let b = 0; b < batch.length; b++) sum += batch[b][i] * dZ[b][j];
+          row.push(sum);
+        }
+        dW.push(row);
+      }
+      const dBias = [];
+      for (let j = 0; j < outFeatures; j++) {
+        let sum = 0;
+        for (let b = 0; b < batch.length; b++) sum += dZ[b][j];
+        dBias.push(sum);
+      }
+      const dInput = [];
+      for (let b = 0; b < batch.length; b++) {
+        const row = [];
+        for (let i = 0; i < w.length; i++) {
+          let sum = 0;
+          for (let j = 0; j < outFeatures; j++) sum += dZ[b][j] * w[i][j];
+          row.push(sum);
+        }
+        dInput.push(row);
+      }
+      return markDict({ dInput: dInput, dWeights: dW, dBias: dBias });
+    }
+    const vector = neuralRequireVector("denseBackward", x, "x");
+    if (vector.length === 0) throw new Error("denseBackward() expects non-empty input");
+    if (vector.length !== w.length) throw new Error("denseBackward() inner dimensions must match");
+    const up = neuralRequireVector("denseBackward", upstream, "upstream");
+    if (up.length !== outFeatures) throw new Error("denseBackward() upstream shape must match the layer output");
+    const preRow = preValue == null ? up : neuralRequireVector("denseBackward", preValue, "pre");
+    if (preValue != null && preRow.length !== up.length) {
+      throw new Error("denseBackward() pre shape must match upstream");
+    }
+    const dZ = [];
+    for (let j = 0; j < outFeatures; j++) dZ.push(up[j] * nnApplyDerivative(act, preRow[j]));
+    const dW = [];
+    for (let i = 0; i < w.length; i++) {
+      const row = [];
+      for (let j = 0; j < outFeatures; j++) row.push(vector[i] * dZ[j]);
+      dW.push(row);
+    }
+    const dInput = [];
+    for (let i = 0; i < w.length; i++) {
+      let sum = 0;
+      for (let j = 0; j < outFeatures; j++) sum += dZ[j] * w[i][j];
+      dInput.push(sum);
+    }
+    return markDict({ dInput: dInput, dWeights: dW, dBias: dZ });
+  }
+
+  function nnMseGrad(pred, target) {
+    nnArity("mseGrad", arguments.length, 2, 2, "pred, target");
+    if (!Array.isArray(pred) && !Array.isArray(target)) {
+      return neuralAsNumeric("mseGrad", pred) - neuralAsNumeric("mseGrad", target);
+    }
+    if (neuralIsMatrix(pred) || neuralIsMatrix(target)) {
+      const a = neuralRequireMatrix("mseGrad", pred, "pred");
+      const b = neuralRequireMatrix("mseGrad", target, "target");
+      if (a.length !== b.length || a[0].length !== b[0].length) {
+        throw new Error("mseGrad() expects pred and target with the same shape");
+      }
+      const grad = [];
+      for (let i = 0; i < a.length; i++) {
+        if (a[i].length !== b[i].length) throw new Error("mseGrad() expects pred and target with the same shape");
+        const row = [];
+        for (let j = 0; j < a[i].length; j++) row.push(a[i][j] - b[i][j]);
+        grad.push(row);
+      }
+      return grad;
+    }
+    const a = neuralRequireVector("mseGrad", pred, "pred");
+    const b = neuralRequireVector("mseGrad", target, "target");
+    if (a.length === 0 || a.length !== b.length) {
+      throw new Error("mseGrad() expects pred and target with the same shape");
+    }
+    const grad = [];
+    for (let i = 0; i < a.length; i++) grad.push(a[i] - b[i]);
+    return grad;
+  }
+
+  function nnSoftmax(array, temperature) {
+    nnArity("softmax", arguments.length, 1, 2, "array, temperature?");
+    if (!Array.isArray(array) || array.length === 0 || Array.isArray(array[0])) {
+      throw new Error("softmax() expects a non-empty array");
+    }
+    let temp = 1;
+    if (arguments.length === 2) temp = neuralAsNumeric("softmax", temperature);
+    if (!(temp > 0)) throw new Error("softmax() temperature must be > 0");
+    let maxVal = neuralAsNumeric("softmax", array[0]) / temp;
+    for (let i = 1; i < array.length; i++) {
+      const scaled = neuralAsNumeric("softmax", array[i]) / temp;
+      if (scaled > maxVal) maxVal = scaled;
+    }
+    const exps = [];
+    let sumExp = 0;
+    for (let i = 0; i < array.length; i++) {
+      const e = Math.exp(neuralAsNumeric("softmax", array[i]) / temp - maxVal);
+      exps.push(e);
+      sumExp += e;
+    }
+    const probs = [];
+    for (let i = 0; i < exps.length; i++) probs.push(exps[i] / sumExp);
+    return probs;
+  }
+
+  function nnCrossEntropyFromLogits(logits, targetIndex) {
+    nnArity("crossEntropyFromLogits", arguments.length, 2, 2, "logits, targetIndex");
+    if (!Array.isArray(logits) || logits.length === 0) {
+      throw new Error("crossEntropyFromLogits() expects non-empty logits");
+    }
+    const index = neuralAsNumeric("crossEntropyFromLogits", targetIndex);
+    if (!Number.isInteger(index)) {
+      throw new Error("crossEntropyFromLogits() expects integer targetIndex");
+    }
+    if (index < 0 || index >= logits.length) {
+      throw new Error("crossEntropyFromLogits() targetIndex out of range");
+    }
+    let maxVal = neuralAsNumeric("crossEntropyFromLogits", logits[0]);
+    for (let i = 1; i < logits.length; i++) {
+      const v = neuralAsNumeric("crossEntropyFromLogits", logits[i]);
+      if (v > maxVal) maxVal = v;
+    }
+    let sumExp = 0;
+    for (let i = 0; i < logits.length; i++) {
+      sumExp += Math.exp(neuralAsNumeric("crossEntropyFromLogits", logits[i]) - maxVal);
+    }
+    return maxVal + Math.log(sumExp) - neuralAsNumeric("crossEntropyFromLogits", logits[index]);
+  }
+
+  function nnSoftmaxGrad(logits, target) {
+    nnArity("softmaxGrad", arguments.length, 2, 2, "logits, target");
+    const probs = nnSoftmax(logits);
+    if (Array.isArray(target)) {
+      const t = neuralRequireVector("softmaxGrad", target, "target");
+      if (t.length !== probs.length) throw new Error("softmaxGrad() target length must match logits");
+      const grad = [];
+      for (let i = 0; i < probs.length; i++) grad.push(probs[i] - t[i]);
+      return grad;
+    }
+    const index = neuralAsNumeric("softmaxGrad", target);
+    if (!Number.isInteger(index)) throw new Error("softmaxGrad() target must be a class index or a numeric vector");
+    if (index < 0 || index >= probs.length) throw new Error("softmaxGrad() target index out of range");
+    const grad = [];
+    for (let i = 0; i < probs.length; i++) grad.push(i === index ? probs[i] - 1 : probs[i]);
+    return grad;
+  }
+
   const mathStdLib = {
     abs: mathAbs,
     sum: mathSum,
@@ -2009,6 +2420,32 @@
     randomFloat: randomFloatBuiltin,
     seed: seedBuiltin,
     anneal: mathAnneal
+  };
+
+  const nnStdLib = {
+    relu: mathRelu,
+    sigmoid: mathSigmoid,
+    tanh: mathTanh,
+    mse: mathMse,
+    softmax: nnSoftmax,
+    crossEntropyFromLogits: nnCrossEntropyFromLogits,
+    leakyRelu: nnLeakyRelu,
+    elu: nnElu,
+    gelu: nnGelu,
+    silu: nnSilu,
+    softplus: nnSoftplus,
+    dRelu: nnDRelu,
+    dLeakyRelu: nnDLeakyRelu,
+    dElu: nnDElu,
+    dGelu: nnDGelu,
+    dSilu: nnDSilu,
+    dSoftplus: nnDSoftplus,
+    dSigmoid: nnDSigmoid,
+    dTanh: nnDTanh,
+    dense: nnDense,
+    denseBackward: nnDenseBackward,
+    mseGrad: nnMseGrad,
+    softmaxGrad: nnSoftmaxGrad
   };
 
   function strUpper(value) { return coerceToString(value).toUpperCase(); }
@@ -2643,6 +3080,7 @@
     getEnvOr: getEnvOrBuiltin,
     hasEnv: hasEnvBuiltin,
     math: mathStdLib,
+    nn: nnStdLib,
     str: strStdLib,
     io: ioStdLib,
     schema: schemaStdLib,

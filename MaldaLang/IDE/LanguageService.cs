@@ -1320,7 +1320,8 @@ public class LanguageService : ILanguageService
         (StdLibNamespaces.GroundedModule, "grounded.wrap(value, citations?) — payload plus citations"),
         (StdLibNamespaces.CapModule, "cap.fileRead(path) — unforgeable file / HTTP / MCP / shell capability tokens"),
         (StdLibNamespaces.AgentsModule, "agents.define / agents.team — role specs plus a relation graph"),
-        (StdLibNamespaces.TraceModule, "trace.span / journal / lastUsage — run observability")
+        (StdLibNamespaces.TraceModule, "trace.span / journal / lastUsage — run observability"),
+        (StdLibNamespaces.NnModule, "nn.dense / activations / local derivatives — neural-net helpers")
     };
 
     private static bool TryAddStdLibNamespaceMembers(string moduleName, List<CompletionItem> members)
@@ -1337,6 +1338,7 @@ public class LanguageService : ILanguageService
             StdLibNamespaces.GroundedModule => StdLibNamespaces.GroundedMethodNames,
             StdLibNamespaces.CapModule => StdLibNamespaces.CapMethodNames,
             StdLibNamespaces.AgentsModule => StdLibNamespaces.AgentsMethodNames,
+            StdLibNamespaces.NnModule => StdLibNamespaces.NnMethodNames,
             _ => null
         };
         if (methods == null)

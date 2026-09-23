@@ -19,6 +19,7 @@ public static class StdLibNamespaces
     public const string CapModule = "cap";
     public const string AgentsModule = "agents";
     public const string TraceModule = "trace";
+    public const string NnModule = "nn";
     public const string DeprecatedMathModuleAlias = "Math";
 
     public static readonly IReadOnlySet<string> MathMethodNames = new HashSet<string>(StringComparer.Ordinal)
@@ -74,6 +75,18 @@ public static class StdLibNamespaces
     public static readonly IReadOnlySet<string> TraceMethodNames = new HashSet<string>(StringComparer.Ordinal)
     {
         "span", "journal", "lastUsage"
+    };
+
+    /// <summary>
+    /// Neural-net helpers. Activations that already live on <c>math</c> are also here.
+    /// New names have no flat alias.
+    /// </summary>
+    public static readonly IReadOnlySet<string> NnMethodNames = new HashSet<string>(StringComparer.Ordinal)
+    {
+        "relu", "sigmoid", "tanh", "mse", "softmax", "crossEntropyFromLogits",
+        "leakyRelu", "elu", "gelu", "silu", "softplus",
+        "dRelu", "dLeakyRelu", "dElu", "dGelu", "dSilu", "dSoftplus", "dSigmoid", "dTanh",
+        "dense", "denseBackward", "mseGrad", "softmaxGrad"
     };
 
     public static readonly IReadOnlySet<string> IoMethodNames = new HashSet<string>(StringComparer.Ordinal)
@@ -148,6 +161,7 @@ public static class StdLibNamespaces
             CapModule => CapMethodNames.Contains(methodName),
             AgentsModule => AgentsMethodNames.Contains(methodName),
             TraceModule => TraceMethodNames.Contains(methodName),
+            NnModule => NnMethodNames.Contains(methodName),
             _ => false
         };
 }

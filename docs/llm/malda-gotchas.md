@@ -167,6 +167,14 @@ you want an integer value, not only an integer-accepting call.
 **`math.matmul` inner dimensions must match.** `math.dot` is 1D only; `math.matmul` is 2D@2D,
 2D@1D, or 1D@2D. A shape mismatch throws rather than broadcasting.
 
+**`nn.dense` weights are `[in, out]`.** That is the same layout as `math.matmul(x, weights)`.
+`nn.dense` returns `{ pre, out }`. `nn.denseBackward` needs that `pre` whenever the activation
+is not `linear`, because `dRelu` / `dSigmoid` / the other `nn.d*` helpers differentiate the
+pre-activation. `nn.mseGrad` is elementwise `pred - target` (the gradient of `1/2 (p-t)^2`),
+which is not the gradient of `nn.mse` / `math.mse` (those average). `leakyRelu` and `elu`
+inside `dense` use the default alpha (`0.01` and `1`). `math.relu` / `sigmoid` / `tanh` /
+`mse` stay; `nn.relu` and the rest call the same functions. There is no autograd tape.
+
 **Flat built-in names are deprecated aliases.** `sqrt(16)` and `Math.sqrt(16)` both run, but
 the language server reports both as deprecated. Prefer `math.sqrt(16)`. See the namespace
 rule in [`malda-syntax.md`](malda-syntax.md).

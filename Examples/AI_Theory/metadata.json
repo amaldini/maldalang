@@ -163,6 +163,22 @@
       "prerequisites": ["AI_Theory/embedding_2d.malda"],
       "learningGoal": "Inspect a real ONNX graph without training one.",
       "expectedOutput": "Prints identity input/output metadata, Y equals X, then onnx inspect ok.",
+      "next": "AI_Theory/nn_dense.malda",
+      "documentationPath": "/docs/start-here.md",
+      "documentationTitle": "Start Here"
+    },
+    {
+      "name": "Dense layer helpers",
+      "description": "Train the XOR MLP with nn.dense and nn.denseBackward instead of hand-written chain-rule loops",
+      "file": "nn_dense.malda",
+      "track": "student",
+      "difficulty": "intermediate",
+      "minutes": 10,
+      "requires": ["offline"],
+      "concepts": ["dense layer", "backpropagation", "activation derivative", "XOR"],
+      "prerequisites": ["AI_Theory/xor_neural_net.malda"],
+      "learningGoal": "See the same 2-4-1 XOR net when the local derivative lives in nn.denseBackward.",
+      "expectedOutput": "Prints training loss and classifies all four XOR inputs, then nn dense ok.",
       "documentationPath": "/docs/start-here.md",
       "documentationTitle": "Start Here"
     }

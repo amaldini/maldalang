@@ -68,7 +68,8 @@ print(io.readFile("config.json"));</code></pre>
                 <tr><th>Modulo</th><th>Copre</th></tr>
             </thead>
             <tbody>
-                <tr><td><code>math</code></td><td>Arrotondamento, trigonometria, aggregati, helper random, math per LLM e le costanti <code>math.PI</code>, <code>math.E</code>, <code>math.TAU</code>, <code>math.INF</code>, <code>math.NaN</code></td></tr>
+                <tr><td><code>math</code></td><td>Arrotondamento, trigonometria, aggregati, helper random, math per LLM, algebra lineare e le costanti <code>math.PI</code>, <code>math.E</code>, <code>math.TAU</code>, <code>math.INF</code>, <code>math.NaN</code></td></tr>
+                <tr><td><code>nn</code></td><td>Attivazioni per reti neurali, derivate locali, <code>dense</code> / <code>denseBackward</code> e i gradienti <code>mseGrad</code> / <code>softmaxGrad</code> — vedi <a href="#nn">13.3.3</a>. Nessun alias piatto</td></tr>
                 <tr><td><code>str</code></td><td>Maiuscole/minuscole, trimming, split e join, padding, helper regex, similarità, base64, <code>md5</code> / <code>sha256</code></td></tr>
                 <tr><td><code>io</code></td><td><code>print</code>, <code>input</code>, helper per file e path, <code>glob</code>, <code>grep</code>, variabili d'ambiente, helper git</td></tr>
                 <tr><td><code>pdf</code></td><td><code>extractText</code> &mdash; legge il testo da un file PDF (livello di testo digitale; nessun OCR)</td></tr>
@@ -159,7 +160,7 @@ print(math.pow(2, 3));</code></pre>
 var g = math.zeros(3, 4);     // 3 rows, 4 columns
 g[0][0] = 1.0;                // other rows stay zero</code></pre>
         <h4>Helper per reti neurali</h4>
-        <p>Algebra lineare e attivazioni usate dal percorso offline <a href="34-examples.html">AI_Theory</a>. Le dimensioni interne di <code>math.matmul</code> devono coincidere. Le attivazioni accettano uno scalare o un array numerico 1D/2D (elemento per elemento). Vedi <a href="../../docs/roadmap-neural.md">il kit reti neurali</a>.</p>
+        <p>L'algebra lineare del percorso offline <a href="34-examples.html">AI_Theory</a> resta su <code>math</code>. Le dimensioni interne di <code>math.matmul</code> devono coincidere. Attivazioni, derivate locali e un layer denso sono raggruppati su <code>nn</code> (vedi <a href="#nn">13.3.3</a>). <code>math.relu</code>, <code>math.sigmoid</code>, <code>math.tanh</code> e <code>math.mse</code> sono le stesse funzioni di <code>nn.relu</code> e delle altre. Vedi <a href="../../docs/roadmap-neural.md">il kit reti neurali</a>.</p>
         <pre><code data-run="true" data-expect="5\n1">print(math.dot([1.0, 2.0], [3.0, 1.0]));
 print(int(math.relu(-2.0) + math.relu(1.0)));</code></pre>
         <h3>13.3.1 Helper math orientati agli LLM (riferimento)</h3>
@@ -188,6 +189,36 @@ var result = math.anneal(
 );
 print(result.state);
 print(result.cost);</code></pre>
+        <h3 id="nn">13.3.3 Namespace reti neurali (<code>nn</code>)</h3>
+        <p>Interprete, transpile C# e JavaScript eseguono tutti <code>nn.*</code>. Non c'è un alias piatto e non c'è un nastro di autograd: ogni derivata è il fattore locale che si moltiplicherebbe a mano. I pesi sono <code>[in, out]</code> (riga = da, colonna = a), lo stesso layout di <code>math.matmul(x, weights)</code>.</p>
+        <p><code>nn.dense</code> restituisce <code>{ pre, out }</code>. <code>pre</code> è la pre-attivazione, la parte lineare prima della non linearità: <code>pre = xW + b</code> (oppure <code>XW + b</code> per un batch). <code>out</code> è <code>activation(pre)</code>. Senza attivazione, o con <code>"linear"</code>, <code>out</code> è una copia di <code>pre</code>. Conserva <code>pre</code> e passala a <code>nn.denseBackward</code>: <code>dRelu</code>, <code>dSigmoid</code> e le altre derivate locali si calcolano in <code>pre</code>, non in <code>out</code>.</p>
+        <table>
+        <thead>
+        <tr><th>Chiamata</th><th>Argomenti</th><th>Restituisce</th><th>Note</th></tr>
+        </thead>
+        <tbody>
+        <tr><td><code>nn.relu(x)</code> / <code>sigmoid</code> / <code>tanh</code></td><td>1 argument: (x)</td><td>—</td><td>stesse funzioni di <code>math.relu</code> / <code>sigmoid</code> / <code>tanh</code>; scalare o elementwise 1D/2D</td></tr>
+        <tr><td><code>nn.leakyRelu(x, alpha?)</code></td><td>1-2 arguments: (x, alpha?)</td><td>—</td><td>alpha di default <code>0.01</code></td></tr>
+        <tr><td><code>nn.elu(x, alpha?)</code></td><td>1-2 arguments: (x, alpha?)</td><td>—</td><td>alpha di default <code>1</code></td></tr>
+        <tr><td><code>nn.gelu(x)</code></td><td>1 argument: (x)</td><td>—</td><td>approssimazione tanh</td></tr>
+        <tr><td><code>nn.silu(x)</code></td><td>1 argument: (x)</td><td>—</td><td><code>x * sigmoid(x)</code></td></tr>
+        <tr><td><code>nn.softplus(x)</code></td><td>1 argument: (x)</td><td>—</td><td><code>log(1 + exp(x))</code> stabile</td></tr>
+        <tr><td><code>nn.softmax(array, temperature?)</code></td><td>1-2 arguments: (array, temperature?)</td><td>array</td><td>stessa funzione di <code>math.softmax</code></td></tr>
+        <tr><td><code>nn.mse(pred, target)</code></td><td>2 arguments: (pred, target)</td><td>float</td><td>stessa funzione di <code>math.mse</code></td></tr>
+        <tr><td><code>nn.crossEntropyFromLogits(logits, targetIndex)</code></td><td>2 arguments: (logits, targetIndex)</td><td>float</td><td>stessa funzione di <code>math.crossEntropyFromLogits</code></td></tr>
+        <tr><td><code>nn.dRelu(x)</code> / <code>dLeakyRelu</code> / <code>dElu</code> / <code>dGelu</code> / <code>dSilu</code> / <code>dSoftplus</code> / <code>dSigmoid</code> / <code>dTanh</code></td><td>stessi argomenti dell'attivazione</td><td>—</td><td>derivata rispetto alla pre-attivazione. <code>dSigmoid(z) = s*(1-s)</code> con <code>s = sigmoid(z)</code></td></tr>
+        <tr><td><code>nn.dense(x, weights, bias?, activation?)</code></td><td>2-4 arguments: (x, weights, bias?, activation?)</td><td><code>{ pre, out }</code></td><td>vettore o matrice batch in ingresso; la lunghezza del bias è il numero di uscite. Nomi: <code>relu</code>, <code>leakyRelu</code>, <code>elu</code>, <code>gelu</code>, <code>silu</code>, <code>softplus</code>, <code>sigmoid</code>, <code>tanh</code>, <code>linear</code>. Dentro <code>dense</code>, <code>leakyRelu</code> e <code>elu</code> usano l'alpha di default</td></tr>
+        <tr><td><code>nn.denseBackward(x, weights, upstream, activation?, pre?)</code></td><td>3-5 arguments: (x, weights, upstream, activation?, pre?)</td><td><code>{ dInput, dWeights, dBias }</code></td><td><code>upstream</code> è dL/d(out). Passa la <code>pre</code> del forward se l'attivazione non è lineare. Il gradiente del bias in batch è la somma sul batch</td></tr>
+        <tr><td><code>nn.mseGrad(pred, target)</code></td><td>2 arguments: (pred, target)</td><td>stesso rango di <code>pred</code></td><td><code>pred - target</code> elemento per elemento, gradiente di <code>1/2 (pred - target)^2</code>. Non è il gradiente di <code>nn.mse</code>, che fa la media</td></tr>
+        <tr><td><code>nn.softmaxGrad(logits, target)</code></td><td>2 arguments: (logits, target)</td><td>array</td><td><code>softmax(logits) - oneHot(target)</code> se <code>target</code> è un indice di classe, oppure meno un vettore numerico della stessa lunghezza</td></tr>
+        </tbody>
+        </table>
+        <pre><code data-run="true" data-expect="1\n-2\n25\n275\n0">print(int(nn.relu(-2.0) + nn.relu(1.0)));
+print(int(nn.leakyRelu(-2.0) * 100));
+print(int(nn.dSigmoid(0.0) * 100));
+var layer = nn.dense([1.0, 2.0], [[0.5, -1.0], [1.0, 0.0]], [0.25, -0.5], "relu");
+print(int(layer.out[0] * 100));
+print(int(layer.out[1]));</code></pre>
         <h2 id="strings">13.4 Funzioni sulle stringhe</h2>
         <p>La forma preferita è <code>str.*</code>. Gli stessi nomi funzionano anche come metodi su un valore stringa (<code>"hello".upper()</code>). I globali piatti sono alias deprecati (vedi <a href="#stdlib-namespaces">13.2</a>).</p>
         <p>Interprete, transpile C# e JavaScript eseguono tutti <code>str.*</code>. Vedi la <a href="../../docs/spec/backend-capability-matrix.md">matrice delle capacità dei backend</a>.</p>

@@ -12,6 +12,7 @@ Agents and tools stay in [`Examples/Agents/`](../Agents/).
 | `chain_rule.malda` | d/dx [f(g(x))] as a numerical vs analytic check |
 | `perceptron.malda` | One neuron: AND/OR vs XOR |
 | `xor_neural_net.malda` | 2-4-1 MLP, named chain-rule gradients, XOR |
+| `nn_dense.malda` | Same XOR net via `nn.dense` / `nn.denseBackward` |
 | `softmax_classifier.malda` | 3-class softmax on 2D blobs (`math.matmul`) |
 | `svm_linear.malda` | Soft-margin linear SVM (and why XOR needs a hidden layer) |
 | `attention_is_all_you_need.malda` | Vaswani et al. 2017 Transformer, then reverse a sequence |

@@ -17,7 +17,7 @@ public class AITheoryTrackTests : TestBase
             .Where(example => example.Category == "AI_Theory")
             .ToList();
 
-        Assert.Equal(10, examples.Count);
+        Assert.Equal(11, examples.Count);
         Assert.All(examples, example =>
         {
             Assert.Equal("student", example.Track);
@@ -100,5 +100,13 @@ public class AITheoryTrackTests : TestBase
         var path = PlanningPaths.ResolveRepoPath("Examples", "AI_Theory", "onnx_inspect.malda");
         var output = await CaptureInterpretAsync(File.ReadAllText(path), path);
         Assert.Contains("onnx inspect ok", output);
+    }
+
+    [Fact]
+    public async Task NnDense_PrintsOkLine()
+    {
+        var path = PlanningPaths.ResolveRepoPath("Examples", "AI_Theory", "nn_dense.malda");
+        var output = await CaptureInterpretAsync(File.ReadAllText(path), path);
+        Assert.Contains("nn dense ok", output);
     }
 }

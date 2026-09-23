@@ -47,7 +47,7 @@ public class JsTranspiler
 
     private static readonly HashSet<string> JsRuntimeModules = new(StringComparer.Ordinal)
     {
-        "dom", "game", "three", "math", "Math", "str", "io",
+        "dom", "game", "three", "math", "Math", "str", "io", "nn",
         "result", "option", "grounded", "cap", "agents", "schema"
     };
 
@@ -1474,6 +1474,7 @@ public class JsTranspiler
                     memberObjectIdentifier.Name == StdLibNamespaces.DeprecatedMathModuleAlias ||
                     memberObjectIdentifier.Name == StdLibNamespaces.StrModule ||
                     memberObjectIdentifier.Name == StdLibNamespaces.IoModule ||
+                    memberObjectIdentifier.Name == StdLibNamespaces.NnModule ||
                     memberObjectIdentifier.Name == "schema")
                 {
                     return $"mlRuntime.{MapRuntimeModuleName(memberObjectIdentifier.Name)}.{EscapeIdentifier(memberCall.Member)}({JoinArguments(functionCall.Arguments)})";

@@ -1,0 +1,112 @@
+// XOR multilayer perceptron (2 -> 4 -> 1) using nn.dense and nn.denseBackward.
+//
+// xor_neural_net.malda writes each chain-rule multiply by hand.
+// Here the local derivative lives inside nn.denseBackward:
+//   dL/dz = upstream * activation'(pre)
+//   dL/dW = x outer dL/dz
+//   dL/db = dL/dz
+//   dL/dx = dL/dz * W
+// Weights are [in, out]. Offline and seeded — no API key.
+
+function randomMatrix(rows: int, cols: int, scale: float) -> array {
+    var matrix = [];
+    for (var i = 0; i < rows; i = i + 1) {
+        var row = [];
+        for (var j = 0; j < cols; j = j + 1) {
+            row.append(math.randomFloat(-scale, scale));
+        }
+        matrix.append(row);
+    }
+    return matrix;
+}
+
+function randomVector(n: int, scale: float) -> array {
+    var values = [];
+    for (var i = 0; i < n; i = i + 1) {
+        values.append(math.randomFloat(-scale, scale));
+    }
+    return values;
+}
+
+function sgdMatrix(weights: array, grad: array, lr: float) {
+    for (var i = 0; i < weights.length; i = i + 1) {
+        for (var j = 0; j < weights[i].length; j = j + 1) {
+            weights[i][j] = weights[i][j] - lr * grad[i][j];
+        }
+    }
+}
+
+function sgdVector(bias: array, grad: array, lr: float) {
+    for (var i = 0; i < bias.length; i = i + 1) {
+        bias[i] = bias[i] - lr * grad[i];
+    }
+}
+
+function fmt(x: float) -> string {
+    return string(math.round(x * 1000.0) / 1000.0);
+}
+
+math.seed(42);
+
+var hiddenSize: int = 4;
+var learningRate: float = 0.8;
+var epochs: int = 800;
+
+var w1 = randomMatrix(2, hiddenSize, 1.0);
+var b1 = randomVector(hiddenSize, 0.5);
+var w2 = randomMatrix(hiddenSize, 1, 1.0);
+var b2 = randomVector(1, 0.5);
+
+var inputs = [[0.0, 0.0], [0.0, 1.0], [1.0, 0.0], [1.0, 1.0]];
+var targets = [0.0, 1.0, 1.0, 0.0];
+
+io.print("XOR with nn.dense (2 -> 4 -> 1, sigmoid)");
+io.print("");
+
+for (var epoch = 1; epoch <= epochs; epoch = epoch + 1) {
+    var epochLoss = 0.0;
+    for (var s = 0; s < inputs.length; s = s + 1) {
+        var x = inputs[s];
+        var target = targets[s];
+        var hidden = nn.dense(x, w1, b1, "sigmoid");
+        var out = nn.dense(hidden.out, w2, b2, "sigmoid");
+        var y = out.out[0];
+        var delta = y - target;
+        epochLoss = epochLoss + 0.5 * delta * delta;
+
+        var dOut = nn.mseGrad(out.out, [target]);
+        var backOut = nn.denseBackward(hidden.out, w2, dOut, "sigmoid", out.pre);
+        var backHidden = nn.denseBackward(x, w1, backOut.dInput, "sigmoid", hidden.pre);
+        sgdMatrix(w2, backOut.dWeights, learningRate);
+        sgdVector(b2, backOut.dBias, learningRate);
+        sgdMatrix(w1, backHidden.dWeights, learningRate);
+        sgdVector(b1, backHidden.dBias, learningRate);
+    }
+
+    if (epoch == 1 || epoch % 500 == 0 || epoch == epochs) {
+        io.print("epoch " + string(epoch) + ": loss=" + fmt(epochLoss / inputs.length));
+    }
+}
+
+io.print("");
+io.print("Predictions after training:");
+var correct = 0;
+for (var s = 0; s < inputs.length; s = s + 1) {
+    var x = inputs[s];
+    var target = targets[s];
+    var y = nn.dense(nn.dense(x, w1, b1, "sigmoid").out, w2, b2, "sigmoid").out[0];
+    var predicted = 0;
+    if (y >= 0.5) {
+        predicted = 1;
+    }
+    if (predicted == int(target)) {
+        correct = correct + 1;
+    }
+    io.print("  " + string(int(x[0])) + " " + string(int(x[1])) + " target " + string(int(target)) + " pred " + fmt(y));
+}
+
+io.print("");
+io.print("Accuracy: " + string(correct) + "/" + string(inputs.length));
+if (correct == inputs.length) {
+    io.print("nn dense ok");
+}
