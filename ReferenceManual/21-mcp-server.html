@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="MALDA MCP Server - Expose MALDA functions as MCP tools and connect to external MCP servers">
-    <title>20. MCP Server - MALDA Reference Manual</title>
+    <title>21. MCP Server - MALDA Reference Manual</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="syntax.css">
     <link rel="stylesheet" href="print.css" media="print">
@@ -16,14 +16,14 @@
     </header>
     <nav></nav>
     <main>
-        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>20. MCP Server</span></div>
-        <h1>20. MCP Server</h1>
+        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>21. MCP Server</span></div>
+        <h1>21. MCP Server</h1>
         <p>MCP (Model Context Protocol) lets an AI host — Claude Desktop, Cursor, ChatGPT, or a MALDA <code>MCPClient</code> — launch <strong>your process</strong> and talk JSON-RPC 2.0 over <strong>STDIO</strong> (stdin/stdout). Decorate ordinary functions with <code>@MCPTool</code>, call <code>new MCPServer().start()</code>, and the host can list and call them. Same file: <code>Examples/MCP/mcp_tools_server.malda</code>.</p>
         <div class="info-box" id="first-read">
             <strong>First-read stop.</strong> <code>@MCPTool</code> plus <code>MCPServer.start()</code> exposes functions to a host over STDIO. Smallest file: <code>Examples/MCP/mcp_schema_tool.malda</code>. Course: <a href="learn.html#after-core">Learn MALDA — After the core path</a>.
         </div>
 
-        <h2>20.1 A minimal server</h2>
+        <h2>21.1 A minimal server</h2>
         <pre><code>@MCPTool("add", "Adds two numbers together")
 function add(a, b) {
     return int(a) + int(b);
@@ -61,7 +61,7 @@ while (server.isRunning) {
             <strong>Do not</strong> print banners on stdout after <code>start()</code> if a host is connected: STDIO is the protocol. Log to stderr or a file. The example server in <code>Examples/MCP/</code> prints before the host handshake in a demo loop; a production server should stay quiet on stdout.
         </div>
 
-        <h2>20.2 @MCPTool and schemas</h2>
+        <h2>21.2 @MCPTool and schemas</h2>
         <pre><code>schema AddArgs {
     a: int;
     b: int;
@@ -83,7 +83,7 @@ function getWeather(location, unit) {
         <p>When that third argument is present, the host validates incoming arguments against the schema <strong>before</strong> the function body (same rules as <code>validate()</code>). <code>server.callTool("add", { a: 1, b: 2 })</code> returns <code>{ ok, data }</code> or <code>{ ok: false, error }</code> without starting STDIO. MCP <code>tools/call</code> returns <code>isError: true</code> on failure. Omitting the schema still advertises all-string properties and does not check args. Direct calls such as <code>add(1, 2)</code> are unchanged.</p>
         <p><code>server.getTools()</code> returns <code>{ name, description, inputSchema }</code> for each <code>@MCPTool</code> without starting STDIO — useful to inspect the resolved schema. Same file: <code>Examples/MCP/mcp_schema_tool.malda</code>. <code>@Tool</code> accepts the same third argument and host-validates <code>tool.execute</code> / agent invoke (see the <code>malda new agent</code> scaffold).</p>
 
-        <h2>20.3 MCPServer</h2>
+        <h2>21.3 MCPServer</h2>
         <pre><code>var server = new MCPServer();                    // STDIO transport (default)
 var server = new MCPServer("stdio");            // Explicit STDIO transport</code></pre>
         <ul>
@@ -95,7 +95,7 @@ var server = new MCPServer("stdio");            // Explicit STDIO transport</cod
         </ul>
         <p>JSON-RPC methods implemented: <code>initialize</code>, <code>tools/list</code>, <code>tools/call</code>, <code>notifications/initialized</code>.</p>
 
-        <h2>20.4 MCPClient: call another server</h2>
+        <h2>21.4 MCPClient: call another server</h2>
         <p><code>MCPClient</code> starts a child process and speaks the same STDIO protocol. Same file: <code>Examples/MCP/mcp_client_example.malda</code>. Run the client from the repo root so <code>malda</code> can find the server script.</p>
         <pre><code>var client = new MCPClient("example-server");
 var connected = client.connect("malda", ["Examples/MCP/mcp_tools_server.malda"]);
@@ -115,12 +115,12 @@ client.disconnect();</code></pre>
         <pre><code>var client = new MCPClient("my-server");
 var connected = client.connect("python", ["-m", "mcp_server"], {"API_KEY": "secret"});</code></pre>
         <ul>
-            <li><code>createTool(toolName, registeredName?, register?)</code> wraps one tool as an <code>MCPToolInstance</code> you can <code>agent.addTool(...)</code> (see <a href="18-agent-orchestration.html">18. Agent Orchestration</a>)</li>
+            <li><code>createTool(toolName, registeredName?, register?)</code> wraps one tool as an <code>MCPToolInstance</code> you can <code>agent.addTool(...)</code> (see <a href="19-agent-orchestration.html">19. Agent Orchestration</a>)</li>
             <li><code>refreshTools()</code> rediscovers tools after the server has changed</li>
             <li><code>serverName</code> / <code>isConnected</code> are properties</li>
         </ul>
 
-        <h2>20.5 Wrapper agent (optional)</h2>
+        <h2>21.5 Wrapper agent (optional)</h2>
         <p><code>createWrapperAgent</code> builds an <code>Agent</code> with every tool from the connected server already attached. If you omit <code>llmClient</code>, MALDA uses a local GGUF model (downloaded on first use). Prefer the <code>callTool</code> example above until you need an LLM in the loop.</p>
         <pre><code>var mcpClient = new MCPClient("example-server");
 mcpClient.connect("malda", ["Examples/MCP/mcp_tools_server.malda"]);
@@ -134,20 +134,20 @@ var agent = mcpClient.createWrapperAgent(
 var response = agent.think("Add 5 and 3");
 print(response.content);
 mcpClient.disconnect();</code></pre>
-        <h2>20.6 Advanced: generate a script</h2>
-        <p><code>createMcpAgentScript(agentName, agentRole, agentInstructions, tools, outputPath, model?)</code> writes a <code>.malda</code> file that exposes an agent as MCP tools. That is a <strong>code generator</strong>, not a live STDIO session — prefer <code>callTool</code> or <code>createWrapperAgent</code> until you need to emit a file. Pair it with <code>MALDACodingAgent</code> in <a href="18-agent-orchestration.html">18. Agent Orchestration</a> and <code>compileMALDA</code> in <a href="13-built-in-functions.html">13. Built-in Functions</a> only when an agent should generate and compile MALDA.</p>
+        <h2>21.6 Advanced: generate a script</h2>
+        <p><code>createMcpAgentScript(agentName, agentRole, agentInstructions, tools, outputPath, model?)</code> writes a <code>.malda</code> file that exposes an agent as MCP tools. That is a <strong>code generator</strong>, not a live STDIO session — prefer <code>callTool</code> or <code>createWrapperAgent</code> until you need to emit a file. Pair it with <code>MALDACodingAgent</code> in <a href="19-agent-orchestration.html">19. Agent Orchestration</a> and <code>compileMALDA</code> in <a href="13-built-in-functions.html">13. Built-in Functions</a> only when an agent should generate and compile MALDA.</p>
 
         <div class="see-also">
             <h3>See Also</h3>
             <ul>
                 <li><a href="09-functions.html">9. Functions</a> - Function decorators</li>
-                <li><a href="18-agent-orchestration.html">18. Agent Orchestration</a> - Agents, tools, and <code>agent.think</code></li>
-                <li><a href="21-acp.html">21. ACP (Agent Communication Protocol)</a> - Agent-to-agent, not tools</li>
+                <li><a href="19-agent-orchestration.html">19. Agent Orchestration</a> - Agents, tools, and <code>agent.think</code></li>
+                <li><a href="22-acp.html">22. ACP (Agent Communication Protocol)</a> - Agent-to-agent, not tools</li>
             </ul>
         </div>
         <div class="nav-footer">
-            <a href="19-graph-memory.html">← Previous: 19. GraphMemory</a>
-            <a href="21-acp.html">Next: 21. ACP (Agent Communication Protocol)→</a>
+            <a href="20-graph-memory.html">← Previous: 20. GraphMemory</a>
+            <a href="22-acp.html">Next: 22. ACP (Agent Communication Protocol)→</a>
         </div>
 
         <footer>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>22. Durable Workflows - MALDA Reference Manual</title>
+    <title>23. Durable Workflows - MALDA Reference Manual</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="syntax.css">
     <link rel="stylesheet" href="print.css" media="print">
@@ -15,13 +15,13 @@
     </header>
     <nav></nav>
     <main>
-        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>22. Durable Workflows</span></div>
-        <h1>22. Durable Workflows</h1>
+        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>23. Durable Workflows</span></div>
+        <h1>23. Durable Workflows</h1>
 
         <p>Durable workflows let you run long-lived, restart-safe business processes with persisted state, replay-safe step execution, and external control points such as approvals and signals.</p>
-        <p>For short fire-and-forget work (send email, call a webhook), prefer the lightweight job queue in <a href="#background-jobs">22.11</a>. Jobs use <code>./.malda/jobs.db</code> and are not workflow instances.</p>
+        <p>For short fire-and-forget work (send email, call a webhook), prefer the lightweight job queue in <a href="#background-jobs">23.11</a>. Jobs use <code>./.malda/jobs.db</code> and are not workflow instances.</p>
         <p>Durable workflows and the job queue are host-only (interpreter and C# transpile). JavaScript does not run <code>workflow</code> / <code>step</code> or <code>enqueueJob</code>. See the <a href="../docs/spec/backend-capability-matrix.md">backend capability matrix</a>.</p>
-        <h2 id="first-read">22.0 First read</h2>
+        <h2 id="first-read">23.0 First read</h2>
         <p>A <code>workflow</code> body journals <code>step</code> results so a restart does not repeat finished work. Same idea: <code>Examples/Workflows/simple_step.malda</code>. This sketch is host-only and is not marked runnable here — it needs the workflow runtime, not the ordinary interpreter print loop. The rest of this chapter is the operations catalog.</p>
         <div class="info-box">
             <strong>First-read stop.</strong> Course: <a href="learn.html#after-core">Learn MALDA — After the core path</a>.
@@ -35,16 +35,16 @@ workflow SimpleStep(input) {
     return result;
 }</code></pre>
 
-        <h2>22.1 Core Concepts</h2>
+        <h2>23.1 Core Concepts</h2>
         <ul>
-            <li><strong>Durability:</strong> workflow instances, steps, and events are persisted to a SQLite database (see <a href="#storage">22.8 Storage and Persistence</a>).</li>
+            <li><strong>Durability:</strong> workflow instances, steps, and events are persisted to a SQLite database (see <a href="#storage">23.8 Storage and Persistence</a>).</li>
             <li><strong>Determinism:</strong> replay avoids duplicate successful step execution.</li>
             <li><strong>Recovery:</strong> stale running work is reconciled on restart and can resume safely.</li>
             <li><strong>Control:</strong> approval/signal flows can be driven from CLI or built-ins.</li>
             <li><strong>Operations:</strong> unified <code>malda workflow report</code>, DLQ, requeue, metrics, and maintenance commands are available.</li>
         </ul>
 
-        <h2>22.2 Workflow Syntax</h2>
+        <h2>23.2 Workflow Syntax</h2>
         <p>A workflow body is made of ordinary statements plus three durable ones: <code>step</code> for work that must not run twice, <code>approval</code> for a human decision, and <code>wait</code> for an external signal. Each binds its result to a name the rest of the body can read, and each is journaled, which is what lets an instance resume after a restart without repeating work already done.</p>
         <p>Their shapes differ. <code>step</code> takes any call on the right of the <code>=</code>, so the work itself is an ordinary function. <code>approval</code> and <code>wait</code> instead have a fixed right-hand side: an <code>approval</code> statement must call <code>approval(...)</code> and a <code>wait</code> statement must call <code>awaitSignal(...)</code>. Those two names are recognised in that position only — <code>awaitSignal</code> is not a reserved word and cannot be called anywhere else — so <code>var x = awaitSignal("s");</code> is not a signal wait, and anything else after the <code>=</code> is a parse error.</p>
         <pre><code>workflow OnboardCustomer(input) {
@@ -116,7 +116,7 @@ workflow SimpleStep(input) {
             <strong>Closed <code>api</code> plans:</strong> produce the program JSON with <code>await prompt … -&gt; program(Api)</code> (or <code>evalPrompt</code> offline) <em>before</em> <code>startWorkflow</code>. Execute with <code>step result = runProgram(prog);</code> so replay memoizes the result and never re-prompts. Model calls in the workflow body are not WF1001. Example: <code>Examples/Workflows/runprogram_in_step.malda</code>.
         </div>
 
-        <h2>22.3 Lifecycle and States</h2>
+        <h2>23.3 Lifecycle and States</h2>
         <p>Common workflow states include:</p>
         <pre><code>PENDING, RUNNING, WAITING_APPROVAL, WAITING_SIGNAL, COMPENSATING,
 COMPLETED, FAILED, CANCELLED, COMPENSATED</code></pre>
@@ -124,7 +124,7 @@ COMPLETED, FAILED, CANCELLED, COMPENSATED</code></pre>
         <pre><code>PENDING, RUNNING, SUCCEEDED, FAILED, TIMED_OUT, SKIPPED,
 COMPENSATING, COMPENSATED, COMPENSATION_FAILED</code></pre>
 
-        <h2>22.4 Runtime Operations (Built-ins)</h2>
+        <h2>23.4 Runtime Operations (Built-ins)</h2>
         <p>The smallest offline start: one <code>step</code>, then <code>startWorkflow</code>. Persistence is a local SQLite file under <code>.malda/</code>.</p>
         <pre><code data-run="true" data-expect="status=COMPLETED">function twice(n) {
     return n * 2;
@@ -156,7 +156,7 @@ var okSignal = signalWorkflow(id, "docs_uploaded", {"customerId": 101});</code><
             <strong>Correlation:</strong> pass a <code>correlationId</code> in <code>startWorkflow(...)</code> input to propagate trace metadata across instance/events/operations.
         </div>
 
-        <h2>22.5 Dead Letters and Requeue</h2>
+        <h2>23.5 Dead Letters and Requeue</h2>
         <pre><code>var rows = listWorkflowDeadLetters(100, false);   // false => pending only
 if (length(rows) > 0) {
     var requeued = requeueDeadLetter(
@@ -178,7 +178,7 @@ print(advanced);   // true when the instance ran</code></pre>
         </ul>
         <p>Runnable statuses are <code>RUNNING</code>, <code>FAILED</code> (retried first), <code>WAITING_APPROVAL</code>, and <code>WAITING_SIGNAL</code> (resumed first). If the workflow itself throws during execution, the instance is marked failed and the error is rethrown to the caller, so wrap the call in <code>try</code>/<code>catch</code> when driving instances in a loop.</p>
 
-        <h2>22.6 CLI Commands</h2>
+        <h2>23.6 CLI Commands</h2>
         <pre><code># Core lifecycle
 malda workflow start workflow.malda OnboardCustomer --input input.json
 malda workflow list --status FAILED --limit 50
@@ -207,19 +207,19 @@ malda workflow maintenance run --dry-run --format json</code></pre>
         <p><code>malda workflow report &lt;instanceId&gt;</code> returns one operator-facing document: instance status, persisted step attempts, journaled timeline events, and dead-letter rows for that instance (including requeue audit when present). Human mode prints four sections; <code>--json</code> emits a single object with camelCase keys <code>instance</code>, <code>steps</code>, <code>events</code>, <code>deadLetters</code>, <code>generatedAtUtc</code>, and <code>eventLimit</code>.</p>
         <p>The timeline is the append-only event journal (what happened on this box), not a Temporal-style replay debugger. Pending DLQ rows for the instance appear under Dead letters; use <code>malda workflow dlq requeue</code> to act on them. Seed a FAILED instance with <code>Examples/Workflows/ops_report.malda</code>, then run <code>malda workflow report</code> against the printed <code>instanceId</code>.</p>
 
-        <h2>22.7 Reliability and Parity Notes</h2>
+        <h2>23.7 Reliability and Parity Notes</h2>
         <ul>
             <li>Retry supports fixed/linear/exponential backoff with caps and deterministic jitter.</li>
             <li>Timeout and retry transitions are persisted and emitted as workflow events.</li>
             <li>Interpreter and transpiled modes are validated with parity tests for core scenarios.</li>
-            <li>State is stored in SQLite; see <a href="#storage">22.8 Storage and Persistence</a> for the database location.</li>
+            <li>State is stored in SQLite; see <a href="#storage">23.8 Storage and Persistence</a> for the database location.</li>
         </ul>
 
-        <h2 id="storage">22.8 Storage and Persistence</h2>
+        <h2 id="storage">23.8 Storage and Persistence</h2>
         <p>Every durable workflow writes to one SQLite database file. By default:</p>
         <pre><code>./.malda/workflows.db</code></pre>
         <p>The <code>.malda</code> directory is created on first use, and the schema is created and upgraded automatically when the engine opens the connection. There is no separate install or migration step, and nothing to provision before <code>malda workflow start</code>.</p>
-        <p>On open, the runtime sets SQLite <code>journal_mode=WAL</code> and <code>busy_timeout=5000</code> so a second process can run <strong>read-only</strong> ops (<code>list</code>, <code>get</code>, <code>report</code>, …) against the same database while a writer is active. See <a href="#ha">22.10 High Availability and Multi-Worker</a>.</p>
+        <p>On open, the runtime sets SQLite <code>journal_mode=WAL</code> and <code>busy_timeout=5000</code> so a second process can run <strong>read-only</strong> ops (<code>list</code>, <code>get</code>, <code>report</code>, …) against the same database while a writer is active. See <a href="#ha">23.10 High Availability and Multi-Worker</a>.</p>
 
         <div class="warning-box">
             <strong>The default path is relative to the working directory</strong>, not to your home directory. A run started in <code>/srv/app</code> uses <code>/srv/app/.malda/workflows.db</code>, while the same program started from another directory opens a different, empty database and reports zero instances instead of an error. If you start workflows from one place and inspect them from another, set an absolute path as shown below.
@@ -265,7 +265,7 @@ setx MALDA_WORKFLOW_CONNECTION "Data Source=C:\ProgramData\malda\workflows.db"</
             <strong>Version control:</strong> <code>.malda/</code> is listed in the repository's <code>.gitignore</code>. Workflow state is local runtime data and should not be committed.
         </div>
 
-        <h2>22.9 Configuration Guardrails</h2>
+        <h2>23.9 Configuration Guardrails</h2>
         <p>All limits are read from the environment when the workflow engine is first used. A value that is missing or cannot be parsed leaves the default in place, silently.</p>
         <table>
             <thead>
@@ -276,8 +276,8 @@ setx MALDA_WORKFLOW_CONNECTION "Data Source=C:\ProgramData\malda\workflows.db"</
                 <tr><td><code>MALDA_WORKFLOW_MAX_RETRIES_PER_STEP</code></td><td><code>10</code></td><td>Ceiling on per-step <code>retry</code>, regardless of what the workflow declares.</td></tr>
                 <tr><td><code>MALDA_WORKFLOW_MAX_PAYLOAD_BYTES</code></td><td><code>1048576</code></td><td>Largest persisted payload (1 MiB). Minimum 128.</td></tr>
                 <tr><td><code>MALDA_WORKFLOW_MAX_DURATION_MS</code></td><td><code>604800000</code></td><td>Longest lifetime of one instance (7 days). Minimum 1000.</td></tr>
-                <tr><td><code>MALDA_WORKFLOW_PROVIDER</code></td><td><code>sqlite</code></td><td>Storage backend; see <a href="#storage">22.8</a>.</td></tr>
-                <tr><td><code>MALDA_WORKFLOW_CONNECTION</code></td><td><code>Data Source=./.malda/workflows.db</code></td><td>Database location; see <a href="#storage">22.8</a>.</td></tr>
+                <tr><td><code>MALDA_WORKFLOW_PROVIDER</code></td><td><code>sqlite</code></td><td>Storage backend; see <a href="#storage">23.8</a>.</td></tr>
+                <tr><td><code>MALDA_WORKFLOW_CONNECTION</code></td><td><code>Data Source=./.malda/workflows.db</code></td><td>Database location; see <a href="#storage">23.8</a>.</td></tr>
                 <tr><td><code>MALDA_WORKFLOW_RETENTION_OPERATIONAL_DAYS</code></td><td><code>30</code></td><td>Age at which finished instances are archived. 1 to 3650.</td></tr>
                 <tr><td><code>MALDA_WORKFLOW_RETENTION_AUDIT_DAYS</code></td><td><code>180</code></td><td>Age at which events and dead letters are deleted. Must be at least the operational window.</td></tr>
                 <tr><td><code>MALDA_WORKFLOW_RETENTION_COMPACTION_DAYS</code></td><td><code>14</code></td><td>Age at which step payloads are cleared. Must not exceed the operational window.</td></tr>
@@ -286,7 +286,7 @@ setx MALDA_WORKFLOW_CONNECTION "Data Source=C:\ProgramData\malda\workflows.db"</
         </table>
         <p>Retention values are validated against each other, so an inconsistent combination (for example an audit window shorter than the operational one) is rejected instead of quietly discarding history.</p>
 
-        <h2 id="ha">22.10 High Availability and Multi-Worker</h2>
+        <h2 id="ha">23.10 High Availability and Multi-Worker</h2>
         <p>v1 supports <strong>one writer process</strong> per database file, plus an optional second process for <strong>read-only</strong> CLI ops against the same absolute <code>MALDA_WORKFLOW_CONNECTION</code>. Two mutating processes on one file are unsupported.</p>
         <ul>
             <li><strong>Locking:</strong> process singleton + SQLite file lock; WAL for concurrent readers. Stale <code>RUNNING</code> recovery after restart is not a worker ownership lease.</li>
@@ -294,9 +294,9 @@ setx MALDA_WORKFLOW_CONNECTION "Data Source=C:\ProgramData\malda\workflows.db"</
             <li><strong>Migration:</strong> storage goes through <code>IWorkflowStorageProvider</code>; a future multi-writer backend would need claim/lease and conditional status updates.</li>
         </ul>
         <p>Full failure-mode matrix and migration notes: <code>docs/workflows-ha.md</code> in the repository.</p>
-        <p><strong>WF1006:</strong> mutating a declared <code>context</code> (including compaction) inside a <code>workflow</code> body must sit in a <code>step</code>. Imported or unknown callees stay Info, same as WF1005. Successful steps are also mirrored into the in-process run journal so <code>trace.journal()</code> sees them. Narrative: <a href="23-agentic-runs.html">23. Agentic Runs</a> §23.3 and §23.5.</p>
+        <p><strong>WF1006:</strong> mutating a declared <code>context</code> (including compaction) inside a <code>workflow</code> body must sit in a <code>step</code>. Imported or unknown callees stay Info, same as WF1005. Successful steps are also mirrored into the in-process run journal so <code>trace.journal()</code> sees them. Narrative: <a href="24-agentic-runs.html">24. Agentic Runs</a> §24.3 and §24.5.</p>
 
-        <h2 id="background-jobs">22.11 Lightweight job queue</h2>
+        <h2 id="background-jobs">23.11 Lightweight job queue</h2>
         <p>Short async units (email, webhooks) use a SQLite queue at <code>./.malda/jobs.db</code>. Override the connection with <code>MALDA_JOBS_CONNECTION</code> (same shape as <code>MALDA_WORKFLOW_CONNECTION</code>). This is separate from durable <code>workflow</code> processes. Name index: <a href="13-built-in-functions.html#background-jobs">13.26</a>.</p>
         <pre><code>var jobId = enqueueJob("mail", {"to": "user@example.com"}, {"maxAttempts": 3});
 var job = claimJob("mail", "worker-1");
@@ -321,15 +321,15 @@ var one = getJob(jobId);</code></pre>
             <h3>See Also</h3>
             <ul>
                 <li><a href="13-built-in-functions.html">13. Built-in Functions</a> - workflow built-in API reference</li>
-                <li><a href="33-personal-assistant.html">33. Personal Assistant and CLI</a> - CLI configuration and usage</li>
-                <li><a href="36-grammar.html">36. Grammar</a> — partial BNF only; workflow syntax is documented here and in <code>Parser.cs</code></li>
-                <li><a href="23-agentic-runs.html">23. Agentic Runs</a> — WF1006, journal mirror, <code>cancelWorkflow</code></li>
+                <li><a href="34-personal-assistant.html">34. Personal Assistant and CLI</a> - CLI configuration and usage</li>
+                <li><a href="37-grammar.html">37. Grammar</a> — partial BNF only; workflow syntax is documented here and in <code>Parser.cs</code></li>
+                <li><a href="24-agentic-runs.html">24. Agentic Runs</a> — WF1006, journal mirror, <code>cancelWorkflow</code></li>
             </ul>
         </div>
 
         <div class="nav-footer">
-            <a href="21-acp.html">← Previous: 21. ACP (Agent Communication Protocol)</a>
-            <a href="23-agentic-runs.html">Next: 23. Agentic Runs→</a>
+            <a href="22-acp.html">← Previous: 22. ACP (Agent Communication Protocol)</a>
+            <a href="24-agentic-runs.html">Next: 24. Agentic Runs→</a>
         </div>
 
         <footer>

@@ -31,7 +31,7 @@
         <p>L'intestazione della pagina riporta la versione della toolchain distribuita (lo stesso numero della CLI). La semantica del linguaggio core è specificata in <a href="../../docs/spec/malda-language-1.0.md">malda-language-1.0</a>.</p>
 
         <div class="info-box">
-            <strong>Stai imparando il linguaggio? Salta questo capitolo.</strong> Il corso è <a href="learn.html">Imparare MALDA</a> — una lezione, un file, una sezione. Questa pagina è prodotto e architettura, non la prima lezione di programmazione. Se programmi già, puoi anche iniziare da <a href="index.html">Indice → First Look</a> (<code>prompt</code> + <code>schema</code> + <code>validate</code>, senza API key). Dopo il percorso core, continua dalle categorie della barra laterale: <strong>Libreria standard</strong> (<a href="16-database.html">16. Supporto database</a>, <a href="15-vectordb.html">15. VectorDB</a>), <strong>AI e agenti</strong> (<a href="18-agent-orchestration.html">18. Orchestrazione di agenti</a>), <strong>Web</strong> (<a href="24-web-ui-hub.html">24. Panoramica Web UI</a>, <a href="24-web-ui-hub.html#browser-games">giochi nel browser</a>, <a href="27-browser-javascript-backend.html">27. Backend UI JavaScript nel browser</a>) e <strong>Riferimento</strong> (<a href="35-property-testing.html">35. Property testing</a>). Entrambi i percorsi arrivano allo stesso runtime AI-first.
+            <strong>Stai imparando il linguaggio? Salta questo capitolo.</strong> Il corso è <a href="learn.html">Imparare MALDA</a> — una lezione, un file, una sezione. Questa pagina è prodotto e architettura, non la prima lezione di programmazione. Se programmi già, puoi anche iniziare da <a href="index.html">Indice → First Look</a> (<code>prompt</code> + <code>schema</code> + <code>validate</code>, senza API key). Dopo il percorso core, continua dalle categorie della barra laterale: <strong>Libreria standard</strong> (<a href="17-database.html">17. Supporto database</a>, <a href="16-vectordb.html">16. VectorDB</a>), <strong>AI e agenti</strong> (<a href="19-agent-orchestration.html">19. Orchestrazione di agenti</a>), <strong>Web</strong> (<a href="25-web-ui-hub.html">25. Panoramica Web UI</a>, <a href="25-web-ui-hub.html#browser-games">giochi nel browser</a>, <a href="28-browser-javascript-backend.html">28. Backend UI JavaScript nel browser</a>) e <strong>Riferimento</strong> (<a href="36-property-testing.html">36. Property testing</a>). Entrambi i percorsi arrivano allo stesso runtime AI-first.
         </div>
 
         <h3>Che cosa significa MALDA?</h3>
@@ -195,7 +195,7 @@
             <li><strong>Sicurezza della working directory</strong>: validazione dei path per i tool di operazioni su file</li>
         </ul>
         <div class="warning-box">
-            <p><strong>⚠️ Importante:</strong> i sistemi di agenti autonomi con accesso ai tool comportano rischi significativi di sicurezza e operativi. Vedi <a href="18-agent-orchestration.html">18. Orchestrazione di agenti</a> per un disclaimer dettagliato e le strategie di mitigazione del rischio prima di distribuire agenti in produzione.</p>
+            <p><strong>⚠️ Importante:</strong> i sistemi di agenti autonomi con accesso ai tool comportano rischi significativi di sicurezza e operativi. Vedi <a href="19-agent-orchestration.html">19. Orchestrazione di agenti</a> per un disclaimer dettagliato e le strategie di mitigazione del rischio prima di distribuire agenti in produzione.</p>
         </div>
 
         <h3>Funzionalità Web e API</h3>
@@ -302,7 +302,7 @@ print(mathUtils.VERSION);     // "1.0"</code></pre>
         <p>Le stesse due forme valgono per i pacchetti, con un nome di pacchetto puntato al posto del path stringa:</p>
         <pre><code>import App.Core;
 import UI = App.Web.Components;</code></pre>
-        <p>I nomi di pacchetto che iniziano con <code>System</code>, <code>Microsoft</code> o <code>Windows</code> vengono risolti come namespace .NET attraverso il layer di interop, non dal gestore di pacchetti. Vedi <a href="31-dotnet-interop.html">31. Interop .NET</a>.</p>
+        <p>I nomi di pacchetto che iniziano con <code>System</code>, <code>Microsoft</code> o <code>Windows</code> vengono risolti come namespace .NET attraverso il layer di interop, non dal gestore di pacchetti. Vedi <a href="32-dotnet-interop.html">32. Interop .NET</a>.</p>
         <p>Se non si riesce a risolvere un target è un errore a runtime: <em>Package or module not found: Name</em> per i pacchetti, e il messaggio di file-not-found sottostante per gli import di file.</p>
 
         <h3>Path e comportamento di sicurezza per <code>include</code></h3>
@@ -390,7 +390,7 @@ person.introduce();</code></pre>
             <ul>
                 <li><a href="03-lexical-structure.html">3. Struttura lessicale</a> - Le basi della sintassi</li>
                 <li><a href="04-data-types.html">4. Tipi di dati</a> - Il sistema di tipi di MALDA</li>
-                <li><a href="34-examples.html#catalog">34. Esempi</a> — catalogo <code>Examples/</code></li>
+                <li><a href="35-examples.html#catalog">35. Esempi</a> — catalogo <code>Examples/</code></li>
             </ul>
         </div>
 

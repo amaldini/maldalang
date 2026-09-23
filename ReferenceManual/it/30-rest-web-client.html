@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Client REST Web MALDA - RestClient, httpGet/httpPost, auth, timeout, redirect, retry e interpret vs transpile">
-    <title>29. Client REST Web - Manuale di riferimento MALDA</title>
+    <title>30. Client REST Web - Manuale di riferimento MALDA</title>
     <link rel="stylesheet" href="../styles.css">
     <link rel="stylesheet" href="../syntax.css">
     <link rel="stylesheet" href="../print.css" media="print">
@@ -16,43 +16,43 @@
     </header>
     <nav></nav>
     <main>
-        <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>29. Client REST Web</span></div>
-        <h1>29. Client REST Web</h1>
-        <p>MALDA può chiamare API HTTP dal runtime host con <code>RestClient</code> e le funzioni one-shot <code>httpGet</code> / <code>httpPost</code> / <code>httpPut</code> / <code>httpDelete</code> / <code>httpPatch</code>. Questo capitolo è il riferimento lato client. Progettare e ospitare quelle API è <a href="28-rest-api.html">28. Server REST API</a>. Il <code>fetch</code> del browser verso un'API MALDA è <a href="30-full-stack-development.html">30. Sviluppo full-stack con MALDA</a>.</p>
+        <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>30. Client REST Web</span></div>
+        <h1>30. Client REST Web</h1>
+        <p>MALDA può chiamare API HTTP dal runtime host con <code>RestClient</code> e le funzioni one-shot <code>httpGet</code> / <code>httpPost</code> / <code>httpPut</code> / <code>httpDelete</code> / <code>httpPatch</code>. Questo capitolo è il riferimento lato client. Progettare e ospitare quelle API è <a href="29-rest-api.html">29. Server REST API</a>. Il <code>fetch</code> del browser verso un'API MALDA è <a href="31-full-stack-development.html">31. Sviluppo full-stack con MALDA</a>.</p>
         <div class="info-box">
             <strong>Non è lo stesso nome:</strong> <code>httpGet(url, ...)</code> è il client HTTP di questo capitolo. <code>webFetch</code> è il fetch one-shot dell'host in <a href="12-input-output.html#web-fetch">12.9</a>. <code>cap.httpGet(origin)</code> crea un token GET non contraffabile per <code>cap.fetch</code> / <code>webFetch</code> — vedi <a href="12-input-output.html#capability-tokens">12.6</a>.
         </div>
         <div class="info-box" id="first-read">
-            <strong>Stop alla prima lettura.</strong> Le chiamate client richiedono la rete. Non possono girare nell'harness degli snippet del manuale. File più piccolo: <code>Examples/Web/http_client_json.malda</code>. Parti da <a href="24-web-ui-hub.html">24. Panoramica Web UI</a>. Corso: <a href="learn.html#after-core">Imparare MALDA — Dopo il percorso core</a>.
+            <strong>Stop alla prima lettura.</strong> Le chiamate client richiedono la rete. Non possono girare nell'harness degli snippet del manuale. File più piccolo: <code>Examples/Web/http_client_json.malda</code>. Parti da <a href="25-web-ui-hub.html">25. Panoramica Web UI</a>. Corso: <a href="learn.html#after-core">Imparare MALDA — Dopo il percorso core</a>.
         </div>
 
-        <h2>29.1 Mappa del capitolo</h2>
+        <h2>30.1 Mappa del capitolo</h2>
         <ul>
-            <li><strong>29.1.1</strong> Primer sui concetti — client HTTP, status vs trasporto, Bearer vs Basic</li>
-            <li><strong>29.2</strong> Costruttore, proprietà e metodi di <code>RestClient</code></li>
-            <li><strong>29.3</strong> Risoluzione URL, query parameter e body</li>
-            <li><strong>29.4</strong> Risposta di successo vs oggetto di errore di trasporto</li>
-            <li><strong>29.5</strong> Funzioni statiche <code>httpGet</code> / <code>httpPost</code> e analoghe</li>
-            <li><strong>29.6</strong> Autenticazione</li>
-            <li><strong>29.7</strong> Timeout</li>
-            <li><strong>29.8</strong> Redirect e retry</li>
-            <li><strong>29.9</strong> CORS: client host vs browser</li>
-            <li><strong>29.10</strong> Interpret vs transpile</li>
-            <li><strong>29.11</strong> Chiamare un <code>RestServer</code> MALDA</li>
-            <li><strong>29.12</strong> Esempi</li>
+            <li><strong>30.1.1</strong> Primer sui concetti — client HTTP, status vs trasporto, Bearer vs Basic</li>
+            <li><strong>30.2</strong> Costruttore, proprietà e metodi di <code>RestClient</code></li>
+            <li><strong>30.3</strong> Risoluzione URL, query parameter e body</li>
+            <li><strong>30.4</strong> Risposta di successo vs oggetto di errore di trasporto</li>
+            <li><strong>30.5</strong> Funzioni statiche <code>httpGet</code> / <code>httpPost</code> e analoghe</li>
+            <li><strong>30.6</strong> Autenticazione</li>
+            <li><strong>30.7</strong> Timeout</li>
+            <li><strong>30.8</strong> Redirect e retry</li>
+            <li><strong>30.9</strong> CORS: client host vs browser</li>
+            <li><strong>30.10</strong> Interpret vs transpile</li>
+            <li><strong>30.11</strong> Chiamare un <code>RestServer</code> MALDA</li>
+            <li><strong>30.12</strong> Esempi</li>
         </ul>
 
-        <h3 id="http-client-concepts">29.1.1 Primer sui concetti</h3>
-        <p>Questo capitolo è il <em>chiamante</em>. I termini server (middleware, CSRF, CORS, JWT) stanno in <a href="28-rest-api.html#web-concepts">28.1.1 Primer sui concetti</a>.</p>
+        <h3 id="http-client-concepts">30.1.1 Primer sui concetti</h3>
+        <p>Questo capitolo è il <em>chiamante</em>. I termini server (middleware, CSRF, CORS, JWT) stanno in <a href="29-rest-api.html#web-concepts">29.1.1 Primer sui concetti</a>.</p>
         <p>Un <strong>client</strong> HTTP costruisce una richiesta, la invia e legge la risposta. <code>RestClient</code> e <code>httpGet</code> girano sull'host MALDA (non nel browser), quindi ignorano CORS. Gli <code>http*</code> transpilati in JS usano il <code>fetch</code> della pagina, che invece obbedisce a CORS.</p>
-        <p><strong>Status vs trasporto:</strong> un HTTP 404 ha comunque prodotto una risposta — controlla <code>response.status</code> / <code>ok</code>. Se è fallito il livello TCP/TLS/DNS, ottieni un oggetto di errore di trasporto (<code>status</code> di solito 0, <code>error</code> impostato). Vedi 29.4.</p>
-        <p><strong>Bearer vs Basic:</strong> Bearer invia un token così com'è nell'header Authorization. Basic invia <code>username:password</code> in Base64 (la codifica non è cifratura). Nessuno dei due nasconde le credenziali sul filo; usa HTTPS. Vedi 29.6.</p>
-        <p><strong>Retry idempotenti:</strong> GET e PUT di solito si possono ripetere in sicurezza; POST spesso no (può creare una seconda risorsa). Riprova gli errori di trasporto e i 5xx quando il metodo è idempotente; non ritentare alla cieca i 4xx. Vedi 29.8.</p>
+        <p><strong>Status vs trasporto:</strong> un HTTP 404 ha comunque prodotto una risposta — controlla <code>response.status</code> / <code>ok</code>. Se è fallito il livello TCP/TLS/DNS, ottieni un oggetto di errore di trasporto (<code>status</code> di solito 0, <code>error</code> impostato). Vedi 30.4.</p>
+        <p><strong>Bearer vs Basic:</strong> Bearer invia un token così com'è nell'header Authorization. Basic invia <code>username:password</code> in Base64 (la codifica non è cifratura). Nessuno dei due nasconde le credenziali sul filo; usa HTTPS. Vedi 30.6.</p>
+        <p><strong>Retry idempotenti:</strong> GET e PUT di solito si possono ripetere in sicurezza; POST spesso no (può creare una seconda risorsa). Riprova gli errori di trasporto e i 5xx quando il metodo è idempotente; non ritentare alla cieca i 4xx. Vedi 30.8.</p>
 
-        <h2>29.2 Classe RestClient</h2>
+        <h2>30.2 Classe RestClient</h2>
         <p>Crea un client riusabile quando ti servono un URL di base, header di default, auth o un timeout diverso da 30 secondi. L'implementazione host è <code>RestClientInstance</code> (interprete e transpile C#).</p>
 
-        <h3>29.2.1 Costruttore</h3>
+        <h3>30.2.1 Costruttore</h3>
         <pre><code>var client = new RestClient();                    // No base URL
 var client = new RestClient("https://api.example.com");  // With base URL
 var client = new RestClient("https://api.example.com", 60000);  // With base URL and timeout (ms)</code></pre>
@@ -61,7 +61,7 @@ var client = new RestClient("https://api.example.com", 60000);  // With base URL
             <li><code>timeout</code> (int, opzionale): <code>HttpClient.Timeout</code> in millisecondi. Default: <code>30000</code>.</li>
         </ul>
 
-        <h3>29.2.2 Proprietà</h3>
+        <h3>30.2.2 Proprietà</h3>
         <table>
             <thead>
                 <tr><th>Proprietà</th><th>Tipo</th><th>Note</th></tr>
@@ -72,7 +72,7 @@ var client = new RestClient("https://api.example.com", 60000);  // With base URL
             </tbody>
         </table>
 
-        <h3>29.2.3 Metodi di richiesta</h3>
+        <h3>30.2.3 Metodi di richiesta</h3>
         <table>
             <thead>
                 <tr><th>Metodo</th><th>Argomenti</th></tr>
@@ -87,12 +87,12 @@ var client = new RestClient("https://api.example.com", 60000);  // With base URL
         </table>
         <ul>
             <li><code>url</code> (string): relativo se è impostato <code>baseUrl</code>, altrimenti assoluto</li>
-            <li><code>body</code> (object / string / altro, opzionale): vedi 29.3.3. Inviato solo per POST, PUT e PATCH</li>
+            <li><code>body</code> (object / string / altro, opzionale): vedi 30.3.3. Inviato solo per POST, PUT e PATCH</li>
             <li><code>headers</code> (object, opzionale): header extra della richiesta. Solo valori stringa. Passa <code>null</code> quando ti servono i query parameter senza header</li>
             <li><code>queryParams</code> (object, opzionale): aggiunti come query string</li>
         </ul>
 
-        <h3>29.2.4 Metodi di configurazione</h3>
+        <h3>30.2.4 Metodi di configurazione</h3>
         <table>
             <thead>
                 <tr><th>Metodo</th><th>Note</th></tr>
@@ -104,17 +104,17 @@ var client = new RestClient("https://api.example.com", 60000);  // With base URL
                 <tr><td><code>setBaseUrl(url)</code></td><td>Sostituisce l'URL di base</td></tr>
             </tbody>
         </table>
-        <p>Non esistono <code>setRetry</code>, flag di redirect né un'API per il cookie jar. Vedi 29.8.</p>
+        <p>Non esistono <code>setRetry</code>, flag di redirect né un'API per il cookie jar. Vedi 30.8.</p>
 
-        <h2>29.3 URL, query e body</h2>
-        <h3>29.3.1 Risoluzione URL</h3>
+        <h2>30.3 URL, query e body</h2>
+        <h3>30.3.1 Risoluzione URL</h3>
         <p>Se <code>baseUrl</code> non è vuoto e l'URL della richiesta non inizia con <code>http://</code> o <code>https://</code>, il client li unisce: toglie lo <code>/</code> finale dalla base, assicura che il path inizi con <code>/</code>, poi concatena. Gli URL <code>http(s)</code> assoluti restano invariati.</p>
         <pre><code>var client = new RestClient("https://api.example.com/v1");
 // "/users" -&gt; https://api.example.com/v1/users
 // "users"  -&gt; https://api.example.com/v1/users
 // "https://other.example/x" stays absolute</code></pre>
 
-        <h3>29.3.2 Query parameter</h3>
+        <h3>30.3.2 Query parameter</h3>
         <p>Chiavi e valori dell'oggetto sono URI-encoded e uniti con <code>&amp;</code>. Un <code>?</code> già presente sull'URL diventa <code>&amp;</code> per le coppie extra. Tipi di valore:</p>
         <ul>
             <li>string: così com'è</li>
@@ -123,7 +123,7 @@ var client = new RestClient("https://api.example.com", 60000);  // With base URL
             <li>qualsiasi altro: <code>AsString()</code></li>
         </ul>
 
-        <h3>29.3.3 Serializzazione del body</h3>
+        <h3>30.3.3 Serializzazione del body</h3>
         <p>POST / PUT / PATCH inviano sempre <code>StringContent</code> con media type <code>application/json</code>, a meno che non sovrascrivi <code>Content-Type</code> negli header della singola richiesta:</p>
         <ul>
             <li>body stringa: inviato come contenuto grezzo (comunque come contenuto JSON, salvo cambio di <code>Content-Type</code>)</li>
@@ -132,7 +132,7 @@ var client = new RestClient("https://api.example.com", 60000);  // With base URL
         </ul>
         <p><code>Content-Type</code> è l'unico header che deve andare sul content, non su <code>HttpRequestMessage.Headers</code>. Gli altri header personalizzati sono aggiunti alla richiesta; un duplicato di un header già impostato da <code>setAuth</code> o <code>setHeader</code> può far fallire quell'add e venire saltato.</p>
 
-        <h2>29.4 Formato della risposta</h2>
+        <h2>30.4 Formato della risposta</h2>
         <p>Uno scambio HTTP completato (inclusi 4xx / 5xx) restituisce:</p>
         <table>
             <thead>
@@ -153,9 +153,9 @@ var client = new RestClient("https://api.example.com", 60000);  // With base URL
             <li><code>ok</code> (bool): <code>false</code></li>
             <li><code>status</code> (int): di solito <code>0</code>. Uno status c'è solo quando un'<code>HttpRequestException</code> porta un <code>StatusCode</code> in <code>Data</code></li>
         </ul>
-        <p>Gli oggetti di errore di trasporto non hanno <code>body</code>, <code>headers</code> né <code>statusText</code>. I nomi degli header host conservano il casing del server; il path JS <code>fetch</code> spesso li mette in minuscolo (29.10).</p>
+        <p>Gli oggetti di errore di trasporto non hanno <code>body</code>, <code>headers</code> né <code>statusText</code>. I nomi degli header host conservano il casing del server; il path JS <code>fetch</code> spesso li mette in minuscolo (30.10).</p>
 
-        <h2>29.5 Funzioni HTTP statiche</h2>
+        <h2>30.5 Funzioni HTTP statiche</h2>
         <p>Queste creano un <code>RestClient</code> <strong>nuovo</strong> (URL di base vuoto, timeout 30 s, nessun header di default, nessun <code>setAuth</code>) e chiamano il metodo corrispondente:</p>
         <ul>
             <li><code>httpGet(url, headers?, queryParams?)</code></li>
@@ -167,7 +167,7 @@ var client = new RestClient("https://api.example.com", 60000);  // With base URL
         <p>Usale per URL assoluti una tantum. Usa un'istanza di <code>RestClient</code> quando più chiamate condividono host, token o timeout. Sul backend JS mappano a <code>mlRuntime.http.get|post|put|delete|patch</code> (<code>fetch</code>) con lo stesso ordine degli argomenti e le stesse forme di successo / errore di trasporto.</p>
         <p>Non confonderle con <code>cap.httpGet</code>. Quel built-in di capability crea un token; non esegue la richiesta.</p>
 
-        <h2>29.6 Autenticazione</h2>
+        <h2>30.6 Autenticazione</h2>
         <p><code>setAuth</code> riconosce solo due type (case-insensitive):</p>
         <ul>
             <li><code>Bearer</code>: <code>Authorization: Bearer &lt;credentials&gt;</code> così come passate (nessuna codifica extra)</li>
@@ -184,7 +184,7 @@ var response = client.get("/protected-endpoint");</code></pre>
 var response = httpGet("https://api.example.com/endpoint", headers);</code></pre>
         <p>Gli header di default da <code>setHeader</code> sono applicati prima di <code>setAuth</code> e prima degli header per-richiesta.</p>
 
-        <h2>29.7 Timeout</h2>
+        <h2>30.7 Timeout</h2>
         <p>Sull'host il timeout è <code>HttpClient.Timeout</code> (costruttore o <code>setTimeout</code>). Allo scadere ottieni un oggetto di errore di trasporto: <code>ok</code> è false, <code>status</code> è 0 e <code>error</code> è il messaggio dell'eccezione (in genere menziona timeout o cancellazione). Le funzioni one-shot <code>http*</code> usano sempre il default di 30 s.</p>
         <pre><code>// Set timeout to 60 seconds
 var client = new RestClient("https://api.example.com", 60000);
@@ -196,7 +196,7 @@ if (!response.ok &amp;&amp; response.status == 0) {
 }</code></pre>
         <p>Gli helper JS <code>mlRuntime.http.*</code> <strong>non</strong> impostano un timeout di abort di <code>fetch</code>. Limita una chiamata JS con <code>@within(ms)</code> se ti serve una deadline lì.</p>
 
-        <h2>29.8 Redirect e retry</h2>
+        <h2>30.8 Redirect e retry</h2>
         <p>Nessuna delle due superfici espone un'API di redirect o retry.</p>
         <ul>
             <li><strong>Redirect:</strong> l'<code>HttpClient</code> host segue i redirect di default (auto-redirect dell'handler, tipicamente max 50). Il <code>fetch</code> JS usa il default <code>redirect: "follow"</code>. Da MALDA non si può disattivare. Lo <code>status</code> che vedi è la risposta finale dopo la catena di hop, non il 3xx.</li>
@@ -219,12 +219,12 @@ if (!response.ok &amp;&amp; response.status == 0) {
     return last;
 }</code></pre>
 
-        <h2 id="cors-host-browser">29.9 CORS: host vs browser</h2>
-        <p><code>RestClient</code> e gli <code>http*</code> interpretati / C# girano sull'host. Non sono un browser, quindi l'algoritmo CORS non si applica. Abilita CORS sul <em>server</em> che chiami solo se i browser lo chiameranno — vedi <a href="28-rest-api.html">28. Server REST API</a> §28.12.</p>
-        <p>Gli <code>httpGet</code> / <code>httpPost</code> transpilati in JS usano <code>fetch</code> nella pagina. Le chiamate cross-origin richiedono allora che l'API remota consenta origine, metodo e header. Le chiamate same-origin a un'API MALDA montata sullo stesso host (capitolo 30) non necessitano di CORS.</p>
+        <h2 id="cors-host-browser">30.9 CORS: host vs browser</h2>
+        <p><code>RestClient</code> e gli <code>http*</code> interpretati / C# girano sull'host. Non sono un browser, quindi l'algoritmo CORS non si applica. Abilita CORS sul <em>server</em> che chiami solo se i browser lo chiameranno — vedi <a href="29-rest-api.html">29. Server REST API</a> §29.12.</p>
+        <p>Gli <code>httpGet</code> / <code>httpPost</code> transpilati in JS usano <code>fetch</code> nella pagina. Le chiamate cross-origin richiedono allora che l'API remota consenta origine, metodo e header. Le chiamate same-origin a un'API MALDA montata sullo stesso host (capitolo 31) non necessitano di CORS.</p>
         <p><code>enableCORS</code> lato server non cambia il modo in cui <code>RestClient</code> invia le richieste.</p>
 
-        <h2>29.10 Interpret vs transpile</h2>
+        <h2>30.10 Interpret vs transpile</h2>
         <ul>
             <li><strong>Interprete e transpile C#:</strong> <code>new RestClient</code> e <code>http*</code> condividono <code>RestClientInstance</code>. Le chiamate sono sincrone (<code>HttpClient.Send</code>). Header di default, <code>setAuth</code>, <code>setTimeout</code> e <code>setBaseUrl</code> funzionano.</li>
             <li><strong>Transpile JS:</strong> <code>httpGet</code> / <code>httpPost</code> / <code>httpPut</code> / <code>httpDelete</code> / <code>httpPatch</code> diventano <code>mlRuntime.http.*</code> (<code>fetch</code>, async). Nel runtime JS non c'è la classe <code>RestClient</code>. Tieni la configurazione di istanza sul lato host / <code>@server()</code>, oppure passa gli header su ogni chiamata <code>http*</code> dal codice <code>@client()</code>.</li>
@@ -232,8 +232,8 @@ if (!response.ok &amp;&amp; response.status == 0) {
             <li><strong>Timeout:</strong> l'host rispetta il timeout di <code>RestClient</code>; gli <code>http*</code> JS no (usa <code>@within</code>).</li>
         </ul>
 
-        <h2>29.11 Chiamare un RestServer MALDA</h2>
-        <p>Un 2xx da <code>RestClient</code> significa che il livello HTTP è andato a buon fine. Il body JSON può comunque essere un envelope del framework MALDA del capitolo 28:</p>
+        <h2>30.11 Chiamare un RestServer MALDA</h2>
+        <p>Un 2xx da <code>RestClient</code> significa che il livello HTTP è andato a buon fine. Il body JSON può comunque essere un envelope del framework MALDA del capitolo 29:</p>
         <pre><code>{
   "status": 401,
   "error": "InvalidToken",
@@ -243,14 +243,14 @@ if (!response.ok &amp;&amp; response.status == 0) {
         <ul>
             <li>Sui fallimenti leggi <code>response.body.error</code> / <code>response.body.message</code> / <code>response.body.correlationId</code>. Lo stesso id è su <code>X-Correlation-ID</code>.</li>
             <li>I fallimenti di validazione includono <code>details</code>: <code>{location, field, message}</code>.</li>
-            <li>Se l'API ha <code>enableCsrf</code>, le chiamate che mutano servono il cookie CSRF più <code>X-CSRF-Token</code> (o l'header configurato). Vedi 28.9.</li>
+            <li>Se l'API ha <code>enableCsrf</code>, le chiamate che mutano servono il cookie CSRF più <code>X-CSRF-Token</code> (o l'header configurato). Vedi 29.9.</li>
             <li>Non trattare un envelope applicativo restituito <code>{"status": 200, "data": ...}</code> come status HTTP. Lo status HTTP è <code>response.status</code>.</li>
         </ul>
         <p>Smoke test in loopback nel repo: <code>docs/llm/few-shot/13_http_client.malda</code> (<code>RestServer</code> locale + <code>httpGet</code> / <code>httpPost</code>).</p>
 
-        <h2>29.12 Esempi</h2>
+        <h2>30.12 Esempi</h2>
 
-        <h3>29.12.1 Istanza RestClient</h3>
+        <h3>30.12.1 Istanza RestClient</h3>
         <pre><code>// Create client with base URL
 var client = new RestClient("https://api.example.com");
 
@@ -282,7 +282,7 @@ var response = client.put("/users/123", updateData);
 // DELETE request
 var response = client.delete("/users/123");</code></pre>
 
-        <h3>29.12.2 Funzioni statiche</h3>
+        <h3>30.12.2 Funzioni statiche</h3>
         <pre><code>// Simple GET request
 var response = httpGet("https://api.example.com/users");
 if (response.ok) {
@@ -305,7 +305,7 @@ var headers = {"Content-Type": "application/json", "X-API-Key": "key123"};
 var body = parseJSON("{\"name\": \"Alice\"}");
 var response = httpPost("https://api.example.com/users", body, headers);</code></pre>
 
-        <h3>29.12.3 Errori HTTP vs di trasporto</h3>
+        <h3>30.12.3 Errori HTTP vs di trasporto</h3>
         <pre><code>var response = httpGet("https://api.example.com/users/999");
 if (!response.ok) {
     if (response.status == 404) {
@@ -317,7 +317,7 @@ if (!response.ok) {
     }
 }</code></pre>
 
-        <h3>29.12.4 Body e header della risposta</h3>
+        <h3>30.12.4 Body e header della risposta</h3>
         <pre><code>var response = httpGet("https://api.example.com/users");
 if (response.ok) {
     var users = response.body;  // Already parsed as object/array if JSON
@@ -330,7 +330,7 @@ if (response.ok) {
     print("Content-Type: " + contentType);
 }</code></pre>
 
-        <h3>29.12.5 Walkthrough contro un'API pubblica</h3>
+        <h3>30.12.5 Walkthrough contro un'API pubblica</h3>
         <pre><code>// Create REST client
 var client = new RestClient("https://jsonplaceholder.typicode.com");
 
@@ -368,15 +368,15 @@ if (response.ok) {
         <div class="see-also">
             <h3>Vedi anche</h3>
             <ul>
-                <li><a href="28-rest-api.html">28. Server REST API</a> - Creare server REST API</li>
-                <li><a href="25-web-ui.html">25. Componenti server Web UI</a> - Pattern di integrazione Web UI + API</li>
-                <li><a href="30-full-stack-development.html">30. Sviluppo full-stack con MALDA</a> - Architettura end-to-end e chiamate API dalla UI</li>
+                <li><a href="29-rest-api.html">29. Server REST API</a> - Creare server REST API</li>
+                <li><a href="26-web-ui.html">26. Componenti server Web UI</a> - Pattern di integrazione Web UI + API</li>
+                <li><a href="31-full-stack-development.html">31. Sviluppo full-stack con MALDA</a> - Architettura end-to-end e chiamate API dalla UI</li>
                 <li><a href="12-input-output.html">12. Input/Output</a> — console, file, path, ambiente, <code>cap.httpGet</code></li>
             </ul>
         </div>
         <div class="nav-footer">
-            <a href="28-rest-api.html">← Precedente: 28. Server REST API</a>
-            <a href="30-full-stack-development.html">Successivo: 30. Sviluppo full-stack con MALDA→</a>
+            <a href="29-rest-api.html">← Precedente: 29. Server REST API</a>
+            <a href="31-full-stack-development.html">Successivo: 31. Sviluppo full-stack con MALDA→</a>
         </div>
 
         <footer>

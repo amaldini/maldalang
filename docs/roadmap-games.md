@@ -7,7 +7,7 @@
 This is the plan that made MALDA a **good platform for games people finish** —
 Love2D / Pico-8 / Phaser, not Unity. G0–G17 are landed. Prefer
 [`docs/javascript-backend.md`](javascript-backend.md),
-[Reference Manual 27](../ReferenceManual/27-browser-javascript-backend.html),
+[Reference Manual 28](../ReferenceManual/28-browser-javascript-backend.html),
 and the deferred list at the end for engines that stay out of core.
 
 **Bar today:** JS-only canvas kit — images / atlas blit / camera / draw extras,
@@ -44,7 +44,7 @@ top-level globals, Web IDE Desktop parity, product apps or vertical packs
 4. **One focused PR per workstream.** G1–G9 shipped that way; keep future
    slices the same size.
 5. **JS-only registration, not the host builtin checklist.** `game.*` is not
-   in `BuiltInRegistry`. New names land in `malda-js-runtime.js` + chapter 26 +
+   in `BuiltInRegistry`. New names land in `malda-js-runtime.js` + chapter 28 +
    `JavaScriptBackendTests`. `JsTranspiler` already routes every `game.*` /
    `three.*` member; do not special-case each new call.
 6. **Lean on MALDA where engines are weak.** `@client` / `@server`, `schema`
@@ -114,8 +114,8 @@ C# transpiler) **do not apply**. Do this instead:
    [`MaldaLang.Tests/JavaScriptBackendTests.cs`](../MaldaLang.Tests/JavaScriptBackendTests.cs)
    — same fake-canvas pattern as `GameRuntime_SetPixelAndBlitPixels_WritesImageData`
 3. Name every new call in
-   [`ReferenceManual/27-browser-javascript-backend.html`](../ReferenceManual/27-browser-javascript-backend.html)
-   (and [`ReferenceManual/it/26-…`](../ReferenceManual/it/27-browser-javascript-backend.html))
+   [`ReferenceManual/28-browser-javascript-backend.html`](../ReferenceManual/28-browser-javascript-backend.html)
+   (and [`ReferenceManual/it/28-…`](../ReferenceManual/it/28-browser-javascript-backend.html))
 4. Document contract + guardrails in [`docs/javascript-backend.md`](javascript-backend.md)
 5. Small `.malda` smoke under `Examples/Games/` (or extend an existing host
    HTML); do not hand-edit generated `.js`
@@ -159,7 +159,7 @@ a PNG, blit atlas frames, scroll a camera, and draw a line, without per-tile
 - Camera does **not** affect `setPixel` / `blitPixels` (those stay buffer-local).
 - No sprite *objects* in the runtime — handles + draw calls only.
 
-**Files:** runtime, chapter 26.9, `docs/javascript-backend.md`. Showcase reuse
+**Files:** runtime, chapter 28.9, `docs/javascript-backend.md`. Showcase reuse
 is **G7** (`malda_platform`), not a `maldadash` rewrite.
 
 ---
@@ -191,7 +191,7 @@ is **G7** (`malda_platform`), not a `maldadash` rewrite.
 - `game.stop()` still clears key and button sets (today’s behavior).
 
 **Files:** runtime input listeners (keys on `window`; `gamepadconnected` +
-per-frame `navigator.getGamepads()` poll), chapter 26.9, tests that fake
+per-frame `navigator.getGamepads()` poll), chapter 28.9, tests that fake
 `keydown`/`keyup` around one `update` tick.
 
 ---
@@ -234,7 +234,7 @@ WAV/OGG one-shots can play without stopping the Audio v1 track or pattern.
 - Shared node cap still applies (today’s runaway-SFX limit).
 - `game.stop()` still does **not** implicit-stop audio.
 
-**Files:** runtime audio graph, chapter 26.9, beep asset under
+**Files:** runtime audio graph, chapter 28.9, beep asset under
 `Examples/Games/` or `Examples/Web/wwwroot/audio/`.
 
 ---
@@ -318,7 +318,7 @@ Keep the curated wrapper (no raw `THREE.*` in MALDA source). Host pages still
 load `three.min.js` first; GLTF uses a runtime-owned loader so examples do
 not grow a fourth `<script>`.
 
-**Files:** runtime `three` IIFE, chapter 26.10.
+**Files:** runtime `three` IIFE, chapter 28.10.
 
 ---
 
@@ -352,7 +352,7 @@ through a wall thinner than this tick's delta.
 - Not tileset collision, swept circles, or a physics engine.
 - Resolve X then Y against each obstacle and keep the earliest `t`.
 
-**Files:** runtime, chapter 26.9, `docs/javascript-backend.md`.
+**Files:** runtime, chapter 28.9, `docs/javascript-backend.md`.
 
 ---
 
@@ -373,7 +373,7 @@ flipped magenta tile) and spinning coins in `malda_platform`. Axis-aligned
 - `save`/`restore` so later `fillRect` / HUD draws are not left rotated.
 - `drawImage` / `drawImageRect` signatures stay unchanged.
 
-**Files:** runtime, chapter 26.9, `docs/javascript-backend.md`.
+**Files:** runtime, chapter 28.9, `docs/javascript-backend.md`.
 
 ---
 
@@ -399,7 +399,7 @@ was `getMouseX() + getCameraX()`.
 - Read mouse edges in `update` only (false in `render`).
 - `drawImage` / `drawImageRect` signatures stay unchanged.
 
-**Files:** runtime, chapter 26.9, `docs/javascript-backend.md`.
+**Files:** runtime, chapter 28.9, `docs/javascript-backend.md`.
 
 ---
 
@@ -422,7 +422,7 @@ could not magnify a scene; every draw size stayed 1:1 with canvas pixels.
 - `createCanvas` resets zoom to `1` and clears the stack.
 - Not a camera object, letterboxing, or a second renderer.
 
-**Files:** runtime, chapter 26.9, `docs/javascript-backend.md`.
+**Files:** runtime, chapter 28.9, `docs/javascript-backend.md`.
 
 ---
 
@@ -448,7 +448,7 @@ had `fillCircle` without a stroke twin.
 - `measureText` is HUD metrics, not a world-space size — measure after `pushCamera` + zoom 1.
 - Not HiDPI backing-store scale, letterboxing, or a second renderer.
 
-**Files:** runtime, chapter 26.9, `docs/javascript-backend.md`.
+**Files:** runtime, chapter 28.9, `docs/javascript-backend.md`.
 
 ---
 
@@ -472,7 +472,7 @@ behind. A fast dart vs two thin gates should not copy `earliestHit` either
 
 **Smoke:** extend `Examples/Games/game_collision_smoke.malda` (dart vs wall **and** gate; ghost still tunnels). Showcase: `malda_platform` drops `sweepPlatforms` and builds one `plats` array of `{ x, y, w, h }`.
 
-**Files:** runtime, chapter 26.9, `docs/javascript-backend.md`, `docs/llm/malda-gotchas.md` (same tunneling note as `sweepRect`). Tests: `JsTranspiler_Maps…` + `GameRuntime_SweepRects_PicksEarliestHit` (no canvas). Filtered: `JavaScriptBackendTests`.
+**Files:** runtime, chapter 28.9, `docs/javascript-backend.md`, `docs/llm/malda-gotchas.md` (same tunneling note as `sweepRect`). Tests: `JsTranspiler_Maps…` + `GameRuntime_SweepRects_PicksEarliestHit` (no canvas). Filtered: `JavaScriptBackendTests`.
 
 **PR size:** one runtime helper + smoke + showcase rewrite. Do not fold G12 into this PR (`malda_platform` will change twice if G12 follows).
 
@@ -499,7 +499,7 @@ Today's platform lead (`camX = playerX - 280`) is `followCamera(playerX, playerY
 
 **Smoke:** `game_sprite_smoke.malda` can keep manual pan; showcase `malda_platform` switches the clamp block to `followCamera`. Optional `snap: true` on that call.
 
-**Files:** runtime, chapter 26.9, `docs/javascript-backend.md`. Tests: fake canvas + `getCameraX` after follow/clamp/snap. Filtered: `JavaScriptBackendTests`.
+**Files:** runtime, chapter 28.9, `docs/javascript-backend.md`. Tests: fake canvas + `getCameraX` after follow/clamp/snap. Filtered: `JavaScriptBackendTests`.
 
 **Depends on:** none (G10 canvas getters are optional convenience in the example). Land **after G11** if both rewrite `malda_platform` in the same week.
 
@@ -530,7 +530,7 @@ jumps need stereo pan and playback rate without a second audio graph.
 
 **Smoke:** `Examples/Games/game_audio_sample_smoke.malda` — Z/X already overlap two beeps; add pan (Z left, X right) and a third key for a faster `playbackRate`. Pattern must keep playing.
 
-**Files:** runtime audio graph, chapter 26.9, `docs/javascript-backend.md` Audio Spec v1 additive note, `docs/llm/malda-gotchas.md` (stop-sample still does not stop the track). Tests: extend `GameRuntime_AudioPlaySample_OverlapsWithoutStoppingTrack` (fake context records pan/rate). Filtered: `JavaScriptBackendTests`.
+**Files:** runtime audio graph, chapter 28.9, `docs/javascript-backend.md` Audio Spec v1 additive note, `docs/llm/malda-gotchas.md` (stop-sample still does not stop the track). Tests: extend `GameRuntime_AudioPlaySample_OverlapsWithoutStoppingTrack` (fake context records pan/rate). Filtered: `JavaScriptBackendTests`.
 
 **Independent of G11/G12/G15.**
 
@@ -557,7 +557,7 @@ presses and then overwrites `prev` — releases are the other half of that diff.
 
 **Smoke:** `Examples/Games/game_input_smoke.malda` — flash on `wasGamepadButtonReleased(0, 0)`; move with `getGamepadAxis(0, 0, 0.2)` so stick noise does not drift the box.
 
-**Files:** runtime input, chapter 26.9, `docs/javascript-backend.md`, `docs/llm/malda-gotchas.md` (edges false in `render`). Tests: fake `navigator.getGamepads` around two `update` ticks (down then up). Filtered: `JavaScriptBackendTests`.
+**Files:** runtime input, chapter 28.9, `docs/javascript-backend.md`, `docs/llm/malda-gotchas.md` (edges false in `render`). Tests: fake `navigator.getGamepads` around two `update` ticks (down then up). Filtered: `JavaScriptBackendTests`.
 
 **Independent of G11–G13/G15.**
 
@@ -610,7 +610,7 @@ scope.
 
 **Smoke:** `Examples/Games/game_sprite_smoke.malda` — spinning tile multiply-tints, flipped tile `tintFill` flash, marker glow via `setBlend("add")`, multiply strip. Showcase: `malda_platform` white `tintFill` on coin collect plus an additive spark.
 
-**Files:** runtime, chapter 26.9, `docs/javascript-backend.md`, `docs/llm/malda-gotchas.md`. Tests: `JsTranspiler_Maps…` + `GameRuntime_SetBlend_…` + `GameRuntime_DrawImageEx_TintAndTintFill_…`. Filtered: `JavaScriptBackendTests`.
+**Files:** runtime, chapter 28.9, `docs/javascript-backend.md`, `docs/llm/malda-gotchas.md`. Tests: `JsTranspiler_Maps…` + `GameRuntime_SetBlend_…` + `GameRuntime_DrawImageEx_TintAndTintFill_…`. Filtered: `JavaScriptBackendTests`.
 
 ---
 
@@ -637,7 +637,7 @@ not Tiled/LDtk or a tile *engine*.
 
 **Smoke:** `Examples/Games/game_tiles_smoke.malda` (atlas cave, gem pickups via `tileAt`, landings via `sweepTiles`). Showcase: `maldadash` draws the cave with `drawTiles`, queries with `tileAt`, and uses `sweepTiles` for explosion-spark bounces.
 
-**Files:** runtime, chapter 26.9, `docs/javascript-backend.md`, `docs/llm/malda-gotchas.md`. Tests: `JsTranspiler_MapsGameTileApis…` + `GameRuntime_TileAt_…` + `GameRuntime_SweepTiles_…` + `GameRuntime_DrawTiles_…` + `JsTranspiler_TilesSmokeExample_…`. Filtered: `JavaScriptBackendTests`.
+**Files:** runtime, chapter 28.9, `docs/javascript-backend.md`, `docs/llm/malda-gotchas.md`. Tests: `JsTranspiler_MapsGameTileApis…` + `GameRuntime_TileAt_…` + `GameRuntime_SweepTiles_…` + `GameRuntime_DrawTiles_…` + `JsTranspiler_TilesSmokeExample_…`. Filtered: `JavaScriptBackendTests`.
 
 ---
 
@@ -712,7 +712,7 @@ Historical PR order (already landed):
 11. **G16** — `drawImageEx` tint / `tintFill` + `setBlend`
 12. **G17** — `drawTiles` / `tileAt` / `sweepTiles`
 
-Each MINOR runtime slice updated chapter 26 and `docs/javascript-backend.md`
+Each MINOR runtime slice updated chapter 28 and `docs/javascript-backend.md`
 in the same PR. Spec bump: JS `game.*` is product/Tier-2-ish relative to
 Tier 0; treat new names as **MINOR** additive on the JS backend and add a
 CHANGELOG Unreleased row (product / docs), not a Tier 0 conformance case.

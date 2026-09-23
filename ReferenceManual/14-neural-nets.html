@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="MALDA neural nets - dense layers, activations, and one local backward step">
+    <title>14. Neural Nets - MALDA Reference Manual</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="syntax.css">
+    <link rel="stylesheet" href="print.css" media="print">
+</head>
+<body>
+    <header>
+        <h1>MALDA&trade; Reference Manual</h1>
+        <p>The AI-First Programming Language - Version 1.0.26</p>
+    </header>
+    <nav></nav>
+    <main>
+        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>14. Neural Nets</span></div>
+
+        <h1>14. Neural Nets</h1>
+
+        <p>A dense layer is one matrix multiply, a bias, and an activation. MALDA does not build an autograd tape: you keep the pre-activation from the forward pass and multiply by the local derivative yourself, or you call <code>nn.denseBackward</code>, which does that one step. Signatures live in <a href="13-built-in-functions.html#nn">13.3.3</a>. The student programs are <code>Examples/AI_Theory/</code>.</p>
+
+        <h2 id="math-layout">14.1 What stays on <code>math</code></h2>
+        <p>Linear algebra stays on <code>math</code>. A weight matrix is <code>[in, out]</code>: one row per input, one column per output, the same layout as <code>math.matmul(x, weights)</code>. Inner dimensions must match.</p>
+        <table>
+        <thead>
+        <tr><th>Call</th><th>Role</th></tr>
+        </thead>
+        <tbody>
+        <tr><td><code>math.dot</code> / <code>matmul</code> / <code>transpose</code></td><td>Vectors and matrices. Only on <code>math</code></td></tr>
+        <tr><td><code>math.sigmoid</code> / <code>tanh</code> / <code>softmax</code></td><td>Also available as <code>nn.sigmoid</code> / <code>tanh</code> / <code>softmax</code></td></tr>
+        <tr><td><code>nn.relu</code> / <code>mse</code> / <code>crossEntropyFromLogits</code></td><td>Only on <code>nn</code>. There is no <code>math.relu</code></td></tr>
+        </tbody>
+        </table>
+        <pre><code data-run="true" data-expect="5">print(math.dot([1.0, 2.0], [3.0, 1.0]));</code></pre>
+
+        <h2 id="dense">14.2 One dense layer</h2>
+        <p><code>nn.dense(x, weights, bias?, activation?)</code> accepts a vector or a batch matrix. Bias length equals the number of outputs. It returns <code>{ pre, out }</code>.</p>
+        <p><code>pre</code> is the pre-activation, the linear part before the nonlinearity: <code>pre = xW + b</code> (or <code>XW + b</code> for a batch). <code>out</code> is <code>activation(pre)</code>. With no activation, or with <code>"linear"</code>, <code>out</code> is a copy of <code>pre</code>. Save <code>pre</code>. The backward step needs it.</p>
+        <pre><code data-run="true" data-expect="275\n-150\n275\n0">var layer = nn.dense([1.0, 2.0], [[0.5, -1.0], [1.0, 0.0]], [0.25, -0.5], "relu");
+print(int(layer.pre[0] * 100));
+print(int(layer.pre[1] * 100));
+print(int(layer.out[0] * 100));
+print(int(layer.out[1]));</code></pre>
+        <p>Here <code>pre</code> is <code>[2.75, -1.5]</code>. ReLU leaves <code>2.75</code> and replaces <code>-1.5</code> with <code>0</code>, so <code>out</code> is <code>[2.75, 0]</code>.</p>
+
+        <h2 id="activations">14.3 Activations</h2>
+        <p><code>relu</code>, <code>leakyRelu</code>, <code>elu</code>, <code>gelu</code>, <code>silu</code>, <code>softplus</code>, <code>sigmoid</code>, <code>tanh</code>, and <code>linear</code> are the names <code>nn.dense</code> accepts. Inside <code>dense</code>, <code>leakyRelu</code> uses alpha <code>0.01</code> and <code>elu</code> uses alpha <code>1</code>. The standalone calls <code>nn.leakyRelu(x, alpha?)</code> and <code>nn.elu(x, alpha?)</code> take an optional alpha.</p>
+        <p>Each <code>nn.d*</code> helper is the derivative with respect to the pre-activation, not with respect to the squashed output. <code>dSigmoid(z) = s * (1 - s)</code> with <code>s = sigmoid(z)</code>.</p>
+
+        <h2 id="backward">14.4 One backward step</h2>
+        <p><code>nn.denseBackward(x, weights, upstream, activation?, pre?)</code> returns <code>{ dInput, dWeights, dBias }</code>. <code>upstream</code> is dL/d(<code>out</code>). Pass the forward <code>pre</code> whenever the activation is not linear: the local derivative is evaluated at <code>pre</code>. For a batch, bias gradients are summed over the batch.</p>
+        <pre><code data-run="true" data-expect="5\n1\n0">var x = [1.0, 2.0];
+var w = [[0.5, -1.0], [1.0, 0.0]];
+var layer = nn.dense(x, w, [0.25, -0.5], "relu");
+var back = nn.denseBackward(x, w, [1.0, 1.0], "relu", layer.pre);
+print(int(back.dInput[0] * 10));
+print(int(back.dBias[0]));
+print(int(back.dBias[1]));</code></pre>
+        <p>ReLU's derivative is <code>0</code> on the negative unit, so that column of the upstream gradient is dropped before the multiply by <code>W</code>. <code>Examples/AI_Theory/xor_neural_net.malda</code> writes the same chain rule with named variables. <code>Examples/AI_Theory/nn_dense.malda</code> trains the same XOR net through <code>nn.dense</code> and <code>nn.denseBackward</code>.</p>
+
+        <h2 id="losses">14.5 Losses</h2>
+        <p><code>nn.mse(pred, target)</code> is the mean of squared errors. <code>nn.mseGrad(pred, target)</code> is elementwise <code>pred - target</code>, the gradient of <code>1/2 (pred - target)^2</code>. It is not the gradient of the averaged <code>nn.mse</code>.</p>
+        <p><code>nn.crossEntropyFromLogits(logits, targetIndex)</code> is the classification loss for one class index. <code>nn.softmaxGrad(logits, target)</code> is <code>softmax(logits)</code> minus that class (or minus a same-length numeric vector).</p>
+
+        <h2 id="examples">14.6 Examples</h2>
+        <p>Read them in this order. Each file seeds the RNG and runs offline.</p>
+        <ol>
+            <li><code>Examples/AI_Theory/chain_rule.malda</code> — why backprop multiplies local derivatives</li>
+            <li><code>Examples/AI_Theory/perceptron.malda</code> — one neuron; AND/OR versus XOR</li>
+            <li><code>Examples/AI_Theory/xor_neural_net.malda</code> — a 2-4-1 net with the chain rule written out</li>
+            <li><code>Examples/AI_Theory/nn_dense.malda</code> — the same net through <code>nn.dense</code></li>
+            <li><code>Examples/AI_Theory/softmax_classifier.malda</code> — three classes in 2D</li>
+        </ol>
+        <p><code>attention_is_all_you_need.malda</code> and <code>microgpt.malda</code> stay on the same track. <code>new OnnxModel(path)</code> inspects and runs a small model on the host. It does not train.</p>
+
+        <h2 id="backends">14.7 Backends</h2>
+        <p>Interpreter, C# transpile, and JavaScript all run <code>math.dot</code> / <code>matmul</code> / <code>transpose</code> and <code>nn.*</code>. <code>OnnxModel</code> is host-only. There is no flat alias for <code>nn</code> names: write <code>nn.relu</code>, not <code>relu</code>.</p>
+
+        <div class="see-also">
+            <h3>See Also</h3>
+            <ul>
+                <li><a href="13-built-in-functions.html#nn">13.3.3 Neural-net namespace</a> — signature catalog</li>
+                <li><a href="35-examples.html">35. Examples</a> — <code>Examples/AI_Theory/</code></li>
+                <li><a href="../docs/roadmap-neural.md">Neural-nets kit</a> — what is in core and what stays out</li>
+            </ul>
+        </div>
+
+        <div class="nav-footer">
+            <a href="13-built-in-functions.html">← Previous: 13. Built-in Functions</a>
+            <a href="15-graphs.html">Next: 15. Graphs→</a>
+        </div>
+
+        <footer>
+            <p>Copyright (c) 2026 Andrea Maldini. Licensed under the <a href="https://opensource.org/license/mit">MIT License</a> or the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>, at your option.</p>
+        </footer>
+    </main>
+    <script src="malda-highlight.js"></script>
+    <script src="navigation.js"></script>
+</body>
+</html>

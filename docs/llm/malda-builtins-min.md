@@ -169,7 +169,7 @@ Use `@PAGE` + `pageLayout` for route-first HTML; use `ui.*` (+ optional `compone
 tree/patch UI. Grep `malda-builtins.tsv` for a control name (`uiButton`, `uiDataGrid`, …);
 call it as `ui.button(...)`, `ui.dataGrid(...)`.
 
-API reference: `ReferenceManual/25-web-ui.html` (start at `24-web-ui-hub.html`).
+API reference: `ReferenceManual/26-web-ui.html` (start at `25-web-ui-hub.html`).
 Runnable shapes: `docs/llm/few-shot/19_ui_tree.malda`, `Examples/Web/ui_*.malda`,
 `Templates/fullstack/`.
 
@@ -195,7 +195,7 @@ Durable: `step result = runProgram(prog)` — `docs/llm/few-shot/29_runprogram_i
 `validate("Intent", dict)` leaves a tagged dict; `asVariant("Intent", dict)` yields a variant for `match` (few-shot `25_as_variant.malda`).
 `evalPrompt(instance, fixture)` fixture-tests a typed `PromptInstance` without an LLM (few-shot `27_eval_prompt.malda`).
 `malda eval` runs `suite` / `case` / `expect` (ordinary `malda run` skips suites). Cassettes:
-`MALDA_RECORD` / `MALDA_REPLAY` / `MALDA_REPLAY_STRICT` — few-shots `43_`–`48_`, chapter 23.
+`MALDA_RECORD` / `MALDA_REPLAY` / `MALDA_REPLAY_STRICT` — few-shots `43_`–`48_`, chapter 24.
 
 ## Actors
 

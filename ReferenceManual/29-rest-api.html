@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="MALDA REST API Server - Decorators, RestServer, request pipeline, auth, validation, and mount">
-    <title>28. REST API Server - MALDA Reference Manual</title>
+    <title>29. REST API Server - MALDA Reference Manual</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="syntax.css">
     <link rel="stylesheet" href="print.css" media="print">
@@ -16,38 +16,38 @@
     </header>
     <nav></nav>
     <main>
-        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>28. REST API Server</span></div>
-        <h1>28. REST API Server</h1>
+        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>29. REST API Server</span></div>
+        <h1>29. REST API Server</h1>
         <p>MALDA includes native support for JSON-first REST APIs. Decorate functions with HTTP methods, then host them on <code>RestServer</code> (standalone) or mount that server on <code>HttpServer</code> for a single-port full-stack app.</p>
-        <p><code>RestServer</code>, <code>HttpServer</code>, and sessions run on the interpreter and C# transpile. They are not available on the JavaScript backend — keep the server on the host and call it from the browser (<a href="29-rest-web-client.html">29. REST Web Client</a>). See the <a href="../docs/spec/backend-capability-matrix.md">backend capability matrix</a>. Interpret vs transpile handler notes are in 28.14.</p>
+        <p><code>RestServer</code>, <code>HttpServer</code>, and sessions run on the interpreter and C# transpile. They are not available on the JavaScript backend — keep the server on the host and call it from the browser (<a href="30-rest-web-client.html">30. REST Web Client</a>). See the <a href="../docs/spec/backend-capability-matrix.md">backend capability matrix</a>. Interpret vs transpile handler notes are in 29.14.</p>
         <div class="info-box">
-            <strong>Start here:</strong> New to web APIs? Read <a href="#web-concepts">28.1.1 Concepts primer</a> first — REST, middleware, auth, JWT, CSRF, CORS, HTTPS, and a threat-to-defense map, without leaving this manual. This chapter is the API-first reference. Page hosting, <code>@PAGE</code>, HTTPS, static files, multipart uploads, and SSE live in <a href="26-http-server-html-ui.html">26. HttpServer &amp; HTML UI Generation</a>. Calling APIs from MALDA is <a href="29-rest-web-client.html">29. REST Web Client</a>. JWT, CSRF, and password helpers are in <a href="#jwt-security">28.16</a> (name index: <a href="13-built-in-functions.html#jwt-security">13.25</a>).
+            <strong>Start here:</strong> New to web APIs? Read <a href="#web-concepts">29.1.1 Concepts primer</a> first — REST, middleware, auth, JWT, CSRF, CORS, HTTPS, and a threat-to-defense map, without leaving this manual. This chapter is the API-first reference. Page hosting, <code>@PAGE</code>, HTTPS, static files, multipart uploads, and SSE live in <a href="27-http-server-html-ui.html">27. HttpServer &amp; HTML UI Generation</a>. Calling APIs from MALDA is <a href="30-rest-web-client.html">30. REST Web Client</a>. JWT, CSRF, and password helpers are in <a href="#jwt-security">29.16</a> (name index: <a href="13-built-in-functions.html#jwt-security">13.25</a>).
         </div>
         <div class="info-box" id="first-read">
-            <strong>Why this page is not a lesson:</strong> A real example listens on a port. That cannot run in the manual snippet harness. Smallest file: <code>Examples/Web/rest_api_server.malda</code>. Start from <a href="24-web-ui-hub.html">24. Web UI Overview</a>. Course: <a href="learn.html#after-core">Learn MALDA — After the core path</a>.
+            <strong>Why this page is not a lesson:</strong> A real example listens on a port. That cannot run in the manual snippet harness. Smallest file: <code>Examples/Web/rest_api_server.malda</code>. Start from <a href="25-web-ui-hub.html">25. Web UI Overview</a>. Course: <a href="learn.html#after-core">Learn MALDA — After the core path</a>.
         </div>
 
-        <h2>28.1 Chapter Map</h2>
+        <h2>29.1 Chapter Map</h2>
         <ul>
-            <li><strong>28.1.1</strong> Concepts primer — REST, middleware, auth, CSRF, CORS, HTTPS, security map</li>
-            <li><strong>28.2</strong> HTTP and route-metadata decorators</li>
-            <li><strong>28.3</strong> <code>RestServer</code> constructor, properties, and methods</li>
-            <li><strong>28.4</strong> Request pipeline order</li>
-            <li><strong>28.5</strong> Path, query, body, and decorator binding</li>
-            <li><strong>28.6</strong> <code>req</code>, <code>req.auth</code>, and <code>req.session</code></li>
-            <li><strong>28.7</strong> Return shapes and <code>res</code> helpers</li>
-            <li><strong>28.8</strong> Global and route middleware</li>
-            <li><strong>28.9</strong> CSRF, rate limiting, and trusted proxy</li>
-            <li><strong>28.10</strong> <code>@Validate</code> and handler-time validation</li>
-            <li><strong>28.11</strong> Error contract</li>
-            <li><strong>28.12</strong> CORS and Swagger/OpenAPI</li>
-            <li><strong>28.13</strong> Mounting on <code>HttpServer</code></li>
-            <li><strong>28.14</strong> Interpret vs transpile notes</li>
-            <li><strong>28.15</strong> Complete example and templates</li>
-            <li><strong>28.16</strong> Password, JWT, and cookie helpers</li>
+            <li><strong>29.1.1</strong> Concepts primer — REST, middleware, auth, CSRF, CORS, HTTPS, security map</li>
+            <li><strong>29.2</strong> HTTP and route-metadata decorators</li>
+            <li><strong>29.3</strong> <code>RestServer</code> constructor, properties, and methods</li>
+            <li><strong>29.4</strong> Request pipeline order</li>
+            <li><strong>29.5</strong> Path, query, body, and decorator binding</li>
+            <li><strong>29.6</strong> <code>req</code>, <code>req.auth</code>, and <code>req.session</code></li>
+            <li><strong>29.7</strong> Return shapes and <code>res</code> helpers</li>
+            <li><strong>29.8</strong> Global and route middleware</li>
+            <li><strong>29.9</strong> CSRF, rate limiting, and trusted proxy</li>
+            <li><strong>29.10</strong> <code>@Validate</code> and handler-time validation</li>
+            <li><strong>29.11</strong> Error contract</li>
+            <li><strong>29.12</strong> CORS and Swagger/OpenAPI</li>
+            <li><strong>29.13</strong> Mounting on <code>HttpServer</code></li>
+            <li><strong>29.14</strong> Interpret vs transpile notes</li>
+            <li><strong>29.15</strong> Complete example and templates</li>
+            <li><strong>29.16</strong> Password, JWT, and cookie helpers</li>
         </ul>
 
-        <h3 id="web-concepts">28.1.1 Concepts primer</h3>
+        <h3 id="web-concepts">29.1.1 Concepts primer</h3>
         <p>The later sections assume a few web terms. This primer is enough to follow the MALDA APIs without an external glossary; it is not a full HTTP textbook. Skim it once, then jump to the section that names the API you need. A one-page <a href="#concept-security-map">threat-to-defense map</a> sits at the end.</p>
 
         <h4 id="concept-rest">REST and HTTP</h4>
@@ -64,12 +64,12 @@
                 <tr><td>JSON body</td><td><code>{"name": "Ada"}</code></td><td>Handler <code>body</code> argument or <code>req.body</code></td></tr>
             </tbody>
         </table>
-        <p>Status families: <strong>2xx</strong> success, <strong>4xx</strong> the client sent something the server will not accept, <strong>5xx</strong> the server failed. Codes you will see often: <strong>200</strong> OK, <strong>400</strong> validation failed, <strong>401</strong> not authenticated, <strong>403</strong> authenticated but not allowed, <strong>404</strong> no such route or resource, <strong>429</strong> rate limited, <strong>500</strong> uncaught server error. MALDA's JSON error envelope is 28.11.</p>
-        <p>GET and PUT are usually <strong>idempotent</strong> (repeating them does not create a second resource). POST often is not. That matters for retries — see <a href="29-rest-web-client.html#http-client-concepts">29.1.1</a>.</p>
+        <p>Status families: <strong>2xx</strong> success, <strong>4xx</strong> the client sent something the server will not accept, <strong>5xx</strong> the server failed. Codes you will see often: <strong>200</strong> OK, <strong>400</strong> validation failed, <strong>401</strong> not authenticated, <strong>403</strong> authenticated but not allowed, <strong>404</strong> no such route or resource, <strong>429</strong> rate limited, <strong>500</strong> uncaught server error. MALDA's JSON error envelope is 29.11.</p>
+        <p>GET and PUT are usually <strong>idempotent</strong> (repeating them does not create a second resource). POST often is not. That matters for retries — see <a href="30-rest-web-client.html#http-client-concepts">30.1.1</a>.</p>
 
         <h4 id="concept-middleware">Middleware</h4>
         <p>A route handler should do the business work (load a user, save a row). <strong>Middleware</strong> is a function that runs <em>before</em> that handler, for work that many routes share: logging, authentication, attaching a tenant id. Think of a conveyor: every request passes through the same gates, then the specific handler.</p>
-        <p>The MALDA contract is <code>(req, res, next)</code>. Call <code>next()</code> to continue the chain; skip <code>next()</code> (or send a response) to stop — that is how you reject an unauthenticated caller without running the handler. Global middleware is <code>server.use(...)</code>; per-route is <code>@Use("name")</code>. Details: 28.8. Pipeline order: 28.4.</p>
+        <p>The MALDA contract is <code>(req, res, next)</code>. Call <code>next()</code> to continue the chain; skip <code>next()</code> (or send a response) to stop — that is how you reject an unauthenticated caller without running the handler. Global middleware is <code>server.use(...)</code>; per-route is <code>@Use("name")</code>. Details: 29.8. Pipeline order: 29.4.</p>
         <pre><code>function logRequest(req, res, next) {
     print(req.method + " " + req.path);
     next();
@@ -86,15 +86,15 @@ server.use(requireAuth, { "except": ["/api/health"] });</code></pre>
         <p>Request flow, left to right: CSRF (if enabled) → global middleware → route <code>@Use</code> → rate limit → <code>@Validate</code> → handler. Auth middleware must run <em>before</em> the rate limiter if you want to key limits on the verified user.</p>
 
         <h4 id="concept-authentication">Authentication vs authorization</h4>
-        <p><strong>Authentication</strong> answers “who is this?”. <strong>Authorization</strong> answers “may they do this?”. Login proves identity; a role or permission check decides access. In MALDA, <code>req.auth.authenticateBearerJwt(secret)</code> authenticates; <code>req.auth.requireRole("admin")</code> authorizes. A missing or bad token is HTTP <strong>401</strong>; a known user lacking a role is <strong>403</strong>. Never treat “the request has an <code>X-User-Id</code> header” as authentication — anyone can send that header. See 28.6.2.</p>
+        <p><strong>Authentication</strong> answers “who is this?”. <strong>Authorization</strong> answers “may they do this?”. Login proves identity; a role or permission check decides access. In MALDA, <code>req.auth.authenticateBearerJwt(secret)</code> authenticates; <code>req.auth.requireRole("admin")</code> authorizes. A missing or bad token is HTTP <strong>401</strong>; a known user lacking a role is <strong>403</strong>. Never treat “the request has an <code>X-User-Id</code> header” as authentication — anyone can send that header. See 29.6.2.</p>
 
         <h4 id="concept-jwt">JWT and Bearer tokens</h4>
         <p>A <strong>JWT</strong> (JSON Web Token) is a signed string: a JSON payload (claims such as <code>sub</code>, <code>role</code>, expiry) plus a signature the server verifies with a secret. The client usually sends it as <code>Authorization: Bearer &lt;token&gt;</code>.</p>
         <p>Three words that are easy to mix up: <strong>encoding</strong> (Base64, reversible, not a secret), <strong>hashing</strong> (one-way, for passwords — next heading), <strong>signing</strong> (proves the token was minted with your secret; MALDA JWTs are signed, not encrypted). Anyone who has the JWT can <em>read</em> the claims, so do not put passwords in them, treat the token like a password, keep the signing secret off the client, and set a short expiry.</p>
-        <p>Create tokens with <code>createJwt</code> (<a href="#jwt-security">28.16</a>); verify them in middleware with <code>authenticateBearerJwt</code>. Cookie-based JWTs use <code>authenticateCookieJwt</code> instead of the Authorization header.</p>
+        <p>Create tokens with <code>createJwt</code> (<a href="#jwt-security">29.16</a>); verify them in middleware with <code>authenticateBearerJwt</code>. Cookie-based JWTs use <code>authenticateCookieJwt</code> instead of the Authorization header.</p>
 
         <h4 id="concept-password">Password hashing</h4>
-        <p>Never store a login password as plaintext. A <strong>password hash</strong> is a one-way value: given the hash you cannot recover the password, but <code>verifyPassword</code> can check a later login against it. MALDA uses salted PBKDF2 (<code>hashPassword</code> / <code>verifyPassword</code> in <a href="#jwt-security">28.16</a>). A <strong>salt</strong> is random data mixed in so two users with the same password do not get the same hash. This is not JWT signing and not HTTPS encryption — it is only for credentials at rest.</p>
+        <p>Never store a login password as plaintext. A <strong>password hash</strong> is a one-way value: given the hash you cannot recover the password, but <code>verifyPassword</code> can check a later login against it. MALDA uses salted PBKDF2 (<code>hashPassword</code> / <code>verifyPassword</code> in <a href="#jwt-security">29.16</a>). A <strong>salt</strong> is random data mixed in so two users with the same password do not get the same hash. This is not JWT signing and not HTTPS encryption — it is only for credentials at rest.</p>
 
         <h4 id="concept-session">Sessions and cookies</h4>
         <p>A <strong>cookie</strong> is a small name/value the server sets on the response; the browser sends it back on later requests to the same site. Flags that matter:</p>
@@ -103,30 +103,30 @@ server.use(requireAuth, { "except": ["/api/health"] });</code></pre>
             <li><strong>Secure</strong> — send it only over HTTPS.</li>
             <li><strong>SameSite</strong> (Lax / Strict / None) — limits sending the cookie on cross-site requests. Lax is the MALDA default and blocks most CSRF from other sites on POST; Strict is tighter; None requires Secure and is for cross-site APIs that deliberately use cookies.</li>
         </ul>
-        <p>A <strong>session</strong> is server-side storage keyed by a session-id cookie — <code>req.session</code> after <code>enableSession</code>. Prefer sessions or cookie JWTs for browser apps (the token is not sitting in JavaScript). Prefer Bearer JWTs for programmatic API clients (scripts, other servers, mobile). Cookie defaults: 28.7.2. Session API: 28.6.3.</p>
+        <p>A <strong>session</strong> is server-side storage keyed by a session-id cookie — <code>req.session</code> after <code>enableSession</code>. Prefer sessions or cookie JWTs for browser apps (the token is not sitting in JavaScript). Prefer Bearer JWTs for programmatic API clients (scripts, other servers, mobile). Cookie defaults: 29.7.2. Session API: 29.6.3.</p>
 
         <h4 id="concept-csrf">CSRF</h4>
         <p><strong>CSRF</strong> (Cross-Site Request Forgery) is a trick where another site causes the <em>user's browser</em> to send a request to yours <em>with the user's cookies</em>. The user is logged in, so the request looks legitimate — for example a hidden form on <code>evil.example</code> that POSTs to <code>https://your-app/api/transfer</code>.</p>
-        <p>Defense: the real page includes a secret token (header or hidden form field) that the attacker site cannot read (the browser's same-origin policy blocks that). Safe methods (GET/HEAD/OPTIONS) may mint the cookie; POST/PUT/PATCH/DELETE must present a matching token. Bearer JWT APIs called from non-browser clients do not send cookies, so CSRF usually does not apply to them; it <em>does</em> apply to cookie sessions and cookie JWTs. Enable with <code>enableCsrf</code>. Details: 28.9.</p>
+        <p>Defense: the real page includes a secret token (header or hidden form field) that the attacker site cannot read (the browser's same-origin policy blocks that). Safe methods (GET/HEAD/OPTIONS) may mint the cookie; POST/PUT/PATCH/DELETE must present a matching token. Bearer JWT APIs called from non-browser clients do not send cookies, so CSRF usually does not apply to them; it <em>does</em> apply to cookie sessions and cookie JWTs. Enable with <code>enableCsrf</code>. Details: 29.9.</p>
 
         <h4 id="concept-cors">CORS</h4>
         <p>Browsers isolate pages by <strong>origin</strong> (scheme + host + port). <code>https://app.example</code> and <code>https://api.example</code> are different origins; so are <code>http://localhost:5173</code> and <code>http://localhost:8080</code>. A page cannot <em>read</em> a response from another origin unless that API opts in with CORS headers. The browser may first send an OPTIONS <strong>preflight</strong> asking “may I call you this way?”.</p>
-        <p>CORS is not authentication and not CSRF. Same-origin calls (the MALDA UI and API on one <code>HttpServer</code> port) do not need it. Host-side <code>RestClient</code> is not a browser, so CORS does not apply to it. Enable CORS only if browsers on another origin will call you. Details: 28.12 and 29.9.</p>
+        <p>CORS is not authentication and not CSRF. Same-origin calls (the MALDA UI and API on one <code>HttpServer</code> port) do not need it. Host-side <code>RestClient</code> is not a browser, so CORS does not apply to it. Enable CORS only if browsers on another origin will call you. Details: 29.12 and 30.9.</p>
 
         <h4 id="concept-xss">XSS</h4>
-        <p><strong>XSS</strong> (Cross-Site Scripting) is injecting script into a page the victim's browser will run — for example concatenating a username into HTML without escaping. The injected script can then read non-HttpOnly cookies or call your API as that user. MALDA does not auto-escape strings you put in HTML: treat every untrusted value as data, not markup, especially in <code>@PAGE</code> handlers (chapter 26). HttpOnly cookies reduce the blast radius; they do not fix XSS.</p>
+        <p><strong>XSS</strong> (Cross-Site Scripting) is injecting script into a page the victim's browser will run — for example concatenating a username into HTML without escaping. The injected script can then read non-HttpOnly cookies or call your API as that user. MALDA does not auto-escape strings you put in HTML: treat every untrusted value as data, not markup, especially in <code>@PAGE</code> handlers (chapter 27). HttpOnly cookies reduce the blast radius; they do not fix XSS.</p>
 
         <h4 id="concept-rate-limit">Rate limiting and trusted proxies</h4>
         <p><strong>Rate limiting</strong> caps how many requests a key (IP, user, token) may make in a window, so a buggy client or attacker cannot overwhelm the server or brute-force a login. MALDA's limiter runs <em>after</em> middleware so it can key on a verified JWT subject.</p>
-        <p>A <strong>reverse proxy</strong> (nginx, Caddy, a cloud load balancer) sits in front of your app, often terminating TLS. The TCP peer your process sees is then the proxy, not the user. <code>X-Forwarded-For</code> carries the client IP — but anyone can spoof that header unless you only trust it from your proxy (<code>configureTrustedProxy</code>). Details: 28.9.</p>
+        <p>A <strong>reverse proxy</strong> (nginx, Caddy, a cloud load balancer) sits in front of your app, often terminating TLS. The TCP peer your process sees is then the proxy, not the user. <code>X-Forwarded-For</code> carries the client IP — but anyone can spoof that header unless you only trust it from your proxy (<code>configureTrustedProxy</code>). Details: 29.9.</p>
 
         <h4 id="concept-https">HTTPS / TLS</h4>
-        <p><strong>HTTPS</strong> is HTTP over <strong>TLS</strong>: the connection is encrypted and the server presents a certificate so clients know they reached the right host. Without it, cookies, passwords, and Bearer tokens travel in the clear on the network. Enable TLS on <code>HttpServer</code> with <code>enableHttps</code> (<a href="26-http-server-html-ui.html#https">chapter 26</a>). Standalone <code>RestServer</code> does not terminate TLS; mount it on <code>HttpServer</code> or put a reverse proxy in front. Keep signing secrets and certificate passwords in environment variables, not in source.</p>
+        <p><strong>HTTPS</strong> is HTTP over <strong>TLS</strong>: the connection is encrypted and the server presents a certificate so clients know they reached the right host. Without it, cookies, passwords, and Bearer tokens travel in the clear on the network. Enable TLS on <code>HttpServer</code> with <code>enableHttps</code> (<a href="27-http-server-html-ui.html#https">chapter 27</a>). Standalone <code>RestServer</code> does not terminate TLS; mount it on <code>HttpServer</code> or put a reverse proxy in front. Keep signing secrets and certificate passwords in environment variables, not in source.</p>
 
         <h4 id="concept-correlation">Correlation IDs, validation, and OpenAPI</h4>
-        <p>A <strong>correlation ID</strong> is a string that tags one request across logs and error payloads so you can find “what happened to this call”. MALDA honors inbound <code>X-Correlation-ID</code> or generates one (28.11).</p>
-        <p><strong>Validation</strong> checks that path, query, and body match a schema <em>before</em> your handler runs, so bad input fails with 400 instead of crashing later. That is <code>@Validate</code> (28.10) — related to, but not the same as, prompt/LLM <code>validate()</code> in chapter 10.</p>
-        <p><strong>OpenAPI</strong> (often called Swagger) is a machine-readable description of your routes, parameters, and schemas. MALDA can serve it as JSON when you call <code>enableSwagger(true)</code> (28.12). Humans and code generators read it; it is not a security control.</p>
+        <p>A <strong>correlation ID</strong> is a string that tags one request across logs and error payloads so you can find “what happened to this call”. MALDA honors inbound <code>X-Correlation-ID</code> or generates one (29.11).</p>
+        <p><strong>Validation</strong> checks that path, query, and body match a schema <em>before</em> your handler runs, so bad input fails with 400 instead of crashing later. That is <code>@Validate</code> (29.10) — related to, but not the same as, prompt/LLM <code>validate()</code> in chapter 10.</p>
+        <p><strong>OpenAPI</strong> (often called Swagger) is a machine-readable description of your routes, parameters, and schemas. MALDA can serve it as JSON when you call <code>enableSwagger(true)</code> (29.12). Humans and code generators read it; it is not a security control.</p>
 
         <h4 id="concept-security-map">Which defense for which threat</h4>
         <table>
@@ -146,7 +146,7 @@ server.use(requireAuth, { "except": ["/api/health"] });</code></pre>
             </tbody>
         </table>
 
-        <h2>28.2 Decorator Syntax</h2>
+        <h2>29.2 Decorator Syntax</h2>
         <p>Functions decorated with an HTTP method become REST endpoints when a <code>RestServer</code> starts (or is mounted):</p>
         <pre><code>@GET("/api/users")
 function getUsers() {
@@ -159,7 +159,7 @@ function createUser(body) {
     return parseJSON(jsonStr);
 }</code></pre>
 
-        <h3>28.2.1 Supported HTTP Methods</h3>
+        <h3>29.2.1 Supported HTTP Methods</h3>
         <ul>
             <li><code>@GET(path)</code> - Handle GET requests. <code>HEAD</code> matches the same route; the body is omitted.</li>
             <li><code>@POST(path)</code> - Handle POST requests</li>
@@ -170,7 +170,7 @@ function createUser(body) {
         </ul>
         <p>Duplicate method+path pairs throw at startup. Use <code>getRoutes()</code> to inspect the registered table.</p>
 
-        <h3>28.2.2 Route Metadata Decorators</h3>
+        <h3>29.2.2 Route Metadata Decorators</h3>
         <p>Optional metadata decorators are applied before the route is registered. Prefixes compose as <code>group + version + path</code>.</p>
         <ul>
             <li><code>@RouteGroup(prefix)</code> / <code>@Group(prefix)</code> / <code>@Prefix(prefix)</code> - prepend a group prefix</li>
@@ -186,8 +186,8 @@ function getUserById(id, req, res) {
     return res.json(parseJSON("{\"id\":\"" + id + "\"}"));
 }</code></pre>
 
-        <h2>28.3 RestServer Class</h2>
-        <h3>28.3.1 Constructor</h3>
+        <h2>29.3 RestServer Class</h2>
+        <h3>29.3.1 Constructor</h3>
         <pre><code>var server = new RestServer(port);
 // OR
 var server = new RestServer(port, host);  // host: "localhost" or "0.0.0.0"
@@ -195,7 +195,7 @@ var server = new RestServer(port, host);  // host: "localhost" or "0.0.0.0"
 var api = new RestServer();               // port 0: deferred / mounted</code></pre>
         <p><code>port</code> must be <code>0</code> (deferred/mounted) or an integer in <code>1-65535</code>. Privileged ports (<code>1-1023</code>) are allowed; binding may still require elevated permissions or OS URL reservations. Host defaults to <code>localhost</code>. Pass <code>0.0.0.0</code> to listen on all interfaces. Unlike <code>HttpServer</code>, there is no <code>setHost</code> method and no <code>MALDA_HTTP_HOST</code> override.</p>
 
-        <h3>28.3.2 Properties</h3>
+        <h3>29.3.2 Properties</h3>
         <table>
             <thead>
                 <tr><th>Property</th><th>Type</th><th>Notes</th></tr>
@@ -206,7 +206,7 @@ var api = new RestServer();               // port 0: deferred / mounted</code></
             </tbody>
         </table>
 
-        <h3>28.3.3 Methods</h3>
+        <h3>29.3.3 Methods</h3>
         <table>
             <thead>
                 <tr><th>Method</th><th>Notes</th></tr>
@@ -217,7 +217,7 @@ var api = new RestServer();               // port 0: deferred / mounted</code></
                 <tr><td><code>getRoutes()</code></td><td>Array of <code>{method, path}</code></td></tr>
                 <tr><td><code>use(middleware, options?)</code></td><td>Global middleware: function, or function-name string in transpile. <code>options.except</code> skips exact paths or trailing-<code>*</code> prefixes</td></tr>
                 <tr><td><code>enableCORS(enabled)</code> / <code>setCORSOrigin(origin)</code> / <code>setCORSMethods(array)</code> / <code>setCORSHeaders(array)</code></td><td>CORS. Defaults: origin <code>*</code>, methods GET/POST/PUT/DELETE/PATCH/OPTIONS, headers <code>Content-Type</code> and <code>Authorization</code></td></tr>
-                <tr><td><code>enableSwagger(enabled)</code></td><td>Serve OpenAPI JSON (see 28.12)</td></tr>
+                <tr><td><code>enableSwagger(enabled)</code></td><td>Serve OpenAPI JSON (see 29.12)</td></tr>
                 <tr><td><code>enableCsrf(secret, cookieName?, headerName?)</code> / <code>disableCsrf()</code></td><td>Built-in CSRF. Defaults: cookie <code>csrf_token</code>, header <code>X-CSRF-Token</code></td></tr>
                 <tr><td><code>enableSession(secret, options?)</code> / <code>disableSession()</code></td><td>Signed session cookie and <code>req.session</code>. Options: <code>cookieName</code> (default <code>malda_session</code>), <code>maxAge</code> seconds (default 14 days), <code>store</code> <code>"memory"</code> or <code>"sqlite"</code>, <code>sqlitePath</code></td></tr>
                 <tr><td><code>setRateLimit(limit, windowSeconds, keyStrategy?)</code> / <code>disableRateLimit()</code></td><td>Per-key limit. Strategies: <code>ip</code>, <code>token</code>, <code>user</code> (<code>X-User-Id</code>), <code>sub</code> / <code>verifiedSub</code> / <code>verifiedSubOrIp</code>, <code>ipOrToken</code> (default)</td></tr>
@@ -226,10 +226,10 @@ var api = new RestServer();               // port 0: deferred / mounted</code></
             </tbody>
         </table>
 
-        <h3>28.3.4 What RestServer does not host</h3>
-        <p>Standalone <code>RestServer</code> is API-only. These belong on <code>HttpServer</code> (chapter 26): HTTPS / <code>enableHttps</code>, <code>setHost</code> / <code>MALDA_HTTP_HOST</code>, static files, <code>@PAGE</code> / <code>@AIPAGE</code>, <code>multipart/form-data</code> uploads, and SSE (<code>{"sse": true}</code>). The shared pieces are <code>req</code> / <code>res</code> / <code>req.auth</code> / <code>req.session</code>, CSRF, rate limits, and route metadata.</p>
+        <h3>29.3.4 What RestServer does not host</h3>
+        <p>Standalone <code>RestServer</code> is API-only. These belong on <code>HttpServer</code> (chapter 27): HTTPS / <code>enableHttps</code>, <code>setHost</code> / <code>MALDA_HTTP_HOST</code>, static files, <code>@PAGE</code> / <code>@AIPAGE</code>, <code>multipart/form-data</code> uploads, and SSE (<code>{"sse": true}</code>). The shared pieces are <code>req</code> / <code>res</code> / <code>req.auth</code> / <code>req.session</code>, CSRF, rate limits, and route metadata.</p>
 
-        <h2>28.4 Request Pipeline</h2>
+        <h2>29.4 Request Pipeline</h2>
         <p>Every request runs this order. Knowing it matters for auth keys, CSRF, and validation:</p>
         <ol>
             <li>Resolve correlation ID: honor inbound <code>X-Correlation-ID</code> or generate one; echo it on the response</li>
@@ -247,8 +247,8 @@ var api = new RestServer();               // port 0: deferred / mounted</code></
         </ol>
         <p>Interpreted handlers run on an isolated interpreter per request. In interpret mode, assigning <code>req.tenant = "acme"</code> in middleware is visible to later middleware and the handler on that request only.</p>
 
-        <h2>28.5 Parameter Binding</h2>
-        <h3>28.5.1 Path parameters</h3>
+        <h2>29.5 Parameter Binding</h2>
+        <h3>29.5.1 Path parameters</h3>
         <p>Placeholders in the route pattern bind by name:</p>
         <pre><code>@GET("/api/users/{id}")
 function getUserById(id) {
@@ -256,7 +256,7 @@ function getUserById(id) {
     return parseJSON(jsonStr);
 }</code></pre>
 
-        <h3>28.5.2 Query parameters</h3>
+        <h3>29.5.2 Query parameters</h3>
         <p>Unmatched parameter names bind from the query string:</p>
         <pre><code>@GET("/api/users")
 function getUsers(limit, offset) {
@@ -265,7 +265,7 @@ function getUsers(limit, offset) {
     return parseJSON(jsonStr);
 }</code></pre>
 
-        <h3>28.5.3 Request body</h3>
+        <h3>29.5.3 Request body</h3>
         <p>A parameter named <code>body</code> receives the parsed payload. Content types:</p>
         <ul>
             <li><code>application/json</code> → object / array (invalid JSON falls back to the raw string)</li>
@@ -280,7 +280,7 @@ function createUser(body) {
     return parseJSON(jsonStr);
 }</code></pre>
 
-        <h3>28.5.4 Special parameter names</h3>
+        <h3>29.5.4 Special parameter names</h3>
         <p>These names always bind, in both name-based and decorator modes:</p>
         <table>
             <thead>
@@ -297,7 +297,7 @@ function createUser(body) {
             </tbody>
         </table>
 
-        <h3>28.5.5 Decorator binding</h3>
+        <h3>29.5.5 Decorator binding</h3>
         <p>Optional renaming. If <em>any</em> parameter has a decorator, undecorated parameters bind <code>null</code> (special names above still bind):</p>
         <pre><code>@PUT("/api/users/{id}/posts/{postId}")
 function updatePost(@PathParam("id") userId, @PathParam("postId") postId, 
@@ -309,8 +309,8 @@ function updatePost(@PathParam("id") userId, @PathParam("postId") postId,
 }</code></pre>
         <p>In transpile mode the compiler registers routes with <code>paramDecorators = null</code>, so <code>@PathParam</code> / <code>@QueryParam</code> / <code>@Body</code> renaming works in the interpreter only. Prefer matching parameter names to path/query/<code>body</code> when you compile.</p>
 
-        <h2>28.6 Request Context</h2>
-        <h3>28.6.1 req properties and helpers</h3>
+        <h2>29.6 Request Context</h2>
+        <h3>29.6.1 req properties and helpers</h3>
         <table>
             <thead>
                 <tr><th>Member</th><th>Notes</th></tr>
@@ -321,8 +321,8 @@ function updatePost(@PathParam("id") userId, @PathParam("postId") postId,
                 <tr><td><code>query</code> / <code>queryParams</code>, <code>params</code> / <code>pathParams</code>, <code>headers</code>, <code>cookies</code>, <code>body</code></td><td>Parsed maps / payload</td></tr>
                 <tr><td><code>correlationId</code></td><td>Inbound or generated; also sent as <code>X-Correlation-ID</code></td></tr>
                 <tr><td><code>ip</code> / <code>remoteIp</code></td><td>Peer IP; proxy headers ignored unless <code>configureTrustedProxy</code> is on</td></tr>
-                <tr><td><code>auth</code> / <code>authContext</code></td><td>See 28.6.2</td></tr>
-                <tr><td><code>session</code></td><td>See 28.6.3</td></tr>
+                <tr><td><code>auth</code> / <code>authContext</code></td><td>See 29.6.2</td></tr>
+                <tr><td><code>session</code></td><td>See 29.6.3</td></tr>
                 <tr><td><code>verifiedSub</code></td><td>Verified subject or <code>null</code></td></tr>
                 <tr><td><code>header(name, default?)</code>, <code>queryParam(name, default?)</code>, <code>param(name, default?)</code>, <code>cookie(name, default?)</code></td><td>Lookups</td></tr>
                 <tr><td><code>hasHeader</code> / <code>hasQueryParam</code> / <code>hasParam</code> / <code>hasCookie</code></td><td>Boolean presence</td></tr>
@@ -331,8 +331,8 @@ function updatePost(@PathParam("id") userId, @PathParam("postId") postId,
             </tbody>
         </table>
 
-        <h3 id="req-auth">28.6.2 req.auth</h3>
-        <p>Prefer <code>req.auth.authenticateBearerJwt(secret)</code> (APIs) or <code>authenticateCookieJwt(cookieName, jwtSecret, cookieSecret?)</code> (browser sessions). Both verify the JWT, populate claims/roles/permissions, and throw a standardized 401 on failure. Create tokens with <code>createJwt</code> (<a href="#jwt-security">28.16</a>).</p>
+        <h3 id="req-auth">29.6.2 req.auth</h3>
+        <p>Prefer <code>req.auth.authenticateBearerJwt(secret)</code> (APIs) or <code>authenticateCookieJwt(cookieName, jwtSecret, cookieSecret?)</code> (browser sessions). Both verify the JWT, populate claims/roles/permissions, and throw a standardized 401 on failure. Create tokens with <code>createJwt</code> (<a href="#jwt-security">29.16</a>).</p>
         <table>
             <thead>
                 <tr><th>Member</th><th>Notes</th></tr>
@@ -373,7 +373,7 @@ server.use(requireAuth, {
 server.start();</code></pre>
         <p>Skip public paths with <code>use(middleware, { "except": [...] })</code>. Exact paths and trailing <code>*</code> prefixes are supported. Ingress aliases <code>X-Malda-Auth-Verified</code> / <code>X-Malda-Auth-Sub</code> (and legacy <code>X-Auth-*</code> / <code>X-Verified-Sub</code>) can pre-mark a subject; application middleware should still call <code>authenticate*</code> so roles and claims are present.</p>
 
-        <h3>28.6.3 req.session</h3>
+        <h3>29.6.3 req.session</h3>
         <p>Available after <code>enableSession(secret, options?)</code>. Same surface as <code>HttpServer</code>:</p>
         <table>
             <thead>
@@ -386,13 +386,13 @@ server.start();</code></pre>
             </tbody>
         </table>
 
-        <h2>28.7 Response Handling</h2>
-        <h3>28.7.1 Return shapes</h3>
+        <h2>29.7 Response Handling</h2>
+        <h3>29.7.1 Return shapes</h3>
         <ul>
             <li>Plain object / array → JSON 200</li>
             <li>Plain string → <code>text/plain</code> 200</li>
             <li><code>{ "status": 201, "data": ... }</code> → HTTP status from <code>status</code>; that field is stripped from the JSON body</li>
-            <li>Standard error object <code>{status, error, message}</code> (see 28.11) → that status, body unchanged</li>
+            <li>Standard error object <code>{status, error, message}</code> (see 29.11) → that status, body unchanged</li>
             <li><code>res.status(...).json(...)</code> (or other send helpers) → already committed; the return value is ignored</li>
         </ul>
         <pre><code>@POST("/api/users")
@@ -406,7 +406,7 @@ function getUser(req, res) {
     return res.status(200).json(parseJSON("{\"id\": \"" + id + "\"}"));
 }</code></pre>
 
-        <h3>28.7.2 Response helper API</h3>
+        <h3>29.7.2 Response helper API</h3>
         <table>
             <thead>
                 <tr><th>Member</th><th>Notes</th></tr>
@@ -424,8 +424,8 @@ function getUser(req, res) {
         <p><code>res.send(value)</code> UTF-8-encodes a string body. Use <code>res.sendBase64(b64)</code> for binary payloads (PDF, DOCX, and similar): it decodes the base64 string and writes those bytes. Invalid base64 throws.</p>
         <p>After a send helper, the handler may keep running (background work). Headers and cookies set after send throw <code>response already sent</code>. <code>res.fragment(targetId, html)</code> is the early-send form of <code>componentFragment(targetId, html)</code>: same <code>X-Malda-Fragment</code> headers, but the client receives the fragment before the handler returns.</p>
 
-        <h2 id="middleware">28.8 Middleware</h2>
-        <p>Middleware is a shared function that runs before the route handler — see <a href="#concept-middleware">28.1.1</a> if the term is new. Use <code>server.use(...)</code> for global middleware. The contract is <code>(req, res, next)</code>. Call <code>next()</code> to continue; omitting it short-circuits. Route-level <code>@Use("name")</code> runs after global middleware and before validation + the handler. Transpiled apps should pass the function name as a string: <code>server.use("requireAuth")</code>.</p>
+        <h2 id="middleware">29.8 Middleware</h2>
+        <p>Middleware is a shared function that runs before the route handler — see <a href="#concept-middleware">29.1.1</a> if the term is new. Use <code>server.use(...)</code> for global middleware. The contract is <code>(req, res, next)</code>. Call <code>next()</code> to continue; omitting it short-circuits. Route-level <code>@Use("name")</code> runs after global middleware and before validation + the handler. Transpiled apps should pass the function name as a string: <code>server.use("requireAuth")</code>.</p>
         <pre><code>function logRequest(req, res, next) {
     print(req.method + " " + req.path);
     next();
@@ -435,7 +435,7 @@ var server = new RestServer(8080);
 server.use(logRequest);
 server.start();</code></pre>
 
-        <h2 id="csrf-rate-limit">28.9 CSRF, Rate Limiting, and Trusted Proxy</h2>
+        <h2 id="csrf-rate-limit">29.9 CSRF, Rate Limiting, and Trusted Proxy</h2>
         <p>What these defenses are, in plain language: <a href="#concept-csrf">CSRF</a>, <a href="#concept-rate-limit">rate limiting and trusted proxies</a>.</p>
         <pre><code>var server = new RestServer(8080);
 server.enableCsrf("my-csrf-secret");                 // cookie: csrf_token, header: X-CSRF-Token
@@ -448,7 +448,7 @@ server.start();</code></pre>
         <p>Rate limiting runs <strong>after</strong> global and route middleware. <code>verifiedSub*</code> strategies key on the subject set by <code>authenticateBearerJwt</code> / <code>authenticateCookieJwt</code>; otherwise they fall back to IP/token. <code>user</code> keys on the <code>X-User-Id</code> header. Proxy headers are ignored until <code>configureTrustedProxy(...)</code> is enabled.</p>
         <p>CSRF, auth, and rate-limit failures use the standard error envelope and include the correlation ID.</p>
 
-        <h2>28.10 Validation</h2>
+        <h2>29.10 Validation</h2>
         <p><code>@Validate(...)</code> checks <code>path</code>, <code>query</code>, and <code>body</code> before the handler. Invalid requests return HTTP 400 with field-level <code>details</code> and do not run handler logic. Schema values may be a JSON string or an object. Rules are a pipe DSL (<code>int|required|min=1</code>) or an object <code>{type, required, min, max, minLength, maxLength, pattern}</code>.</p>
         <pre><code>@GET("/search/{id}")
 @Validate("{\"path\":{\"id\":\"int|required|min=1\"},\"query\":{\"q\":\"string|required|minLength=2\"}}")
@@ -457,7 +457,7 @@ function search(id, q) {
 }</code></pre>
         <p>For checks that depend on loaded data, call <code>req.requireValid(schema)</code> or <code>req.validate(schema)</code> inside the handler. Validation <code>details</code> items are <code>{location, field, message}</code>. When Swagger is enabled, <code>@Validate</code> metadata is reflected in OpenAPI parameter and request-body schemas.</p>
 
-        <h2>28.11 Error Handling</h2>
+        <h2>29.11 Error Handling</h2>
         <p>Framework failures (404, CSRF, auth, rate limit, <code>@Validate</code> / <code>req.requireValid</code>, uncaught handler errors) use one JSON contract:</p>
         <pre><code>{
   "status": 401,
@@ -488,8 +488,8 @@ function getUserById(id, res) {
 }</code></pre>
         <p><code>req.auth.requireRole</code>, <code>requirePermission</code>, <code>requireVerified</code>, and <code>req.requireValid</code> already throw that envelope.</p>
 
-        <h2 id="cors">28.12 CORS and Swagger/OpenAPI</h2>
-        <p>CORS is the browser's cross-origin gate; host-side <code>RestClient</code> ignores it. Primer: <a href="#concept-cors">28.1.1 CORS</a>.</p>
+        <h2 id="cors">29.12 CORS and Swagger/OpenAPI</h2>
+        <p>CORS is the browser's cross-origin gate; host-side <code>RestClient</code> ignores it. Primer: <a href="#concept-cors">29.1.1 CORS</a>.</p>
         <pre><code>var server = new RestServer(8080);
 server.enableCORS(true);
 server.setCORSOrigin("*");
@@ -501,7 +501,7 @@ server.start();
 // OpenAPI JSON: /swagger.json, /openapi.json, /swagger/openapi.json</code></pre>
         <p>With Swagger enabled, GET those three paths (same document). Validation constraints from <code>@Validate</code> appear in the generated schemas.</p>
 
-        <h2>28.13 Mounting on HttpServer</h2>
+        <h2>29.13 Mounting on HttpServer</h2>
         <p>For a single listener that serves API routes first, then pages/components/static files, construct a deferred <code>RestServer</code> and <code>mount</code> it. Do not give the API its own port, and do not <code>start()</code> it as a standalone listener before mount.</p>
         <pre><code>var rest = new RestServer();
 var web = new HttpServer(8080);
@@ -534,16 +534,16 @@ web.start();</code></pre>
             <li>Canonical starter: <code>malda new fullstack</code> → <code>Templates/fullstack/backend/app.malda</code></li>
         </ul>
 
-        <h2>28.14 Interpret vs Transpile</h2>
+        <h2>29.14 Interpret vs Transpile</h2>
         <ul>
             <li>Name-based binding, <code>@RouteGroup</code> / <code>@Version</code> / <code>@Use</code> / <code>@Validate</code>, and <code>req</code>/<code>res</code> work in both modes</li>
-            <li><code>@PathParam</code> / <code>@QueryParam</code> / <code>@Body</code> renaming is interpret-only (see 28.5.5)</li>
+            <li><code>@PathParam</code> / <code>@QueryParam</code> / <code>@Body</code> renaming is interpret-only (see 29.5.5)</li>
             <li>In transpile, <code>@GET</code> and <code>@POST</code> are also registered on <code>HttpServer</code>. A compiled process that constructs both servers can see the same GET/POST routes on each</li>
             <li>Pass middleware to <code>use</code> as a function-name string in transpile: <code>server.use("requireAuth", { "except": ["/api/health"] })</code></li>
             <li>Route-level <code>@Use</code> always takes a function name string</li>
         </ul>
 
-        <h2>28.15 Complete Example</h2>
+        <h2>29.15 Complete Example</h2>
         <pre><code>function json(str) {
     return parseJSON(str);
 }
@@ -578,8 +578,8 @@ while (server.isRunning) {
             <li><code>malda new webapi</code> — API-only template</li>
             <li><code>malda new fullstack</code> — mounted <code>RestServer</code> + <code>HttpServer</code></li>
         </ul>
-        <h2 id="jwt-security">28.16 Password, JWT, and cookie helpers</h2>
-        <p>These helpers implement the tokens and hashes that this chapter and <a href="26-http-server-html-ui.html">26. HttpServer</a> wire into HTTP. Primers: <a href="#concept-password">password hashing</a>, <a href="#concept-jwt">JWT</a>, <a href="#concept-csrf">CSRF</a>. Handler surface: <a href="#req-auth">28.6.2 req.auth</a>. Name index: <a href="13-built-in-functions.html#jwt-security">13.25</a>.</p>
+        <h2 id="jwt-security">29.16 Password, JWT, and cookie helpers</h2>
+        <p>These helpers implement the tokens and hashes that this chapter and <a href="27-http-server-html-ui.html">27. HttpServer</a> wire into HTTP. Primers: <a href="#concept-password">password hashing</a>, <a href="#concept-jwt">JWT</a>, <a href="#concept-csrf">CSRF</a>. Handler surface: <a href="#req-auth">29.6.2 req.auth</a>. Name index: <a href="13-built-in-functions.html#jwt-security">13.25</a>.</p>
         <pre><code>var passwordHash = hashPassword("my-password");              // PBKDF2-SHA256 hash
 var isValid = verifyPassword("my-password", passwordHash);   // true/false
 
@@ -628,15 +628,15 @@ var session = readSecureCookie(urlDecode(cookieValue), "cookie-secret");</code><
             <ul>
                 <li><a href="09-functions.html">9. Functions</a> - Function decorators</li>
                 <li><a href="13-built-in-functions.html#jwt-security">13.25 Password, JWT, and request auth</a> — name index</li>
-                <li><a href="25-web-ui.html">25. Web UI Server Components</a> - @ACTION, fragments, and <code>ui.*</code> controls</li>
-                <li><a href="26-http-server-html-ui.html">26. HttpServer &amp; HTML UI Generation</a> - Pages, HTTPS, static files, mount host</li>
-                <li><a href="29-rest-web-client.html">29. REST Web Client</a> - Calling APIs from MALDA with RestClient</li>
-                <li><a href="30-full-stack-development.html">30. Full-Stack Development with MALDA</a> - End-to-end architecture</li>
+                <li><a href="26-web-ui.html">26. Web UI Server Components</a> - @ACTION, fragments, and <code>ui.*</code> controls</li>
+                <li><a href="27-http-server-html-ui.html">27. HttpServer &amp; HTML UI Generation</a> - Pages, HTTPS, static files, mount host</li>
+                <li><a href="30-rest-web-client.html">30. REST Web Client</a> - Calling APIs from MALDA with RestClient</li>
+                <li><a href="31-full-stack-development.html">31. Full-Stack Development with MALDA</a> - End-to-end architecture</li>
             </ul>
         </div>
         <div class="nav-footer">
-            <a href="27-browser-javascript-backend.html">← Previous: 27. Browser JavaScript UI Backend</a>
-            <a href="29-rest-web-client.html">Next: 29. REST Web Client→</a>
+            <a href="28-browser-javascript-backend.html">← Previous: 28. Browser JavaScript UI Backend</a>
+            <a href="30-rest-web-client.html">Next: 30. REST Web Client→</a>
         </div>
 
         <footer>

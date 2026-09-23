@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="ACP (Agent Communication Protocol) in MALDA - Comunicazione e collaborazione tra agenti">
-    <title>21. ACP (Agent Communication Protocol) - Manuale di riferimento MALDA</title>
+    <title>22. ACP (Agent Communication Protocol) - Manuale di riferimento MALDA</title>
     <link rel="stylesheet" href="../styles.css">
     <link rel="stylesheet" href="../syntax.css">
     <link rel="stylesheet" href="../print.css" media="print">
@@ -16,14 +16,14 @@
     </header>
     <nav></nav>
     <main>
-        <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>21. ACP (Agent Communication Protocol)</span></div>
-        <h1>21. ACP (Agent Communication Protocol)</h1>
+        <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>22. ACP (Agent Communication Protocol)</span></div>
+        <h1>22. ACP (Agent Communication Protocol)</h1>
         <p>Il supporto ACP (Agent Communication Protocol) in MALDA consente agli agenti MALDA di comunicare con agenti ACP esterni e di esporre agenti MALDA come agenti conformi ad ACP. Così si può orchestrare agenti distribuiti tra sistemi e framework diversi.</p>
         <div class="info-box" id="first-read">
             <strong>Stop alla prima lettura.</strong> ACP è HTTP da host a host tra agenti. File più piccolo: <code>Examples/ACP/async_execution.malda</code>. Corso: <a href="learn.html#after-core">Imparare MALDA — Dopo il percorso core</a>.
         </div>
         
-        <h2>21.1 Panoramica</h2>
+        <h2>22.1 Panoramica</h2>
         <p>ACP è un protocollo aperto per la comunicazione da agente ad agente: gli agenti AI possono collaborare attraverso framework, linguaggi di programmazione e organizzazioni diverse. L'implementazione ACP di MALDA fornisce:</p>
         <ul>
             <li><strong>ACPClient</strong>: Collegarsi ad agenti ACP esterni e inviare messaggi</li>
@@ -31,7 +31,7 @@
             <li><strong>ACPAgentTool</strong>: Usare agenti ACP esterni come tool per gli agenti MALDA</li>
         </ul>
         
-        <h2>21.2 Classe ACPClient</h2>
+        <h2>22.2 Classe ACPClient</h2>
         <p>La classe <code>ACPClient</code> consente agli agenti MALDA di comunicare con agenti ACP esterni tramite REST API.</p>
         
         <h3>Costruttore</h3>
@@ -52,7 +52,7 @@
         <ul>
             <li><code>discoverAgents()</code>: Restituisce un array degli agenti disponibili dal server ACP</li>
             <li><code>getAgentManifest(agentId)</code>: Ottiene il manifest (metadati) di un agente specifico</li>
-            <li><code>sendMessage(agentId, message, timeoutMs?, sessionId?)</code>: Invia un messaggio in modo sincrono e restituisce la risposta. Il <code>sessionId</code> opzionale mantiene la history tra un run e l'altro (vedi 21.11)</li>
+            <li><code>sendMessage(agentId, message, timeoutMs?, sessionId?)</code>: Invia un messaggio in modo sincrono e restituisce la risposta. Il <code>sessionId</code> opzionale mantiene la history tra un run e l'altro (vedi 22.11)</li>
             <li><code>sendMessageAsync(agentId, message, timeoutMs?)</code>: Invia un messaggio in modo asincrono e restituisce il run ID</li>
             <li><code>sendMessageStream(agentId, message, timeoutMs?)</code>: Invia un messaggio con streaming e restituisce la risposta accumulata</li>
             <li><code>getRunStatus(agentId, runId)</code>: Ottiene lo stato di un'esecuzione agente in corso</li>
@@ -79,7 +79,7 @@ while (i < length(agents)) {
 var response = client.sendMessage("translation-agent", "Translate 'Hello' to Spanish", 5000);
 print("Response: " + response);</code></pre>
         
-        <h2>21.3 Classe ACPServer</h2>
+        <h2>22.3 Classe ACPServer</h2>
         <p>La classe <code>ACPServer</code> espone agenti MALDA come agenti conformi ad ACP tramite un HTTP server, così i client ACP esterni possono comunicare con gli agenti MALDA.</p>
         
         <h3>Costruttore</h3>
@@ -137,7 +137,7 @@ while (server.isRunning) {
     sleep(1000);
 }</code></pre>
         
-        <h2>21.4 Classe ACPAgentTool</h2>
+        <h2>22.4 Classe ACPAgentTool</h2>
         <p>La classe <code>ACPAgentTool</code> incapsula un agente ACP esterno come tool MALDA, così può essere usato dagli agenti MALDA tramite tool calling.</p>
         
         <h3>Costruttore</h3>
@@ -169,7 +169,7 @@ myAgent.addTool(translationTool);
 var response = myAgent.think("Translate 'Hello' to Spanish");
 print(response.content);</code></pre>
         
-        <h2>21.5 Casi d'uso</h2>
+        <h2>22.5 Casi d'uso</h2>
         
         <h3>Orchestrazione distribuita di agenti</h3>
         <p>Collegare agenti MALDA con agenti in esecuzione in altri sistemi:</p>
@@ -203,7 +203,7 @@ server.start();
 
 // External systems can now communicate with MALDA agents via ACP protocol</code></pre>
         
-        <h2>21.6 ACP vs MCP</h2>
+        <h2>22.6 ACP vs MCP</h2>
         <p>ACP e MCP servono scopi diversi:</p>
         <ul>
             <li><strong>MCP (Model Context Protocol)</strong>: Collega applicazioni AI a tool e origini dati. Focus: <em>un modello, molti tool</em></li>
@@ -211,7 +211,7 @@ server.start();
         </ul>
         <p>Si possono usare insieme: gli agenti MALDA possono usare tool MCP (tramite MCPClient) e anche comunicare con altri agenti tramite ACP.</p>
         
-        <h2>21.7 Formato dei messaggi</h2>
+        <h2>22.7 Formato dei messaggi</h2>
         <p>ACP usa un formato di messaggio con più parti, ciascuna con contenuto e un tipo MIME. MALDA converte automaticamente:</p>
         <ul>
             <li><strong>In uscita</strong>: stringhe MALDA → formato messaggio ACP (una sola parte di testo)</li>
@@ -219,7 +219,7 @@ server.start();
         </ul>
         <p>Così gli agenti MALDA lavorano con ACP senza dover gestire direttamente il formato dei messaggi.</p>
         
-        <h2>21.8 Modalità di esecuzione</h2>
+        <h2>22.8 Modalità di esecuzione</h2>
         
         <h3>Esecuzione sincrona</h3>
         <p>Modalità predefinita: attende che l'agente completi:</p>
@@ -244,13 +244,13 @@ if (status.message != null) {
         <pre><code>var response = client.sendMessageStream("agent-id", "Hello");
 print("Streamed response: " + response);</code></pre>
         
-        <h2>21.9 Annullamento di un run</h2>
+        <h2>22.9 Annullamento di un run</h2>
         <p>Le esecuzioni agente di lunga durata si possono annullare:</p>
         <pre><code>var runId = client.sendMessageAsync("agent-id", "Long running task");
 // ... later ...
 client.cancelRun("agent-id", runId);</code></pre>
         
-        <h2>21.10 Await/Resume</h2>
+        <h2>22.10 Await/Resume</h2>
         <p><code>__ACP_AWAIT__:…</code> è una <strong>convenzione dell'agente</strong>, non una keyword MALDA. Se la risposta dell'agente inizia con quel marker, il server ACP marca il run come <code>awaiting</code> e il client chiama <code>resumeRun</code> con l'input utente. Stessa idea: <code>Examples/ACP/await_resume.malda</code>. Questi campioni richiedono due processi (server e client).</p>
         <!-- Esempi a due processi; niente data-run. -->
         <pre><code>// Agent code (uses special marker or tool)
@@ -265,7 +265,7 @@ if (status.status == "awaiting") {
     print(response);
 }</code></pre>
         
-        <h2>21.11 Gestione delle sessioni</h2>
+        <h2>22.11 Gestione delle sessioni</h2>
         <p>Mantenere conversazioni con stato attraverso più run:</p>
         <pre><code>var sessionId = "session-" + random();
 var response1 = client.sendMessage("agent-id", "My name is Alice", 30000, sessionId);
@@ -274,7 +274,7 @@ var response2 = client.sendMessage("agent-id", "What is my name?", 30000, sessio
 var session = client.getSession(sessionId);
 print("Session history: " + length(session.history) + " runs");</code></pre>
         
-        <h2>21.12 Gestione degli errori</h2>
+        <h2>22.12 Gestione degli errori</h2>
         <p>Le operazioni ACP possono sollevare eccezioni in questi casi:</p>
         <ul>
             <li>Errori di rete nel collegamento ai server ACP</li>
@@ -293,16 +293,16 @@ print("Session history: " + length(session.history) + " runs");</code></pre>
         <div class="see-also">
             <h3>Vedi anche</h3>
             <ul>
-                <li><a href="18-agent-orchestration.html">18. Orchestrazione di agenti</a> - Creare e usare agenti MALDA</li>
-                <li><a href="20-mcp-server.html">20. Server MCP</a> - Protocollo MCP per tool e origini dati</li>
-                <li><a href="28-rest-api.html">28. Server REST API</a> - Creare REST API in MALDA</li>
+                <li><a href="19-agent-orchestration.html">19. Orchestrazione di agenti</a> - Creare e usare agenti MALDA</li>
+                <li><a href="21-mcp-server.html">21. Server MCP</a> - Protocollo MCP per tool e origini dati</li>
+                <li><a href="29-rest-api.html">29. Server REST API</a> - Creare REST API in MALDA</li>
                 <li>Schizzi eseguibili in <code>Examples/ACP/</code></li>
             </ul>
         </div>
 
         <div class="nav-footer">
-            <a href="20-mcp-server.html">← Precedente: 20. Server MCP</a>
-            <a href="22-durable-workflows.html">Successivo: 22. Workflow durevoli→</a>
+            <a href="21-mcp-server.html">← Precedente: 21. Server MCP</a>
+            <a href="23-durable-workflows.html">Successivo: 23. Workflow durevoli→</a>
         </div>
 
         <footer>

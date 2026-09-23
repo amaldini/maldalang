@@ -40,7 +40,7 @@ public class ReferenceManualSearchTests
 
         Assert.Equal("12-input-output.html#capability-tokens", cap.Href);
         Assert.Contains("13-built-in-functions.html#capability-tokens", cap.Also);
-        Assert.Contains("18-agent-orchestration.html#capability-tokens-for-tools", cap.Also);
+        Assert.Contains("19-agent-orchestration.html#capability-tokens-for-tools", cap.Also);
         foreach (var alias in new[] { "cap", "cap.fileRead", "cap.fileWrite", "cap.confine", "capability" })
             Assert.Contains(alias, cap.Aliases);
     }

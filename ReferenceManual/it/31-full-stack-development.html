@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Sviluppo full-stack con MALDA - architettura end-to-end, UI, REST API, database e agenti">
-    <title>30. Sviluppo full-stack con MALDA - Manuale di riferimento MALDA</title>
+    <title>31. Sviluppo full-stack con MALDA - Manuale di riferimento MALDA</title>
     <link rel="stylesheet" href="../styles.css">
     <link rel="stylesheet" href="../syntax.css">
     <link rel="stylesheet" href="../print.css" media="print">
@@ -16,14 +16,14 @@
     </header>
     <nav></nav>
     <main>
-        <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>30. Sviluppo full-stack con MALDA</span></div>
-        <h1>30. Sviluppo full-stack con MALDA</h1>
+        <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>31. Sviluppo full-stack con MALDA</span></div>
+        <h1>31. Sviluppo full-stack con MALDA</h1>
         <p>Questo capitolo mostra come usare MALDA come piattaforma full-stack completa. L'obiettivo è collegare concetti già documentati in capitoli dedicati in un'unica architettura end-to-end. L'host canonico a una sola porta è <code>new RestServer()</code> più <code>HttpServer.mount(api)</code> — è ciò che emette <code>malda new fullstack</code>. Per starter eseguibili usa <code>malda new webapi</code>, <code>malda new fullstack</code>, <code>malda new game --fullstack</code> (client canvas + API punteggi) e gli esempi in <code>Examples/Web/</code> (per esempio <code>rest_api_server.malda</code> e <code>ui_controls_showcase_minimal.malda</code>).</p>
         <div class="info-box" id="first-read">
-            <strong>Perché questa pagina non è una lezione:</strong> Gli esempi full-stack associano una porta o compilano a JavaScript. Non possono girare nell'harness degli snippet del manuale. Parti da <a href="24-web-ui-hub.html">24. Panoramica Web UI</a> e da <code>Examples/Web/</code>. Corso: <a href="learn.html#after-core">Imparare MALDA — Dopo il percorso core</a>.
+            <strong>Perché questa pagina non è una lezione:</strong> Gli esempi full-stack associano una porta o compilano a JavaScript. Non possono girare nell'harness degli snippet del manuale. Parti da <a href="25-web-ui-hub.html">25. Panoramica Web UI</a> e da <code>Examples/Web/</code>. Corso: <a href="learn.html#after-core">Imparare MALDA — Dopo il percorso core</a>.
         </div>
 
-        <h2>30.1 Cosa significa "full-stack" in MALDA</h2>
+        <h2>31.1 Cosa significa "full-stack" in MALDA</h2>
         <p>In MALDA un'app full-stack combina in genere:</p>
         <ul>
             <li><strong>Web UI</strong> per le interazioni utente (form, elenchi, dashboard)</li>
@@ -33,22 +33,22 @@
         </ul>
         <p>Questi pezzi corrispondono direttamente a capitoli già presenti nel manuale: generazione Web UI, Server REST API, Client REST Web, Supporto database e Orchestrazione di agenti.</p>
         <div class="info-box">
-            <strong>Vocabolario web:</strong> Middleware, autenticazione vs autorizzazione, JWT, CSRF, CORS, rate limit e HTTPS sono spiegati in <a href="28-rest-api.html#web-concepts">28.1.1 Primer sui concetti</a>. Status HTTP vs errori di trasporto lato client: <a href="29-rest-web-client.html#http-client-concepts">29.1.1</a>.
+            <strong>Vocabolario web:</strong> Middleware, autenticazione vs autorizzazione, JWT, CSRF, CORS, rate limit e HTTPS sono spiegati in <a href="29-rest-api.html#web-concepts">29.1.1 Primer sui concetti</a>. Status HTTP vs errori di trasporto lato client: <a href="30-rest-web-client.html#http-client-concepts">30.1.1</a>.
         </div>
-        <h3>30.1.1 Confine di runtime: MALDA vs JavaScript</h3>
+        <h3>31.1.1 Confine di runtime: MALDA vs JavaScript</h3>
         <ul>
             <li><strong>Runtime MALDA (lato server):</strong> gli handler delle API, l'accesso al database, l'orchestrazione di agenti e l'HTML opzionale renderizzato sul server tramite <code>HttpServer</code>, <code>@PAGE</code> o <code>@AIPAGE</code></li>
             <li><strong>Runtime del browser (lato client):</strong> codice UI JavaScript/TypeScript che renderizza l'interfaccia e chiama le API MALDA su HTTP</li>
         </ul>
         <p>Il livello UI può quindi essere renderizzato sul server da MALDA, renderizzato nel client in JavaScript, oppure un ibrido dei due.</p>
-        <h3>30.1.2 Modelli di distribuzione</h3>
+        <h3>31.1.2 Modelli di distribuzione</h3>
         <ul>
             <li><strong>Full stack nativo MALDA:</strong> backend MALDA + UI MALDA renderizzata sul server (<code>@PAGE</code>/<code>@AIPAGE</code>)</li>
             <li><strong>Full stack ibrido:</strong> backend MALDA + UI di un framework browser esterno (React/Vue/Angular/Svelte/ecc.)</li>
             <li><strong>Solo backend:</strong> API/servizi MALDA senza un livello UI rivolto all'utente</li>
         </ul>
-        <p>Sia lo stack nativo MALDA sia quello ibrido sono full-stack, perché includono i livelli UI + API + dati da un capo all'altro. Le app native MALDA dovrebbero condividere un solo listener: monta l'API su <code>HttpServer</code> (30.3.1). Una seconda porta con <code>new RestServer(8080)</code> è il template solo-API (<code>malda new webapi</code>), non l'host full-stack.</p>
-        <h3>30.1.3 Decoratori di target a sorgente unica</h3>
+        <p>Sia lo stack nativo MALDA sia quello ibrido sono full-stack, perché includono i livelli UI + API + dati da un capo all'altro. Le app native MALDA dovrebbero condividere un solo listener: monta l'API su <code>HttpServer</code> (31.3.1). Una seconda porta con <code>new RestServer(8080)</code> è il template solo-API (<code>malda new webapi</code>), non l'host full-stack.</p>
+        <h3>31.1.3 Decoratori di target a sorgente unica</h3>
         <p>MALDA supporta ora i decoratori di target, così un unico sorgente <code>.malda</code> può contenere codice solo-server, solo-client e condiviso in modo controllato:</p>
         <ul>
             <li><code>@server()</code> / <code>@csharp()</code>: includi la dichiarazione nella transpile C#, escludila dalla transpile JavaScript.</li>
@@ -59,7 +59,7 @@
         <p><strong>Regole di validazione:</strong> combinare <code>@client()</code> con i decoratori di route non è valido, e <code>@shared()</code> dovrebbe usare solo helper sicuri su entrambi i target. Le operazioni specifiche del target, come API dirette su filesystem/database/server oppure helper DOM/local storage del browser, devono restare in dichiarazioni esplicite server/client.</p>
         <p><strong>Workflow Desktop IDE:</strong> per i file full-stack a sorgente unica, il Desktop IDE può mostrare un <code>.malda</code> fisico come più tab virtuali quando il sorgente lo richiede con separatori espliciti <code>// @malda-section Name</code>. Il salvataggio scrive comunque un unico file fisico, e i file <code>include</code> regolari continuano ad aprirsi e modificarsi come documenti fisici normali. <strong>F5</strong> avvia il dual debug: l'interprete sulla partizione host e Web Preview sul client (vedi <a href="02-tools.html#javascript-desktop-debug">2.6.6</a>). Ctrl+F5 offre ancora il dialogo Server / Client preview / Full stack.</p>
 
-        <h2>30.2 Scenario di esempio: app semplice di item</h2>
+        <h2>31.2 Scenario di esempio: app semplice di item</h2>
         <p>Un'app di esempio tipica consente di:</p>
         <ul>
             <li>Creare item da un form web</li>
@@ -79,7 +79,7 @@
   "createdAt": "2026-02-14T09:15:00Z"
 }</code></pre>
 
-        <h2>30.3 Struttura di progetto consigliata</h2>
+        <h2>31.3 Struttura di progetto consigliata</h2>
         <pre><code>/app
   /api
     items-api.malda
@@ -91,7 +91,7 @@
     triage-agent.malda</code></pre>
         <p>Tieni la logica di business in funzioni/classi riutilizzabili, poi esponila sia tramite handler API sia tramite handler UI. Così eviti di duplicare la logica tra i flussi front-end e back-end.</p>
         <p>Quando usi i decoratori di target a sorgente unica, puoi anche scegliere una struttura più piatta (per esempio un unico entry <code>app.malda</code>) continuando a separare le responsabilità marcando le dichiarazioni con <code>@server()</code>, <code>@client()</code> e <code>@shared()</code>.</p>
-        <h3>30.3.1 Host a una sola porta: HttpServer.mount</h3>
+        <h3>31.3.1 Host a una sola porta: HttpServer.mount</h3>
         <p>Costruisci un <code>RestServer</code> deferred (senza porta), costruisci <code>HttpServer</code> con la porta pubblica, poi <code>mount</code> prima di <code>web.start()</code>. Non dare all'API un listener proprio e non fare <code>start()</code> del <code>RestServer</code> come server standalone. Le route API che matchano girano per prime; i path non riconosciuti cadono su pagine, <code>@ACTION</code>, <code>@LIVE</code> e file statici.</p>
         <pre><code>var rest = new RestServer();
 var web = new HttpServer(8080);
@@ -115,14 +115,14 @@ rest.use(requireAuth, {
 });
 web.start();</code></pre>
         <ul>
-            <li>Configura CSRF, rate limit e middleware API sull'istanza <code>RestServer</code> (<a href="28-rest-api.html">28. Server REST API</a> §28.4, §28.8–28.9, §28.13)</li>
+            <li>Configura CSRF, rate limit e middleware API sull'istanza <code>RestServer</code> (<a href="29-rest-api.html">29. Server REST API</a> §29.4, §29.8–29.9, §29.13)</li>
             <li>I cookie di sessione di solito stanno su <code>HttpServer</code> così pagine e API condividono lo stesso cookie jar</li>
             <li>Un <code>RestServer</code> che ha già un listener proprio non si può montare; un <code>HttpServer</code> monta al massimo un <code>RestServer</code></li>
             <li>Starter canonico: <code>Templates/fullstack/backend/app.malda</code></li>
-            <li>I metodi dell'host (HTTPS, file statici, <code>setHost</code>) restano su <code>HttpServer</code> — <a href="26-http-server-html-ui.html">26. HttpServer e generazione UI HTML</a></li>
+            <li>I metodi dell'host (HTTPS, file statici, <code>setHost</code>) restano su <code>HttpServer</code> — <a href="27-http-server-html-ui.html">27. HttpServer e generazione UI HTML</a></li>
         </ul>
 
-        <h2>30.4 Livello API (CRUD degli item + workflow)</h2>
+        <h2>31.4 Livello API (CRUD degli item + workflow)</h2>
         <p>Definisci le route REST per le operazioni sugli item:</p>
         <pre><code>function ok(data) {
     return {"status": 200, "data": data};
@@ -157,9 +157,9 @@ function updateItemStatus(id, body) {
     dbExecute("UPDATE Items SET status = @status WHERE id = @id", {"id": id, "status": body.status});
     return ok({"id": id, "status": body.status});
 }</code></pre>
-        <p>Ospita queste route sul <code>RestServer</code> montato (30.3.1). In un'app full-stack non fare <code>new RestServer(8080)</code> accanto al server UI. Produzione: aggiungi <code>@Validate</code>, middleware di auth e l'envelope di errore standard da <a href="28-rest-api.html">28. Server REST API</a> (pipeline §28.4, validazione §28.10, errori §28.11). Restituire <code>{"status": 200, "data": ...}</code> è un envelope applicativo; lo status HTTP è comunque impostato dal framework a meno che usi <code>res.status(...)</code>.</p>
+        <p>Ospita queste route sul <code>RestServer</code> montato (31.3.1). In un'app full-stack non fare <code>new RestServer(8080)</code> accanto al server UI. Produzione: aggiungi <code>@Validate</code>, middleware di auth e l'envelope di errore standard da <a href="29-rest-api.html">29. Server REST API</a> (pipeline §29.4, validazione §29.10, errori §29.11). Restituire <code>{"status": 200, "data": ...}</code> è un envelope applicativo; lo status HTTP è comunque impostato dal framework a meno che usi <code>res.status(...)</code>.</p>
 
-        <h2>30.5 Livello UI (quale tecnologia usare)</h2>
+        <h2>31.5 Livello UI (quale tecnologia usare)</h2>
         <p>Ci sono due approcci comuni:</p>
         <ul>
             <li><strong>UI renderizzata sul server in MALDA</strong>: costruisci le pagine con <code>@PAGE</code>/<code>@AIPAGE</code> e servile direttamente da MALDA</li>
@@ -171,7 +171,7 @@ function updateItemStatus(id, body) {
             <tr><td>Full stack ibrido</td><td>UX SPA ricca, team frontend numerosi, requisiti forti sull'ecosistema JS</td></tr>
         </table>
         <p>Le opzioni di framework per la UI nel browser includono JavaScript vanilla, React, Vue, Angular, Svelte, Next.js (modalità frontend/consumatore di API), Nuxt, Solid e opzioni leggere come HTMX o Alpine.js. MALDA è agnostico rispetto al backend, purché il frontend possa chiamare API HTTP.</p>
-        <h3>30.5.0 Pattern a componenti nativo MALDA</h3>
+        <h3>31.5.0 Pattern a componenti nativo MALDA</h3>
         <p>Per il full stack nativo MALDA, questo fornisce una baseline pragmatica a componenti server:</p>
         <ul>
             <li><code>component Name(...) { ... }</code> per i punti di ingresso dei componenti renderizzati sul server</li>
@@ -181,7 +181,7 @@ function updateItemStatus(id, body) {
         </ul>
         <p><strong>Come scegliere il trasporto:</strong> usa <strong>fragment HTTP</strong> come default per le azioni avviate dall'utente (form/pulsanti). Aggiungi <strong>LIVE/SSE</strong> quando la UI deve aggiornarsi senza un'azione dell'utente (notifiche, contatori, code).</p>
         <p><strong>Nota:</strong> gli endpoint LIVE supportano le sottoscrizioni a canale (per esempio <code>/items/live?channel=items</code>) e <code>componentLiveEmit("items", ...)</code> pubblica solo su quel canale. Lo scaffold <code>malda new fullstack</code> include anche un componente di esempio in <code>/components/TicketBoard</code> per una demo locale rapida.</p>
-        <h4>30.5.0.1 Piccolo esempio di item</h4>
+        <h4>31.5.0.1 Piccolo esempio di item</h4>
         <pre><code>component ItemBoard() {
     var items = componentStateGet("board", "items", []);
     return "&lt;h1&gt;Open: " + items.length + "&lt;/h1&gt;";
@@ -200,12 +200,12 @@ function addItem(body) {
 function itemsLive() {
     return {"sse": true};
 }</code></pre>
-        <h3>30.5.1 Handler di pagina lato server MALDA</h3>
+        <h3>31.5.1 Handler di pagina lato server MALDA</h3>
         <pre><code>@PAGE("/items")
 function itemsPage() {
     return "&lt;html&gt;&lt;body&gt;&lt;h1&gt;Items&lt;/h1&gt;&lt;/body&gt;&lt;/html&gt;";
 }</code></pre>
-        <h3>30.5.2 JavaScript nel browser che chiama l'API MALDA</h3>
+        <h3>31.5.2 JavaScript nel browser che chiama l'API MALDA</h3>
         <pre><code>async function loadItems() {
   const r = await fetch("/api/items?status=open");
   const json = await r.json();
@@ -219,8 +219,8 @@ async function closeItem(id) {
     body: JSON.stringify({ status: "closed" })
   });
 }</code></pre>
-        <p>Questa separazione tiene le preoccupazioni della UI concentrate su rendering e interazione, mentre MALDA resta la fonte di verità per la logica di business e l'accesso ai dati. Il <code>fetch</code> same-origin verso un'API montata non richiede CORS. Il MALDA lato server che parla con un'API esterna usa <code>RestClient</code> / <code>httpGet</code> — <a href="29-rest-web-client.html">29. Client REST Web</a>.</p>
-        <h3>30.5.3 Percorso di migrazione da @PAGE ai componenti</h3>
+        <p>Questa separazione tiene le preoccupazioni della UI concentrate su rendering e interazione, mentre MALDA resta la fonte di verità per la logica di business e l'accesso ai dati. Il <code>fetch</code> same-origin verso un'API montata non richiede CORS. Il MALDA lato server che parla con un'API esterna usa <code>RestClient</code> / <code>httpGet</code> — <a href="30-rest-web-client.html">30. Client REST Web</a>.</p>
+        <h3>31.5.3 Percorso di migrazione da @PAGE ai componenti</h3>
         <ol>
             <li>Tieni stabili gli endpoint <code>@PAGE</code> esistenti (non è richiesta una migrazione breaking).</li>
             <li>Estrai la logica di vista in funzioni <code>component</code>.</li>
@@ -230,13 +230,13 @@ async function closeItem(id) {
         </ol>
         <p><strong>Suggerimento di migrazione incrementale:</strong> parti da un unico workflow di form (per esempio &quot;create item&quot;), verifica che aggiornamenti dei fragment e gestione dello stato siano chiari al team, poi estendi alle altre pagine.</p>
 
-        <h3>30.5.4 Esempio UI end-to-end</h3>
+        <h3>31.5.4 Esempio UI end-to-end</h3>
         <p>Per un flusso completo elenco/dettaglio con controlli in stile CRUD, parti da <code>Examples/Web/ui_controls_showcase_minimal.malda</code>, <code>Examples/Web/ui_form_workflow.malda</code> e <code>Examples/Web/rest_api_server.malda</code>, poi componi le pagine con <code>ui.crudControls</code>, <code>@PAGE</code> e <code>@POST</code>. Pattern chiave:</p>
         <ul>
             <li><strong>Pagina elenco</strong>: un handler <code>@PAGE</code> costruisce filtri/pulsanti/host della griglia tramite <code>ui.crudControls(...)</code>.</li>
             <li><strong>Navigazione dettaglio / relazione</strong>: i query param guidano le viste master-detail (per esempio <code>?ownerId=5</code>).</li>
             <li><strong>CRUD</strong>: i form usano <code>method="post"</code> con handler <code>@POST</code> corrispondenti che validano, persistono e fanno redirect oppure restituiscono un fragment.</li>
-            <li><strong>Chiamate API</strong>: l'host della griglia recupera JSON in envelope; il server costruisce <code>ui.dataGrid</code> dalle righe e restituisce un envelope mount/patch. Per API esterne usa <code>RestClient</code>; vedi <a href="29-rest-web-client.html">29. Client REST Web</a>.</li>
+            <li><strong>Chiamate API</strong>: l'host della griglia recupera JSON in envelope; il server costruisce <code>ui.dataGrid</code> dalle righe e restituisce un envelope mount/patch. Per API esterne usa <code>RestClient</code>; vedi <a href="30-rest-web-client.html">30. Client REST Web</a>.</li>
             <li><strong>Gestione ottimistica / errori</strong>: mostra un toast in caso di successo; su errore di validazione o del server, restituisci <code>componentFragment("form-errors", errorHtml)</code> e ri-renderizza il form con errori inline.</li>
         </ul>
         <pre><code>function crudPage(req, schema, pageTitle, lookups) {
@@ -259,18 +259,18 @@ function addItem(req, body, res) {
     var row = dbQuery("SELECT last_insert_rowid() AS id")[0];
     return RedirectTo("/web/items?added=" + row.id);
 }</code></pre>
-        <p>Per la struttura completa dello schema e i path dei template, vedi <a href="25-web-ui.html">25. Componenti server Web UI</a> (25.3.1.3 riferimento allo schema CRUD).</p>
+        <p>Per la struttura completa dello schema e i path dei template, vedi <a href="26-web-ui.html">26. Componenti server Web UI</a> (26.3.1.3 riferimento allo schema CRUD).</p>
 
-        <h2>30.6 Pattern di integrazione database</h2>
+        <h2>31.6 Pattern di integrazione database</h2>
         <p>Un approccio pratico è usare:</p>
         <ul>
             <li>Piccole funzioni in stile repository per aggregato (per esempio <code>saveItem</code>, <code>findItemsByStatus</code>)</li>
             <li>SQL parametrizzato per tutti i valori in input</li>
             <li>Semplici funzioni di mapping dagli oggetti riga agli oggetti di dominio</li>
         </ul>
-        <p><code>execute</code> / <code>insert</code> restituiscono il conteggio delle righe interessate, non una nuova chiave. Dopo un insert SQLite, leggi l'id con <code>SELECT last_insert_rowid() AS id</code> sulla stessa connessione (SQL Server: <code>SCOPE_IDENTITY()</code>; PostgreSQL: <code>INSERT … RETURNING id</code>). Non esiste un campo <code>lastInsertId</code>. Vedi <a href="16-database.html">16. Supporto database</a> §16.6.</p>
+        <p><code>execute</code> / <code>insert</code> restituiscono il conteggio delle righe interessate, non una nuova chiave. Dopo un insert SQLite, leggi l'id con <code>SELECT last_insert_rowid() AS id</code> sulla stessa connessione (SQL Server: <code>SCOPE_IDENTITY()</code>; PostgreSQL: <code>INSERT … RETURNING id</code>). Non esiste un campo <code>lastInsertId</code>. Vedi <a href="17-database.html">17. Supporto database</a> §17.6.</p>
 
-        <h2>30.7 Workflow di triage AI (opzionale ma potente)</h2>
+        <h2>31.7 Workflow di triage AI (opzionale ma potente)</h2>
         <p>Usa un agente per classificare l'urgenza degli item in arrivo e proporre l'azione successiva:</p>
         <pre><code>var client = new OpenRouterClient();
 var triageAgent = new Agent(
@@ -287,17 +287,17 @@ function triageItem(item) {
 }</code></pre>
         <p>Pattern di integrazione comune: chiama il triage subito dopo la creazione dell'item, poi persisti i campi <code>priority</code> e <code>queue</code> prima di restituire la risposta.</p>
 
-        <h2>30.8 Flusso della richiesta end-to-end</h2>
+        <h2>31.8 Flusso della richiesta end-to-end</h2>
         <ol>
             <li>Il browser colpisce un'unica origin, per esempio <code>http://localhost:8080/items</code> o <code>POST /api/items</code></li>
             <li><code>HttpServer</code> riceve la richiesta su quel listener</li>
-            <li>Se un <code>RestServer</code> è montato, prova prima il path. Un match esegue la pipeline API (CSRF → middleware globale → middleware di route → rate limit → <code>@Validate</code> → handler). Dettagli: <a href="28-rest-api.html">28. Server REST API</a> §28.4</li>
-            <li>Nessun match API: pagine, componenti, <code>@ACTION</code>, <code>@LIVE</code>, file statici (<a href="26-http-server-html-ui.html">26. HttpServer e generazione UI HTML</a>)</li>
+            <li>Se un <code>RestServer</code> è montato, prova prima il path. Un match esegue la pipeline API (CSRF → middleware globale → middleware di route → rate limit → <code>@Validate</code> → handler). Dettagli: <a href="29-rest-api.html">29. Server REST API</a> §29.4</li>
+            <li>Nessun match API: pagine, componenti, <code>@ACTION</code>, <code>@LIVE</code>, file statici (<a href="27-http-server-html-ui.html">27. HttpServer e generazione UI HTML</a>)</li>
             <li>L'handler API valida e persiste l'item, chiama opzionalmente un agente di triage, poi restituisce JSON</li>
             <li>La UI si aggiorna via <code>GET /api/items</code> (stessa origin) oppure un fragment <code>@ACTION</code></li>
         </ol>
 
-        <h2>30.9 Configurazione e segreti</h2>
+        <h2>31.9 Configurazione e segreti</h2>
         <p>Tieni credenziali e valori specifici dell'ambiente fuori dal codice sorgente:</p>
         <ul>
             <li>Usa variabili d'ambiente per le API key e le credenziali del DB</li>
@@ -306,7 +306,7 @@ function triageItem(item) {
         </ul>
         <p>I built-in rilevanti sono documentati in <a href="13-built-in-functions.html">13. Funzioni built-in</a>.</p>
 
-        <h2>30.10 Checklist pratica per nuove app full-stack</h2>
+        <h2>31.10 Checklist pratica per nuove app full-stack</h2>
         <ul>
             <li>Definisci prima i contratti API (payload, codici di stato, formato degli errori)</li>
             <li>Monta un <code>RestServer</code> deferred su <code>HttpServer</code> invece di due listener</li>
@@ -317,32 +317,32 @@ function triageItem(item) {
             <li>Introduci l'automazione AI solo dove fa risparmiare sforzo misurabile</li>
         </ul>
 
-        <h3>30.10.1 Testing e troubleshooting (Web UI + API)</h3>
+        <h3>31.10.1 Testing e troubleshooting (Web UI + API)</h3>
         <p>Quando integri la Web UI con le REST API, usa questi controlli pratici:</p>
         <ul>
             <li><strong>Risposte fragment</strong>: verifica gli header <code>X-Malda-Fragment</code> e <code>X-Malda-Fragment-Target</code> quando testi handler <code>@ACTION</code> o <code>@POST</code>. Il client deve aggiornare solo l'elemento target.</li>
             <li><strong>Continuità di sessione</strong>: passa <code>session</code> in query o form; <code>ui.sessionId(req, default)</code> lo legge. Senza di esso, <code>componentState*</code> e <code>ui.state</code> potrebbero non persistere tra le richieste.</li>
-            <li><strong>Errori API</strong>: quando la UI chiama <code>GET /api/items</code>, distingui l'HTTP <code>response.status</code> da un envelope JSON. I fallimenti del framework usano <code>{"status", "error", "message", "correlationId"}</code> — vedi <a href="28-rest-api.html">28. Server REST API</a> §28.11. Gli elenchi applicativi usano spesso <code>{"status": 200, "data": [...]}</code>.</li>
-            <li><strong>CSRF</strong>: abilitalo sul <code>RestServer</code> montato (<code>rest.enableCsrf</code>) per le mutazioni JSON. I form HTML servono <code>csrfField</code> (e il cookie corrispondente se abiliti CSRF anche su <code>HttpServer</code>). Fetch deve inviare <code>X-CSRF-Token</code> (o l'header configurato). Vedi 28.9 e i commenti in <code>Templates/fullstack/backend/app.malda</code>. Non chiamare la variabile <code>api</code> — è una keyword.</li>
+            <li><strong>Errori API</strong>: quando la UI chiama <code>GET /api/items</code>, distingui l'HTTP <code>response.status</code> da un envelope JSON. I fallimenti del framework usano <code>{"status", "error", "message", "correlationId"}</code> — vedi <a href="29-rest-api.html">29. Server REST API</a> §29.11. Gli elenchi applicativi usano spesso <code>{"status": 200, "data": [...]}</code>.</li>
+            <li><strong>CSRF</strong>: abilitalo sul <code>RestServer</code> montato (<code>rest.enableCsrf</code>) per le mutazioni JSON. I form HTML servono <code>csrfField</code> (e il cookie corrispondente se abiliti CSRF anche su <code>HttpServer</code>). Fetch deve inviare <code>X-CSRF-Token</code> (o l'header configurato). Vedi 29.9 e i commenti in <code>Templates/fullstack/backend/app.malda</code>. Non chiamare la variabile <code>api</code> — è una keyword.</li>
             <li><strong>Lookup</strong>: per il CRUD guidato da schema, assicurati che <code>lookups</code> contenga tutte le chiavi referenziate in <code>dialogLookupOptions</code> (es. <code>owners</code>, <code>tags</code>). Lookup mancanti producono dropdown vuoti.</li>
         </ul>
-        <p>Per il debugging specifico della Web UI (divergenza dell'albero, event handler, cache dei template), vedi <a href="25-web-ui.html">25. Componenti server Web UI</a> (25.3.15 Insidie comuni e debugging, 25.6 Testing e troubleshooting).</p>
+        <p>Per il debugging specifico della Web UI (divergenza dell'albero, event handler, cache dei template), vedi <a href="26-web-ui.html">26. Componenti server Web UI</a> (26.3.15 Insidie comuni e debugging, 26.6 Testing e troubleshooting).</p>
 
         <div class="see-also">
             <h3>Vedi anche</h3>
             <ul>
-                <li><a href="25-web-ui.html">25. Componenti server Web UI</a> - Costruire pagine e flussi UI rivolti al browser</li>
-                <li><a href="26-http-server-html-ui.html">26. HttpServer e generazione UI HTML</a> - Listener, pagine, HTTPS, file statici, host di <code>mount</code></li>
-                <li><a href="28-rest-api.html">28. Server REST API</a> - Decoratori di route, pipeline, middleware, validazione, mount</li>
-                <li><a href="29-rest-web-client.html">29. Client REST Web</a> - Chiamare API da UI/servizi</li>
-                <li><a href="16-database.html">16. Supporto database</a> - Pattern di persistenza e provider</li>
-                <li><a href="18-agent-orchestration.html">18. Orchestrazione di agenti</a> - Agenti AI e workflow basati su tool</li>
+                <li><a href="26-web-ui.html">26. Componenti server Web UI</a> - Costruire pagine e flussi UI rivolti al browser</li>
+                <li><a href="27-http-server-html-ui.html">27. HttpServer e generazione UI HTML</a> - Listener, pagine, HTTPS, file statici, host di <code>mount</code></li>
+                <li><a href="29-rest-api.html">29. Server REST API</a> - Decoratori di route, pipeline, middleware, validazione, mount</li>
+                <li><a href="30-rest-web-client.html">30. Client REST Web</a> - Chiamare API da UI/servizi</li>
+                <li><a href="17-database.html">17. Supporto database</a> - Pattern di persistenza e provider</li>
+                <li><a href="19-agent-orchestration.html">19. Orchestrazione di agenti</a> - Agenti AI e workflow basati su tool</li>
             </ul>
         </div>
 
         <div class="nav-footer">
-            <a href="29-rest-web-client.html">← Precedente: 29. Client REST Web</a>
-            <a href="31-dotnet-interop.html">Successivo: 31. Interop .NET→</a>
+            <a href="30-rest-web-client.html">← Precedente: 30. Client REST Web</a>
+            <a href="32-dotnet-interop.html">Successivo: 32. Interop .NET→</a>
         </div>
 
         <footer>

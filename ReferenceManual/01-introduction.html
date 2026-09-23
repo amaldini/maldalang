@@ -31,7 +31,7 @@
         <p>The page header is the shipping toolchain version (the same number as the CLI). Core language semantics are specified in <a href="../docs/spec/malda-language-1.0.md">malda-language-1.0</a>.</p>
 
         <div class="info-box">
-            <strong>Learning the language? Skip this chapter.</strong> The course is <a href="learn.html">Learn MALDA</a> — one lesson, one file, one section. This page is product and architecture, not the first programming lesson. If you already program, you can also begin with <a href="index.html">Home → First Look</a> (<code>prompt</code> + <code>schema</code> + <code>validate</code>, no API key). After the core path, continue from the sidebar categories: <strong>Standard Library</strong> (<a href="16-database.html">16. Database Support</a>, <a href="15-vectordb.html">15. VectorDB</a>), <strong>AI &amp; Agents</strong> (<a href="18-agent-orchestration.html">18. Agent Orchestration</a>), <strong>Web</strong> (<a href="24-web-ui-hub.html">24. Web UI Overview</a>, <a href="24-web-ui-hub.html#browser-games">browser games</a>, <a href="27-browser-javascript-backend.html">27. Browser JavaScript UI Backend</a>), and <strong>Reference</strong> (<a href="35-property-testing.html">35. Property Testing</a>). Both journeys lead into the same AI-first runtime.
+            <strong>Learning the language? Skip this chapter.</strong> The course is <a href="learn.html">Learn MALDA</a> — one lesson, one file, one section. This page is product and architecture, not the first programming lesson. If you already program, you can also begin with <a href="index.html">Home → First Look</a> (<code>prompt</code> + <code>schema</code> + <code>validate</code>, no API key). After the core path, continue from the sidebar categories: <strong>Standard Library</strong> (<a href="17-database.html">17. Database Support</a>, <a href="16-vectordb.html">16. VectorDB</a>), <strong>AI &amp; Agents</strong> (<a href="19-agent-orchestration.html">19. Agent Orchestration</a>), <strong>Web</strong> (<a href="25-web-ui-hub.html">25. Web UI Overview</a>, <a href="25-web-ui-hub.html#browser-games">browser games</a>, <a href="28-browser-javascript-backend.html">28. Browser JavaScript UI Backend</a>), and <strong>Reference</strong> (<a href="36-property-testing.html">36. Property Testing</a>). Both journeys lead into the same AI-first runtime.
         </div>
 
         <h3>What Does MALDA Stand For?</h3>
@@ -195,7 +195,7 @@
             <li><strong>Working Directory Safety</strong>: Path validation for file operation tools</li>
         </ul>
         <div class="warning-box">
-            <p><strong>⚠️ Important:</strong> Autonomous agent systems with tool access pose significant security and operational risks. See <a href="18-agent-orchestration.html">18. Agent Orchestration</a> for a detailed disclaimer and risk mitigation strategies before deploying agents in production.</p>
+            <p><strong>⚠️ Important:</strong> Autonomous agent systems with tool access pose significant security and operational risks. See <a href="19-agent-orchestration.html">19. Agent Orchestration</a> for a detailed disclaimer and risk mitigation strategies before deploying agents in production.</p>
         </div>
 
         <h3>Web & API Features</h3>
@@ -302,7 +302,7 @@ print(mathUtils.VERSION);     // "1.0"</code></pre>
         <p>The same two forms apply to packages, with a dotted package name in place of the string path:</p>
         <pre><code>import App.Core;
 import UI = App.Web.Components;</code></pre>
-        <p>Package names beginning with <code>System</code>, <code>Microsoft</code>, or <code>Windows</code> are resolved as .NET namespaces through the interop layer rather than the package manager. See <a href="31-dotnet-interop.html">31. .NET Interop</a>.</p>
+        <p>Package names beginning with <code>System</code>, <code>Microsoft</code>, or <code>Windows</code> are resolved as .NET namespaces through the interop layer rather than the package manager. See <a href="32-dotnet-interop.html">32. .NET Interop</a>.</p>
         <p>Failing to resolve a target is a runtime error: <em>Package or module not found: Name</em> for packages, and the underlying file-not-found message for file imports.</p>
 
         <h3>Path and safety behavior for <code>include</code></h3>
@@ -390,7 +390,7 @@ person.introduce();</code></pre>
             <ul>
                 <li><a href="03-lexical-structure.html">3. Lexical Structure</a> - Learn about syntax basics</li>
                 <li><a href="04-data-types.html">4. Data Types</a> - Understand MALDA's type system</li>
-                <li><a href="34-examples.html#catalog">34. Examples</a> — <code>Examples/</code> catalog</li>
+                <li><a href="35-examples.html#catalog">35. Examples</a> — <code>Examples/</code> catalog</li>
             </ul>
         </div>
 

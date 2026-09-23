@@ -26,8 +26,8 @@
       "href": "12-input-output.html#capability-tokens",
       "also": [
         "13-built-in-functions.html#capability-tokens",
-        "18-agent-orchestration.html#capability-tokens-for-tools",
-        "18-agent-orchestration.html#specialized-kinds-are-not-sandboxes"
+        "19-agent-orchestration.html#capability-tokens-for-tools",
+        "19-agent-orchestration.html#specialized-kinds-are-not-sandboxes"
       ],
       "summary": "Un oggetto-permesso (una chiave per un file, un origin HTTP, un tool MCP o un prefisso argv) così un tool non può inventare un path, un URL, un tool o un comando. L'host emette cap.fileRead / httpGet / mcpCall / shell; cap.confine restringe. Non esiste un alias piatto cap()."
     },
@@ -78,7 +78,7 @@
       "term": "Keyword",
       "aliases": ["parole riservate", "reserved words", "reserved"],
       "href": "03-lexical-structure.html#keywords",
-      "also": ["37-appendix.html"],
+      "also": ["38-appendix.html"],
       "summary": "Parole riservate del lexer. fn e def non sono riservate; il parser le rifiuta come keyword di funzione."
     },
     {
@@ -235,16 +235,16 @@
       "id": "actor",
       "term": "Actor",
       "aliases": ["actor", "spawn", "send", "receive", "self"],
-      "href": "17-actors.html",
-      "also": ["17-actors.html#actor-state-isolation"],
+      "href": "18-actors.html",
+      "also": ["18-actors.html#actor-state-isolation"],
       "summary": "Modello ad actor nativo: spawn, send, receive, self e stato isolato."
     },
     {
       "id": "agent",
       "term": "Agent",
       "aliases": ["agents", "agenti", "think", "CodingAgent", "GitAgent", "DevAgent", "HumanAgent"],
-      "href": "18-agent-orchestration.html",
-      "also": ["18-agent-orchestration.html#specialized-kinds-are-not-sandboxes"],
+      "href": "19-agent-orchestration.html",
+      "also": ["19-agent-orchestration.html#specialized-kinds-are-not-sandboxes"],
       "summary": "Classe Agent built-in e agenti specializzati. think() esegue un turno con i tool. I kind specializzati sono bundle di tool, non sandbox."
     },
     {
@@ -263,10 +263,10 @@
         "team.decompose",
         "team dichiarativi"
       ],
-      "href": "18-agent-orchestration.html#declarative-agent-teams",
+      "href": "19-agent-orchestration.html#declarative-agent-teams",
       "also": [
         "13-built-in-functions.html#agent-teams",
-        "14-graphs.html"
+        "15-graphs.html"
       ],
       "summary": "Team multi-agente dichiarativi: agents.define / agents.team collegano spec di ruolo a un grafo diretto. Gli hop tipizzati restano solo validazione se think non è true."
     },
@@ -274,109 +274,109 @@
       "id": "tool",
       "term": "Tool",
       "aliases": ["@Tool", "Tool", "createReadFileTool", "createWebFetchTool"],
-      "href": "18-agent-orchestration.html",
+      "href": "19-agent-orchestration.html",
       "summary": "Tool degli agenti: decoratore @Tool, new Tool e factory built-in."
     },
     {
       "id": "llm-client",
       "term": "Client LLM",
       "aliases": ["LLMClient", "OpenRouterClient", "LlamaCppClient", "Conversation"],
-      "href": "18-agent-orchestration.html",
+      "href": "19-agent-orchestration.html",
       "summary": "Client LLM built-in e Conversation. Se non passi un client viene usato un modello GGUF locale di default."
     },
     {
       "id": "ralph",
       "term": "Ralph Wiggum",
       "aliases": ["ralph", "Ralph", "PRD loop"],
-      "href": "18-agent-orchestration.html#ralph-wiggum",
+      "href": "19-agent-orchestration.html#ralph-wiggum",
       "summary": "Loop autonomo di agenti guidato da un PRD."
     },
     {
       "id": "graphmemory",
       "term": "GraphMemory",
       "aliases": ["GraphMemory", "memoria semantica", "ask"],
-      "href": "19-graph-memory.html",
+      "href": "20-graph-memory.html",
       "summary": "Memoria semantica: grafo di conoscenza più ricerca vettoriale per gli agenti."
     },
     {
       "id": "vectordb",
       "term": "VectorDB",
       "aliases": ["VectorDB", "searchSimilar", "embeddings"],
-      "href": "15-vectordb.html",
+      "href": "16-vectordb.html",
       "summary": "Database vettoriale in-process per similarity search e embedding."
     },
     {
       "id": "graph",
       "term": "graph",
       "aliases": ["grafi", "graphs", "directed", "undirected"],
-      "href": "14-graphs.html",
+      "href": "15-graphs.html",
       "summary": "Letterali a grafo, algoritmi e serializzazione."
     },
     {
       "id": "mcp",
       "term": "Server MCP",
       "aliases": ["MCP", "mcp"],
-      "href": "20-mcp-server.html",
+      "href": "21-mcp-server.html",
       "summary": "Espone funzioni MALDA come tool del Model Context Protocol."
     },
     {
       "id": "acp",
       "term": "ACP",
       "aliases": ["ACP", "Agent Communication Protocol"],
-      "href": "21-acp.html",
+      "href": "22-acp.html",
       "summary": "Agent Communication Protocol per la collaborazione multi-agente."
     },
     {
       "id": "workflow",
       "term": "Workflow durevoli",
       "aliases": ["workflow", "step", "approval", "compensate", "DLQ"],
-      "href": "22-durable-workflows.html",
+      "href": "23-durable-workflows.html",
       "summary": "Sintassi dei workflow durevoli, storage, CLI, dead letter e operazioni."
     },
     {
       "id": "web-ui",
       "term": "Web UI (ui.*)",
       "aliases": ["ui", "ui.button", "component", "property", "UIHost"],
-      "href": "25-web-ui.html",
-      "also": ["24-web-ui-hub.html"],
+      "href": "26-web-ui.html",
+      "also": ["25-web-ui-hub.html"],
       "summary": "UI guidata dal server: component, property e controlli ui.*. Parti dal capitolo 24 se stai scegliendo un modello UI."
     },
     {
       "id": "page",
       "term": "@PAGE e @AIPAGE",
       "aliases": ["@PAGE", "@AIPAGE", "HttpServer"],
-      "href": "26-http-server-html-ui.html",
+      "href": "27-http-server-html-ui.html",
       "summary": "Pagine HTML route-first su HttpServer, incluso @AIPAGE generato da LLM."
     },
     {
       "id": "rest",
       "term": "REST API",
       "aliases": ["@GET", "@POST", "@PUT", "@DELETE", "REST"],
-      "href": "28-rest-api.html",
-      "also": ["28-rest-api.html#web-concepts"],
+      "href": "29-rest-api.html",
+      "also": ["29-rest-api.html#web-concepts"],
       "summary": "Route REST basate su decoratori sul server HTTP MALDA. Primer: 28.1.1 (REST, middleware, auth, CSRF, CORS, mappa di sicurezza)."
     },
     {
       "id": "middleware",
       "term": "Middleware",
       "aliases": ["server.use", "@Use", "@Middleware", "next()"],
-      "href": "28-rest-api.html#concept-middleware",
-      "also": ["28-rest-api.html#middleware"],
+      "href": "29-rest-api.html#concept-middleware",
+      "also": ["29-rest-api.html#middleware"],
       "summary": "Una funzione (req, res, next) che gira prima dell'handler di route per lavoro condiviso come auth o logging. Chiama next() per continuare."
     },
     {
       "id": "authentication",
       "term": "Autenticazione e autorizzazione",
       "aliases": ["auth", "authn", "authz", "req.auth", "401", "403"],
-      "href": "28-rest-api.html#concept-authentication",
-      "also": ["28-rest-api.html#req-auth", "13-built-in-functions.html#jwt-security"],
+      "href": "29-rest-api.html#concept-authentication",
+      "also": ["29-rest-api.html#req-auth", "13-built-in-functions.html#jwt-security"],
       "summary": "L'autenticazione è chi è il chiamante; l'autorizzazione è cosa può fare. 401 = non autenticato; 403 = autenticato ma non permesso."
     },
     {
       "id": "jwt",
       "term": "JWT e token Bearer",
       "aliases": ["JWT", "Bearer", "createJwt", "verifyJwt", "authenticateBearerJwt"],
-      "href": "28-rest-api.html#concept-jwt",
+      "href": "29-rest-api.html#concept-jwt",
       "also": ["13-built-in-functions.html#jwt-security"],
       "summary": "Claim JSON firmati, di solito inviati come Authorization: Bearer <token>. Verifica con req.auth.authenticateBearerJwt; emetti con createJwt."
     },
@@ -384,46 +384,46 @@
       "id": "csrf",
       "term": "CSRF",
       "aliases": ["CSRF", "cross-site request forgery", "enableCsrf", "X-CSRF-Token"],
-      "href": "28-rest-api.html#concept-csrf",
-      "also": ["28-rest-api.html#csrf-rate-limit"],
+      "href": "29-rest-api.html#concept-csrf",
+      "also": ["29-rest-api.html#csrf-rate-limit"],
       "summary": "Una richiesta contraffatta che usa i cookie dell'utente. Difesa: un token segreto che la pagina vera invia e l'attaccante non può leggere."
     },
     {
       "id": "cors",
       "term": "CORS",
       "aliases": ["CORS", "cross-origin", "preflight", "enableCORS"],
-      "href": "28-rest-api.html#concept-cors",
-      "also": ["28-rest-api.html#cors", "29-rest-web-client.html#cors-host-browser"],
+      "href": "29-rest-api.html#concept-cors",
+      "also": ["29-rest-api.html#cors", "30-rest-web-client.html#cors-host-browser"],
       "summary": "Regola del browser: una pagina può leggere la risposta di un altro origin solo se quell'origin acconsente. Le app MALDA same-origin non ne hanno bisogno; il RestClient host lo ignora."
     },
     {
       "id": "rate-limit",
       "term": "Rate limiting",
       "aliases": ["rate limit", "setRateLimit", "429"],
-      "href": "28-rest-api.html#concept-rate-limit",
-      "also": ["28-rest-api.html#csrf-rate-limit"],
+      "href": "29-rest-api.html#concept-rate-limit",
+      "also": ["29-rest-api.html#csrf-rate-limit"],
       "summary": "Limita le richieste per IP, utente o token in una finestra di tempo. Gira dopo il middleware così verifiedSub* può usare il subject JWT come chiave."
     },
     {
       "id": "session-cookie",
       "term": "Sessioni e cookie",
       "aliases": ["session", "cookie", "enableSession", "req.session", "HttpOnly", "SameSite"],
-      "href": "28-rest-api.html#concept-session",
+      "href": "29-rest-api.html#concept-session",
       "summary": "I cookie sono coppie name/value che il browser memorizza e rinvia. Una sessione è dati lato server indicizzati da un cookie session-id (req.session)."
     },
     {
       "id": "https-tls",
       "term": "HTTPS / TLS",
       "aliases": ["HTTPS", "TLS", "enableHttps", "certificate"],
-      "href": "28-rest-api.html#concept-https",
-      "also": ["26-http-server-html-ui.html#https"],
+      "href": "29-rest-api.html#concept-https",
+      "also": ["27-http-server-html-ui.html#https"],
       "summary": "HTTP su TLS: cifra la connessione e autentica il server con un certificato. Abilita su HttpServer con enableHttps."
     },
     {
       "id": "password-hash",
       "term": "Hash delle password",
       "aliases": ["hashPassword", "verifyPassword", "PBKDF2", "salt"],
-      "href": "28-rest-api.html#concept-password",
+      "href": "29-rest-api.html#concept-password",
       "also": ["13-built-in-functions.html#jwt-security"],
       "summary": "Hash one-way con salt di una password di login (PBKDF2). Memorizza l'hash, mai il plaintext; verifyPassword al login. Non è firma JWT e non è HTTPS."
     },
@@ -431,54 +431,54 @@
       "id": "xss",
       "term": "XSS",
       "aliases": ["XSS", "cross-site scripting"],
-      "href": "28-rest-api.html#concept-xss",
-      "also": ["28-rest-api.html#concept-security-map", "26-http-server-html-ui.html"],
+      "href": "29-rest-api.html#concept-xss",
+      "also": ["29-rest-api.html#concept-security-map", "27-http-server-html-ui.html"],
       "summary": "Script iniettato che gira nel browser della vittima. Non concatenare stringhe non fidate in HTML; i cookie HttpOnly riducono il raggio d'azione ma non risolvono l'XSS."
     },
     {
       "id": "correlation-id",
       "term": "Correlation ID",
       "aliases": ["correlationId", "X-Correlation-ID"],
-      "href": "28-rest-api.html#concept-correlation",
-      "also": ["28-rest-api.html"],
+      "href": "29-rest-api.html#concept-correlation",
+      "also": ["29-rest-api.html"],
       "summary": "Una stringa che etichetta una richiesta attraverso log e payload di errore. MALDA onora X-Correlation-ID in ingresso oppure ne genera uno."
     },
     {
       "id": "openapi",
       "term": "OpenAPI / Swagger",
       "aliases": ["OpenAPI", "Swagger", "enableSwagger", "swagger.json"],
-      "href": "28-rest-api.html#concept-correlation",
-      "also": ["28-rest-api.html#cors"],
+      "href": "29-rest-api.html#concept-correlation",
+      "also": ["29-rest-api.html#cors"],
       "summary": "Descrizione machine-readable di route e schema. enableSwagger(true) serve JSON a /swagger.json. Non è un controllo di sicurezza."
     },
     {
       "id": "security-map",
       "term": "Mappa di sicurezza web",
       "aliases": ["threat", "defense", "hardening"],
-      "href": "28-rest-api.html#concept-security-map",
-      "also": ["28-rest-api.html#web-concepts", "26-http-server-html-ui.html"],
+      "href": "29-rest-api.html#concept-security-map",
+      "also": ["29-rest-api.html#web-concepts", "27-http-server-html-ui.html"],
       "summary": "Quale interruttore MALDA corrisponde a quale minaccia: auth, CSRF, CORS, XSS, HTTPS, rate limit, hash delle password."
     },
     {
       "id": "game-three",
       "term": "game.* e three.*",
       "aliases": ["game", "three", "three.js", "@shader", "GLSL"],
-      "href": "27-browser-javascript-backend.html#game-canvas",
-      "also": ["24-web-ui-hub.html#browser-games", "27-browser-javascript-backend.html#three-scene-api", "27-browser-javascript-backend.html#shader-kernels", "34-examples.html#game", "38-appendix-gpu-billiards.html"],
+      "href": "28-browser-javascript-backend.html#game-canvas",
+      "also": ["25-web-ui-hub.html#browser-games", "28-browser-javascript-backend.html#three-scene-api", "28-browser-javascript-backend.html#shader-kernels", "35-examples.html#game", "39-appendix-gpu-billiards.html"],
       "summary": "Kit giochi nel browser (backend JS): game.*, API scene three.* e @shader() verso GLSL. Anteprima con malda play."
     },
     {
       "id": "fullstack",
       "term": "Full-stack",
       "aliases": ["@client", "@server", "fullstack"],
-      "href": "30-full-stack-development.html",
+      "href": "31-full-stack-development.html",
       "summary": "App full-stack native MALDA e ibride: UI server o frontend JS più backend MALDA."
     },
     {
       "id": "dotnet",
       "term": "Interop .NET",
       "aliases": ["loadNativeModule", "createNativeCallback", "NuGet"],
-      "href": "31-dotnet-interop.html",
+      "href": "32-dotnet-interop.html",
       "summary": "Carica librerie .NET esterne e avvolge funzioni MALDA come delegate."
     },
     {
@@ -499,21 +499,21 @@
       "id": "property-testing",
       "term": "Property testing",
       "aliases": ["@requires", "@targets", "runProperty", "property"],
-      "href": "35-property-testing.html",
+      "href": "36-property-testing.html",
       "summary": "Property test deterministici, shrinking e hint di capability del backend."
     },
     {
       "id": "skills",
       "term": "Skill",
       "aliases": ["skill", "malda skill"],
-      "href": "33-personal-assistant.html#skills",
+      "href": "34-personal-assistant.html#skills",
       "summary": "Skill dell'assistente personale: pacchetti di istruzioni riutilizzabili per l'assistente CLI."
     },
     {
       "id": "optional-packs",
       "term": "Pack opzionali",
       "aliases": ["optional pack", "vertical pack", "pack opzionali"],
-      "href": "37-appendix.html#optional-packs",
+      "href": "38-appendix.html#optional-packs",
       "also": ["13-built-in-functions.html#optional-pack-builtins"],
       "summary": "I pack di dominio restano fuori dal core OSS. Caricali con loadNativeModule; il core non registra in automatico i global dei pack."
     },
@@ -535,49 +535,49 @@
       "id": "suite",
       "term": "suite",
       "aliases": ["eval suite", "case", "expect", "malda eval"],
-      "href": "23-agentic-runs.html",
+      "href": "24-agentic-runs.html",
       "summary": "Case di eval nominati. Un malda run ordinario li salta; malda eval li esegue. expect lancia come assert."
     },
     {
       "id": "cassette",
       "term": "cassetta",
       "aliases": ["cassette", "MALDA_RECORD", "MALDA_REPLAY", "MALDA_REPLAY_STRICT", "cassette_miss"],
-      "href": "23-agentic-runs.html",
+      "href": "24-agentic-runs.html",
       "summary": "Record/replay JSONL di ogni Chat LLM. La chiave è hash del prompt + args + model + mode + schema. Un miss cade su una chiamata live salvo STRICT."
     },
     {
       "id": "trace-journal",
       "term": "trace.journal",
       "aliases": ["journal di run", "trace.span", "trace.lastUsage", ".usage"],
-      "href": "23-agentic-runs.html",
+      "href": "24-agentic-runs.html",
       "summary": "Journal in-process di eventi prompt, tool, cap, hop e step di workflow. MALDA_TRACE lo esporta; malda trace continua a leggere i file di sessione."
     },
     {
       "id": "within",
       "term": "within",
       "aliases": ["within scope", "@within"],
-      "href": "23-agentic-runs.html",
+      "href": "24-agentic-runs.html",
       "summary": "L'istruzione within (30s) è uno scope di cancel a orologio da parete (ms/s/m). Il decoratore @within(ms) è una deadline per funzione."
     },
     {
       "id": "declared-context",
       "term": "context dichiarato",
       "aliases": ["context", "context Session"],
-      "href": "23-agentic-runs.html",
+      "href": "24-agentic-runs.html",
       "summary": "context Name { budget / pin / retain / evict / compact } poi new Name(). La compaction in un workflow deve stare in uno step (WF1006)."
     },
     {
       "id": "policy",
       "term": "policy",
       "aliases": ["ToolDenied", "MALDA_POLICY_APPROVE"],
-      "href": "23-agentic-runs.html",
+      "href": "24-agentic-runs.html",
       "summary": "Deny list fs/net/shell/mcp a livello di file sul consume dei cap. Non è @effects. approve richiede MALDA_POLICY_APPROVE o un callback dell'host."
     },
     {
       "id": "agent-error",
       "term": "AgentError",
       "aliases": ["agentError", "SchemaMismatch", "ToolDenied", "Timeout"],
-      "href": "23-agentic-runs.html",
+      "href": "24-agentic-runs.html",
       "summary": "Sum type built-in attaccato accanto alla stringa error sugli oggetti risultato. I throw restano throw."
     },
     {
@@ -585,7 +585,7 @@
       "term": "Indice dei comandi CLI",
       "aliases": ["malda new", "malda play", "malda doctor", "malda help", "CLI"],
       "href": "02-tools.html#cli-index",
-      "also": ["33-personal-assistant.html", "27-browser-javascript-backend.html"],
+      "also": ["34-personal-assistant.html", "28-browser-javascript-backend.html"],
       "summary": "Ogni verbo malda con un puntatore al capitolo che lo documenta. malda play serve .malda-play/, non la cartella sorgente."
     }
   ]

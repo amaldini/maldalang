@@ -138,7 +138,7 @@ io.print(str.length(host.pathSeparator));</code></pre>
             <li><code>getHostPlatform()</code> — <code>{ os, arch, pathSeparator, description }</code>. Nessun argomento.</li>
             <li><code>getCommandLineArgs()</code> — array di stringhe passate al programma, escluso il nome del programma. Uguale nelle esecuzioni interpretate e transpile.</li>
         </ul>
-        <p>La config dell'assistente sotto <code>~/.malda</code> (<code>getMaldaHome</code>, <code>getMaldaConfig</code>) è documentata con l'<a href="33-personal-assistant.html">assistente personale</a>.</p>
+        <p>La config dell'assistente sotto <code>~/.malda</code> (<code>getMaldaHome</code>, <code>getMaldaConfig</code>) è documentata con l'<a href="34-personal-assistant.html">assistente personale</a>.</p>
 
         <h2 id="capability-tokens">12.6 Token di capability</h2>
         <p>Un token di capability è un <strong>oggetto-permesso</strong> che crea il tuo programma (l'host). Trattalo come una chiave per un file, un origin HTTP, un tool MCP o un prefisso argv: chi tiene la chiave può usare quel permesso. Nessuno può fabbricare una chiave funzionante descrivendo la serratura.</p>
@@ -164,7 +164,7 @@ function readNote(path) {
             <tbody>
                 <tr><td><code>cap.fileRead</code> / token di capability</td><td>Un oggetto-permesso non contraffabile per un path, un prefisso URL, un tool MCP o un prefisso argv</td><td>Questa sezione</td></tr>
                 <tr><td>Matrice di capability dei backend</td><td>Quali backend implementano una funzionalità di prodotto (I/O su file, agenti, DOM, …)</td><td><a href="../../docs/spec/backend-capability-matrix.md">backend-capability-matrix.md</a></td></tr>
-                <tr><td><code>@requires("file-io")</code></td><td>Una property test che salta i backend a cui manca quella funzionalità</td><td><a href="35-property-testing.html">35. Property testing</a></td></tr>
+                <tr><td><code>@requires("file-io")</code></td><td>Una property test che salta i backend a cui manca quella funzionalità</td><td><a href="36-property-testing.html">36. Property testing</a></td></tr>
             </tbody>
         </table>
 
@@ -265,7 +265,7 @@ try {
 }
 io.print(escaped);
 io.deleteFile("_rm_cap_note.txt");</code></pre>
-        <p>Su un agente live, avvolgi quell'helper con <code>@Tool</code>, valida gli argomenti con uno <code>schema</code> e marca l'handler <code>@effects("cap")</code>. L'argomento tool del modello è solo <code>relativePath</code>. Walk-through completo: <a href="18-agent-orchestration.html#capability-tokens-for-tools">18.8</a>. Starter offline: <code>malda new agent</code> (<code>notes/</code> emesso sull'host).</p>
+        <p>Su un agente live, avvolgi quell'helper con <code>@Tool</code>, valida gli argomenti con uno <code>schema</code> e marca l'handler <code>@effects("cap")</code>. L'argomento tool del modello è solo <code>relativePath</code>. Walk-through completo: <a href="19-agent-orchestration.html#capability-tokens-for-tools">19.8</a>. Starter offline: <code>malda new agent</code> (<code>notes/</code> emesso sull'host).</p>
 
         <h3>12.6.7 Errori frequenti</h3>
         <table>
@@ -303,7 +303,7 @@ io.print("awake");</code></pre>
     sleep(1000);
 }</code></pre>
         <div class="warning-box">
-            <strong>Workflow:</strong> <code>sleep</code>, <code>io.writeFile</code> e altri effetti in deny-list sollevano <code>WF1001</code> / <code>WF1002</code> quando girano in una sezione deterministica di un workflow — anche se annidati in un helper. Metti orologio, sleep e I/O dentro uno <code>step</code>. Vedi <a href="22-durable-workflows.html">22. Workflow durevoli</a>.
+            <strong>Workflow:</strong> <code>sleep</code>, <code>io.writeFile</code> e altri effetti in deny-list sollevano <code>WF1001</code> / <code>WF1002</code> quando girano in una sezione deterministica di un workflow — anche se annidati in un helper. Metti orologio, sleep e I/O dentro uno <code>step</code>. Vedi <a href="23-durable-workflows.html">23. Workflow durevoli</a>.
         </div>
 
         <h2 id="web-fetch">12.9 Recupero di URL</h2>
@@ -312,20 +312,20 @@ io.print("awake");</code></pre>
 print(page.ok);
 print(page.status);
 print(page.truncated);</code></pre>
-        <p>Per API JSON con header, auth e retry preferisci <a href="29-rest-web-client.html">29. Client REST Web</a>. Un capability token usa <code>cap.httpGet</code> + <code>cap.fetch</code> / <code>webFetch(token)</code> — vedi <a href="#capability-tokens">12.6</a>. Indice dei nomi: <a href="13-built-in-functions.html#web-fetch">13.5.4</a>.</p>
+        <p>Per API JSON con header, auth e retry preferisci <a href="30-rest-web-client.html">30. Client REST Web</a>. Un capability token usa <code>cap.httpGet</code> + <code>cap.fetch</code> / <code>webFetch(token)</code> — vedi <a href="#capability-tokens">12.6</a>. Indice dei nomi: <a href="13-built-in-functions.html#web-fetch">13.5.4</a>.</p>
         <h2>12.10 Cosa non copre questo capitolo</h2>
         <table>
             <thead>
                 <tr><th>Serve</th><th>Vai a</th></tr>
             </thead>
             <tbody>
-                <tr><td>Client HTTP / chiamate REST</td><td><a href="29-rest-web-client.html">29. Client REST Web</a> (<code>webFetch</code> è <a href="#web-fetch">12.9</a>)</td></tr>
-                <tr><td>Server HTTP / HTML / <code>ui.*</code></td><td><a href="24-web-ui-hub.html">24. Panoramica Web UI</a></td></tr>
-                <tr><td>Client SQL</td><td><a href="16-database.html">16. Supporto database</a></td></tr>
+                <tr><td>Client HTTP / chiamate REST</td><td><a href="30-rest-web-client.html">30. Client REST Web</a> (<code>webFetch</code> è <a href="#web-fetch">12.9</a>)</td></tr>
+                <tr><td>Server HTTP / HTML / <code>ui.*</code></td><td><a href="25-web-ui-hub.html">25. Panoramica Web UI</a></td></tr>
+                <tr><td>Client SQL</td><td><a href="17-database.html">17. Supporto database</a></td></tr>
                 <tr><td>Comandi shell</td><td><code>runCommand</code> in <a href="13-built-in-functions.html">13.10</a> (nomi pericolosi bloccati, timeout massimo di 1 ora)</td></tr>
                 <tr><td>Git</td><td><a href="13-built-in-functions.html">13.9</a></td></tr>
-                <tr><td>Tool file degli agenti</td><td><code>createReadFileTool</code> e analoghi in <a href="18-agent-orchestration.html">18. Orchestrazione di agenti</a></td></tr>
-                <tr><td>Legare un tool personalizzato a una cartella</td><td><a href="#capability-tokens">12.6 Token di capability</a> e <a href="18-agent-orchestration.html#capability-tokens-for-tools">18.8</a></td></tr>
+                <tr><td>Tool file degli agenti</td><td><code>createReadFileTool</code> e analoghi in <a href="19-agent-orchestration.html">19. Orchestrazione di agenti</a></td></tr>
+                <tr><td>Legare un tool personalizzato a una cartella</td><td><a href="#capability-tokens">12.6 Token di capability</a> e <a href="19-agent-orchestration.html#capability-tokens-for-tools">19.8</a></td></tr>
             </tbody>
         </table>
 
@@ -335,8 +335,8 @@ print(page.truncated);</code></pre>
                 <li><a href="07-expressions.html">7. Espressioni</a> — interpolazione di stringhe</li>
                 <li><a href="13-built-in-functions.html">13. Funzioni built-in</a> — catalogo I/O, Spectre.Console, git, <code>runCommand</code></li>
                 <li><a href="09-functions.html">9. Funzioni</a> — <code>@pure</code> / <code>@effects("io")</code> / <code>@effects("cap")</code></li>
-                <li><a href="18-agent-orchestration.html#capability-tokens-for-tools">18.8 Tool personalizzati</a> — emetti un token root sull'host, passa un path relativo</li>
-                <li><a href="22-durable-workflows.html">22. Workflow durevoli</a> — l'I/O deve stare dentro <code>step</code></li>
+                <li><a href="19-agent-orchestration.html#capability-tokens-for-tools">19.8 Tool personalizzati</a> — emetti un token root sull'host, passa un path relativo</li>
+                <li><a href="23-durable-workflows.html">23. Workflow durevoli</a> — l'I/O deve stare dentro <code>step</code></li>
                 <li><code>Examples/Tools/file_operations.malda</code>, <code>Examples/Tools/capability_tokens.malda</code></li>
             </ul>
         </div>

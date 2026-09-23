@@ -414,7 +414,7 @@ through helpers, and provenance is a value when we need it.
 | [`docs/workflows-ha.md`](workflows-ha.md) | W2 ops model (unchanged by L4) |
 | [`ReferenceManual/09-functions.html`](../ReferenceManual/09-functions.html) | Functions, `@pure`/`@effects` |
 | [`ReferenceManual/10-prompts.html`](../ReferenceManual/10-prompts.html) | Prompts, `program(Api)` |
-| [`ReferenceManual/14-graphs.html`](../ReferenceManual/14-graphs.html) | Why not `Tree` |
+| [`ReferenceManual/15-graphs.html`](../ReferenceManual/15-graphs.html) | Why not `Tree` |
 | [`docs/announcement.md`](announcement.md) | Why not macros |
 
 ---

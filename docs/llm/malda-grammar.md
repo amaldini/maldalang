@@ -2,7 +2,7 @@
 
 *Applies to: MALDA 1.0.26*
 
-Extracted from `ReferenceManual/36-grammar.html` for LLM ingestion.
+Extracted from `ReferenceManual/37-grammar.html` for LLM ingestion.
 If this file disagrees with the parser (`MaldaLang/Parser/Parser.cs`), the **parser wins**.
 Narrative examples: topic chapters under `ReferenceManual/` and `Examples/`.
 

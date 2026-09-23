@@ -270,31 +270,32 @@ const FALLBACK_NAV_ITEMS = [
         { href: "11-classes-objects.html", text: "11. Classes & Objects", category: "Language Fundamentals" },
         { href: "12-input-output.html", text: "12. Input/Output", category: "Standard Library" },
         { href: "13-built-in-functions.html", text: "13. Built-in Functions", category: "Standard Library" },
-        { href: "14-graphs.html", text: "14. Graphs", category: "Standard Library" },
-        { href: "15-vectordb.html", text: "15. VectorDB", category: "Standard Library" },
-        { href: "16-database.html", text: "16. Database Support", category: "Standard Library" },
-        { href: "17-actors.html", text: "17. Actors", category: "AI & Agents" },
-        { href: "18-agent-orchestration.html", text: "18. Agent Orchestration", category: "AI & Agents" },
-        { href: "19-graph-memory.html", text: "19. GraphMemory", category: "AI & Agents" },
-        { href: "20-mcp-server.html", text: "20. MCP Server", category: "AI & Agents" },
-        { href: "21-acp.html", text: "21. ACP (Agent Communication Protocol)", category: "AI & Agents" },
-        { href: "22-durable-workflows.html", text: "22. Durable Workflows", category: "AI & Agents" },
-        { href: "23-agentic-runs.html", text: "23. Agentic Runs", category: "AI & Agents" },
-        { href: "24-web-ui-hub.html", text: "24. Web UI Overview", category: "Web" },
-        { href: "25-web-ui.html", text: "25. Web UI Server Components", category: "Web" },
-        { href: "26-http-server-html-ui.html", text: "26. HttpServer & HTML UI Generation", category: "Web" },
-        { href: "27-browser-javascript-backend.html", text: "27. Browser JavaScript UI Backend", category: "Web" },
-        { href: "28-rest-api.html", text: "28. REST API Server", category: "Web" },
-        { href: "29-rest-web-client.html", text: "29. REST Web Client", category: "Web" },
-        { href: "30-full-stack-development.html", text: "30. Full-Stack Development with MALDA", category: "Web" },
-        { href: "31-dotnet-interop.html", text: "31. .NET Interop", category: "Platform" },
-        { href: "32-device-integration.html", text: "32. Device Integration", category: "Platform" },
-        { href: "33-personal-assistant.html", text: "33. Personal Assistant and CLI", category: "Platform" },
-        { href: "34-examples.html", text: "34. Examples", category: "Reference" },
-        { href: "35-property-testing.html", text: "35. Property Testing", category: "Reference" },
-        { href: "36-grammar.html", text: "36. Grammar", category: "Reference" },
-        { href: "37-appendix.html", text: "37. Appendix", category: "Reference" },
-        { href: "38-appendix-gpu-billiards.html", text: "38. Appendix: GPU Billiards", category: "Reference" },
+        { href: "14-neural-nets.html", text: "14. Neural Nets", category: "Standard Library" },
+        { href: "15-graphs.html", text: "15. Graphs", category: "Standard Library" },
+        { href: "16-vectordb.html", text: "16. VectorDB", category: "Standard Library" },
+        { href: "17-database.html", text: "17. Database Support", category: "Standard Library" },
+        { href: "18-actors.html", text: "18. Actors", category: "AI & Agents" },
+        { href: "19-agent-orchestration.html", text: "19. Agent Orchestration", category: "AI & Agents" },
+        { href: "20-graph-memory.html", text: "20. GraphMemory", category: "AI & Agents" },
+        { href: "21-mcp-server.html", text: "21. MCP Server", category: "AI & Agents" },
+        { href: "22-acp.html", text: "22. ACP (Agent Communication Protocol)", category: "AI & Agents" },
+        { href: "23-durable-workflows.html", text: "23. Durable Workflows", category: "AI & Agents" },
+        { href: "24-agentic-runs.html", text: "24. Agentic Runs", category: "AI & Agents" },
+        { href: "25-web-ui-hub.html", text: "25. Web UI Overview", category: "Web" },
+        { href: "26-web-ui.html", text: "26. Web UI Server Components", category: "Web" },
+        { href: "27-http-server-html-ui.html", text: "27. HttpServer & HTML UI Generation", category: "Web" },
+        { href: "28-browser-javascript-backend.html", text: "28. Browser JavaScript UI Backend", category: "Web" },
+        { href: "29-rest-api.html", text: "29. REST API Server", category: "Web" },
+        { href: "30-rest-web-client.html", text: "30. REST Web Client", category: "Web" },
+        { href: "31-full-stack-development.html", text: "31. Full-Stack Development with MALDA", category: "Web" },
+        { href: "32-dotnet-interop.html", text: "32. .NET Interop", category: "Platform" },
+        { href: "33-device-integration.html", text: "33. Device Integration", category: "Platform" },
+        { href: "34-personal-assistant.html", text: "34. Personal Assistant and CLI", category: "Platform" },
+        { href: "35-examples.html", text: "35. Examples", category: "Reference" },
+        { href: "36-property-testing.html", text: "36. Property Testing", category: "Reference" },
+        { href: "37-grammar.html", text: "37. Grammar", category: "Reference" },
+        { href: "38-appendix.html", text: "38. Appendix", category: "Reference" },
+        { href: "39-appendix-gpu-billiards.html", text: "39. Appendix: GPU Billiards", category: "Reference" },
 ];
 
 const FALLBACK_NAV_ITEMS_IT = [
@@ -313,31 +314,32 @@ const FALLBACK_NAV_ITEMS_IT = [
         { href: "11-classes-objects.html", text: "11. Classi e oggetti", category: "Language Fundamentals" },
         { href: "12-input-output.html", text: "12. Input/Output", category: "Standard Library" },
         { href: "13-built-in-functions.html", text: "13. Funzioni built-in", category: "Standard Library" },
-        { href: "14-graphs.html", text: "14. Grafi", category: "Standard Library" },
-        { href: "15-vectordb.html", text: "15. VectorDB", category: "Standard Library" },
-        { href: "16-database.html", text: "16. Supporto database", category: "Standard Library" },
-        { href: "17-actors.html", text: "17. Actor", category: "AI & Agents" },
-        { href: "18-agent-orchestration.html", text: "18. Orchestrazione di agenti", category: "AI & Agents" },
-        { href: "19-graph-memory.html", text: "19. GraphMemory", category: "AI & Agents" },
-        { href: "20-mcp-server.html", text: "20. Server MCP", category: "AI & Agents" },
-        { href: "21-acp.html", text: "21. ACP (Agent Communication Protocol)", category: "AI & Agents" },
-        { href: "22-durable-workflows.html", text: "22. Workflow durevoli", category: "AI & Agents" },
-        { href: "23-agentic-runs.html", text: "23. Esecuzioni agentiche", category: "AI & Agents" },
-        { href: "24-web-ui-hub.html", text: "24. Panoramica Web UI", category: "Web" },
-        { href: "25-web-ui.html", text: "25. Componenti server Web UI", category: "Web" },
-        { href: "26-http-server-html-ui.html", text: "26. HttpServer e generazione UI HTML", category: "Web" },
-        { href: "27-browser-javascript-backend.html", text: "27. Backend UI JavaScript nel browser", category: "Web" },
-        { href: "28-rest-api.html", text: "28. Server REST API", category: "Web" },
-        { href: "29-rest-web-client.html", text: "29. Client REST Web", category: "Web" },
-        { href: "30-full-stack-development.html", text: "30. Sviluppo full-stack con MALDA", category: "Web" },
-        { href: "31-dotnet-interop.html", text: "31. Interop .NET", category: "Platform" },
-        { href: "32-device-integration.html", text: "32. Integrazione dispositivi", category: "Platform" },
-        { href: "33-personal-assistant.html", text: "33. Assistente personale e CLI", category: "Platform" },
-        { href: "34-examples.html", text: "34. Esempi", category: "Reference" },
-        { href: "35-property-testing.html", text: "35. Property testing", category: "Reference" },
-        { href: "36-grammar.html", text: "36. Grammatica", category: "Reference" },
-        { href: "37-appendix.html", text: "37. Appendice", category: "Reference" },
-        { href: "38-appendix-gpu-billiards.html", text: "38. Appendice: biliardo GPU", category: "Reference" },
+        { href: "14-neural-nets.html", text: "14. Reti neurali", category: "Standard Library" },
+        { href: "15-graphs.html", text: "15. Grafi", category: "Standard Library" },
+        { href: "16-vectordb.html", text: "16. VectorDB", category: "Standard Library" },
+        { href: "17-database.html", text: "17. Supporto database", category: "Standard Library" },
+        { href: "18-actors.html", text: "18. Actor", category: "AI & Agents" },
+        { href: "19-agent-orchestration.html", text: "19. Orchestrazione di agenti", category: "AI & Agents" },
+        { href: "20-graph-memory.html", text: "20. GraphMemory", category: "AI & Agents" },
+        { href: "21-mcp-server.html", text: "21. Server MCP", category: "AI & Agents" },
+        { href: "22-acp.html", text: "22. ACP (Agent Communication Protocol)", category: "AI & Agents" },
+        { href: "23-durable-workflows.html", text: "23. Workflow durevoli", category: "AI & Agents" },
+        { href: "24-agentic-runs.html", text: "24. Esecuzioni agentiche", category: "AI & Agents" },
+        { href: "25-web-ui-hub.html", text: "25. Panoramica Web UI", category: "Web" },
+        { href: "26-web-ui.html", text: "26. Componenti server Web UI", category: "Web" },
+        { href: "27-http-server-html-ui.html", text: "27. HttpServer e generazione UI HTML", category: "Web" },
+        { href: "28-browser-javascript-backend.html", text: "28. Backend UI JavaScript nel browser", category: "Web" },
+        { href: "29-rest-api.html", text: "29. Server REST API", category: "Web" },
+        { href: "30-rest-web-client.html", text: "30. Client REST Web", category: "Web" },
+        { href: "31-full-stack-development.html", text: "31. Sviluppo full-stack con MALDA", category: "Web" },
+        { href: "32-dotnet-interop.html", text: "32. Interop .NET", category: "Platform" },
+        { href: "33-device-integration.html", text: "33. Integrazione dispositivi", category: "Platform" },
+        { href: "34-personal-assistant.html", text: "34. Assistente personale e CLI", category: "Platform" },
+        { href: "35-examples.html", text: "35. Esempi", category: "Reference" },
+        { href: "36-property-testing.html", text: "36. Property testing", category: "Reference" },
+        { href: "37-grammar.html", text: "37. Grammatica", category: "Reference" },
+        { href: "38-appendix.html", text: "38. Appendice", category: "Reference" },
+        { href: "39-appendix-gpu-billiards.html", text: "39. Appendice: biliardo GPU", category: "Reference" },
 ];
 
 // Synced from glossary.json / it/glossary.json by scripts/sync-reference-manual-search-index.py
@@ -368,8 +370,8 @@ const FALLBACK_GLOSSARY_EN = [
         "summary": "A permission object (a key to one file, HTTP origin, MCP tool, or argv prefix) so a tool cannot invent a path, URL, tool name, or command. The host mints cap.fileRead / httpGet / mcpCall / shell; cap.confine narrows. There is no flat cap() alias.",
         "also": [
             "13-built-in-functions.html#capability-tokens",
-            "18-agent-orchestration.html#capability-tokens-for-tools",
-            "18-agent-orchestration.html#specialized-kinds-are-not-sandboxes"
+            "19-agent-orchestration.html#capability-tokens-for-tools",
+            "19-agent-orchestration.html#specialized-kinds-are-not-sandboxes"
         ]
     },
     {
@@ -446,7 +448,7 @@ const FALLBACK_GLOSSARY_EN = [
         "href": "03-lexical-structure.html#keywords",
         "summary": "Lexer reserved words. fn and def are not reserved; the parser rejects them as function keywords.",
         "also": [
-            "37-appendix.html"
+            "38-appendix.html"
         ]
     },
     {
@@ -703,10 +705,10 @@ const FALLBACK_GLOSSARY_EN = [
             "receive",
             "self"
         ],
-        "href": "17-actors.html",
+        "href": "18-actors.html",
         "summary": "Native actor model: spawn, send, receive, self, and isolated state.",
         "also": [
-            "17-actors.html#actor-state-isolation"
+            "18-actors.html#actor-state-isolation"
         ]
     },
     {
@@ -720,10 +722,10 @@ const FALLBACK_GLOSSARY_EN = [
             "DevAgent",
             "HumanAgent"
         ],
-        "href": "18-agent-orchestration.html",
+        "href": "19-agent-orchestration.html",
         "summary": "Built-in Agent class and specialized agents. think() runs a turn with tools. Specialized kinds are tool bundles, not sandboxes.",
         "also": [
-            "18-agent-orchestration.html#specialized-kinds-are-not-sandboxes"
+            "19-agent-orchestration.html#specialized-kinds-are-not-sandboxes"
         ]
     },
     {
@@ -741,11 +743,11 @@ const FALLBACK_GLOSSARY_EN = [
             "team.run",
             "team.decompose"
         ],
-        "href": "18-agent-orchestration.html#declarative-agent-teams",
+        "href": "19-agent-orchestration.html#declarative-agent-teams",
         "summary": "Declarative multi-agent teams: agents.define / agents.team bind role specs to a directed graph. Typed hops stay validate-only unless think is true.",
         "also": [
             "13-built-in-functions.html#agent-teams",
-            "14-graphs.html"
+            "15-graphs.html"
         ]
     },
     {
@@ -757,7 +759,7 @@ const FALLBACK_GLOSSARY_EN = [
             "createReadFileTool",
             "createWebFetchTool"
         ],
-        "href": "18-agent-orchestration.html",
+        "href": "19-agent-orchestration.html",
         "summary": "Agent tools: @Tool decorator, new Tool, and built-in tool factories."
     },
     {
@@ -769,7 +771,7 @@ const FALLBACK_GLOSSARY_EN = [
             "LlamaCppClient",
             "Conversation"
         ],
-        "href": "18-agent-orchestration.html",
+        "href": "19-agent-orchestration.html",
         "summary": "Built-in LLM clients and Conversation. A default local GGUF model is used when no client is passed."
     },
     {
@@ -780,7 +782,7 @@ const FALLBACK_GLOSSARY_EN = [
             "Ralph",
             "PRD loop"
         ],
-        "href": "18-agent-orchestration.html#ralph-wiggum",
+        "href": "19-agent-orchestration.html#ralph-wiggum",
         "summary": "PRD-driven autonomous agent loop."
     },
     {
@@ -791,7 +793,7 @@ const FALLBACK_GLOSSARY_EN = [
             "semantic memory",
             "ask"
         ],
-        "href": "19-graph-memory.html",
+        "href": "20-graph-memory.html",
         "summary": "Semantic memory: knowledge graph plus vector search for agents."
     },
     {
@@ -802,7 +804,7 @@ const FALLBACK_GLOSSARY_EN = [
             "searchSimilar",
             "embeddings"
         ],
-        "href": "15-vectordb.html",
+        "href": "16-vectordb.html",
         "summary": "In-process vector database for similarity search and embeddings."
     },
     {
@@ -813,7 +815,7 @@ const FALLBACK_GLOSSARY_EN = [
             "directed",
             "undirected"
         ],
-        "href": "14-graphs.html",
+        "href": "15-graphs.html",
         "summary": "Graph literals, algorithms, and serialization."
     },
     {
@@ -823,7 +825,7 @@ const FALLBACK_GLOSSARY_EN = [
             "MCP",
             "mcp"
         ],
-        "href": "20-mcp-server.html",
+        "href": "21-mcp-server.html",
         "summary": "Expose MALDA functions as Model Context Protocol tools."
     },
     {
@@ -833,7 +835,7 @@ const FALLBACK_GLOSSARY_EN = [
             "ACP",
             "Agent Communication Protocol"
         ],
-        "href": "21-acp.html",
+        "href": "22-acp.html",
         "summary": "Agent Communication Protocol for multi-agent collaboration."
     },
     {
@@ -846,7 +848,7 @@ const FALLBACK_GLOSSARY_EN = [
             "compensate",
             "DLQ"
         ],
-        "href": "22-durable-workflows.html",
+        "href": "23-durable-workflows.html",
         "summary": "Durable workflow syntax, storage, CLI, dead letters, and operations."
     },
     {
@@ -859,10 +861,10 @@ const FALLBACK_GLOSSARY_EN = [
             "property",
             "UIHost"
         ],
-        "href": "25-web-ui.html",
+        "href": "26-web-ui.html",
         "summary": "Server-driven UI: component, property, and ui.* controls. Start at chapter 24 if choosing a UI model.",
         "also": [
-            "24-web-ui-hub.html"
+            "25-web-ui-hub.html"
         ]
     },
     {
@@ -873,7 +875,7 @@ const FALLBACK_GLOSSARY_EN = [
             "@AIPAGE",
             "HttpServer"
         ],
-        "href": "26-http-server-html-ui.html",
+        "href": "27-http-server-html-ui.html",
         "summary": "Route-first HTML pages on HttpServer, including LLM-generated @AIPAGE."
     },
     {
@@ -886,10 +888,10 @@ const FALLBACK_GLOSSARY_EN = [
             "@DELETE",
             "REST"
         ],
-        "href": "28-rest-api.html",
+        "href": "29-rest-api.html",
         "summary": "Decorator-based REST routes on the MALDA HTTP server. Primer: 28.1.1 (REST, middleware, auth, CSRF, CORS, security map).",
         "also": [
-            "28-rest-api.html#web-concepts"
+            "29-rest-api.html#web-concepts"
         ]
     },
     {
@@ -901,10 +903,10 @@ const FALLBACK_GLOSSARY_EN = [
             "@Middleware",
             "next()"
         ],
-        "href": "28-rest-api.html#concept-middleware",
+        "href": "29-rest-api.html#concept-middleware",
         "summary": "A (req, res, next) function that runs before a route handler for shared work such as auth or logging. Call next() to continue.",
         "also": [
-            "28-rest-api.html#middleware"
+            "29-rest-api.html#middleware"
         ]
     },
     {
@@ -918,10 +920,10 @@ const FALLBACK_GLOSSARY_EN = [
             "401",
             "403"
         ],
-        "href": "28-rest-api.html#concept-authentication",
+        "href": "29-rest-api.html#concept-authentication",
         "summary": "Authentication is who the caller is; authorization is what they may do. 401 = not authenticated; 403 = authenticated but not allowed.",
         "also": [
-            "28-rest-api.html#req-auth",
+            "29-rest-api.html#req-auth",
             "13-built-in-functions.html#jwt-security"
         ]
     },
@@ -935,7 +937,7 @@ const FALLBACK_GLOSSARY_EN = [
             "verifyJwt",
             "authenticateBearerJwt"
         ],
-        "href": "28-rest-api.html#concept-jwt",
+        "href": "29-rest-api.html#concept-jwt",
         "summary": "Signed JSON claims, usually sent as Authorization: Bearer <token>. Verify with req.auth.authenticateBearerJwt; mint with createJwt.",
         "also": [
             "13-built-in-functions.html#jwt-security"
@@ -950,10 +952,10 @@ const FALLBACK_GLOSSARY_EN = [
             "enableCsrf",
             "X-CSRF-Token"
         ],
-        "href": "28-rest-api.html#concept-csrf",
+        "href": "29-rest-api.html#concept-csrf",
         "summary": "A forged request that rides the user's cookies. Defense: a secret token the real page sends and the attacker cannot read.",
         "also": [
-            "28-rest-api.html#csrf-rate-limit"
+            "29-rest-api.html#csrf-rate-limit"
         ]
     },
     {
@@ -965,11 +967,11 @@ const FALLBACK_GLOSSARY_EN = [
             "preflight",
             "enableCORS"
         ],
-        "href": "28-rest-api.html#concept-cors",
+        "href": "29-rest-api.html#concept-cors",
         "summary": "Browser rule: a page may read another origin's response only if that origin opts in. Same-origin MALDA apps do not need it; host RestClient ignores it.",
         "also": [
-            "28-rest-api.html#cors",
-            "29-rest-web-client.html#cors-host-browser"
+            "29-rest-api.html#cors",
+            "30-rest-web-client.html#cors-host-browser"
         ]
     },
     {
@@ -980,10 +982,10 @@ const FALLBACK_GLOSSARY_EN = [
             "setRateLimit",
             "429"
         ],
-        "href": "28-rest-api.html#concept-rate-limit",
+        "href": "29-rest-api.html#concept-rate-limit",
         "summary": "Cap requests per IP, user, or token in a time window. Runs after middleware so verifiedSub* can key on the JWT subject.",
         "also": [
-            "28-rest-api.html#csrf-rate-limit"
+            "29-rest-api.html#csrf-rate-limit"
         ]
     },
     {
@@ -997,7 +999,7 @@ const FALLBACK_GLOSSARY_EN = [
             "HttpOnly",
             "SameSite"
         ],
-        "href": "28-rest-api.html#concept-session",
+        "href": "29-rest-api.html#concept-session",
         "summary": "Cookies are name/value pairs the browser stores and resends. A session is server-side data keyed by a session-id cookie (req.session)."
     },
     {
@@ -1009,10 +1011,10 @@ const FALLBACK_GLOSSARY_EN = [
             "enableHttps",
             "certificate"
         ],
-        "href": "28-rest-api.html#concept-https",
+        "href": "29-rest-api.html#concept-https",
         "summary": "HTTP over TLS: encrypts the connection and authenticates the server with a certificate. Enable on HttpServer with enableHttps.",
         "also": [
-            "26-http-server-html-ui.html#https"
+            "27-http-server-html-ui.html#https"
         ]
     },
     {
@@ -1024,7 +1026,7 @@ const FALLBACK_GLOSSARY_EN = [
             "PBKDF2",
             "salt"
         ],
-        "href": "28-rest-api.html#concept-password",
+        "href": "29-rest-api.html#concept-password",
         "summary": "One-way salted hash of a login password (PBKDF2). Store the hash, never plaintext; verifyPassword on login. Not JWT signing and not HTTPS.",
         "also": [
             "13-built-in-functions.html#jwt-security"
@@ -1037,11 +1039,11 @@ const FALLBACK_GLOSSARY_EN = [
             "XSS",
             "cross-site scripting"
         ],
-        "href": "28-rest-api.html#concept-xss",
+        "href": "29-rest-api.html#concept-xss",
         "summary": "Injected script that runs in the victim's browser. Do not concatenate untrusted strings into HTML; HttpOnly cookies reduce the blast radius but do not fix XSS.",
         "also": [
-            "28-rest-api.html#concept-security-map",
-            "26-http-server-html-ui.html"
+            "29-rest-api.html#concept-security-map",
+            "27-http-server-html-ui.html"
         ]
     },
     {
@@ -1051,10 +1053,10 @@ const FALLBACK_GLOSSARY_EN = [
             "correlationId",
             "X-Correlation-ID"
         ],
-        "href": "28-rest-api.html#concept-correlation",
+        "href": "29-rest-api.html#concept-correlation",
         "summary": "A string that tags one request across logs and error payloads. MALDA honors inbound X-Correlation-ID or generates one.",
         "also": [
-            "28-rest-api.html"
+            "29-rest-api.html"
         ]
     },
     {
@@ -1066,10 +1068,10 @@ const FALLBACK_GLOSSARY_EN = [
             "enableSwagger",
             "swagger.json"
         ],
-        "href": "28-rest-api.html#concept-correlation",
+        "href": "29-rest-api.html#concept-correlation",
         "summary": "Machine-readable description of routes and schemas. enableSwagger(true) serves JSON at /swagger.json. Not a security control.",
         "also": [
-            "28-rest-api.html#cors"
+            "29-rest-api.html#cors"
         ]
     },
     {
@@ -1080,11 +1082,11 @@ const FALLBACK_GLOSSARY_EN = [
             "defense",
             "hardening"
         ],
-        "href": "28-rest-api.html#concept-security-map",
+        "href": "29-rest-api.html#concept-security-map",
         "summary": "Which MALDA switch matches which threat: auth, CSRF, CORS, XSS, HTTPS, rate limits, password hashing.",
         "also": [
-            "28-rest-api.html#web-concepts",
-            "26-http-server-html-ui.html"
+            "29-rest-api.html#web-concepts",
+            "27-http-server-html-ui.html"
         ]
     },
     {
@@ -1097,14 +1099,14 @@ const FALLBACK_GLOSSARY_EN = [
             "@shader",
             "GLSL"
         ],
-        "href": "27-browser-javascript-backend.html#game-canvas",
+        "href": "28-browser-javascript-backend.html#game-canvas",
         "summary": "Browser games kit (JS backend): game.* , three.* scene API, and @shader() to GLSL. Preview with malda play.",
         "also": [
-            "24-web-ui-hub.html#browser-games",
-            "27-browser-javascript-backend.html#three-scene-api",
-            "27-browser-javascript-backend.html#shader-kernels",
-            "34-examples.html#game",
-            "38-appendix-gpu-billiards.html"
+            "25-web-ui-hub.html#browser-games",
+            "28-browser-javascript-backend.html#three-scene-api",
+            "28-browser-javascript-backend.html#shader-kernels",
+            "35-examples.html#game",
+            "39-appendix-gpu-billiards.html"
         ]
     },
     {
@@ -1115,7 +1117,7 @@ const FALLBACK_GLOSSARY_EN = [
             "@server",
             "fullstack"
         ],
-        "href": "30-full-stack-development.html",
+        "href": "31-full-stack-development.html",
         "summary": "MALDA-native and hybrid full-stack apps: server UI or JS frontend plus MALDA backend."
     },
     {
@@ -1126,7 +1128,7 @@ const FALLBACK_GLOSSARY_EN = [
             "createNativeCallback",
             "NuGet"
         ],
-        "href": "31-dotnet-interop.html",
+        "href": "32-dotnet-interop.html",
         "summary": "Load external .NET libraries and wrap MALDA functions as delegates."
     },
     {
@@ -1160,7 +1162,7 @@ const FALLBACK_GLOSSARY_EN = [
             "runProperty",
             "property"
         ],
-        "href": "35-property-testing.html",
+        "href": "36-property-testing.html",
         "summary": "Deterministic property tests, shrinking, and backend capability hints."
     },
     {
@@ -1170,7 +1172,7 @@ const FALLBACK_GLOSSARY_EN = [
             "skill",
             "malda skill"
         ],
-        "href": "33-personal-assistant.html#skills",
+        "href": "34-personal-assistant.html#skills",
         "summary": "Personal-assistant skills: reusable instruction packs for the CLI assistant."
     },
     {
@@ -1180,7 +1182,7 @@ const FALLBACK_GLOSSARY_EN = [
             "optional pack",
             "vertical pack"
         ],
-        "href": "37-appendix.html#optional-packs",
+        "href": "38-appendix.html#optional-packs",
         "summary": "Domain packs stay out of OSS core. Load them with loadNativeModule; core does not auto-register pack globals.",
         "also": [
             "13-built-in-functions.html#optional-pack-builtins"
@@ -1217,7 +1219,7 @@ const FALLBACK_GLOSSARY_EN = [
             "expect",
             "malda eval"
         ],
-        "href": "23-agentic-runs.html",
+        "href": "24-agentic-runs.html",
         "summary": "Named eval cases. Ordinary malda run skips them; malda eval runs them. expect throws like assert."
     },
     {
@@ -1229,7 +1231,7 @@ const FALLBACK_GLOSSARY_EN = [
             "MALDA_REPLAY_STRICT",
             "cassette_miss"
         ],
-        "href": "23-agentic-runs.html",
+        "href": "24-agentic-runs.html",
         "summary": "JSONL record/replay of every LLM Chat. Key is prompt hash + args + model + mode + schema. A miss falls through to a live call unless STRICT."
     },
     {
@@ -1241,7 +1243,7 @@ const FALLBACK_GLOSSARY_EN = [
             "trace.lastUsage",
             ".usage"
         ],
-        "href": "23-agentic-runs.html",
+        "href": "24-agentic-runs.html",
         "summary": "In-process journal of prompt, tool, cap, hop, and workflow-step events. MALDA_TRACE exports it; malda trace still reads session files."
     },
     {
@@ -1251,7 +1253,7 @@ const FALLBACK_GLOSSARY_EN = [
             "within scope",
             "@within"
         ],
-        "href": "23-agentic-runs.html",
+        "href": "24-agentic-runs.html",
         "summary": "Statement within (30s) is a wall-clock cancel scope (ms/s/m). The decorator @within(ms) is a per-function deadline."
     },
     {
@@ -1261,7 +1263,7 @@ const FALLBACK_GLOSSARY_EN = [
             "context",
             "context Session"
         ],
-        "href": "23-agentic-runs.html",
+        "href": "24-agentic-runs.html",
         "summary": "context Name { budget / pin / retain / evict / compact } then new Name(). Compaction inside a workflow must sit in a step (WF1006)."
     },
     {
@@ -1271,7 +1273,7 @@ const FALLBACK_GLOSSARY_EN = [
             "ToolDenied",
             "MALDA_POLICY_APPROVE"
         ],
-        "href": "23-agentic-runs.html",
+        "href": "24-agentic-runs.html",
         "summary": "File-level fs/net/shell/mcp deny list on cap consume. Not the same as @effects. approve needs MALDA_POLICY_APPROVE or a host callback."
     },
     {
@@ -1283,7 +1285,7 @@ const FALLBACK_GLOSSARY_EN = [
             "ToolDenied",
             "Timeout"
         ],
-        "href": "23-agentic-runs.html",
+        "href": "24-agentic-runs.html",
         "summary": "Built-in sum type attached beside the string error on result objects. Throws still throw."
     },
     {
@@ -1299,8 +1301,8 @@ const FALLBACK_GLOSSARY_EN = [
         "href": "02-tools.html#cli-index",
         "summary": "Every malda verb with a pointer to the chapter that documents it. malda play serves .malda-play/, not the source folder.",
         "also": [
-            "33-personal-assistant.html",
-            "27-browser-javascript-backend.html"
+            "34-personal-assistant.html",
+            "28-browser-javascript-backend.html"
         ]
     }
 ];
@@ -1333,8 +1335,8 @@ const FALLBACK_GLOSSARY_IT = [
         "summary": "Un oggetto-permesso (una chiave per un file, un origin HTTP, un tool MCP o un prefisso argv) così un tool non può inventare un path, un URL, un tool o un comando. L'host emette cap.fileRead / httpGet / mcpCall / shell; cap.confine restringe. Non esiste un alias piatto cap().",
         "also": [
             "13-built-in-functions.html#capability-tokens",
-            "18-agent-orchestration.html#capability-tokens-for-tools",
-            "18-agent-orchestration.html#specialized-kinds-are-not-sandboxes"
+            "19-agent-orchestration.html#capability-tokens-for-tools",
+            "19-agent-orchestration.html#specialized-kinds-are-not-sandboxes"
         ]
     },
     {
@@ -1412,7 +1414,7 @@ const FALLBACK_GLOSSARY_IT = [
         "href": "03-lexical-structure.html#keywords",
         "summary": "Parole riservate del lexer. fn e def non sono riservate; il parser le rifiuta come keyword di funzione.",
         "also": [
-            "37-appendix.html"
+            "38-appendix.html"
         ]
     },
     {
@@ -1674,10 +1676,10 @@ const FALLBACK_GLOSSARY_IT = [
             "receive",
             "self"
         ],
-        "href": "17-actors.html",
+        "href": "18-actors.html",
         "summary": "Modello ad actor nativo: spawn, send, receive, self e stato isolato.",
         "also": [
-            "17-actors.html#actor-state-isolation"
+            "18-actors.html#actor-state-isolation"
         ]
     },
     {
@@ -1692,10 +1694,10 @@ const FALLBACK_GLOSSARY_IT = [
             "DevAgent",
             "HumanAgent"
         ],
-        "href": "18-agent-orchestration.html",
+        "href": "19-agent-orchestration.html",
         "summary": "Classe Agent built-in e agenti specializzati. think() esegue un turno con i tool. I kind specializzati sono bundle di tool, non sandbox.",
         "also": [
-            "18-agent-orchestration.html#specialized-kinds-are-not-sandboxes"
+            "19-agent-orchestration.html#specialized-kinds-are-not-sandboxes"
         ]
     },
     {
@@ -1714,11 +1716,11 @@ const FALLBACK_GLOSSARY_IT = [
             "team.decompose",
             "team dichiarativi"
         ],
-        "href": "18-agent-orchestration.html#declarative-agent-teams",
+        "href": "19-agent-orchestration.html#declarative-agent-teams",
         "summary": "Team multi-agente dichiarativi: agents.define / agents.team collegano spec di ruolo a un grafo diretto. Gli hop tipizzati restano solo validazione se think non è true.",
         "also": [
             "13-built-in-functions.html#agent-teams",
-            "14-graphs.html"
+            "15-graphs.html"
         ]
     },
     {
@@ -1730,7 +1732,7 @@ const FALLBACK_GLOSSARY_IT = [
             "createReadFileTool",
             "createWebFetchTool"
         ],
-        "href": "18-agent-orchestration.html",
+        "href": "19-agent-orchestration.html",
         "summary": "Tool degli agenti: decoratore @Tool, new Tool e factory built-in."
     },
     {
@@ -1742,7 +1744,7 @@ const FALLBACK_GLOSSARY_IT = [
             "LlamaCppClient",
             "Conversation"
         ],
-        "href": "18-agent-orchestration.html",
+        "href": "19-agent-orchestration.html",
         "summary": "Client LLM built-in e Conversation. Se non passi un client viene usato un modello GGUF locale di default."
     },
     {
@@ -1753,7 +1755,7 @@ const FALLBACK_GLOSSARY_IT = [
             "Ralph",
             "PRD loop"
         ],
-        "href": "18-agent-orchestration.html#ralph-wiggum",
+        "href": "19-agent-orchestration.html#ralph-wiggum",
         "summary": "Loop autonomo di agenti guidato da un PRD."
     },
     {
@@ -1764,7 +1766,7 @@ const FALLBACK_GLOSSARY_IT = [
             "memoria semantica",
             "ask"
         ],
-        "href": "19-graph-memory.html",
+        "href": "20-graph-memory.html",
         "summary": "Memoria semantica: grafo di conoscenza più ricerca vettoriale per gli agenti."
     },
     {
@@ -1775,7 +1777,7 @@ const FALLBACK_GLOSSARY_IT = [
             "searchSimilar",
             "embeddings"
         ],
-        "href": "15-vectordb.html",
+        "href": "16-vectordb.html",
         "summary": "Database vettoriale in-process per similarity search e embedding."
     },
     {
@@ -1787,7 +1789,7 @@ const FALLBACK_GLOSSARY_IT = [
             "directed",
             "undirected"
         ],
-        "href": "14-graphs.html",
+        "href": "15-graphs.html",
         "summary": "Letterali a grafo, algoritmi e serializzazione."
     },
     {
@@ -1797,7 +1799,7 @@ const FALLBACK_GLOSSARY_IT = [
             "MCP",
             "mcp"
         ],
-        "href": "20-mcp-server.html",
+        "href": "21-mcp-server.html",
         "summary": "Espone funzioni MALDA come tool del Model Context Protocol."
     },
     {
@@ -1807,7 +1809,7 @@ const FALLBACK_GLOSSARY_IT = [
             "ACP",
             "Agent Communication Protocol"
         ],
-        "href": "21-acp.html",
+        "href": "22-acp.html",
         "summary": "Agent Communication Protocol per la collaborazione multi-agente."
     },
     {
@@ -1820,7 +1822,7 @@ const FALLBACK_GLOSSARY_IT = [
             "compensate",
             "DLQ"
         ],
-        "href": "22-durable-workflows.html",
+        "href": "23-durable-workflows.html",
         "summary": "Sintassi dei workflow durevoli, storage, CLI, dead letter e operazioni."
     },
     {
@@ -1833,10 +1835,10 @@ const FALLBACK_GLOSSARY_IT = [
             "property",
             "UIHost"
         ],
-        "href": "25-web-ui.html",
+        "href": "26-web-ui.html",
         "summary": "UI guidata dal server: component, property e controlli ui.*. Parti dal capitolo 24 se stai scegliendo un modello UI.",
         "also": [
-            "24-web-ui-hub.html"
+            "25-web-ui-hub.html"
         ]
     },
     {
@@ -1847,7 +1849,7 @@ const FALLBACK_GLOSSARY_IT = [
             "@AIPAGE",
             "HttpServer"
         ],
-        "href": "26-http-server-html-ui.html",
+        "href": "27-http-server-html-ui.html",
         "summary": "Pagine HTML route-first su HttpServer, incluso @AIPAGE generato da LLM."
     },
     {
@@ -1860,10 +1862,10 @@ const FALLBACK_GLOSSARY_IT = [
             "@DELETE",
             "REST"
         ],
-        "href": "28-rest-api.html",
+        "href": "29-rest-api.html",
         "summary": "Route REST basate su decoratori sul server HTTP MALDA. Primer: 28.1.1 (REST, middleware, auth, CSRF, CORS, mappa di sicurezza).",
         "also": [
-            "28-rest-api.html#web-concepts"
+            "29-rest-api.html#web-concepts"
         ]
     },
     {
@@ -1875,10 +1877,10 @@ const FALLBACK_GLOSSARY_IT = [
             "@Middleware",
             "next()"
         ],
-        "href": "28-rest-api.html#concept-middleware",
+        "href": "29-rest-api.html#concept-middleware",
         "summary": "Una funzione (req, res, next) che gira prima dell'handler di route per lavoro condiviso come auth o logging. Chiama next() per continuare.",
         "also": [
-            "28-rest-api.html#middleware"
+            "29-rest-api.html#middleware"
         ]
     },
     {
@@ -1892,10 +1894,10 @@ const FALLBACK_GLOSSARY_IT = [
             "401",
             "403"
         ],
-        "href": "28-rest-api.html#concept-authentication",
+        "href": "29-rest-api.html#concept-authentication",
         "summary": "L'autenticazione è chi è il chiamante; l'autorizzazione è cosa può fare. 401 = non autenticato; 403 = autenticato ma non permesso.",
         "also": [
-            "28-rest-api.html#req-auth",
+            "29-rest-api.html#req-auth",
             "13-built-in-functions.html#jwt-security"
         ]
     },
@@ -1909,7 +1911,7 @@ const FALLBACK_GLOSSARY_IT = [
             "verifyJwt",
             "authenticateBearerJwt"
         ],
-        "href": "28-rest-api.html#concept-jwt",
+        "href": "29-rest-api.html#concept-jwt",
         "summary": "Claim JSON firmati, di solito inviati come Authorization: Bearer <token>. Verifica con req.auth.authenticateBearerJwt; emetti con createJwt.",
         "also": [
             "13-built-in-functions.html#jwt-security"
@@ -1924,10 +1926,10 @@ const FALLBACK_GLOSSARY_IT = [
             "enableCsrf",
             "X-CSRF-Token"
         ],
-        "href": "28-rest-api.html#concept-csrf",
+        "href": "29-rest-api.html#concept-csrf",
         "summary": "Una richiesta contraffatta che usa i cookie dell'utente. Difesa: un token segreto che la pagina vera invia e l'attaccante non può leggere.",
         "also": [
-            "28-rest-api.html#csrf-rate-limit"
+            "29-rest-api.html#csrf-rate-limit"
         ]
     },
     {
@@ -1939,11 +1941,11 @@ const FALLBACK_GLOSSARY_IT = [
             "preflight",
             "enableCORS"
         ],
-        "href": "28-rest-api.html#concept-cors",
+        "href": "29-rest-api.html#concept-cors",
         "summary": "Regola del browser: una pagina può leggere la risposta di un altro origin solo se quell'origin acconsente. Le app MALDA same-origin non ne hanno bisogno; il RestClient host lo ignora.",
         "also": [
-            "28-rest-api.html#cors",
-            "29-rest-web-client.html#cors-host-browser"
+            "29-rest-api.html#cors",
+            "30-rest-web-client.html#cors-host-browser"
         ]
     },
     {
@@ -1954,10 +1956,10 @@ const FALLBACK_GLOSSARY_IT = [
             "setRateLimit",
             "429"
         ],
-        "href": "28-rest-api.html#concept-rate-limit",
+        "href": "29-rest-api.html#concept-rate-limit",
         "summary": "Limita le richieste per IP, utente o token in una finestra di tempo. Gira dopo il middleware così verifiedSub* può usare il subject JWT come chiave.",
         "also": [
-            "28-rest-api.html#csrf-rate-limit"
+            "29-rest-api.html#csrf-rate-limit"
         ]
     },
     {
@@ -1971,7 +1973,7 @@ const FALLBACK_GLOSSARY_IT = [
             "HttpOnly",
             "SameSite"
         ],
-        "href": "28-rest-api.html#concept-session",
+        "href": "29-rest-api.html#concept-session",
         "summary": "I cookie sono coppie name/value che il browser memorizza e rinvia. Una sessione è dati lato server indicizzati da un cookie session-id (req.session)."
     },
     {
@@ -1983,10 +1985,10 @@ const FALLBACK_GLOSSARY_IT = [
             "enableHttps",
             "certificate"
         ],
-        "href": "28-rest-api.html#concept-https",
+        "href": "29-rest-api.html#concept-https",
         "summary": "HTTP su TLS: cifra la connessione e autentica il server con un certificato. Abilita su HttpServer con enableHttps.",
         "also": [
-            "26-http-server-html-ui.html#https"
+            "27-http-server-html-ui.html#https"
         ]
     },
     {
@@ -1998,7 +2000,7 @@ const FALLBACK_GLOSSARY_IT = [
             "PBKDF2",
             "salt"
         ],
-        "href": "28-rest-api.html#concept-password",
+        "href": "29-rest-api.html#concept-password",
         "summary": "Hash one-way con salt di una password di login (PBKDF2). Memorizza l'hash, mai il plaintext; verifyPassword al login. Non è firma JWT e non è HTTPS.",
         "also": [
             "13-built-in-functions.html#jwt-security"
@@ -2011,11 +2013,11 @@ const FALLBACK_GLOSSARY_IT = [
             "XSS",
             "cross-site scripting"
         ],
-        "href": "28-rest-api.html#concept-xss",
+        "href": "29-rest-api.html#concept-xss",
         "summary": "Script iniettato che gira nel browser della vittima. Non concatenare stringhe non fidate in HTML; i cookie HttpOnly riducono il raggio d'azione ma non risolvono l'XSS.",
         "also": [
-            "28-rest-api.html#concept-security-map",
-            "26-http-server-html-ui.html"
+            "29-rest-api.html#concept-security-map",
+            "27-http-server-html-ui.html"
         ]
     },
     {
@@ -2025,10 +2027,10 @@ const FALLBACK_GLOSSARY_IT = [
             "correlationId",
             "X-Correlation-ID"
         ],
-        "href": "28-rest-api.html#concept-correlation",
+        "href": "29-rest-api.html#concept-correlation",
         "summary": "Una stringa che etichetta una richiesta attraverso log e payload di errore. MALDA onora X-Correlation-ID in ingresso oppure ne genera uno.",
         "also": [
-            "28-rest-api.html"
+            "29-rest-api.html"
         ]
     },
     {
@@ -2040,10 +2042,10 @@ const FALLBACK_GLOSSARY_IT = [
             "enableSwagger",
             "swagger.json"
         ],
-        "href": "28-rest-api.html#concept-correlation",
+        "href": "29-rest-api.html#concept-correlation",
         "summary": "Descrizione machine-readable di route e schema. enableSwagger(true) serve JSON a /swagger.json. Non è un controllo di sicurezza.",
         "also": [
-            "28-rest-api.html#cors"
+            "29-rest-api.html#cors"
         ]
     },
     {
@@ -2054,11 +2056,11 @@ const FALLBACK_GLOSSARY_IT = [
             "defense",
             "hardening"
         ],
-        "href": "28-rest-api.html#concept-security-map",
+        "href": "29-rest-api.html#concept-security-map",
         "summary": "Quale interruttore MALDA corrisponde a quale minaccia: auth, CSRF, CORS, XSS, HTTPS, rate limit, hash delle password.",
         "also": [
-            "28-rest-api.html#web-concepts",
-            "26-http-server-html-ui.html"
+            "29-rest-api.html#web-concepts",
+            "27-http-server-html-ui.html"
         ]
     },
     {
@@ -2071,14 +2073,14 @@ const FALLBACK_GLOSSARY_IT = [
             "@shader",
             "GLSL"
         ],
-        "href": "27-browser-javascript-backend.html#game-canvas",
+        "href": "28-browser-javascript-backend.html#game-canvas",
         "summary": "Kit giochi nel browser (backend JS): game.*, API scene three.* e @shader() verso GLSL. Anteprima con malda play.",
         "also": [
-            "24-web-ui-hub.html#browser-games",
-            "27-browser-javascript-backend.html#three-scene-api",
-            "27-browser-javascript-backend.html#shader-kernels",
-            "34-examples.html#game",
-            "38-appendix-gpu-billiards.html"
+            "25-web-ui-hub.html#browser-games",
+            "28-browser-javascript-backend.html#three-scene-api",
+            "28-browser-javascript-backend.html#shader-kernels",
+            "35-examples.html#game",
+            "39-appendix-gpu-billiards.html"
         ]
     },
     {
@@ -2089,7 +2091,7 @@ const FALLBACK_GLOSSARY_IT = [
             "@server",
             "fullstack"
         ],
-        "href": "30-full-stack-development.html",
+        "href": "31-full-stack-development.html",
         "summary": "App full-stack native MALDA e ibride: UI server o frontend JS più backend MALDA."
     },
     {
@@ -2100,7 +2102,7 @@ const FALLBACK_GLOSSARY_IT = [
             "createNativeCallback",
             "NuGet"
         ],
-        "href": "31-dotnet-interop.html",
+        "href": "32-dotnet-interop.html",
         "summary": "Carica librerie .NET esterne e avvolge funzioni MALDA come delegate."
     },
     {
@@ -2134,7 +2136,7 @@ const FALLBACK_GLOSSARY_IT = [
             "runProperty",
             "property"
         ],
-        "href": "35-property-testing.html",
+        "href": "36-property-testing.html",
         "summary": "Property test deterministici, shrinking e hint di capability del backend."
     },
     {
@@ -2144,7 +2146,7 @@ const FALLBACK_GLOSSARY_IT = [
             "skill",
             "malda skill"
         ],
-        "href": "33-personal-assistant.html#skills",
+        "href": "34-personal-assistant.html#skills",
         "summary": "Skill dell'assistente personale: pacchetti di istruzioni riutilizzabili per l'assistente CLI."
     },
     {
@@ -2155,7 +2157,7 @@ const FALLBACK_GLOSSARY_IT = [
             "vertical pack",
             "pack opzionali"
         ],
-        "href": "37-appendix.html#optional-packs",
+        "href": "38-appendix.html#optional-packs",
         "summary": "I pack di dominio restano fuori dal core OSS. Caricali con loadNativeModule; il core non registra in automatico i global dei pack.",
         "also": [
             "13-built-in-functions.html#optional-pack-builtins"
@@ -2193,7 +2195,7 @@ const FALLBACK_GLOSSARY_IT = [
             "expect",
             "malda eval"
         ],
-        "href": "23-agentic-runs.html",
+        "href": "24-agentic-runs.html",
         "summary": "Case di eval nominati. Un malda run ordinario li salta; malda eval li esegue. expect lancia come assert."
     },
     {
@@ -2206,7 +2208,7 @@ const FALLBACK_GLOSSARY_IT = [
             "MALDA_REPLAY_STRICT",
             "cassette_miss"
         ],
-        "href": "23-agentic-runs.html",
+        "href": "24-agentic-runs.html",
         "summary": "Record/replay JSONL di ogni Chat LLM. La chiave è hash del prompt + args + model + mode + schema. Un miss cade su una chiamata live salvo STRICT."
     },
     {
@@ -2218,7 +2220,7 @@ const FALLBACK_GLOSSARY_IT = [
             "trace.lastUsage",
             ".usage"
         ],
-        "href": "23-agentic-runs.html",
+        "href": "24-agentic-runs.html",
         "summary": "Journal in-process di eventi prompt, tool, cap, hop e step di workflow. MALDA_TRACE lo esporta; malda trace continua a leggere i file di sessione."
     },
     {
@@ -2228,7 +2230,7 @@ const FALLBACK_GLOSSARY_IT = [
             "within scope",
             "@within"
         ],
-        "href": "23-agentic-runs.html",
+        "href": "24-agentic-runs.html",
         "summary": "L'istruzione within (30s) è uno scope di cancel a orologio da parete (ms/s/m). Il decoratore @within(ms) è una deadline per funzione."
     },
     {
@@ -2238,7 +2240,7 @@ const FALLBACK_GLOSSARY_IT = [
             "context",
             "context Session"
         ],
-        "href": "23-agentic-runs.html",
+        "href": "24-agentic-runs.html",
         "summary": "context Name { budget / pin / retain / evict / compact } poi new Name(). La compaction in un workflow deve stare in uno step (WF1006)."
     },
     {
@@ -2248,7 +2250,7 @@ const FALLBACK_GLOSSARY_IT = [
             "ToolDenied",
             "MALDA_POLICY_APPROVE"
         ],
-        "href": "23-agentic-runs.html",
+        "href": "24-agentic-runs.html",
         "summary": "Deny list fs/net/shell/mcp a livello di file sul consume dei cap. Non è @effects. approve richiede MALDA_POLICY_APPROVE o un callback dell'host."
     },
     {
@@ -2260,7 +2262,7 @@ const FALLBACK_GLOSSARY_IT = [
             "ToolDenied",
             "Timeout"
         ],
-        "href": "23-agentic-runs.html",
+        "href": "24-agentic-runs.html",
         "summary": "Sum type built-in attaccato accanto alla stringa error sugli oggetti risultato. I throw restano throw."
     },
     {
@@ -2276,8 +2278,8 @@ const FALLBACK_GLOSSARY_IT = [
         "href": "02-tools.html#cli-index",
         "summary": "Ogni verbo malda con un puntatore al capitolo che lo documenta. malda play serve .malda-play/, non la cartella sorgente.",
         "also": [
-            "33-personal-assistant.html",
-            "27-browser-javascript-backend.html"
+            "34-personal-assistant.html",
+            "28-browser-javascript-backend.html"
         ]
     }
 ];

@@ -18,7 +18,7 @@
     <main>
         <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>10. Prompt</span></div>
         <h1>10. Prompt</h1>
-        <p>Un <code>prompt</code> è un template nominato e parametrizzato. Chiamarlo interpola i parametri e restituisce un <code>PromptInstance</code>. <code>await</code> può chiamare un LLM e validare il JSON rispetto a un tipo dichiarato. Decoratori come <code>@within</code> e <code>@budget</code> si applicano anche qui, non solo alle funzioni — vedi <a href="09-functions.html">9.7 Decoratori</a>. L'opzionale <code>@version("…")</code> è un pin informativo per <code>malda prompts --diff</code>. Ogni <code>await</code> / <code>Chat</code> passa dalle cassette quando sono impostati <code>MALDA_RECORD</code> / <code>MALDA_REPLAY</code>. <code>.usage</code> su un risultato è metadata (una chiave propria chiamata <code>usage</code> vince). Narrazione: <a href="23-agentic-runs.html">23. Esecuzioni agentiche</a>.</p>
+        <p>Un <code>prompt</code> è un template nominato e parametrizzato. Chiamarlo interpola i parametri e restituisce un <code>PromptInstance</code>. <code>await</code> può chiamare un LLM e validare il JSON rispetto a un tipo dichiarato. Decoratori come <code>@within</code> e <code>@budget</code> si applicano anche qui, non solo alle funzioni — vedi <a href="09-functions.html">9.7 Decoratori</a>. L'opzionale <code>@version("…")</code> è un pin informativo per <code>malda prompts --diff</code>. Ogni <code>await</code> / <code>Chat</code> passa dalle cassette quando sono impostati <code>MALDA_RECORD</code> / <code>MALDA_REPLAY</code>. <code>.usage</code> su un risultato è metadata (una chiave propria chiamata <code>usage</code> vince). Narrazione: <a href="24-agentic-runs.html">24. Esecuzioni agentiche</a>.</p>
         <p>I template senza <code>await</code> sono linguaggio core. <code>await prompt</code>, i client LLM live e le cassette sono solo host (interprete e transpile C#). JavaScript può eseguire <code>validate</code> / <code>asVariant</code> ma non una chiamata live al modello. Vedi la <a href="../../docs/spec/backend-capability-matrix.md">matrice delle capacità dei backend</a>.</p>
         <pre><code>@version("2026-09-01")
 prompt extract(raw) -> Card {
@@ -379,7 +379,7 @@ var answer = await ragAnswer("How does retrieval work?", client);</code></pre>
         <p><strong>Composizione avanzata:</strong> <code>composePipe</code>, <code>parallelRun</code> e <code>mergeRetrievedDocs</code> si compongono con funzioni e pipe per retrieval parallelo e funzioni di pipeline riusabili. Vedi <code>Examples/Prompts/rag_compose_pipeline.malda</code> e il catalogo sotto.</p>
 
         <h3 id="ai-pipeline">10.9.1 Helper di pipeline AI</h3>
-        <p>Questi built-in si compongono con l'operatore pipe (<code>|&gt;</code>) per la retrieval-augmented generation (RAG) e l'output LLM strutturato. Indicizzazione in un VectorDB: <a href="15-vectordb.html">15. VectorDB</a> (<code>asRetriever</code>, <code>indexInto</code>). Fixture offline: <a href="13-built-in-functions.html#evalPrompt">13.7.1.2 evalPrompt</a>. File lavorati: <code>Examples/Prompts/rag_pipeline.malda</code>, <code>Examples/Prompts/rag_compose_pipeline.malda</code>.</p>
+        <p>Questi built-in si compongono con l'operatore pipe (<code>|&gt;</code>) per la retrieval-augmented generation (RAG) e l'output LLM strutturato. Indicizzazione in un VectorDB: <a href="16-vectordb.html">16. VectorDB</a> (<code>asRetriever</code>, <code>indexInto</code>). Fixture offline: <a href="13-built-in-functions.html#evalPrompt">13.7.1.2 evalPrompt</a>. File lavorati: <code>Examples/Prompts/rag_pipeline.malda</code>, <code>Examples/Prompts/rag_compose_pipeline.malda</code>.</p>
         <pre><code>// Load text files matching a glob pattern (default directory: current)
 var docs = loadDocuments("**/*.md", "docs/");
 
@@ -562,8 +562,8 @@ var response = agent.think(planTask(task, docs));</code></pre>
                 <li><a href="04-data-types.html#sum-types">4.5 Tipi somma</a> / <a href="04-data-types.html#schema">4.6 Schema</a> — sintassi di <code>type</code> e <code>schema</code></li>
                 <li><a href="07-expressions.html">7. Espressioni</a> - Operatore pipe per le pipeline di prompt</li>
                 <li><a href="13-built-in-functions.html">13. Funzioni built-in</a> - Helper della pipeline AI</li>
-                <li><a href="18-agent-orchestration.html">18. Orchestrazione di agenti</a> - Usare gli agenti con i prompt</li>
-                <li><a href="23-agentic-runs.html">23. Esecuzioni agentiche</a> - <code>@version</code>, <code>.usage</code>, cassette, <code>malda eval</code></li>
+                <li><a href="19-agent-orchestration.html">19. Orchestrazione di agenti</a> - Usare gli agenti con i prompt</li>
+                <li><a href="24-agentic-runs.html">24. Esecuzioni agentiche</a> - <code>@version</code>, <code>.usage</code>, cassette, <code>malda eval</code></li>
             </ul>
         </div>
         <div class="nav-footer">

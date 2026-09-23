@@ -68,7 +68,7 @@ print(io.readFile("config.json"));</code></pre>
             </thead>
             <tbody>
                 <tr><td><code>math</code></td><td>Rounding, trigonometry, aggregates, random helpers, LLM math, linear algebra, and the constants <code>math.PI</code>, <code>math.E</code>, <code>math.TAU</code>, <code>math.INF</code>, <code>math.NaN</code></td></tr>
-                <tr><td><code>nn</code></td><td>Neural-net activations, local derivatives, <code>dense</code> / <code>denseBackward</code>, and the loss gradients <code>mseGrad</code> / <code>softmaxGrad</code> — see <a href="#nn">13.3.3</a>. No flat aliases</td></tr>
+                <tr><td><code>nn</code></td><td>Neural-net activations, local derivatives, <code>dense</code> / <code>denseBackward</code>, and the loss gradients <code>mseGrad</code> / <code>softmaxGrad</code> — catalog in <a href="#nn">13.3.3</a>, the layer model in <a href="14-neural-nets.html">14. Neural Nets</a>. No flat aliases</td></tr>
                 <tr><td><code>str</code></td><td>Case, trimming, splitting and joining, padding, regex helpers, similarity, base64, <code>md5</code> / <code>sha256</code></td></tr>
                 <tr><td><code>io</code></td><td><code>print</code>, <code>input</code>, file and path helpers, <code>glob</code>, <code>grep</code>, environment variables, git helpers</td></tr>
                 <tr><td><code>pdf</code></td><td><code>extractText</code> &mdash; read text from a PDF file (digital text layer; no OCR)</td></tr>
@@ -156,7 +156,7 @@ print(math.pow(2, 3));</code></pre>
 var g = math.zeros(3, 4);     // 3 rows, 4 columns
 g[0][0] = 1.0;                // other rows stay zero</code></pre>
         <h4>Neural-net helpers</h4>
-        <p>Linear algebra used by the offline <a href="34-examples.html">AI_Theory</a> track stays on <code>math</code>. Inner dimensions of <code>math.matmul</code> must match. <code>math.sigmoid</code>, <code>math.tanh</code>, and <code>math.softmax</code> are the same functions as <code>nn.sigmoid</code>, <code>nn.tanh</code>, and <code>nn.softmax</code>. <code>nn.relu</code>, <code>nn.mse</code>, and <code>nn.crossEntropyFromLogits</code> are only on <code>nn</code>, with the other activations, local derivatives, and the dense layer (see <a href="#nn">13.3.3</a>). See <a href="../docs/roadmap-neural.md">the neural-nets kit</a>.</p>
+        <p>Linear algebra used by the offline <a href="35-examples.html">AI_Theory</a> track stays on <code>math</code>. Inner dimensions of <code>math.matmul</code> must match. Activations, local derivatives, and a dense layer are <a href="14-neural-nets.html">14. Neural Nets</a>; this chapter keeps the signatures (see <a href="#nn">13.3.3</a>).</p>
         <pre><code data-run="true" data-expect="5">print(math.dot([1.0, 2.0], [3.0, 1.0]));</code></pre>
         <h3>13.3.1 LLM-oriented Math Helpers (Reference)</h3>
         <p>See <code>math.seed</code> through <code>math.anneal</code> in the table. Invalid counts or types, empty arrays, a non-positive softmax temperature, or zero total weight throw. <code>math.seed</code> pins <code>math.random</code>, <code>math.randomInt</code>, <code>math.randomFloat</code>, <code>math.randn</code>, <code>math.randomChoiceWeighted</code>, and <code>math.anneal</code>.</p>
@@ -185,7 +185,7 @@ var result = math.anneal(
 print(result.state);
 print(result.cost);</code></pre>
         <h3 id="nn">13.3.3 Neural-net namespace (<code>nn</code>)</h3>
-        <p>Interpreter, C# transpile, and JavaScript all run <code>nn.*</code>. There is no flat alias and no autograd tape: each derivative is the local factor you would multiply by hand. Weights are <code>[in, out]</code> (row = from, column = to), the same layout as <code>math.matmul(x, weights)</code>.</p>
+        <p>Signature catalog. The layer model — <code>pre = xW + b</code>, the local derivative, and the example track — is <a href="14-neural-nets.html">14. Neural Nets</a>. Interpreter, C# transpile, and JavaScript all run <code>nn.*</code>. There is no flat alias and no autograd tape. Weights are <code>[in, out]</code> (row = from, column = to), the same layout as <code>math.matmul(x, weights)</code>.</p>
         <p><code>nn.dense</code> returns <code>{ pre, out }</code>. <code>pre</code> is the pre-activation, the linear part before the nonlinearity: <code>pre = xW + b</code> (or <code>XW + b</code> for a batch). <code>out</code> is <code>activation(pre)</code>. With no activation, or with <code>"linear"</code>, <code>out</code> is a copy of <code>pre</code>. Keep <code>pre</code> and pass it to <code>nn.denseBackward</code>: <code>dRelu</code>, <code>dSigmoid</code>, and the other local derivatives are taken at <code>pre</code>, not at <code>out</code>.</p>
         <table>
         <thead>
@@ -312,7 +312,7 @@ var programDir = getProgramDirectory();
 var modelPath = io.pathJoin(programDir, "bge-m3-Q4_K_M.gguf");</code></pre>
         <p><code>getHostPlatform()</code> returns an object with the four fields shown above. <code>getCommandLineArgs()</code> returns an array of strings and is the way to read CLI arguments from a MALDA program, in both interpreted and transpiled runs. <code>getProgramDirectory()</code> returns the absolute directory of the running <code>.malda</code> source file under the interpreter, or <code>AppContext.BaseDirectory</code> (the folder containing the compiled executable) after <code>malda compile</code>.</p>
         <h3>13.5.2 Web search (Brave Search API)</h3>
-        <p><code>webSearch(query, apiKey?)</code> — Performs a web search using the Brave Search API. <code>query</code> is the search string. <code>apiKey</code> is optional; if omitted, the key is taken from (in order) the <code>apiKey</code> argument, the <code>BRAVE_SEARCH_API_KEY</code> environment variable, or <code>tools.web.search.apiKey</code> in <code>~/.malda/config.json</code> (see <a href="33-personal-assistant.html">Personal Assistant and CLI</a>). Returns an object: <code>{ ok: true, results: [{ title, url, description }, ...], moreResultsAvailable: bool }</code> on success, or <code>{ ok: false, error: "message" }</code> on failure.</p>
+        <p><code>webSearch(query, apiKey?)</code> — Performs a web search using the Brave Search API. <code>query</code> is the search string. <code>apiKey</code> is optional; if omitted, the key is taken from (in order) the <code>apiKey</code> argument, the <code>BRAVE_SEARCH_API_KEY</code> environment variable, or <code>tools.web.search.apiKey</code> in <code>~/.malda/config.json</code> (see <a href="34-personal-assistant.html">Personal Assistant and CLI</a>). Returns an object: <code>{ ok: true, results: [{ title, url, description }, ...], moreResultsAvailable: bool }</code> on success, or <code>{ ok: false, error: "message" }</code> on failure.</p>
         <pre><code>var r = webSearch("MALDA programming language");           // Uses BRAVE_SEARCH_API_KEY or config
 var r2 = webSearch("weather London", "your-brave-api-key"); // Explicit key
 if (r.ok) { for (var i = 0; i &lt; r.results.length; i++) print(r.results[i].title); }</code></pre>
@@ -334,9 +334,9 @@ var token = httpAuthToken(req, {
             <li><code>httpCookieToken(request, cookieName, cookieSecret?)</code> - returns decoded cookie token (or verified secure-cookie value when secret is provided), otherwise empty string.</li>
             <li><code>httpAuthToken(request, options?)</code> - tries bearer/cookie/body in order and returns first non-empty token.</li>
         </ul>
-        <p>Wire these into handlers with <code>req.auth</code> — see <a href="#jwt-security">13.25</a> and <a href="28-rest-api.html#req-auth">28.6.2</a>.</p>
+        <p>Wire these into handlers with <code>req.auth</code> — see <a href="#jwt-security">13.25</a> and <a href="29-rest-api.html#req-auth">29.6.2</a>.</p>
         <h3 id="web-fetch">13.5.4 webFetch(url, maxBytes?, timeoutMs?)</h3>
-        <p>Signature catalog for fetching an <code>http://</code> or <code>https://</code> URL on the host path used by <code>httpGet</code>. How-to, caps, and the return shape: <a href="12-input-output.html#web-fetch">12.9 Fetching URLs</a>. Typed REST calls: <a href="29-rest-web-client.html">29. REST Web Client</a>. The agent factory is <code>createWebFetchTool</code>.</p>
+        <p>Signature catalog for fetching an <code>http://</code> or <code>https://</code> URL on the host path used by <code>httpGet</code>. How-to, caps, and the return shape: <a href="12-input-output.html#web-fetch">12.9 Fetching URLs</a>. Typed REST calls: <a href="30-rest-web-client.html">30. REST Web Client</a>. The agent factory is <code>createWebFetchTool</code>.</p>
         <h2 id="arrays">13.6 Array Utility Functions</h2>
         <p><code>math.sum</code> / <code>math.average</code> / <code>math.min</code> / <code>math.max</code> are in <a href="#math">13.3</a> and also work as array methods. The rows below are the array-only helpers. Interpreter, C# transpile, and JavaScript all run these.</p>
         <pre><code data-run="true" data-expect="5, 4, 3, 2, 1\ntrue">print(str.join(reverse([1, 2, 3, 4, 5]), ", "));
@@ -432,7 +432,7 @@ var tagged = dict { "tag": "Buy", "sku": "SKU-9", "qty": "x" };
 var checkedTyped = validate("Intent", tagged);
 print(checkedTyped.ok);</code></pre>
         <div class="info-box">
-            <strong>Not to be confused with:</strong> <code>memory.validate()</code> on a <a href="19-graph-memory.html">GraphMemory</a> instance, which checks graph integrity rather than a schema. The two share a name but are unrelated.
+            <strong>Not to be confused with:</strong> <code>memory.validate()</code> on a <a href="20-graph-memory.html">GraphMemory</a> instance, which checks graph integrity rather than a schema. The two share a name but are unrelated.
         </div>
 
         <h3 id="asVariant">13.7.1.1 asVariant(typeName, value)</h3>
@@ -482,7 +482,7 @@ print(label);</code></pre>
         <p>See <code>Examples/Prompts/eval_prompt.malda</code> and <code>docs/llm/few-shot/27_eval_prompt.malda</code>.</p>
 
         <h3 id="ai-pipeline">13.7.2 AI Pipeline Functions</h3>
-        <p>How-to, worked pipes, and the signature table live in <a href="10-prompts.html#ai-pipeline">10.9.1 AI pipeline helpers</a>. Vector index + <code>asRetriever</code>: <a href="15-vectordb.html">15. VectorDB</a>. Offline fixtures: <a href="#evalPrompt">13.7.1.2 evalPrompt</a>.</p>
+        <p>How-to, worked pipes, and the signature table live in <a href="10-prompts.html#ai-pipeline">10.9.1 AI pipeline helpers</a>. Vector index + <code>asRetriever</code>: <a href="16-vectordb.html">16. VectorDB</a>. Offline fixtures: <a href="#evalPrompt">13.7.1.2 evalPrompt</a>.</p>
         <p>Catalog names: <code>loadDocuments</code>, <code>splitDocuments</code>, <code>indexInto</code>, <code>formatRetrievedDocs</code>, <code>composePipe</code>, <code>parallelRun</code>, <code>mergeRetrievedDocs</code>, <code>withExamples</code>, <code>evalPrompt</code>, <code>runPrompt</code>, <code>parseJson</code>.</p>
         <h2 id="files">13.8 File System Functions</h2>
         <p>How-to, failure styles, line ranges, capability tokens, and backend notes: <a href="12-input-output.html">12. Input/Output</a>. This section is the signature catalog. File I/O is host-only (interpreter and C# transpile); JavaScript has <code>io.print</code> / <code>io.input</code> / JSON, not disk files. See the <a href="../docs/spec/backend-capability-matrix.md">backend capability matrix</a>.</p>
@@ -885,7 +885,7 @@ print(g.citations[0].source);</code></pre>
         <ul>
             <li><code>grounded.wrap(value, citations?)</code> — returns <code>{ value, citations, sourced }</code>. <code>sourced</code> is true when the citation list is non-empty after normalization.</li>
             <li>Each citation is <code>{ source, id?, span? }</code>. A string citation becomes <code>{ source }</code>. There is no flat <code>grounded()</code> alias.</li>
-            <li>GraphMemory opt-in ASK: <code>memory.ask(query, maxResults?, options?)</code> (or <code>query(..., { grounded: true })</code>) wraps hits with citations from <code>filePath</code> / <code>source</code> / <code>nodeId</code>. Plain <code>query()</code> still returns an array. See <a href="19-graph-memory.html">19. GraphMemory</a> §19.3.15.</li>
+            <li>GraphMemory opt-in ASK: <code>memory.ask(query, maxResults?, options?)</code> (or <code>query(..., { grounded: true })</code>) wraps hits with citations from <code>filePath</code> / <code>source</code> / <code>nodeId</code>. Plain <code>query()</code> still returns an array. See <a href="20-graph-memory.html">20. GraphMemory</a> §20.3.15.</li>
         </ul>
         <h3 id="capability-tokens">13.19.3 <code>cap.fileRead</code></h3>
         <p>This subsection is the signature catalog. If you have not used tokens before, start with the how-to in <a href="12-input-output.html#capability-tokens">12.6 Capability tokens</a> — why they exist, the key analogy, <code>cap.confine</code>, and the host-mint pattern for tools.</p>
@@ -911,61 +911,61 @@ print(forged);</code></pre>
             <li>Examples: <code>Examples/Tools/capability_tokens.malda</code>, <code>Examples/Tools/capability_http_mcp_shell.malda</code>.</li>
         </ul>
         <h3 id="expect">13.19.4 <code>expect</code></h3>
-        <p>Throws like <code>assert</code> when the condition is false. Used in <code>suite</code> cases; <code>malda eval</code> runs those cases. <code>validate</code> still returns <code>{ ok, error }</code>. See <a href="23-agentic-runs.html">23.1</a>.</p>
+        <p>Throws like <code>assert</code> when the condition is false. Used in <code>suite</code> cases; <code>malda eval</code> runs those cases. <code>validate</code> still returns <code>{ ok, error }</code>. See <a href="24-agentic-runs.html">24.1</a>.</p>
         <pre><code>expect(checked.ok);
 expect(n > 0, "n must be positive");</code></pre>
         <h3 id="stream">13.19.5 <code>stream</code></h3>
-        <p>Yields an array of <code>{ text }</code> chunks, or schema-aware partials when a registered schema name is passed. LlamaCpp is buffered, not live tokens. Iterate with <code>for await</code>. See <a href="23-agentic-runs.html">23.8</a>.</p>
+        <p>Yields an array of <code>{ text }</code> chunks, or schema-aware partials when a registered schema name is passed. LlamaCpp is buffered, not live tokens. Iterate with <code>for await</code>. See <a href="24-agentic-runs.html">24.8</a>.</p>
         <pre><code>var chunks = stream("hello world from malda");</code></pre>
         <h3 id="race-firstok">13.19.6 <code>race</code> / <code>firstOk</code></h3>
-        <p><code>race</code> is the first completed branch. <code>firstOk</code> is the first branch that is not a <code>Timeout</code> variant. <code>all</code> waits for every branch and puts <code>AgentError.Upstream</code> in failed slots. See <a href="23-agentic-runs.html">23.4</a>.</p>
+        <p><code>race</code> is the first completed branch. <code>firstOk</code> is the first branch that is not a <code>Timeout</code> variant. <code>all</code> waits for every branch and puts <code>AgentError.Upstream</code> in failed slots. See <a href="24-agentic-runs.html">24.4</a>.</p>
         <pre><code>race(taskA, taskB);
 firstOk(taskA, taskB);</code></pre>
         <h3 id="trace-journal">13.19.7 <code>trace.span</code> / <code>trace.journal</code> / <code>trace.lastUsage</code></h3>
-        <p>In-process run journal: prompt, tool, cap, hop, and workflow-step events. <code>.usage</code> on a prompt result is metadata (own key wins). See <a href="23-agentic-runs.html">23.3</a>.</p>
+        <p>In-process run journal: prompt, tool, cap, hop, and workflow-step events. <code>.usage</code> on a prompt result is metadata (own key wins). See <a href="24-agentic-runs.html">24.3</a>.</p>
         <pre><code>trace.span("name", () => { });
 var events = trace.journal();
 var spend = trace.lastUsage();</code></pre>
         <h3 id="agent-error">13.19.8 <code>AgentError</code></h3>
-        <p>Built-in sum type attached as <code>agentError</code> beside the string <code>error</code>. Throws still throw. <code>validate</code> mismatch → <code>SchemaMismatch</code>. See <a href="23-agentic-runs.html">23.7</a>.</p>
+        <p>Built-in sum type attached as <code>agentError</code> beside the string <code>error</code>. Throws still throw. <code>validate</code> mismatch → <code>SchemaMismatch</code>. See <a href="24-agentic-runs.html">24.7</a>.</p>
         <pre><code>AgentError = Refused(reason) | Unparsable(raw, attempts) | SchemaMismatch(schema, error)
            | BudgetExceeded(kind, limit) | ToolDenied(tool, reason) | Timeout(ms)
            | Upstream(status, body)</code></pre>
         <h2 id="task-planning">13.20 Structured Task Planning</h2>
-        <p id="agent-teams"><code>decomposeTask</code>, <code>executePlan</code>, <code>createSubmitPlanTool</code>, <code>createUpdatePlanTool</code>, and <code>createMarkStepTool</code> live in <a href="18-agent-orchestration.html">18. Agent Orchestration</a> (§ 18.13). <code>agents.define</code> / <code>agents.team</code> bind role specs to a directed graph; <code>executePlan(plan, team)</code> honors <code>step.role</code> and declared hops, branches <code>reject</code> hops on the predecessor <code>approved</code> verdict, and accepts <code>plan.think: false</code> to stay offline — see <a href="18-agent-orchestration.html#declarative-agent-teams">§ 18.17</a>. <code>team.handoff</code> / <code>team.review</code> / <code>team.reject</code> / <code>team.consult</code> are typed hops and stay validate-only unless <code>think</code> is true. <code>runProgram</code> runs a closed <code>api</code> / <code>program(ApiName)</code> value with no further LLM calls — see <a href="10-prompts.html">10. Prompts</a> (§ 10.8 Closed APIs and Deterministic Programs).</p>
+        <p id="agent-teams"><code>decomposeTask</code>, <code>executePlan</code>, <code>createSubmitPlanTool</code>, <code>createUpdatePlanTool</code>, and <code>createMarkStepTool</code> live in <a href="19-agent-orchestration.html">19. Agent Orchestration</a> (§ 19.13). <code>agents.define</code> / <code>agents.team</code> bind role specs to a directed graph; <code>executePlan(plan, team)</code> honors <code>step.role</code> and declared hops, branches <code>reject</code> hops on the predecessor <code>approved</code> verdict, and accepts <code>plan.think: false</code> to stay offline — see <a href="19-agent-orchestration.html#declarative-agent-teams">§ 19.17</a>. <code>team.handoff</code> / <code>team.review</code> / <code>team.reject</code> / <code>team.consult</code> are typed hops and stay validate-only unless <code>think</code> is true. <code>runProgram</code> runs a closed <code>api</code> / <code>program(ApiName)</code> value with no further LLM calls — see <a href="10-prompts.html">10. Prompts</a> (§ 10.8 Closed APIs and Deterministic Programs).</p>
         <h2 id="tool-creation">13.21 Tool Creation Functions</h2>
-        <p>Agent tool factories (<code>createReadFileTool</code>, <code>createWriteFileTool</code>, <code>createReplaceInFileTool</code>, <code>createEditFileTool</code>, <code>createInsertAtLineTool</code>, <code>createGrepTool</code>, <code>createListDirectoryTool</code>, <code>createAskUserTool</code>, <code>createWebSearchTool</code>, <code>createWebFetchTool</code>, <code>createGitStatusTool</code>, <code>createGitAddTool</code>, <code>createGitCommitTool</code>, <code>createGitLogTool</code>, <code>createGitDiffTool</code>, <code>createGitBranchTool</code>, <code>createGitCheckoutTool</code>, <code>createGitPushTool</code>, <code>createGitPullTool</code>, <code>createRunCommandTool</code>, <code>createRunMALDATool</code>, <code>createCompileMALDATool</code>, <code>createGetSymbolsTool</code>, <code>createGetParseErrorsTool</code>, <code>createCheckMaldaTool</code>, <code>createValidateJsonTool</code>, <code>createTestMaldaTool</code>, <code>createSubmitPlanTool</code>, <code>createUpdatePlanTool</code>, <code>createMarkStepTool</code>, <code>createGlobTool</code>, <code>createCreateMcpAgentScriptTool</code>, <code>createDeleteFileTool</code>, <code>createCopyFileTool</code>, <code>createEnsureDirTool</code>) live in <a href="18-agent-orchestration.html">18. Agent Orchestration</a> (§ 18.6). <code>createNativeCallback</code> wraps a MALDA function as a .NET delegate — see <a href="31-dotnet-interop.html">31. .NET Interop</a>.</p>
+        <p>Agent tool factories (<code>createReadFileTool</code>, <code>createWriteFileTool</code>, <code>createReplaceInFileTool</code>, <code>createEditFileTool</code>, <code>createInsertAtLineTool</code>, <code>createGrepTool</code>, <code>createListDirectoryTool</code>, <code>createAskUserTool</code>, <code>createWebSearchTool</code>, <code>createWebFetchTool</code>, <code>createGitStatusTool</code>, <code>createGitAddTool</code>, <code>createGitCommitTool</code>, <code>createGitLogTool</code>, <code>createGitDiffTool</code>, <code>createGitBranchTool</code>, <code>createGitCheckoutTool</code>, <code>createGitPushTool</code>, <code>createGitPullTool</code>, <code>createRunCommandTool</code>, <code>createRunMALDATool</code>, <code>createCompileMALDATool</code>, <code>createGetSymbolsTool</code>, <code>createGetParseErrorsTool</code>, <code>createCheckMaldaTool</code>, <code>createValidateJsonTool</code>, <code>createTestMaldaTool</code>, <code>createSubmitPlanTool</code>, <code>createUpdatePlanTool</code>, <code>createMarkStepTool</code>, <code>createGlobTool</code>, <code>createCreateMcpAgentScriptTool</code>, <code>createDeleteFileTool</code>, <code>createCopyFileTool</code>, <code>createEnsureDirTool</code>) live in <a href="19-agent-orchestration.html">19. Agent Orchestration</a> (§ 19.6). <code>createNativeCallback</code> wraps a MALDA function as a .NET delegate — see <a href="32-dotnet-interop.html">32. .NET Interop</a>.</p>
         <h2 id="workflow-ops">13.22 Durable Workflow Operations</h2>
-        <p>Runtime, query, and control helpers (<code>startWorkflow</code>, <code>getWorkflowStatus</code>, <code>getWorkflow</code>, <code>getWorkflowSteps</code>, <code>getWorkflowEvents</code>, <code>getWorkflowMetrics</code>, <code>listWorkflows</code>, <code>listWorkflowDeadLetters</code>, <code>requeueDeadLetter</code>, <code>runWorkflowInstance</code>) live in <a href="22-durable-workflows.html">22. Durable Workflows</a>.</p>
+        <p>Runtime, query, and control helpers (<code>startWorkflow</code>, <code>getWorkflowStatus</code>, <code>getWorkflow</code>, <code>getWorkflowSteps</code>, <code>getWorkflowEvents</code>, <code>getWorkflowMetrics</code>, <code>listWorkflows</code>, <code>listWorkflowDeadLetters</code>, <code>requeueDeadLetter</code>, <code>runWorkflowInstance</code>) live in <a href="23-durable-workflows.html">23. Durable Workflows</a>.</p>
         <h2 id="agent-logging">13.23 Agent Runtime Logging</h2>
-        <p>Diagnostic helpers (<code>enableAgentVerboseLogging</code>, <code>setAgentVerbosePhase</code>, <code>setAgentStatusBanner</code>, <code>reportRalphStatus</code>) live in <a href="18-agent-orchestration.html">18. Agent Orchestration</a> (§ 18.5 and <a href="18-agent-orchestration.html#ralph-wiggum">18.19 Ralph Wiggum</a>). They affect presentation only and never change an agent's result.</p>
+        <p>Diagnostic helpers (<code>enableAgentVerboseLogging</code>, <code>setAgentVerbosePhase</code>, <code>setAgentStatusBanner</code>, <code>reportRalphStatus</code>) live in <a href="19-agent-orchestration.html">19. Agent Orchestration</a> (§ 19.5 and <a href="19-agent-orchestration.html#ralph-wiggum">19.19 Ralph Wiggum</a>). They affect presentation only and never change an agent's result.</p>
         <h2 id="web-ui-fns">13.24 Web UI Functions</h2>
-        <p>Server component helpers (<code>renderTemplate</code>, <code>componentFragment</code>, <code>componentLiveEmit</code>, <code>componentState*</code>, <code>onAgentProgress</code>, <code>clearAgentProgress</code>, <code>cancelThink</code>) and <code>ui.*</code> controls live in <a href="25-web-ui.html">25. Web UI Server Components</a>. Start from <a href="24-web-ui-hub.html">24. Web UI Overview</a> if you are choosing a UI model.</p>
+        <p>Server component helpers (<code>renderTemplate</code>, <code>componentFragment</code>, <code>componentLiveEmit</code>, <code>componentState*</code>, <code>onAgentProgress</code>, <code>clearAgentProgress</code>, <code>cancelThink</code>) and <code>ui.*</code> controls live in <a href="26-web-ui.html">26. Web UI Server Components</a>. Start from <a href="25-web-ui-hub.html">25. Web UI Overview</a> if you are choosing a UI model.</p>
         <h2 id="jwt-security">13.25 Password, JWT, and request auth</h2>
-        <p>Signature how-to for HTTP lives in <a href="28-rest-api.html#jwt-security">28.16 Password, JWT, and cookie helpers</a>. Request principal: <a href="28-rest-api.html#req-auth">28.6.2 req.auth</a>. Primers: <a href="28-rest-api.html#concept-password">password hashing</a>, <a href="28-rest-api.html#concept-jwt">JWT</a>, <a href="28-rest-api.html#concept-csrf">CSRF</a>.</p>
+        <p>Signature how-to for HTTP lives in <a href="29-rest-api.html#jwt-security">29.16 Password, JWT, and cookie helpers</a>. Request principal: <a href="29-rest-api.html#req-auth">29.6.2 req.auth</a>. Primers: <a href="29-rest-api.html#concept-password">password hashing</a>, <a href="29-rest-api.html#concept-jwt">JWT</a>, <a href="29-rest-api.html#concept-csrf">CSRF</a>.</p>
         <p>Catalog names: <code>hashPassword</code>, <code>verifyPassword</code>, <code>createJwt</code>, <code>verifyJwt</code>, <code>generateCsrfToken</code>, <code>verifyCsrfToken</code>, <code>csrfField</code>, <code>createSecureCookie</code>, <code>readSecureCookie</code>, <code>httpBearerToken</code>, <code>httpCookieToken</code>, <code>httpAuthToken</code>, <code>bindForm</code>, <code>formErrors</code>, <code>pageLayout</code>. Handler surface: <code>req.auth.authenticateBearerJwt</code>, <code>authenticateCookieJwt</code>, <code>requireRole</code>, <code>requirePermission</code>, <code>setVerifiedSub</code>.</p>
         <h2 id="background-jobs">13.26 Background jobs</h2>
-        <p>Lightweight SQLite queue (<code>enqueueJob</code>, <code>claimJob</code>, <code>completeJob</code>, <code>failJob</code>, <code>getJob</code>, <code>listJobs</code>) — not a durable <code>workflow</code>. How-to: <a href="22-durable-workflows.html#background-jobs">22.11 Lightweight job queue</a>.</p>
+        <p>Lightweight SQLite queue (<code>enqueueJob</code>, <code>claimJob</code>, <code>completeJob</code>, <code>failJob</code>, <code>getJob</code>, <code>listJobs</code>) — not a durable <code>workflow</code>. How-to: <a href="23-durable-workflows.html#background-jobs">23.11 Lightweight job queue</a>.</p>
         <h2 id="optional-pack-builtins">13.27 Optional packs (not in core)</h2>
         <p>Core <code>BuiltInRegistry</code> lists only open-source core symbols. Domain-specific builtins may ship in separately distributed packs; load them with <code>loadNativeModule(...)</code> and ship any required assemblies beside your app. Core does not auto-register pack globals.</p>
         <div class="see-also">
             <h3>See Also</h3>
             <ul>
-                <li><a href="37-appendix.html#optional-packs">Appendix — Optional packs</a></li>
+                <li><a href="38-appendix.html#optional-packs">Appendix — Optional packs</a></li>
                 <li><a href="12-input-output.html">Input/Output</a> — console, files, paths, environment, host I/O; prefer <code>io.*</code></li>
                 <li><a href="12-input-output.html#capability-tokens">12.6 Capability tokens</a> — how-to for <code>cap.*</code> (this chapter is the catalog)</li>
                 <li><a href="10-prompts.html#ai-pipeline">10.9.1 AI pipeline helpers</a> — <code>loadDocuments</code>, <code>runPrompt</code>, <code>composePipe</code></li>
                 <li><a href="12-input-output.html#web-fetch">12.9 Fetching URLs</a> — <code>webFetch</code></li>
-                <li><a href="25-web-ui.html">Web UI Server Components</a> — Server-side UI and component APIs</li>
-                <li><a href="18-agent-orchestration.html">Agent Orchestration</a> — Tools, task plans, and agent logging</li>
-                <li><a href="22-durable-workflows.html#background-jobs">22.11 Lightweight job queue</a> — <code>enqueueJob</code> and friends</li>
-                <li><a href="23-agentic-runs.html">23. Agentic Runs</a> — <code>expect</code>, <code>stream</code>, <code>race</code> / <code>firstOk</code>, <code>trace.*</code>, <code>AgentError</code></li>
-                <li><a href="28-rest-api.html#jwt-security">28.16 Password, JWT, and cookie helpers</a></li>
+                <li><a href="26-web-ui.html">Web UI Server Components</a> — Server-side UI and component APIs</li>
+                <li><a href="19-agent-orchestration.html">Agent Orchestration</a> — Tools, task plans, and agent logging</li>
+                <li><a href="23-durable-workflows.html#background-jobs">23.11 Lightweight job queue</a> — <code>enqueueJob</code> and friends</li>
+                <li><a href="24-agentic-runs.html">24. Agentic Runs</a> — <code>expect</code>, <code>stream</code>, <code>race</code> / <code>firstOk</code>, <code>trace.*</code>, <code>AgentError</code></li>
+                <li><a href="29-rest-api.html#jwt-security">29.16 Password, JWT, and cookie helpers</a></li>
             </ul>
         </div>
         <div class="nav-footer">
             <a href="12-input-output.html">← Previous: 12. Input/Output</a>
-            <a href="14-graphs.html">Next: 14. Graphs→</a>
+            <a href="14-neural-nets.html">Next: 14. Neural Nets→</a>
         </div>
 
         <footer>

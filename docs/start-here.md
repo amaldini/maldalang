@@ -51,7 +51,7 @@ The same core path in the Reference Manual is [`ReferenceManual/learn.html`](../
 After offline prompt eval, pick one next track (same list as Learn MALDA — After the core path):
 
 - **Algorithms** — start at item 19 below
-- **Then one hub** — first-read only: [10.1](../ReferenceManual/10-prompts.html#template), [13.0](../ReferenceManual/13-built-in-functions.html#first-read), [18.0](../ReferenceManual/18-agent-orchestration.html#first-read), [22.0](../ReferenceManual/22-durable-workflows.html#first-read), [24](../ReferenceManual/24-web-ui-hub.html#first-read)
+- **Then one hub** — first-read only: [10.1](../ReferenceManual/10-prompts.html#template), [13.0](../ReferenceManual/13-built-in-functions.html#first-read), [19.0](../ReferenceManual/19-agent-orchestration.html#first-read), [23.0](../ReferenceManual/23-durable-workflows.html#first-read), [25](../ReferenceManual/25-web-ui-hub.html#first-read)
 
 Then the short **Algorithms** track (ideas, not an encyclopedia):
 
@@ -78,7 +78,7 @@ Then the **AI theory** track (from-scratch models; no API key, no agent runtime)
 36. `Examples/AI_Theory/onnx_inspect.malda` (host ONNX inspect + forward)
 37. `Examples/Games/xor_decision_boundary.malda` (`malda play` — see the XOR net)
 
-The neural-nets kit (`math.matmul`, `nn.dense` / activations, `OnnxModel`) is tracked in [`docs/roadmap-neural.md`](roadmap-neural.md).
+The neural-nets kit (`math.matmul`, `nn.dense` / activations, `OnnxModel`) is [Reference Manual 14](../ReferenceManual/14-neural-nets.html). The maintainer plan is [`docs/roadmap-neural.md`](roadmap-neural.md).
 
 `Examples/Basics/first_look.malda` is optional if you already program (prompt + schema + `validate`, no API key). After the core path, `Examples/Basics/lambda.malda` is a useful extra before prompts.
 
@@ -167,7 +167,7 @@ What to expect today:
 - Samples and smoke hosts live under `Examples/Games/`
 - Featured kit showcase: `malda play Examples/Games/malda_platform.malda` (atlas tiles, `followCamera`, `sweepRects` landings, key edges, sample SFX, `startFixed`)
 
-This path emphasizes **MALDA Web** (browser JS) plus the canvas API in chapter 26 of the Reference Manual.
+This path emphasizes **MALDA Web** (browser JS) plus the canvas API in chapter 28 of the Reference Manual.
 
 ## 5. Build Workflows
 

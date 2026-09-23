@@ -137,7 +137,7 @@ io.print(str.length(host.pathSeparator));</code></pre>
             <li><code>getHostPlatform()</code> — <code>{ os, arch, pathSeparator, description }</code>. No arguments.</li>
             <li><code>getCommandLineArgs()</code> — array of strings passed to the program, excluding the program name. Same in interpreted and transpiled runs.</li>
         </ul>
-        <p>Assistant config under <code>~/.malda</code> (<code>getMaldaHome</code>, <code>getMaldaConfig</code>) is documented with the <a href="33-personal-assistant.html">personal assistant</a>.</p>
+        <p>Assistant config under <code>~/.malda</code> (<code>getMaldaHome</code>, <code>getMaldaConfig</code>) is documented with the <a href="34-personal-assistant.html">personal assistant</a>.</p>
 
         <h2 id="capability-tokens">12.6 Capability Tokens</h2>
         <p>A capability token is a <strong>permission object</strong> that your program (the host) creates. Treat it as a key to one file, HTTP origin, MCP tool, or argv prefix: whoever holds the key can use that permission. Nobody can make a working key by writing down a description of the lock.</p>
@@ -163,7 +163,7 @@ function readNote(path) {
             <tbody>
                 <tr><td><code>cap.fileRead</code> / capability token</td><td>An unforgeable permission object for one path, URL prefix, MCP tool, or argv prefix</td><td>This section</td></tr>
                 <tr><td>Backend capability matrix</td><td>Which backends implement a product feature (file I/O, agents, DOM, …)</td><td><a href="../docs/spec/backend-capability-matrix.md">backend-capability-matrix.md</a></td></tr>
-                <tr><td><code>@requires("file-io")</code></td><td>A property test that skips backends that lack that feature</td><td><a href="35-property-testing.html">35. Property Testing</a></td></tr>
+                <tr><td><code>@requires("file-io")</code></td><td>A property test that skips backends that lack that feature</td><td><a href="36-property-testing.html">36. Property Testing</a></td></tr>
             </tbody>
         </table>
 
@@ -264,7 +264,7 @@ try {
 }
 io.print(escaped);
 io.deleteFile("_rm_cap_note.txt");</code></pre>
-        <p>On a live agent, wrap that helper with <code>@Tool</code>, validate the args with a <code>schema</code>, and mark the handler <code>@effects("cap")</code>. The model’s tool argument is <code>relativePath</code> only. Full walk-through: <a href="18-agent-orchestration.html#capability-tokens-for-tools">18.8</a>. Offline starter: <code>malda new agent</code> (host-minted <code>notes/</code>).</p>
+        <p>On a live agent, wrap that helper with <code>@Tool</code>, validate the args with a <code>schema</code>, and mark the handler <code>@effects("cap")</code>. The model’s tool argument is <code>relativePath</code> only. Full walk-through: <a href="19-agent-orchestration.html#capability-tokens-for-tools">19.8</a>. Offline starter: <code>malda new agent</code> (host-minted <code>notes/</code>).</p>
 
         <h3>12.6.7 Common mistakes</h3>
         <table>
@@ -302,7 +302,7 @@ io.print("awake");</code></pre>
     sleep(1000);
 }</code></pre>
         <div class="warning-box">
-            <strong>Workflows:</strong> <code>sleep</code>, <code>io.writeFile</code>, and other deny-listed effects raise <code>WF1001</code> / <code>WF1002</code> when they run in a deterministic workflow section — including when nested in a helper. Put clock, sleep, and I/O inside a <code>step</code>. See <a href="22-durable-workflows.html">22. Durable Workflows</a>.
+            <strong>Workflows:</strong> <code>sleep</code>, <code>io.writeFile</code>, and other deny-listed effects raise <code>WF1001</code> / <code>WF1002</code> when they run in a deterministic workflow section — including when nested in a helper. Put clock, sleep, and I/O inside a <code>step</code>. See <a href="23-durable-workflows.html">23. Durable Workflows</a>.
         </div>
 
         <h2 id="web-fetch">12.9 Fetching URLs</h2>
@@ -311,20 +311,20 @@ io.print("awake");</code></pre>
 print(page.ok);
 print(page.status);
 print(page.truncated);</code></pre>
-        <p>For JSON APIs with headers, auth, and retries prefer <a href="29-rest-web-client.html">29. REST Web Client</a>. A capability token uses <code>cap.httpGet</code> + <code>cap.fetch</code> / <code>webFetch(token)</code> — see <a href="#capability-tokens">12.6</a>. Name index: <a href="13-built-in-functions.html#web-fetch">13.5.4</a>.</p>
+        <p>For JSON APIs with headers, auth, and retries prefer <a href="30-rest-web-client.html">30. REST Web Client</a>. A capability token uses <code>cap.httpGet</code> + <code>cap.fetch</code> / <code>webFetch(token)</code> — see <a href="#capability-tokens">12.6</a>. Name index: <a href="13-built-in-functions.html#web-fetch">13.5.4</a>.</p>
         <h2>12.10 What This Chapter Is Not</h2>
         <table>
             <thead>
                 <tr><th>Need</th><th>Go to</th></tr>
             </thead>
             <tbody>
-                <tr><td>HTTP client / REST calls</td><td><a href="29-rest-web-client.html">29. REST Web Client</a> (<code>webFetch</code> is <a href="#web-fetch">12.9</a>)</td></tr>
-                <tr><td>HTTP / HTML / <code>ui.*</code> servers</td><td><a href="24-web-ui-hub.html">24. Web UI Overview</a></td></tr>
-                <tr><td>SQL clients</td><td><a href="16-database.html">16. Database Support</a></td></tr>
+                <tr><td>HTTP client / REST calls</td><td><a href="30-rest-web-client.html">30. REST Web Client</a> (<code>webFetch</code> is <a href="#web-fetch">12.9</a>)</td></tr>
+                <tr><td>HTTP / HTML / <code>ui.*</code> servers</td><td><a href="25-web-ui-hub.html">25. Web UI Overview</a></td></tr>
+                <tr><td>SQL clients</td><td><a href="17-database.html">17. Database Support</a></td></tr>
                 <tr><td>Shell commands</td><td><code>runCommand</code> in <a href="13-built-in-functions.html">13.10</a> (blocked dangerous names, 1-hour timeout cap)</td></tr>
                 <tr><td>Git</td><td><a href="13-built-in-functions.html">13.9</a></td></tr>
-                <tr><td>Agent file tools</td><td><code>createReadFileTool</code> and siblings in <a href="18-agent-orchestration.html">18. Agent Orchestration</a></td></tr>
-                <tr><td>Bind a custom tool to one folder</td><td><a href="#capability-tokens">12.6 Capability tokens</a> and <a href="18-agent-orchestration.html#capability-tokens-for-tools">18.8</a></td></tr>
+                <tr><td>Agent file tools</td><td><code>createReadFileTool</code> and siblings in <a href="19-agent-orchestration.html">19. Agent Orchestration</a></td></tr>
+                <tr><td>Bind a custom tool to one folder</td><td><a href="#capability-tokens">12.6 Capability tokens</a> and <a href="19-agent-orchestration.html#capability-tokens-for-tools">19.8</a></td></tr>
             </tbody>
         </table>
 
@@ -334,8 +334,8 @@ print(page.truncated);</code></pre>
                 <li><a href="07-expressions.html">7. Expressions</a> — string interpolation</li>
                 <li><a href="13-built-in-functions.html">13. Built-in Functions</a> — I/O catalog, Spectre.Console, git, <code>runCommand</code></li>
                 <li><a href="09-functions.html">9. Functions</a> — <code>@pure</code> / <code>@effects("io")</code> / <code>@effects("cap")</code></li>
-                <li><a href="18-agent-orchestration.html#capability-tokens-for-tools">18.8 Custom tools</a> — host-mint a root token, pass a relative path</li>
-                <li><a href="22-durable-workflows.html">22. Durable Workflows</a> — I/O must live inside <code>step</code></li>
+                <li><a href="19-agent-orchestration.html#capability-tokens-for-tools">19.8 Custom tools</a> — host-mint a root token, pass a relative path</li>
+                <li><a href="23-durable-workflows.html">23. Durable Workflows</a> — I/O must live inside <code>step</code></li>
                 <li><code>Examples/Tools/file_operations.malda</code>, <code>Examples/Tools/capability_tokens.malda</code></li>
             </ul>
         </div>

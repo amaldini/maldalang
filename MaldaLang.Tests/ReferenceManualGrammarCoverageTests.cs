@@ -4,12 +4,12 @@ using Xunit;
 namespace MaldaLang.Tests;
 
 /// <summary>
-/// Phase 2.2: ReferenceManual/36-grammar.html documents parser surface (anchor strings).
+/// Phase 2.2: ReferenceManual/37-grammar.html documents parser surface (anchor strings).
 /// </summary>
 public class ReferenceManualGrammarCoverageTests
 {
     private static string GrammarHtml =>
-        File.ReadAllText(PlanningPaths.ResolveRepoPath("ReferenceManual", "36-grammar.html"));
+        File.ReadAllText(PlanningPaths.ResolveRepoPath("ReferenceManual", "37-grammar.html"));
 
     public static IEnumerable<object[]> RequiredProductionAnchors =>
         new[]

@@ -35,11 +35,11 @@
             <thead><tr><th>Comando</th><th>Cosa fa</th><th>Dove</th></tr></thead>
             <tbody>
                 <tr><td><code>malda &lt;file.malda&gt;</code></td><td>Interpreta un file sorgente</td><td><a href="#interpreter">2.1</a></td></tr>
-                <tr><td><code>malda doctor</code></td><td>Diagnostica rapida di runtime, config, provider e scaffold</td><td><a href="33-personal-assistant.html">33.1</a></td></tr>
-                <tr><td><code>malda onboard</code></td><td>Crea <code>~/.malda</code>, config iniziale, download opzionali dei modelli</td><td><a href="33-personal-assistant.html">33.2.2</a></td></tr>
-                <tr><td><code>malda status</code></td><td>Mostra home, config, provider, gateway e salute del cron</td><td><a href="33-personal-assistant.html">33.2.3</a></td></tr>
-                <tr><td><code>malda new webapi|fullstack|game|agent</code></td><td>Genera uno starter. <code>game --fullstack</code> è un'API punteggi, non <code>malda play</code></td><td><a href="34-examples.html#scaffold">34.6</a>, <a href="30-full-stack-development.html">30</a></td></tr>
-                <tr><td><code>malda play &lt;file.malda&gt;</code></td><td>Anteprima JS: compile <code>--mode js</code> e serve <code>.malda-play/</code> (non la cartella sorgente; live reload su sorgente / <code>index.html</code> / <code>assets/</code>)</td><td><a href="27-browser-javascript-backend.html">27</a></td></tr>
+                <tr><td><code>malda doctor</code></td><td>Diagnostica rapida di runtime, config, provider e scaffold</td><td><a href="34-personal-assistant.html">34.1</a></td></tr>
+                <tr><td><code>malda onboard</code></td><td>Crea <code>~/.malda</code>, config iniziale, download opzionali dei modelli</td><td><a href="34-personal-assistant.html">34.2.2</a></td></tr>
+                <tr><td><code>malda status</code></td><td>Mostra home, config, provider, gateway e salute del cron</td><td><a href="34-personal-assistant.html">34.2.3</a></td></tr>
+                <tr><td><code>malda new webapi|fullstack|game|agent</code></td><td>Genera uno starter. <code>game --fullstack</code> è un'API punteggi, non <code>malda play</code></td><td><a href="35-examples.html#scaffold">35.6</a>, <a href="31-full-stack-development.html">31</a></td></tr>
+                <tr><td><code>malda play &lt;file.malda&gt;</code></td><td>Anteprima JS: compile <code>--mode js</code> e serve <code>.malda-play/</code> (non la cartella sorgente; live reload su sorgente / <code>index.html</code> / <code>assets/</code>)</td><td><a href="28-browser-javascript-backend.html">28</a></td></tr>
             </tbody>
         </table>
 
@@ -47,14 +47,14 @@
         <table>
             <thead><tr><th>Comando</th><th>Cosa fa</th><th>Dove</th></tr></thead>
             <tbody>
-                <tr><td><code>malda check</code></td><td>Diagnostica senza eseguire (<code>--json</code>, <code>--fix</code>, <code>--strict-types</code>)</td><td><a href="#check">2.1.2</a>, <a href="23-agentic-runs.html">23.10</a></td></tr>
-                <tr><td><code>malda eval</code></td><td>Esegue <code>suite</code> / <code>case</code> (un run ordinario li salta; non è <code>malda test</code>)</td><td><a href="23-agentic-runs.html">23.1</a></td></tr>
-                <tr><td><code>malda prompts --diff</code></td><td>Confronta gli hash dei prompt rispetto a una baseline di eval</td><td><a href="23-agentic-runs.html">23.10</a></td></tr>
+                <tr><td><code>malda check</code></td><td>Diagnostica senza eseguire (<code>--json</code>, <code>--fix</code>, <code>--strict-types</code>)</td><td><a href="#check">2.1.2</a>, <a href="24-agentic-runs.html">24.10</a></td></tr>
+                <tr><td><code>malda eval</code></td><td>Esegue <code>suite</code> / <code>case</code> (un run ordinario li salta; non è <code>malda test</code>)</td><td><a href="24-agentic-runs.html">24.1</a></td></tr>
+                <tr><td><code>malda prompts --diff</code></td><td>Confronta gli hash dei prompt rispetto a una baseline di eval</td><td><a href="24-agentic-runs.html">24.10</a></td></tr>
                 <tr><td><code>malda compile</code> / <code>publish</code></td><td>Exe, DLL, JS, PWA o fullstack. <code>publish</code> è <code>compile --mode transpile</code></td><td><a href="#compiler">2.2</a></td></tr>
-                <tr><td><code>malda test</code></td><td>Scopre ed esegue i property test e i file <code>*.test.malda</code></td><td><a href="35-property-testing.html">35</a>, <a href="#property-testing">2.7</a></td></tr>
-                <tr><td><code>malda db</code></td><td>Ispeziona / migra / seed lo SQLite local-first dello scaffold (non un <code>SqliteClient</code> arbitrario)</td><td><a href="16-database.html">16</a></td></tr>
-                <tr><td><code>malda deploy</code></td><td>Valida i contratti di deploy / profilo / osservabilità (nessuna orchestrazione)</td><td><a href="37-appendix.html">37.5</a></td></tr>
-                <tr><td><code>malda workflow</code></td><td>Avvia, ispeziona, approva, DLQ e manutenzione dei workflow durevoli</td><td><a href="22-durable-workflows.html">22</a></td></tr>
+                <tr><td><code>malda test</code></td><td>Scopre ed esegue i property test e i file <code>*.test.malda</code></td><td><a href="36-property-testing.html">36</a>, <a href="#property-testing">2.7</a></td></tr>
+                <tr><td><code>malda db</code></td><td>Ispeziona / migra / seed lo SQLite local-first dello scaffold (non un <code>SqliteClient</code> arbitrario)</td><td><a href="17-database.html">17</a></td></tr>
+                <tr><td><code>malda deploy</code></td><td>Valida i contratti di deploy / profilo / osservabilità (nessuna orchestrazione)</td><td><a href="38-appendix.html">38.5</a></td></tr>
+                <tr><td><code>malda workflow</code></td><td>Avvia, ispeziona, approva, DLQ e manutenzione dei workflow durevoli</td><td><a href="23-durable-workflows.html">23</a></td></tr>
             </tbody>
         </table>
 
@@ -62,10 +62,10 @@
         <table>
             <thead><tr><th>Comando</th><th>Cosa fa</th><th>Dove</th></tr></thead>
             <tbody>
-                <tr><td><code>malda agent</code></td><td>Chat interattiva o one-shot con l'assistente</td><td><a href="33-personal-assistant.html">33.2.1</a></td></tr>
-                <tr><td><code>malda gateway</code></td><td>Poller Telegram di lunga durata con cron in-process opzionale</td><td><a href="33-personal-assistant.html">33.2.4</a></td></tr>
-                <tr><td><code>malda cron</code></td><td>Aggiunge, elenca, rimuove o installa job schedulati</td><td><a href="33-personal-assistant.html">33.2.5</a></td></tr>
-                <tr><td><code>malda memory</code></td><td>Ispeziona e mantiene gli artifact GraphMemory</td><td><a href="19-graph-memory.html">19.3.14</a></td></tr>
+                <tr><td><code>malda agent</code></td><td>Chat interattiva o one-shot con l'assistente</td><td><a href="34-personal-assistant.html">34.2.1</a></td></tr>
+                <tr><td><code>malda gateway</code></td><td>Poller Telegram di lunga durata con cron in-process opzionale</td><td><a href="34-personal-assistant.html">34.2.4</a></td></tr>
+                <tr><td><code>malda cron</code></td><td>Aggiunge, elenca, rimuove o installa job schedulati</td><td><a href="34-personal-assistant.html">34.2.5</a></td></tr>
+                <tr><td><code>malda memory</code></td><td>Ispeziona e mantiene gli artifact GraphMemory</td><td><a href="20-graph-memory.html">20.3.14</a></td></tr>
             </tbody>
         </table>
 
@@ -74,8 +74,8 @@
             <thead><tr><th>Comando</th><th>Cosa fa</th><th>Dove</th></tr></thead>
             <tbody>
                 <tr><td><code>malda init</code> / <code>install</code> / <code>uninstall</code> / <code>list</code> / <code>search</code></td><td>Pacchetti workspace; search/install remoti richiedono <code>MALDA_REGISTRY_URL</code></td><td><a href="#packages">2.3</a></td></tr>
-                <tr><td><code>malda trace</code></td><td>Riassume, ispeziona o fa replay dei file di sessione <code>.malda-trace.jsonl</code> (non <code>MALDA_TRACE</code>)</td><td><a href="23-agentic-runs.html">23.3</a>, <a href="37-appendix.html">37.4</a></td></tr>
-                <tr><td><code>malda symbols</code></td><td>Stampa classi, funzioni e actor da un file</td><td><a href="37-appendix.html">37.4</a></td></tr>
+                <tr><td><code>malda trace</code></td><td>Riassume, ispeziona o fa replay dei file di sessione <code>.malda-trace.jsonl</code> (non <code>MALDA_TRACE</code>)</td><td><a href="24-agentic-runs.html">24.3</a>, <a href="38-appendix.html">38.4</a></td></tr>
+                <tr><td><code>malda symbols</code></td><td>Stampa classi, funzioni e actor da un file</td><td><a href="38-appendix.html">38.4</a></td></tr>
                 <tr><td><code>malda debug-adapter</code></td><td>DAP su stdio (solo interpret). Non mescolare con <code>malda-lsp</code></td><td><a href="#interpret-mode-debug">2.6.5</a></td></tr>
                 <tr><td><code>malda help</code></td><td>Help di primo livello, oppure <code>malda help check</code> per un comando</td><td><a href="#getting-help">2.1.3</a></td></tr>
             </tbody>
@@ -214,11 +214,11 @@ malda check -e "&lt;code&gt;" --json</code></pre>
         <p><code>--json</code> stampa un oggetto stabile per i loop generate → diagnose → patch: <code>ok</code>, <code>executed</code> (sempre <code>false</code>), <code>file</code>, <code>errorCount</code> / <code>warningCount</code> / <code>infoCount</code> e <code>diagnostics[]</code> con <code>line</code> / <code>column</code> 1-based, <code>code</code> (per esempio <code>parser</code>, <code>malda-schema</code>, <code>malda-interp</code>), <code>message</code>, opzionali <code>hint</code> / <code>suggestedFix</code> / <code>fix</code>.</p>
         <pre><code>malda --check "&lt;code&gt;"</code></pre>
         <p><code>malda --check "&lt;code&gt;"</code> resta una validate del solo compiler (errori di parse, niente diagnostiche IDE). Per i loop degli agenti preferisci <code>malda check --json</code>.</p>
-        <p><code>--fix</code> applica solo edit meccanici (alias flat, interpolazione <code>$"…"</code>, <code>.length()</code> → <code>.length</code>). Non ogni gotcha è auto-fixato. Narrazione: <a href="23-agentic-runs.html">23. Esecuzioni agentiche</a> §23.10.</p>
+        <p><code>--fix</code> applica solo edit meccanici (alias flat, interpolazione <code>$"…"</code>, <code>.length()</code> → <code>.length</code>). Non ogni gotcha è auto-fixato. Narrazione: <a href="24-agentic-runs.html">24. Esecuzioni agentiche</a> §24.10.</p>
         <pre><code>malda check app.malda --fix</code></pre>
 
         <h4>Suite di eval</h4>
-        <p><code>malda eval</code> esegue le dichiarazioni <code>suite</code> / <code>case</code>. Un <code>malda run</code> ordinario le salta (come <code>property</code>). Non è <code>malda test</code>. Vedi <a href="23-agentic-runs.html">23.1</a>.</p>
+        <p><code>malda eval</code> esegue le dichiarazioni <code>suite</code> / <code>case</code>. Un <code>malda run</code> ordinario le salta (come <code>property</code>). Non è <code>malda test</code>. Vedi <a href="24-agentic-runs.html">24.1</a>.</p>
         <pre><code>malda eval Examples/Prompts/eval_suite_offline.malda
 malda eval path.malda --baseline .malda/evals.json
 malda eval path.malda --baseline .malda/evals.json --update-baseline</code></pre>
@@ -232,7 +232,7 @@ malda eval path.malda --baseline .malda/evals.json --update-baseline</code></pre
 MALDA_REPLAY=tests/cassettes/name.jsonl   malda Examples/path.malda
 MALDA_REPLAY_STRICT=1                    malda Examples/path.malda
 MALDA_TRACE=jsonl                        malda Examples/path.malda</code></pre>
-        <p>Le cassette registrano/riproducono ogni <code>Chat</code> LLM. Un miss scrive <code>cassette_miss</code> nel journal e cade su una chiamata live a meno di <code>MALDA_REPLAY_STRICT=1</code>. <code>MALDA_TRACE</code> esporta il journal in-process; non è il CLI <code>malda trace</code> esistente (file di sessione <code>.malda-trace.jsonl</code>). Vedi <a href="23-agentic-runs.html">23.2</a> e <a href="23-agentic-runs.html">23.3</a>.</p>
+        <p>Le cassette registrano/riproducono ogni <code>Chat</code> LLM. Un miss scrive <code>cassette_miss</code> nel journal e cade su una chiamata live a meno di <code>MALDA_REPLAY_STRICT=1</code>. <code>MALDA_TRACE</code> esporta il journal in-process; non è il CLI <code>malda trace</code> esistente (file di sessione <code>.malda-trace.jsonl</code>). Vedi <a href="24-agentic-runs.html">24.2</a> e <a href="24-agentic-runs.html">24.3</a>.</p>
 
         <h3 id="getting-help">2.1.3 Ottenere aiuto</h3>
 
@@ -261,7 +261,7 @@ malda -h</code></pre>
         <h3>Modalità di runtime in sintesi</h3>
         <p>Il codice MALDA può girare in tre contesti di esecuzione comuni. Usa questa tabella per scegliere il percorso giusto prima di compilare o distribuire.</p>
         <table>
-            <tr><th>Capacità</th><th>Interprete<br><code>malda &lt;file.malda&gt;</code></th><th>Eseguibile transpile<br><code>malda compile --mode transpile</code></th><th>Backend JavaScript<br>(vedi <a href="27-browser-javascript-backend.html">27. Backend UI JavaScript nel browser</a>)</th></tr>
+            <tr><th>Capacità</th><th>Interprete<br><code>malda &lt;file.malda&gt;</code></th><th>Eseguibile transpile<br><code>malda compile --mode transpile</code></th><th>Backend JavaScript<br>(vedi <a href="28-browser-javascript-backend.html">28. Backend UI JavaScript nel browser</a>)</th></tr>
             <tr><td>Linguaggio core (variabili, funzioni, classi, match, async)</td><td>Sì</td><td>Sì</td><td>Sì (sottoinsieme documentato)</td></tr>
             <tr><td>Prompt, agenti, tool calling</td><td>Sì</td><td>Sì</td><td>Limitato; preferibile sul server</td></tr>
             <tr><td><code>HttpServer</code>, <code>RestServer</code>, <code>@PAGE</code></td><td>Sì</td><td>Sì</td><td>Solo lato server; il browser usa HTTP verso l'API MALDA</td></tr>
@@ -597,7 +597,7 @@ var result = helper();</code></pre>
         <p>I programmi che chiamano API del browser (<code>dom.*</code>, <code>game.*</code>, <code>three.*</code>) non possono fermarsi nell'interprete. Nell'IDE Desktop, <strong>F5</strong> transpila il file aperto in JavaScript, lo apre nel pannello Web Preview e collega i breakpoint dell'editor allo script generato tramite source map VLQ e il debugger Chromium di WebView2.</p>
         <p>Imposta un breakpoint su un'istruzione (per esempio una riga in <code>Examples/Games/maldanoid.malda</code>), premi F5 e gioca fino a quando quella istruzione viene eseguita. Continue / step over / step into / step out / pause usano la stessa toolbar Debug della modalità interpret. I locali arrivano dal call frame JavaScript; le watch e le condizioni dei breakpoint sono JavaScript, non MALDA <code>and</code>/<code>or</code>.</p>
         <p>I file che includono sia un target client (<code>@client()</code> / <code>@javascript()</code>) sia un target host (<code>@server()</code> / <code>@csharp()</code> oppure un decoratore di route come <code>@GET</code> / <code>@PAGE</code>) sono full-stack. Nell'IDE Desktop, <strong>F5</strong> avvia entrambe le sessioni: l'interprete esegue il debug della partizione host (le funzioni solo-client vengono saltate così <code>dom.*</code> non viene eseguito lì) e Web Preview esegue il debug della partizione JavaScript. Continue / step seguono l'ultimo pause; Pause ferma entrambi. L'output combinato è etichettato <code>[server]</code> e <code>[client]</code>. In un dato momento viene mostrato un solo highlight di riga corrente e un solo pannello inspect. I body <code>@shared()</code> possono fermarsi in entrambi i runtime.</p>
-        <p>Ctrl+F5 (Run) sui programmi solo-browser apre Web Preview senza debugger. Ctrl+F5 sui file full-stack offre ancora il dialogo Server / Client preview / Full stack. F5 in VS Code resta solo interpret. I DevTools del browser funzionano ancora sui file <code>.js</code> + <code>.map</code> compilati. Vedi <a href="27-browser-javascript-backend.html">27. Backend UI JavaScript nel browser</a>.</p>
+        <p>Ctrl+F5 (Run) sui programmi solo-browser apre Web Preview senza debugger. Ctrl+F5 sui file full-stack offre ancora il dialogo Server / Client preview / Full stack. F5 in VS Code resta solo interpret. I DevTools del browser funzionano ancora sui file <code>.js</code> + <code>.map</code> compilati. Vedi <a href="28-browser-javascript-backend.html">28. Backend UI JavaScript nel browser</a>.</p>
 
         <h2 id="property-testing">2.7 Property testing (panoramica)</h2>
 
@@ -610,7 +610,7 @@ var result = helper();</code></pre>
         <pre><code>malda test --iterations 100 --seed 1337
 malda test --format ci --iterations 100 --seed 1337
 malda test --write-regression --regression-dir ./artifacts/regressions</code></pre>
-        <p>Per la sintassi del linguaggio, i decoratori di capability, <code>runProperty(...)</code>, la semantica di eleggibilità dei backend e i workflow completi, vedi <a href="35-property-testing.html">Property testing</a>.</p>
+        <p>Per la sintassi del linguaggio, i decoratori di capability, <code>runProperty(...)</code>, la semantica di eleggibilità dei backend e i workflow completi, vedi <a href="36-property-testing.html">Property testing</a>.</p>
 
         <h2>2.8 Scrivere MALDA con un agente di coding</h2>
 
@@ -671,9 +671,9 @@ malda test --write-regression --regression-dir ./artifacts/regressions</code></p
             <h3>Vedi anche</h3>
             <ul>
                 <li><a href="#cli-index">2.0 Indice dei comandi CLI</a> — ogni <code>malda &lt;verb&gt;</code></li>
-                <li><a href="27-browser-javascript-backend.html">27. Backend UI JavaScript nel browser</a> — <code>malda play</code> e <code>malda new game</code></li>
-                <li><a href="33-personal-assistant.html">33. Assistente personale e CLI</a> — <code>agent</code>, <code>onboard</code>, <code>gateway</code>, <code>cron</code></li>
-                <li><a href="22-durable-workflows.html">22. Workflow durevoli</a> — <code>malda workflow</code></li>
+                <li><a href="28-browser-javascript-backend.html">28. Backend UI JavaScript nel browser</a> — <code>malda play</code> e <code>malda new game</code></li>
+                <li><a href="34-personal-assistant.html">34. Assistente personale e CLI</a> — <code>agent</code>, <code>onboard</code>, <code>gateway</code>, <code>cron</code></li>
+                <li><a href="23-durable-workflows.html">23. Workflow durevoli</a> — <code>malda workflow</code></li>
                 <li><a href="01-introduction.html">1. Introduzione</a> - Panoramica del linguaggio e delle funzionalità</li>
                 <li><a href="03-lexical-structure.html">3. Struttura lessicale</a> - Sintassi e struttura del linguaggio</li>
                 <li><a href="09-functions.html">9. Funzioni</a> - Definizione e uso delle funzioni</li>

@@ -55,7 +55,7 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 | Change type | Tier |
 |-------------|------|
-| [36-grammar.html](../../ReferenceManual/36-grammar.html) aligned with parser | **PATCH** (spec 1.0 unchanged) |
+| [37-grammar.html](../../ReferenceManual/37-grammar.html) aligned with parser | **PATCH** (spec 1.0 unchanged) |
 | Reference Manual narrative | Not spec versioned; track in manual changelog if needed |
 
 ---
@@ -96,7 +96,7 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 1. Update [malda-language-1.0.md](malda-language-1.0.md) (or fork `malda-language-1.1.md` for large drafts).  
 2. Add a **Conformance** row and test in `MaldaLang.Tests/Conformance/Tier0/` when behavior is normative.  
 3. Add an entry under `[Unreleased]` below with **MAJOR** / **MINOR** / **PATCH** label.  
-4. If syntax changes: update [36-grammar.html](../../ReferenceManual/36-grammar.html) and `ReferenceManualGrammarCoverageTests`.  
+4. If syntax changes: update [37-grammar.html](../../ReferenceManual/37-grammar.html) and `ReferenceManualGrammarCoverageTests`.  
 5. Phase 2.4: `scripts/verify-spec-parser-drift.ps1` and `bitbucket-pipelines.yml` fail PRs that touch `Parser.cs` or `Lexer.cs` without spec/grammar/CHANGELOG update.
 
 **Implementation precedence for Final 1.0:** interpreter + Tier 0 tests → spec prose → Reference Manual.
@@ -122,11 +122,11 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 #### Added (MINOR — compact class methods / one-line augmentation)
 
 - **Compact method bodies:** methods accept the same one-expression body as top-level functions: `function total() this.x + this.y;` desugars to `return`. Constructors stay block-only. Applies in a first class, an augmenting `{ }` body, and actors (shared method parse).
-- **Brace-less single-method class:** `class Point function total() this.x + this.y;` (optional `public` / `private` / `static`) is a class with one method. If the name already exists it **augments** under the same merge rules as `class Name { … }`. A **first** declaration may attach that method to a primary constructor: `class Point(x, y) function total() this.x + this.y;`. A later declaration still cannot use a primary constructor. No `extends`, fields, or extra members on this form. Grammar: [`36-grammar.html`](../../ReferenceManual/36-grammar.html); narrative: [`11-classes-objects.html`](../../ReferenceManual/11-classes-objects.html) §11.6–11.7. Spec §19–§20.
+- **Brace-less single-method class:** `class Point function total() this.x + this.y;` (optional `public` / `private` / `static`) is a class with one method. If the name already exists it **augments** under the same merge rules as `class Name { … }`. A **first** declaration may attach that method to a primary constructor: `class Point(x, y) function total() this.x + this.y;`. A later declaration still cannot use a primary constructor. No `extends`, fields, or extra members on this form. Grammar: [`37-grammar.html`](../../ReferenceManual/37-grammar.html); narrative: [`11-classes-objects.html`](../../ReferenceManual/11-classes-objects.html) §11.6–11.7. Spec §19–§20.
 
 #### Added (MINOR — class augmentation)
 
-- **Later `class Name { … }`:** a second (or later) `class` with an already-declared name **augments** the first declaration — members are appended. No new keyword. A later declaration cannot use a primary constructor, cannot add or change `extends` (repeating the same superclass is fine), and cannot repeat a member name. `export` on any declaration marks the merged class exported. Previously a second `class Name` replaced the first in the interpreter and failed C#/JS emit; those programs now merge or error on a repeated member. Interpreter, C# transpile, and JS agree (one emitted class). Grammar: [`36-grammar.html`](../../ReferenceManual/36-grammar.html); narrative: [`11-classes-objects.html`](../../ReferenceManual/11-classes-objects.html) §11.7. Spec §20.
+- **Later `class Name { … }`:** a second (or later) `class` with an already-declared name **augments** the first declaration — members are appended. No new keyword. A later declaration cannot use a primary constructor, cannot add or change `extends` (repeating the same superclass is fine), and cannot repeat a member name. `export` on any declaration marks the merged class exported. Previously a second `class Name` replaced the first in the interpreter and failed C#/JS emit; those programs now merge or error on a repeated member. Interpreter, C# transpile, and JS agree (one emitted class). Grammar: [`37-grammar.html`](../../ReferenceManual/37-grammar.html); narrative: [`11-classes-objects.html`](../../ReferenceManual/11-classes-objects.html) §11.7. Spec §20.
 
 #### Added (MINOR — include / import navigation and unresolved-module diagnostics)
 
@@ -152,7 +152,7 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 - **`within (30s)`** scopes, **`context Name { … }`**, **`policy { … }`**, **`stream` / `for await`**, **`race` / `firstOk`**.
 - **`malda check --fix`**, `malda-gotcha` / `malda-tools` / `malda-agents` diagnostics, WF1006, `@requiresCitations`, typed `@MCPTool` schemas from parameter hints, `malda prompts --diff`.
 - **2.0 prep (not shipped):** `malda-gotcha` / `--fix` for flat aliases, `parseJson` vs `parseJSON`, and `arr.append`. Aliases stay until a dedicated 2.0 MAJOR.
-- **Documented** in Reference Manual §23 (`23-agentic-runs.html`) and `docs/llm/` (syntax, gotchas, few-shots `43_`–`48_`).
+- **Documented** in Reference Manual §23 (`24-agentic-runs.html`) and `docs/llm/` (syntax, gotchas, few-shots `43_`–`48_`).
 
 #### Clarified (PATCH — specialized agent kinds vs capability tokens)
 
@@ -229,7 +229,7 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 #### Added (PATCH — billiards appendix in the Reference Manual)
 
-- **`ReferenceManual/38-appendix-gpu-billiards.html`:** playable compiled GPU billiards as a manual appendix (`billiards-play.html` + committed `three_shader_billiards.js`). Change the `.malda` source and recompile; a guard fails if the committed JS drifts. GitHub Pages copies `three.min.js` and `malda-js-runtime.js` beside the chapter.
+- **`ReferenceManual/39-appendix-gpu-billiards.html`:** playable compiled GPU billiards as a manual appendix (`billiards-play.html` + committed `three_shader_billiards.js`). Change the `.malda` source and recompile; a guard fails if the committed JS drifts. GitHub Pages copies `three.min.js` and `malda-js-runtime.js` beside the chapter.
 
 #### Added (MINOR — @MCPTool / @Tool host-validate args)
 
@@ -381,7 +381,7 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 #### Added (MINOR — optional api parameter types)
 
-- **`api` method params:** optional `SchemaType` hints, same form as sum-type constructor payloads (`function add(a: number, b: number)`). Name-only remains valid and permissive. Declared types feed program JSON Schema (narrow the `args` union; always keep `string` for `"$alias"`) and coercion (`"2"` becomes a number only when the hint is `number`/`int`; a `string` hint keeps `"2"`). Prompt parameters stay name-only. Implementing `function` bodies stay untyped. Grammar: [`36-grammar.html`](../../ReferenceManual/36-grammar.html) `ApiMethodSig`; narrative: [`10-prompts.html`](../../ReferenceManual/10-prompts.html) §10.8. Example: `Examples/Prompts/api_program_calc.malda`.
+- **`api` method params:** optional `SchemaType` hints, same form as sum-type constructor payloads (`function add(a: number, b: number)`). Name-only remains valid and permissive. Declared types feed program JSON Schema (narrow the `args` union; always keep `string` for `"$alias"`) and coercion (`"2"` becomes a number only when the hint is `number`/`int`; a `string` hint keeps `"2"`). Prompt parameters stay name-only. Implementing `function` bodies stay untyped. Grammar: [`37-grammar.html`](../../ReferenceManual/37-grammar.html) `ApiMethodSig`; narrative: [`10-prompts.html`](../../ReferenceManual/10-prompts.html) §10.8. Example: `Examples/Prompts/api_program_calc.malda`.
 
 #### Fixed (PATCH — interpreter task isolation)
 
@@ -399,7 +399,7 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 #### Added (MINOR — match case guards)
 
-- **`case Pattern if expr:`** optional guard on `match` arms, same `if` word as `catch (e if …)`. Pattern binds first; a falsy guard skips the arm and tries the next case. Interpreter, C# transpile, and JS agree on boolean predicates. Under `--strict-types`, a guarded arm does not cover a variant or count as a catch-all. Conformance: `match-guard.malda`. Grammar: [`36-grammar.html`](../../ReferenceManual/36-grammar.html); narrative: [`08-control-structures.html`](../../ReferenceManual/08-control-structures.html).
+- **`case Pattern if expr:`** optional guard on `match` arms, same `if` word as `catch (e if …)`. Pattern binds first; a falsy guard skips the arm and tries the next case. Interpreter, C# transpile, and JS agree on boolean predicates. Under `--strict-types`, a guarded arm does not cover a variant or count as a catch-all. Conformance: `match-guard.malda`. Grammar: [`37-grammar.html`](../../ReferenceManual/37-grammar.html); narrative: [`08-control-structures.html`](../../ReferenceManual/08-control-structures.html).
 
 #### Removed (MAJOR — function keyword aliases)
 
@@ -427,7 +427,7 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 #### Added (MINOR — primary constructors)
 
-- **`class Name(params)`:** parameter list after the class name desugars to public fields plus a synthesized constructor. Body optional (`class Point(x, y);` or `{ methods }`). Cannot combine with `extends` or an explicit `function Name(...)`. Grammar: [`36-grammar.html`](../../ReferenceManual/36-grammar.html); narrative: [`11-classes-objects.html`](../../ReferenceManual/11-classes-objects.html) §10.11.
+- **`class Name(params)`:** parameter list after the class name desugars to public fields plus a synthesized constructor. Body optional (`class Point(x, y);` or `{ methods }`). Cannot combine with `extends` or an explicit `function Name(...)`. Grammar: [`37-grammar.html`](../../ReferenceManual/37-grammar.html); narrative: [`11-classes-objects.html`](../../ReferenceManual/11-classes-objects.html) §10.11.
 
 #### Added (MINOR — additive module syntax)
 
@@ -496,7 +496,7 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 
 - Keywords `import` and `export`; file and package import with isolated module environments.  
 - Spec §14 and [phase-3-modules-design.md](../planning/phase-3-modules-design.md).  
-- Grammar: `ImportStmt`, `ExportableDecl` in [36-grammar.html](../../ReferenceManual/36-grammar.html).
+- Grammar: `ImportStmt`, `ExportableDecl` in [37-grammar.html](../../ReferenceManual/37-grammar.html).
 
 #### Implementation (Phase 3.2)
 
@@ -509,7 +509,7 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 #### Added (normative documentation)
 
 - Initial [malda-language-1.0.md](malda-language-1.0.md): value model, null, truthiness, `match`, sum types, `async`/`await`/`all`, actors, `typeOf`/`isNumber`, dictionary missing-key → `null`.  
-- Expanded [36-grammar.html](../../ReferenceManual/36-grammar.html) (Phase 2.2).  
+- Expanded [37-grammar.html](../../ReferenceManual/37-grammar.html) (Phase 2.2).  
 - This CHANGELOG and semver policy (Phase 2.3).
 
 #### Implementation alignment (already shipped in toolchain)

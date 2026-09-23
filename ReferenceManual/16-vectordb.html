@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="MALDA VectorDB - Vector database for similarity search">
-    <title>15. VectorDB - MALDA Reference Manual</title>
+    <title>16. VectorDB - MALDA Reference Manual</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="syntax.css">
     <link rel="stylesheet" href="print.css" media="print">
@@ -16,14 +16,14 @@
     </header>
     <nav></nav>
     <main>
-        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>15. VectorDB</span></div>
+        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>16. VectorDB</span></div>
 
-        <h1>15. VectorDB</h1>
+        <h1>16. VectorDB</h1>
 
         <p>VectorDB is a built-in class for storing and searching high-dimensional vectors using cosine similarity. Use it for semantic search, recommendation systems, and embedding lookup.</p>
         <p>The interpreter and C# transpile implement VectorDB. The JavaScript backend does not — keep embeddings on the host and call them over HTTP from browser code. See <a href="02-tools.html">2. Tools &amp; Tooling</a> and the <a href="../docs/spec/backend-capability-matrix.md">backend capability matrix</a>.</p>
 
-        <h2>15.1 Creating a VectorDB</h2>
+        <h2>16.1 Creating a VectorDB</h2>
         <p>VectorDB instances are created with the <code>new VectorDB(...)</code> constructor:</p>
         <pre><code>// Define a vector calculator function
 function calculateVector(data) {
@@ -54,10 +54,10 @@ v2.init(calculateVector);</code></pre>
 db.init(calculateVector);  // Set the calculator function</code></pre>
         <p>The calculator function is used by <code>add(data)</code> and <code>searchSimilar(data, topN)</code> to automatically calculate vectors from data.</p>
 
-        <h2>15.2 Adding Vectors</h2>
+        <h2>16.2 Adding Vectors</h2>
         <p>The <code>add()</code> method supports two ways to add vectors:</p>
         
-        <h3>15.2.1 Adding with Automatic Vector Calculation</h3>
+        <h3>16.2.1 Adding with Automatic Vector Calculation</h3>
         <p>If a calculator function is set via <code>init()</code>, you can add data directly and the vector will be calculated automatically:</p>
         <pre><code>var v = new VectorDB(26, "double");
 v.init(calculateVector);
@@ -67,7 +67,7 @@ v.add("Hello");
 v.add("World");
 v.add(dict { "type": "string", "value": "Example" });</code></pre>
 
-        <h3>15.2.2 Adding with Explicit Vector</h3>
+        <h3>16.2.2 Adding with Explicit Vector</h3>
         <p>You can also provide the vector explicitly. This snippet stays offline: a tiny calculator returns the query array as-is so <code>searchSimilar</code> can run:</p>
         <pre><code data-run="true" data-expect="east">function asVector(data) {
     return data;
@@ -94,7 +94,7 @@ v.add([7.0, 8.0, 9.0], dict { "id": "doc3", "title": "Example" });</code></pre>
             <li><code>data</code> (any): Any MALDA value to associate with the vector (string, object, number, etc.)</li>
         </ul>
 
-        <h2>15.3 Similarity Search</h2>
+        <h2>16.3 Similarity Search</h2>
         <p>Use <code>searchSimilar(data, topN)</code> to find the most similar vectors using cosine similarity. The calculator function must be set via <code>init()</code>:</p>
         <pre><code>var v = new VectorDB(128, "double");
 v.init(calculateVector);
@@ -124,7 +124,7 @@ foreach (var result in results) {
             <li>Similarity scores range from -1.0 to 1.0, with 1.0 being identical vectors</li>
         </ul>
 
-        <h2>15.4 Binary Serialization</h2>
+        <h2>16.4 Binary Serialization</h2>
         <p>VectorDB supports efficient binary serialization for persistence and large datasets:</p>
         <pre><code>var v = new VectorDB(127, "double");
 v.init(calculateVector);
@@ -151,7 +151,7 @@ v2.init(calculateVector);</code></pre>
             <li>The serialized format stores only vectors and associated data, not the calculator function</li>
         </ul>
 
-        <h2>15.5 Complete Example</h2>
+        <h2>16.5 Complete Example</h2>
         <pre><code>// Define a simple vector calculator
 function simpleVectorCalc(text) {
     // Simple example: create a vector from text length and first few characters
@@ -195,7 +195,7 @@ var db2 = db.deserialize("my_vectordb.bin");
 // Re-initialize with calculator function
 db2.init(simpleVectorCalc);</code></pre>
 
-        <h2>15.6 Built-in Text Embeddings</h2>
+        <h2>16.6 Built-in Text Embeddings</h2>
         <p>MALDA provides built-in text embedding functions that can be used as VectorDB calculator functions. These functions calculate embeddings on-the-fly from text strings or files, without requiring neural networks.</p>
 
         <div class="note">
@@ -363,7 +363,7 @@ for (var i = 0; i < results.length; i = i + 1) {
     print((i + 1) + ". " + results[i].data + " (similarity: " + formatNumber(results[i].similarity, 4) + ")");
 }</code></pre>
 
-        <h3>15.6.1 Neural Network Embeddings with LLamaSharp</h3>
+        <h3>16.6.1 Neural Network Embeddings with LLamaSharp</h3>
         <p>While built-in embedding functions (bag-of-words, hash, TF-IDF) are fast and don't require external dependencies, neural network embeddings from LLM models provide superior semantic understanding. MALDA supports neural network embeddings through the <code>LlamaEmbedder</code> class, which uses LLamaSharp to generate embeddings from local GGUF embedding models.</p>
 
         <div class="note">
@@ -445,7 +445,7 @@ var results = memory.query("What is my profession?", 5);
             <li>Use GPU acceleration (<code>setGpuLayerCount()</code>) for faster inference if available</li>
         </ul>
 
-        <h2>15.7 Retriever (<code>asRetriever</code>)</h2>
+        <h2>16.7 Retriever (<code>asRetriever</code>)</h2>
         <p>VectorDB instances can expose a retriever for document-oriented RAG pipelines. Call <code>asRetriever(options?)</code> to get an object with <code>get</code> and <code>getFormatted</code> methods:</p>
         <pre><code>function embedText(text) {
     return embedBagOfWords(text, 16);
@@ -473,7 +473,7 @@ var context = question |> retriever.getFormatted;</code></pre>
         <p>When documents are indexed with <code>indexInto</code>, metadata (including <code>source</code>) is preserved in search results and included by <code>formatRetrievedDocs</code>.</p>
         <p>Combine with prompts and pipes — see <code>Examples/Prompts/rag_pipeline.malda</code> and <a href="07-expressions.html">7. Expressions</a> (pipe operator).</p>
 
-        <h2>15.8 Use Cases</h2>
+        <h2>16.8 Use Cases</h2>
         <p>VectorDB is useful for:</p>
         <ul>
             <li><strong>Semantic Search:</strong> Find documents similar to a query based on embeddings</li>
@@ -483,7 +483,7 @@ var context = question |> retriever.getFormatted;</code></pre>
             <li><strong>Anomaly Detection:</strong> Find vectors that are dissimilar to normal patterns</li>
         </ul>
 
-        <h3>15.8.1 Real-World VectorDB Applications</h3>
+        <h3>16.8.1 Real-World VectorDB Applications</h3>
         <p>Vector databases are transforming industries across the globe. Here are 10 major applications:</p>
         <ol>
             <li><strong>Supercharged Search Engines</strong>
@@ -528,7 +528,7 @@ var context = question |> retriever.getFormatted;</code></pre>
             </li>
         </ol>
 
-        <h2>15.10 ONNX inspect (<code>OnnxModel</code>)</h2>
+        <h2>16.10 ONNX inspect (<code>OnnxModel</code>)</h2>
         <p>Host-only (interpreter and C# transpile). Load a <code>.onnx</code> file, list input/output names and shapes, and run a feed of nested numeric arrays. This is inspect + forward, not training. JavaScript has no <code>OnnxModel</code> — keep inference on the host. See the <a href="../docs/spec/backend-capability-matrix.md">backend capability matrix</a> and <a href="../docs/roadmap-neural.md">the neural-nets kit</a>.</p>
         <pre><code>var model = new OnnxModel("Examples/AI_Theory/data/identity.onnx");
 var ins = model.inputs();   // [{ name, type, shape }, ...]
@@ -537,7 +537,7 @@ var result = model.run({ "X": [[1.0, 2.0], [3.0, 4.0]] });
 print(result.Y[0][0]);      // 1</code></pre>
         <p><code>OnnxModel(path)</code> also accepts a directory that contains <code>model.onnx</code>, and expands <code>~/.malda/...</code>. The optional GraphMemory cross-encoder from <code>malda memory download-rerank</code> can be inspected the same way; scoring query/document pairs stays on <code>rerankMode: onnx</code>.</p>
 
-        <h2>15.9 Performance Considerations</h2>
+        <h2>16.9 Performance Considerations</h2>
         <ul>
             <li><strong>Precision:</strong> Use <code>"single"</code> for memory efficiency, <code>"double"</code> for higher precision</li>
             <li><strong>Binary Serialization:</strong> Much faster and more compact than JSON for large databases</li>
@@ -549,15 +549,15 @@ print(result.Y[0][0]);      // 1</code></pre>
             <h3>See Also</h3>
             <ul>
                 <li><a href="10-prompts.html#ai-pipeline">10.9.1 AI pipeline helpers</a> — <code>loadDocuments</code>, <code>indexInto</code>, <code>formatRetrievedDocs</code></li>
-                <li><a href="14-graphs.html">14. Graphs</a> - Graph data structures</li>
+                <li><a href="15-graphs.html">15. Graphs</a> - Graph data structures</li>
                 <li><a href="06-arrays.html">6. Arrays</a> - Array data structures</li>
-                <li><a href="34-examples.html#catalog">34. Examples</a> — <code>Examples/VectorDB/</code> and RAG in <code>Examples/Prompts/</code></li>
+                <li><a href="35-examples.html#catalog">35. Examples</a> — <code>Examples/VectorDB/</code> and RAG in <code>Examples/Prompts/</code></li>
             </ul>
         </div>
 
         <div class="nav-footer">
-            <a href="14-graphs.html">← Previous: 14. Graphs</a>
-            <a href="16-database.html">Next: 16. Database Support→</a>
+            <a href="15-graphs.html">← Previous: 15. Graphs</a>
+            <a href="17-database.html">Next: 17. Database Support→</a>
         </div>
 
         <footer>

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Playable compiled GPU billiards appendix">
-    <title>38. Appendix: GPU Billiards - MALDA Reference Manual</title>
+    <title>39. Appendix: GPU Billiards - MALDA Reference Manual</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="syntax.css">
     <link rel="stylesheet" href="print.css" media="print">
@@ -16,29 +16,29 @@
     </header>
     <nav></nav>
     <main>
-        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>38. Appendix: GPU Billiards</span></div>
-        <h1>38. Appendix: GPU Billiards</h1>
-        <p>This appendix is a <strong>browser showcase</strong>, not the games chapter. The language contract is <a href="27-browser-javascript-backend.html#game-canvas">27.9–27.10</a>; the catalog is <a href="34-examples.html#game">34.3</a>. It hosts the compiled JavaScript for <code>Examples/Games/three_shader_billiards.malda</code>. The kernel is still <code>@shader()</code> GLSL; host MALDA steps 2D physics and pushes ball and cue uniforms. Print omits the playable frame.</p>
+        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>39. Appendix: GPU Billiards</span></div>
+        <h1>39. Appendix: GPU Billiards</h1>
+        <p>This appendix is a <strong>browser showcase</strong>, not the games chapter. The language contract is <a href="28-browser-javascript-backend.html#game-canvas">28.9–28.10</a>; the catalog is <a href="35-examples.html#game">35.3</a>. It hosts the compiled JavaScript for <code>Examples/Games/three_shader_billiards.malda</code>. The kernel is still <code>@shader()</code> GLSL; host MALDA steps 2D physics and pushes ball and cue uniforms. Print omits the playable frame.</p>
         <div class="screen-only">
-        <h2>38.1 Playable table</h2>
+        <h2>39.1 Playable table</h2>
         <p>Needs WebGL. Click inside the frame so mouse and keyboard reach the demo. Hold click or Space to charge, then release to shoot. The demo UI stays in English.</p>
         <iframe class="billiards-play-frame" src="billiards-play.html" title="Playable MALDA GPU billiards" allow="fullscreen"></iframe>
         </div>
-        <p class="print-only-note">Chapter 38 is screen-only: the interactive table is omitted from print. Open this chapter in a browser, or compile the source below.</p>
-        <h2>38.2 Controls</h2>
+        <p class="print-only-note">Chapter 39 is screen-only: the interactive table is omitted from print. Open this chapter in a browser, or compile the source below.</p>
+        <h2>39.2 Controls</h2>
         <ul>
             <li>Mouse on the table aims the cue; A/D fine-tunes.</li>
             <li>Hold click or Space to charge; release to shoot.</li>
             <li>R reracks. Arrow keys orbit. C or Stop camera zeros orbit speed.</li>
             <li><code>[</code> <code>]</code> or <code>+</code> <code>−</code> zoom. Sliders set cushion e, ball e, and felt friction.</li>
         </ul>
-        <h2>38.3 Rebuild the committed script</h2>
+        <h2>39.3 Rebuild the committed script</h2>
         <p>Do not hand-edit <code>ReferenceManual/three_shader_billiards.js</code>. Change the <code>.malda</code> source and compile into a throwaway folder — <code>malda compile --mode js -o</code> also writes <code>index.html</code> beside the script, so do not target <code>ReferenceManual/</code> directly:</p>
         <pre><code>malda compile Examples/Games/three_shader_billiards.malda --mode js -o artifacts/billiards-appendix/three_shader_billiards.js
 cp artifacts/billiards-appendix/three_shader_billiards.js ReferenceManual/three_shader_billiards.js</code></pre>
         <p>A content guard fails if that file drifts from a fresh transpile (the source-map comment the CLI appends is ignored). Local browsing from the repo root loads <code>three.min.js</code> and <code>malda-js-runtime.js</code> from <code>Examples/Web/wwwroot/</code>. GitHub Pages copies those two files next to this chapter.</p>
         <div class="nav-footer">
-            <a href="37-appendix.html">← Previous: 37. Appendix</a>
+            <a href="38-appendix.html">← Previous: 38. Appendix</a>
             <span></span>
         </div>
         <footer>

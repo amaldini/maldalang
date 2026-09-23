@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="MALDA Database Support - SQLite, SQL Server, and PostgreSQL with the same client API, query builder, transactions, and malda db">
-    <title>16. Database Support - MALDA Reference Manual</title>
+    <title>17. Database Support - MALDA Reference Manual</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="syntax.css">
     <link rel="stylesheet" href="print.css" media="print">
@@ -16,13 +16,13 @@
     </header>
     <nav></nav>
     <main>
-        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>16. Database Support</span></div>
-        <h1>16. Database Support</h1>
+        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>17. Database Support</span></div>
+        <h1>17. Database Support</h1>
         <p>MALDA ships three clients with the same API: <code>SqliteClient</code>, <code>SqlServerClient</code>, and <code>PostgresClient</code>. Start with SQLite — it is a file on disk (or an in-memory database), no server. Connection, parameterized SQL, the query builder, inserts, and transactions are identical on the other two; only the connection string and placeholder syntax change.</p>
         <p>The clients run on the interpreter and C# transpile. They are <strong>not</strong> available on the JavaScript backend — keep SQL on the server and call it over HTTP from browser code. See <a href="02-tools.html">2. Tools &amp; Tooling</a> (runtime modes) and the <a href="../docs/spec/backend-capability-matrix.md">backend capability matrix</a>.</p>
-        <p>This chapter is the SQL client API. Durable workflow storage is a separate SQLite file under <code>.malda/</code> — see <a href="22-durable-workflows.html">22. Durable Workflows</a>. Similarity search is <a href="15-vectordb.html">15. VectorDB</a>, not these clients.</p>
+        <p>This chapter is the SQL client API. Durable workflow storage is a separate SQLite file under <code>.malda/</code> — see <a href="23-durable-workflows.html">23. Durable Workflows</a>. Similarity search is <a href="16-vectordb.html">16. VectorDB</a>, not these clients.</p>
 
-        <h2>16.1 SQLite from zero</h2>
+        <h2>17.1 SQLite from zero</h2>
         <p>Connect, create a table, insert, query, disconnect. Parameters use <code>@name</code> (never concatenate user input into SQL). <code>Data Source=:memory:;</code> is an in-memory database that disappears when you disconnect — use it in tests and snippets so nothing is left on disk.</p>
         <pre><code data-run="true" data-expect="true\nAlice\n30\n1\nfalse">var db = new SqliteClient();
 db.connect("Data Source=:memory:;");
@@ -43,7 +43,7 @@ print(db.isConnected);</code></pre>
         <p>Constructor: <code>new SqliteClient()</code> or <code>new SqliteClient(connectionString)</code>. Passing the string to the constructor does <strong>not</strong> open the connection — you still call <code>connect(connectionString)</code>. File databases use <code>Data Source=path/to/db.sqlite;</code> (relative paths are resolved from the process working directory).</p>
         <p>Same file in the catalog: <code>Examples/Databases/sqlite_basic.malda</code> (prints the API without connecting). A real file-backed starter is <code>malda new webapi --local-first</code> / <code>malda new fullstack --local-first</code>.</p>
 
-        <h2>16.2 Shared client API</h2>
+        <h2>17.2 Shared client API</h2>
         <p>All three classes expose the same methods. Call <code>connect</code> before anything else; SQL before connect throws <code>Not connected to database. Call connect() first.</code></p>
         <table>
             <thead>
@@ -56,9 +56,9 @@ print(db.isConnected);</code></pre>
                 <tr><td><code>query(sql, params?)</code></td><td>array of row objects</td><td>Zero rows → <code>[]</code></td></tr>
                 <tr><td><code>queryOne(sql, params?)</code></td><td>one row or <code>null</code></td><td>First matching row only</td></tr>
                 <tr><td><code>execute(sql, params?)</code></td><td>int (rows affected)</td><td>DDL, INSERT/UPDATE/DELETE, PRAGMA</td></tr>
-                <tr><td><code>select(...columns)</code></td><td>the client (chain)</td><td>Starts the query builder; see 16.3</td></tr>
+                <tr><td><code>select(...columns)</code></td><td>the client (chain)</td><td>Starts the query builder; see 17.3</td></tr>
                 <tr><td><code>insert(table, values)</code></td><td>int (rows affected)</td><td><code>values</code> is a non-empty object</td></tr>
-                <tr><td><code>beginTransaction()</code> / <code>commit()</code> / <code>rollback()</code></td><td>—</td><td>See 16.4</td></tr>
+                <tr><td><code>beginTransaction()</code> / <code>commit()</code> / <code>rollback()</code></td><td>—</td><td>See 17.4</td></tr>
             </tbody>
         </table>
         <p>Query results are arrays of objects whose properties are the <strong>column names as returned by the driver</strong> (aliases included). SQL <code>NULL</code> becomes MALDA <code>null</code>. Integers and floats keep their numeric kinds; SQLite <code>DATETIME</code> values come back as strings <code>yyyy-MM-dd HH:mm:ss</code>.</p>
@@ -67,11 +67,11 @@ print(users[0].name + " - " + users[0].email);
 
 var missing = db.queryOne("SELECT name FROM users WHERE id = @id", {id: -1});
 print(missing == null);</code></pre>
-        <p>Parameter objects accept keys with or without <code>@</code>: <code>{age: 25}</code> and <code>{"@age": 25}</code> both bind <code>@age</code> on SQLite and SQL Server. PostgreSQL uses <code>$1</code>, <code>$2</code>, … — see 16.5. There is no <code>lastInsertId</code> property on the client; <code>insert</code> / <code>execute</code> return the rows-affected count. Read the new key with SQL (16.6).</p>
+        <p>Parameter objects accept keys with or without <code>@</code>: <code>{age: 25}</code> and <code>{"@age": 25}</code> both bind <code>@age</code> on SQLite and SQL Server. PostgreSQL uses <code>$1</code>, <code>$2</code>, … — see 17.5. There is no <code>lastInsertId</code> property on the client; <code>insert</code> / <code>execute</code> return the rows-affected count. Read the new key with SQL (17.6).</p>
 
-        <h2>16.3 Query builder</h2>
+        <h2>17.3 Query builder</h2>
         <p>The builder is a small helper on the same client, not a separate SQL dialect. It covers <code>SELECT</code> plus value-parameterized <code>INSERT</code> / <code>UPDATE</code> / <code>DELETE</code>. There is no <code>orderBy</code>, <code>limit</code>, <code>join</code>, or <code>OR</code> — use raw SQL for those.</p>
-        <h3>16.3.1 Select</h3>
+        <h3>17.3.1 Select</h3>
         <p><code>select(...columns).from(table).where(...).query()</code> runs the built <code>SELECT</code>. <code>query()</code> with no arguments is the builder finish; <code>query(sql, params?)</code> is still raw SQL. <code>where(column, value)</code> means <code>=</code>; <code>where(column, operator, value)</code> passes the operator through (<code>&gt;</code>, <code>&lt;</code>, <code>!=</code>, <code>LIKE</code>, …). Extra <code>where</code> calls are combined with <code>AND</code>.</p>
         <pre><code data-run="true" data-expect="1\nJane">var db = new SqliteClient();
 db.connect("Data Source=:memory:;");
@@ -87,7 +87,7 @@ print(adults.length);
 print(adults[0].name);
 db.disconnect();</code></pre>
         <p>Each <code>where</code> column should be unique: parameter names are derived from the column, so two conditions on the same column overwrite each other. The builder concatenates <strong>table and column names</strong> into SQL; only values are parameterized. Do not put user input in those names.</p>
-        <h3>16.3.2 Insert, update, delete</h3>
+        <h3>17.3.2 Insert, update, delete</h3>
         <p><code>insert(table, values)</code> is a single call — it does not use a prior <code>where</code>.</p>
         <p><code>update(table, values)</code> and <code>delete(table)</code> <strong>require a prior</strong> <code>select</code> / <code>from</code> / <code>where</code> chain that populated the builder. Call <code>where</code> first, then <code>update</code> or <code>delete</code>. Chaining <code>.update(...)</code> after <code>.where(...)</code> is the same thing, because those methods return the client. Calling <code>update</code> / <code>delete</code> without a <code>where</code> throws. There is no “update then where” form.</p>
         <pre><code data-run="true" data-expect="21\n1">var db = new SqliteClient();
@@ -104,7 +104,7 @@ db.select("name").from("users").where("name", "Bob").delete("users");
 print(db.query("SELECT name FROM users").length);
 db.disconnect();</code></pre>
 
-        <h2>16.4 Transactions</h2>
+        <h2>17.4 Transactions</h2>
         <p>One transaction at a time per client. A second <code>beginTransaction()</code> throws <code>Transaction already in progress</code>. <code>commit()</code> / <code>rollback()</code> without an open transaction throw <code>No transaction in progress</code>. <code>disconnect()</code> rolls back if a transaction is still open.</p>
         <pre><code data-run="true" data-expect="0\n1">var db = new SqliteClient();
 db.connect("Data Source=:memory:;");
@@ -125,7 +125,7 @@ try {
 print(db.query("SELECT name FROM t").length);
 db.disconnect();</code></pre>
 
-        <h2>16.5 SQL Server and PostgreSQL</h2>
+        <h2>17.5 SQL Server and PostgreSQL</h2>
         <p>Same methods, different connection strings and placeholders. The query builder numbers PostgreSQL parameters for you, so <code>select</code> / <code>from</code> / <code>where</code> / <code>insert</code> look the same as SQLite; only <strong>raw</strong> SQL uses <code>$1</code>.</p>
         <table>
             <thead>
@@ -148,7 +148,7 @@ var rows2 = pg.query("SELECT * FROM users WHERE age > $1", {$1: 25});
 pg.disconnect();</code></pre>
         <p>Catalog samples (print the API, do not connect): <code>Examples/Databases/sql_server_basic.malda</code>, <code>Examples/Databases/postgres_basic.malda</code>.</p>
 
-        <h2>16.6 Inserted row ids and JSON columns</h2>
+        <h2>17.6 Inserted row ids and JSON columns</h2>
         <p>After an insert, ask the database for the new key. SQLite:</p>
         <pre><code data-run="true" data-expect="1">var db = new SqliteClient();
 db.connect("Data Source=:memory:;");
@@ -173,21 +173,21 @@ db.disconnect();</code></pre>
         <pre><code>db.execute("PRAGMA journal_mode = WAL");
 db.execute("PRAGMA foreign_keys = ON");</code></pre>
 
-        <h2>16.7 Runtime, errors, and backends</h2>
+        <h2>17.7 Runtime, errors, and backends</h2>
         <ul>
             <li>Failed SQL is a runtime error whose message starts with <code>SQL query error:</code> or <code>SQL execute error:</code> plus the driver text.</li>
             <li>Re-calling <code>connect</code> closes the previous connection and opens the new string.</li>
-            <li>JavaScript transpile does not emit these clients. Browser UI should call a MALDA REST or <code>@PAGE</code> backend that owns the database — see <a href="27-browser-javascript-backend.html">27. Browser JavaScript UI Backend</a> and <a href="28-rest-api.html">28. REST API Server</a>.</li>
+            <li>JavaScript transpile does not emit these clients. Browser UI should call a MALDA REST or <code>@PAGE</code> backend that owns the database — see <a href="28-browser-javascript-backend.html">28. Browser JavaScript UI Backend</a> and <a href="29-rest-api.html">29. REST API Server</a>.</li>
             <li>Workflows, the jobs queue, and GraphMemory persist with their own files; do not point <code>SqliteClient</code> at <code>.malda/workflows.db</code> unless you are inspecting it as a DBA.</li>
         </ul>
 
-        <h2>16.8 Security</h2>
+        <h2>17.8 Security</h2>
         <p>All three clients send values as parameters. Always pass an object instead of concatenating strings into SQL.</p>
         <div class="warning-box">
             <p><strong>Important:</strong> Never concatenate user input directly into SQL queries. Always use parameterized queries to prevent SQL injection attacks. The query builder parameterizes <em>values</em> only — table names, column names, and operators are copied into the statement as written.</p>
         </div>
 
-        <h2>16.9 <code>malda db</code> (local-first scaffolds)</h2>
+        <h2>17.9 <code>malda db</code> (local-first scaffolds)</h2>
         <p><code>malda db</code> is a CLI for <strong>scaffolded local-first SQLite projects</strong> (<code>malda new webapi --local-first</code> or <code>malda new fullstack --local-first</code>). It is not a general migration tool for arbitrary <code>SqliteClient</code> programs. By default it reads <code>config/data.example.json</code> for <code>databaseFile</code> and <code>migrationModule</code>.</p>
         <pre><code>malda db status
 malda db migrate
@@ -205,16 +205,16 @@ malda db --help</code></pre>
         <div class="see-also">
             <h3>See Also</h3>
             <ul>
-                <li><a href="34-examples.html">34. Examples</a> - Catalog samples under <code>Examples/Databases/</code></li>
+                <li><a href="35-examples.html">35. Examples</a> - Catalog samples under <code>Examples/Databases/</code></li>
                 <li><a href="12-input-output.html">12. Input/Output</a> - Files and paths</li>
                 <li><a href="02-tools.html">2. Tools &amp; Tooling</a> - Interpreter vs transpile vs JavaScript</li>
-                <li><a href="30-full-stack-development.html">30. Full-Stack Development with MALDA</a> - API + UI + data together</li>
-                <li><a href="22-durable-workflows.html">22. Durable Workflows</a> - Engine-owned SQLite, not these clients</li>
+                <li><a href="31-full-stack-development.html">31. Full-Stack Development with MALDA</a> - API + UI + data together</li>
+                <li><a href="23-durable-workflows.html">23. Durable Workflows</a> - Engine-owned SQLite, not these clients</li>
             </ul>
         </div>
         <div class="nav-footer">
-            <a href="15-vectordb.html">← Previous: 15. VectorDB</a>
-            <a href="17-actors.html">Next: 17. Actors→</a>
+            <a href="16-vectordb.html">← Previous: 16. VectorDB</a>
+            <a href="18-actors.html">Next: 18. Actors→</a>
         </div>
 
         <footer>

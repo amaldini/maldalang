@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Manuale di riferimento MALDA - Orchestrazione di agenti: client LLM, agenti, tool e sistemi multi-agente">
-    <title>18. Orchestrazione di agenti - Manuale di riferimento MALDA</title>
+    <title>19. Orchestrazione di agenti - Manuale di riferimento MALDA</title>
     <link rel="stylesheet" href="../styles.css">
     <link rel="stylesheet" href="../syntax.css">
     <link rel="stylesheet" href="../print.css" media="print">
@@ -16,12 +16,12 @@
     </header>
     <nav></nav>
     <main>
-        <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>18. Orchestrazione di agenti</span></div>
-        <h1>18. Orchestrazione di agenti</h1>
-        <p>Questo capitolo è il <strong>runtime degli agenti</strong>: client LLM, conversazioni, tool, <code>Agent</code>, <code>@Tool</code>, dashboard e team. I kind specializzati e Ralph sono <a href="#agent-kits">kit di agenti</a> — bundle di tool sopra quel runtime, non un secondo linguaggio. I prompt e gli schema sono in <a href="10-prompts.html">10. Prompt</a>; cassette e <code>malda eval</code> sono in <a href="23-agentic-runs.html">23. Esecuzioni agentiche</a>.</p>
+        <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>19. Orchestrazione di agenti</span></div>
+        <h1>19. Orchestrazione di agenti</h1>
+        <p>Questo capitolo è il <strong>runtime degli agenti</strong>: client LLM, conversazioni, tool, <code>Agent</code>, <code>@Tool</code>, dashboard e team. I kind specializzati e Ralph sono <a href="#agent-kits">kit di agenti</a> — bundle di tool sopra quel runtime, non un secondo linguaggio. I prompt e gli schema sono in <a href="10-prompts.html">10. Prompt</a>; cassette e <code>malda eval</code> sono in <a href="24-agentic-runs.html">24. Esecuzioni agentiche</a>.</p>
         <p>Agenti, client LLM e tool calling girano sull'interprete e sul transpile C#. Non sono disponibili sul backend JavaScript — tieni gli agenti sull'host e chiamali via HTTP dal codice nel browser. Vedi la <a href="../../docs/spec/backend-capability-matrix.md">matrice delle capacità dei backend</a>.</p>
-        <h2 id="first-read">18.0 Prima lettura</h2>
-        <p>Un <code>Agent</code> è un oggetto runtime con nome: istruzioni, un client LLM e tool opzionali. Gli agenti sono solo host. Un <code>agent.think</code> live richiede un client o una API key. Parti da <code>Examples/Prompts/prompt_with_agent.malda</code> o <code>malda new agent</code>. Salta <a href="#disclaimer">18.1</a> in questo passaggio — è l'elenco dei rischi di produzione, non la prima lezione.</p>
+        <h2 id="first-read">19.0 Prima lettura</h2>
+        <p>Un <code>Agent</code> è un oggetto runtime con nome: istruzioni, un client LLM e tool opzionali. Gli agenti sono solo host. Un <code>agent.think</code> live richiede un client o una API key. Parti da <code>Examples/Prompts/prompt_with_agent.malda</code> o <code>malda new agent</code>. Salta <a href="#disclaimer">19.1</a> in questo passaggio — è l'elenco dei rischi di produzione, non la prima lezione.</p>
         <div class="info-box">
             <strong>Stop alla prima lettura.</strong> <code>agents.define</code> costruisce un kit senza chiamare un modello. Il resto del capitolo è il catalogo del runtime.
         </div>
@@ -35,12 +35,12 @@
 io.print(coder.kind);</code></pre>
         <h2 id="chapter-map">Mappa del capitolo</h2>
         <ul>
-            <li><strong>Runtime</strong> — <a href="#disclaimer">18.1</a> rischi · <a href="#llm-client">18.2</a>–<a href="#conversation">18.5</a> client · <a href="#tool-system">18.6</a> tool · <a href="#agent-class">18.7</a> <code>Agent</code> · <a href="#custom-tools">18.8</a> <code>@Tool</code> · <a href="#agent-dashboard">18.15</a> dashboard · <a href="#multi-agent-orchestration">18.16</a>–<a href="#using-agents-with-actors">18.18</a> team e actor</li>
-            <li><strong>Kit di agenti</strong> — <a href="#agent-kits">18.9–18.14</a> <code>CodingAgent</code> / <code>GitAgent</code> / <code>HumanAgent</code> / <code>DevAgent</code> / <code>MALDACodingAgent</code> · <a href="#ralph-wiggum">18.19</a> Ralph Wiggum. Stessi file: <code>Examples/Agents/</code>, <code>Examples/RalphWiggum/</code></li>
+            <li><strong>Runtime</strong> — <a href="#disclaimer">19.1</a> rischi · <a href="#llm-client">19.2</a>–<a href="#conversation">19.5</a> client · <a href="#tool-system">19.6</a> tool · <a href="#agent-class">19.7</a> <code>Agent</code> · <a href="#custom-tools">19.8</a> <code>@Tool</code> · <a href="#agent-dashboard">19.15</a> dashboard · <a href="#multi-agent-orchestration">19.16</a>–<a href="#using-agents-with-actors">19.18</a> team e actor</li>
+            <li><strong>Kit di agenti</strong> — <a href="#agent-kits">19.9–19.14</a> <code>CodingAgent</code> / <code>GitAgent</code> / <code>HumanAgent</code> / <code>DevAgent</code> / <code>MALDACodingAgent</code> · <a href="#ralph-wiggum">19.19</a> Ralph Wiggum. Stessi file: <code>Examples/Agents/</code>, <code>Examples/RalphWiggum/</code></li>
         </ul>
         
         <div class="warning-box">
-            <h2 id="disclaimer">18.1 ⚠️ Avvertenza critica su sicurezza e rischi</h2>
+            <h2 id="disclaimer">19.1 ⚠️ Avvertenza critica su sicurezza e rischi</h2>
             <p><strong>I sistemi di agenti autonomi con accesso ai tool comportano rischi significativi di sicurezza, safety e operatività.</strong> Prima di mettere in produzione agenti con tool, devi comprendere e mitigare questi rischi.</p>
             
             <h3>Rischi fondamentali</h3>
@@ -140,7 +140,7 @@ io.print(coder.kind);</code></pre>
             <p><strong>Usando le funzionalità di orchestrazione di agenti di MALDA, riconosci di comprendere questi rischi e di essere l'unico responsabile delle azioni compiute dagli agenti che crei e metti in produzione.</strong> Gli sviluppatori di MALDA e di questo manuale di riferimento non forniscono alcuna garanzia sulla safety, sulla sicurezza o sull'affidabilità dei sistemi di agenti autonomi.</p>
         </div>
         
-        <h2 id="llm-client">18.2 LLM Client</h2>
+        <h2 id="llm-client">19.2 LLM Client</h2>
         <p>La classe <code>LLMClient</code> offre un'interfaccia verso API LLM compatibili con OpenAI (OpenAI, OpenRouter, LMStudio, OLLAMA, ecc.).</p>
         <h3>Costruttore</h3>
         <pre><code>var client = new LLMClient(apiUrl, apiKey, model);</code></pre>
@@ -161,7 +161,7 @@ var client = new LLMClient(
 
 var response = client.complete("Explain quantum computing in one sentence.");
 print(response);</code></pre>
-        <h2>18.3 OpenRouterClient</h2>
+        <h2>19.3 OpenRouterClient</h2>
         <p>Per OpenRouter in particolare esiste una classe specializzata <code>OpenRouterClient</code> che semplifica la configurazione.</p>
         <h3>Costruttore</h3>
         <pre><code>// With default model (deepseek/deepseek-v4-flash)
@@ -181,10 +181,10 @@ var client = new OpenRouterClient("openai/gpt-4");</code></pre>
 client.httpReferer = "https://example.com/secondbrain";  // HTTP-Referer (required for attribution)
 client.appTitle = "Second Brain ASK";                     // X-OpenRouter-Title
 client.appCategories = "cli-agent";                       // optional X-OpenRouter-Categories</code></pre>
-        <h3>18.3.1 LLM locale di default (quando non si passa un client)</h3>
+        <h3>19.3.1 LLM locale di default (quando non si passa un client)</h3>
         <p>Quando crei un agente, un prompt o usi built-in come <code>decomposeTask</code> senza passare un client LLM, MALDA usa un <strong>LLM locale di default</strong>: Qwen/Qwen2.5-0.5B-Instruct, scaricato come build GGUF <code>qwen2.5-0.5b-instruct-q4_k_m.gguf</code> da Hugging Face al primo uso. Il modello viene messo in cache nel profilo utente (es. <code>%LOCALAPPDATA%\MaldaLang\Models\default</code> su Windows). Dopo il primo download non servono API key né rete. Per usare invece un modello remoto, passa esplicitamente un <code>OpenRouterClient</code>, un <code>LLMClient</code> o un <code>LlamaCppClient</code>.</p>
         <p>Puoi sovrascrivere il modello di default con la variabile d'ambiente <code>MALDA_DEFAULT_LOCAL_MODEL</code>. Impostala a <code>modelId/fileName.gguf</code> (es. <code>org/repo/MyModel-Q4_K_M.gguf</code>) per usare un altro modello GGUF di Hugging Face; quel modello verrà scaricato e messo in cache in una sottocartella con il nome del model ID. Se non è impostata, si usa la build GGUF built-in di default Qwen/Qwen2.5-0.5B-Instruct.</p>
-        <h2>18.4 LlamaCppClient</h2>
+        <h2>19.4 LlamaCppClient</h2>
         <p>La classe <code>LlamaCppClient</code> abilita l'inferenza LLM locale usando LLAMA.cpp con modelli in formato GGUF. Non servono API key né connessione di rete. Se ometti <code>modelPath</code>, MALDA usa il modello GGUF locale di default Qwen/Qwen2.5-0.5B-Instruct e lo scarica automaticamente al primo uso.</p>
         <h3>Costruttore</h3>
         <pre><code>var client = new LlamaCppClient(modelPath);   // Custom GGUF file
@@ -199,7 +199,7 @@ var conversation = new Conversation(client, "You are a helpful assistant.");
 conversation.addUserMessage("Explain quantum computing.");
 var response = conversation.send();
 print(response.content);</code></pre>
-        <h2 id="conversation">18.5 Gestione delle conversazioni</h2>
+        <h2 id="conversation">19.5 Gestione delle conversazioni</h2>
         <p>La classe <code>Conversation</code> gestisce conversazioni multi-turno con gli LLM, inclusa la gestione automatica delle tool call.</p>
         <h3>Costruttore</h3>
         <pre><code>var conversation = new Conversation(client, systemPrompt);</code></pre>
@@ -217,7 +217,7 @@ print(response.content);</code></pre>
 conversation.addUserMessage("What is 2+2?");
 var response = conversation.send();
 print(response.content);</code></pre>
-        <p>Un <code>context Name { … }</code> dichiarato è un taccuino separato che passi tu a un prompt; <code>Conversation</code> non lo legge. Vedi <a href="23-agentic-runs.html#declared-context">23.5</a>.</p>
+        <p>Un <code>context Name { … }</code> dichiarato è un taccuino separato che passi tu a un prompt; <code>Conversation</code> non lo legge. Vedi <a href="24-agentic-runs.html#declared-context">24.5</a>.</p>
         <h3>Tool call in sola lettura in parallelo</h3>
         <p>Quando l'LLM restituisce più tool call in sola lettura in una singola risposta, <code>Conversation</code> le esegue <strong>in parallelo di default</strong>. Vale per tutti gli agenti (<code>Agent</code>, <code>DevAgent</code>, loop Ralph Wiggum, chat dell'IDE) perché condividono lo stesso runtime.</p>
         <p><strong>Tool built-in sicuri in parallelo:</strong> <code>read_file</code>, <code>grep</code>, <code>list_directory</code>, <code>glob</code>, <code>get_symbols</code>, <code>get_parse_errors</code>, <code>check_malda</code>, <code>validate_json</code>, <code>web_search</code>, <code>web_fetch</code>, <code>recall_progress</code> e i tool git in sola lettura (<code>git_status</code>, <code>git_log</code>, <code>git_diff</code>, <code>git_branch</code>).</p>
@@ -256,7 +256,7 @@ print(response.content);</code></pre>
         <pre><code>enableAgentVerboseLogging();
 setAgentStatusBanner("Nightly refactor run");
 setAgentVerbosePhase("planning");</code></pre>
-        <h2 id="tool-system">18.6 Sistema di tool</h2>
+        <h2 id="tool-system">19.6 Sistema di tool</h2>
         <p>I tool consentono agli LLM di chiamare funzioni durante le conversazioni. Si definiscono con la classe <code>Tool</code> e seguono il formato di function calling di OpenAI.</p>
         <h3>Funzioni di creazione dei tool built-in</h3>
         <ul>
@@ -296,7 +296,7 @@ setAgentVerbosePhase("planning");</code></pre>
             <li><code>createUpdatePlanTool()</code> → <code>Tool</code> - Aggiorna un piano memorizzato. Parametri: <code>planId</code> (obbligatorio), <code>steps</code> opzionale (rivalidati; gli id esistenti conservano lo stato; i nuovi id partono <code>pending</code>), <code>taskSummary</code> opzionale. Restituisce <code>{ accepted: true, planId, stepCount, steps }</code> oppure <code>{ accepted: false, error }</code>. Nessuna directory di lavoro. Non sicuro in parallelo.</li>
             <li><code>createMarkStepTool()</code> → <code>Tool</code> - Imposta lo stato di uno step memorizzato (<code>pending</code> | <code>in_progress</code> | <code>done</code> | <code>blocked</code>). Parametri: <code>planId</code>, <code>id</code>, <code>status</code>, <code>note</code> opzionale. Restituisce <code>{ accepted: true, planId, id, status }</code> oppure <code>{ accepted: false, error }</code>. Nessuna directory di lavoro. Non sicuro in parallelo.</li>
         </ul>
-        <p>Tutte queste factory accettano una <code>workingDirectory</code> opzionale, tranne <code>createSubmitPlanTool</code>, <code>createUpdatePlanTool</code>, <code>createMarkStepTool</code>, <code>createAskUserTool</code>, <code>createWebSearchTool</code>, <code>createWebFetchTool</code> e <code>createValidateJsonTool</code>. Quando una directory è impostata, le operazioni su file e path restano al suo interno e nelle sue sottodirectory. Quel controllo è un prefisso stringa sulla factory — non è un <a href="12-input-output.html#capability-tokens">token di capability</a> non contraffabile. Gli handler <code>@Tool</code> personalizzati sui file devono usare <code>cap.*</code> (vedi <a href="#capability-tokens-for-tools">18.8</a>).</p>
+        <p>Tutte queste factory accettano una <code>workingDirectory</code> opzionale, tranne <code>createSubmitPlanTool</code>, <code>createUpdatePlanTool</code>, <code>createMarkStepTool</code>, <code>createAskUserTool</code>, <code>createWebSearchTool</code>, <code>createWebFetchTool</code> e <code>createValidateJsonTool</code>. Quando una directory è impostata, le operazioni su file e path restano al suo interno e nelle sue sottodirectory. Quel controllo è un prefisso stringa sulla factory — non è un <a href="12-input-output.html#capability-tokens">token di capability</a> non contraffabile. Gli handler <code>@Tool</code> personalizzati sui file devono usare <code>cap.*</code> (vedi <a href="#capability-tokens-for-tools">19.8</a>).</p>
         <p>Tutte le factory di questo elenco sono supportate dall'interprete e dal transpile C# (non dal backend JavaScript). <code>tool.execute(args)</code> esegue la stessa implementazione host di una chiamata <code>think()</code> dell'agente — inclusi <code>createGlobTool</code>, <code>createGrepTool</code>, <code>createReadFileTool</code> e le altre factory file / git / MALDA. Gli handler di <code>new Tool(...)</code> restano invariati.</p>
         <pre><code>var globTool = createGlobTool(".");
 var found = globTool.execute({ "pattern": "**/*.malda", "dirPath": "." });
@@ -316,7 +316,7 @@ conversation.addTool(globTool);
 
 conversation.addUserMessage("Read example.txt and summarize it.");
 var response = conversation.send();  // LLM will call read_file tool automatically</code></pre>
-        <h2 id="agent-class">18.7 Classe Agent</h2>
+        <h2 id="agent-class">19.7 Classe Agent</h2>
         <p>La classe <code>Agent</code> rappresenta un agente autonomo con un ruolo e delle istruzioni specifici.</p>
         <h3>Costruttore</h3>
         <pre><code>// With default local LLM (auto-download from Hugging Face)
@@ -334,7 +334,7 @@ var agent = new Agent(name, role, instructions, client);</code></pre>
             <li><code>getAvailableTools()</code> → <code>array</code>: Ottiene l'elenco dei nomi dei tool disponibili</li>
             <li><code>getConversation()</code> → <code>Conversation</code>: Ottiene l'oggetto conversazione dell'agente</li>
             <li><code>reset()</code>: Azzera la cronologia della conversazione dell'agente (i tool restano)</li>
-            <li><code>enableMemory()</code>, <code>enableMemory(path)</code>, <code>useMemory(memory)</code>, <code>saveMemory(path?)</code>, <code>remember(fact, context?)</code>, <code>getMemory()</code>: Integrazione GraphMemory (vedi <a href="19-graph-memory.html">19. GraphMemory</a>). <code>enableMemory(path)</code> condivide una sola istanza GraphMemory tra gli agenti che usano lo stesso path.</li>
+            <li><code>enableMemory()</code>, <code>enableMemory(path)</code>, <code>useMemory(memory)</code>, <code>saveMemory(path?)</code>, <code>remember(fact, context?)</code>, <code>getMemory()</code>: Integrazione GraphMemory (vedi <a href="20-graph-memory.html">20. GraphMemory</a>). <code>enableMemory(path)</code> condivide una sola istanza GraphMemory tra gli agenti che usano lo stesso path.</li>
             <li><code>setMemoryScope(scope)</code>, <code>setMemoryScopeParent(parentScope)</code>, <code>setMemoryScopeHierarchy(scopes)</code>: Controllano la visibilità gerarchica della memoria durante <code>think()</code> (es. <code>chat:123</code> → <code>project:foo</code> → <code>org:acme</code> → <code>global</code>). Usa <code>setMemoryScopeHierarchy</code> per una configurazione a più livelli; altrimenti lo scope padre torna a <code>MALDA_MEMORY_SCOPE_PARENT</code>.</li>
             <li><code>setMemoryRerank(enabled, mode?, modelPath?, topK?)</code>: Abilita il rerank di GraphMemory durante le query di memoria in <code>think()</code> (<code>rerankMode</code>: <code>llm</code>, <code>cross</code> o <code>onnx</code>). Fallback da env: <code>MALDA_MEMORY_RERANK</code>, <code>MALDA_MEMORY_RERANK_MODE</code>, <code>MALDA_MEMORY_RERANK_MODEL_PATH</code>.</li>
             <li><code>setAutoRememberOnThink(enabled)</code>: Quando è <code>true</code>, ogni <code>think()</code> memorizza il prompt e la risposta completi (default <code>true</code>)</li>
@@ -354,7 +354,7 @@ agent.addTool(createWriteFileTool("."));
 
 var response = agent.think("Read example.txt and add a comment to the add function.");
 print(response.content);</code></pre>
-        <h2 id="custom-tools">18.8 Tool personalizzati con il decoratore @Tool</h2>
+        <h2 id="custom-tools">19.8 Tool personalizzati con il decoratore @Tool</h2>
         <div class="info-box">
             <strong>Default di governance:</strong> Valida i payload dei tool / a forma di LLM con uno <code>schema</code> e <code>validate()</code> prima degli effetti collaterali. Marca gli helper di normalize/derive con <code>@pure()</code> e gli handler impuri con <code>@effects(...)</code>. Golden offline: <code>Examples/Agents/agent_governance_golden.malda</code> (vedi anche <a href="09-functions.html">9.7 Decoratori</a>).
         </div>
@@ -425,7 +425,7 @@ io.print(escaped);
 io.deleteFile("_rm_cap_agent_note.txt");</code></pre>
         <p>Su un agente live, avvolgi l'helper con <code>@Tool("read_note", "…", "NoteArgs")</code> e chiama <code>agent.addTool("read_note")</code>. Il modello invia solo <code>relativePath</code>. Lo stesso pattern host-mint vale per HTTP, MCP e shell: <code>cap.httpGet</code> + <code>cap.fetch</code> / <code>createWebFetchTool(httpCap)</code>, <code>cap.mcpCall</code> + <code>cap.invoke</code> / <code>callTool(token)</code>, <code>cap.shell</code> + <code>cap.run</code> / <code>createRunCommandTool(dir, shellCap)</code>. Concetto, kind ed errori frequenti: <a href="12-input-output.html#capability-tokens">12.6</a>. Starter offline: <code>malda new agent</code>.</p>
         <h3 id="specialized-kinds-are-not-sandboxes">I kind specializzati sono bundle di tool, non sandbox</h3>
-        <p>I costruttori in 18.9–18.14 registrano un elenco fisso di tool. Non accettano token <code>cap.*</code>. Non esiste <code>removeTool</code>. <code>workingDirectory</code> viene inoltrata alle factory dei tool sui file come prefisso stringa — lo stesso controllo di <code>createReadFileTool(dir)</code>, non un token non contraffabile. Una <code>policy { shell: deny }</code> a livello di file scatta sul <a href="23-agentic-runs.html#policy">consume del token</a>; non ferma il <code>run_command</code> di default di <code>CodingAgent</code>, che chiama <code>runCommand</code> con stringhe.</p>
+        <p>I costruttori in 19.9–19.14 registrano un elenco fisso di tool. Non accettano token <code>cap.*</code>. Non esiste <code>removeTool</code>. <code>workingDirectory</code> viene inoltrata alle factory dei tool sui file come prefisso stringa — lo stesso controllo di <code>createReadFileTool(dir)</code>, non un token non contraffabile. Una <code>policy { shell: deny }</code> a livello di file scatta sul <a href="24-agentic-runs.html#policy">consume del token</a>; non ferma il <code>run_command</code> di default di <code>CodingAgent</code>, che chiama <code>runCommand</code> con stringhe.</p>
         <table>
             <thead>
                 <tr><th>Costruzione</th><th>Cosa confina</th><th>Cosa non è</th></tr>
@@ -440,8 +440,8 @@ io.deleteFile("_rm_cap_agent_note.txt");</code></pre>
         </table>
         <p>Il privilegio minimo parte da <code>new Agent</code> e dai tool che aggiungi. Usa un kind specializzato quando vuoi quel bundle, non quando vuoi una sandbox. Pattern host-mint: <a href="#capability-tokens-for-tools">token di capability per i tool sui file</a> e <a href="12-input-output.html#capability-tokens">12.6</a>. Starter offline: <code>malda new agent</code>.</p>
         <h2 id="agent-kits">Kit di agenti</h2>
-        <p>Le sezioni sotto sono <strong>bundle di tool</strong> specializzati e un loop PRD, non sintassi extra del runtime. Stanno su <code>Agent</code> + tool (<a href="#tool-system">18.6</a>–<a href="#custom-tools">18.8</a>). Dashboard e team (<a href="#agent-dashboard">18.15</a>–<a href="#using-agents-with-actors">18.18</a>) tornano al runtime. Ralph è <a href="#ralph-wiggum">18.19</a>.</p>
-        <h2 id="coding-agent">18.9 CodingAgent</h2>
+        <p>Le sezioni sotto sono <strong>bundle di tool</strong> specializzati e un loop PRD, non sintassi extra del runtime. Stanno su <code>Agent</code> + tool (<a href="#tool-system">19.6</a>–<a href="#custom-tools">19.8</a>). Dashboard e team (<a href="#agent-dashboard">19.15</a>–<a href="#using-agents-with-actors">19.18</a>) tornano al runtime. Ralph è <a href="#ralph-wiggum">19.19</a>.</p>
+        <h2 id="coding-agent">19.9 CodingAgent</h2>
         <p>La classe <code>CodingAgent</code> è un agente specializzato per i task di coding che include automaticamente tutti i tool di operazione sui file.</p>
         <h3>Tool inclusi</h3>
         <p>CodingAgent include automaticamente i seguenti tool di operazione sui file e il tool di esecuzione comandi:</p>
@@ -480,7 +480,7 @@ var agent = new CodingAgent(name, role, instructions, client, workingDirectory);
 // Agent already has all file tools - ready to use!
 var response = coderAgent.think("Read example.txt and add error handling.");
 print(response.content);</code></pre>
-        <h2>18.10 GitAgent</h2>
+        <h2>19.10 GitAgent</h2>
         <p>La classe <code>GitAgent</code> è un agente specializzato per le operazioni git che include automaticamente tutti i tool git. <code>workingDirectory</code> è un prefisso stringa su quei tool, non un token di capability — <a href="#specialized-kinds-are-not-sandboxes">stessa tabella</a>.</p>
         <h3>Tool inclusi</h3>
         <p>GitAgent include automaticamente i seguenti tool di operazione git:</p>
@@ -517,7 +517,7 @@ var agent = new GitAgent(name, role, instructions, client, workingDirectory);</c
 // Agent already has all git tools - ready to use!
 var response = gitAgent.think("Check git status, stage all changes, and commit with message 'Update code'");
 print(response.content);</code></pre>
-        <h2>18.11 HumanAgent</h2>
+        <h2>19.11 HumanAgent</h2>
         <p>La classe <code>HumanAgent</code> è un agente specializzato per l'interazione umana che include automaticamente il tool <code>ask_user</code>. Così è semplice creare agenti che devono interagire con le persone per chiarimenti, conferme o informazioni aggiuntive.</p>
         <h3>Tool inclusi</h3>
         <p>HumanAgent include automaticamente il seguente tool di interazione con l'utente:</p>
@@ -591,7 +591,7 @@ var response = orchestrator.think(
             <li><strong>Separazione delle responsabilità:</strong> La logica di interazione umana è isolata nel HumanAgent</li>
             <li><strong>Riuso:</strong> Lo stesso HumanAgent può essere usato da più orchestratori</li>
         </ul>
-        <h2>18.12 DevAgent</h2>
+        <h2>19.12 DevAgent</h2>
         <p>La classe <code>DevAgent</code> è un agente specializzato per i workflow di sviluppo completi che include automaticamente tutti i tool di operazione sui file, i tool git, i tool di esecuzione comandi e, in opzione, i tool di analisi del codice. <code>readOnly: true</code> registra solo i tool di lettura (niente write, git o <code>run_command</code>). È un bundle più piccolo, non <code>cap.*</code> — <a href="#specialized-kinds-are-not-sandboxes">stessa tabella</a>.</p>
         <h3>Tool inclusi</h3>
         <p>DevAgent include automaticamente i seguenti tool:</p>
@@ -661,11 +661,11 @@ var devAgent = new DevAgent(
 // Agent can handle complete development workflow
 var response = devAgent.think("Implement a new feature: add a user authentication system");
 print(response.content);</code></pre>
-        <h2 id="structured-task-planning">18.13 Pianificazione strutturata dei task</h2>
-        <p>MALDA consente di scomporre i task complessi in step ordinati e di eseguirli tramite un agente. Un <strong>piano</strong> è un oggetto <code>{ steps: [{ id, description, dependsOn?, out?, fixture? }, ...], planId?, taskSummary?, think? }</code>. Ogni step ha un <code>id</code> univoco (string), una <code>description</code> (string) e un <code>dependsOn</code> opzionale (array di id di step che devono completarsi prima). <code>out</code> opzionale è un nome di schema / sum type / <code>program(Api)</code>; <code>fixture</code> opzionale è JSON offline per quel contratto (vedi <a href="#team-execute-plan">§ 18.17.6</a>).</p>
+        <h2 id="structured-task-planning">19.13 Pianificazione strutturata dei task</h2>
+        <p>MALDA consente di scomporre i task complessi in step ordinati e di eseguirli tramite un agente. Un <strong>piano</strong> è un oggetto <code>{ steps: [{ id, description, dependsOn?, out?, fixture? }, ...], planId?, taskSummary?, think? }</code>. Ogni step ha un <code>id</code> univoco (string), una <code>description</code> (string) e un <code>dependsOn</code> opzionale (array di id di step che devono completarsi prima). <code>out</code> opzionale è un nome di schema / sum type / <code>program(Api)</code>; <code>fixture</code> opzionale è JSON offline per quel contratto (vedi <a href="#team-execute-plan">§ 19.17.6</a>).</p>
         <ul>
             <li><strong>decomposeTask(instruction, client?, team?)</strong> – Usa un LLM per trasformare un'istruzione di alto livello in un piano. Il secondo argomento opzionale è un client LLM o un <code>AgentTeam</code>; se il client è omesso, si usa l'LLM locale di default (Qwen/Qwen2.5-0.5B-Instruct, scaricato automaticamente come build GGUF da Hugging Face). Con un team, ogni step deve impostare <code>role</code> sul nome di un membro. Restituisce un oggetto piano oppure <code>{ error }</code> in caso di fallimento.</li>
-            <li><strong>executePlan(plan, agent)</strong> – Valida il piano, ordina topologicamente gli step in base a <code>dependsOn</code>, poi esegue <code>think(step.description)</code> per ogni step in ordine. Il secondo argomento può essere un <code>Agent</code> o un <code>AgentTeam</code> da <code>agents.team</code>. Un team richiede che ogni step nomini <code>role</code> (o <code>agent</code>). <code>step.out</code> opzionale costringe il JSON di think o <code>step.fixture</code> come un prompt tipizzato. Controlli sugli hop, verdetti review/reject, <code>plan.think: false</code> e l'elenco <code>skipped</code> sono in <a href="#declarative-agent-teams">§ 18.17</a>. Restituisce <code>{ planId, completed, failed, skipped, results }</code>.</li>
+            <li><strong>executePlan(plan, agent)</strong> – Valida il piano, ordina topologicamente gli step in base a <code>dependsOn</code>, poi esegue <code>think(step.description)</code> per ogni step in ordine. Il secondo argomento può essere un <code>Agent</code> o un <code>AgentTeam</code> da <code>agents.team</code>. Un team richiede che ogni step nomini <code>role</code> (o <code>agent</code>). <code>step.out</code> opzionale costringe il JSON di think o <code>step.fixture</code> come un prompt tipizzato. Controlli sugli hop, verdetti review/reject, <code>plan.think: false</code> e l'elenco <code>skipped</code> sono in <a href="#declarative-agent-teams">§ 19.17</a>. Restituisce <code>{ planId, completed, failed, skipped, results }</code>.</li>
             <li><strong>tool submit_plan</strong> – Gli agenti possono chiamare questo tool per inviare un piano (es. dopo un primo &quot;think&quot; che produce il piano). DevAgent include questo tool di default. Parametri: <code>plan</code> (oggetto con <code>steps</code>) oppure <code>steps</code> (array), <code>taskSummary</code> opzionale. Restituisce <code>{ accepted: true, planId, stepCount }</code> oppure <code>{ accepted: false, error }</code>. Il piano accettato è memorizzato in memoria di processo con ogni step <code>pending</code>.</li>
             <li><strong>tool update_plan</strong> – Aggiorna un piano memorizzato. Parametri: <code>planId</code> (obbligatorio), <code>steps</code> opzionale (rivalidati; gli id esistenti conservano lo stato), <code>taskSummary</code> opzionale. Restituisce <code>{ accepted: true, planId, stepCount, steps }</code> oppure <code>{ accepted: false, error }</code>. Non sicuro in parallelo. Factory: <code>createUpdatePlanTool()</code>.</li>
             <li><strong>tool mark_step</strong> – Imposta lo stato di uno step memorizzato. Parametri: <code>planId</code>, <code>id</code>, <code>status</code> (<code>pending</code> | <code>in_progress</code> | <code>done</code> | <code>blocked</code>), <code>note</code> opzionale. Restituisce <code>{ accepted: true, planId, id, status }</code> oppure <code>{ accepted: false, error }</code>. Non sicuro in parallelo. Factory: <code>createMarkStepTool()</code>.</li>
@@ -678,7 +678,7 @@ var agent = new DevAgent("Dev", "developer", "You are a developer.", null, ".");
 var result = executePlan(plan, agent);
 print(result.completed);
 print(result.results);</code></pre>
-        <h2>18.14 MALDACodingAgent</h2>
+        <h2>19.14 MALDACodingAgent</h2>
         <p>La classe <code>MALDACodingAgent</code> è un agente specializzato per lo sviluppo di script MALDA e le operazioni della toolchain che include automaticamente tutti i tool di operazione sui file e i tool di esecuzione/compilazione MALDA.</p>
         <h3>Tool inclusi</h3>
         <p>MALDACodingAgent include automaticamente i seguenti tool:</p>
@@ -743,7 +743,7 @@ var response = maldaAgent.think("List all MALDA files and improve error handling
             <li>Usa <code>GitAgent</code> quando ti servono solo le operazioni git</li>
             <li>Nessuno di questi kind è una sandbox di capability. Scegli un kind per l'elenco di tool; confina con <code>workingDirectory</code>, <code>DevAgent</code> <code>readOnly</code>, oppure <code>new Agent</code> + <code>cap.*</code> — <a href="#specialized-kinds-are-not-sandboxes">i kind specializzati non sono sandbox</a>.</li>
         </ul>
-        <h2 id="agent-dashboard">18.15 Dashboard degli agenti</h2>
+        <h2 id="agent-dashboard">19.15 Dashboard degli agenti</h2>
         <p>Gli agenti MALDA segnalano automaticamente le proprie attività a una dashboard centrale senza richiedere alcuna modifica agli script MALDA. Questo abilita monitoraggio e osservabilità su tutti gli agenti, anche quando girano in eseguibili o processi diversi.</p>
         <h3>Panoramica</h3>
         <p>La funzionalità dashboard degli agenti offre:</p>
@@ -899,7 +899,7 @@ var response = agent.think("Write a hello world function");
             <li><strong>Supporto multi-processo:</strong> Traccia gli agenti che girano in eseguibili diversi tramite process ID</li>
             <li><strong>Zero overhead:</strong> Nessun impatto sulle prestazioni dell'esecuzione dell'agente</li>
         </ul>
-        <h2 id="multi-agent-orchestration">18.16 Orchestrazione multi-agente</h2>
+        <h2 id="multi-agent-orchestration">19.16 Orchestrazione multi-agente</h2>
         <p>Più agenti possono lavorare insieme, ciascuno con ruoli e tool specializzati.</p>
         <h3>Workflow di agenti in parallelo</h3>
         <p>Gli agenti possono lavorare in modo indipendente su task diversi:</p>
@@ -982,30 +982,30 @@ var response = orchestrator.think(
 );
 print(response.content);</code></pre>
         <p>Quando l'orchestratore chiama un tool subagente, passa un parametro <code>prompt</code> e il metodo <code>think()</code> del subagente viene chiamato automaticamente. La risposta del subagente torna all'orchestratore.</p>
-        <p>Quando più ruoli condividono un lavoro e vuoi gli hop legali come dati, usa un team dichiarativo — <a href="#declarative-agent-teams">§ 18.17</a>.</p>
+        <p>Quando più ruoli condividono un lavoro e vuoi gli hop legali come dati, usa un team dichiarativo — <a href="#declarative-agent-teams">§ 19.17</a>.</p>
         <div class="see-also">
             <h3>Vedi anche</h3>
             <ul>
-                <li><a href="#declarative-agent-teams">18.17 Team dichiarativi di agenti</a> — <code>agents.define</code> / <code>agents.team</code>, hop tipizzati e <code>executePlan</code> consapevole del ruolo</li>
+                <li><a href="#declarative-agent-teams">19.17 Team dichiarativi di agenti</a> — <code>agents.define</code> / <code>agents.team</code>, hop tipizzati e <code>executePlan</code> consapevole del ruolo</li>
                 <li><a href="09-functions.html">9. Funzioni</a> - sintassi del decoratore @Tool</li>
                 <li><a href="10-prompts.html">10. Prompt</a> - Template di prompt e <code>agent.think</code></li>
-                <li><a href="20-mcp-server.html">20. Server MCP</a> - Tool STDIO lanciati dall'host</li>
+                <li><a href="21-mcp-server.html">21. Server MCP</a> - Tool STDIO lanciati dall'host</li>
                 <li><a href="12-input-output.html#capability-tokens">12.6 Token di capability</a> — perché esiste <code>cap.*</code> e il pattern host-mint</li>
                 <li><a href="#specialized-kinds-are-not-sandboxes">I kind specializzati non sono sandbox</a> — <code>CodingAgent</code> e gli altri kind sono bundle di tool; la <code>policy</code> non avvolge i loro tool a path stringa</li>
-                <li><a href="23-agentic-runs.html#policy">23.6 <code>policy</code> al confine del programma</a> — ultimo cancello sul consume del token</li>
+                <li><a href="24-agentic-runs.html#policy">24.6 <code>policy</code> al confine del programma</a> — ultimo cancello sul consume del token</li>
             </ul>
         </div>
-        <h2 id="declarative-agent-teams">18.17 Team dichiarativi di agenti</h2>
+        <h2 id="declarative-agent-teams">19.17 Team dichiarativi di agenti</h2>
         <p>I team multi-agente sono dati, non una keyword. <code>agents.define(spec, client?)</code> crea un agente da un oggetto spec. <code>agents.team(specs, topology, client?)</code> collega un array di quelle spec a un <code>graph directed</code>. Il grafo è una allow-list di hop: un arco <code>dependsOn</code> tra ruoli diversi deve coincidere con una relazione dichiarata. Non esiste un alias piatto <code>agents()</code> / <code>define()</code> / <code>team()</code>. JavaScript: n/a (solo host).</p>
         <div class="info-box">
             <strong>Quando usare un team invece di <code>addSubAgent</code>:</strong>
             <ul>
-                <li><code>addSubAgent</code> (§ 18.16) è un loop di tool del supervisore — l'orchestratore decide quando chiamare uno specialista.</li>
+                <li><code>addSubAgent</code> (§ 19.16) è un loop di tool del supervisore — l'orchestratore decide quando chiamare uno specialista.</li>
                 <li><code>agents.team</code> è un grafo diretto — il codice host (o <code>executePlan</code>) può saltare solo lungo archi <code>rel</code> dichiarati, opzionalmente validati da un <code>contract</code> schema.</li>
                 <li>La costruzione non scarica automaticamente un modello locale. Passa <code>client</code> quando in seguito chiami <code>think()</code>, oppure usa <code>new CodingAgent(...)</code> se vuoi il GGUF di default.</li>
             </ul>
         </div>
-        <h3 id="agents-define">18.17.1 <code>agents.define</code></h3>
+        <h3 id="agents-define">19.17.1 <code>agents.define</code></h3>
         <p><code>agents.define(spec, client?)</code> restituisce un agente. Campi spec obbligatori: <code>name</code>, <code>role</code>, <code>instructions</code>. Campi opzionali:</p>
         <table>
             <thead><tr><th>Campo</th><th>Vale per</th><th>Significato</th></tr></thead>
@@ -1017,7 +1017,7 @@ print(response.content);</code></pre>
                 <tr><td><code>includeSymbols</code> / <code>readOnly</code> / <code>prdAuthorOnly</code></td><td>solo <code>DevAgent</code></td><td>Come <code>new DevAgent(...)</code>.</td></tr>
             </tbody>
         </table>
-        <p>I valori <code>kind</code> ammessi usano gli stessi bundle di tool dei costruttori corrispondenti — non sandbox (<a href="#specialized-kinds-are-not-sandboxes">18.8</a>). Il tag della classe è <code>agent.kind</code>.</p>
+        <p>I valori <code>kind</code> ammessi usano gli stessi bundle di tool dei costruttori corrispondenti — non sandbox (<a href="#specialized-kinds-are-not-sandboxes">19.8</a>). Il tag della classe è <code>agent.kind</code>.</p>
         <table>
             <thead><tr><th><code>kind</code></th><th>Costruttore equivalente</th></tr></thead>
             <tbody>
@@ -1054,9 +1054,9 @@ try {
     threw = true;
 }
 print(threw);</code></pre>
-        <h3 id="agents-team">18.17.2 <code>agents.team</code></h3>
-        <p><code>agents.team(specs, topology, client?)</code> prende un array non vuoto di spec e un grafo <strong>diretto</strong>. Ogni nodo del grafo deve coincidere con lo <code>name</code> di una spec. I nomi duplicati falliscono. Le chiavi extra su un arco letterale oltre a <code>from</code> / <code>to</code> / <code>weight</code> / <code>properties</code> diventano proprietà dell'arco, quindi <code>rel</code> e <code>contract</code> sono di prima classe (vedi <a href="14-graphs.html">14. Grafi</a>). Se <code>rel</code> è omesso vale <code>handoff</code>. Nodi o rel sconosciuti falliscono prima di qualsiasi chiamata LLM. Il <code>client</code> opzionale viene inoltrato a ogni <code>define</code>.</p>
-        <h3 id="team-relations">18.17.3 Relazioni</h3>
+        <h3 id="agents-team">19.17.2 <code>agents.team</code></h3>
+        <p><code>agents.team(specs, topology, client?)</code> prende un array non vuoto di spec e un grafo <strong>diretto</strong>. Ogni nodo del grafo deve coincidere con lo <code>name</code> di una spec. I nomi duplicati falliscono. Le chiavi extra su un arco letterale oltre a <code>from</code> / <code>to</code> / <code>weight</code> / <code>properties</code> diventano proprietà dell'arco, quindi <code>rel</code> e <code>contract</code> sono di prima classe (vedi <a href="15-graphs.html">15. Grafi</a>). Se <code>rel</code> è omesso vale <code>handoff</code>. Nodi o rel sconosciuti falliscono prima di qualsiasi chiamata LLM. Il <code>client</code> opzionale viene inoltrato a ogni <code>define</code>.</p>
+        <h3 id="team-relations">19.17.3 Relazioni</h3>
         <p>Valori <code>rel</code> ammessi:</p>
         <table>
             <thead><tr><th><code>rel</code></th><th>Hop host</th><th>Note</th></tr></thead>
@@ -1069,7 +1069,7 @@ print(threw);</code></pre>
             </tbody>
         </table>
         <p>Gli archi <code>delegate</code> e <code>consult</code> installano anche <code>addSubAgent</code> sulla sorgente (l'elenco tool del supervisore = i vicini in uscita). Un arco <code>handoff</code> non basta per <code>review</code> / <code>reject</code> / <code>consult</code> — gli hop sono tipizzati.</p>
-        <h3 id="team-inspection">18.17.4 Ispezionare un team</h3>
+        <h3 id="team-inspection">19.17.4 Ispezionare un team</h3>
         <ul>
             <li><code>team.members()</code> — nomi dei membri, ordinati.</li>
             <li><code>team.get(name)</code> — l'istanza agente; solleva un'eccezione se il nome manca.</li>
@@ -1103,7 +1103,7 @@ print(bad.ok);
 
 var missing = team.handoff("Reviewer", "Writer", { path: "calc.malda", summary: "back" });
 print(missing.ok);</code></pre>
-        <h3 id="team-hops">18.17.5 Hop tipizzati</h3>
+        <h3 id="team-hops">19.17.5 Hop tipizzati</h3>
         <p><code>team.handoff</code> / <code>team.review</code> / <code>team.reject</code> / <code>team.consult</code> condividono lo stesso contratto: <code>(from, to, payload, think?)</code>. L'arco deve esistere con un <code>rel</code> corrispondente. Se <code>contract</code> è impostato, l'hop esegue prima <code>validate(contract, payload)</code>. Gli hop falliti restituiscono <code>{ ok: false, error }</code> e non chiamano <code>think()</code>.</p>
         <p>Il quarto argomento è opzionale:</p>
         <ul>
@@ -1165,7 +1165,7 @@ print(bad.ok);
 
 var wrong = consultTeam.handoff("Writer", "Researcher", { question: "which API?" });
 print(wrong.ok);</code></pre>
-        <h3 id="team-execute-plan">18.17.6 <code>executePlan</code> con un team</h3>
+        <h3 id="team-execute-plan">19.17.6 <code>executePlan</code> con un team</h3>
         <p><code>executePlan(plan, team)</code> o <code>team.run(plan)</code> instrada ogni step a <code>step.role</code> (o <code>step.agent</code>). I piani di team guidati dall'host <strong>non</strong> scelgono un membro di default — un ruolo mancante o sconosciuto restituisce <code>{ error }</code>.</p>
         <p>Dopo l'ordinamento topologico, un hop <code>dependsOn</code> tra ruoli diversi deve coincidere con una relazione dichiarata. Il controllo gira prima di <code>think()</code>, quindi un hop illegale restituisce <code>{ error }</code> senza chiamate LLM. La continuazione sullo stesso ruolo non richiede un auto-arco.</p>
         <p>Un hop <code>reject</code> gira solo quando il predecessore non è approved. Ogni altro hop gira solo quando è approved. Il verdetto viene, in ordine, da <code>step.approved</code> / <code>step.rejected</code>, altrimenti dal JSON <code>{ approved }</code> / <code>{ rejected }</code> nell'output di think, altrimenti default <code>approved: true</code>. Gli step saltati sono in <code>skipped</code> (id degli step) e registrati sul risultato dello step come <code>skipped</code> + <code>reason</code>; non chiamano <code>think()</code>. Le dipendenze fallite o saltate si propagano.</p>
@@ -1247,10 +1247,10 @@ var badOut = executePlan({
 }, outTeam);
 print(badOut.failed[0]);
 print(badOut.skipped[0]);</code></pre>
-        <h3 id="team-decompose">18.17.7 <code>decomposeTask</code> con un team</h3>
+        <h3 id="team-decompose">19.17.7 <code>decomposeTask</code> con un team</h3>
         <p><code>decomposeTask(instruction, client?, team?)</code> o <code>team.decompose(instruction, client?)</code> mette nomi, kind, ruoli, istruzioni e relazioni dei membri nel prompt del decompositore. Ogni step generato deve impostare <code>role</code> sul nome di un membro. I piani senza <code>role</code> o con hop fuori grafo vengono rifiutati. Il secondo argomento può essere un client LLM o il team (se il team è il secondo argomento, per la chiamata di decompose si usa l'LLM locale di default).</p>
         <p>Questo percorso chiama un LLM. Preferisci un piano scritto sull'host più <code>plan.think: false</code> quando ti serve un golden offline.</p>
-        <h3 id="team-examples">18.17.8 Golden offline</h3>
+        <h3 id="team-examples">19.17.8 Golden offline</h3>
         <p>Questi esempi non fanno chiamate LLM:</p>
         <ul>
             <li><code>Examples/Agents/agent_team_graph.malda</code> — spec + grafo + contract</li>
@@ -1262,18 +1262,18 @@ print(badOut.skipped[0]);</code></pre>
             <li><code>Examples/Agents/agent_team_consult.malda</code> — <code>consult</code> tipizzato</li>
             <li><code>Examples/Agents/agent_team_plan_out.malda</code> — <code>step.out</code> + <code>fixture</code></li>
         </ul>
-        <p>Few-shot per gli agenti: <code>docs/llm/few-shot/34_agents_team.malda</code> fino a <code>41_agents_plan_out.malda</code>. La topologia statica del team (grafi / plan letterali) è anche segnalata come <code>malda-agents</code> da <code>malda check</code> — vedi <a href="23-agentic-runs.html">23.10</a>.</p>
+        <p>Few-shot per gli agenti: <code>docs/llm/few-shot/34_agents_team.malda</code> fino a <code>41_agents_plan_out.malda</code>. La topologia statica del team (grafi / plan letterali) è anche segnalata come <code>malda-agents</code> da <code>malda check</code> — vedi <a href="24-agentic-runs.html">24.10</a>.</p>
         <div class="see-also">
             <h3>Vedi anche</h3>
             <ul>
-                <li><a href="14-graphs.html">14. Grafi</a> — letterali diretti e chiavi extra sugli archi</li>
-                <li><a href="#structured-task-planning">18.13 Pianificazione strutturata dei task</a> — forma del piano, <code>submit_plan</code> / <code>update_plan</code> / <code>mark_step</code></li>
-                <li><a href="#multi-agent-orchestration">18.16 Orchestrazione multi-agente</a> — loop supervisore con <code>addSubAgent</code></li>
+                <li><a href="15-graphs.html">15. Grafi</a> — letterali diretti e chiavi extra sugli archi</li>
+                <li><a href="#structured-task-planning">19.13 Pianificazione strutturata dei task</a> — forma del piano, <code>submit_plan</code> / <code>update_plan</code> / <code>mark_step</code></li>
+                <li><a href="#multi-agent-orchestration">19.16 Orchestrazione multi-agente</a> — loop supervisore con <code>addSubAgent</code></li>
                 <li><a href="10-prompts.html">10. Prompt</a> — <code>agent.think</code></li>
-                <li><a href="23-agentic-runs.html">23. Esecuzioni agentiche</a> — check <code>malda-agents</code> sul team, journal, <code>AgentError</code></li>
+                <li><a href="24-agentic-runs.html">24. Esecuzioni agentiche</a> — check <code>malda-agents</code> sul team, journal, <code>AgentError</code></li>
             </ul>
         </div>
-        <h2 id="using-agents-with-actors">18.18 Usare gli agenti con gli actor</h2>
+        <h2 id="using-agents-with-actors">19.18 Usare gli agenti con gli actor</h2>
         <p>Agenti e actor sono funzionalità complementari in MALDA. Gli agenti sono classi pensate per interazioni AI sincrone, mentre gli actor offrono elaborazione concorrente basata su messaggi. Combinarli abilita pattern potenti per i sistemi AI distribuiti.</p>
         
         <div class="info-box">
@@ -1440,12 +1440,12 @@ send stateManager.queryAgent("Helper", "What is MALDA?");</code></pre>
         <div class="see-also">
             <h3>Vedi anche</h3>
             <ul>
-                <li><a href="17-actors.html">17. Actor</a> - Modello ad actor e message passing</li>
-                <li><a href="17-actors.html#actor-state-isolation">17.5 Isolamento dello stato degli actor</a> - Capire lo stato degli actor</li>
+                <li><a href="18-actors.html">18. Actor</a> - Modello ad actor e message passing</li>
+                <li><a href="18-actors.html#actor-state-isolation">18.5 Isolamento dello stato degli actor</a> - Capire lo stato degli actor</li>
             </ul>
         </div>
 
-        <h2 id="ralph-wiggum">18.19 Ralph Wiggum (loop autonomo guidato da PRD)</h2>
+        <h2 id="ralph-wiggum">19.19 Ralph Wiggum (loop autonomo guidato da PRD)</h2>
         <p>Il repository include <code>Examples/RalphWiggum/RalphWiggum.malda</code>, un loop autonomo pronto per la produzione per lo sviluppo guidato da PRD. Usa <code>DevAgent</code>, un PRD a checklist (<code>PRD.md</code>), validazione post-iterazione, stato di resume e <strong>GraphMemory</strong> per la continuità tra le iterazioni quando la cronologia della conversazione viene azzerata a ogni round. Vedi <code>Examples/RalphWiggum/README.md</code> per i prerequisiti e la demo Snake.</p>
 
         <h3>Esecuzione</h3>
@@ -1487,7 +1487,7 @@ send stateManager.queryAgent("Helper", "What is MALDA?");</code></pre>
             <li><code>MALDA_RALPH_REPORT</code>, <code>MALDA_RALPH_NOTIFY</code>, <code>MALDA_RALPH_MAX_PHASE_RETRIES</code>, <code>MALDA_RALPH_ABORT_ON_STALL</code></li>
             <li><code>MALDA_RALPH_GIT_COMMIT</code>, <code>MALDA_RALPH_AUTO_REMEMBER</code> (default <code>false</code>)</li>
             <li><code>MALDA_AGENT_THINK_TIMEOUT_MS</code> / <code>MALDA_RALPH_ITER_TIMEOUT_MS</code> — scadenza think per iterazione</li>
-            <li>CLI verbose: <code>MALDA_AGENT_VERBOSE</code> (default <code>true</code> in Ralph), <code>MALDA_AGENT_RICH</code>, <code>MALDA_AGENT_LLM_THINKING</code>, <code>MALDA_AGENT_LLM_STREAM</code> — vedi <a href="#conversation-verbose-streaming">18.5 logging verbose</a></li>
+            <li>CLI verbose: <code>MALDA_AGENT_VERBOSE</code> (default <code>true</code> in Ralph), <code>MALDA_AGENT_RICH</code>, <code>MALDA_AGENT_LLM_THINKING</code>, <code>MALDA_AGENT_LLM_STREAM</code> — vedi <a href="#conversation-verbose-streaming">19.5 logging verbose</a></li>
             <li><code>OPENROUTER_API_KEY</code> oppure <code>providers.openrouter</code> in <code>~/.malda/config.json</code></li>
         </ul>
         <p>Moduli di implementazione: <code>Examples/RalphWiggum/ralph/*.malda</code> (vedi <code>ralph/ARCHITECTURE.md</code>). Elenco completo delle variabili d'ambiente e workflow git-worktree: <code>Examples/RalphWiggum/README.md</code>.</p>
@@ -1496,14 +1496,14 @@ send stateManager.queryAgent("Helper", "What is MALDA?");</code></pre>
         <h3>Hook di validazione personalizzati</h3>
         <p>Dopo i controlli strutturali, Ralph può eseguire <code>MALDA_RALPH_VALIDATE_CMD</code>, oppure uno script locale del progetto <code>.ralph-validate.sh</code> / <code>.ralph-validate.bat</code> / (o <code>.ralph-validate.malda</code>) nella workdir. I file <code>.malda</code> sono diagnosticati con <code>checkMalda</code> (stesso report di <code>malda check --json</code>), non con il solo <code>getParseErrors</code>. I prompt del loop dicono all'agente di chiamare <code>check_malda</code> / <code>test_malda</code> durante il turn e di non usare <code>submit_plan</code> / <code>update_plan</code> / <code>mark_step</code>.</p>
         <h3>Strategia di esecuzione</h3>
-        <p>Ralph chiede all'agente di completare <strong>una voce della checklist PRD per iterazione</strong> nel minor numero possibile di round LLM: esplorazione in sola lettura in batch (<code>list_directory</code>, <code>grep</code>, <code>read_file</code>) in una sola risposta, poi modifiche e verifica in batch. Questo si abbina all'esecuzione parallela dei tool in sola lettura (18.5) e al feedback <code>[think]</code> in streaming durante le esecuzioni verbose.</p>
-        <p>Vedi anche <a href="19-graph-memory.html">19. GraphMemory</a> per i metadati di <code>remember</code>, <code>getRecent</code> e le opzioni ibride di <code>query</code>.</p>
+        <p>Ralph chiede all'agente di completare <strong>una voce della checklist PRD per iterazione</strong> nel minor numero possibile di round LLM: esplorazione in sola lettura in batch (<code>list_directory</code>, <code>grep</code>, <code>read_file</code>) in una sola risposta, poi modifiche e verifica in batch. Questo si abbina all'esecuzione parallela dei tool in sola lettura (19.5) e al feedback <code>[think]</code> in streaming durante le esecuzioni verbose.</p>
+        <p>Vedi anche <a href="20-graph-memory.html">20. GraphMemory</a> per i metadati di <code>remember</code>, <code>getRecent</code> e le opzioni ibride di <code>query</code>.</p>
         <p><code>reportRalphStatus(agentName, phase, iteration, maxIter, prdPercent, validationOk?, elapsedMs?, promptTokens?, completionTokens?, costUsd?)</code> pubblica una iterazione di progresso sulla dashboard degli agenti. I primi cinque argomenti sono obbligatori; gli altri hanno default <code>false</code>, <code>0</code>, <code>0</code>, <code>0</code> e <code>0.0</code>.</p>
         <pre><code>reportRalphStatus("Ralph", "implement", 3, 10, 45, true, 12000, 1800, 640, 0.02);</code></pre>
 
         <div class="nav-footer">
-            <a href="17-actors.html">← Precedente: 17. Actor</a>
-            <a href="19-graph-memory.html">Successivo: 19. GraphMemory→</a>
+            <a href="18-actors.html">← Precedente: 18. Actor</a>
+            <a href="20-graph-memory.html">Successivo: 20. GraphMemory→</a>
         </div>
 
         <footer>

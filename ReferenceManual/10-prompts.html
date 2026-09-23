@@ -18,7 +18,7 @@
     <main>
         <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>10. Prompts</span></div>
         <h1>10. Prompts</h1>
-        <p>A <code>prompt</code> is a named, parameterized template. Calling it interpolates parameters and returns a <code>PromptInstance</code>. <code>await</code> can call an LLM and validate JSON against a declared type. Decorators such as <code>@within</code> and <code>@budget</code> apply here as well as on functions — see <a href="09-functions.html">9.7 Decorators</a>. Optional <code>@version("…")</code> is an informational pin for <code>malda prompts --diff</code>. Every <code>await</code> / <code>Chat</code> goes through cassettes when <code>MALDA_RECORD</code> / <code>MALDA_REPLAY</code> is set. <code>.usage</code> on a result is metadata (an own key named <code>usage</code> wins). Narrative: <a href="23-agentic-runs.html">23. Agentic Runs</a>.</p>
+        <p>A <code>prompt</code> is a named, parameterized template. Calling it interpolates parameters and returns a <code>PromptInstance</code>. <code>await</code> can call an LLM and validate JSON against a declared type. Decorators such as <code>@within</code> and <code>@budget</code> apply here as well as on functions — see <a href="09-functions.html">9.7 Decorators</a>. Optional <code>@version("…")</code> is an informational pin for <code>malda prompts --diff</code>. Every <code>await</code> / <code>Chat</code> goes through cassettes when <code>MALDA_RECORD</code> / <code>MALDA_REPLAY</code> is set. <code>.usage</code> on a result is metadata (an own key named <code>usage</code> wins). Narrative: <a href="24-agentic-runs.html">24. Agentic Runs</a>.</p>
         <p>Templates without <code>await</code> are core language. <code>await prompt</code>, live LLM clients, and cassettes are host-only (interpreter and C# transpile). JavaScript can run <code>validate</code> / <code>asVariant</code> but not a live model call. See the <a href="../docs/spec/backend-capability-matrix.md">backend capability matrix</a>.</p>
         <pre><code>@version("2026-09-01")
 prompt extract(raw) -> Card {
@@ -379,7 +379,7 @@ var answer = await ragAnswer("How does retrieval work?", client);</code></pre>
         <p><strong>Advanced composition:</strong> <code>composePipe</code>, <code>parallelRun</code>, and <code>mergeRetrievedDocs</code> compose with functions and pipes for parallel retrieval and reusable pipeline functions. See <code>Examples/Prompts/rag_compose_pipeline.malda</code> and the catalog below.</p>
 
         <h3 id="ai-pipeline">10.9.1 AI pipeline helpers</h3>
-        <p>These built-ins compose with the pipe operator (<code>|&gt;</code>) for retrieval-augmented generation (RAG) and structured LLM output. Indexing into a VectorDB: <a href="15-vectordb.html">15. VectorDB</a> (<code>asRetriever</code>, <code>indexInto</code>). Offline fixtures: <a href="13-built-in-functions.html#evalPrompt">13.7.1.2 evalPrompt</a>. Worked files: <code>Examples/Prompts/rag_pipeline.malda</code>, <code>Examples/Prompts/rag_compose_pipeline.malda</code>.</p>
+        <p>These built-ins compose with the pipe operator (<code>|&gt;</code>) for retrieval-augmented generation (RAG) and structured LLM output. Indexing into a VectorDB: <a href="16-vectordb.html">16. VectorDB</a> (<code>asRetriever</code>, <code>indexInto</code>). Offline fixtures: <a href="13-built-in-functions.html#evalPrompt">13.7.1.2 evalPrompt</a>. Worked files: <code>Examples/Prompts/rag_pipeline.malda</code>, <code>Examples/Prompts/rag_compose_pipeline.malda</code>.</p>
         <pre><code>// Load text files matching a glob pattern (default directory: current)
 var docs = loadDocuments("**/*.md", "docs/");
 
@@ -562,8 +562,8 @@ var response = agent.think(planTask(task, docs));</code></pre>
                 <li><a href="04-data-types.html#sum-types">4.5 Sum Types</a> / <a href="04-data-types.html#schema">4.6 Schema</a> — syntax for <code>type</code> and <code>schema</code></li>
                 <li><a href="07-expressions.html">7. Expressions</a> - Pipe operator for prompt pipelines</li>
                 <li><a href="13-built-in-functions.html">13. Built-in Functions</a> - AI pipeline helpers</li>
-                <li><a href="18-agent-orchestration.html">18. Agent Orchestration</a> - Using agents with prompts</li>
-                <li><a href="23-agentic-runs.html">23. Agentic Runs</a> - <code>@version</code>, <code>.usage</code>, cassettes, <code>malda eval</code></li>
+                <li><a href="19-agent-orchestration.html">19. Agent Orchestration</a> - Using agents with prompts</li>
+                <li><a href="24-agentic-runs.html">24. Agentic Runs</a> - <code>@version</code>, <code>.usage</code>, cassettes, <code>malda eval</code></li>
             </ul>
         </div>
         <div class="nav-footer">

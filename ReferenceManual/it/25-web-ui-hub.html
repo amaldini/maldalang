@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Panoramica Web UI MALDA - Scegliere componenti server, pagine HttpServer o JavaScript nel browser">
-    <title>24. Panoramica Web UI - Manuale di riferimento MALDA</title>
+    <title>25. Panoramica Web UI - Manuale di riferimento MALDA</title>
     <link rel="stylesheet" href="../styles.css">
     <link rel="stylesheet" href="../syntax.css">
     <link rel="stylesheet" href="../print.css" media="print">
@@ -16,21 +16,21 @@
     </header>
     <nav></nav>
     <main>
-        <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>24. Panoramica Web UI</span></div>
-        <h1>24. Panoramica Web UI</h1>
+        <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>25. Panoramica Web UI</span></div>
+        <h1>25. Panoramica Web UI</h1>
 
         <p>MALDA offre più modi per costruire interfacce utente. I modelli sotto condividono concetti HTTP e di routing, ma puntano a runtime e stili di consegna diversi. Parti da qui prima di entrare in un capitolo specifico. Preferisci <strong>un modello per superficie</strong> (IDE <code>UI1002</code> quando un file mescola <code>@PAGE</code>/<code>@AIPAGE</code> con <code>ui.mount</code>/<code>ui.render</code>).</p>
         <div class="info-box" id="first-read">
-            <strong>Stop alla prima lettura.</strong> Dopo <a href="learn.html">Imparare MALDA</a>, scegli <strong>una riga</strong> della tabella — non leggere i capitoli 25–30 in ordine. File più piccoli: <code>Examples/Web/</code> per pagine e REST; <code>malda new game</code> / <code>Examples/Games/</code> per il canvas. Il resto della pagina è la guida di decisione.
+            <strong>Stop alla prima lettura.</strong> Dopo <a href="learn.html">Imparare MALDA</a>, scegli <strong>una riga</strong> della tabella — non leggere i capitoli 26–31 in ordine. File più piccoli: <code>Examples/Web/</code> per pagine e REST; <code>malda new game</code> / <code>Examples/Games/</code> per il canvas. Il resto della pagina è la guida di decisione.
         </div>
 
         <div class="info-box">
-            <strong>Contesto full-stack:</strong> Per come UI, API, database e agenti stanno insieme, vedi <a href="30-full-stack-development.html">30. Sviluppo full-stack con MALDA</a>.
-            Nuovo al vocabolario HTTP (middleware, CSRF, CORS, JWT, HTTPS)? Leggi prima <a href="28-rest-api.html#web-concepts">28.1.1 Primer sui concetti</a>.
+            <strong>Contesto full-stack:</strong> Per come UI, API, database e agenti stanno insieme, vedi <a href="31-full-stack-development.html">31. Sviluppo full-stack con MALDA</a>.
+            Nuovo al vocabolario HTTP (middleware, CSRF, CORS, JWT, HTTPS)? Leggi prima <a href="29-rest-api.html#web-concepts">29.1.1 Primer sui concetti</a>.
             Per gli interni di runtime/host della UI guidata dal server (protocollo patch, <code>UIHost</code>), vedi <a href="../../docs/ui-framework.md"><code>docs/ui-framework.md</code></a>.
         </div>
 
-        <h2>24.1 Scegli il modello UI</h2>
+        <h2>25.1 Scegli il modello UI</h2>
 
         <table>
             <tr>
@@ -43,35 +43,35 @@
                 <td><strong>Componenti a frammenti HTML</strong></td>
                 <td>Pagine di form e liste che restituiscono stringhe HTML, con aggiornamenti mirati dei fragment e SSE opzionale</td>
                 <td><code>component</code>, <code>@ACTION</code>, <code>@LIVE</code>, <code>componentFragment</code>, <code>componentState*</code></td>
-                <td><a href="25-web-ui.html">25. Componenti server Web UI</a> (§ 25.2)</td>
+                <td><a href="26-web-ui.html">26. Componenti server Web UI</a> (§ 26.2)</td>
             </tr>
             <tr>
                 <td><strong>Alberi <code>ui.*</code> guidati dal server</strong></td>
                 <td>UI a patch incrementali ospitata da UIHost; i controlli sono alberi di nodi, non stringhe HTML</td>
                 <td><code>ui.button(props, …)</code>, <code>ui.mount</code> / <code>ui.render</code>, <code>ui.state</code></td>
-                <td><a href="25-web-ui.html">25. Componenti server Web UI</a> (§ 25.3)</td>
+                <td><a href="26-web-ui.html">26. Componenti server Web UI</a> (§ 26.3)</td>
             </tr>
             <tr>
                 <td><strong>Pagine HttpServer</strong></td>
                 <td>App route-first che restituiscono documenti HTML completi, pagine generate dall'AI o siti classici renderizzati sul server</td>
                 <td><code>HttpServer</code>, <code>@PAGE</code>, <code>@AIPAGE</code>, <code>HTMLCache</code>, <code>generateUI()</code></td>
-                <td><a href="26-http-server-html-ui.html">26. HttpServer e generazione UI HTML</a></td>
+                <td><a href="27-http-server-html-ui.html">27. HttpServer e generazione UI HTML</a></td>
             </tr>
             <tr>
                 <td><strong>JavaScript nel browser</strong></td>
                 <td>UI che gira nel browser da MALDA transpile in JavaScript (app DOM, frontend ibridi)</td>
                 <td><code>dom.*</code>, template mode, <code>@client()</code></td>
-                <td><a href="27-browser-javascript-backend.html">27. Backend UI JavaScript nel browser</a></td>
+                <td><a href="28-browser-javascript-backend.html">28. Backend UI JavaScript nel browser</a></td>
             </tr>
             <tr>
                 <td><strong>Giochi nel browser</strong></td>
                 <td>Canvas / 3D / kernel GPU. Solo JS; anteprima con <code>malda play</code></td>
                 <td><code>game.*</code>, <code>three.*</code>, <code>@shader()</code></td>
-                <td><a href="27-browser-javascript-backend.html#game-canvas">27.9–27.10</a>, <a href="34-examples.html#game">34.3</a>, <a href="38-appendix-gpu-billiards.html">38</a></td>
+                <td><a href="28-browser-javascript-backend.html#game-canvas">28.9–28.10</a>, <a href="35-examples.html#game">35.3</a>, <a href="39-appendix-gpu-billiards.html">39</a></td>
             </tr>
         </table>
 
-        <h2>24.2 Guida alla scelta</h2>
+        <h2>25.2 Guida alla scelta</h2>
 
         <h3>Scegli i componenti a frammenti HTML quando…</h3>
         <ul>
@@ -105,10 +105,10 @@
         <ul>
             <li>Ti serve un loop canvas, tastiera/gamepad, <code>three.*</code> o kernel GLSL <code>@shader()</code>.</li>
             <li>L'host è <code>malda play</code> (o <code>malda compile --mode js</code>), non l'interprete.</li>
-            <li>Vuoi l'appendice biliardo GPU giocabile come smoke test — <a href="38-appendix-gpu-billiards.html">38</a>.</li>
+            <li>Vuoi l'appendice biliardo GPU giocabile come smoke test — <a href="39-appendix-gpu-billiards.html">39</a>.</li>
         </ul>
 
-        <h2>24.3 Come si relazionano i modelli</h2>
+        <h2>25.3 Come si relazionano i modelli</h2>
 
         <pre><code>                    ┌─────────────────────────────────────┐
                     │         MALDA Web UI choices          │
@@ -125,9 +125,9 @@
                               HTTP / REST API layer
                          (see REST API + REST Web Client)</code></pre>
 
-        <p>Puoi combinare i modelli in un unico prodotto quando i confini sono espliciti: per esempio <code>@PAGE</code> per le route di marketing, uno shell di app <code>ui.*</code> e un bundle JS nel browser per un widget interattivo. Vedi <a href="28-rest-api.html">28. Server REST API</a> per gli endpoint JSON che qualsiasi modello UI può chiamare.</p>
+        <p>Puoi combinare i modelli in un unico prodotto quando i confini sono espliciti: per esempio <code>@PAGE</code> per le route di marketing, uno shell di app <code>ui.*</code> e un bundle JS nel browser per un widget interattivo. Vedi <a href="29-rest-api.html">29. Server REST API</a> per gli endpoint JSON che qualsiasi modello UI può chiamare.</p>
 
-        <h2>24.4 Promemoria sul confine di runtime</h2>
+        <h2>25.4 Promemoria sul confine di runtime</h2>
         <ul>
             <li><strong>Server (interprete o .exe transpile):</strong> <code>HttpServer</code>, client database, agenti, componenti server, <code>@PAGE</code>.</li>
             <li><strong>Browser (transpile JS):</strong> helper DOM, API canvas/game, actor locali — niente SQL diretto né filesystem del server dal codice nel browser.</li>
@@ -135,26 +135,26 @@
         </ul>
         <p>Vedi <a href="02-tools.html">2. Strumenti e toolchain</a> (Runtime modes at a glance) per i trade-off tra interprete, transpile e JavaScript.</p>
 
-        <h2 id="browser-games">24.5 Giochi nel browser</h2>
+        <h2 id="browser-games">25.5 Giochi nel browser</h2>
         <div class="hub-path-card">
             <h3>Superficie solo JS</h3>
-            <p><code>game.*</code>, <code>three.*</code> e <code>@shader()</code> stanno in <a href="27-browser-javascript-backend.html#game-canvas">27.9–27.10</a>, non nei modelli server di questo hub. Parti da <code>malda new game</code> poi <code>malda play app.malda</code>. Snippet di catalogo: <a href="34-examples.html#game">34.3</a>. Cartella: <code>Examples/Games/</code>. Il capitolo 38 è uno showcase giocabile, non il contratto del linguaggio.</p>
+            <p><code>game.*</code>, <code>three.*</code> e <code>@shader()</code> stanno in <a href="28-browser-javascript-backend.html#game-canvas">28.9–28.10</a>, non nei modelli server di questo hub. Parti da <code>malda new game</code> poi <code>malda play app.malda</code>. Snippet di catalogo: <a href="35-examples.html#game">35.3</a>. Cartella: <code>Examples/Games/</code>. Il capitolo 39 è uno showcase giocabile, non il contratto del linguaggio.</p>
         </div>
 
         <div class="see-also">
             <h3>Vedi anche</h3>
             <ul>
-                <li><a href="25-web-ui.html">25. Componenti server Web UI</a> - Frammenti HTML e alberi <code>ui.*</code></li>
-                <li><a href="26-http-server-html-ui.html">26. HttpServer e generazione UI HTML</a> - @PAGE, @AIPAGE, cache HTML</li>
-                <li><a href="27-browser-javascript-backend.html#game-canvas">27.9–27.10</a> — <code>game.*</code> / <code>three.*</code> / <code>@shader()</code></li>
-                <li><a href="27-browser-javascript-backend.html">27. Backend UI JavaScript nel browser</a> - Transpile JS e <code>dom.*</code></li>
-                <li><a href="30-full-stack-development.html">30. Sviluppo full-stack con MALDA</a> - Architettura end-to-end</li>
+                <li><a href="26-web-ui.html">26. Componenti server Web UI</a> - Frammenti HTML e alberi <code>ui.*</code></li>
+                <li><a href="27-http-server-html-ui.html">27. HttpServer e generazione UI HTML</a> - @PAGE, @AIPAGE, cache HTML</li>
+                <li><a href="28-browser-javascript-backend.html#game-canvas">28.9–28.10</a> — <code>game.*</code> / <code>three.*</code> / <code>@shader()</code></li>
+                <li><a href="28-browser-javascript-backend.html">28. Backend UI JavaScript nel browser</a> - Transpile JS e <code>dom.*</code></li>
+                <li><a href="31-full-stack-development.html">31. Sviluppo full-stack con MALDA</a> - Architettura end-to-end</li>
             </ul>
         </div>
 
         <div class="nav-footer">
-            <a href="23-agentic-runs.html">← Precedente: 23. Esecuzioni agentiche</a>
-            <a href="25-web-ui.html">Successivo: 25. Componenti server Web UI→</a>
+            <a href="24-agentic-runs.html">← Precedente: 24. Esecuzioni agentiche</a>
+            <a href="26-web-ui.html">Successivo: 26. Componenti server Web UI→</a>
         </div>
 
         <footer>

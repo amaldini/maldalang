@@ -123,7 +123,7 @@ Validation rules currently enforced:
     - Scene graph: `three.createScene()`, `three.createPerspectiveCamera(fovDeg, aspect, near, far)`, `three.createOrthographicCamera(left, right, top, bottom, near, far)`, `three.setCameraAspect(camera, aspect)`, `three.createGroup()`, `three.createMesh(geometry, material)`, `three.add(parent, child)`, `three.loadGLTF(url)`, `three.modelIsReady(handle)`
     - Geometry/material/light: `three.createBoxGeometry(width, height, depth)`, `three.createPlaneGeometry(width, height)`, `three.createSphereGeometry(radius, widthSegments?, heightSegments?)`, `three.createTexture(url)`, `three.createDataTexture(width, height, pixels, options?)`, `three.updateDataTexture(handle, pixels)`, `three.mandelbrotOrbit(real, imag, maxIter)`, `three.createStandardMaterial(options)`, `three.createShaderMaterial(options)`, `three.setUniform(material, name, value)`, `three.createDirectionalLight(color, intensity)`, `three.createAmbientLight(color?, intensity?)`
     - Transforms/input: `three.setPosition(object, x, y, z)`, `three.setRotation(object, x, y, z)`, `three.setScale(object, x, y, z)`, `three.lookAt(object, x, y, z)`, `three.render(renderer, scene, camera)`, `three.isKeyDown(key)`, `three.getMouseX()`, `three.getMouseY()`, `three.isMouseDown(button?)`
-    - Shader kernels: `@shader()` plus `glsl.compile` (JS transpile only). User-facing contract — types, subset, `glsl.compile` keys, IDE rename vs string keys — is [Reference Manual 27.10.1](../ReferenceManual/27-browser-javascript-backend.html#shader-kernels). This is not a fourth execution backend.
+    - Shader kernels: `@shader()` plus `glsl.compile` (JS transpile only). User-facing contract — types, subset, `glsl.compile` keys, IDE rename vs string keys — is [Reference Manual 28.10.1](../ReferenceManual/28-browser-javascript-backend.html#shader-kernels). This is not a fourth execution backend.
 - Browser loading model:
   1. Load `malda-js-runtime.js`
   2. Load compiled MALDA script
@@ -459,7 +459,7 @@ var vert = glsl.compile({
 });
 ```
 
-The user-facing contract (types, subset, `glsl.compile` keys, IDE rename) is in [Reference Manual 27.10.1](../ReferenceManual/27-browser-javascript-backend.html#shader-kernels). The three.js scene API itself is [27.10](../ReferenceManual/27-browser-javascript-backend.html).
+The user-facing contract (types, subset, `glsl.compile` keys, IDE rename) is in [Reference Manual 28.10.1](../ReferenceManual/28-browser-javascript-backend.html#shader-kernels). The three.js scene API itself is [28.10](../ReferenceManual/28-browser-javascript-backend.html).
 
 `@shader()` functions are not emitted as JavaScript. They are a typed subset (C-like control flow, GLSL type hints such as `vec3` / `out float`, `math.sqrt` → `sqrt`). Host MALDA still owns the `three.*` loop and uniforms.
 
@@ -469,7 +469,7 @@ See `Examples/Games/three_shader_raytracer.malda` for a realtime GPU ray tracer 
 malda compile Examples/Games/three_shader_raytracer.malda --mode js -o Examples/Games/three_shader_raytracer.js
 ```
 
-`Examples/Games/three_shader_billiards.malda` is a playable pool-table showcase on the same path. Host MALDA steps 2D circle physics and pushes `uBall0`–`uBall15` plus cue uniforms; the kernel traces felt, cushions, pockets, numbered balls, and the stick. `[` `]` zoom the orbit camera, `C` (or Stop camera) zeros auto-orbit, and sliders set cushion/ball restitution and felt friction. The compiled program is playable from [Reference Manual 37](../ReferenceManual/37-appendix-gpu-billiards.html). Compile:
+`Examples/Games/three_shader_billiards.malda` is a playable pool-table showcase on the same path. Host MALDA steps 2D circle physics and pushes `uBall0`–`uBall15` plus cue uniforms; the kernel traces felt, cushions, pockets, numbered balls, and the stick. `[` `]` zoom the orbit camera, `C` (or Stop camera) zeros auto-orbit, and sliders set cushion/ball restitution and felt friction. The compiled program is playable from [Reference Manual 39](../ReferenceManual/39-appendix-gpu-billiards.html). Compile:
 
 ```bash
 malda compile Examples/Games/three_shader_billiards.malda --mode js -o Examples/Games/three_shader_billiards.js

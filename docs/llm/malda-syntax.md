@@ -89,7 +89,7 @@ Compact rules for generating correct `.malda`. Prefer this over scraping HTML ma
   tool args. Scaffold: `malda new agent`.
   `new CodingAgent(...)` / `kind: "CodingAgent"` does not take `cap.*`; bundled
   `run_command` is created without `cap.shell`. See specialized kinds in
-  `ReferenceManual/18-agent-orchestration.html`.
+  `ReferenceManual/19-agent-orchestration.html`.
   Examples: `Examples/Tools/capability_tokens.malda`,
   `Examples/Tools/capability_http_mcp_shell.malda`.
   Few-shots: `docs/llm/few-shot/26_tool_cap_read.malda`,
@@ -304,7 +304,7 @@ Prefer a single listener for UI + API: construct `new RestServer()` (no port), t
 (`get` / `set` / `flash` / `getFlash`). For HTML forms use `csrfField`, `bindForm`,
 `formErrors`, and `pageLayout` (or `ui.layout` for richer pages). Server-driven component
 trees use `ui.*` with signature `ui.control(props, children?, key?)` — no JSX; see
-`few-shot/19_ui_tree.malda` and `ReferenceManual/25-web-ui.html`. Background work that is
+`few-shot/19_ui_tree.malda` and `ReferenceManual/26-web-ui.html`. Background work that is
 not a durable workflow uses `enqueueJob` / `claimJob` / `completeJob` / `failJob` against
 `./.malda/jobs.db` (override with `MALDA_JOBS_CONNECTION`). Durable `workflow` bodies outside `step` refuse deny-listed built-ins
 (`now`, `sleep`, `writeFile`, …) as `WF1001`/`WF1002` **including through same-file helpers**;
@@ -365,7 +365,7 @@ Those are the errors the parser catches for you. The ones it does not catch are 
 
 `suite` / `context` / `policy` / `within` are **contextual** (not reserved). `var context = 1;`
 parses. `case` is already a keyword (`case "title" {` vs `case Pattern:`). `expect` / `stream`
-are builtins. JS: n/a (host-only). Human chapter: `ReferenceManual/23-agentic-runs.html`.
+are builtins. JS: n/a (host-only). Human chapter: `ReferenceManual/24-agentic-runs.html`.
 Few-shots: `43_`–`48_`.
 
 ```

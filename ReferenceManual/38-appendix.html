@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>37. Appendix - MALDA Reference Manual</title>
+    <title>38. Appendix - MALDA Reference Manual</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="syntax.css">
     <link rel="stylesheet" href="print.css" media="print">
@@ -15,21 +15,21 @@
     </header>
     <nav></nav>
     <main>
-        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>37. Appendix</span></div>
-        <h1>37. Appendix</h1>
-        <h2>37.1 Appendix A: Reserved Words</h2>
-        <p>Keywords are defined in <code>MaldaLang/Lexer.cs</code>. <code>fn</code> and <code>def</code> are not reserved; the parser rejects them as function keywords. <code>reply</code> is a <strong>built-in function</strong>, not a reserved word. <code>suite</code>, <code>context</code>, <code>policy</code>, and <code>within</code> are contextual (not listed here) so <code>var context = 1;</code> stays valid — see <a href="23-agentic-runs.html">23.1</a>.</p>
+        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>38. Appendix</span></div>
+        <h1>38. Appendix</h1>
+        <h2>38.1 Appendix A: Reserved Words</h2>
+        <p>Keywords are defined in <code>MaldaLang/Lexer.cs</code>. <code>fn</code> and <code>def</code> are not reserved; the parser rejects them as function keywords. <code>reply</code> is a <strong>built-in function</strong>, not a reserved word. <code>suite</code>, <code>context</code>, <code>policy</code>, and <code>within</code> are contextual (not listed here) so <code>var context = 1;</code> stays valid — see <a href="24-agentic-runs.html">24.1</a>.</p>
         <pre><code><a href="08-control-structures.html">if</a>, <a href="08-control-structures.html">else</a>, <a href="08-control-structures.html">while</a>, <a href="08-control-structures.html">for</a>, <a href="08-control-structures.html">foreach</a>, <a href="09-functions.html">function</a>, <a href="09-functions.html">return</a>, <a href="05-variables.html">var</a>, <a href="05-variables.html">const</a>, <a href="12-input-output.html">print</a>, <a href="12-input-output.html">input</a>,
 <a href="04-data-types.html">true</a>, <a href="04-data-types.html">false</a>, <a href="07-expressions.html">and</a>, <a href="07-expressions.html">or</a>, <a href="07-expressions.html">not</a>, <a href="08-control-structures.html">break</a>, <a href="08-control-structures.html">continue</a>, <a href="08-control-structures.html">try</a>, <a href="08-control-structures.html">catch</a>, <a href="08-control-structures.html">finally</a>, <a href="08-control-structures.html">throw</a>,
 <a href="08-control-structures.html">match</a>, <a href="08-control-structures.html">case</a>, <a href="08-control-structures.html">default</a>, <a href="08-control-structures.html">defer</a>,
 <a href="11-classes-objects.html">class</a>, <a href="11-classes-objects.html">new</a>, <a href="11-classes-objects.html">this</a>, <a href="11-classes-objects.html">super</a>, <a href="11-classes-objects.html">extends</a>, <a href="11-classes-objects.html">public</a>, <a href="11-classes-objects.html">private</a>, <a href="11-classes-objects.html">static</a>, <a href="04-data-types.html">null</a>, <a href="04-data-types.html">type</a>, <a href="04-data-types.html#schema">schema</a>, <a href="10-prompts.html">api</a>,
 <a href="10-prompts.html">prompt</a>, <a href="07-expressions.html">async</a>, <a href="07-expressions.html">await</a>,
-<a href="17-actors.html">actor</a>, <a href="17-actors.html">spawn</a>, <a href="17-actors.html">send</a>, <a href="17-actors.html">receive</a>, <a href="17-actors.html">self</a>, <a href="17-actors.html">on</a>, <a href="17-actors.html">then</a>, <a href="17-actors.html">timeout</a>, <a href="17-actors.html">message</a>,
-<a href="22-durable-workflows.html">workflow</a>, <a href="22-durable-workflows.html">step</a>, <a href="22-durable-workflows.html">approval</a>, <a href="22-durable-workflows.html">wait</a>, <a href="22-durable-workflows.html">retry</a>, <a href="22-durable-workflows.html">backoff</a>, <a href="22-durable-workflows.html">delay</a>, <a href="22-durable-workflows.html">maxDelay</a>, <a href="22-durable-workflows.html">compensate</a>, <a href="22-durable-workflows.html">onReject</a>,
-<a href="25-web-ui.html">component</a>, <a href="25-web-ui.html">property</a>,
-<a href="07-expressions.html">dict</a>, <a href="14-graphs.html">graph</a>, <a href="14-graphs.html">directed</a>, <a href="14-graphs.html">undirected</a>, <a href="08-control-structures.html">in</a>,
+<a href="18-actors.html">actor</a>, <a href="18-actors.html">spawn</a>, <a href="18-actors.html">send</a>, <a href="18-actors.html">receive</a>, <a href="18-actors.html">self</a>, <a href="18-actors.html">on</a>, <a href="18-actors.html">then</a>, <a href="18-actors.html">timeout</a>, <a href="18-actors.html">message</a>,
+<a href="23-durable-workflows.html">workflow</a>, <a href="23-durable-workflows.html">step</a>, <a href="23-durable-workflows.html">approval</a>, <a href="23-durable-workflows.html">wait</a>, <a href="23-durable-workflows.html">retry</a>, <a href="23-durable-workflows.html">backoff</a>, <a href="23-durable-workflows.html">delay</a>, <a href="23-durable-workflows.html">maxDelay</a>, <a href="23-durable-workflows.html">compensate</a>, <a href="23-durable-workflows.html">onReject</a>,
+<a href="26-web-ui.html">component</a>, <a href="26-web-ui.html">property</a>,
+<a href="07-expressions.html">dict</a>, <a href="15-graphs.html">graph</a>, <a href="15-graphs.html">directed</a>, <a href="15-graphs.html">undirected</a>, <a href="08-control-structures.html">in</a>,
 <a href="01-introduction.html">using</a>, <a href="01-introduction.html">include</a>, <a href="01-introduction.html">import</a>, <a href="01-introduction.html">export</a></code></pre>
-        <h2>37.2 Appendix B: Operator Precedence</h2>
+        <h2>38.2 Appendix B: Operator Precedence</h2>
         <p>The table below mirrors the descent order of the reference parser (<code>MaldaLang/Parser/Parser.cs</code>), from <strong>highest</strong> precedence (binds tightest) to <strong>lowest</strong>.</p>
         <table>
             <thead>
@@ -55,7 +55,7 @@
         <div class="info-box">
             <strong>Two consequences worth remembering:</strong> <code>|&gt;</code> binds <em>looser</em> than the ternary conditional, so <code>a ? b : c |&gt; f</code> pipes the whole conditional into <code>f</code>. And <code>await</code> is a unary prefix operator, so <code>await a.b()</code> awaits the result of the call, while <code>(await a).b()</code> needs explicit parentheses.
         </div>
-        <h2>37.3 Appendix C: Object-Oriented Concepts Summary</h2>
+        <h2>38.3 Appendix C: Object-Oriented Concepts Summary</h2>
         <h3>Classes</h3>
         <ul>
             <li>Blueprint for creating objects</li>
@@ -103,13 +103,13 @@
                 <li><a href="11-classes-objects.html">11. Classes & Objects</a> - OOP features</li>
             </ul>
         </div>
-        <h2>37.4 Appendix D: Command-line reference</h2>
-        <p>Short reminder of common flags. The canonical list of every <code>malda &lt;verb&gt;</code> is <a href="02-tools.html#cli-index">2.0 CLI command index</a>. Assistant, config, and cron how-tos: <a href="33-personal-assistant.html">33. Personal Assistant and CLI</a>.</p>
+        <h2>38.4 Appendix D: Command-line reference</h2>
+        <p>Short reminder of common flags. The canonical list of every <code>malda &lt;verb&gt;</code> is <a href="02-tools.html#cli-index">2.0 CLI command index</a>. Assistant, config, and cron how-tos: <a href="34-personal-assistant.html">34. Personal Assistant and CLI</a>.</p>
         <table>
             <tr><th>Command</th><th>Description</th></tr>
             <tr><td><code>malda &lt;file.malda&gt;</code></td><td>Run a MALDA file</td></tr>
             <tr><td><code>malda check</code> / <code>malda eval</code> / <code>malda test</code></td><td>Diagnose; run <code>suite</code> cases; run property tests — see <a href="02-tools.html#cli-index">2.0</a></td></tr>
-            <tr><td><code>malda new</code> / <code>malda play</code></td><td>Scaffold; JS preview of <code>.malda-play/</code> — see <a href="02-tools.html#cli-index">2.0</a> and <a href="27-browser-javascript-backend.html">27</a></td></tr>
+            <tr><td><code>malda new</code> / <code>malda play</code></td><td>Scaffold; JS preview of <code>.malda-play/</code> — see <a href="02-tools.html#cli-index">2.0</a> and <a href="28-browser-javascript-backend.html">28</a></td></tr>
             <tr><td><code>malda &lt;file.malda&gt; --profile</code></td><td>Run a MALDA file with the built-in profiler enabled</td></tr>
             <tr><td><code>malda debug-adapter</code></td><td>Debug Adapter Protocol on stdio for editors (interpret-only). Do not mix with <code>malda-lsp</code>. See <a href="02-tools.html#interpret-mode-debug">2.6.5</a> and <a href="../docs/debugging-interpret.md"><code>docs/debugging-interpret.md</code></a>.</td></tr>
             <tr><td><code>malda compile &lt;file.malda&gt;</code></td><td>Compile to executable or DLL</td></tr>
@@ -128,7 +128,7 @@
             <tr><td><code>malda install / uninstall / list[--workspace] / search / init</code></td><td>Packages: local path or workspace first; remote search/install needs <code>MALDA_REGISTRY_URL</code></td></tr>
             <tr><td><code>malda trace summary|show|replay &lt;file&gt;</code></td><td>Trace inspection and replay</td></tr>
         </table>
-        <h2>37.5 Appendix E: Deploy and observability contract baseline</h2>
+        <h2>38.5 Appendix E: Deploy and observability contract baseline</h2>
         <p>The <code>malda deploy</code> command in this baseline validates configuration contracts and exits without starting deployment orchestration.</p>
         <p>Default input contracts:</p>
         <ul>
@@ -142,7 +142,7 @@
             <li>Structured logging baseline uses JSON format and includes core fields (timestamp, level, message, environment/profile, optional correlation).</li>
             <li>Metrics endpoint wiring is present and consistent across profile and observability contracts.</li>
         </ul>
-        <h2>37.6 Appendix F: Profiling MALDA programs</h2>
+        <h2>38.6 Appendix F: Profiling MALDA programs</h2>
         <p>MALDA includes a built-in profiler for performance investigations. It can profile interpreted runs and transpiled executables and reports hotspots in terms of MALDA built-ins, functions, and statement locations.</p>
         <p>Supported CLI flags:</p>
         <ul>
@@ -164,12 +164,12 @@ malda compile my-script.malda --mode transpile -o my-script.exe --profile --prof
             <li><code>Statements</code> - aggregated statement timing by MALDA source location</li>
         </ul>
         <p>Each report entry includes call count, total time, average time, and self time. Expression-level profiling is intentionally not included in this first version to keep overhead practical.</p>
-        <h2 id="optional-packs">37.7 Appendix G: Optional packs</h2>
+        <h2 id="optional-packs">38.7 Appendix G: Optional packs</h2>
         <p>Core MALDA keeps domain-specific packs out of the public core. The compiler still has string-only emit hooks for optional packs so separately distributed assemblies can plug in without becoming ProjectReferences of the core.</p>
         <p>Vertical packs are not included in this open-source repository. If you maintain such a pack, load it with <code>loadNativeModule(...)</code> and ship the DLLs beside your app; core does not auto-register pack globals.</p>
         <div class="nav-footer">
-            <a href="36-grammar.html">← Previous: 36. Grammar</a>
-            <a href="38-appendix-gpu-billiards.html">Next: 38. Appendix: GPU Billiards→</a>
+            <a href="37-grammar.html">← Previous: 37. Grammar</a>
+            <a href="39-appendix-gpu-billiards.html">Next: 39. Appendix: GPU Billiards→</a>
         </div>
 
         <footer>

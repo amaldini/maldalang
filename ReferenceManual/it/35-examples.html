@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Indice degli esempi MALDA: First Look, catalogo Examples/, un snippet per traccia e scaffolding">
-    <title>34. Esempi - Manuale di riferimento MALDA</title>
+    <title>35. Esempi - Manuale di riferimento MALDA</title>
     <link rel="stylesheet" href="../styles.css">
     <link rel="stylesheet" href="../syntax.css">
     <link rel="stylesheet" href="../print.css" media="print">
@@ -16,13 +16,13 @@
     </header>
     <nav></nav>
     <main>
-        <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>34. Esempi</span></div>
-        <h1>34. Esempi</h1>
+        <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>35. Esempi</span></div>
+        <h1>35. Esempi</h1>
         <div class="info-box">
-            <strong>Questo capitolo è un indice, non un secondo tutorial.</strong> I principianti dovrebbero usare <a href="learn.html">Imparare MALDA</a>. 34.0 è il sample caratteristico offline. 34.1 mappa le cartelle di <code>Examples/</code> sui capitoli. 34.2–34.5 sono un snippet per traccia (agente, game, UI, property). Lo scaffolding è <a href="#scaffold">34.6</a>. I listing completi stanno in <a href="../../Examples/README.md">Examples/README.md</a>.
+            <strong>Questo capitolo è un indice, non un secondo tutorial.</strong> I principianti dovrebbero usare <a href="learn.html">Imparare MALDA</a>. 35.0 è il sample caratteristico offline. 35.1 mappa le cartelle di <code>Examples/</code> sui capitoli. 35.2–35.5 sono un snippet per traccia (agente, game, UI, property). Lo scaffolding è <a href="#scaffold">35.6</a>. I listing completi stanno in <a href="../../Examples/README.md">Examples/README.md</a>.
             Il corso core termina all'eval offline del prompt (<code>Examples/Basics/prompt_eval.malda</code>), non al gradebook. Dopo, segui <a href="learn.html#after-core">Imparare MALDA — Dopo il percorso core</a>.
         </div>
-        <h2 id="first-look">34.0 First Look</h2>
+        <h2 id="first-look">35.0 First Look</h2>
         <p>Costrutti caratteristici, senza API key. Stesso programma di <code>Examples/Basics/first_look.malda</code> e del Quick Start in Indice. <code>-&gt; Review</code> lega il prompt allo schema. Senza <code>await</code> la chiamata è un template reso; <code>validate("Review", …)</code> è lo stesso controllo che <code>await</code> eseguirebbe sul JSON del modello. Sintassi dello schema: <a href="04-data-types.html#schema">4.6</a>.</p>
         <pre><code data-run="true" data-expect="Review this javascript code:\n\nfunction add(a, b) { return a + b; }\nschema ok: Looks fine">schema Review {
     summary: string;
@@ -46,7 +46,7 @@ if (checked.ok) {
 } else {
     io.print("schema failed: " + checked.error);
 }</code></pre>
-        <h2 id="catalog">34.1 Catalogo Examples</h2>
+        <h2 id="catalog">35.1 Catalogo Examples</h2>
         <p>Il <code>metadata.json</code> di ogni cartella può etichettare <code>requires</code>: <code>offline</code> (default), <code>network</code>, <code>api-key</code> o <code>db</code>. Hello World è <code>Examples/Basics/hello_world.malda</code> — capitolo <a href="12-input-output.html">12</a>, non un secondo listing qui. Lo starter completo è <code>Examples/Basics/complete_starter_program.malda</code>. Il mini progetto del corso è <code>Examples/Basics/gradebook.malda</code>. Il corso core termina a <code>Examples/Basics/prompt_eval.malda</code>.</p>
         <table>
             <thead>
@@ -57,21 +57,21 @@ if (checked.ok) {
                 <tr><td><code>Algorithms/</code></td><td>Hanoi, search, sort, DP</td><td>offline</td><td><a href="08-control-structures.html">8</a>, <a href="09-functions.html">9</a></td></tr>
                 <tr><td><code>OOP/</code></td><td>Classi e ereditarietà</td><td>offline</td><td><a href="11-classes-objects.html">11</a></td></tr>
                 <tr><td><code>Prompts/</code></td><td><code>prompt</code>, pipe RAG, <code>evalPrompt</code></td><td>api-key (la maggior parte)</td><td><a href="10-prompts.html">10</a></td></tr>
-                <tr><td><code>Agents/</code>, <code>AI_LLM/</code></td><td>Agenti, tool, client LLM</td><td>api-key</td><td><a href="18-agent-orchestration.html">18</a></td></tr>
-                <tr><td><code>Web/</code></td><td>HttpServer, REST, <code>ui.*</code>, JS DOM</td><td>network / offline</td><td><a href="24-web-ui-hub.html">24</a>–<a href="30-full-stack-development.html">30</a></td></tr>
-                <tr><td><code>Games/</code></td><td><code>game.*</code> / <code>three.*</code> (target JS)</td><td>offline</td><td><a href="27-browser-javascript-backend.html">27</a></td></tr>
-                <tr><td><code>Workflows/</code></td><td><code>workflow</code> / <code>step</code> durevoli</td><td>offline</td><td><a href="22-durable-workflows.html">22</a></td></tr>
-                <tr><td><code>Testing/</code></td><td><code>malda test</code>, property</td><td>offline</td><td><a href="35-property-testing.html">35</a></td></tr>
-                <tr><td><code>Actors/</code></td><td><code>spawn</code> / <code>send</code> / <code>on</code></td><td>offline</td><td><a href="17-actors.html">17</a></td></tr>
-                <tr><td><code>ACP/</code>, <code>MCP/</code></td><td>Agent / Model Context Protocol</td><td>network / api-key</td><td><a href="21-acp.html">21</a>, <a href="20-mcp-server.html">20</a></td></tr>
-                <tr><td><code>Databases/</code>, <code>Graphs/</code>, <code>VectorDB/</code></td><td>SQL, grafi, embedding</td><td>db / offline</td><td><a href="16-database.html">16</a>, <a href="14-graphs.html">14</a>, <a href="15-vectordb.html">15</a></td></tr>
-                <tr><td><code>Memory/</code>, <code>Tools/</code>, <code>Plan/</code></td><td>GraphMemory, tool su file, plan</td><td>api-key / offline</td><td><a href="19-graph-memory.html">19</a>, <a href="18-agent-orchestration.html">18</a></td></tr>
-                <tr><td><code>Assistant/</code>, <code>Arduino/</code></td><td>Assistente + skill; sketch dispositivi</td><td>api-key / hardware</td><td><a href="33-personal-assistant.html">33</a>, <a href="32-device-integration.html">32</a></td></tr>
+                <tr><td><code>Agents/</code>, <code>AI_LLM/</code></td><td>Agenti, tool, client LLM</td><td>api-key</td><td><a href="19-agent-orchestration.html">19</a></td></tr>
+                <tr><td><code>Web/</code></td><td>HttpServer, REST, <code>ui.*</code>, JS DOM</td><td>network / offline</td><td><a href="25-web-ui-hub.html">25</a>–<a href="31-full-stack-development.html">31</a></td></tr>
+                <tr><td><code>Games/</code></td><td><code>game.*</code> / <code>three.*</code> (target JS)</td><td>offline</td><td><a href="28-browser-javascript-backend.html">28</a></td></tr>
+                <tr><td><code>Workflows/</code></td><td><code>workflow</code> / <code>step</code> durevoli</td><td>offline</td><td><a href="23-durable-workflows.html">23</a></td></tr>
+                <tr><td><code>Testing/</code></td><td><code>malda test</code>, property</td><td>offline</td><td><a href="36-property-testing.html">36</a></td></tr>
+                <tr><td><code>Actors/</code></td><td><code>spawn</code> / <code>send</code> / <code>on</code></td><td>offline</td><td><a href="18-actors.html">18</a></td></tr>
+                <tr><td><code>ACP/</code>, <code>MCP/</code></td><td>Agent / Model Context Protocol</td><td>network / api-key</td><td><a href="22-acp.html">22</a>, <a href="21-mcp-server.html">21</a></td></tr>
+                <tr><td><code>Databases/</code>, <code>Graphs/</code>, <code>VectorDB/</code></td><td>SQL, grafi, embedding</td><td>db / offline</td><td><a href="17-database.html">17</a>, <a href="15-graphs.html">15</a>, <a href="16-vectordb.html">16</a></td></tr>
+                <tr><td><code>Memory/</code>, <code>Tools/</code>, <code>Plan/</code></td><td>GraphMemory, tool su file, plan</td><td>api-key / offline</td><td><a href="20-graph-memory.html">20</a>, <a href="19-agent-orchestration.html">19</a></td></tr>
+                <tr><td><code>Assistant/</code>, <code>Arduino/</code></td><td>Assistente + skill; sketch dispositivi</td><td>api-key / hardware</td><td><a href="34-personal-assistant.html">34</a>, <a href="33-device-integration.html">33</a></td></tr>
             </tbody>
         </table>
-        <p>Altre cartelle (<code>AI_Theory/</code>, <code>SpectreConsole/</code>, <code>RalphWiggum/</code>, …) sono in <code>Examples/README.md</code>. Pipe RAG: <code>Examples/Prompts/rag_pipeline.malda</code> — capitoli <a href="10-prompts.html">10</a> e <a href="15-vectordb.html">15</a>, non un dump qui.</p>
-        <h2 id="agent">34.2 Agente</h2>
-        <p>Solo host: serve un client LLM. Stessa idea di <code>Examples/Agents/</code>. Linguaggio: <a href="18-agent-orchestration.html">18. Orchestrazione di agenti</a>.</p>
+        <p>Altre cartelle (<code>AI_Theory/</code>, <code>SpectreConsole/</code>, <code>RalphWiggum/</code>, …) sono in <code>Examples/README.md</code>. Il kit reti neurali (<code>math.matmul</code>, percettrone / XOR / softmax, <code>OnnxModel</code>) è <a href="14-neural-nets.html">14. Reti neurali</a>. Pipe RAG: <code>Examples/Prompts/rag_pipeline.malda</code> — capitoli <a href="10-prompts.html">10</a> e <a href="16-vectordb.html">16</a>, non un dump qui.</p>
+        <h2 id="agent">35.2 Agente</h2>
+        <p>Solo host: serve un client LLM. Stessa idea di <code>Examples/Agents/</code>. Linguaggio: <a href="19-agent-orchestration.html">19. Orchestrazione di agenti</a>.</p>
         <pre><code>var client = new OpenRouterClient();
 var agent = new Agent(
     "Assistant",
@@ -82,8 +82,8 @@ var agent = new Agent(
 
 var response = agent.think("What is 2+2?");
 io.print(response.content);</code></pre>
-        <h2 id="game">34.3 Game</h2>
-        <p>Solo target JavaScript. Anteprima con <code>malda play app.malda</code> (reload live salvo <code>--no-watch</code>). Canvas / <code>three.*</code> / <code>@shader()</code> restano in <a href="27-browser-javascript-backend.html">27</a>. Stesso paddle di <code>Examples/Games/game_bounce.malda</code>:</p>
+        <h2 id="game">35.3 Game</h2>
+        <p>Solo target JavaScript. Anteprima con <code>malda play app.malda</code> (reload live salvo <code>--no-watch</code>). Canvas / <code>three.*</code> / <code>@shader()</code> restano in <a href="28-browser-javascript-backend.html">28</a>. Stesso paddle di <code>Examples/Games/game_bounce.malda</code>:</p>
         <pre><code>var x = 100;
 var speed = 220;
 
@@ -106,9 +106,9 @@ function render() {
 game.createCanvas(640, 360, "#app");
 game.setBackground("#202830");
 game.start(update, render);</code></pre>
-        <p>Crea il canvas prima di disegnare. Scala il movimento con <code>dtMs</code>. Carica <code>malda-js-runtime.js</code> prima dello script compilato. Biliardo GPU giocabile: <a href="38-appendix-gpu-billiards.html">38</a>.</p>
-        <h2 id="ui">34.4 UI guidata dal server</h2>
-        <p>API del linguaggio: <a href="25-web-ui.html">25</a> (parti da <a href="24-web-ui-hub.html">24</a>). Sample offline in <code>Examples/Web/</code>: <code>ui_event_loop.malda</code>, <code>ui_counter_dashboard.malda</code>, <code>ui_form_workflow.malda</code>.</p>
+        <p>Crea il canvas prima di disegnare. Scala il movimento con <code>dtMs</code>. Carica <code>malda-js-runtime.js</code> prima dello script compilato. Biliardo GPU giocabile: <a href="39-appendix-gpu-billiards.html">39</a>.</p>
+        <h2 id="ui">35.4 UI guidata dal server</h2>
+        <p>API del linguaggio: <a href="26-web-ui.html">26</a> (parti da <a href="25-web-ui-hub.html">25</a>). Sample offline in <code>Examples/Web/</code>: <code>ui_event_loop.malda</code>, <code>ui_counter_dashboard.malda</code>, <code>ui_form_workflow.malda</code>.</p>
         <pre><code>var tree = ui.column({
     "children": [
         ui.text({ "text": "Hello" }),
@@ -117,16 +117,16 @@ game.start(update, render);</code></pre>
 });
 ui.mount("root", tree);
 ui.render();</code></pre>
-        <h2 id="property">34.5 Property test</h2>
+        <h2 id="property">35.5 Property test</h2>
         <pre><code>property intIdentity(x) {
     return (x + 0) == x;
 }</code></pre>
         <pre><code>malda test --iterations 80 --seed 1337
 malda test --format ci
 malda test --write-regression --regression-dir ./artifacts/regressions</code></pre>
-        <p>Guida completa: <a href="35-property-testing.html">35. Property testing</a>. Sample: <code>Examples/Testing/</code>.</p>
-        <h2 id="scaffold">34.6 Scaffolding</h2>
-        <p>Indice CLI: <a href="02-tools.html#cli-index">2.0</a>. Flusso full-stack: <a href="30-full-stack-development.html">30</a>.</p>
+        <p>Guida completa: <a href="36-property-testing.html">36. Property testing</a>. Sample: <code>Examples/Testing/</code>.</p>
+        <h2 id="scaffold">35.6 Scaffolding</h2>
+        <p>Indice CLI: <a href="02-tools.html#cli-index">2.0</a>. Flusso full-stack: <a href="31-full-stack-development.html">31</a>.</p>
         <pre><code>malda new webapi my-api
 malda new fullstack my-app
 malda new game my-game
@@ -141,16 +141,16 @@ malda new webapi api-lite --no-tests</code></pre>
             <ul>
                 <li><a href="04-data-types.html#schema">4.6 Schema</a> — <code>schema { }</code> + <code>validate</code></li>
                 <li><a href="11-classes-objects.html">11. Classi e oggetti</a> — walkthrough OOP (<code>Examples/OOP/</code>)</li>
-                <li><a href="16-database.html">16. Supporto database</a> — SQLite, Postgres, SQL Server</li>
-                <li><a href="18-agent-orchestration.html">18. Orchestrazione di agenti</a> — agenti e tool</li>
-                <li><a href="25-web-ui.html">25. Componenti server Web UI</a> — <code>ui.*</code></li>
-                <li><a href="27-browser-javascript-backend.html">27. Backend UI JavaScript nel browser</a> — <code>game.*</code> / <code>three.*</code></li>
-                <li><a href="35-property-testing.html">35. Property testing</a> — shrinking e regressioni</li>
+                <li><a href="17-database.html">17. Supporto database</a> — SQLite, Postgres, SQL Server</li>
+                <li><a href="19-agent-orchestration.html">19. Orchestrazione di agenti</a> — agenti e tool</li>
+                <li><a href="26-web-ui.html">26. Componenti server Web UI</a> — <code>ui.*</code></li>
+                <li><a href="28-browser-javascript-backend.html">28. Backend UI JavaScript nel browser</a> — <code>game.*</code> / <code>three.*</code></li>
+                <li><a href="36-property-testing.html">36. Property testing</a> — shrinking e regressioni</li>
             </ul>
         </div>
         <div class="nav-footer">
-            <a href="33-personal-assistant.html">← Precedente: 33. Assistente personale e CLI</a>
-            <a href="35-property-testing.html">Successivo: 35. Property testing→</a>
+            <a href="34-personal-assistant.html">← Precedente: 34. Assistente personale e CLI</a>
+            <a href="36-property-testing.html">Successivo: 36. Property testing→</a>
         </div>
 
         <footer>

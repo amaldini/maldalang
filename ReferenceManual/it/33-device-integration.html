@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Integrazione dispositivi MALDA - controllare hardware fisico (Arduino, ESP32, IoT) via seriale e HTTP/REST">
-    <title>32. Integrazione dispositivi - Manuale di riferimento MALDA</title>
+    <title>33. Integrazione dispositivi - Manuale di riferimento MALDA</title>
     <link rel="stylesheet" href="../styles.css">
     <link rel="stylesheet" href="../syntax.css">
     <link rel="stylesheet" href="../print.css" media="print">
@@ -16,8 +16,8 @@
     </header>
     <nav></nav>
     <main>
-        <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>32. Integrazione dispositivi</span></div>
-        <h1>32. Integrazione dispositivi</h1>
+        <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>33. Integrazione dispositivi</span></div>
+        <h1>33. Integrazione dispositivi</h1>
         
         <div class="info-box" id="first-read">
             <strong>Stop alla prima lettura.</strong> L'integrazione dei dispositivi è opzionale e richiede hardware. File più piccolo: <code>Examples/Devices/basic_arduino.malda</code>. Corso: <a href="learn.html#after-core">Imparare MALDA — Dopo il percorso core</a>.
@@ -28,7 +28,7 @@
         
         <p>MALDA supporta l'interazione con dispositivi fisici tramite comunicazione seriale (USB) e API HTTP/REST (WiFi). Questo consente di controllare Arduino, ESP32, Raspberry Pi, dispositivi per la smart home e altra attrezzatura IoT.</p>
         
-        <h2>32.1 Panoramica</h2>
+        <h2>33.1 Panoramica</h2>
         
         <h3>Perché l'integrazione dei dispositivi?</h3>
         <p>L'integrazione dei dispositivi consente ai programmi MALDA di:</p>
@@ -68,7 +68,7 @@
             </tr>
         </table>
         
-        <h2>32.2 Comunicazione seriale</h2>
+        <h2>33.2 Comunicazione seriale</h2>
         
         <p>La classe <code>SerialConnection</code> offre comunicazione seriale a basso livello per i dispositivi collegati via USB.</p>
         
@@ -110,9 +110,9 @@ if (connected) {
             <li><strong>macOS</strong>: <code>"/dev/cu.usbserial-*"</code>, <code>"/dev/cu.usbmodem*"</code>, ecc.</li>
         </ul>
         
-        <h2>32.3 Dispositivi HTTP/REST</h2>
+        <h2>33.3 Dispositivi HTTP/REST</h2>
         
-        <p>Per i dispositivi con WiFi, usa la classe <code>RestClient</code> (vedi <a href="29-rest-web-client.html">29. Client REST Web</a> per la documentazione completa). Funziona con qualsiasi dispositivo che espone API HTTP/REST.</p>
+        <p>Per i dispositivi con WiFi, usa la classe <code>RestClient</code> (vedi <a href="30-rest-web-client.html">30. Client REST Web</a> per la documentazione completa). Funziona con qualsiasi dispositivo che espone API HTTP/REST.</p>
         
         <h3>Esempio: dispositivo ESP32</h3>
         <pre><code>var device = new RestClient("http://192.168.1.100");
@@ -132,7 +132,7 @@ device.post("/relay/1", {"state": "on"});</code></pre>
         <pre><code>var device = new RestClient("http://192.168.1.100");
 device.setAuth("Bearer", "your-api-token");</code></pre>
         
-        <h2>32.4 Integrazione Arduino</h2>
+        <h2>33.4 Integrazione Arduino</h2>
         
         <p>La classe <code>ArduinoConnection</code> offre un'interfaccia di alto livello per controllare dispositivi Arduino, con supporto sia alla modalità seriale sia a quella HTTP.</p>
         
@@ -205,7 +205,7 @@ arduino.disconnect();</code></pre>
             <li>Risposte: <code>OK:value\n</code> o <code>ERROR:message\n</code></li>
         </ul>
         
-        <h2>32.5 ESP32/ESP8266</h2>
+        <h2>33.5 ESP32/ESP8266</h2>
         
         <p>I dispositivi ESP32 e ESP8266 si possono controllare via HTTP/REST dopo aver caricato lo sketch bridge.</p>
         
@@ -238,7 +238,7 @@ esp32.digitalWrite(2, true);
 var distance = esp32.analogRead(0);
 print("Distance: " + distance);</code></pre>
         
-        <h2>32.6 Raspberry Pi</h2>
+        <h2>33.6 Raspberry Pi</h2>
         
         <p>Raspberry Pi si può controllare via API HTTP o connessione seriale.</p>
         
@@ -254,7 +254,7 @@ pi.connect("/dev/ttyUSB0", 115200);
 pi.write("command\n");
 var response = pi.readLine();</code></pre>
         
-        <h2>32.7 Dispositivi per la smart home</h2>
+        <h2>33.7 Dispositivi per la smart home</h2>
         
         <p>Molti dispositivi per la smart home espongono REST API che si possono controllare con <code>RestClient</code>.</p>
         
@@ -307,7 +307,7 @@ homeAssistant.post("/api/services/light/turn_on", {
     "entity_id": "light.living_room"
 });</code></pre>
         
-        <h2>32.8 Coordinamento multi-dispositivo</h2>
+        <h2>33.8 Coordinamento multi-dispositivo</h2>
         
         <p>Il modello ad actor di MALDA è ideale per coordinare più dispositivi. Ogni dispositivo può essere controllato dal proprio actor, abilitando operazioni concorrenti e coordinate.</p>
         
@@ -394,7 +394,7 @@ send coordinator.registerRobot(robot1);
 send coordinator.registerRobot(robot2);
 send coordinator.startAll();</code></pre>
         
-        <h2>32.9 Esempi</h2>
+        <h2>33.9 Esempi</h2>
         
         <p>Esempi completi sono disponibili nella directory <code>Examples/Devices/</code>:</p>
         <ul>
@@ -417,7 +417,7 @@ arduino.digitalWrite(13, true);</code></pre>
             </li>
         </ol>
         
-        <h2>32.10 Risoluzione dei problemi</h2>
+        <h2>33.10 Risoluzione dei problemi</h2>
         
         <h3>Problemi di connessione seriale</h3>
         <ul>
@@ -441,8 +441,8 @@ arduino.digitalWrite(13, true);</code></pre>
         </ul>
         
         <div class="nav-footer">
-            <a href="31-dotnet-interop.html">← Precedente: 31. Interop .NET</a>
-            <a href="33-personal-assistant.html">Successivo: 33. Assistente personale e CLI→</a>
+            <a href="32-dotnet-interop.html">← Precedente: 32. Interop .NET</a>
+            <a href="34-personal-assistant.html">Successivo: 34. Assistente personale e CLI→</a>
         </div>
 
         <footer>

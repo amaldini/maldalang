@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="HttpServer e generazione UI HTML MALDA - Hosting route-first, @PAGE, @AIPAGE e generazione HTML">
-    <title>26. HttpServer e generazione UI HTML - Manuale di riferimento MALDA</title>
+    <title>27. HttpServer e generazione UI HTML - Manuale di riferimento MALDA</title>
     <link rel="stylesheet" href="../styles.css">
     <link rel="stylesheet" href="../syntax.css">
     <link rel="stylesheet" href="../print.css" media="print">
@@ -16,34 +16,34 @@
     </header>
     <nav></nav>
     <main>
-        <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>26. HttpServer e generazione UI HTML</span></div>
-        <h1>26. HttpServer e generazione UI HTML</h1>
+        <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>27. HttpServer e generazione UI HTML</span></div>
+        <h1>27. HttpServer e generazione UI HTML</h1>
         <p>Questo capitolo copre il web server route-first di MALDA, gli handler di pagine HTML, gli helper per pagine generate dall'AI e le utility di cache HTML. Usalo quando vuoi servire pagine con <code>HttpServer</code> e route tradizionali richiesta/risposta.</p>
         <div class="info-box">
-            <strong>Parti da qui:</strong> Leggi <a href="24-web-ui-hub.html">24. Panoramica Web UI</a> per confrontare i modelli UI. Questo capitolo si concentra su <code>HttpServer</code>, <code>@PAGE</code>, <code>@AIPAGE</code> e gli helper di generazione HTML. Per i componenti server e <code>ui.*</code>, vedi <a href="25-web-ui.html">Componenti server Web UI</a>. Per le route API-first, vedi <a href="28-rest-api.html">Server REST API</a>. Middleware, CSRF, cookie, XSS e HTTPS sono spiegati in <a href="28-rest-api.html#web-concepts">28.1.1 Primer sui concetti</a>.
+            <strong>Parti da qui:</strong> Leggi <a href="25-web-ui-hub.html">25. Panoramica Web UI</a> per confrontare i modelli UI. Questo capitolo si concentra su <code>HttpServer</code>, <code>@PAGE</code>, <code>@AIPAGE</code> e gli helper di generazione HTML. Per i componenti server e <code>ui.*</code>, vedi <a href="26-web-ui.html">Componenti server Web UI</a>. Per le route API-first, vedi <a href="29-rest-api.html">Server REST API</a>. Middleware, CSRF, cookie, XSS e HTTPS sono spiegati in <a href="29-rest-api.html#web-concepts">29.1.1 Primer sui concetti</a>.
         </div>
         <div class="info-box" id="first-read">
-            <strong>Stop alla prima lettura.</strong> Un esempio reale associa una porta. Non può girare nell'harness degli snippet del manuale. File più piccolo: <code>Examples/Web/http_server_example.malda</code>. Parti da <a href="24-web-ui-hub.html">24. Panoramica Web UI</a>. Corso: <a href="learn.html#after-core">Imparare MALDA — Dopo il percorso core</a>.
+            <strong>Stop alla prima lettura.</strong> Un esempio reale associa una porta. Non può girare nell'harness degli snippet del manuale. File più piccolo: <code>Examples/Web/http_server_example.malda</code>. Parti da <a href="25-web-ui-hub.html">25. Panoramica Web UI</a>. Corso: <a href="learn.html#after-core">Imparare MALDA — Dopo il percorso core</a>.
         </div>
 
-        <h2>26.1 Mappa del capitolo</h2>
+        <h2>27.1 Mappa del capitolo</h2>
         <ul>
-            <li><strong>26.2</strong> Ciclo di vita di <code>HttpServer</code> e modello delle route</li>
-            <li><strong>26.3</strong> Oggetti request e response</li>
-            <li><strong>26.4</strong> Pagine dinamiche con <code>@PAGE</code></li>
-            <li><strong>26.5</strong> Pagine generate dall'AI con <code>@AIPAGE</code></li>
-            <li><strong>26.6</strong> <code>@GET</code>/<code>@POST</code> nei flussi di hosting delle pagine</li>
-            <li><strong>26.7</strong> Redirect e flussi di pagina a più passi</li>
-            <li><strong>26.8</strong> Helper di generazione HTML e caching</li>
-            <li><strong>26.9</strong> Ciclo di vita dalla richiesta al render e note di produzione</li>
-            <li><strong>26.10</strong> Hardening in produzione</li>
-            <li><strong>26.11</strong> Test e risoluzione dei problemi</li>
+            <li><strong>27.2</strong> Ciclo di vita di <code>HttpServer</code> e modello delle route</li>
+            <li><strong>27.3</strong> Oggetti request e response</li>
+            <li><strong>27.4</strong> Pagine dinamiche con <code>@PAGE</code></li>
+            <li><strong>27.5</strong> Pagine generate dall'AI con <code>@AIPAGE</code></li>
+            <li><strong>27.6</strong> <code>@GET</code>/<code>@POST</code> nei flussi di hosting delle pagine</li>
+            <li><strong>27.7</strong> Redirect e flussi di pagina a più passi</li>
+            <li><strong>27.8</strong> Helper di generazione HTML e caching</li>
+            <li><strong>27.9</strong> Ciclo di vita dalla richiesta al render e note di produzione</li>
+            <li><strong>27.10</strong> Hardening in produzione</li>
+            <li><strong>27.11</strong> Test e risoluzione dei problemi</li>
         </ul>
 
-        <h2>26.2 Classe HttpServer</h2>
+        <h2>27.2 Classe HttpServer</h2>
         <p>La classe <code>HttpServer</code> offre un HTTP server built-in per asset statici, HTML generato sul server, pagine generate dall'AI, gestione dei form e handler di route. Funziona bene per applicazioni route-first in cui ogni richiesta restituisce un documento completo o una risposta mirata.</p>
 
-        <h3>26.2.1 Costruttore</h3>
+        <h3>27.2.1 Costruttore</h3>
         <pre><code>var server = new HttpServer(port);
 // OR
 var server = new HttpServer(port, webDirectory);  // Custom web directory
@@ -51,9 +51,9 @@ var server = new HttpServer(port, webDirectory);  // Custom web directory
 var server = new HttpServer(port, webDirectory, pathBase, host);</code></pre>
         <p><code>port</code> deve essere un intero in <code>1-65535</code>. Le porte privilegiate (<code>1-1023</code>, es. <code>80</code>/<code>443</code>) sono ammesse; il bind può comunque richiedere permessi elevati o reservation URL del sistema operativo.</p>
         <p>L'host di bind di default è <code>localhost</code> (solo loopback). Passa <code>host</code> come quarto argomento opzionale, chiama <code>setHost(host)</code> prima di <code>start()</code>, oppure imposta la variabile d'ambiente <code>MALDA_HTTP_HOST</code>. Usa <code>0.0.0.0</code> o <code>*</code> per ascoltare su tutte le interfacce (stesse regole di prefisso di <code>RestServer</code>). L'host di bind corrente è disponibile come proprietà <code>host</code>.</p>
-        <p id="https">HTTPS è opzionale e cross-platform. Chiama <code>enableHttps(certPath, password?)</code> prima di <code>start()</code> con un file <code>.pfx</code>/<code>.p12</code>, oppure un PEM <code>.pem</code>/<code>.crt</code> (chiave privata accanto come <code>.key</code>). Alternative da ambiente: <code>MALDA_HTTP_HTTPS=1</code>, <code>MALDA_HTTP_CERT</code> e, opzionale, <code>MALDA_HTTP_CERT_PASSWORD</code>. Proprietà: <code>https</code>, <code>certPath</code>. Il TLS è terminato da Kestrel; la pipeline di richiesta esistente continua a girare su un <code>HttpListener</code> in loopback. HTTPS è HTTP avvolto in TLS: i byte sul filo sono cifrati e il certificato identifica il server. Abilitalo prima di esporre sessioni, cookie CSRF o form di login oltre localhost. Il vocabolario di sicurezza web (middleware, CSRF, cookie, rate limit) sta in <a href="28-rest-api.html#web-concepts">28.1.1 Primer sui concetti</a>.</p>
+        <p id="https">HTTPS è opzionale e cross-platform. Chiama <code>enableHttps(certPath, password?)</code> prima di <code>start()</code> con un file <code>.pfx</code>/<code>.p12</code>, oppure un PEM <code>.pem</code>/<code>.crt</code> (chiave privata accanto come <code>.key</code>). Alternative da ambiente: <code>MALDA_HTTP_HTTPS=1</code>, <code>MALDA_HTTP_CERT</code> e, opzionale, <code>MALDA_HTTP_CERT_PASSWORD</code>. Proprietà: <code>https</code>, <code>certPath</code>. Il TLS è terminato da Kestrel; la pipeline di richiesta esistente continua a girare su un <code>HttpListener</code> in loopback. HTTPS è HTTP avvolto in TLS: i byte sul filo sono cifrati e il certificato identifica il server. Abilitalo prima di esporre sessioni, cookie CSRF o form di login oltre localhost. Il vocabolario di sicurezza web (middleware, CSRF, cookie, rate limit) sta in <a href="29-rest-api.html#web-concepts">29.1.1 Primer sui concetti</a>.</p>
 
-        <h3>26.2.2 Metodi core</h3>
+        <h3>27.2.2 Metodi core</h3>
         <ul>
             <li><code>start()</code>: Avvia il server e scansiona le route decorate.</li>
             <li><code>stop()</code>: Ferma il server in modo graceful.</li>
@@ -69,7 +69,7 @@ var server = new HttpServer(port, webDirectory, pathBase, host);</code></pre>
             <li><code>setRateLimit(limit, windowSeconds, keyStrategy?)</code> / <code>disableRateLimit()</code>: Attiva o disattiva il rate limiting degli endpoint.</li>
         </ul>
 
-        <h3>26.2.3 Esempio host minimo</h3>
+        <h3>27.2.3 Esempio host minimo</h3>
         <pre><code>var server = new HttpServer(8080);
 server.start();
 
@@ -86,7 +86,7 @@ while (server.isRunning) {
 // tls.start();
 // print("Server running at https://localhost:8443");</code></pre>
 
-        <h2>26.3 Oggetti request e response</h2>
+        <h2>27.3 Oggetti request e response</h2>
         <p>Gli handler di pagine e route possono ricevere il contesto della richiesta e restituire HTML grezzo oppure un oggetto response strutturato.</p>
         <ul>
             <li><strong>Request:</strong> <code>method</code>, <code>path</code>, <code>query</code>, <code>params</code>, <code>headers</code>, <code>cookies</code>, <code>body</code>, <code>auth</code>, <code>session</code>, <code>correlationId</code>, <code>ip</code> / <code>remoteIp</code>.</li>
@@ -97,7 +97,7 @@ while (server.isRunning) {
         </ul>
         <p>Quando una route è in stile API, i fallimenti del framework restituiscono un payload JSON standardizzato con <code>status</code>, <code>error</code>, <code>message</code> e <code>correlationId</code>, con <code>details</code> opzionale per i fallimenti di validazione.</p>
 
-        <h2>26.4 Pagine dinamiche con @PAGE</h2>
+        <h2>27.4 Pagine dinamiche con @PAGE</h2>
         <p>Usa <code>@PAGE</code> per pagine HTML guidate dalla richiesta. Un handler di pagina può restituire direttamente un documento HTML completo, e i path parameter vengono bound dall'URL.</p>
         <pre><code>@PAGE("/")
 function handleHome() {
@@ -110,7 +110,7 @@ function handleUser(id) {
 }</code></pre>
         <p>Usa <code>@PAGE</code> quando la richiesta deve produrre una pagina completa. Se la pagina ha bisogno di fragment interattivi, aggiornamenti live o stato dei componenti gestito sul server, sposta la UI riutilizzabile in un flusso a componenti e tieni la route come punto di ingresso.</p>
 
-        <h2>26.5 Pagine generate dall'AI con @AIPAGE</h2>
+        <h2>27.5 Pagine generate dall'AI con @AIPAGE</h2>
         <p>Usa <code>@AIPAGE</code> quando vuoi che MALDA generi l'HTML iniziale a partire da una descrizione in stile prompt.</p>
         <pre><code>@AIPAGE("/", "Contact form with name, email, and message fields")
 function homePage() {
@@ -124,7 +124,7 @@ function homePage() {
             <li>Se non è configurato un modello, l'agente di generazione UI usa l'LLM locale di default (Qwen/Qwen2.5-0.5B-Instruct, scaricato come build GGUF da Hugging Face); puoi anche fornire un <code>OpenRouterClient</code> e un <code>Agent</code>.</li>
         </ul>
 
-        <h3>26.5.1 Esempio completo di form AI</h3>
+        <h3>27.5.1 Esempio completo di form AI</h3>
         <pre><code>var server = new HttpServer(8080);
 
 @AIPAGE("/", "Contact form with name, email, and message fields")
@@ -147,10 +147,10 @@ function handleSubmit(body) {
 
 server.start();</code></pre>
 
-        <h2>26.6 Route GET/POST nei flussi di hosting delle pagine</h2>
-        <p><code>HttpServer</code> può ospitare route <code>@GET</code> e <code>@POST</code> insieme alle pagine. È utile per handler AJAX, piccoli endpoint JSON o Server-Sent Events usati da una pagina. Per la progettazione API completa, la validazione avanzata e l'organizzazione degli endpoint, usa <a href="28-rest-api.html">Server REST API</a> come riferimento principale.</p>
+        <h2>27.6 Route GET/POST nei flussi di hosting delle pagine</h2>
+        <p><code>HttpServer</code> può ospitare route <code>@GET</code> e <code>@POST</code> insieme alle pagine. È utile per handler AJAX, piccoli endpoint JSON o Server-Sent Events usati da una pagina. Per la progettazione API completa, la validazione avanzata e l'organizzazione degli endpoint, usa <a href="29-rest-api.html">Server REST API</a> come riferimento principale.</p>
 
-        <h3>26.6.1 Handler GET</h3>
+        <h3>27.6.1 Handler GET</h3>
         <pre><code>@GET("/api/users")
 function getUsers() {
     return {"status": 200, "users": ["Alice", "Bob", "Charlie"]};
@@ -166,7 +166,7 @@ function getEvents() {
             <li>Usa path parameter come <code>@GET("/api/users/{id}")</code> quando serve.</li>
         </ul>
 
-        <h3>26.6.2 Handler POST</h3>
+        <h3>27.6.2 Handler POST</h3>
         <pre><code>@POST("/submit")
 function handleSubmit(body) {
     print("Name: " + body.name);
@@ -183,7 +183,7 @@ function handleSubmit(body) {
             <li>Un campo file multipart è un oggetto con <code>fileName</code>, <code>content</code> (testo UTF-8) e <code>contentBase64</code> (byte grezzi). Nomi file ripetuti diventano un array. Usa <code>io.writeFileBase64</code> per PDF/DOCX.</li>
         </ul>
 
-        <h2>26.7 Redirect con RedirectTo</h2>
+        <h2>27.7 Redirect con RedirectTo</h2>
         <p>Usa <code>redirect(location, status?)</code> per risposte di redirect esplicite, oppure l'alias legacy <code>RedirectTo(location)</code> quando migri codice esistente.</p>
         <pre><code>@POST("/login")
 function handleLogin(body) {
@@ -211,10 +211,10 @@ server.use(requireAuth, { "except": ["/", "/login"] });</code></pre>
             <li>Funziona sia con le richieste browser normali sia con gli invii di form guidati da AJAX.</li>
         </ul>
 
-        <h2>26.8 Helper di generazione HTML</h2>
+        <h2>27.8 Helper di generazione HTML</h2>
         <p>MALDA include utility helper per HTML generato e prototipi di UI renderizzata sul server.</p>
 
-        <h3>26.8.1 Classe HTMLCache</h3>
+        <h3>27.8.1 Classe HTMLCache</h3>
         <p>La classe <code>HTMLCache</code> memorizza l'HTML generato per ridurre il lavoro LLM ripetuto e migliorare i tempi di risposta.</p>
         <pre><code>var cache = new HTMLCache(cacheDirectory?, maxSize?, expirationHours?);</code></pre>
         <ul>
@@ -224,20 +224,20 @@ server.use(requireAuth, { "except": ["/", "/login"] });</code></pre>
             <li><code>clear()</code>: Svuota tutte le voci in cache.</li>
         </ul>
 
-        <h3>26.8.2 Funzione extractHTML</h3>
+        <h3>27.8.2 Funzione extractHTML</h3>
         <p><code>extractHTML(markdown)</code> estrae HTML da code fence markdown oppure restituisce l'HTML così com'è.</p>
         <pre><code>var html = extractHTML(markdown);</code></pre>
 
-        <h3>26.8.3 Funzione markdownToHtml</h3>
+        <h3>27.8.3 Funzione markdownToHtml</h3>
         <p><code>markdownToHtml(markdown)</code> converte Markdown in un fragment HTML (heading, emphasis, liste, tabelle, codice fenced e simili). I tag HTML grezzi nell'input sono disabilitati, così l'output non attendibile di un modello è più sicuro da incorporare in una pagina. Restituisce una stringa; avvolgila nel chrome del tuo documento.</p>
         <pre><code>var body = markdownToHtml("**Hello** and a table:\n\n| A | B |\n|---|---|\n| 1 | 2 |");
 return "&lt;html&gt;&lt;body class='md'&gt;" + body + "&lt;/body&gt;&lt;/html&gt;";</code></pre>
 
-        <h3>26.8.4 Funzione generateUI</h3>
+        <h3>27.8.4 Funzione generateUI</h3>
         <p><code>generateUI</code> è un helper di convenienza per la generazione HTML guidata da prompt, con cache opzionale e un agente personalizzato.</p>
         <pre><code>var html = generateUI(description, cache?, agent?);</code></pre>
 
-        <h3>26.8.5 Funzione ui.generate</h3>
+        <h3>27.8.5 Funzione ui.generate</h3>
         <p>Usa <code>ui.generate</code> quando l'AI deve restituire un albero UI server strutturato invece di una stringa HTML.</p>
         <pre><code>var tree = ui.generate("Dashboard with title, filter row, and data grid", uiAgent, cache);
 var envelope = ui.mountEnvelope(tree, "dashboard-session");
@@ -245,10 +245,10 @@ return envelope;</code></pre>
         <ul>
             <li>Il risultato è un oggetto nodo root con <code>type</code>, <code>props</code>, <code>children</code> e un <code>key</code> opzionale.</li>
             <li>Il runtime UI valida l'albero generato prima di restituirlo.</li>
-            <li>Usalo quando vuoi l'assistenza AI ma vuoi comunque il protocollo dei componenti server descritto in <a href="25-web-ui.html">Componenti server Web UI</a>.</li>
+            <li>Usalo quando vuoi l'assistenza AI ma vuoi comunque il protocollo dei componenti server descritto in <a href="26-web-ui.html">Componenti server Web UI</a>.</li>
         </ul>
 
-        <h2>26.9 Ciclo di vita dalla richiesta al render</h2>
+        <h2>27.9 Ciclo di vita dalla richiesta al render</h2>
         <ol>
             <li>Il browser richiede una pagina o una route gestita da <code>@PAGE</code>, <code>@AIPAGE</code>, <code>@GET</code> o <code>@POST</code>.</li>
             <li><code>HttpServer</code> risolve la route e carica il contesto di richiesta necessario.</li>
@@ -256,8 +256,8 @@ return envelope;</code></pre>
             <li>Il browser renderizza il documento restituito, segue il redirect oppure elabora la risposta API.</li>
         </ol>
 
-        <h2>26.10 Hardening in produzione</h2>
-        <p>Termini come CSRF, rate limiting e middleware di auth sono definiti in <a href="28-rest-api.html#web-concepts">28.1.1 Primer sui concetti</a>.</p>
+        <h2>27.10 Hardening in produzione</h2>
+        <p>Termini come CSRF, rate limiting e middleware di auth sono definiti in <a href="29-rest-api.html#web-concepts">29.1.1 Primer sui concetti</a>.</p>
         <ul>
             <li>Abilita la protezione CSRF sulle route che mutano con <code>enableCsrf</code>.</li>
             <li>Applica il rate limiting con <code>setRateLimit</code> (gira dopo il middleware di auth così <code>verifiedSubOrIp</code> può usare il subject JWT come chiave).</li>
@@ -267,7 +267,7 @@ return envelope;</code></pre>
             <li>Svuota le cache HTML generate quando cambia il contratto del prompt o il template della pagina.</li>
         </ul>
 
-        <h2>26.11 Test e risoluzione dei problemi</h2>
+        <h2>27.11 Test e risoluzione dei problemi</h2>
         <ul>
             <li>Usa <code>getRoutes()</code> per verificare che le route di pagina e handler siano state registrate.</li>
             <li>Se una pagina non si aggiorna dopo cambi al prompt, svuota sia la cache del server sia la voce <code>HTMLCache</code>.</li>
@@ -278,15 +278,15 @@ return envelope;</code></pre>
         <div class="see-also">
             <h3>Vedi anche</h3>
             <ul>
-                <li><a href="25-web-ui.html">25. Componenti server Web UI</a> - UI server orientata ai componenti, fragment, aggiornamenti live e <code>ui.*</code></li>
-                <li><a href="28-rest-api.html">Server REST API</a> - Progettazione delle route API, middleware, validazione e policy</li>
-                <li><a href="30-full-stack-development.html">Sviluppo full-stack con MALDA</a> - Guida all'architettura per mescolare pagine, API e UI nel browser</li>
+                <li><a href="26-web-ui.html">26. Componenti server Web UI</a> - UI server orientata ai componenti, fragment, aggiornamenti live e <code>ui.*</code></li>
+                <li><a href="29-rest-api.html">Server REST API</a> - Progettazione delle route API, middleware, validazione e policy</li>
+                <li><a href="31-full-stack-development.html">Sviluppo full-stack con MALDA</a> - Guida all'architettura per mescolare pagine, API e UI nel browser</li>
             </ul>
         </div>
 
         <div class="nav-footer">
-            <a href="25-web-ui.html">← Precedente: 25. Componenti server Web UI</a>
-            <a href="27-browser-javascript-backend.html">Successivo: 27. Backend UI JavaScript nel browser→</a>
+            <a href="26-web-ui.html">← Precedente: 26. Componenti server Web UI</a>
+            <a href="28-browser-javascript-backend.html">Successivo: 28. Backend UI JavaScript nel browser→</a>
         </div>
 
         <footer>

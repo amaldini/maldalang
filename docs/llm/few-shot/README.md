@@ -62,8 +62,8 @@ Also useful from the main tree:
 - `Examples/Testing/unit_test_basics.test.malda`
 - `Examples/Web/http_client_json.malda`, `Examples/Web/rest_bearer_jwt.malda`, `Examples/Web/auth_cookie_login.malda`
 - `Examples/Web/rest_api_server.malda`, `Examples/Web/ui_form_workflow.malda`, `Examples/Web/ui_counter_dashboard.malda`
-- Language API: `ReferenceManual/25-web-ui.html` (hub: `24-web-ui-hub.html`)
-- Agentic runs: `ReferenceManual/23-agentic-runs.html` (`43_`–`48_`)
+- Language API: `ReferenceManual/26-web-ui.html` (hub: `25-web-ui-hub.html`)
+- Agentic runs: `ReferenceManual/24-agentic-runs.html` (`43_`–`48_`)
 - `Examples/Workflows/retry_and_inspect.malda`
 - `Examples/Prompts/basic_prompt.malda`, `Examples/Prompts/schema_prompt_structured.malda`, `Examples/Prompts/sum_type_intent_prompt.malda`, `Examples/Prompts/api_program_calc.malda`, `Examples/Prompts/prompt_tools_then_structured.malda`, `Examples/Prompts/eval_prompt.malda`, `Examples/Prompts/multimodal_attachments.malda`, `Examples/Prompts/context_turns.malda`
 - `Examples/Workflows/runprogram_in_step.malda` (`evalPrompt` then `step result = runProgram`)

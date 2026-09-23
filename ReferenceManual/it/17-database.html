@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Supporto database MALDA - SQLite, SQL Server e PostgreSQL con la stessa API, query builder, transazioni e malda db">
-    <title>16. Supporto database - Manuale di riferimento MALDA</title>
+    <title>17. Supporto database - Manuale di riferimento MALDA</title>
     <link rel="stylesheet" href="../styles.css">
     <link rel="stylesheet" href="../syntax.css">
     <link rel="stylesheet" href="../print.css" media="print">
@@ -16,13 +16,13 @@
     </header>
     <nav></nav>
     <main>
-        <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>16. Supporto database</span></div>
-        <h1>16. Supporto database</h1>
+        <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>17. Supporto database</span></div>
+        <h1>17. Supporto database</h1>
         <p>MALDA distribuisce tre client con la stessa API: <code>SqliteClient</code>, <code>SqlServerClient</code> e <code>PostgresClient</code>. Parti da SQLite: è un file su disco (o un database in memoria), senza server. Connessione, SQL parametrizzato, query builder, insert e transazioni sono identici sugli altri due; cambiano solo connection string e sintassi dei placeholder.</p>
         <p>I client funzionano con l'interprete e il transpile C#. <strong>Non</strong> sono disponibili sul backend JavaScript — tieni il SQL sul server e chiamalo via HTTP dal codice nel browser. Vedi <a href="02-tools.html">2. Strumenti e toolchain</a> (modi di runtime) e la <a href="../../docs/spec/backend-capability-matrix.md">matrice delle capacità dei backend</a>.</p>
-        <p>Questo capitolo è l'API dei client SQL. Lo storage dei workflow durevoli è un file SQLite separato sotto <code>.malda/</code> — vedi <a href="22-durable-workflows.html">22. Workflow durevoli</a>. La similarity search è <a href="15-vectordb.html">15. VectorDB</a>, non questi client.</p>
+        <p>Questo capitolo è l'API dei client SQL. Lo storage dei workflow durevoli è un file SQLite separato sotto <code>.malda/</code> — vedi <a href="23-durable-workflows.html">23. Workflow durevoli</a>. La similarity search è <a href="16-vectordb.html">16. VectorDB</a>, non questi client.</p>
 
-        <h2>16.1 SQLite da zero</h2>
+        <h2>17.1 SQLite da zero</h2>
         <p>Connetti, crea una tabella, inserisci, interroghi, disconnetti. I parametri usano <code>@name</code> (non concatenare mai input utente nel SQL). <code>Data Source=:memory:;</code> è un database in memoria che scompare alla disconnessione — usalo nei test e negli snippet così non resta nulla su disco.</p>
         <pre><code data-run="true" data-expect="true\nAlice\n30\n1\nfalse">var db = new SqliteClient();
 db.connect("Data Source=:memory:;");
@@ -43,7 +43,7 @@ print(db.isConnected);</code></pre>
         <p>Costruttore: <code>new SqliteClient()</code> oppure <code>new SqliteClient(connectionString)</code>. Passare la stringa al costruttore <strong>non</strong> apre la connessione — devi comunque chiamare <code>connect(connectionString)</code>. I database su file usano <code>Data Source=path/to/db.sqlite;</code> (i path relativi si risolvono dalla working directory del processo).</p>
         <p>Stesso file nel catalogo: <code>Examples/Databases/sqlite_basic.malda</code> (stampa l'API senza connettersi). Uno starter reale su file è <code>malda new webapi --local-first</code> / <code>malda new fullstack --local-first</code>.</p>
 
-        <h2>16.2 API condivisa dei client</h2>
+        <h2>17.2 API condivisa dei client</h2>
         <p>Tutte e tre le classi espongono gli stessi metodi. Chiama <code>connect</code> prima di qualsiasi altra cosa; il SQL prima del connect lancia <code>Not connected to database. Call connect() first.</code></p>
         <table>
             <thead>
@@ -56,9 +56,9 @@ print(db.isConnected);</code></pre>
                 <tr><td><code>query(sql, params?)</code></td><td>array di oggetti riga</td><td>Zero righe → <code>[]</code></td></tr>
                 <tr><td><code>queryOne(sql, params?)</code></td><td>una riga o <code>null</code></td><td>Solo la prima riga che corrisponde</td></tr>
                 <tr><td><code>execute(sql, params?)</code></td><td>int (righe interessate)</td><td>DDL, INSERT/UPDATE/DELETE, PRAGMA</td></tr>
-                <tr><td><code>select(...columns)</code></td><td>il client (catena)</td><td>Avvia il query builder; vedi 16.3</td></tr>
+                <tr><td><code>select(...columns)</code></td><td>il client (catena)</td><td>Avvia il query builder; vedi 17.3</td></tr>
                 <tr><td><code>insert(table, values)</code></td><td>int (righe interessate)</td><td><code>values</code> è un oggetto non vuoto</td></tr>
-                <tr><td><code>beginTransaction()</code> / <code>commit()</code> / <code>rollback()</code></td><td>—</td><td>Vedi 16.4</td></tr>
+                <tr><td><code>beginTransaction()</code> / <code>commit()</code> / <code>rollback()</code></td><td>—</td><td>Vedi 17.4</td></tr>
             </tbody>
         </table>
         <p>I risultati delle query sono array di oggetti le cui property sono i <strong>nomi delle colonne restituiti dal driver</strong> (alias compresi). Il <code>NULL</code> SQL diventa <code>null</code> MALDA. Interi e float restano numerici; i valori SQLite <code>DATETIME</code> tornano come stringhe <code>yyyy-MM-dd HH:mm:ss</code>.</p>
@@ -67,11 +67,11 @@ print(users[0].name + " - " + users[0].email);
 
 var missing = db.queryOne("SELECT name FROM users WHERE id = @id", {id: -1});
 print(missing == null);</code></pre>
-        <p>Gli oggetti parametro accettano chiavi con o senza <code>@</code>: <code>{age: 25}</code> e <code>{"@age": 25}</code> legano entrambi <code>@age</code> su SQLite e SQL Server. PostgreSQL usa <code>$1</code>, <code>$2</code>, … — vedi 16.5. Non esiste una property <code>lastInsertId</code> sul client; <code>insert</code> / <code>execute</code> restituiscono il conteggio delle righe interessate. Leggi la nuova chiave con SQL (16.6).</p>
+        <p>Gli oggetti parametro accettano chiavi con o senza <code>@</code>: <code>{age: 25}</code> e <code>{"@age": 25}</code> legano entrambi <code>@age</code> su SQLite e SQL Server. PostgreSQL usa <code>$1</code>, <code>$2</code>, … — vedi 17.5. Non esiste una property <code>lastInsertId</code> sul client; <code>insert</code> / <code>execute</code> restituiscono il conteggio delle righe interessate. Leggi la nuova chiave con SQL (17.6).</p>
 
-        <h2>16.3 Query builder</h2>
+        <h2>17.3 Query builder</h2>
         <p>Il builder è un piccolo helper sullo stesso client, non un dialetto SQL separato. Copre <code>SELECT</code> più <code>INSERT</code> / <code>UPDATE</code> / <code>DELETE</code> con valori parametrizzati. Non ci sono <code>orderBy</code>, <code>limit</code>, <code>join</code> né <code>OR</code> — per quelli usa SQL grezzo.</p>
-        <h3>16.3.1 Select</h3>
+        <h3>17.3.1 Select</h3>
         <p><code>select(...columns).from(table).where(...).query()</code> esegue il <code>SELECT</code> costruito. <code>query()</code> senza argomenti chiude il builder; <code>query(sql, params?)</code> resta SQL grezzo. <code>where(column, value)</code> significa <code>=</code>; <code>where(column, operator, value)</code> passa l'operatore così com'è (<code>&gt;</code>, <code>&lt;</code>, <code>!=</code>, <code>LIKE</code>, …). Le chiamate <code>where</code> successive si combinano con <code>AND</code>.</p>
         <pre><code data-run="true" data-expect="1\nJane">var db = new SqliteClient();
 db.connect("Data Source=:memory:;");
@@ -87,7 +87,7 @@ print(adults.length);
 print(adults[0].name);
 db.disconnect();</code></pre>
         <p>Ogni colonna in <code>where</code> dovrebbe essere unica: i nomi dei parametri derivano dalla colonna, quindi due condizioni sulla stessa colonna si sovrascrivono. Il builder concatena <strong>nomi di tabella e colonna</strong> nel SQL; solo i valori sono parametrizzati. Non mettere input utente in quei nomi.</p>
-        <h3>16.3.2 Insert, update, delete</h3>
+        <h3>17.3.2 Insert, update, delete</h3>
         <p><code>insert(table, values)</code> è una chiamata unica — non usa un <code>where</code> precedente.</p>
         <p><code>update(table, values)</code> e <code>delete(table)</code> <strong>richiedono prima</strong> una catena <code>select</code> / <code>from</code> / <code>where</code> che abbia popolato il builder. Chiama <code>where</code> prima, poi <code>update</code> o <code>delete</code>. Concatenare <code>.update(...)</code> dopo <code>.where(...)</code> è la stessa cosa, perché quei metodi restituiscono il client. Chiamare <code>update</code> / <code>delete</code> senza un <code>where</code> lancia un errore. Non esiste la forma «update e poi where».</p>
         <pre><code data-run="true" data-expect="21\n1">var db = new SqliteClient();
@@ -104,7 +104,7 @@ db.select("name").from("users").where("name", "Bob").delete("users");
 print(db.query("SELECT name FROM users").length);
 db.disconnect();</code></pre>
 
-        <h2>16.4 Transazioni</h2>
+        <h2>17.4 Transazioni</h2>
         <p>Una transazione alla volta per client. Un secondo <code>beginTransaction()</code> lancia <code>Transaction already in progress</code>. <code>commit()</code> / <code>rollback()</code> senza una transazione aperta lanciano <code>No transaction in progress</code>. <code>disconnect()</code> fa rollback se una transazione è ancora aperta.</p>
         <pre><code data-run="true" data-expect="0\n1">var db = new SqliteClient();
 db.connect("Data Source=:memory:;");
@@ -125,7 +125,7 @@ try {
 print(db.query("SELECT name FROM t").length);
 db.disconnect();</code></pre>
 
-        <h2>16.5 SQL Server e PostgreSQL</h2>
+        <h2>17.5 SQL Server e PostgreSQL</h2>
         <p>Stessi metodi, connection string e placeholder diversi. Il query builder numera da solo i parametri PostgreSQL, quindi <code>select</code> / <code>from</code> / <code>where</code> / <code>insert</code> hanno lo stesso aspetto di SQLite; solo il SQL <strong>grezzo</strong> usa <code>$1</code>.</p>
         <table>
             <thead>
@@ -148,7 +148,7 @@ var rows2 = pg.query("SELECT * FROM users WHERE age > $1", {$1: 25});
 pg.disconnect();</code></pre>
         <p>Campioni del catalogo (stampano l'API, non si connettono): <code>Examples/Databases/sql_server_basic.malda</code>, <code>Examples/Databases/postgres_basic.malda</code>.</p>
 
-        <h2>16.6 Id delle righe inserite e colonne JSON</h2>
+        <h2>17.6 Id delle righe inserite e colonne JSON</h2>
         <p>Dopo un insert, chiedi al database la nuova chiave. SQLite:</p>
         <pre><code data-run="true" data-expect="1">var db = new SqliteClient();
 db.connect("Data Source=:memory:;");
@@ -173,21 +173,21 @@ db.disconnect();</code></pre>
         <pre><code>db.execute("PRAGMA journal_mode = WAL");
 db.execute("PRAGMA foreign_keys = ON");</code></pre>
 
-        <h2>16.7 Runtime, errori e backend</h2>
+        <h2>17.7 Runtime, errori e backend</h2>
         <ul>
             <li>Un SQL fallito è un errore di runtime il cui messaggio inizia con <code>SQL query error:</code> oppure <code>SQL execute error:</code> più il testo del driver.</li>
             <li>Richiama <code>connect</code> chiude la connessione precedente e apre la nuova stringa.</li>
-            <li>Il transpile JavaScript non emette questi client. La UI nel browser deve chiamare un backend MALDA REST o <code>@PAGE</code> che possiede il database — vedi <a href="27-browser-javascript-backend.html">27. Backend UI JavaScript nel browser</a> e <a href="28-rest-api.html">28. Server REST API</a>.</li>
+            <li>Il transpile JavaScript non emette questi client. La UI nel browser deve chiamare un backend MALDA REST o <code>@PAGE</code> che possiede il database — vedi <a href="28-browser-javascript-backend.html">28. Backend UI JavaScript nel browser</a> e <a href="29-rest-api.html">29. Server REST API</a>.</li>
             <li>I workflow, la coda dei job e GraphMemory persistono su file propri; non puntare <code>SqliteClient</code> a <code>.malda/workflows.db</code> a meno che tu non lo stia ispezionando come DBA.</li>
         </ul>
 
-        <h2>16.8 Sicurezza</h2>
+        <h2>17.8 Sicurezza</h2>
         <p>Tutti e tre i client inviano i valori come parametri. Passa sempre un oggetto invece di concatenare stringhe nel SQL.</p>
         <div class="warning-box">
             <p><strong>Importante:</strong> Non concatenare mai input utente direttamente nelle query SQL. Usa sempre query parametrizzate per prevenire attacchi di SQL injection. Il query builder parametrizza solo i <em>valori</em> — nomi di tabella, nomi di colonna e operatori sono copiati nell'istruzione così come scritti.</p>
         </div>
 
-        <h2>16.9 <code>malda db</code> (scaffold local-first)</h2>
+        <h2>17.9 <code>malda db</code> (scaffold local-first)</h2>
         <p><code>malda db</code> è una CLI per <strong>progetti SQLite local-first generati dallo scaffold</strong> (<code>malda new webapi --local-first</code> oppure <code>malda new fullstack --local-first</code>). Non è uno strumento di migration generico per programmi <code>SqliteClient</code> arbitrari. Di default legge <code>config/data.example.json</code> per <code>databaseFile</code> e <code>migrationModule</code>.</p>
         <pre><code>malda db status
 malda db migrate
@@ -205,16 +205,16 @@ malda db --help</code></pre>
         <div class="see-also">
             <h3>Vedi anche</h3>
             <ul>
-                <li><a href="34-examples.html">34. Esempi</a> - Campioni del catalogo in <code>Examples/Databases/</code></li>
+                <li><a href="35-examples.html">35. Esempi</a> - Campioni del catalogo in <code>Examples/Databases/</code></li>
                 <li><a href="12-input-output.html">12. Input/Output</a> - File e path</li>
                 <li><a href="02-tools.html">2. Strumenti e toolchain</a> - Interprete vs transpile vs JavaScript</li>
-                <li><a href="30-full-stack-development.html">30. Sviluppo full-stack con MALDA</a> - API + UI + dati insieme</li>
-                <li><a href="22-durable-workflows.html">22. Workflow durevoli</a> - SQLite del motore, non questi client</li>
+                <li><a href="31-full-stack-development.html">31. Sviluppo full-stack con MALDA</a> - API + UI + dati insieme</li>
+                <li><a href="23-durable-workflows.html">23. Workflow durevoli</a> - SQLite del motore, non questi client</li>
             </ul>
         </div>
         <div class="nav-footer">
-            <a href="15-vectordb.html">← Precedente: 15. VectorDB</a>
-            <a href="17-actors.html">Successivo: 17. Actor→</a>
+            <a href="16-vectordb.html">← Precedente: 16. VectorDB</a>
+            <a href="18-actors.html">Successivo: 18. Actor→</a>
         </div>
 
         <footer>

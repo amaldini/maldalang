@@ -13,7 +13,7 @@
 - **Top gap — keyword inventory split:** `03-lexical-structure.html` lists a **short** keyword set; `36-appendix.html` is closer to the lexer but still wrong (`reply` listed as reserved; **workflow** keywords missing). Parser/lexer keywords are the de facto source of truth.
 - **Top misleading doc — type checking:** `04-data-types.html` §4.6 recommends `x == int(x) or x == float(x)` instead of `typeOf()` / `isNumber()`; this is called out in the purity roadmap Phase 1.4.
 - **Runtime vs manual (aligned):** `typeOf(42)` → `"integer"` (manual built-ins + `Tier0ConformanceTests`); dict missing keys → `null` (manual §4.4 + interpreter + conformance test). **Future spec drift:** roadmap Phase 4.2 targets tag `"int"` and `"dict"`, not current behavior.
-- **`newpotentialfeatures.md`:** “Already implemented” list (match, destructuring, sum types, async/await, prompts) matches parser; actor message declarations are documented in `17-actors.html` and parsed — consistent.
+- **`newpotentialfeatures.md`:** “Already implemented” list (match, destructuring, sum types, async/await, prompts) matches parser; actor message declarations are documented in `18-actors.html` and parsed — consistent.
 
 ---
 
@@ -24,7 +24,7 @@
 | **Lexer** | `TokenType` enum + `Lexer.cs` `Keywords` map + punctuation handlers (`=>`/`->` both become `TokenType.Arrow` via `=`+`>` or `-`+`>`) |
 | **Parser** | `Parser.cs` — `Declaration()`, `Statement()`, `MatchExpression()`, `ParsePattern()`, `Primary()`, workflow/actor/prompt/type blocks |
 | **Interpreter semantics** | `Interpreter.cs` dictionary indexing; `BuiltInTypeOf` in `BuiltInFunctions.cs` |
-| **Reference Manual** | Read/grep: `03-lexical-structure.html`, `04-data-types.html`, `07-expressions.html`, `08-control-structures.html`, `09-functions.html`, `35-grammar.html`, `36-appendix.html`, cross-chapters (`01-introduction.html` include/using, `14-graphs.html`, `17-actors.html`, `22-durable-workflows.html`) |
+| **Reference Manual** | Read/grep: `03-lexical-structure.html`, `04-data-types.html`, `07-expressions.html`, `08-control-structures.html`, `09-functions.html`, `35-grammar.html`, `36-appendix.html`, cross-chapters (`01-introduction.html` include/using, `15-graphs.html`, `18-actors.html`, `23-durable-workflows.html`) |
 | **Secondary** | `docs/spec/malda-language-1.0.md`; `docs/planning/newpotentialfeatures.md` |
 | **Tests** | `MaldaLang.Tests/Conformance/Tier0/Tier0ConformanceTests.cs` (documented runtime tags) |
 
@@ -45,7 +45,7 @@ Legend: **Y** = present/supported; **N** = not present; **Partial** = mentioned 
 | `match` / `case` / `default` | Y | Y (expr + stmt; stmt may omit trailing `;`) | Y (`08`, grammar stmt/expr) | Grammar `Pattern` lacks **variant** patterns; parser has `VariantPattern` |
 | `async` / `await` | Y | Y (unary in `Unary()`) | Y (`07` §async) | **Not** in grammar expressions; appendix precedence omits them |
 | `prompt` | Y | Y (`PromptDeclaration`; name-only params) | Y (`09` §prompts) | **Not** in `02` keywords; object-literal + statement bodies parsed |
-| `actor` | Y | Y | Y (`13-actors`) | File `17-actors.html` titled **ch. 15** (numbering drift) |
+| `actor` | Y | Y | Y (`13-actors`) | File `18-actors.html` titled **ch. 15** (numbering drift) |
 | `message` | Y | Y (in `ActorDeclaration`) | Y (`13` §message declarations) | **Not** in `02` keywords |
 | `spawn` | Y | Y (`SpawnExpression`) | Y (`13`) | Not in grammar `Primary` |
 | `send` | Y | Y (`SendStatement`; `then`/`timeout`/`catch`) | Y (`13`) | Not in grammar statements |
@@ -116,7 +116,7 @@ Legend: **Y** = present/supported; **N** = not present; **Partial** = mentioned 
 
 ### 4.3 Manual claims grammar is authoritative
 
-- `22-durable-workflows.html` “See Also” → `35-grammar.html` for “workflow grammar reference” — **link target does not contain workflow productions**.
+- `23-durable-workflows.html` “See Also” → `35-grammar.html` for “workflow grammar reference” — **link target does not contain workflow productions**.
 
 ---
 
@@ -145,7 +145,7 @@ Legend: **Y** = present/supported; **N** = not present; **Partial** = mentioned 
 
 ### 5.3 Chapter / breadcrumb numbering (HTML)
 
-Systematic **file slug vs displayed chapter number** mismatch (renumbering script / nav drift). Examples: `17-actors.html` titled ch. 15; `35-grammar.html` title 34 vs breadcrumb 33; `36-appendix.html` title 35 vs breadcrumb 34.
+Systematic **file slug vs displayed chapter number** mismatch (renumbering script / nav drift). Examples: `18-actors.html` titled ch. 15; `35-grammar.html` title 34 vs breadcrumb 33; `36-appendix.html` title 35 vs breadcrumb 34.
 
 **Broken link:** `03-lexical-structure.html` §3.5 links `08-functions.html#lambda` — file is **`09-functions.html`**.
 

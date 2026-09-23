@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="GraphMemory MALDA - Sistema di memoria semantica per agenti AI">
-    <title>19. GraphMemory - Manuale di riferimento MALDA</title>
+    <title>20. GraphMemory - Manuale di riferimento MALDA</title>
     <link rel="stylesheet" href="../styles.css">
     <link rel="stylesheet" href="../syntax.css">
     <link rel="stylesheet" href="../print.css" media="print">
@@ -16,9 +16,9 @@
     </header>
     <nav></nav>
     <main>
-        <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>19. GraphMemory</span></div>
+        <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>20. GraphMemory</span></div>
 
-        <h1>19. GraphMemory</h1>
+        <h1>20. GraphMemory</h1>
 
         <p>GraphMemory è una classe built-in che offre capacità di memoria semantica per gli agenti AI. Combina un knowledge graph (per modellare le relazioni) con un database vettoriale (per la similarity search) così gli agenti possono ricordare fatti, comprendere le relazioni e recuperare il contesto rilevante in base alla similarità semantica.</p>
 
@@ -27,7 +27,7 @@
             <strong>Stop alla prima lettura.</strong> GraphMemory è un knowledge graph host più vettori per gli agenti. File più piccolo: <code>Examples/Memory/shared_memory.malda</code>. Corso: <a href="learn.html#after-core">Imparare MALDA — Dopo il percorso core</a>.
         </div>
 
-        <h2>19.1 Creare un GraphMemory</h2>
+        <h2>20.1 Creare un GraphMemory</h2>
         <p>Le istanze GraphMemory si creano con il costruttore <code>new GraphMemory()</code>:</p>
         <pre><code>var memory = new GraphMemory();
 memory.initialize();</code></pre>
@@ -84,7 +84,7 @@ var results = memory.query("What is my job?", 5);
 // related to "job" even though the words don't match exactly</code></pre>
         </div>
 
-        <h2>19.2 Memorizzare i fatti</h2>
+        <h2>20.2 Memorizzare i fatti</h2>
         <p>Il metodo <code>remember()</code> memorizza i fatti nel sistema di memoria. I fatti sono indicizzati nel database vettoriale per la similarity search e memorizzati nel knowledge graph per il tracking delle relazioni.</p>
         <pre><code>var memory = new GraphMemory();
 memory.initialize();
@@ -130,7 +130,7 @@ memory.remember(
             <li>Restituisce il node ID per riferimenti successivi</li>
         </ul>
 
-        <h3>19.2.1 Collegamento semantico automatico</h3>
+        <h3>20.2.1 Collegamento semantico automatico</h3>
         <p>Dopo ogni <code>remember()</code>, GraphMemory cerca nell'indice vettoriale voci precedenti simili. Quando la similarità coseno è almeno <strong>0.6</strong>, aggiunge archi bidirezionali <code>related_to</code> nel knowledge graph (pesati per similarità). Così si collegano le memorie conversazionali senza chiamate API extra — lo stesso pattern usato nella ricerca sulla memoria degli agenti (es. linking di note in stile Zettelkasten / A-MEM).</p>
         <pre><code>var memory = new GraphMemory();
 memory.initialize();
@@ -142,7 +142,7 @@ var cluster = memory.findRelated(id1);
 // cluster includes both facts via graph traversal</code></pre>
         <p>Gli archi di struttura del codice da <code>analyzeFile()</code> usano un tipo di arco distinto <code>contains</code>; i link conversazionali usano <code>related_to</code>.</p>
 
-        <h2>19.3 Interrogare la memoria</h2>
+        <h2>20.3 Interrogare la memoria</h2>
         <p>Il metodo <code>query()</code> esegue una similarity search per trovare memorie rilevanti. Usa la similarità vettoriale per trovare fatti simili, poi la traversata del grafo (BFS) per trovare i nodi correlati.</p>
         <pre><code>var memory = new GraphMemory();
 memory.initialize();
@@ -171,7 +171,7 @@ var topResults = memory.query("programming languages", 3);  // Top 3 results</co
             <li><code>query(queryString, options)</code> - Quando il secondo argomento è un object, è trattato come <code>options</code> (maxResults di default: 5)</li>
         </ul>
 
-        <h3>19.3.1 Query ibrida (semantica + recente)</h3>
+        <h3>20.3.1 Query ibrida (semantica + recente)</h3>
         <p>Passa un oggetto <code>options</code> come secondo o terzo argomento per combinare la similarity search con le voci strutturate più recenti. Utile quando la history della conversazione viene azzerata a ogni iterazione (es. Ralph Wiggum) ma serve comunque una continuità deterministica.</p>
         <pre><code>var options = {
     "recentCount": 3,
@@ -210,9 +210,9 @@ var results = memory.query("files changed decisions", 5, options);
             <li><code>rerankModel</code> / <code>rerankClient</code> - Selezionare il modello o iniettare un'istanza di client per il reranking.</li>
             <li><code>rerankScores</code> (array) - Score di iniezione per i test <code>[{ nodeId, score }]</code> che saltano le chiamate al modello.</li>
             <li><code>explain</code> (boolean, default <code>false</code>) - Quando è <code>true</code>, ogni risultato include <code>score</code> e un oggetto <code>explain</code> con <code>vectorScore</code>, <code>lexicalScore</code>, <code>combinedScore</code>, <code>synapseScore</code>, <code>importanceBonus</code>, <code>supersededPenalty</code>, <code>finalScore</code>, <code>tags</code> e (quando è stato usato un filtro tag) <code>tagsMatched</code>.</li>
-            <li><code>grounded</code> (boolean, default <code>false</code>) - Quando è <code>true</code>, restituisce un wrapper <a href="13-built-in-functions.html#grounded-values"><code>grounded.wrap</code></a> invece dell'array di hit. Vedi §19.3.15.</li>
+            <li><code>grounded</code> (boolean, default <code>false</code>) - Quando è <code>true</code>, restituisce un wrapper <a href="13-built-in-functions.html#grounded-values"><code>grounded.wrap</code></a> invece dell'array di hit. Vedi §20.3.15.</li>
         </ul>
-        <p><code>query(...)</code> restituisce un array di nodi di memoria a meno che non sia impostato <code>grounded: true</code> (allora un wrapper — §19.3.15). Dopo ogni query, chiama <code>getLastQueryDiagnostics()</code> per un oggetto di riepilogo (<code>null</code> prima della prima query) con campi come <code>vectorCandidates</code>, <code>bm25Candidates</code>, <code>afterFilters</code>, <code>returned</code>, <code>droppedByLexicalMinScore</code>, <code>droppedByTagFilter</code>, <code>droppedByTypeFilter</code>, <code>lexicalMinScoreApplied</code>, <code>lexicalMinScoreMode</code> (<code>number</code> | <code>auto-weak-vector</code> | <code>auto-default</code>) e <code>embedReady</code>.</p>
+        <p><code>query(...)</code> restituisce un array di nodi di memoria a meno che non sia impostato <code>grounded: true</code> (allora un wrapper — §20.3.15). Dopo ogni query, chiama <code>getLastQueryDiagnostics()</code> per un oggetto di riepilogo (<code>null</code> prima della prima query) con campi come <code>vectorCandidates</code>, <code>bm25Candidates</code>, <code>afterFilters</code>, <code>returned</code>, <code>droppedByLexicalMinScore</code>, <code>droppedByTagFilter</code>, <code>droppedByTypeFilter</code>, <code>lexicalMinScoreApplied</code>, <code>lexicalMinScoreMode</code> (<code>number</code> | <code>auto-weak-vector</code> | <code>auto-default</code>) e <code>embedReady</code>.</p>
         <pre><code>var hits = memory.query("plugin campi", 5, {
     "hybridLexical": true,
     "lexicalMode": "bm25",
@@ -225,7 +225,7 @@ var results = memory.query("files changed decisions", 5, options);
 var diag = memory.getLastQueryDiagnostics();
 print(diag.returned);
 print(diag.lexicalMinScoreMode);</code></pre>
-        <h3>19.3.2 Voci recenti (<code>getRecent</code>)</h3>
+        <h3>20.3.2 Voci recenti (<code>getRecent</code>)</h3>
         <p>Restituisce le voci di memoria più recenti ordinate per timestamp, senza similarity search.</p>
         <pre><code>var recent = memory.getRecent(5);           // last 5 entries
 var phaseRecent = memory.getRecent(3, "movement");  // last 3 for phase "movement"
@@ -247,7 +247,7 @@ var scoped = memory.getRecent(5, "", "", "chat:123");    // optional scope filte
             <li>Restituisce fino a <code>count</code> oggetti memoria in quell'ordine</li>
         </ol>
 
-        <h3>19.3.3 Dimenticare le voci (<code>forget</code>)</h3>
+        <h3>20.3.3 Dimenticare le voci (<code>forget</code>)</h3>
         <p>Rimuove un nodo di memoria per ID dal knowledge graph, dall'indice vettoriale e dallo store di metadata. Gli archi collegati sono rimossi insieme al nodo.</p>
         <pre><code>var nodeId = memory.remember("Outdated fact");
 var removed = memory.forget(nodeId);  // true if the node existed</code></pre>
@@ -261,7 +261,7 @@ var removed = memory.forget(nodeId);  // true if the node existed</code></pre>
             <li><code>getLastQueryDiagnostics()</code> - Restituisce le diagnostiche dalla chiamata <code>query</code> più recente, o <code>null</code> se ancora nessuna.</li>
         </ul>
 
-        <h3>19.3.4 Indicizzare file di documenti (<code>indexDocuments</code>)</h3>
+        <h3>20.3.4 Indicizzare file di documenti (<code>indexDocuments</code>)</h3>
         <p>Carica i file che corrispondono a un glob pattern (come <code>loadDocuments</code>) e memorizza ciascun file (o chunk) come memoria semantica con <code>type: semantic</code>, <code>source: file</code> e <code>scope</code> configurabile (default <code>global</code>). I file grandi sono spezzati in chunk di default (<code>chunkSize: 2000</code>, <code>overlap: 100</code>). Il context del chunk è <code>path#chunk-N</code>.</p>
         <pre><code>var count = memory.indexDocuments("**/*.md", "./docs");
 var chunked = memory.indexDocuments("**/*.md", "./docs", {
@@ -273,22 +273,22 @@ var chunked = memory.indexDocuments("**/*.md", "./docs", {
 print("Indexed " + count + " chunks");</code></pre>
         <p>Con <code>changedOnly: true</code>, i file il cui metadata <code>fileHash</code> coincide con il contenuto attuale vengono saltati; i file cambiati sostituiscono i chunk precedenti per lo stesso <code>filePath</code>.</p>
 
-        <h3>19.3.5 Statistiche della memoria (<code>stats</code>)</h3>
+        <h3>20.3.5 Statistiche della memoria (<code>stats</code>)</h3>
         <p>Restituisce un oggetto con timestamp <code>nodes</code>, <code>edges</code>, <code>byType</code>, <code>byScope</code>, <code>oldest</code> e <code>newest</code> (ISO 8601).</p>
         <pre><code>var s = memory.stats();
 print(s.nodes);
 print(s.byType.semantic);</code></pre>
-        <h3>19.3.5a Health check (<code>validate</code>)</h3>
+        <h3>20.3.5a Health check (<code>validate</code>)</h3>
         <p>Controlla la coerenza tra metadata, nodi del grafo, voci dell'indice vettoriale e archi. Restituisce <code>{ ok, issues, counts }</code>. Tipi di issue: <code>metadata_without_graph</code>, <code>graph_without_metadata</code>, <code>vector_without_node</code>, <code>node_without_vector</code>, <code>dangling_edge</code>.</p>
         <pre><code>var report = memory.validate();
 if (!report.ok) {
     print(report.issues.length + " issues");
 }</code></pre>
-        <h3>19.3.5b Backup a rotazione su <code>save()</code></h3>
+        <h3>20.3.5b Backup a rotazione su <code>save()</code></h3>
         <p>Prima di sovrascrivere gli artefatti, opzionalmente copia i file attuali in <code>{base}.backup.{yyyy-MM-dd-HHmmss}.graph.json</code> (e i corrispondenti <code>.metadata.json</code> / <code>.vectordb.bin</code>) e fa prune dei backup più vecchi.</p>
         <pre><code>memory.save("~/.malda/memory/assistant", { "backup": true, "maxBackups": 5 });
 // Or: MALDA_MEMORY_BACKUP=true, MALDA_MEMORY_MAX_BACKUPS=5</code></pre>
-        <h3>19.3.6 Lookup del nodo e aggiornamento in-place</h3>
+        <h3>20.3.6 Lookup del nodo e aggiornamento in-place</h3>
         <p>Usa <code>getNode</code>, <code>hasNode</code> e <code>update</code> per leggere o rivedere una memoria esistente senza creare un nuovo node ID.</p>
         <pre><code>var nodeId = memory.remember("My name is Alice", "", { "type": "semantic" });
 if (memory.hasNode(nodeId)) {
@@ -304,7 +304,7 @@ print(revised.fact);</code></pre>
             <li><code>update(nodeId, fact, context?, metadata?)</code> - Reindicizza il nodo in-place; <code>context</code> e campi di metadata omessi sono preservati dalla voce esistente</li>
         </ul>
 
-        <h3>19.3.7 Consolidamento episodico (<code>consolidate</code>)</h3>
+        <h3>20.3.7 Consolidamento episodico (<code>consolidate</code>)</h3>
         <p>Distilla i turni <code>episodic</code> recenti in un singolo nodo di riepilogo <code>semantic</code> con archi <code>derived_from</code> verso gli episodici di origine. Gli episodici elaborati sono marcati <code>consolidated: true</code> così possono essere pruned in seguito in sicurezza.</p>
         <pre><code>var result = memory.consolidate({
     "scope": "chat:123",
@@ -313,7 +313,7 @@ print(revised.fact);</code></pre>
 });
 print(result.semanticNodesCreated);
 print(result.semanticNodeId);</code></pre>
-        <h3>19.3.8 Pruning in batch (<code>prune</code>)</h3>
+        <h3>20.3.8 Pruning in batch (<code>prune</code>)</h3>
         <p>Rimuove in blocco i nodi che corrispondono. Richiede almeno un filtro in <code>options</code>: <code>type</code>, <code>scope</code>, <code>phase</code>, <code>source</code> o <code>olderThanDays</code>. L'opzionale <code>consolidated</code> (boolean) tiene solo i nodi con/senza <code>consolidated: true</code>. Restituisce il numero di nodi rimossi.</p>
         <pre><code>var removed = memory.prune({
     "type": "episodic",
@@ -322,15 +322,15 @@ print(result.semanticNodeId);</code></pre>
     "consolidated": true
 });
 print("Removed " + removed + " memories");</code></pre>
-        <h3>19.3.9 Limiti di dimensione della memoria (<code>enforceLimits</code>)</h3>
+        <h3>20.3.9 Limiti di dimensione della memoria (<code>enforceLimits</code>)</h3>
         <p>Quando il conteggio totale dei nodi supera <code>maxNodes</code>, rimuove le voci matchanti più vecchie (default <code>type: episodic</code>). Restituisce il numero di nodi rimossi.</p>
         <pre><code>memory.enforceLimits({ "maxNodes": 5000, "type": "episodic", "scope": "chat:123" });</code></pre>
-        <h3>19.3.10 Bundle portabili (<code>exportBundle</code> / <code>importBundle</code>)</h3>
+        <h3>20.3.10 Bundle portabili (<code>exportBundle</code> / <code>importBundle</code>)</h3>
         <p><code>exportBundle(path)</code> scrive gli stessi artefatti di <code>save(path)</code> più un manifest <code>{base}.bundle.json</code>. <code>importBundle(path)</code> valida il manifest e gli artefatti, poi ripristina grafo, metadata e indice vettoriale (come <code>load(path)</code>).</p>
         <pre><code>var manifest = memory.exportBundle("team_memory");
 memory.importBundle("team_memory");</code></pre>
         
-        <h3>19.3.11 Riflessione LLM (<code>reflect</code>)</h3>
+        <h3>20.3.11 Riflessione LLM (<code>reflect</code>)</h3>
         <p><code>reflect(options?)</code> consolida i turni episodici non consolidati in fatti semantici usando un flusso di estrazione orientato all'LLM. Accetta un'iniezione opzionale per i test con <code>facts</code> (array di <code>{ fact, confidence, category }</code>) per bypassare le chiamate al modello esterne.</p>
         <pre><code>var result = memory.reflect({
     "scope": "chat:123",
@@ -349,7 +349,7 @@ print(result.episodicsMarked);</code></pre>
             <li>Fa fallback a <code>consolidate(options)</code> su errori di parsing/LLM della riflessione</li>
         </ul>
 
-        <h3>19.3.11a Riflessione in background (<code>reflectAsync</code>)</h3>
+        <h3>20.3.11a Riflessione in background (<code>reflectAsync</code>)</h3>
         <p><code>reflectAsync(options?)</code> schedula lo stesso lavoro di <code>reflect()</code> su un thread in background e restituisce subito <code>{ scheduled, pending }</code>. Passa <code>savePath</code> in <code>options</code> per persistere gli artefatti a riflessione completata. Se un job di reflect è già in esecuzione, restituisce <code>pending: true</code>.</p>
         <pre><code>memory.reflectAsync({
     "scope": "chat:123",
@@ -357,17 +357,17 @@ print(result.episodicsMarked);</code></pre>
     "savePath": "~/.malda/memory/assistant"
 });</code></pre>
         
-        <h3>19.3.12 Reindicizzare i documenti (<code>reindexDocuments</code>)</h3>
+        <h3>20.3.12 Reindicizzare i documenti (<code>reindexDocuments</code>)</h3>
         <p><code>reindexDocuments(pattern, dir?, options?)</code> è un wrapper di <code>indexDocuments</code> con <code>changedOnly: true</code> di default e restituisce contatori dettagliati:</p>
         <pre><code>var r = memory.reindexDocuments("**/*.md", "./docs", { "scope": "global" });
 print(r.indexed);
 print(r.skipped);
 print(r.removed);</code></pre>
         
-        <h3>19.3.13 Evoluzione del retrieval</h3>
+        <h3>20.3.13 Evoluzione del retrieval</h3>
         <p>Il retrieval della memoria ora tiene traccia dei metadata <code>importance</code>, <code>accessCount</code> e <code>lastAccessed</code>, supporta controlli di attivazione (<code>activation</code>, <code>activationDecay</code>), diversità MMR (<code>diversity</code>) ed esclusione per node ID (<code>excludeNodeIds</code>). Gli aggiornamenti semantici possono creare archi <code>supersedes</code>; i nodi superseded sono declassati o filtrati durante la query.</p>
 
-        <h3>19.3.14 Manutenzione da CLI (<code>malda memory</code>)</h3>
+        <h3>20.3.14 Manutenzione da CLI (<code>malda memory</code>)</h3>
         <p>Usa la CLI per ispezionare e mantenere la memoria dell'assistente in <code>~/.malda/memory/assistant</code> (si può sovrascrivere con <code>--path</code>).</p>
         <pre><code>malda memory stats --json
 malda memory validate --json
@@ -379,7 +379,7 @@ malda memory watch --dir ./kb --pattern "**/*.md"
 malda memory download-rerank</code></pre>
         <p><code>download-rerank</code> scarica il cross-encoder Hugging Face di default (<code>cross-encoder/ms-marco-MiniLM-L6-v2</code>) in <code>~/.malda/models/cross-encoder</code> (<code>model.onnx</code> + <code>vocab.txt</code>). Override del repo con <code>MALDA_CROSS_ENCODER_MODEL</code>.</p>
 
-        <h3>19.3.15 ASK grounded (<code>ask</code> / <code>grounded.wrap</code>)</h3>
+        <h3>20.3.15 ASK grounded (<code>ask</code> / <code>grounded.wrap</code>)</h3>
         <p>Le citazioni dagli hit GraphMemory non sono un valore first-class di <code>match</code>. Fai opt-in così il risultato del retrieval è un wrapper con <code>value</code>, <code>citations</code> (<code>{ source, id?, span? }</code>) e <code>sourced</code>:</p>
         <pre><code>var memory = new GraphMemory();
 memory.initialize();
@@ -394,7 +394,7 @@ var also = memory.query("preferences", 5, { "minScore": 0, "grounded": true });
 var manual = grounded.wrap(also.value, also.citations);</code></pre>
         <p><code>ask(query, maxResults?, options?)</code> usa lo stesso retrieval di <code>query</code>, poi avvolge gli hit in un wrapper. Un <code>query</code> semplice senza <code>grounded: true</code> restituisce ancora un array. Non c'è un alias piatto <code>grounded()</code>. Esempio: <code>Examples/Memory/grounded_ask.malda</code>.</p>
 
-        <h2>19.4 Trovare nodi correlati</h2>
+        <h2>20.4 Trovare nodi correlati</h2>
         <p>Il metodo <code>findRelated()</code> restituisce gli oggetti memoria raggiungibili da un nodo tramite traversata del grafo (BFS sugli archi in uscita, inclusi i vicini auto-collegati <code>related_to</code>):</p>
         <pre><code>var memory = new GraphMemory();
 memory.initialize();
@@ -413,10 +413,10 @@ print(related.length);  // e.g. 1 — the second fact</code></pre>
 
         <p><strong>Restituisce:</strong> un array di oggetti memoria correlati al nodo specificato</p>
 
-        <h2>19.5 Gestione degli elementi di codice</h2>
+        <h2>20.5 Gestione degli elementi di codice</h2>
         <p>GraphMemory può memorizzare e analizzare elementi di codice, ed è utile per comprendere un codebase e mappare le relazioni.</p>
 
-        <h3>19.5.1 Aggiungere elementi di codice</h3>
+        <h3>20.5.1 Aggiungere elementi di codice</h3>
         <p>Il metodo <code>addCodeElement()</code> memorizza elementi di codice (funzioni, classi, ecc.) nella memoria:</p>
         <pre><code>var memory = new GraphMemory();
 memory.initialize();
@@ -437,7 +437,7 @@ print(nodeId);  // "code_UserService.createUser"</code></pre>
 
         <p><strong>Restituisce:</strong> un node ID stringa (es. "code_UserService.createUser")</p>
 
-        <h3>19.5.2 Trovare relazioni nel codice</h3>
+        <h3>20.5.2 Trovare relazioni nel codice</h3>
         <p>Il metodo <code>findCodeRelationships()</code> trova tutte le relazioni (archi) collegate a un elemento di codice:</p>
         <pre><code>var memory = new GraphMemory();
 memory.initialize();
@@ -469,7 +469,7 @@ foreach (var rel in relationships) {
             <li><code>source</code> - Nodo source (se arco in ingresso)</li>
         </ul>
 
-        <h3>19.5.3 Analizzare i file</h3>
+        <h3>20.5.3 Analizzare i file</h3>
         <p>Il metodo <code>analyzeFile()</code> estrae automaticamente la struttura del codice da un file sorgente MALDA e la memorizza:</p>
         <pre><code>var memory = new GraphMemory();
 memory.initialize();
@@ -497,10 +497,10 @@ print("Found " + elementCount + " code elements");
             <li>Tutto memorizzato come nodi nel knowledge graph con le relazioni appropriate</li>
         </ul>
 
-        <h2>19.6 Persistenza</h2>
+        <h2>20.6 Persistenza</h2>
         <p>GraphMemory supporta il salvataggio e il caricamento dello stato della memoria su disco, per la persistenza tra sessioni.</p>
 
-        <h3>19.6.1 Salvare la memoria</h3>
+        <h3>20.6.1 Salvare la memoria</h3>
         <p>Il metodo <code>save()</code> salva l'intero stato della memoria su disco:</p>
         <pre><code>var memory = new GraphMemory();
 memory.initialize();
@@ -525,7 +525,7 @@ memory.save("my_memory");
             <li><code>{basePath}.metadata.json</code> - Metadata dei nodi in formato JSON</li>
         </ul>
 
-        <h3>19.6.2 Caricare la memoria</h3>
+        <h3>20.6.2 Caricare la memoria</h3>
         <p>Il metodo <code>load()</code> ripristina uno stato di memoria salvato in precedenza: grafo (con gli archi), indice vettoriale e metadata dei nodi. Il calcolatore di embedding viene re-inizializzato così <code>query()</code> e le future chiamate <code>remember()</code> funzionano dopo il reload.</p>
         <pre><code>var memory = new GraphMemory();
 
@@ -540,12 +540,12 @@ var linked = memory.findRelated("node_0");  // graph edges persist across save/l
             <li><code>load(filePath)</code> - Carica la memoria da disco (path stringa, l'estensione è ignorata)</li>
         </ul>
 
-        <p><strong>Nota:</strong> chiama <code>initialize(dimension, precision, embeddingFunction)</code> <em>prima</em> di <code>load()</code> quando usi un embedder personalizzato; <code>load()</code> preserva la funzione di embedding attraverso la propria re-inizializzazione interna. L'assistente personale di default usa <code>embedHash</code> (384 dimensioni) e supporta i valori <code>MALDA_MEMORY_EMBED</code> o <code>config.agents.memory.embed</code> <code>hash</code>, <code>bow</code> o <code>llama</code> (vedi <a href="33-personal-assistant.html">33. Assistente personale e CLI</a>).</p>
+        <p><strong>Nota:</strong> chiama <code>initialize(dimension, precision, embeddingFunction)</code> <em>prima</em> di <code>load()</code> quando usi un embedder personalizzato; <code>load()</code> preserva la funzione di embedding attraverso la propria re-inizializzazione interna. L'assistente personale di default usa <code>embedHash</code> (384 dimensioni) e supporta i valori <code>MALDA_MEMORY_EMBED</code> o <code>config.agents.memory.embed</code> <code>hash</code>, <code>bow</code> o <code>llama</code> (vedi <a href="34-personal-assistant.html">34. Assistente personale e CLI</a>).</p>
 
-        <h2>19.7 Export e import del grafo</h2>
+        <h2>20.7 Export e import del grafo</h2>
         <p>GraphMemory fornisce metodi per esportare e importare il knowledge graph separatamente dal sistema di persistenza completo.</p>
 
-        <h3>19.7.1 Esportare il grafo</h3>
+        <h3>20.7.1 Esportare il grafo</h3>
         <pre><code>var memory = new GraphMemory();
 memory.initialize();
 memory.remember("Test fact");
@@ -560,7 +560,7 @@ print(graphJson);
 // - Graph analysis in external tools</code></pre>
         <p><strong>Restituisce:</strong> una rappresentazione JSON stringa del knowledge graph</p>
 
-        <h3>19.7.2 Importare il grafo</h3>
+        <h3>20.7.2 Importare il grafo</h3>
         <pre><code>var memory = new GraphMemory();
 memory.initialize();
 
@@ -576,7 +576,7 @@ memory.importGraph(graphJson);
 
         <p><strong>Nota:</strong> <code>importGraph()</code> ripristina solo la struttura del grafo, non il database vettoriale né i metadata. Usa <code>load()</code> per un ripristino completo.</p>
 
-        <h2>19.8 Svuotare la memoria</h2>
+        <h2>20.8 Svuotare la memoria</h2>
         <p>Il metodo <code>clear()</code> rimuove tutte le memorie memorizzate e resetta il sistema di memoria:</p>
         <pre><code>var memory = new GraphMemory();
 memory.initialize();
@@ -589,7 +589,7 @@ memory.clear();
 // You can start storing new facts immediately</code></pre>
         <p><strong>Nota:</strong> dopo lo svuotamento, la memoria è ancora inizializzata. Non serve richiamare <code>initialize()</code> a meno che non si vogliano cambiare dimensione o precisione.</p>
 
-        <h2>19.9 Integrazione con gli agenti</h2>
+        <h2>20.9 Integrazione con gli agenti</h2>
         <p>GraphMemory è pensato per funzionare in modo fluido con la classe <code>Agent</code>. Quando la memoria è abilitata su un agente, automaticamente:</p>
         <ul>
             <li>Interroga le memorie rilevanti prima di ogni risposta dell'agente usando <strong>retrieval ibrido</strong> (3 recenti + 5 match semantici di default)</li>
@@ -632,7 +632,7 @@ if (memory != null) {
             <li><code>agent.addMemoryProgressTools()</code> - Registra i tool <code>remember_progress</code> e <code>recall_progress</code> (richiede prima la memoria abilitata)</li>
         </ul>
 
-        <h3>19.9.1 Tool di memoria del progresso</h3>
+        <h3>20.9.1 Tool di memoria del progresso</h3>
         <p>Dopo <code>addMemoryProgressTools()</code>, l'LLM può leggere e scrivere note di progresso in modo intenzionale durante un turno:</p>
         <ul>
             <li><code>remember_progress(note, type?, phase?)</code> - Salva una nota concisa (<code>type</code>: <code>progress</code>, <code>decision</code>, <code>file</code>, <code>error</code>)</li>
@@ -642,7 +642,7 @@ if (memory != null) {
         <pre><code>agent.enableMemory();
 agent.addMemoryProgressTools();
 // LLM can call remember_progress / recall_progress during tool rounds</code></pre>
-        <h2>19.10 Memoria condivisa</h2>
+        <h2>20.10 Memoria condivisa</h2>
         <p>Più agenti possono condividere la stessa istanza GraphMemory così vedono i fatti memorizzati gli uni dagli altri. Utile per workflow multi-agente, assistenti di team, o quando gli agenti girano in actor diversi e serve una knowledge base comune.</p>
 
         <p><strong>Pattern:</strong> crea un GraphMemory, opzionalmente caricalo da disco, poi attaccalo a ciascun agente con <code>useMemory(memory)</code>.</p>
@@ -667,7 +667,7 @@ memory.save("shared_memory");</code></pre>
 
         <p><strong>Thread safety:</strong> GraphMemory è thread-safe. Quando gli agenti che usano la stessa memoria girano in actor (o thread) diversi, tutte le operazioni (query, remember, save, load, ecc.) sono serializzate per istanza, quindi la memoria condivisa si può usare in sicurezza da più actor.</p>
 
-        <h2>19.11 Esempio completo</h2>
+        <h2>20.11 Esempio completo</h2>
         <pre><code>// Create and initialize memory
 var memory = new GraphMemory();
 memory.initialize(384, "single");
@@ -710,19 +710,19 @@ memory2.load("my_agent_memory");
 // Query still works
 var results2 = memory2.query("user creation");
 print("Found " + results2.length + " results after loading");</code></pre>
-        <h2>19.12 Casi d'uso</h2>
+        <h2>20.12 Casi d'uso</h2>
         <p>GraphMemory è ideale per:</p>
         <ul>
             <li><strong>Agenti di lunga durata:</strong> agenti che devono ricordare il contesto attraverso più sessioni</li>
             <li><strong>Comprensione del codebase:</strong> analizzare e comprendere le relazioni nei codebase</li>
             <li><strong>Sistemi RAG:</strong> Retrieval-Augmented Generation con comprensione delle relazioni basata su grafo</li>
             <li><strong>Knowledge base:</strong> costruire knowledge base semantiche con tracking delle relazioni</li>
-            <li><strong>Loop autonomi guidati da PRD:</strong> Ralph Wiggum (<code>Examples/RalphWiggum/RalphWiggum.malda</code>) persiste riepiloghi strutturati delle iterazioni e indicizza i file modificati — vedi <a href="18-agent-orchestration.html#ralph-wiggum">18.19 Ralph Wiggum</a></li>
+            <li><strong>Loop autonomi guidati da PRD:</strong> Ralph Wiggum (<code>Examples/RalphWiggum/RalphWiggum.malda</code>) persiste riepiloghi strutturati delle iterazioni e indicizza i file modificati — vedi <a href="19-agent-orchestration.html#ralph-wiggum">19.19 Ralph Wiggum</a></li>
             <li><strong>Conversazioni multi-sessione:</strong> mantenere il contesto attraverso le sessioni di conversazione</li>
             <li><strong>Analisi dei documenti:</strong> comprendere le relazioni tra documenti e concetti</li>
         </ul>
 
-        <h2>19.13 Dettagli tecnici</h2>
+        <h2>20.13 Dettagli tecnici</h2>
         <ul>
             <li><strong>Dimensione del vettore:</strong> default 384, configurabile in inizializzazione</li>
             <li><strong>Precisione:</strong> "single" (4 byte per elemento) o "double" (8 byte per elemento)</li>
@@ -734,8 +734,8 @@ print("Found " + results2.length + " results after loading");</code></pre>
         </ul>
 
         <div class="nav-footer">
-            <a href="18-agent-orchestration.html">← Precedente: 18. Orchestrazione di agenti</a>
-            <a href="20-mcp-server.html">Successivo: 20. Server MCP→</a>
+            <a href="19-agent-orchestration.html">← Precedente: 19. Orchestrazione di agenti</a>
+            <a href="21-mcp-server.html">Successivo: 21. Server MCP→</a>
         </div>
 
         <footer>

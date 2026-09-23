@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="MALDA reti neurali - layer densi, attivazioni e un passo di backward locale">
+    <title>14. Reti neurali - Manuale di riferimento MALDA</title>
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="../syntax.css">
+    <link rel="stylesheet" href="../print.css" media="print">
+</head>
+<body>
+    <header>
+        <h1>Manuale di riferimento MALDA&trade;</h1>
+        <p>Il linguaggio di programmazione AI-First - Versione 1.0.26</p>
+    </header>
+    <nav></nav>
+    <main>
+        <div class="breadcrumbs"><a href="index.html">Indice</a> <span>/</span> <span>14. Reti neurali</span></div>
+
+        <h1>14. Reti neurali</h1>
+
+        <p>Un layer denso è un prodotto di matrici, un bias e un'attivazione. MALDA non costruisce un nastro di autograd: conservi la pre-attivazione del forward e moltiplichi per la derivata locale, oppure chiami <code>nn.denseBackward</code>, che fa quel singolo passo. Le firme sono in <a href="13-built-in-functions.html#nn">13.3.3</a>. I programmi per studenti sono in <code>Examples/AI_Theory/</code>.</p>
+
+        <h2 id="math-layout">14.1 Cosa resta su <code>math</code></h2>
+        <p>L'algebra lineare resta su <code>math</code>. Una matrice di pesi è <code>[in, out]</code>: una riga per input, una colonna per output, lo stesso layout di <code>math.matmul(x, weights)</code>. Le dimensioni interne devono coincidere.</p>
+        <table>
+        <thead>
+        <tr><th>Chiamata</th><th>Ruolo</th></tr>
+        </thead>
+        <tbody>
+        <tr><td><code>math.dot</code> / <code>matmul</code> / <code>transpose</code></td><td>Vettori e matrici. Solo su <code>math</code></td></tr>
+        <tr><td><code>math.sigmoid</code> / <code>tanh</code> / <code>softmax</code></td><td>Anche come <code>nn.sigmoid</code> / <code>tanh</code> / <code>softmax</code></td></tr>
+        <tr><td><code>nn.relu</code> / <code>mse</code> / <code>crossEntropyFromLogits</code></td><td>Solo su <code>nn</code>. Non esiste <code>math.relu</code></td></tr>
+        </tbody>
+        </table>
+        <pre><code data-run="true" data-expect="5">print(math.dot([1.0, 2.0], [3.0, 1.0]));</code></pre>
+
+        <h2 id="dense">14.2 Un layer denso</h2>
+        <p><code>nn.dense(x, weights, bias?, activation?)</code> accetta un vettore o una matrice batch. La lunghezza del bias è il numero di uscite. Restituisce <code>{ pre, out }</code>.</p>
+        <p><code>pre</code> è la pre-attivazione, la parte lineare prima della non linearità: <code>pre = xW + b</code> (oppure <code>XW + b</code> per un batch). <code>out</code> è <code>activation(pre)</code>. Senza attivazione, o con <code>"linear"</code>, <code>out</code> è una copia di <code>pre</code>. Conserva <code>pre</code>. Il backward ne ha bisogno.</p>
+        <pre><code data-run="true" data-expect="275\n-150\n275\n0">var layer = nn.dense([1.0, 2.0], [[0.5, -1.0], [1.0, 0.0]], [0.25, -0.5], "relu");
+print(int(layer.pre[0] * 100));
+print(int(layer.pre[1] * 100));
+print(int(layer.out[0] * 100));
+print(int(layer.out[1]));</code></pre>
+        <p>Qui <code>pre</code> è <code>[2.75, -1.5]</code>. ReLU lascia <code>2.75</code> e sostituisce <code>-1.5</code> con <code>0</code>, quindi <code>out</code> è <code>[2.75, 0]</code>.</p>
+
+        <h2 id="activations">14.3 Attivazioni</h2>
+        <p><code>relu</code>, <code>leakyRelu</code>, <code>elu</code>, <code>gelu</code>, <code>silu</code>, <code>softplus</code>, <code>sigmoid</code>, <code>tanh</code> e <code>linear</code> sono i nomi che <code>nn.dense</code> accetta. Dentro <code>dense</code>, <code>leakyRelu</code> usa alpha <code>0.01</code> e <code>elu</code> usa alpha <code>1</code>. Le chiamate <code>nn.leakyRelu(x, alpha?)</code> e <code>nn.elu(x, alpha?)</code> accettano un alpha opzionale.</p>
+        <p>Ogni helper <code>nn.d*</code> è la derivata rispetto alla pre-attivazione, non rispetto all'uscita già schiacciata. <code>dSigmoid(z) = s * (1 - s)</code> con <code>s = sigmoid(z)</code>.</p>
+
+        <h2 id="backward">14.4 Un passo di backward</h2>
+        <p><code>nn.denseBackward(x, weights, upstream, activation?, pre?)</code> restituisce <code>{ dInput, dWeights, dBias }</code>. <code>upstream</code> è dL/d(<code>out</code>). Passa la <code>pre</code> del forward quando l'attivazione non è lineare: la derivata locale si calcola in <code>pre</code>. In batch, i gradienti del bias sono sommati sul batch.</p>
+        <pre><code data-run="true" data-expect="5\n1\n0">var x = [1.0, 2.0];
+var w = [[0.5, -1.0], [1.0, 0.0]];
+var layer = nn.dense(x, w, [0.25, -0.5], "relu");
+var back = nn.denseBackward(x, w, [1.0, 1.0], "relu", layer.pre);
+print(int(back.dInput[0] * 10));
+print(int(back.dBias[0]));
+print(int(back.dBias[1]));</code></pre>
+        <p>La derivata di ReLU è <code>0</code> sull'unità negativa, quindi quella colonna del gradiente upstream viene scartata prima del prodotto per <code>W</code>. <code>Examples/AI_Theory/xor_neural_net.malda</code> scrive la stessa chain rule con variabili con nome. <code>Examples/AI_Theory/nn_dense.malda</code> allena la stessa rete XOR tramite <code>nn.dense</code> e <code>nn.denseBackward</code>.</p>
+
+        <h2 id="losses">14.5 Loss</h2>
+        <p><code>nn.mse(pred, target)</code> è la media degli errori quadratici. <code>nn.mseGrad(pred, target)</code> è <code>pred - target</code> elemento per elemento, il gradiente di <code>1/2 (pred - target)^2</code>. Non è il gradiente di <code>nn.mse</code>, che fa la media.</p>
+        <p><code>nn.crossEntropyFromLogits(logits, targetIndex)</code> è la loss di classificazione per un indice di classe. <code>nn.softmaxGrad(logits, target)</code> è <code>softmax(logits)</code> meno quella classe (oppure meno un vettore numerico della stessa lunghezza).</p>
+
+        <h2 id="examples">14.6 Esempi</h2>
+        <p>Leggili in quest'ordine. Ogni file fissa il RNG e gira offline.</p>
+        <ol>
+            <li><code>Examples/AI_Theory/chain_rule.malda</code> — perché la backpropagation moltiplica le derivate locali</li>
+            <li><code>Examples/AI_Theory/perceptron.malda</code> — un neurone; AND/OR contro XOR</li>
+            <li><code>Examples/AI_Theory/xor_neural_net.malda</code> — una rete 2-4-1 con la chain rule scritta per esteso</li>
+            <li><code>Examples/AI_Theory/nn_dense.malda</code> — la stessa rete tramite <code>nn.dense</code></li>
+            <li><code>Examples/AI_Theory/softmax_classifier.malda</code> — tre classi in 2D</li>
+        </ol>
+        <p><code>attention_is_all_you_need.malda</code> e <code>microgpt.malda</code> restano sullo stesso percorso. <code>new OnnxModel(path)</code> ispeziona ed esegue un modello piccolo sull'host. Non allena.</p>
+
+        <h2 id="backends">14.7 Backend</h2>
+        <p>Interprete, transpile C# e JavaScript eseguono tutti <code>math.dot</code> / <code>matmul</code> / <code>transpose</code> e <code>nn.*</code>. <code>OnnxModel</code> è solo host. I nomi <code>nn</code> non hanno un alias piatto: scrivi <code>nn.relu</code>, non <code>relu</code>.</p>
+
+        <div class="see-also">
+            <h3>Vedi anche</h3>
+            <ul>
+                <li><a href="13-built-in-functions.html#nn">13.3.3 Namespace reti neurali</a> — catalogo delle firme</li>
+                <li><a href="35-examples.html">35. Esempi</a> — <code>Examples/AI_Theory/</code></li>
+                <li><a href="../../docs/roadmap-neural.md">Kit reti neurali</a> — cosa è nel core e cosa resta fuori</li>
+            </ul>
+        </div>
+
+        <div class="nav-footer">
+            <a href="13-built-in-functions.html">← Precedente: 13. Funzioni built-in</a>
+            <a href="15-graphs.html">Successivo: 15. Grafi→</a>
+        </div>
+
+        <footer>
+            <p>Copyright (c) 2026 Andrea Maldini. Licensed under the <a href="https://opensource.org/license/mit">MIT License</a> or the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>, a tua scelta.</p>
+        </footer>
+    </main>
+    <script src="../malda-highlight.js"></script>
+    <script src="../navigation.js"></script>
+</body>
+</html>

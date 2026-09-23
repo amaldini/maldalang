@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>18. Agent Orchestration - MALDA Reference Manual</title>
+    <title>19. Agent Orchestration - MALDA Reference Manual</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="syntax.css">
     <link rel="stylesheet" href="print.css" media="print">
@@ -15,12 +15,12 @@
     </header>
     <nav></nav>
     <main>
-        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>18. Agent Orchestration</span></div>
-        <h1>18. Agent Orchestration</h1>
-        <p>This chapter is the <strong>agent runtime</strong>: LLM clients, conversations, tools, <code>Agent</code>, <code>@Tool</code>, dashboard, and teams. Specialized kinds and Ralph are <a href="#agent-kits">Agent kits</a> — tool bundles on top of that runtime, not a second language. Prompts and schemas are in <a href="10-prompts.html">10. Prompts</a>; cassettes and <code>malda eval</code> are in <a href="23-agentic-runs.html">23. Agentic Runs</a>.</p>
+        <div class="breadcrumbs"><a href="index.html">Home</a> <span>/</span> <span>19. Agent Orchestration</span></div>
+        <h1>19. Agent Orchestration</h1>
+        <p>This chapter is the <strong>agent runtime</strong>: LLM clients, conversations, tools, <code>Agent</code>, <code>@Tool</code>, dashboard, and teams. Specialized kinds and Ralph are <a href="#agent-kits">Agent kits</a> — tool bundles on top of that runtime, not a second language. Prompts and schemas are in <a href="10-prompts.html">10. Prompts</a>; cassettes and <code>malda eval</code> are in <a href="24-agentic-runs.html">24. Agentic Runs</a>.</p>
         <p>Agents, LLM clients, and tool calling run on the interpreter and C# transpile. They are not available on the JavaScript backend — keep agents on the host and call them over HTTP from browser code. See the <a href="../docs/spec/backend-capability-matrix.md">backend capability matrix</a>.</p>
-        <h2 id="first-read">18.0 First read</h2>
-        <p>An <code>Agent</code> is a named runtime object: instructions, an LLM client, and optional tools. Agents are host-only. A live <code>agent.think</code> needs a client or API key. Start at <code>Examples/Prompts/prompt_with_agent.malda</code> or <code>malda new agent</code>. Skip <a href="#disclaimer">18.1</a> on this pass — it is the production risk list, not the first lesson.</p>
+        <h2 id="first-read">19.0 First read</h2>
+        <p>An <code>Agent</code> is a named runtime object: instructions, an LLM client, and optional tools. Agents are host-only. A live <code>agent.think</code> needs a client or API key. Start at <code>Examples/Prompts/prompt_with_agent.malda</code> or <code>malda new agent</code>. Skip <a href="#disclaimer">19.1</a> on this pass — it is the production risk list, not the first lesson.</p>
         <div class="info-box">
             <strong>First-read stop.</strong> <code>agents.define</code> constructs a kit without calling a model. The rest of this chapter is the runtime catalog.
         </div>
@@ -34,12 +34,12 @@
 io.print(coder.kind);</code></pre>
         <h2 id="chapter-map">Chapter map</h2>
         <ul>
-            <li><strong>Runtime</strong> — <a href="#disclaimer">18.1</a> risks · <a href="#llm-client">18.2</a>–<a href="#conversation">18.5</a> clients · <a href="#tool-system">18.6</a> tools · <a href="#agent-class">18.7</a> <code>Agent</code> · <a href="#custom-tools">18.8</a> <code>@Tool</code> · <a href="#agent-dashboard">18.15</a> dashboard · <a href="#multi-agent-orchestration">18.16</a>–<a href="#using-agents-with-actors">18.18</a> teams and actors</li>
-            <li><strong>Agent kits</strong> — <a href="#agent-kits">18.9–18.14</a> <code>CodingAgent</code> / <code>GitAgent</code> / <code>HumanAgent</code> / <code>DevAgent</code> / <code>MALDACodingAgent</code> · <a href="#ralph-wiggum">18.19</a> Ralph Wiggum. Same files: <code>Examples/Agents/</code>, <code>Examples/RalphWiggum/</code></li>
+            <li><strong>Runtime</strong> — <a href="#disclaimer">19.1</a> risks · <a href="#llm-client">19.2</a>–<a href="#conversation">19.5</a> clients · <a href="#tool-system">19.6</a> tools · <a href="#agent-class">19.7</a> <code>Agent</code> · <a href="#custom-tools">19.8</a> <code>@Tool</code> · <a href="#agent-dashboard">19.15</a> dashboard · <a href="#multi-agent-orchestration">19.16</a>–<a href="#using-agents-with-actors">19.18</a> teams and actors</li>
+            <li><strong>Agent kits</strong> — <a href="#agent-kits">19.9–19.14</a> <code>CodingAgent</code> / <code>GitAgent</code> / <code>HumanAgent</code> / <code>DevAgent</code> / <code>MALDACodingAgent</code> · <a href="#ralph-wiggum">19.19</a> Ralph Wiggum. Same files: <code>Examples/Agents/</code>, <code>Examples/RalphWiggum/</code></li>
         </ul>
         
         <div class="warning-box">
-            <h2 id="disclaimer">18.1 ⚠️ Critical Security and Risk Disclaimer</h2>
+            <h2 id="disclaimer">19.1 ⚠️ Critical Security and Risk Disclaimer</h2>
             <p><strong>Autonomous agent systems with tool access pose significant security, safety, and operational risks.</strong> Before deploying agents with tools in production environments, you must understand and mitigate these risks.</p>
             
             <h3>Fundamental Risks</h3>
@@ -139,7 +139,7 @@ io.print(coder.kind);</code></pre>
             <p><strong>By using MALDA's agent orchestration features, you acknowledge that you understand these risks and are solely responsible for the actions taken by agents you create and deploy.</strong> The developers of MALDA and this reference manual provide no warranties regarding the safety, security, or reliability of autonomous agent systems.</p>
         </div>
         
-        <h2 id="llm-client">18.2 LLM Client</h2>
+        <h2 id="llm-client">19.2 LLM Client</h2>
         <p>The <code>LLMClient</code> class provides an interface to OpenAI-compatible LLM APIs (OpenAI, OpenRouter, LMStudio, OLLAMA, etc.).</p>
         <h3>Constructor</h3>
         <pre><code>var client = new LLMClient(apiUrl, apiKey, model);</code></pre>
@@ -160,7 +160,7 @@ var client = new LLMClient(
 
 var response = client.complete("Explain quantum computing in one sentence.");
 print(response);</code></pre>
-        <h2>18.3 OpenRouterClient</h2>
+        <h2>19.3 OpenRouterClient</h2>
         <p>For OpenRouter specifically, there's a specialized <code>OpenRouterClient</code> class that simplifies configuration.</p>
         <h3>Constructor</h3>
         <pre><code>// With default model (deepseek/deepseek-v4-flash)
@@ -180,10 +180,10 @@ var client = new OpenRouterClient("openai/gpt-4");</code></pre>
 client.httpReferer = "https://example.com/secondbrain";  // HTTP-Referer (required for attribution)
 client.appTitle = "Second Brain ASK";                     // X-OpenRouter-Title
 client.appCategories = "cli-agent";                       // optional X-OpenRouter-Categories</code></pre>
-        <h3>18.3.1 Default local LLM (when no client is provided)</h3>
+        <h3>19.3.1 Default local LLM (when no client is provided)</h3>
         <p>When you create an agent, prompt, or use built-ins like <code>decomposeTask</code> without passing an LLM client, MALDA uses a <strong>default local LLM</strong>: Qwen/Qwen2.5-0.5B-Instruct, downloaded as the GGUF build <code>qwen2.5-0.5b-instruct-q4_k_m.gguf</code> from Hugging Face on first use. The model is cached under your user profile (e.g. <code>%LOCALAPPDATA%\MaldaLang\Models\default</code> on Windows). No API key or network is required after the first download. To use a remote model instead, pass an <code>OpenRouterClient</code>, <code>LLMClient</code>, or <code>LlamaCppClient</code> explicitly.</p>
         <p>You can override the default model with the environment variable <code>MALDA_DEFAULT_LOCAL_MODEL</code>. Set it to <code>modelId/fileName.gguf</code> (e.g. <code>org/repo/MyModel-Q4_K_M.gguf</code>) to use a different Hugging Face GGUF model; that model will be downloaded and cached in a subfolder named after the model ID. If unset, the built-in default Qwen/Qwen2.5-0.5B-Instruct GGUF build is used.</p>
-        <h2>18.4 LlamaCppClient</h2>
+        <h2>19.4 LlamaCppClient</h2>
         <p>The <code>LlamaCppClient</code> class enables local LLM inference using LLAMA.cpp with GGUF format models. No API keys or network connection required. If you omit <code>modelPath</code>, MALDA uses the default local Qwen/Qwen2.5-0.5B-Instruct GGUF model and auto-downloads it on first use.</p>
         <h3>Constructor</h3>
         <pre><code>var client = new LlamaCppClient(modelPath);   // Custom GGUF file
@@ -198,7 +198,7 @@ var conversation = new Conversation(client, "You are a helpful assistant.");
 conversation.addUserMessage("Explain quantum computing.");
 var response = conversation.send();
 print(response.content);</code></pre>
-        <h2 id="conversation">18.5 Conversation Management</h2>
+        <h2 id="conversation">19.5 Conversation Management</h2>
         <p>The <code>Conversation</code> class manages multi-turn conversations with LLMs, including automatic tool call handling.</p>
         <h3>Constructor</h3>
         <pre><code>var conversation = new Conversation(client, systemPrompt);</code></pre>
@@ -216,7 +216,7 @@ print(response.content);</code></pre>
 conversation.addUserMessage("What is 2+2?");
 var response = conversation.send();
 print(response.content);</code></pre>
-        <p>Declared <code>context Name { … }</code> is a separate notebook you pass to a prompt yourself; <code>Conversation</code> does not read it. See <a href="23-agentic-runs.html#declared-context">23.5</a>.</p>
+        <p>Declared <code>context Name { … }</code> is a separate notebook you pass to a prompt yourself; <code>Conversation</code> does not read it. See <a href="24-agentic-runs.html#declared-context">24.5</a>.</p>
         <h3>Parallel read-only tool calls</h3>
         <p>When the LLM returns multiple read-only tool calls in a single response, <code>Conversation</code> executes them <strong>in parallel by default</strong>. This applies to all agents (<code>Agent</code>, <code>DevAgent</code>, Ralph Wiggum loops, IDE chat) because they share the same runtime.</p>
         <p><strong>Parallel-safe built-in tools:</strong> <code>read_file</code>, <code>grep</code>, <code>list_directory</code>, <code>glob</code>, <code>get_symbols</code>, <code>get_parse_errors</code>, <code>check_malda</code>, <code>validate_json</code>, <code>web_search</code>, <code>web_fetch</code>, <code>recall_progress</code>, and read-only git tools (<code>git_status</code>, <code>git_log</code>, <code>git_diff</code>, <code>git_branch</code>).</p>
@@ -255,7 +255,7 @@ print(response.content);</code></pre>
         <pre><code>enableAgentVerboseLogging();
 setAgentStatusBanner("Nightly refactor run");
 setAgentVerbosePhase("planning");</code></pre>
-        <h2 id="tool-system">18.6 Tool System</h2>
+        <h2 id="tool-system">19.6 Tool System</h2>
         <p>Tools allow LLMs to call functions during conversations. Tools are defined using the <code>Tool</code> class and follow the OpenAI function calling format.</p>
         <h3>Built-in Tool Creators</h3>
         <ul>
@@ -295,7 +295,7 @@ setAgentVerbosePhase("planning");</code></pre>
             <li><code>createUpdatePlanTool()</code> → <code>Tool</code> - Update a stored plan. Parameters: <code>planId</code> (required), optional <code>steps</code> (re-validated; surviving step ids keep their status; new ids start <code>pending</code>), optional <code>taskSummary</code>. Returns <code>{ accepted: true, planId, stepCount, steps }</code> or <code>{ accepted: false, error }</code>. No working directory. Not parallel-safe.</li>
             <li><code>createMarkStepTool()</code> → <code>Tool</code> - Set a stored step status (<code>pending</code> | <code>in_progress</code> | <code>done</code> | <code>blocked</code>). Parameters: <code>planId</code>, <code>id</code>, <code>status</code>, optional <code>note</code>. Returns <code>{ accepted: true, planId, id, status }</code> or <code>{ accepted: false, error }</code>. No working directory. Not parallel-safe.</li>
         </ul>
-        <p>All of these factories accept an optional <code>workingDirectory</code> except <code>createSubmitPlanTool</code>, <code>createUpdatePlanTool</code>, <code>createMarkStepTool</code>, <code>createAskUserTool</code>, <code>createWebSearchTool</code>, <code>createWebFetchTool</code>, and <code>createValidateJsonTool</code>. When a directory is set, file and path operations stay inside it and its subdirectories. That check is a string prefix on the factory — it is not an unforgeable <a href="12-input-output.html#capability-tokens">capability token</a>. Custom <code>@Tool</code> file handlers should use <code>cap.*</code> (see <a href="#capability-tokens-for-tools">18.8</a>).</p>
+        <p>All of these factories accept an optional <code>workingDirectory</code> except <code>createSubmitPlanTool</code>, <code>createUpdatePlanTool</code>, <code>createMarkStepTool</code>, <code>createAskUserTool</code>, <code>createWebSearchTool</code>, <code>createWebFetchTool</code>, and <code>createValidateJsonTool</code>. When a directory is set, file and path operations stay inside it and its subdirectories. That check is a string prefix on the factory — it is not an unforgeable <a href="12-input-output.html#capability-tokens">capability token</a>. Custom <code>@Tool</code> file handlers should use <code>cap.*</code> (see <a href="#capability-tokens-for-tools">19.8</a>).</p>
         <p>Every factory in this list is supported by the interpreter and C# transpile (not the JavaScript backend). <code>tool.execute(args)</code> runs the same host implementation as an agent <code>think()</code> call — including <code>createGlobTool</code>, <code>createGrepTool</code>, <code>createReadFileTool</code>, and the other file / git / MALDA factories. Custom <code>new Tool(...)</code> handlers are unchanged.</p>
         <pre><code>var globTool = createGlobTool(".");
 var found = globTool.execute({ "pattern": "**/*.malda", "dirPath": "." });
@@ -315,7 +315,7 @@ conversation.addTool(globTool);
 
 conversation.addUserMessage("Read example.txt and summarize it.");
 var response = conversation.send();  // LLM will call read_file tool automatically</code></pre>
-        <h2 id="agent-class">18.7 Agent Class</h2>
+        <h2 id="agent-class">19.7 Agent Class</h2>
         <p>The <code>Agent</code> class represents an autonomous agent with a specific role and instructions.</p>
         <h3>Constructor</h3>
         <pre><code>// With default local LLM (auto-download from Hugging Face)
@@ -333,7 +333,7 @@ var agent = new Agent(name, role, instructions, client);</code></pre>
             <li><code>getAvailableTools()</code> → <code>array</code>: Get list of available tool names</li>
             <li><code>getConversation()</code> → <code>Conversation</code>: Get the agent's conversation object</li>
             <li><code>reset()</code>: Reset agent's conversation history (tools are preserved)</li>
-            <li><code>enableMemory()</code>, <code>enableMemory(path)</code>, <code>useMemory(memory)</code>, <code>saveMemory(path?)</code>, <code>remember(fact, context?)</code>, <code>getMemory()</code>: GraphMemory integration (see <a href="19-graph-memory.html">19. GraphMemory</a>). <code>enableMemory(path)</code> shares one GraphMemory instance across agents using the same path.</li>
+            <li><code>enableMemory()</code>, <code>enableMemory(path)</code>, <code>useMemory(memory)</code>, <code>saveMemory(path?)</code>, <code>remember(fact, context?)</code>, <code>getMemory()</code>: GraphMemory integration (see <a href="20-graph-memory.html">20. GraphMemory</a>). <code>enableMemory(path)</code> shares one GraphMemory instance across agents using the same path.</li>
             <li><code>setMemoryScope(scope)</code>, <code>setMemoryScopeParent(parentScope)</code>, <code>setMemoryScopeHierarchy(scopes)</code>: Control hierarchical memory visibility during <code>think()</code> (e.g. <code>chat:123</code> → <code>project:foo</code> → <code>org:acme</code> → <code>global</code>). Use <code>setMemoryScopeHierarchy</code> for multi-level config; otherwise parent scope falls back to <code>MALDA_MEMORY_SCOPE_PARENT</code>.</li>
             <li><code>setMemoryRerank(enabled, mode?, modelPath?, topK?)</code>: Enable GraphMemory rerank during <code>think()</code> memory queries (<code>rerankMode</code>: <code>llm</code>, <code>cross</code>, or <code>onnx</code>). Env fallbacks: <code>MALDA_MEMORY_RERANK</code>, <code>MALDA_MEMORY_RERANK_MODE</code>, <code>MALDA_MEMORY_RERANK_MODEL_PATH</code>.</li>
             <li><code>setAutoRememberOnThink(enabled)</code>: When <code>true</code>, each <code>think()</code> stores the full prompt and response in memory (default <code>true</code>)</li>
@@ -353,7 +353,7 @@ agent.addTool(createWriteFileTool("."));
 
 var response = agent.think("Read example.txt and add a comment to the add function.");
 print(response.content);</code></pre>
-        <h2 id="custom-tools">18.8 Custom Tools with @Tool Decorator</h2>
+        <h2 id="custom-tools">19.8 Custom Tools with @Tool Decorator</h2>
         <div class="info-box">
             <strong>Governance defaults:</strong> Validate tool / LLM-shaped payloads with a <code>schema</code> and <code>validate()</code> before side effects. Mark normalize/derive helpers <code>@pure()</code> and impure handlers <code>@effects(...)</code>. Offline golden: <code>Examples/Agents/agent_governance_golden.malda</code> (see also <a href="09-functions.html">9.7 Decorators</a>).
         </div>
@@ -424,7 +424,7 @@ io.print(escaped);
 io.deleteFile("_rm_cap_agent_note.txt");</code></pre>
         <p>On a live agent, wrap the helper with <code>@Tool("read_note", "…", "NoteArgs")</code> and call <code>agent.addTool("read_note")</code>. The model only ever sends <code>relativePath</code>. The same host-mint pattern applies to HTTP, MCP, and shell: <code>cap.httpGet</code> + <code>cap.fetch</code> / <code>createWebFetchTool(httpCap)</code>, <code>cap.mcpCall</code> + <code>cap.invoke</code> / <code>callTool(token)</code>, <code>cap.shell</code> + <code>cap.run</code> / <code>createRunCommandTool(dir, shellCap)</code>. Full concept, kinds, and common mistakes: <a href="12-input-output.html#capability-tokens">12.6</a>. Offline starter: <code>malda new agent</code>.</p>
         <h3 id="specialized-kinds-are-not-sandboxes">Specialized kinds are tool bundles, not sandboxes</h3>
-        <p>The constructors in 18.9–18.14 register a fixed tool list. They do not take <code>cap.*</code> tokens. There is no <code>removeTool</code>. <code>workingDirectory</code> is forwarded to the file-tool factories as a string prefix — the same check as <code>createReadFileTool(dir)</code>, not an unforgeable token. A file-level <code>policy { shell: deny }</code> runs on <a href="23-agentic-runs.html#policy">cap consume</a>; it does not stop <code>CodingAgent</code>'s default <code>run_command</code>, which calls <code>runCommand</code> with strings.</p>
+        <p>The constructors in 19.9–19.14 register a fixed tool list. They do not take <code>cap.*</code> tokens. There is no <code>removeTool</code>. <code>workingDirectory</code> is forwarded to the file-tool factories as a string prefix — the same check as <code>createReadFileTool(dir)</code>, not an unforgeable token. A file-level <code>policy { shell: deny }</code> runs on <a href="24-agentic-runs.html#policy">cap consume</a>; it does not stop <code>CodingAgent</code>'s default <code>run_command</code>, which calls <code>runCommand</code> with strings.</p>
         <table>
             <thead>
                 <tr><th>Construction</th><th>What it confines</th><th>What it is not</th></tr>
@@ -439,8 +439,8 @@ io.deleteFile("_rm_cap_agent_note.txt");</code></pre>
         </table>
         <p>Least privilege starts from <code>new Agent</code> and the tools you add. Use a specialized kind when you want that bundle, not when you want a sandbox. Host-mint pattern: <a href="#capability-tokens-for-tools">capability tokens for file tools</a> and <a href="12-input-output.html#capability-tokens">12.6</a>. Offline starter: <code>malda new agent</code>.</p>
         <h2 id="agent-kits">Agent kits</h2>
-        <p>The sections below are specialized <strong>tool bundles</strong> and a PRD loop, not extra runtime syntax. They sit on <code>Agent</code> + tools (<a href="#tool-system">18.6</a>–<a href="#custom-tools">18.8</a>). Dashboard and teams (<a href="#agent-dashboard">18.15</a>–<a href="#using-agents-with-actors">18.18</a>) return to the runtime. Ralph is <a href="#ralph-wiggum">18.19</a>.</p>
-        <h2 id="coding-agent">18.9 CodingAgent</h2>
+        <p>The sections below are specialized <strong>tool bundles</strong> and a PRD loop, not extra runtime syntax. They sit on <code>Agent</code> + tools (<a href="#tool-system">19.6</a>–<a href="#custom-tools">19.8</a>). Dashboard and teams (<a href="#agent-dashboard">19.15</a>–<a href="#using-agents-with-actors">19.18</a>) return to the runtime. Ralph is <a href="#ralph-wiggum">19.19</a>.</p>
+        <h2 id="coding-agent">19.9 CodingAgent</h2>
         <p>The <code>CodingAgent</code> class is a specialized agent for coding tasks that automatically includes all file operation tools.</p>
         <h3>Included Tools</h3>
         <p>CodingAgent automatically includes the following file operation tools and command execution tool:</p>
@@ -479,7 +479,7 @@ var agent = new CodingAgent(name, role, instructions, client, workingDirectory);
 // Agent already has all file tools - ready to use!
 var response = coderAgent.think("Read example.txt and add error handling.");
 print(response.content);</code></pre>
-        <h2>18.10 GitAgent</h2>
+        <h2>19.10 GitAgent</h2>
         <p>The <code>GitAgent</code> class is a specialized agent for git operations that automatically includes all git tools. <code>workingDirectory</code> is a string prefix on those tools, not a capability token — <a href="#specialized-kinds-are-not-sandboxes">same table</a>.</p>
         <h3>Included Tools</h3>
         <p>GitAgent automatically includes the following git operation tools:</p>
@@ -516,7 +516,7 @@ var agent = new GitAgent(name, role, instructions, client, workingDirectory);</c
 // Agent already has all git tools - ready to use!
 var response = gitAgent.think("Check git status, stage all changes, and commit with message 'Update code'");
 print(response.content);</code></pre>
-        <h2>18.11 HumanAgent</h2>
+        <h2>19.11 HumanAgent</h2>
         <p>The <code>HumanAgent</code> class is a specialized agent for human interaction that automatically includes the <code>ask_user</code> tool. This makes it easy to create agents that need to interact with humans for clarification, confirmation, or additional information.</p>
         <h3>Included Tools</h3>
         <p>HumanAgent automatically includes the following user interaction tool:</p>
@@ -590,7 +590,7 @@ var response = orchestrator.think(
             <li><strong>Separation of Concerns:</strong> Human interaction logic is isolated in the HumanAgent</li>
             <li><strong>Reusability:</strong> Same HumanAgent can be used by multiple orchestrators</li>
         </ul>
-        <h2>18.12 DevAgent</h2>
+        <h2>19.12 DevAgent</h2>
         <p>The <code>DevAgent</code> class is a specialized agent for full development workflows that automatically includes all file operation tools, git tools, command execution tools, and optional code analysis tools. <code>readOnly: true</code> registers only the read tools (no writes, git, or <code>run_command</code>). That is a smaller bundle, not <code>cap.*</code> — <a href="#specialized-kinds-are-not-sandboxes">same table</a>.</p>
         <h3>Included Tools</h3>
         <p>DevAgent automatically includes the following tools:</p>
@@ -660,11 +660,11 @@ var devAgent = new DevAgent(
 // Agent can handle complete development workflow
 var response = devAgent.think("Implement a new feature: add a user authentication system");
 print(response.content);</code></pre>
-        <h2 id="structured-task-planning">18.13 Structured task planning</h2>
-        <p>MALDA supports breaking complex tasks into ordered steps and executing them via an agent. A <strong>plan</strong> is an object <code>{ steps: [{ id, description, dependsOn?, out?, fixture? }, ...], planId?, taskSummary?, think? }</code>. Each step has a unique <code>id</code> (string), <code>description</code> (string), and optional <code>dependsOn</code> (array of step ids that must complete first). Optional <code>out</code> is a schema / sum-type / <code>program(Api)</code> name; optional <code>fixture</code> is offline JSON for that contract (see <a href="#team-execute-plan">§ 18.17.6</a>).</p>
+        <h2 id="structured-task-planning">19.13 Structured task planning</h2>
+        <p>MALDA supports breaking complex tasks into ordered steps and executing them via an agent. A <strong>plan</strong> is an object <code>{ steps: [{ id, description, dependsOn?, out?, fixture? }, ...], planId?, taskSummary?, think? }</code>. Each step has a unique <code>id</code> (string), <code>description</code> (string), and optional <code>dependsOn</code> (array of step ids that must complete first). Optional <code>out</code> is a schema / sum-type / <code>program(Api)</code> name; optional <code>fixture</code> is offline JSON for that contract (see <a href="#team-execute-plan">§ 19.17.6</a>).</p>
         <ul>
             <li><strong>decomposeTask(instruction, client?, team?)</strong> – Uses an LLM to turn a high-level instruction into a plan. Optional second argument is an LLM client or an <code>AgentTeam</code>; if the client is omitted, the default local LLM (Qwen/Qwen2.5-0.5B-Instruct, auto-downloaded as a GGUF build from Hugging Face) is used. With a team, each step must set <code>role</code> to a member name. Returns a plan object or <code>{ error }</code> on failure.</li>
-            <li><strong>executePlan(plan, agent)</strong> – Validates the plan, topo-sorts steps by <code>dependsOn</code>, then runs <code>think(step.description)</code> for each step in order. The second argument may be an <code>Agent</code> or an <code>AgentTeam</code> from <code>agents.team</code>. A team requires each step to name <code>role</code> (or <code>agent</code>). Optional <code>step.out</code> coerces think JSON or <code>step.fixture</code> like a typed prompt. Team hop checks, review/reject verdicts, <code>plan.think: false</code>, and the <code>skipped</code> list are in <a href="#declarative-agent-teams">§ 18.17</a>. Returns <code>{ planId, completed, failed, skipped, results }</code>.</li>
+            <li><strong>executePlan(plan, agent)</strong> – Validates the plan, topo-sorts steps by <code>dependsOn</code>, then runs <code>think(step.description)</code> for each step in order. The second argument may be an <code>Agent</code> or an <code>AgentTeam</code> from <code>agents.team</code>. A team requires each step to name <code>role</code> (or <code>agent</code>). Optional <code>step.out</code> coerces think JSON or <code>step.fixture</code> like a typed prompt. Team hop checks, review/reject verdicts, <code>plan.think: false</code>, and the <code>skipped</code> list are in <a href="#declarative-agent-teams">§ 19.17</a>. Returns <code>{ planId, completed, failed, skipped, results }</code>.</li>
             <li><strong>submit_plan</strong> tool – Agents can call this tool to submit a plan (e.g. after a first &quot;think&quot; that produces the plan). DevAgent includes this tool by default. Parameters: <code>plan</code> (object with <code>steps</code>) or <code>steps</code> (array), optional <code>taskSummary</code>. Returns <code>{ accepted: true, planId, stepCount }</code> or <code>{ accepted: false, error }</code>. The accepted plan is stored in process memory with every step <code>pending</code>.</li>
             <li><strong>update_plan</strong> tool – Updates a stored plan. Parameters: <code>planId</code> (required), optional <code>steps</code> (re-validated; surviving ids keep their status), optional <code>taskSummary</code>. Returns <code>{ accepted: true, planId, stepCount, steps }</code> or <code>{ accepted: false, error }</code>. Not parallel-safe. Factory: <code>createUpdatePlanTool()</code>.</li>
             <li><strong>mark_step</strong> tool – Sets a stored step status. Parameters: <code>planId</code>, <code>id</code>, <code>status</code> (<code>pending</code> | <code>in_progress</code> | <code>done</code> | <code>blocked</code>), optional <code>note</code>. Returns <code>{ accepted: true, planId, id, status }</code> or <code>{ accepted: false, error }</code>. Not parallel-safe. Factory: <code>createMarkStepTool()</code>.</li>
@@ -677,7 +677,7 @@ var agent = new DevAgent("Dev", "developer", "You are a developer.", null, ".");
 var result = executePlan(plan, agent);
 print(result.completed);
 print(result.results);</code></pre>
-        <h2>18.14 MALDACodingAgent</h2>
+        <h2>19.14 MALDACodingAgent</h2>
         <p>The <code>MALDACodingAgent</code> class is a specialized agent for MALDA script development and toolchain operations that automatically includes all file operation tools and MALDA execution/compilation tools.</p>
         <h3>Included Tools</h3>
         <p>MALDACodingAgent automatically includes the following tools:</p>
@@ -742,7 +742,7 @@ var response = maldaAgent.think("List all MALDA files and improve error handling
             <li>Use <code>GitAgent</code> when you only need git operations</li>
             <li>None of these kinds is a capability sandbox. Pick a kind for the tool list; confine with <code>workingDirectory</code>, <code>DevAgent</code> <code>readOnly</code>, or <code>new Agent</code> + <code>cap.*</code> — <a href="#specialized-kinds-are-not-sandboxes">specialized kinds are not sandboxes</a>.</li>
         </ul>
-        <h2 id="agent-dashboard">18.15 Agent Dashboard</h2>
+        <h2 id="agent-dashboard">19.15 Agent Dashboard</h2>
         <p>MALDA agents automatically report their activities to a central dashboard without requiring any modifications to MALDA scripts. This enables monitoring and observability across all agents, even when they run in different executables or processes.</p>
         <h3>Overview</h3>
         <p>The agent dashboard feature provides:</p>
@@ -898,7 +898,7 @@ var response = agent.think("Write a hello world function");
             <li><strong>Multi-Process Support:</strong> Track agents running in different executables via process ID</li>
             <li><strong>Zero Overhead:</strong> No performance impact on agent execution</li>
         </ul>
-        <h2 id="multi-agent-orchestration">18.16 Multi-Agent Orchestration</h2>
+        <h2 id="multi-agent-orchestration">19.16 Multi-Agent Orchestration</h2>
         <p>Multiple agents can work together, each with specialized roles and tools.</p>
         <h3>Parallel Agent Workflow</h3>
         <p>Agents can work independently on different tasks:</p>
@@ -981,30 +981,30 @@ var response = orchestrator.think(
 );
 print(response.content);</code></pre>
         <p>When the orchestrator calls a subagent tool, it passes a <code>prompt</code> parameter, and the subagent's <code>think()</code> method is called automatically. The subagent's response is returned to the orchestrator.</p>
-        <p>When several roles share a job and you want the legal hops as data, use a declarative team — <a href="#declarative-agent-teams">§ 18.17</a>.</p>
+        <p>When several roles share a job and you want the legal hops as data, use a declarative team — <a href="#declarative-agent-teams">§ 19.17</a>.</p>
         <div class="see-also">
             <h3>See Also</h3>
             <ul>
-                <li><a href="#declarative-agent-teams">18.17 Declarative Agent Teams</a> — <code>agents.define</code> / <code>agents.team</code>, typed hops, and role-aware <code>executePlan</code></li>
+                <li><a href="#declarative-agent-teams">19.17 Declarative Agent Teams</a> — <code>agents.define</code> / <code>agents.team</code>, typed hops, and role-aware <code>executePlan</code></li>
                 <li><a href="09-functions.html">9. Functions</a> - @Tool decorator syntax</li>
                 <li><a href="10-prompts.html">10. Prompts</a> - Prompt templates and <code>agent.think</code></li>
-                <li><a href="20-mcp-server.html">20. MCP Server</a> - Host-launched STDIO tools</li>
+                <li><a href="21-mcp-server.html">21. MCP Server</a> - Host-launched STDIO tools</li>
                 <li><a href="12-input-output.html#capability-tokens">12.6 Capability tokens</a> — why <code>cap.*</code> exists and the host-mint pattern</li>
                 <li><a href="#specialized-kinds-are-not-sandboxes">Specialized kinds are not sandboxes</a> — <code>CodingAgent</code> and siblings are tool bundles; <code>policy</code> does not wrap their string-path tools</li>
-                <li><a href="23-agentic-runs.html#policy">23.6 Program-boundary policy</a> — last gate on cap consume</li>
+                <li><a href="24-agentic-runs.html#policy">24.6 Program-boundary policy</a> — last gate on cap consume</li>
             </ul>
         </div>
-        <h2 id="declarative-agent-teams">18.17 Declarative Agent Teams</h2>
+        <h2 id="declarative-agent-teams">19.17 Declarative Agent Teams</h2>
         <p>Multi-agent teams are data, not a keyword. <code>agents.define(spec, client?)</code> builds one agent from a spec object. <code>agents.team(specs, topology, client?)</code> binds an array of those specs to a <code>graph directed</code>. The graph is an allow-list of hops: a <code>dependsOn</code> edge between different roles must match a declared relation. There is no flat <code>agents()</code> / <code>define()</code> / <code>team()</code> alias. JavaScript: n/a (host-only).</p>
         <div class="info-box">
             <strong>When to use a team instead of <code>addSubAgent</code>:</strong>
             <ul>
-                <li><code>addSubAgent</code> (§ 18.16) is a supervisor tool loop — the orchestrator decides when to call a specialist.</li>
+                <li><code>addSubAgent</code> (§ 19.16) is a supervisor tool loop — the orchestrator decides when to call a specialist.</li>
                 <li><code>agents.team</code> is a directed graph — host code (or <code>executePlan</code>) may hop only along declared <code>rel</code> edges, optionally <code>validate</code>d by a schema <code>contract</code>.</li>
                 <li>Construction does not auto-download a local model. Pass <code>client</code> when you later call <code>think()</code>, or use <code>new CodingAgent(...)</code> when you want the default GGUF.</li>
             </ul>
         </div>
-        <h3 id="agents-define">18.17.1 <code>agents.define</code></h3>
+        <h3 id="agents-define">19.17.1 <code>agents.define</code></h3>
         <p><code>agents.define(spec, client?)</code> returns an agent. Required spec fields: <code>name</code>, <code>role</code>, <code>instructions</code>. Optional fields:</p>
         <table>
             <thead><tr><th>Field</th><th>Applies to</th><th>Meaning</th></tr></thead>
@@ -1016,7 +1016,7 @@ print(response.content);</code></pre>
                 <tr><td><code>includeSymbols</code> / <code>readOnly</code> / <code>prdAuthorOnly</code></td><td><code>DevAgent</code> only</td><td>Same as <code>new DevAgent(...)</code>.</td></tr>
             </tbody>
         </table>
-        <p>Allowed <code>kind</code> values use the same tool bundles as the matching constructors — not sandboxes (<a href="#specialized-kinds-are-not-sandboxes">18.8</a>). Read the class tag on <code>agent.kind</code>.</p>
+        <p>Allowed <code>kind</code> values use the same tool bundles as the matching constructors — not sandboxes (<a href="#specialized-kinds-are-not-sandboxes">19.8</a>). Read the class tag on <code>agent.kind</code>.</p>
         <table>
             <thead><tr><th><code>kind</code></th><th>Constructor twin</th></tr></thead>
             <tbody>
@@ -1053,9 +1053,9 @@ try {
     threw = true;
 }
 print(threw);</code></pre>
-        <h3 id="agents-team">18.17.2 <code>agents.team</code></h3>
-        <p><code>agents.team(specs, topology, client?)</code> takes a non-empty array of specs and a <strong>directed</strong> graph. Every graph node must match a spec <code>name</code>. Duplicate names fail. Extra keys on a literal edge besides <code>from</code> / <code>to</code> / <code>weight</code> / <code>properties</code> become edge properties, so <code>rel</code> and <code>contract</code> are first-class (see <a href="14-graphs.html">14. Graphs</a>). If <code>rel</code> is omitted it defaults to <code>handoff</code>. Unknown nodes or rels fail before any LLM call. The optional <code>client</code> is forwarded to each <code>define</code>.</p>
-        <h3 id="team-relations">18.17.3 Relations</h3>
+        <h3 id="agents-team">19.17.2 <code>agents.team</code></h3>
+        <p><code>agents.team(specs, topology, client?)</code> takes a non-empty array of specs and a <strong>directed</strong> graph. Every graph node must match a spec <code>name</code>. Duplicate names fail. Extra keys on a literal edge besides <code>from</code> / <code>to</code> / <code>weight</code> / <code>properties</code> become edge properties, so <code>rel</code> and <code>contract</code> are first-class (see <a href="15-graphs.html">15. Graphs</a>). If <code>rel</code> is omitted it defaults to <code>handoff</code>. Unknown nodes or rels fail before any LLM call. The optional <code>client</code> is forwarded to each <code>define</code>.</p>
+        <h3 id="team-relations">19.17.3 Relations</h3>
         <p>Allowed <code>rel</code> values:</p>
         <table>
             <thead><tr><th><code>rel</code></th><th>Host hop</th><th>Notes</th></tr></thead>
@@ -1068,7 +1068,7 @@ print(threw);</code></pre>
             </tbody>
         </table>
         <p><code>delegate</code> and <code>consult</code> edges also install <code>addSubAgent</code> on the source (supervisor tool list = out-neighbors). A <code>handoff</code> edge is not enough for <code>review</code> / <code>reject</code> / <code>consult</code> — hops are typed.</p>
-        <h3 id="team-inspection">18.17.4 Inspecting a team</h3>
+        <h3 id="team-inspection">19.17.4 Inspecting a team</h3>
         <ul>
             <li><code>team.members()</code> — member names, sorted.</li>
             <li><code>team.get(name)</code> — the agent instance; throws if the name is missing.</li>
@@ -1102,7 +1102,7 @@ print(bad.ok);
 
 var missing = team.handoff("Reviewer", "Writer", { path: "calc.malda", summary: "back" });
 print(missing.ok);</code></pre>
-        <h3 id="team-hops">18.17.5 Typed hops</h3>
+        <h3 id="team-hops">19.17.5 Typed hops</h3>
         <p><code>team.handoff</code> / <code>team.review</code> / <code>team.reject</code> / <code>team.consult</code> share the same contract: <code>(from, to, payload, think?)</code>. The edge must exist with a matching <code>rel</code>. When <code>contract</code> is set, the hop runs <code>validate(contract, payload)</code> first. Failed hops return <code>{ ok: false, error }</code> and do not call <code>think()</code>.</p>
         <p>The fourth argument is optional:</p>
         <ul>
@@ -1164,7 +1164,7 @@ print(bad.ok);
 
 var wrong = consultTeam.handoff("Writer", "Researcher", { question: "which API?" });
 print(wrong.ok);</code></pre>
-        <h3 id="team-execute-plan">18.17.6 <code>executePlan</code> with a team</h3>
+        <h3 id="team-execute-plan">19.17.6 <code>executePlan</code> with a team</h3>
         <p><code>executePlan(plan, team)</code> or <code>team.run(plan)</code> routes each step to <code>step.role</code> (or <code>step.agent</code>). Host-driven team plans do <strong>not</strong> pick a default member — a missing or unknown role returns <code>{ error }</code>.</p>
         <p>After topo-sort, a <code>dependsOn</code> hop between different roles must match a declared relation. The check runs before <code>think()</code>, so an illegal hop returns <code>{ error }</code> with no LLM call. Same-role continuation does not need a self-edge.</p>
         <p>A <code>reject</code> hop runs only when the predecessor is not approved. Every other hop runs only when it is approved. The verdict comes from, in order: <code>step.approved</code> / <code>step.rejected</code>, else JSON <code>{ approved }</code> / <code>{ rejected }</code> in the think output, else default <code>approved: true</code>. Skipped steps are listed in <code>skipped</code> (step ids) and recorded on the step result as <code>skipped</code> + <code>reason</code>; they do not call <code>think()</code>. Failed or skipped dependencies cascade.</p>
@@ -1246,10 +1246,10 @@ var badOut = executePlan({
 }, outTeam);
 print(badOut.failed[0]);
 print(badOut.skipped[0]);</code></pre>
-        <h3 id="team-decompose">18.17.7 <code>decomposeTask</code> with a team</h3>
+        <h3 id="team-decompose">19.17.7 <code>decomposeTask</code> with a team</h3>
         <p><code>decomposeTask(instruction, client?, team?)</code> or <code>team.decompose(instruction, client?)</code> puts member names, kinds, roles, instructions, and relations into the decomposer prompt. Each generated step must set <code>role</code> to a member name. Plans that omit <code>role</code> or hop off-graph are rejected. The second argument may be an LLM client or the team (when the team is passed as the second argument, the default local LLM is used for the decompose call itself).</p>
         <p>This path calls an LLM. Prefer a host-written plan plus <code>plan.think: false</code> when you need an offline golden.</p>
-        <h3 id="team-examples">18.17.8 Offline goldens</h3>
+        <h3 id="team-examples">19.17.8 Offline goldens</h3>
         <p>These examples make no LLM call:</p>
         <ul>
             <li><code>Examples/Agents/agent_team_graph.malda</code> — specs + graph + contract</li>
@@ -1261,18 +1261,18 @@ print(badOut.skipped[0]);</code></pre>
             <li><code>Examples/Agents/agent_team_consult.malda</code> — typed <code>consult</code></li>
             <li><code>Examples/Agents/agent_team_plan_out.malda</code> — <code>step.out</code> + <code>fixture</code></li>
         </ul>
-        <p>Few-shots for agents: <code>docs/llm/few-shot/34_agents_team.malda</code> through <code>41_agents_plan_out.malda</code>. Static team topology (literal graphs / plans) is also reported as <code>malda-agents</code> by <code>malda check</code> — see <a href="23-agentic-runs.html">23.10</a>.</p>
+        <p>Few-shots for agents: <code>docs/llm/few-shot/34_agents_team.malda</code> through <code>41_agents_plan_out.malda</code>. Static team topology (literal graphs / plans) is also reported as <code>malda-agents</code> by <code>malda check</code> — see <a href="24-agentic-runs.html">24.10</a>.</p>
         <div class="see-also">
             <h3>See Also</h3>
             <ul>
-                <li><a href="14-graphs.html">14. Graphs</a> — directed literals and extra edge keys</li>
-                <li><a href="#structured-task-planning">18.13 Structured task planning</a> — plan shape, <code>submit_plan</code> / <code>update_plan</code> / <code>mark_step</code></li>
-                <li><a href="#multi-agent-orchestration">18.16 Multi-Agent Orchestration</a> — <code>addSubAgent</code> supervisor loops</li>
+                <li><a href="15-graphs.html">15. Graphs</a> — directed literals and extra edge keys</li>
+                <li><a href="#structured-task-planning">19.13 Structured task planning</a> — plan shape, <code>submit_plan</code> / <code>update_plan</code> / <code>mark_step</code></li>
+                <li><a href="#multi-agent-orchestration">19.16 Multi-Agent Orchestration</a> — <code>addSubAgent</code> supervisor loops</li>
                 <li><a href="10-prompts.html">10. Prompts</a> — <code>agent.think</code></li>
-                <li><a href="23-agentic-runs.html">23. Agentic Runs</a> — <code>malda-agents</code> team check, journal, <code>AgentError</code></li>
+                <li><a href="24-agentic-runs.html">24. Agentic Runs</a> — <code>malda-agents</code> team check, journal, <code>AgentError</code></li>
             </ul>
         </div>
-        <h2 id="using-agents-with-actors">18.18 Using Agents with Actors</h2>
+        <h2 id="using-agents-with-actors">19.18 Using Agents with Actors</h2>
         <p>Agents and actors are complementary features in MALDA. While agents are classes designed for synchronous AI interactions, actors provide concurrent, message-based processing. Combining them enables powerful patterns for distributed AI systems.</p>
         
         <div class="info-box">
@@ -1439,12 +1439,12 @@ send stateManager.queryAgent("Helper", "What is MALDA?");</code></pre>
         <div class="see-also">
             <h3>See Also</h3>
             <ul>
-                <li><a href="17-actors.html">17. Actors</a> - Actor model and message passing</li>
-                <li><a href="17-actors.html#actor-state-isolation">17.5 Actor State Isolation</a> - Understanding actor state</li>
+                <li><a href="18-actors.html">18. Actors</a> - Actor model and message passing</li>
+                <li><a href="18-actors.html#actor-state-isolation">18.5 Actor State Isolation</a> - Understanding actor state</li>
             </ul>
         </div>
 
-        <h2 id="ralph-wiggum">18.19 Ralph Wiggum (PRD-driven autonomous loop)</h2>
+        <h2 id="ralph-wiggum">19.19 Ralph Wiggum (PRD-driven autonomous loop)</h2>
         <p>The repository includes <code>Examples/RalphWiggum/RalphWiggum.malda</code>, a production-ready autonomous loop for PRD-driven development. It uses <code>DevAgent</code>, a checklist PRD (<code>PRD.md</code>), post-iteration validation, resume state, and <strong>GraphMemory</strong> for continuity across iterations when conversation history is reset each round. See <code>Examples/RalphWiggum/README.md</code> for prerequisites and the Snake demo.</p>
 
         <h3>Running</h3>
@@ -1486,7 +1486,7 @@ send stateManager.queryAgent("Helper", "What is MALDA?");</code></pre>
             <li><code>MALDA_RALPH_REPORT</code>, <code>MALDA_RALPH_NOTIFY</code>, <code>MALDA_RALPH_MAX_PHASE_RETRIES</code>, <code>MALDA_RALPH_ABORT_ON_STALL</code></li>
             <li><code>MALDA_RALPH_GIT_COMMIT</code>, <code>MALDA_RALPH_AUTO_REMEMBER</code> (default <code>false</code>)</li>
             <li><code>MALDA_AGENT_THINK_TIMEOUT_MS</code> / <code>MALDA_RALPH_ITER_TIMEOUT_MS</code> — per-iteration think deadline</li>
-            <li>Verbose CLI: <code>MALDA_AGENT_VERBOSE</code> (default <code>true</code> in Ralph), <code>MALDA_AGENT_RICH</code>, <code>MALDA_AGENT_LLM_THINKING</code>, <code>MALDA_AGENT_LLM_STREAM</code> — see <a href="#conversation-verbose-streaming">18.5 verbose logging</a></li>
+            <li>Verbose CLI: <code>MALDA_AGENT_VERBOSE</code> (default <code>true</code> in Ralph), <code>MALDA_AGENT_RICH</code>, <code>MALDA_AGENT_LLM_THINKING</code>, <code>MALDA_AGENT_LLM_STREAM</code> — see <a href="#conversation-verbose-streaming">19.5 verbose logging</a></li>
             <li><code>OPENROUTER_API_KEY</code> or <code>providers.openrouter</code> in <code>~/.malda/config.json</code></li>
         </ul>
         <p>Implementation modules: <code>Examples/RalphWiggum/ralph/*.malda</code> (see <code>ralph/ARCHITECTURE.md</code>). Full env var list and git-worktree workflow: <code>Examples/RalphWiggum/README.md</code>.</p>
@@ -1495,14 +1495,14 @@ send stateManager.queryAgent("Helper", "What is MALDA?");</code></pre>
         <h3>Custom validation hooks</h3>
         <p>After structural checks, Ralph may run <code>MALDA_RALPH_VALIDATE_CMD</code>, or a project-local <code>.ralph-validate.sh</code> / <code>.ralph-validate.bat</code> / (or <code>.ralph-validate.malda</code>) in the workdir. <code>.malda</code> files are diagnosed with <code>checkMalda</code> (same report as <code>malda check --json</code>), not syntax-only <code>getParseErrors</code>. Loop prompts tell the agent to call <code>check_malda</code> / <code>test_malda</code> during the turn and not to use <code>submit_plan</code> / <code>update_plan</code> / <code>mark_step</code>.</p>
         <h3>Execution strategy</h3>
-        <p>Ralph prompts the agent to complete <strong>one PRD checklist item per iteration</strong> in as few LLM rounds as possible: batch read-only exploration (<code>list_directory</code>, <code>grep</code>, <code>read_file</code>) in one response, then batch edits and verification. This pairs with parallel read-only tool execution (18.5) and streamed <code>[think]</code> feedback during verbose runs.</p>
-        <p>See also <a href="19-graph-memory.html">19. GraphMemory</a> for <code>remember</code> metadata, <code>getRecent</code>, and hybrid <code>query</code> options.</p>
+        <p>Ralph prompts the agent to complete <strong>one PRD checklist item per iteration</strong> in as few LLM rounds as possible: batch read-only exploration (<code>list_directory</code>, <code>grep</code>, <code>read_file</code>) in one response, then batch edits and verification. This pairs with parallel read-only tool execution (19.5) and streamed <code>[think]</code> feedback during verbose runs.</p>
+        <p>See also <a href="20-graph-memory.html">20. GraphMemory</a> for <code>remember</code> metadata, <code>getRecent</code>, and hybrid <code>query</code> options.</p>
         <p><code>reportRalphStatus(agentName, phase, iteration, maxIter, prdPercent, validationOk?, elapsedMs?, promptTokens?, completionTokens?, costUsd?)</code> publishes one iteration of progress to the agent dashboard. The first five arguments are required; the rest default to <code>false</code>, <code>0</code>, <code>0</code>, <code>0</code>, and <code>0.0</code>.</p>
         <pre><code>reportRalphStatus("Ralph", "implement", 3, 10, 45, true, 12000, 1800, 640, 0.02);</code></pre>
 
         <div class="nav-footer">
-            <a href="17-actors.html">← Previous: 17. Actors</a>
-            <a href="19-graph-memory.html">Next: 19. GraphMemory→</a>
+            <a href="18-actors.html">← Previous: 18. Actors</a>
+            <a href="20-graph-memory.html">Next: 20. GraphMemory→</a>
         </div>
 
         <footer>

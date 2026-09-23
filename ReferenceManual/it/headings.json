@@ -853,6 +853,12 @@
   },
   {
     "file": "13-built-in-functions.html",
+    "level": 3,
+    "id": "nn",
+    "title": "13.3.3 Namespace reti neurali (nn)"
+  },
+  {
+    "file": "13-built-in-functions.html",
     "level": 2,
     "id": "strings",
     "title": "13.4 Funzioni sulle stringhe"
@@ -1134,2331 +1140,2373 @@
     "title": "13.27 Pacchetti opzionali (non nel core)"
   },
   {
-    "file": "14-graphs.html",
+    "file": "14-neural-nets.html",
     "level": 2,
-    "id": "",
-    "title": "14.1 Sintassi letterale Graph"
+    "id": "math-layout",
+    "title": "14.1 Cosa resta su math"
   },
   {
-    "file": "14-graphs.html",
+    "file": "14-neural-nets.html",
     "level": 2,
-    "id": "",
-    "title": "14.2 Operazioni sui grafi"
+    "id": "dense",
+    "title": "14.2 Un layer denso"
   },
   {
-    "file": "14-graphs.html",
+    "file": "14-neural-nets.html",
     "level": 2,
-    "id": "",
-    "title": "14.3 Algoritmi sui grafi"
+    "id": "activations",
+    "title": "14.3 Attivazioni"
   },
   {
-    "file": "14-graphs.html",
+    "file": "14-neural-nets.html",
     "level": 2,
-    "id": "",
-    "title": "14.4 Serializzazione dei grafi"
+    "id": "backward",
+    "title": "14.4 Un passo di backward"
   },
   {
-    "file": "14-graphs.html",
+    "file": "14-neural-nets.html",
     "level": 2,
-    "id": "",
-    "title": "14.5 Riferimento dei metodi Graph"
+    "id": "losses",
+    "title": "14.5 Loss"
   },
   {
-    "file": "14-graphs.html",
+    "file": "14-neural-nets.html",
     "level": 2,
-    "id": "",
-    "title": "14.6 Applicazioni dei grafi"
+    "id": "examples",
+    "title": "14.6 Esempi"
   },
   {
-    "file": "15-vectordb.html",
+    "file": "14-neural-nets.html",
     "level": 2,
-    "id": "",
-    "title": "15.1 Creare un VectorDB"
+    "id": "backends",
+    "title": "14.7 Backend"
   },
   {
-    "file": "15-vectordb.html",
+    "file": "15-graphs.html",
     "level": 2,
     "id": "",
-    "title": "15.2 Aggiungere vettori"
+    "title": "15.1 Sintassi letterale Graph"
   },
   {
-    "file": "15-vectordb.html",
+    "file": "15-graphs.html",
+    "level": 2,
+    "id": "",
+    "title": "15.2 Operazioni sui grafi"
+  },
+  {
+    "file": "15-graphs.html",
+    "level": 2,
+    "id": "",
+    "title": "15.3 Algoritmi sui grafi"
+  },
+  {
+    "file": "15-graphs.html",
+    "level": 2,
+    "id": "",
+    "title": "15.4 Serializzazione dei grafi"
+  },
+  {
+    "file": "15-graphs.html",
+    "level": 2,
+    "id": "",
+    "title": "15.5 Riferimento dei metodi Graph"
+  },
+  {
+    "file": "15-graphs.html",
+    "level": 2,
+    "id": "",
+    "title": "15.6 Applicazioni dei grafi"
+  },
+  {
+    "file": "16-vectordb.html",
+    "level": 2,
+    "id": "",
+    "title": "16.1 Creare un VectorDB"
+  },
+  {
+    "file": "16-vectordb.html",
+    "level": 2,
+    "id": "",
+    "title": "16.2 Aggiungere vettori"
+  },
+  {
+    "file": "16-vectordb.html",
     "level": 3,
     "id": "",
-    "title": "15.2.1 Aggiunta con calcolo automatico del vettore"
+    "title": "16.2.1 Aggiunta con calcolo automatico del vettore"
   },
   {
-    "file": "15-vectordb.html",
+    "file": "16-vectordb.html",
     "level": 3,
     "id": "",
-    "title": "15.2.2 Aggiunta con vettore esplicito"
+    "title": "16.2.2 Aggiunta con vettore esplicito"
   },
   {
-    "file": "15-vectordb.html",
+    "file": "16-vectordb.html",
     "level": 2,
     "id": "",
-    "title": "15.3 Ricerca per similarità"
+    "title": "16.3 Ricerca per similarità"
   },
   {
-    "file": "15-vectordb.html",
+    "file": "16-vectordb.html",
     "level": 2,
     "id": "",
-    "title": "15.4 Serializzazione binaria"
+    "title": "16.4 Serializzazione binaria"
   },
   {
-    "file": "15-vectordb.html",
+    "file": "16-vectordb.html",
     "level": 2,
     "id": "",
-    "title": "15.5 Esempio completo"
+    "title": "16.5 Esempio completo"
   },
   {
-    "file": "15-vectordb.html",
+    "file": "16-vectordb.html",
     "level": 2,
     "id": "",
-    "title": "15.6 Embedding di testo built-in"
+    "title": "16.6 Embedding di testo built-in"
   },
   {
-    "file": "15-vectordb.html",
+    "file": "16-vectordb.html",
     "level": 3,
     "id": "",
-    "title": "15.6.1 Embedding di reti neurali con LLamaSharp"
+    "title": "16.6.1 Embedding di reti neurali con LLamaSharp"
   },
   {
-    "file": "15-vectordb.html",
+    "file": "16-vectordb.html",
     "level": 2,
     "id": "",
-    "title": "15.7 Retriever (asRetriever)"
+    "title": "16.7 Retriever (asRetriever)"
   },
   {
-    "file": "15-vectordb.html",
+    "file": "16-vectordb.html",
     "level": 2,
     "id": "",
-    "title": "15.8 Casi d'uso"
+    "title": "16.8 Casi d'uso"
   },
   {
-    "file": "15-vectordb.html",
+    "file": "16-vectordb.html",
     "level": 3,
     "id": "",
-    "title": "15.8.1 Applicazioni reali di VectorDB"
+    "title": "16.8.1 Applicazioni reali di VectorDB"
   },
   {
-    "file": "15-vectordb.html",
+    "file": "16-vectordb.html",
     "level": 2,
     "id": "",
-    "title": "15.10 Ispezione ONNX (OnnxModel)"
+    "title": "16.10 Ispezione ONNX (OnnxModel)"
   },
   {
-    "file": "15-vectordb.html",
+    "file": "16-vectordb.html",
     "level": 2,
     "id": "",
-    "title": "15.9 Considerazioni sulle prestazioni"
+    "title": "16.9 Considerazioni sulle prestazioni"
   },
   {
-    "file": "16-database.html",
+    "file": "17-database.html",
     "level": 2,
     "id": "",
-    "title": "16.1 SQLite da zero"
+    "title": "17.1 SQLite da zero"
   },
   {
-    "file": "16-database.html",
+    "file": "17-database.html",
     "level": 2,
     "id": "",
-    "title": "16.2 API condivisa dei client"
+    "title": "17.2 API condivisa dei client"
   },
   {
-    "file": "16-database.html",
+    "file": "17-database.html",
     "level": 2,
     "id": "",
-    "title": "16.3 Query builder"
+    "title": "17.3 Query builder"
   },
   {
-    "file": "16-database.html",
+    "file": "17-database.html",
     "level": 3,
     "id": "",
-    "title": "16.3.1 Select"
+    "title": "17.3.1 Select"
   },
   {
-    "file": "16-database.html",
+    "file": "17-database.html",
     "level": 3,
     "id": "",
-    "title": "16.3.2 Insert, update, delete"
+    "title": "17.3.2 Insert, update, delete"
   },
   {
-    "file": "16-database.html",
+    "file": "17-database.html",
     "level": 2,
     "id": "",
-    "title": "16.4 Transazioni"
+    "title": "17.4 Transazioni"
   },
   {
-    "file": "16-database.html",
+    "file": "17-database.html",
     "level": 2,
     "id": "",
-    "title": "16.5 SQL Server e PostgreSQL"
+    "title": "17.5 SQL Server e PostgreSQL"
   },
   {
-    "file": "16-database.html",
+    "file": "17-database.html",
     "level": 2,
     "id": "",
-    "title": "16.6 Id delle righe inserite e colonne JSON"
+    "title": "17.6 Id delle righe inserite e colonne JSON"
   },
   {
-    "file": "16-database.html",
+    "file": "17-database.html",
     "level": 2,
     "id": "",
-    "title": "16.7 Runtime, errori e backend"
+    "title": "17.7 Runtime, errori e backend"
   },
   {
-    "file": "16-database.html",
+    "file": "17-database.html",
     "level": 2,
     "id": "",
-    "title": "16.8 Sicurezza"
+    "title": "17.8 Sicurezza"
   },
   {
-    "file": "16-database.html",
+    "file": "17-database.html",
     "level": 2,
     "id": "",
-    "title": "16.9 malda db (scaffold local-first)"
+    "title": "17.9 malda db (scaffold local-first)"
   },
   {
-    "file": "17-actors.html",
+    "file": "18-actors.html",
     "level": 2,
     "id": "",
-    "title": "17.1 Dichiarazione degli actor"
+    "title": "18.1 Dichiarazione degli actor"
   },
   {
-    "file": "17-actors.html",
+    "file": "18-actors.html",
     "level": 2,
     "id": "",
-    "title": "17.2 Spawn degli actor"
+    "title": "18.2 Spawn degli actor"
   },
   {
-    "file": "17-actors.html",
+    "file": "18-actors.html",
     "level": 2,
     "id": "",
-    "title": "17.3 Invio dei messaggi"
+    "title": "18.3 Invio dei messaggi"
   },
   {
-    "file": "17-actors.html",
+    "file": "18-actors.html",
     "level": 2,
     "id": "",
-    "title": "17.4 Message handler"
+    "title": "18.4 Message handler"
   },
   {
-    "file": "17-actors.html",
+    "file": "18-actors.html",
     "level": 2,
     "id": "actor-state-isolation",
-    "title": "17.5 Isolamento dello stato degli actor"
+    "title": "18.5 Isolamento dello stato degli actor"
   },
   {
-    "file": "17-actors.html",
+    "file": "18-actors.html",
     "level": 2,
     "id": "",
-    "title": "17.6 Riferimento self"
+    "title": "18.6 Riferimento self"
   },
   {
-    "file": "17-actors.html",
+    "file": "18-actors.html",
     "level": 2,
     "id": "",
-    "title": "17.7 Ricezione dei messaggi"
+    "title": "18.7 Ricezione dei messaggi"
   },
   {
-    "file": "17-actors.html",
+    "file": "18-actors.html",
     "level": 2,
     "id": "",
-    "title": "17.8 Message passing tra actor"
+    "title": "18.8 Message passing tra actor"
   },
   {
-    "file": "17-actors.html",
+    "file": "18-actors.html",
     "level": 2,
     "id": "",
-    "title": "17.9 Elaborazione concorrente"
+    "title": "18.9 Elaborazione concorrente"
   },
   {
-    "file": "17-actors.html",
+    "file": "18-actors.html",
     "level": 2,
     "id": "",
-    "title": "17.10 Ciclo di vita degli actor"
+    "title": "18.10 Ciclo di vita degli actor"
   },
   {
-    "file": "17-actors.html",
+    "file": "18-actors.html",
     "level": 2,
     "id": "",
-    "title": "17.11 Riepilogo delle funzionalità degli actor"
+    "title": "18.11 Riepilogo delle funzionalità degli actor"
   },
   {
-    "file": "17-actors.html",
+    "file": "18-actors.html",
     "level": 2,
     "id": "",
-    "title": "17.12 Usare gli actor con gli agenti"
+    "title": "18.12 Usare gli actor con gli agenti"
   },
   {
-    "file": "18-agent-orchestration.html",
+    "file": "19-agent-orchestration.html",
     "level": 2,
     "id": "first-read",
-    "title": "18.0 Prima lettura"
+    "title": "19.0 Prima lettura"
   },
   {
-    "file": "18-agent-orchestration.html",
+    "file": "19-agent-orchestration.html",
     "level": 2,
     "id": "chapter-map",
     "title": "Mappa del capitolo"
   },
   {
-    "file": "18-agent-orchestration.html",
+    "file": "19-agent-orchestration.html",
     "level": 2,
     "id": "disclaimer",
-    "title": "18.1 ⚠️ Avvertenza critica su sicurezza e rischi"
+    "title": "19.1 ⚠️ Avvertenza critica su sicurezza e rischi"
   },
   {
-    "file": "18-agent-orchestration.html",
+    "file": "19-agent-orchestration.html",
     "level": 2,
     "id": "llm-client",
-    "title": "18.2 LLM Client"
+    "title": "19.2 LLM Client"
   },
   {
-    "file": "18-agent-orchestration.html",
+    "file": "19-agent-orchestration.html",
     "level": 2,
     "id": "",
-    "title": "18.3 OpenRouterClient"
+    "title": "19.3 OpenRouterClient"
   },
   {
-    "file": "18-agent-orchestration.html",
+    "file": "19-agent-orchestration.html",
     "level": 3,
     "id": "",
-    "title": "18.3.1 LLM locale di default (quando non si passa un client)"
+    "title": "19.3.1 LLM locale di default (quando non si passa un client)"
   },
   {
-    "file": "18-agent-orchestration.html",
+    "file": "19-agent-orchestration.html",
     "level": 2,
     "id": "",
-    "title": "18.4 LlamaCppClient"
+    "title": "19.4 LlamaCppClient"
   },
   {
-    "file": "18-agent-orchestration.html",
+    "file": "19-agent-orchestration.html",
     "level": 2,
     "id": "conversation",
-    "title": "18.5 Gestione delle conversazioni"
+    "title": "19.5 Gestione delle conversazioni"
   },
   {
-    "file": "18-agent-orchestration.html",
+    "file": "19-agent-orchestration.html",
     "level": 2,
     "id": "tool-system",
-    "title": "18.6 Sistema di tool"
+    "title": "19.6 Sistema di tool"
   },
   {
-    "file": "18-agent-orchestration.html",
+    "file": "19-agent-orchestration.html",
     "level": 2,
     "id": "agent-class",
-    "title": "18.7 Classe Agent"
+    "title": "19.7 Classe Agent"
   },
   {
-    "file": "18-agent-orchestration.html",
+    "file": "19-agent-orchestration.html",
     "level": 2,
     "id": "custom-tools",
-    "title": "18.8 Tool personalizzati con il decoratore @Tool"
+    "title": "19.8 Tool personalizzati con il decoratore @Tool"
   },
   {
-    "file": "18-agent-orchestration.html",
+    "file": "19-agent-orchestration.html",
     "level": 3,
     "id": "capability-tokens-for-tools",
     "title": "Token di capability per i tool sui file"
   },
   {
-    "file": "18-agent-orchestration.html",
+    "file": "19-agent-orchestration.html",
     "level": 3,
     "id": "specialized-kinds-are-not-sandboxes",
     "title": "I kind specializzati sono bundle di tool, non sandbox"
   },
   {
-    "file": "18-agent-orchestration.html",
+    "file": "19-agent-orchestration.html",
     "level": 2,
     "id": "agent-kits",
     "title": "Kit di agenti"
   },
   {
-    "file": "18-agent-orchestration.html",
+    "file": "19-agent-orchestration.html",
     "level": 2,
     "id": "coding-agent",
-    "title": "18.9 CodingAgent"
+    "title": "19.9 CodingAgent"
   },
   {
-    "file": "18-agent-orchestration.html",
+    "file": "19-agent-orchestration.html",
     "level": 2,
     "id": "",
-    "title": "18.10 GitAgent"
+    "title": "19.10 GitAgent"
   },
   {
-    "file": "18-agent-orchestration.html",
+    "file": "19-agent-orchestration.html",
     "level": 2,
     "id": "",
-    "title": "18.11 HumanAgent"
+    "title": "19.11 HumanAgent"
   },
   {
-    "file": "18-agent-orchestration.html",
+    "file": "19-agent-orchestration.html",
     "level": 2,
     "id": "",
-    "title": "18.12 DevAgent"
+    "title": "19.12 DevAgent"
   },
   {
-    "file": "18-agent-orchestration.html",
+    "file": "19-agent-orchestration.html",
     "level": 2,
     "id": "structured-task-planning",
-    "title": "18.13 Pianificazione strutturata dei task"
+    "title": "19.13 Pianificazione strutturata dei task"
   },
   {
-    "file": "18-agent-orchestration.html",
+    "file": "19-agent-orchestration.html",
     "level": 2,
     "id": "",
-    "title": "18.14 MALDACodingAgent"
+    "title": "19.14 MALDACodingAgent"
   },
   {
-    "file": "18-agent-orchestration.html",
+    "file": "19-agent-orchestration.html",
     "level": 2,
     "id": "agent-dashboard",
-    "title": "18.15 Dashboard degli agenti"
+    "title": "19.15 Dashboard degli agenti"
   },
   {
-    "file": "18-agent-orchestration.html",
+    "file": "19-agent-orchestration.html",
     "level": 2,
     "id": "multi-agent-orchestration",
-    "title": "18.16 Orchestrazione multi-agente"
+    "title": "19.16 Orchestrazione multi-agente"
   },
   {
-    "file": "18-agent-orchestration.html",
+    "file": "19-agent-orchestration.html",
     "level": 2,
     "id": "declarative-agent-teams",
-    "title": "18.17 Team dichiarativi di agenti"
+    "title": "19.17 Team dichiarativi di agenti"
   },
   {
-    "file": "18-agent-orchestration.html",
+    "file": "19-agent-orchestration.html",
     "level": 3,
     "id": "agents-define",
-    "title": "18.17.1 agents.define"
+    "title": "19.17.1 agents.define"
   },
   {
-    "file": "18-agent-orchestration.html",
+    "file": "19-agent-orchestration.html",
     "level": 3,
     "id": "agents-team",
-    "title": "18.17.2 agents.team"
+    "title": "19.17.2 agents.team"
   },
   {
-    "file": "18-agent-orchestration.html",
+    "file": "19-agent-orchestration.html",
     "level": 3,
     "id": "team-relations",
-    "title": "18.17.3 Relazioni"
+    "title": "19.17.3 Relazioni"
   },
   {
-    "file": "18-agent-orchestration.html",
+    "file": "19-agent-orchestration.html",
     "level": 3,
     "id": "team-inspection",
-    "title": "18.17.4 Ispezionare un team"
+    "title": "19.17.4 Ispezionare un team"
   },
   {
-    "file": "18-agent-orchestration.html",
+    "file": "19-agent-orchestration.html",
     "level": 3,
     "id": "team-hops",
-    "title": "18.17.5 Hop tipizzati"
+    "title": "19.17.5 Hop tipizzati"
   },
   {
-    "file": "18-agent-orchestration.html",
+    "file": "19-agent-orchestration.html",
     "level": 3,
     "id": "team-execute-plan",
-    "title": "18.17.6 executePlan con un team"
+    "title": "19.17.6 executePlan con un team"
   },
   {
-    "file": "18-agent-orchestration.html",
+    "file": "19-agent-orchestration.html",
     "level": 3,
     "id": "team-decompose",
-    "title": "18.17.7 decomposeTask con un team"
+    "title": "19.17.7 decomposeTask con un team"
   },
   {
-    "file": "18-agent-orchestration.html",
+    "file": "19-agent-orchestration.html",
     "level": 3,
     "id": "team-examples",
-    "title": "18.17.8 Golden offline"
+    "title": "19.17.8 Golden offline"
   },
   {
-    "file": "18-agent-orchestration.html",
+    "file": "19-agent-orchestration.html",
     "level": 2,
     "id": "using-agents-with-actors",
-    "title": "18.18 Usare gli agenti con gli actor"
+    "title": "19.18 Usare gli agenti con gli actor"
   },
   {
-    "file": "18-agent-orchestration.html",
+    "file": "19-agent-orchestration.html",
     "level": 2,
     "id": "ralph-wiggum",
-    "title": "18.19 Ralph Wiggum (loop autonomo guidato da PRD)"
+    "title": "19.19 Ralph Wiggum (loop autonomo guidato da PRD)"
   },
   {
-    "file": "19-graph-memory.html",
+    "file": "20-graph-memory.html",
     "level": 2,
     "id": "",
-    "title": "19.1 Creare un GraphMemory"
+    "title": "20.1 Creare un GraphMemory"
   },
   {
-    "file": "19-graph-memory.html",
+    "file": "20-graph-memory.html",
     "level": 2,
     "id": "",
-    "title": "19.2 Memorizzare i fatti"
+    "title": "20.2 Memorizzare i fatti"
   },
   {
-    "file": "19-graph-memory.html",
+    "file": "20-graph-memory.html",
     "level": 3,
     "id": "",
-    "title": "19.2.1 Collegamento semantico automatico"
+    "title": "20.2.1 Collegamento semantico automatico"
   },
   {
-    "file": "19-graph-memory.html",
+    "file": "20-graph-memory.html",
     "level": 2,
     "id": "",
-    "title": "19.3 Interrogare la memoria"
+    "title": "20.3 Interrogare la memoria"
   },
   {
-    "file": "19-graph-memory.html",
+    "file": "20-graph-memory.html",
     "level": 3,
     "id": "",
-    "title": "19.3.1 Query ibrida (semantica + recente)"
+    "title": "20.3.1 Query ibrida (semantica + recente)"
   },
   {
-    "file": "19-graph-memory.html",
+    "file": "20-graph-memory.html",
     "level": 3,
     "id": "",
-    "title": "19.3.2 Voci recenti (getRecent)"
+    "title": "20.3.2 Voci recenti (getRecent)"
   },
   {
-    "file": "19-graph-memory.html",
+    "file": "20-graph-memory.html",
     "level": 3,
     "id": "",
-    "title": "19.3.3 Dimenticare le voci (forget)"
+    "title": "20.3.3 Dimenticare le voci (forget)"
   },
   {
-    "file": "19-graph-memory.html",
+    "file": "20-graph-memory.html",
     "level": 3,
     "id": "",
-    "title": "19.3.4 Indicizzare file di documenti (indexDocuments)"
+    "title": "20.3.4 Indicizzare file di documenti (indexDocuments)"
   },
   {
-    "file": "19-graph-memory.html",
+    "file": "20-graph-memory.html",
     "level": 3,
     "id": "",
-    "title": "19.3.5 Statistiche della memoria (stats)"
+    "title": "20.3.5 Statistiche della memoria (stats)"
   },
   {
-    "file": "19-graph-memory.html",
+    "file": "20-graph-memory.html",
     "level": 3,
     "id": "",
-    "title": "19.3.5a Health check (validate)"
+    "title": "20.3.5a Health check (validate)"
   },
   {
-    "file": "19-graph-memory.html",
+    "file": "20-graph-memory.html",
     "level": 3,
     "id": "",
-    "title": "19.3.5b Backup a rotazione su save()"
+    "title": "20.3.5b Backup a rotazione su save()"
   },
   {
-    "file": "19-graph-memory.html",
+    "file": "20-graph-memory.html",
     "level": 3,
     "id": "",
-    "title": "19.3.6 Lookup del nodo e aggiornamento in-place"
+    "title": "20.3.6 Lookup del nodo e aggiornamento in-place"
   },
   {
-    "file": "19-graph-memory.html",
+    "file": "20-graph-memory.html",
     "level": 3,
     "id": "",
-    "title": "19.3.7 Consolidamento episodico (consolidate)"
+    "title": "20.3.7 Consolidamento episodico (consolidate)"
   },
   {
-    "file": "19-graph-memory.html",
+    "file": "20-graph-memory.html",
     "level": 3,
     "id": "",
-    "title": "19.3.8 Pruning in batch (prune)"
+    "title": "20.3.8 Pruning in batch (prune)"
   },
   {
-    "file": "19-graph-memory.html",
+    "file": "20-graph-memory.html",
     "level": 3,
     "id": "",
-    "title": "19.3.9 Limiti di dimensione della memoria (enforceLimits)"
+    "title": "20.3.9 Limiti di dimensione della memoria (enforceLimits)"
   },
   {
-    "file": "19-graph-memory.html",
+    "file": "20-graph-memory.html",
     "level": 3,
     "id": "",
-    "title": "19.3.10 Bundle portabili (exportBundle / importBundle)"
+    "title": "20.3.10 Bundle portabili (exportBundle / importBundle)"
   },
   {
-    "file": "19-graph-memory.html",
+    "file": "20-graph-memory.html",
     "level": 3,
     "id": "",
-    "title": "19.3.11 Riflessione LLM (reflect)"
+    "title": "20.3.11 Riflessione LLM (reflect)"
   },
   {
-    "file": "19-graph-memory.html",
+    "file": "20-graph-memory.html",
     "level": 3,
     "id": "",
-    "title": "19.3.11a Riflessione in background (reflectAsync)"
+    "title": "20.3.11a Riflessione in background (reflectAsync)"
   },
   {
-    "file": "19-graph-memory.html",
+    "file": "20-graph-memory.html",
     "level": 3,
     "id": "",
-    "title": "19.3.12 Reindicizzare i documenti (reindexDocuments)"
+    "title": "20.3.12 Reindicizzare i documenti (reindexDocuments)"
   },
   {
-    "file": "19-graph-memory.html",
+    "file": "20-graph-memory.html",
     "level": 3,
     "id": "",
-    "title": "19.3.13 Evoluzione del retrieval"
+    "title": "20.3.13 Evoluzione del retrieval"
   },
   {
-    "file": "19-graph-memory.html",
+    "file": "20-graph-memory.html",
     "level": 3,
     "id": "",
-    "title": "19.3.14 Manutenzione da CLI (malda memory)"
+    "title": "20.3.14 Manutenzione da CLI (malda memory)"
   },
   {
-    "file": "19-graph-memory.html",
+    "file": "20-graph-memory.html",
     "level": 3,
     "id": "",
-    "title": "19.3.15 ASK grounded (ask / grounded.wrap)"
+    "title": "20.3.15 ASK grounded (ask / grounded.wrap)"
   },
   {
-    "file": "19-graph-memory.html",
+    "file": "20-graph-memory.html",
     "level": 2,
     "id": "",
-    "title": "19.4 Trovare nodi correlati"
+    "title": "20.4 Trovare nodi correlati"
   },
   {
-    "file": "19-graph-memory.html",
+    "file": "20-graph-memory.html",
     "level": 2,
     "id": "",
-    "title": "19.5 Gestione degli elementi di codice"
+    "title": "20.5 Gestione degli elementi di codice"
   },
   {
-    "file": "19-graph-memory.html",
+    "file": "20-graph-memory.html",
     "level": 3,
     "id": "",
-    "title": "19.5.1 Aggiungere elementi di codice"
+    "title": "20.5.1 Aggiungere elementi di codice"
   },
   {
-    "file": "19-graph-memory.html",
+    "file": "20-graph-memory.html",
     "level": 3,
     "id": "",
-    "title": "19.5.2 Trovare relazioni nel codice"
+    "title": "20.5.2 Trovare relazioni nel codice"
   },
   {
-    "file": "19-graph-memory.html",
+    "file": "20-graph-memory.html",
     "level": 3,
     "id": "",
-    "title": "19.5.3 Analizzare i file"
+    "title": "20.5.3 Analizzare i file"
   },
   {
-    "file": "19-graph-memory.html",
+    "file": "20-graph-memory.html",
     "level": 2,
     "id": "",
-    "title": "19.6 Persistenza"
+    "title": "20.6 Persistenza"
   },
   {
-    "file": "19-graph-memory.html",
+    "file": "20-graph-memory.html",
     "level": 3,
     "id": "",
-    "title": "19.6.1 Salvare la memoria"
+    "title": "20.6.1 Salvare la memoria"
   },
   {
-    "file": "19-graph-memory.html",
+    "file": "20-graph-memory.html",
     "level": 3,
     "id": "",
-    "title": "19.6.2 Caricare la memoria"
+    "title": "20.6.2 Caricare la memoria"
   },
   {
-    "file": "19-graph-memory.html",
+    "file": "20-graph-memory.html",
     "level": 2,
     "id": "",
-    "title": "19.7 Export e import del grafo"
+    "title": "20.7 Export e import del grafo"
   },
   {
-    "file": "19-graph-memory.html",
+    "file": "20-graph-memory.html",
     "level": 3,
     "id": "",
-    "title": "19.7.1 Esportare il grafo"
+    "title": "20.7.1 Esportare il grafo"
   },
   {
-    "file": "19-graph-memory.html",
+    "file": "20-graph-memory.html",
     "level": 3,
     "id": "",
-    "title": "19.7.2 Importare il grafo"
+    "title": "20.7.2 Importare il grafo"
   },
   {
-    "file": "19-graph-memory.html",
+    "file": "20-graph-memory.html",
     "level": 2,
     "id": "",
-    "title": "19.8 Svuotare la memoria"
+    "title": "20.8 Svuotare la memoria"
   },
   {
-    "file": "19-graph-memory.html",
+    "file": "20-graph-memory.html",
     "level": 2,
     "id": "",
-    "title": "19.9 Integrazione con gli agenti"
+    "title": "20.9 Integrazione con gli agenti"
   },
   {
-    "file": "19-graph-memory.html",
+    "file": "20-graph-memory.html",
     "level": 3,
     "id": "",
-    "title": "19.9.1 Tool di memoria del progresso"
+    "title": "20.9.1 Tool di memoria del progresso"
   },
   {
-    "file": "19-graph-memory.html",
+    "file": "20-graph-memory.html",
     "level": 2,
     "id": "",
-    "title": "19.10 Memoria condivisa"
+    "title": "20.10 Memoria condivisa"
   },
   {
-    "file": "19-graph-memory.html",
+    "file": "20-graph-memory.html",
     "level": 2,
     "id": "",
-    "title": "19.11 Esempio completo"
+    "title": "20.11 Esempio completo"
   },
   {
-    "file": "19-graph-memory.html",
+    "file": "20-graph-memory.html",
     "level": 2,
     "id": "",
-    "title": "19.12 Casi d'uso"
+    "title": "20.12 Casi d'uso"
   },
   {
-    "file": "19-graph-memory.html",
+    "file": "20-graph-memory.html",
     "level": 2,
     "id": "",
-    "title": "19.13 Dettagli tecnici"
+    "title": "20.13 Dettagli tecnici"
   },
   {
-    "file": "20-mcp-server.html",
+    "file": "21-mcp-server.html",
     "level": 2,
     "id": "",
-    "title": "20.1 Un server minimo"
+    "title": "21.1 Un server minimo"
   },
   {
-    "file": "20-mcp-server.html",
+    "file": "21-mcp-server.html",
     "level": 2,
     "id": "",
-    "title": "20.2 @MCPTool e schema"
+    "title": "21.2 @MCPTool e schema"
   },
   {
-    "file": "20-mcp-server.html",
+    "file": "21-mcp-server.html",
     "level": 2,
     "id": "",
-    "title": "20.3 MCPServer"
+    "title": "21.3 MCPServer"
   },
   {
-    "file": "20-mcp-server.html",
+    "file": "21-mcp-server.html",
     "level": 2,
     "id": "",
-    "title": "20.4 MCPClient: chiamare un altro server"
+    "title": "21.4 MCPClient: chiamare un altro server"
   },
   {
-    "file": "20-mcp-server.html",
+    "file": "21-mcp-server.html",
     "level": 2,
     "id": "",
-    "title": "20.5 Agente wrapper (opzionale)"
+    "title": "21.5 Agente wrapper (opzionale)"
   },
   {
-    "file": "20-mcp-server.html",
+    "file": "21-mcp-server.html",
     "level": 2,
     "id": "",
-    "title": "20.6 Avanzato: generare uno script"
+    "title": "21.6 Avanzato: generare uno script"
   },
   {
-    "file": "21-acp.html",
+    "file": "22-acp.html",
     "level": 2,
     "id": "",
-    "title": "21.1 Panoramica"
+    "title": "22.1 Panoramica"
   },
   {
-    "file": "21-acp.html",
+    "file": "22-acp.html",
     "level": 2,
     "id": "",
-    "title": "21.2 Classe ACPClient"
+    "title": "22.2 Classe ACPClient"
   },
   {
-    "file": "21-acp.html",
+    "file": "22-acp.html",
     "level": 2,
     "id": "",
-    "title": "21.3 Classe ACPServer"
+    "title": "22.3 Classe ACPServer"
   },
   {
-    "file": "21-acp.html",
+    "file": "22-acp.html",
     "level": 2,
     "id": "",
-    "title": "21.4 Classe ACPAgentTool"
+    "title": "22.4 Classe ACPAgentTool"
   },
   {
-    "file": "21-acp.html",
+    "file": "22-acp.html",
     "level": 2,
     "id": "",
-    "title": "21.5 Casi d'uso"
+    "title": "22.5 Casi d'uso"
   },
   {
-    "file": "21-acp.html",
+    "file": "22-acp.html",
     "level": 2,
     "id": "",
-    "title": "21.6 ACP vs MCP"
+    "title": "22.6 ACP vs MCP"
   },
   {
-    "file": "21-acp.html",
+    "file": "22-acp.html",
     "level": 2,
     "id": "",
-    "title": "21.7 Formato dei messaggi"
+    "title": "22.7 Formato dei messaggi"
   },
   {
-    "file": "21-acp.html",
+    "file": "22-acp.html",
     "level": 2,
     "id": "",
-    "title": "21.8 Modalità di esecuzione"
+    "title": "22.8 Modalità di esecuzione"
   },
   {
-    "file": "21-acp.html",
+    "file": "22-acp.html",
     "level": 2,
     "id": "",
-    "title": "21.9 Annullamento di un run"
+    "title": "22.9 Annullamento di un run"
   },
   {
-    "file": "21-acp.html",
+    "file": "22-acp.html",
     "level": 2,
     "id": "",
-    "title": "21.10 Await/Resume"
+    "title": "22.10 Await/Resume"
   },
   {
-    "file": "21-acp.html",
+    "file": "22-acp.html",
     "level": 2,
     "id": "",
-    "title": "21.11 Gestione delle sessioni"
+    "title": "22.11 Gestione delle sessioni"
   },
   {
-    "file": "21-acp.html",
+    "file": "22-acp.html",
     "level": 2,
     "id": "",
-    "title": "21.12 Gestione degli errori"
+    "title": "22.12 Gestione degli errori"
   },
   {
-    "file": "22-durable-workflows.html",
+    "file": "23-durable-workflows.html",
     "level": 2,
     "id": "first-read",
-    "title": "22.0 Prima lettura"
+    "title": "23.0 Prima lettura"
   },
   {
-    "file": "22-durable-workflows.html",
+    "file": "23-durable-workflows.html",
     "level": 2,
     "id": "",
-    "title": "22.1 Concetti fondamentali"
+    "title": "23.1 Concetti fondamentali"
   },
   {
-    "file": "22-durable-workflows.html",
+    "file": "23-durable-workflows.html",
     "level": 2,
     "id": "",
-    "title": "22.2 Sintassi dei workflow"
+    "title": "23.2 Sintassi dei workflow"
   },
   {
-    "file": "22-durable-workflows.html",
+    "file": "23-durable-workflows.html",
     "level": 2,
     "id": "",
-    "title": "22.3 Ciclo di vita e stati"
+    "title": "23.3 Ciclo di vita e stati"
   },
   {
-    "file": "22-durable-workflows.html",
+    "file": "23-durable-workflows.html",
     "level": 2,
     "id": "",
-    "title": "22.4 Operazioni a runtime (built-in)"
+    "title": "23.4 Operazioni a runtime (built-in)"
   },
   {
-    "file": "22-durable-workflows.html",
+    "file": "23-durable-workflows.html",
     "level": 2,
     "id": "",
-    "title": "22.5 Dead letter e requeue"
+    "title": "23.5 Dead letter e requeue"
   },
   {
-    "file": "22-durable-workflows.html",
+    "file": "23-durable-workflows.html",
     "level": 2,
     "id": "",
-    "title": "22.6 Comandi CLI"
+    "title": "23.6 Comandi CLI"
   },
   {
-    "file": "22-durable-workflows.html",
+    "file": "23-durable-workflows.html",
     "level": 2,
     "id": "",
-    "title": "22.7 Note su affidabilità e parità"
+    "title": "23.7 Note su affidabilità e parità"
   },
   {
-    "file": "22-durable-workflows.html",
+    "file": "23-durable-workflows.html",
     "level": 2,
     "id": "storage",
-    "title": "22.8 Storage e persistenza"
+    "title": "23.8 Storage e persistenza"
   },
   {
-    "file": "22-durable-workflows.html",
+    "file": "23-durable-workflows.html",
     "level": 2,
     "id": "",
-    "title": "22.9 Guardrail di configurazione"
+    "title": "23.9 Guardrail di configurazione"
   },
   {
-    "file": "22-durable-workflows.html",
+    "file": "23-durable-workflows.html",
     "level": 2,
     "id": "ha",
-    "title": "22.10 High availability e multi-worker"
+    "title": "23.10 High availability e multi-worker"
   },
   {
-    "file": "22-durable-workflows.html",
+    "file": "23-durable-workflows.html",
     "level": 2,
     "id": "background-jobs",
-    "title": "22.11 Coda di job leggera"
+    "title": "23.11 Coda di job leggera"
   },
   {
-    "file": "23-agentic-runs.html",
+    "file": "24-agentic-runs.html",
     "level": 2,
     "id": "what-you-need",
     "title": "Cosa ti serve già"
   },
   {
-    "file": "23-agentic-runs.html",
+    "file": "24-agentic-runs.html",
     "level": 2,
     "id": "concept-map",
     "title": "Mappa del capitolo"
   },
   {
-    "file": "23-agentic-runs.html",
+    "file": "24-agentic-runs.html",
     "level": 2,
     "id": "which-command",
     "title": "Quale comando lancio?"
   },
   {
-    "file": "23-agentic-runs.html",
+    "file": "24-agentic-runs.html",
     "level": 2,
     "id": "eval-suites",
-    "title": "23.1 Suite di eval"
+    "title": "24.1 Suite di eval"
   },
   {
-    "file": "23-agentic-runs.html",
+    "file": "24-agentic-runs.html",
     "level": 3,
     "id": "",
-    "title": "23.1.1 La suite più piccola"
+    "title": "24.1.1 La suite più piccola"
   },
   {
-    "file": "23-agentic-runs.html",
+    "file": "24-agentic-runs.html",
     "level": 3,
     "id": "",
-    "title": "23.1.2 Come eseguirla"
+    "title": "24.1.2 Come eseguirla"
   },
   {
-    "file": "23-agentic-runs.html",
+    "file": "24-agentic-runs.html",
     "level": 3,
     "id": "",
-    "title": "23.1.3 Decorator opzionali sui case"
+    "title": "24.1.3 Decorator opzionali sui case"
   },
   {
-    "file": "23-agentic-runs.html",
+    "file": "24-agentic-runs.html",
     "level": 2,
     "id": "cassettes",
-    "title": "23.2 Cassette"
+    "title": "24.2 Cassette"
   },
   {
-    "file": "23-agentic-runs.html",
+    "file": "24-agentic-runs.html",
     "level": 3,
     "id": "",
-    "title": "23.2.1 Registra, poi riascolta"
+    "title": "24.2.1 Registra, poi riascolta"
   },
   {
-    "file": "23-agentic-runs.html",
+    "file": "24-agentic-runs.html",
     "level": 3,
     "id": "",
-    "title": "23.2.2 Cosa rende due chiamate “la stessa”"
+    "title": "24.2.2 Cosa rende due chiamate “la stessa”"
   },
   {
-    "file": "23-agentic-runs.html",
+    "file": "24-agentic-runs.html",
     "level": 2,
     "id": "run-journal",
-    "title": "23.3 Journal di run"
+    "title": "24.3 Journal di run"
   },
   {
-    "file": "23-agentic-runs.html",
+    "file": "24-agentic-runs.html",
     "level": 3,
     "id": "",
-    "title": "23.3.1 Leggilo dopo un prompt offline"
+    "title": "24.3.1 Leggilo dopo un prompt offline"
   },
   {
-    "file": "23-agentic-runs.html",
+    "file": "24-agentic-runs.html",
     "level": 2,
     "id": "within",
-    "title": "23.4 Scope within"
+    "title": "24.4 Scope within"
   },
   {
-    "file": "23-agentic-runs.html",
+    "file": "24-agentic-runs.html",
     "level": 3,
     "id": "",
-    "title": "23.4.1 Statement vs decoratore"
+    "title": "24.4.1 Statement vs decoratore"
   },
   {
-    "file": "23-agentic-runs.html",
+    "file": "24-agentic-runs.html",
     "level": 3,
     "id": "",
-    "title": "23.4.2 Race fra più rami"
+    "title": "24.4.2 Race fra più rami"
   },
   {
-    "file": "23-agentic-runs.html",
+    "file": "24-agentic-runs.html",
     "level": 2,
     "id": "declared-context",
-    "title": "23.5 context dichiarato"
+    "title": "24.5 context dichiarato"
   },
   {
-    "file": "23-agentic-runs.html",
+    "file": "24-agentic-runs.html",
     "level": 2,
     "id": "policy",
-    "title": "23.6 policy al confine del programma"
+    "title": "24.6 policy al confine del programma"
   },
   {
-    "file": "23-agentic-runs.html",
+    "file": "24-agentic-runs.html",
     "level": 3,
     "id": "",
-    "title": "23.6.1 I quattro verbi"
+    "title": "24.6.1 I quattro verbi"
   },
   {
-    "file": "23-agentic-runs.html",
+    "file": "24-agentic-runs.html",
     "level": 3,
     "id": "",
-    "title": "23.6.2 Policy vs @effects vs token"
+    "title": "24.6.2 Policy vs @effects vs token"
   },
   {
-    "file": "23-agentic-runs.html",
+    "file": "24-agentic-runs.html",
     "level": 2,
     "id": "agent-error",
-    "title": "23.7 AgentError"
+    "title": "24.7 AgentError"
   },
   {
-    "file": "23-agentic-runs.html",
+    "file": "24-agentic-runs.html",
     "level": 2,
     "id": "stream",
-    "title": "23.8 Stream e for await"
+    "title": "24.8 Stream e for await"
   },
   {
-    "file": "23-agentic-runs.html",
+    "file": "24-agentic-runs.html",
     "level": 2,
     "id": "grounded",
-    "title": "23.9 Sink grounded"
+    "title": "24.9 Sink grounded"
   },
   {
-    "file": "23-agentic-runs.html",
+    "file": "24-agentic-runs.html",
     "level": 2,
     "id": "check-loop",
-    "title": "23.10 Ciclo check"
+    "title": "24.10 Ciclo check"
   },
   {
-    "file": "23-agentic-runs.html",
+    "file": "24-agentic-runs.html",
     "level": 2,
     "id": "first-path",
-    "title": "23.11 Un primo percorso nel capitolo"
+    "title": "24.11 Un primo percorso nel capitolo"
   },
   {
-    "file": "24-web-ui-hub.html",
+    "file": "25-web-ui-hub.html",
     "level": 2,
     "id": "",
-    "title": "24.1 Scegli il modello UI"
+    "title": "25.1 Scegli il modello UI"
   },
   {
-    "file": "24-web-ui-hub.html",
+    "file": "25-web-ui-hub.html",
     "level": 2,
     "id": "",
-    "title": "24.2 Guida alla scelta"
+    "title": "25.2 Guida alla scelta"
   },
   {
-    "file": "24-web-ui-hub.html",
+    "file": "25-web-ui-hub.html",
     "level": 2,
     "id": "",
-    "title": "24.3 Come si relazionano i modelli"
+    "title": "25.3 Come si relazionano i modelli"
   },
   {
-    "file": "24-web-ui-hub.html",
+    "file": "25-web-ui-hub.html",
     "level": 2,
     "id": "",
-    "title": "24.4 Promemoria sul confine di runtime"
+    "title": "25.4 Promemoria sul confine di runtime"
   },
   {
-    "file": "24-web-ui-hub.html",
+    "file": "25-web-ui-hub.html",
     "level": 2,
     "id": "browser-games",
-    "title": "24.5 Giochi nel browser"
+    "title": "25.5 Giochi nel browser"
   },
   {
-    "file": "25-web-ui.html",
-    "level": 2,
-    "id": "",
-    "title": "25.1 Mappa del capitolo"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 2,
-    "id": "",
-    "title": "25.2 Componenti a frammenti HTML"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "25.2.1 Esempio server minimo"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "25.2.2 Esempio minimo di integrazione nel browser"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "25.2.3 Contratto dei fragment"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "25.2.4 Sottoscrizione canale LIVE"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "25.2.5 Envelope del protocollo UI server"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "25.2.6 Direzione API componenti V2"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "25.2.7 Guida alla migrazione: da @PAGE a component"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 2,
-    "id": "",
-    "title": "25.3 Riferimento API helper Web UI"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "25.3.1 Funzioni helper dei componenti server"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "25.3.1.1 Workflow template nativo UI (UX trasparente)"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "25.3.1.2 Pattern helper CRUD guidato da schema"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "25.3.2 Helper di stato dei componenti server"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "25.3.3 API di runtime e ciclo di vita della UI server"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "25.3.4 Catalogo dei controlli UI"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "25.3.4.1 Stile dei controlli"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "25.3.5 Controlli dati avanzati"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "25.3.6 Riferimento props dei controlli"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "25.3.7 Esempi di uso dei controlli"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "25.3.8 Pattern di gestione eventi"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "25.3.9 Pattern di validazione form e rendering degli errori"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "25.3.10 Pattern di composizione"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "25.3.11 Pattern di gestione dello stato"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "25.3.12 Pattern di routing e query param"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "25.3.13 Note su errori e sicurezza"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "25.3.14 Linee guida sullo stile"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 3,
-    "id": "",
-    "title": "25.3.15 Errori comuni e debugging"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 2,
-    "id": "",
-    "title": "25.4 Ciclo di vita dalla richiesta al render"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 2,
-    "id": "",
-    "title": "25.5 Checklist di hardening in produzione"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 2,
-    "id": "",
-    "title": "25.6 Test e risoluzione dei problemi"
-  },
-  {
-    "file": "25-web-ui.html",
-    "level": 2,
-    "id": "",
-    "title": "25.7 Capitoli correlati ed esempi"
-  },
-  {
-    "file": "26-http-server-html-ui.html",
+    "file": "26-web-ui.html",
     "level": 2,
     "id": "",
     "title": "26.1 Mappa del capitolo"
   },
   {
-    "file": "26-http-server-html-ui.html",
+    "file": "26-web-ui.html",
     "level": 2,
     "id": "",
-    "title": "26.2 Classe HttpServer"
+    "title": "26.2 Componenti a frammenti HTML"
   },
   {
-    "file": "26-http-server-html-ui.html",
+    "file": "26-web-ui.html",
     "level": 3,
     "id": "",
-    "title": "26.2.1 Costruttore"
+    "title": "26.2.1 Esempio server minimo"
   },
   {
-    "file": "26-http-server-html-ui.html",
+    "file": "26-web-ui.html",
     "level": 3,
     "id": "",
-    "title": "26.2.2 Metodi core"
+    "title": "26.2.2 Esempio minimo di integrazione nel browser"
   },
   {
-    "file": "26-http-server-html-ui.html",
+    "file": "26-web-ui.html",
     "level": 3,
     "id": "",
-    "title": "26.2.3 Esempio host minimo"
+    "title": "26.2.3 Contratto dei fragment"
   },
   {
-    "file": "26-http-server-html-ui.html",
+    "file": "26-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "26.2.4 Sottoscrizione canale LIVE"
+  },
+  {
+    "file": "26-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "26.2.5 Envelope del protocollo UI server"
+  },
+  {
+    "file": "26-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "26.2.6 Direzione API componenti V2"
+  },
+  {
+    "file": "26-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "26.2.7 Guida alla migrazione: da @PAGE a component"
+  },
+  {
+    "file": "26-web-ui.html",
     "level": 2,
     "id": "",
-    "title": "26.3 Oggetti request e response"
+    "title": "26.3 Riferimento API helper Web UI"
   },
   {
-    "file": "26-http-server-html-ui.html",
-    "level": 2,
-    "id": "",
-    "title": "26.4 Pagine dinamiche con @PAGE"
-  },
-  {
-    "file": "26-http-server-html-ui.html",
-    "level": 2,
-    "id": "",
-    "title": "26.5 Pagine generate dall'AI con @AIPAGE"
-  },
-  {
-    "file": "26-http-server-html-ui.html",
+    "file": "26-web-ui.html",
     "level": 3,
     "id": "",
-    "title": "26.5.1 Esempio completo di form AI"
+    "title": "26.3.1 Funzioni helper dei componenti server"
   },
   {
-    "file": "26-http-server-html-ui.html",
-    "level": 2,
-    "id": "",
-    "title": "26.6 Route GET/POST nei flussi di hosting delle pagine"
-  },
-  {
-    "file": "26-http-server-html-ui.html",
+    "file": "26-web-ui.html",
     "level": 3,
     "id": "",
-    "title": "26.6.1 Handler GET"
+    "title": "26.3.1.1 Workflow template nativo UI (UX trasparente)"
   },
   {
-    "file": "26-http-server-html-ui.html",
+    "file": "26-web-ui.html",
     "level": 3,
     "id": "",
-    "title": "26.6.2 Handler POST"
+    "title": "26.3.1.2 Pattern helper CRUD guidato da schema"
   },
   {
-    "file": "26-http-server-html-ui.html",
-    "level": 2,
-    "id": "",
-    "title": "26.7 Redirect con RedirectTo"
-  },
-  {
-    "file": "26-http-server-html-ui.html",
-    "level": 2,
-    "id": "",
-    "title": "26.8 Helper di generazione HTML"
-  },
-  {
-    "file": "26-http-server-html-ui.html",
+    "file": "26-web-ui.html",
     "level": 3,
     "id": "",
-    "title": "26.8.1 Classe HTMLCache"
+    "title": "26.3.2 Helper di stato dei componenti server"
   },
   {
-    "file": "26-http-server-html-ui.html",
+    "file": "26-web-ui.html",
     "level": 3,
     "id": "",
-    "title": "26.8.2 Funzione extractHTML"
+    "title": "26.3.3 API di runtime e ciclo di vita della UI server"
   },
   {
-    "file": "26-http-server-html-ui.html",
+    "file": "26-web-ui.html",
     "level": 3,
     "id": "",
-    "title": "26.8.3 Funzione markdownToHtml"
+    "title": "26.3.4 Catalogo dei controlli UI"
   },
   {
-    "file": "26-http-server-html-ui.html",
+    "file": "26-web-ui.html",
     "level": 3,
     "id": "",
-    "title": "26.8.4 Funzione generateUI"
+    "title": "26.3.4.1 Stile dei controlli"
   },
   {
-    "file": "26-http-server-html-ui.html",
+    "file": "26-web-ui.html",
     "level": 3,
     "id": "",
-    "title": "26.8.5 Funzione ui.generate"
+    "title": "26.3.5 Controlli dati avanzati"
   },
   {
-    "file": "26-http-server-html-ui.html",
+    "file": "26-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "26.3.6 Riferimento props dei controlli"
+  },
+  {
+    "file": "26-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "26.3.7 Esempi di uso dei controlli"
+  },
+  {
+    "file": "26-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "26.3.8 Pattern di gestione eventi"
+  },
+  {
+    "file": "26-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "26.3.9 Pattern di validazione form e rendering degli errori"
+  },
+  {
+    "file": "26-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "26.3.10 Pattern di composizione"
+  },
+  {
+    "file": "26-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "26.3.11 Pattern di gestione dello stato"
+  },
+  {
+    "file": "26-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "26.3.12 Pattern di routing e query param"
+  },
+  {
+    "file": "26-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "26.3.13 Note su errori e sicurezza"
+  },
+  {
+    "file": "26-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "26.3.14 Linee guida sullo stile"
+  },
+  {
+    "file": "26-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "26.3.15 Errori comuni e debugging"
+  },
+  {
+    "file": "26-web-ui.html",
     "level": 2,
     "id": "",
-    "title": "26.9 Ciclo di vita dalla richiesta al render"
+    "title": "26.4 Ciclo di vita dalla richiesta al render"
   },
   {
-    "file": "26-http-server-html-ui.html",
+    "file": "26-web-ui.html",
     "level": 2,
     "id": "",
-    "title": "26.10 Hardening in produzione"
+    "title": "26.5 Checklist di hardening in produzione"
   },
   {
-    "file": "26-http-server-html-ui.html",
+    "file": "26-web-ui.html",
     "level": 2,
     "id": "",
-    "title": "26.11 Test e risoluzione dei problemi"
+    "title": "26.6 Test e risoluzione dei problemi"
   },
   {
-    "file": "27-browser-javascript-backend.html",
+    "file": "26-web-ui.html",
     "level": 2,
-    "id": "chapter-map",
+    "id": "",
+    "title": "26.7 Capitoli correlati ed esempi"
+  },
+  {
+    "file": "27-http-server-html-ui.html",
+    "level": 2,
+    "id": "",
     "title": "27.1 Mappa del capitolo"
   },
   {
-    "file": "27-browser-javascript-backend.html",
+    "file": "27-http-server-html-ui.html",
     "level": 2,
     "id": "",
-    "title": "27.2 Cosa offre questa modalità"
+    "title": "27.2 Classe HttpServer"
   },
   {
-    "file": "27-browser-javascript-backend.html",
+    "file": "27-http-server-html-ui.html",
     "level": 3,
     "id": "",
-    "title": "27.2.1 Decoratori target nell'output JS"
+    "title": "27.2.1 Costruttore"
   },
   {
-    "file": "27-browser-javascript-backend.html",
-    "level": 2,
-    "id": "",
-    "title": "27.3 Comandi di compile"
-  },
-  {
-    "file": "27-browser-javascript-backend.html",
-    "level": 2,
-    "id": "",
-    "title": "27.4 Ordine obbligatorio di caricamento degli script"
-  },
-  {
-    "file": "27-browser-javascript-backend.html",
-    "level": 2,
-    "id": "",
-    "title": "27.5 Helper DOM in API mode"
-  },
-  {
-    "file": "27-browser-javascript-backend.html",
-    "level": 2,
-    "id": "",
-    "title": "27.6 Sum type e pattern matching in JS mode"
-  },
-  {
-    "file": "27-browser-javascript-backend.html",
-    "level": 2,
-    "id": "",
-    "title": "27.7 Actor in JS mode"
-  },
-  {
-    "file": "27-browser-javascript-backend.html",
-    "level": 2,
-    "id": "",
-    "title": "27.8 Sintassi del template mode"
-  },
-  {
-    "file": "27-browser-javascript-backend.html",
-    "level": 2,
-    "id": "game-canvas",
-    "title": "27.9 API Game Canvas"
-  },
-  {
-    "file": "27-browser-javascript-backend.html",
-    "level": 2,
-    "id": "three-scene-api",
-    "title": "27.10 API scene three.js"
-  },
-  {
-    "file": "27-browser-javascript-backend.html",
+    "file": "27-http-server-html-ui.html",
     "level": 3,
-    "id": "shader-kernels",
-    "title": "27.10.1 Kernel shader (MALDA verso GLSL)"
+    "id": "",
+    "title": "27.2.2 Metodi core"
   },
   {
-    "file": "27-browser-javascript-backend.html",
-    "level": 2,
+    "file": "27-http-server-html-ui.html",
+    "level": 3,
     "id": "",
-    "title": "27.11 Errori comuni e indicazioni"
+    "title": "27.2.3 Esempio host minimo"
   },
   {
-    "file": "28-rest-api.html",
+    "file": "27-http-server-html-ui.html",
     "level": 2,
     "id": "",
+    "title": "27.3 Oggetti request e response"
+  },
+  {
+    "file": "27-http-server-html-ui.html",
+    "level": 2,
+    "id": "",
+    "title": "27.4 Pagine dinamiche con @PAGE"
+  },
+  {
+    "file": "27-http-server-html-ui.html",
+    "level": 2,
+    "id": "",
+    "title": "27.5 Pagine generate dall'AI con @AIPAGE"
+  },
+  {
+    "file": "27-http-server-html-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "27.5.1 Esempio completo di form AI"
+  },
+  {
+    "file": "27-http-server-html-ui.html",
+    "level": 2,
+    "id": "",
+    "title": "27.6 Route GET/POST nei flussi di hosting delle pagine"
+  },
+  {
+    "file": "27-http-server-html-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "27.6.1 Handler GET"
+  },
+  {
+    "file": "27-http-server-html-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "27.6.2 Handler POST"
+  },
+  {
+    "file": "27-http-server-html-ui.html",
+    "level": 2,
+    "id": "",
+    "title": "27.7 Redirect con RedirectTo"
+  },
+  {
+    "file": "27-http-server-html-ui.html",
+    "level": 2,
+    "id": "",
+    "title": "27.8 Helper di generazione HTML"
+  },
+  {
+    "file": "27-http-server-html-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "27.8.1 Classe HTMLCache"
+  },
+  {
+    "file": "27-http-server-html-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "27.8.2 Funzione extractHTML"
+  },
+  {
+    "file": "27-http-server-html-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "27.8.3 Funzione markdownToHtml"
+  },
+  {
+    "file": "27-http-server-html-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "27.8.4 Funzione generateUI"
+  },
+  {
+    "file": "27-http-server-html-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "27.8.5 Funzione ui.generate"
+  },
+  {
+    "file": "27-http-server-html-ui.html",
+    "level": 2,
+    "id": "",
+    "title": "27.9 Ciclo di vita dalla richiesta al render"
+  },
+  {
+    "file": "27-http-server-html-ui.html",
+    "level": 2,
+    "id": "",
+    "title": "27.10 Hardening in produzione"
+  },
+  {
+    "file": "27-http-server-html-ui.html",
+    "level": 2,
+    "id": "",
+    "title": "27.11 Test e risoluzione dei problemi"
+  },
+  {
+    "file": "28-browser-javascript-backend.html",
+    "level": 2,
+    "id": "chapter-map",
     "title": "28.1 Mappa del capitolo"
   },
   {
-    "file": "28-rest-api.html",
-    "level": 3,
-    "id": "web-concepts",
-    "title": "28.1.1 Primer sui concetti"
-  },
-  {
-    "file": "28-rest-api.html",
+    "file": "28-browser-javascript-backend.html",
     "level": 2,
     "id": "",
-    "title": "28.2 Sintassi dei decoratori"
+    "title": "28.2 Cosa offre questa modalità"
   },
   {
-    "file": "28-rest-api.html",
+    "file": "28-browser-javascript-backend.html",
     "level": 3,
     "id": "",
-    "title": "28.2.1 Metodi HTTP supportati"
+    "title": "28.2.1 Decoratori target nell'output JS"
   },
   {
-    "file": "28-rest-api.html",
-    "level": 3,
-    "id": "",
-    "title": "28.2.2 Decoratori di metadati delle route"
-  },
-  {
-    "file": "28-rest-api.html",
+    "file": "28-browser-javascript-backend.html",
     "level": 2,
     "id": "",
-    "title": "28.3 Classe RestServer"
+    "title": "28.3 Comandi di compile"
   },
   {
-    "file": "28-rest-api.html",
-    "level": 3,
-    "id": "",
-    "title": "28.3.1 Costruttore"
-  },
-  {
-    "file": "28-rest-api.html",
-    "level": 3,
-    "id": "",
-    "title": "28.3.2 Proprietà"
-  },
-  {
-    "file": "28-rest-api.html",
-    "level": 3,
-    "id": "",
-    "title": "28.3.3 Metodi"
-  },
-  {
-    "file": "28-rest-api.html",
-    "level": 3,
-    "id": "",
-    "title": "28.3.4 Cosa RestServer non ospita"
-  },
-  {
-    "file": "28-rest-api.html",
+    "file": "28-browser-javascript-backend.html",
     "level": 2,
     "id": "",
-    "title": "28.4 Pipeline delle richieste"
+    "title": "28.4 Ordine obbligatorio di caricamento degli script"
   },
   {
-    "file": "28-rest-api.html",
+    "file": "28-browser-javascript-backend.html",
     "level": 2,
     "id": "",
-    "title": "28.5 Parameter binding"
+    "title": "28.5 Helper DOM in API mode"
   },
   {
-    "file": "28-rest-api.html",
+    "file": "28-browser-javascript-backend.html",
+    "level": 2,
+    "id": "",
+    "title": "28.6 Sum type e pattern matching in JS mode"
+  },
+  {
+    "file": "28-browser-javascript-backend.html",
+    "level": 2,
+    "id": "",
+    "title": "28.7 Actor in JS mode"
+  },
+  {
+    "file": "28-browser-javascript-backend.html",
+    "level": 2,
+    "id": "",
+    "title": "28.8 Sintassi del template mode"
+  },
+  {
+    "file": "28-browser-javascript-backend.html",
+    "level": 2,
+    "id": "game-canvas",
+    "title": "28.9 API Game Canvas"
+  },
+  {
+    "file": "28-browser-javascript-backend.html",
+    "level": 2,
+    "id": "three-scene-api",
+    "title": "28.10 API scene three.js"
+  },
+  {
+    "file": "28-browser-javascript-backend.html",
     "level": 3,
-    "id": "",
-    "title": "28.5.1 Path parameter"
+    "id": "shader-kernels",
+    "title": "28.10.1 Kernel shader (MALDA verso GLSL)"
   },
   {
-    "file": "28-rest-api.html",
-    "level": 3,
-    "id": "",
-    "title": "28.5.2 Query parameter"
-  },
-  {
-    "file": "28-rest-api.html",
-    "level": 3,
-    "id": "",
-    "title": "28.5.3 Request body"
-  },
-  {
-    "file": "28-rest-api.html",
-    "level": 3,
-    "id": "",
-    "title": "28.5.4 Nomi di parametro speciali"
-  },
-  {
-    "file": "28-rest-api.html",
-    "level": 3,
-    "id": "",
-    "title": "28.5.5 Binding con decoratori"
-  },
-  {
-    "file": "28-rest-api.html",
+    "file": "28-browser-javascript-backend.html",
     "level": 2,
     "id": "",
-    "title": "28.6 Contesto della request"
+    "title": "28.11 Errori comuni e indicazioni"
   },
   {
-    "file": "28-rest-api.html",
-    "level": 3,
-    "id": "",
-    "title": "28.6.1 Proprietà e helper di req"
-  },
-  {
-    "file": "28-rest-api.html",
-    "level": 3,
-    "id": "req-auth",
-    "title": "28.6.2 req.auth"
-  },
-  {
-    "file": "28-rest-api.html",
-    "level": 3,
-    "id": "",
-    "title": "28.6.3 req.session"
-  },
-  {
-    "file": "28-rest-api.html",
-    "level": 2,
-    "id": "",
-    "title": "28.7 Gestione della response"
-  },
-  {
-    "file": "28-rest-api.html",
-    "level": 3,
-    "id": "",
-    "title": "28.7.1 Forme di return"
-  },
-  {
-    "file": "28-rest-api.html",
-    "level": 3,
-    "id": "",
-    "title": "28.7.2 API helper di response"
-  },
-  {
-    "file": "28-rest-api.html",
-    "level": 2,
-    "id": "middleware",
-    "title": "28.8 Middleware"
-  },
-  {
-    "file": "28-rest-api.html",
-    "level": 2,
-    "id": "csrf-rate-limit",
-    "title": "28.9 CSRF, rate limiting e proxy fidato"
-  },
-  {
-    "file": "28-rest-api.html",
-    "level": 2,
-    "id": "",
-    "title": "28.10 Validazione"
-  },
-  {
-    "file": "28-rest-api.html",
-    "level": 2,
-    "id": "",
-    "title": "28.11 Gestione degli errori"
-  },
-  {
-    "file": "28-rest-api.html",
-    "level": 2,
-    "id": "cors",
-    "title": "28.12 CORS e Swagger/OpenAPI"
-  },
-  {
-    "file": "28-rest-api.html",
-    "level": 2,
-    "id": "",
-    "title": "28.13 Mount su HttpServer"
-  },
-  {
-    "file": "28-rest-api.html",
-    "level": 2,
-    "id": "",
-    "title": "28.14 Interpret vs transpile"
-  },
-  {
-    "file": "28-rest-api.html",
-    "level": 2,
-    "id": "",
-    "title": "28.15 Esempio completo"
-  },
-  {
-    "file": "28-rest-api.html",
-    "level": 2,
-    "id": "jwt-security",
-    "title": "28.16 Helper per password, JWT e cookie"
-  },
-  {
-    "file": "29-rest-web-client.html",
+    "file": "29-rest-api.html",
     "level": 2,
     "id": "",
     "title": "29.1 Mappa del capitolo"
   },
   {
-    "file": "29-rest-web-client.html",
+    "file": "29-rest-api.html",
     "level": 3,
-    "id": "http-client-concepts",
+    "id": "web-concepts",
     "title": "29.1.1 Primer sui concetti"
   },
   {
-    "file": "29-rest-web-client.html",
+    "file": "29-rest-api.html",
     "level": 2,
     "id": "",
-    "title": "29.2 Classe RestClient"
+    "title": "29.2 Sintassi dei decoratori"
   },
   {
-    "file": "29-rest-web-client.html",
+    "file": "29-rest-api.html",
     "level": 3,
     "id": "",
-    "title": "29.2.1 Costruttore"
+    "title": "29.2.1 Metodi HTTP supportati"
   },
   {
-    "file": "29-rest-web-client.html",
+    "file": "29-rest-api.html",
     "level": 3,
     "id": "",
-    "title": "29.2.2 Proprietà"
+    "title": "29.2.2 Decoratori di metadati delle route"
   },
   {
-    "file": "29-rest-web-client.html",
-    "level": 3,
-    "id": "",
-    "title": "29.2.3 Metodi di richiesta"
-  },
-  {
-    "file": "29-rest-web-client.html",
-    "level": 3,
-    "id": "",
-    "title": "29.2.4 Metodi di configurazione"
-  },
-  {
-    "file": "29-rest-web-client.html",
+    "file": "29-rest-api.html",
     "level": 2,
     "id": "",
-    "title": "29.3 URL, query e body"
+    "title": "29.3 Classe RestServer"
   },
   {
-    "file": "29-rest-web-client.html",
+    "file": "29-rest-api.html",
     "level": 3,
     "id": "",
-    "title": "29.3.1 Risoluzione URL"
+    "title": "29.3.1 Costruttore"
   },
   {
-    "file": "29-rest-web-client.html",
+    "file": "29-rest-api.html",
     "level": 3,
     "id": "",
-    "title": "29.3.2 Query parameter"
+    "title": "29.3.2 Proprietà"
   },
   {
-    "file": "29-rest-web-client.html",
+    "file": "29-rest-api.html",
     "level": 3,
     "id": "",
-    "title": "29.3.3 Serializzazione del body"
+    "title": "29.3.3 Metodi"
   },
   {
-    "file": "29-rest-web-client.html",
+    "file": "29-rest-api.html",
+    "level": 3,
+    "id": "",
+    "title": "29.3.4 Cosa RestServer non ospita"
+  },
+  {
+    "file": "29-rest-api.html",
     "level": 2,
     "id": "",
-    "title": "29.4 Formato della risposta"
+    "title": "29.4 Pipeline delle richieste"
   },
   {
-    "file": "29-rest-web-client.html",
+    "file": "29-rest-api.html",
     "level": 2,
     "id": "",
-    "title": "29.5 Funzioni HTTP statiche"
+    "title": "29.5 Parameter binding"
   },
   {
-    "file": "29-rest-web-client.html",
+    "file": "29-rest-api.html",
+    "level": 3,
+    "id": "",
+    "title": "29.5.1 Path parameter"
+  },
+  {
+    "file": "29-rest-api.html",
+    "level": 3,
+    "id": "",
+    "title": "29.5.2 Query parameter"
+  },
+  {
+    "file": "29-rest-api.html",
+    "level": 3,
+    "id": "",
+    "title": "29.5.3 Request body"
+  },
+  {
+    "file": "29-rest-api.html",
+    "level": 3,
+    "id": "",
+    "title": "29.5.4 Nomi di parametro speciali"
+  },
+  {
+    "file": "29-rest-api.html",
+    "level": 3,
+    "id": "",
+    "title": "29.5.5 Binding con decoratori"
+  },
+  {
+    "file": "29-rest-api.html",
     "level": 2,
     "id": "",
-    "title": "29.6 Autenticazione"
+    "title": "29.6 Contesto della request"
   },
   {
-    "file": "29-rest-web-client.html",
+    "file": "29-rest-api.html",
+    "level": 3,
+    "id": "",
+    "title": "29.6.1 Proprietà e helper di req"
+  },
+  {
+    "file": "29-rest-api.html",
+    "level": 3,
+    "id": "req-auth",
+    "title": "29.6.2 req.auth"
+  },
+  {
+    "file": "29-rest-api.html",
+    "level": 3,
+    "id": "",
+    "title": "29.6.3 req.session"
+  },
+  {
+    "file": "29-rest-api.html",
     "level": 2,
     "id": "",
-    "title": "29.7 Timeout"
+    "title": "29.7 Gestione della response"
   },
   {
-    "file": "29-rest-web-client.html",
+    "file": "29-rest-api.html",
+    "level": 3,
+    "id": "",
+    "title": "29.7.1 Forme di return"
+  },
+  {
+    "file": "29-rest-api.html",
+    "level": 3,
+    "id": "",
+    "title": "29.7.2 API helper di response"
+  },
+  {
+    "file": "29-rest-api.html",
+    "level": 2,
+    "id": "middleware",
+    "title": "29.8 Middleware"
+  },
+  {
+    "file": "29-rest-api.html",
+    "level": 2,
+    "id": "csrf-rate-limit",
+    "title": "29.9 CSRF, rate limiting e proxy fidato"
+  },
+  {
+    "file": "29-rest-api.html",
     "level": 2,
     "id": "",
-    "title": "29.8 Redirect e retry"
+    "title": "29.10 Validazione"
   },
   {
-    "file": "29-rest-web-client.html",
+    "file": "29-rest-api.html",
+    "level": 2,
+    "id": "",
+    "title": "29.11 Gestione degli errori"
+  },
+  {
+    "file": "29-rest-api.html",
+    "level": 2,
+    "id": "cors",
+    "title": "29.12 CORS e Swagger/OpenAPI"
+  },
+  {
+    "file": "29-rest-api.html",
+    "level": 2,
+    "id": "",
+    "title": "29.13 Mount su HttpServer"
+  },
+  {
+    "file": "29-rest-api.html",
+    "level": 2,
+    "id": "",
+    "title": "29.14 Interpret vs transpile"
+  },
+  {
+    "file": "29-rest-api.html",
+    "level": 2,
+    "id": "",
+    "title": "29.15 Esempio completo"
+  },
+  {
+    "file": "29-rest-api.html",
+    "level": 2,
+    "id": "jwt-security",
+    "title": "29.16 Helper per password, JWT e cookie"
+  },
+  {
+    "file": "30-rest-web-client.html",
+    "level": 2,
+    "id": "",
+    "title": "30.1 Mappa del capitolo"
+  },
+  {
+    "file": "30-rest-web-client.html",
+    "level": 3,
+    "id": "http-client-concepts",
+    "title": "30.1.1 Primer sui concetti"
+  },
+  {
+    "file": "30-rest-web-client.html",
+    "level": 2,
+    "id": "",
+    "title": "30.2 Classe RestClient"
+  },
+  {
+    "file": "30-rest-web-client.html",
+    "level": 3,
+    "id": "",
+    "title": "30.2.1 Costruttore"
+  },
+  {
+    "file": "30-rest-web-client.html",
+    "level": 3,
+    "id": "",
+    "title": "30.2.2 Proprietà"
+  },
+  {
+    "file": "30-rest-web-client.html",
+    "level": 3,
+    "id": "",
+    "title": "30.2.3 Metodi di richiesta"
+  },
+  {
+    "file": "30-rest-web-client.html",
+    "level": 3,
+    "id": "",
+    "title": "30.2.4 Metodi di configurazione"
+  },
+  {
+    "file": "30-rest-web-client.html",
+    "level": 2,
+    "id": "",
+    "title": "30.3 URL, query e body"
+  },
+  {
+    "file": "30-rest-web-client.html",
+    "level": 3,
+    "id": "",
+    "title": "30.3.1 Risoluzione URL"
+  },
+  {
+    "file": "30-rest-web-client.html",
+    "level": 3,
+    "id": "",
+    "title": "30.3.2 Query parameter"
+  },
+  {
+    "file": "30-rest-web-client.html",
+    "level": 3,
+    "id": "",
+    "title": "30.3.3 Serializzazione del body"
+  },
+  {
+    "file": "30-rest-web-client.html",
+    "level": 2,
+    "id": "",
+    "title": "30.4 Formato della risposta"
+  },
+  {
+    "file": "30-rest-web-client.html",
+    "level": 2,
+    "id": "",
+    "title": "30.5 Funzioni HTTP statiche"
+  },
+  {
+    "file": "30-rest-web-client.html",
+    "level": 2,
+    "id": "",
+    "title": "30.6 Autenticazione"
+  },
+  {
+    "file": "30-rest-web-client.html",
+    "level": 2,
+    "id": "",
+    "title": "30.7 Timeout"
+  },
+  {
+    "file": "30-rest-web-client.html",
+    "level": 2,
+    "id": "",
+    "title": "30.8 Redirect e retry"
+  },
+  {
+    "file": "30-rest-web-client.html",
     "level": 2,
     "id": "cors-host-browser",
-    "title": "29.9 CORS: host vs browser"
+    "title": "30.9 CORS: host vs browser"
   },
   {
-    "file": "29-rest-web-client.html",
+    "file": "30-rest-web-client.html",
     "level": 2,
     "id": "",
-    "title": "29.10 Interpret vs transpile"
+    "title": "30.10 Interpret vs transpile"
   },
   {
-    "file": "29-rest-web-client.html",
+    "file": "30-rest-web-client.html",
     "level": 2,
     "id": "",
-    "title": "29.11 Chiamare un RestServer MALDA"
+    "title": "30.11 Chiamare un RestServer MALDA"
   },
   {
-    "file": "29-rest-web-client.html",
+    "file": "30-rest-web-client.html",
     "level": 2,
     "id": "",
-    "title": "29.12 Esempi"
+    "title": "30.12 Esempi"
   },
   {
-    "file": "29-rest-web-client.html",
+    "file": "30-rest-web-client.html",
     "level": 3,
     "id": "",
-    "title": "29.12.1 Istanza RestClient"
+    "title": "30.12.1 Istanza RestClient"
   },
   {
-    "file": "29-rest-web-client.html",
+    "file": "30-rest-web-client.html",
     "level": 3,
     "id": "",
-    "title": "29.12.2 Funzioni statiche"
+    "title": "30.12.2 Funzioni statiche"
   },
   {
-    "file": "29-rest-web-client.html",
+    "file": "30-rest-web-client.html",
     "level": 3,
     "id": "",
-    "title": "29.12.3 Errori HTTP vs di trasporto"
+    "title": "30.12.3 Errori HTTP vs di trasporto"
   },
   {
-    "file": "29-rest-web-client.html",
+    "file": "30-rest-web-client.html",
     "level": 3,
     "id": "",
-    "title": "29.12.4 Body e header della risposta"
+    "title": "30.12.4 Body e header della risposta"
   },
   {
-    "file": "29-rest-web-client.html",
+    "file": "30-rest-web-client.html",
     "level": 3,
     "id": "",
-    "title": "29.12.5 Walkthrough contro un'API pubblica"
+    "title": "30.12.5 Walkthrough contro un'API pubblica"
   },
   {
-    "file": "30-full-stack-development.html",
+    "file": "31-full-stack-development.html",
     "level": 2,
     "id": "",
-    "title": "30.1 Cosa significa \"full-stack\" in MALDA"
+    "title": "31.1 Cosa significa \"full-stack\" in MALDA"
   },
   {
-    "file": "30-full-stack-development.html",
+    "file": "31-full-stack-development.html",
     "level": 3,
     "id": "",
-    "title": "30.1.1 Confine di runtime: MALDA vs JavaScript"
+    "title": "31.1.1 Confine di runtime: MALDA vs JavaScript"
   },
   {
-    "file": "30-full-stack-development.html",
+    "file": "31-full-stack-development.html",
     "level": 3,
     "id": "",
-    "title": "30.1.2 Modelli di distribuzione"
+    "title": "31.1.2 Modelli di distribuzione"
   },
   {
-    "file": "30-full-stack-development.html",
+    "file": "31-full-stack-development.html",
     "level": 3,
     "id": "",
-    "title": "30.1.3 Decoratori di target a sorgente unica"
+    "title": "31.1.3 Decoratori di target a sorgente unica"
   },
   {
-    "file": "30-full-stack-development.html",
+    "file": "31-full-stack-development.html",
     "level": 2,
     "id": "",
-    "title": "30.2 Scenario di esempio: app semplice di item"
+    "title": "31.2 Scenario di esempio: app semplice di item"
   },
   {
-    "file": "30-full-stack-development.html",
+    "file": "31-full-stack-development.html",
     "level": 2,
     "id": "",
-    "title": "30.3 Struttura di progetto consigliata"
+    "title": "31.3 Struttura di progetto consigliata"
   },
   {
-    "file": "30-full-stack-development.html",
+    "file": "31-full-stack-development.html",
     "level": 3,
     "id": "",
-    "title": "30.3.1 Host a una sola porta: HttpServer.mount"
+    "title": "31.3.1 Host a una sola porta: HttpServer.mount"
   },
   {
-    "file": "30-full-stack-development.html",
+    "file": "31-full-stack-development.html",
     "level": 2,
     "id": "",
-    "title": "30.4 Livello API (CRUD degli item + workflow)"
+    "title": "31.4 Livello API (CRUD degli item + workflow)"
   },
   {
-    "file": "30-full-stack-development.html",
+    "file": "31-full-stack-development.html",
     "level": 2,
     "id": "",
-    "title": "30.5 Livello UI (quale tecnologia usare)"
+    "title": "31.5 Livello UI (quale tecnologia usare)"
   },
   {
-    "file": "30-full-stack-development.html",
+    "file": "31-full-stack-development.html",
     "level": 3,
     "id": "",
-    "title": "30.5.0 Pattern a componenti nativo MALDA"
+    "title": "31.5.0 Pattern a componenti nativo MALDA"
   },
   {
-    "file": "30-full-stack-development.html",
+    "file": "31-full-stack-development.html",
     "level": 3,
     "id": "",
-    "title": "30.5.1 Handler di pagina lato server MALDA"
+    "title": "31.5.1 Handler di pagina lato server MALDA"
   },
   {
-    "file": "30-full-stack-development.html",
+    "file": "31-full-stack-development.html",
     "level": 3,
     "id": "",
-    "title": "30.5.2 JavaScript nel browser che chiama l'API MALDA"
+    "title": "31.5.2 JavaScript nel browser che chiama l'API MALDA"
   },
   {
-    "file": "30-full-stack-development.html",
+    "file": "31-full-stack-development.html",
     "level": 3,
     "id": "",
-    "title": "30.5.3 Percorso di migrazione da @PAGE ai componenti"
+    "title": "31.5.3 Percorso di migrazione da @PAGE ai componenti"
   },
   {
-    "file": "30-full-stack-development.html",
+    "file": "31-full-stack-development.html",
     "level": 3,
     "id": "",
-    "title": "30.5.4 Esempio UI end-to-end"
+    "title": "31.5.4 Esempio UI end-to-end"
   },
   {
-    "file": "30-full-stack-development.html",
+    "file": "31-full-stack-development.html",
     "level": 2,
     "id": "",
-    "title": "30.6 Pattern di integrazione database"
+    "title": "31.6 Pattern di integrazione database"
   },
   {
-    "file": "30-full-stack-development.html",
+    "file": "31-full-stack-development.html",
     "level": 2,
     "id": "",
-    "title": "30.7 Workflow di triage AI (opzionale ma potente)"
+    "title": "31.7 Workflow di triage AI (opzionale ma potente)"
   },
   {
-    "file": "30-full-stack-development.html",
+    "file": "31-full-stack-development.html",
     "level": 2,
     "id": "",
-    "title": "30.8 Flusso della richiesta end-to-end"
+    "title": "31.8 Flusso della richiesta end-to-end"
   },
   {
-    "file": "30-full-stack-development.html",
+    "file": "31-full-stack-development.html",
     "level": 2,
     "id": "",
-    "title": "30.9 Configurazione e segreti"
+    "title": "31.9 Configurazione e segreti"
   },
   {
-    "file": "30-full-stack-development.html",
+    "file": "31-full-stack-development.html",
     "level": 2,
     "id": "",
-    "title": "30.10 Checklist pratica per nuove app full-stack"
+    "title": "31.10 Checklist pratica per nuove app full-stack"
   },
   {
-    "file": "30-full-stack-development.html",
+    "file": "31-full-stack-development.html",
     "level": 3,
     "id": "",
-    "title": "30.10.1 Testing e troubleshooting (Web UI + API)"
+    "title": "31.10.1 Testing e troubleshooting (Web UI + API)"
   },
   {
-    "file": "31-dotnet-interop.html",
+    "file": "32-dotnet-interop.html",
     "level": 2,
     "id": "",
-    "title": "31.1 Tipi già nel runtime"
+    "title": "32.1 Tipi già nel runtime"
   },
   {
-    "file": "31-dotnet-interop.html",
+    "file": "32-dotnet-interop.html",
     "level": 2,
     "id": "",
-    "title": "31.2 Caricamento degli assembly .NET"
+    "title": "32.2 Caricamento degli assembly .NET"
   },
   {
-    "file": "31-dotnet-interop.html",
+    "file": "32-dotnet-interop.html",
     "level": 2,
     "id": "",
-    "title": "31.3 Ottenere i tipi .NET"
+    "title": "32.3 Ottenere i tipi .NET"
   },
   {
-    "file": "31-dotnet-interop.html",
+    "file": "32-dotnet-interop.html",
     "level": 2,
     "id": "",
-    "title": "31.4 Creare oggetti .NET"
+    "title": "32.4 Creare oggetti .NET"
   },
   {
-    "file": "31-dotnet-interop.html",
+    "file": "32-dotnet-interop.html",
     "level": 2,
     "id": "",
-    "title": "31.5 Usare gli oggetti .NET"
+    "title": "32.5 Usare gli oggetti .NET"
   },
   {
-    "file": "31-dotnet-interop.html",
+    "file": "32-dotnet-interop.html",
     "level": 2,
     "id": "",
-    "title": "31.6 Usare i pacchetti NuGet"
+    "title": "32.6 Usare i pacchetti NuGet"
   },
   {
-    "file": "31-dotnet-interop.html",
+    "file": "32-dotnet-interop.html",
     "level": 2,
     "id": "",
-    "title": "31.7 Esempio completo"
+    "title": "32.7 Esempio completo"
   },
   {
-    "file": "31-dotnet-interop.html",
+    "file": "32-dotnet-interop.html",
     "level": 2,
     "id": "",
-    "title": "31.8 Note di implementazione"
+    "title": "32.8 Note di implementazione"
   },
   {
-    "file": "31-dotnet-interop.html",
+    "file": "32-dotnet-interop.html",
     "level": 2,
     "id": "",
-    "title": "31.9 Casi d'uso"
+    "title": "32.9 Casi d'uso"
   },
   {
-    "file": "32-device-integration.html",
+    "file": "33-device-integration.html",
     "level": 2,
     "id": "",
-    "title": "32.1 Panoramica"
+    "title": "33.1 Panoramica"
   },
   {
-    "file": "32-device-integration.html",
+    "file": "33-device-integration.html",
     "level": 2,
     "id": "",
-    "title": "32.2 Comunicazione seriale"
+    "title": "33.2 Comunicazione seriale"
   },
   {
-    "file": "32-device-integration.html",
+    "file": "33-device-integration.html",
     "level": 2,
     "id": "",
-    "title": "32.3 Dispositivi HTTP/REST"
+    "title": "33.3 Dispositivi HTTP/REST"
   },
   {
-    "file": "32-device-integration.html",
+    "file": "33-device-integration.html",
     "level": 2,
     "id": "",
-    "title": "32.4 Integrazione Arduino"
+    "title": "33.4 Integrazione Arduino"
   },
   {
-    "file": "32-device-integration.html",
+    "file": "33-device-integration.html",
     "level": 2,
     "id": "",
-    "title": "32.5 ESP32/ESP8266"
+    "title": "33.5 ESP32/ESP8266"
   },
   {
-    "file": "32-device-integration.html",
+    "file": "33-device-integration.html",
     "level": 2,
     "id": "",
-    "title": "32.6 Raspberry Pi"
+    "title": "33.6 Raspberry Pi"
   },
   {
-    "file": "32-device-integration.html",
+    "file": "33-device-integration.html",
     "level": 2,
     "id": "",
-    "title": "32.7 Dispositivi per la smart home"
+    "title": "33.7 Dispositivi per la smart home"
   },
   {
-    "file": "32-device-integration.html",
+    "file": "33-device-integration.html",
     "level": 2,
     "id": "",
-    "title": "32.8 Coordinamento multi-dispositivo"
+    "title": "33.8 Coordinamento multi-dispositivo"
   },
   {
-    "file": "32-device-integration.html",
+    "file": "33-device-integration.html",
     "level": 2,
     "id": "",
-    "title": "32.9 Esempi"
+    "title": "33.9 Esempi"
   },
   {
-    "file": "32-device-integration.html",
+    "file": "33-device-integration.html",
     "level": 2,
     "id": "",
-    "title": "32.10 Risoluzione dei problemi"
+    "title": "33.10 Risoluzione dei problemi"
   },
   {
-    "file": "33-personal-assistant.html",
+    "file": "34-personal-assistant.html",
     "level": 2,
     "id": "",
-    "title": "33.1 Avvio rapido"
+    "title": "34.1 Avvio rapido"
   },
   {
-    "file": "33-personal-assistant.html",
+    "file": "34-personal-assistant.html",
     "level": 2,
     "id": "",
-    "title": "33.2 Comandi"
+    "title": "34.2 Comandi"
   },
   {
-    "file": "33-personal-assistant.html",
+    "file": "34-personal-assistant.html",
     "level": 3,
     "id": "",
-    "title": "33.2.1 malda agent"
+    "title": "34.2.1 malda agent"
   },
   {
-    "file": "33-personal-assistant.html",
+    "file": "34-personal-assistant.html",
     "level": 3,
     "id": "",
-    "title": "33.2.2 malda onboard"
+    "title": "34.2.2 malda onboard"
   },
   {
-    "file": "33-personal-assistant.html",
+    "file": "34-personal-assistant.html",
     "level": 3,
     "id": "",
-    "title": "33.2.3 malda status"
+    "title": "34.2.3 malda status"
   },
   {
-    "file": "33-personal-assistant.html",
+    "file": "34-personal-assistant.html",
     "level": 3,
     "id": "",
-    "title": "33.2.4 malda gateway"
+    "title": "34.2.4 malda gateway"
   },
   {
-    "file": "33-personal-assistant.html",
+    "file": "34-personal-assistant.html",
     "level": 3,
     "id": "",
-    "title": "33.2.5 malda cron"
+    "title": "34.2.5 malda cron"
   },
   {
-    "file": "33-personal-assistant.html",
+    "file": "34-personal-assistant.html",
     "level": 2,
     "id": "",
-    "title": "33.3 File di config (~/.malda/config.json)"
+    "title": "34.3 File di config (~/.malda/config.json)"
   },
   {
-    "file": "33-personal-assistant.html",
+    "file": "34-personal-assistant.html",
     "level": 3,
     "id": "",
-    "title": "33.3.1 Schema agents.memory"
+    "title": "34.3.1 Schema agents.memory"
   },
   {
-    "file": "33-personal-assistant.html",
+    "file": "34-personal-assistant.html",
     "level": 2,
     "id": "",
-    "title": "33.4 Scegliere OpenRouter vs llama.cpp locale"
+    "title": "34.4 Scegliere OpenRouter vs llama.cpp locale"
   },
   {
-    "file": "33-personal-assistant.html",
+    "file": "34-personal-assistant.html",
     "level": 2,
     "id": "",
-    "title": "33.5 Comportamento dell'assistente di default"
+    "title": "34.5 Comportamento dell'assistente di default"
   },
   {
-    "file": "33-personal-assistant.html",
+    "file": "34-personal-assistant.html",
     "level": 2,
     "id": "",
-    "title": "33.6 Scheduling su Windows (Task Scheduler)"
+    "title": "34.6 Scheduling su Windows (Task Scheduler)"
   },
   {
-    "file": "33-personal-assistant.html",
+    "file": "34-personal-assistant.html",
     "level": 3,
     "id": "",
-    "title": "33.5.0 Installazione automatica (malda cron install)"
+    "title": "34.5.0 Installazione automatica (malda cron install)"
   },
   {
-    "file": "33-personal-assistant.html",
+    "file": "34-personal-assistant.html",
     "level": 3,
     "id": "",
-    "title": "33.5.1 Aggiungere il job in MALDA"
+    "title": "34.5.1 Aggiungere il job in MALDA"
   },
   {
-    "file": "33-personal-assistant.html",
+    "file": "34-personal-assistant.html",
     "level": 3,
     "id": "",
-    "title": "33.5.2 Trovare malda.exe"
+    "title": "34.5.2 Trovare malda.exe"
   },
   {
-    "file": "33-personal-assistant.html",
+    "file": "34-personal-assistant.html",
     "level": 3,
     "id": "",
-    "title": "33.5.3 Creare l'attività pianificata (GUI)"
+    "title": "34.5.3 Creare l'attività pianificata (GUI)"
   },
   {
-    "file": "33-personal-assistant.html",
+    "file": "34-personal-assistant.html",
     "level": 3,
     "id": "",
-    "title": "33.5.4 Creare l'attività pianificata (riga di comando)"
+    "title": "34.5.4 Creare l'attività pianificata (riga di comando)"
   },
   {
-    "file": "33-personal-assistant.html",
+    "file": "34-personal-assistant.html",
     "level": 3,
     "id": "",
-    "title": "33.5.5 Ambiente e API key"
+    "title": "34.5.5 Ambiente e API key"
   },
   {
-    "file": "33-personal-assistant.html",
+    "file": "34-personal-assistant.html",
     "level": 3,
     "id": "",
-    "title": "33.5.6 Mapping delle espressioni cron su Task Scheduler"
+    "title": "34.5.6 Mapping delle espressioni cron su Task Scheduler"
   },
   {
-    "file": "33-personal-assistant.html",
+    "file": "34-personal-assistant.html",
     "level": 2,
     "id": "skills",
-    "title": "33.7 Skill"
+    "title": "34.7 Skill"
   },
   {
-    "file": "33-personal-assistant.html",
+    "file": "34-personal-assistant.html",
     "level": 2,
     "id": "",
-    "title": "33.8 Canali / Telegram"
+    "title": "34.8 Canali / Telegram"
   },
   {
-    "file": "34-examples.html",
+    "file": "35-examples.html",
     "level": 2,
     "id": "first-look",
-    "title": "34.0 First Look"
+    "title": "35.0 First Look"
   },
   {
-    "file": "34-examples.html",
+    "file": "35-examples.html",
     "level": 2,
     "id": "catalog",
-    "title": "34.1 Catalogo Examples"
+    "title": "35.1 Catalogo Examples"
   },
   {
-    "file": "34-examples.html",
+    "file": "35-examples.html",
     "level": 2,
     "id": "agent",
-    "title": "34.2 Agente"
+    "title": "35.2 Agente"
   },
   {
-    "file": "34-examples.html",
+    "file": "35-examples.html",
     "level": 2,
     "id": "game",
-    "title": "34.3 Game"
+    "title": "35.3 Game"
   },
   {
-    "file": "34-examples.html",
+    "file": "35-examples.html",
     "level": 2,
     "id": "ui",
-    "title": "34.4 UI guidata dal server"
+    "title": "35.4 UI guidata dal server"
   },
   {
-    "file": "34-examples.html",
+    "file": "35-examples.html",
     "level": 2,
     "id": "property",
-    "title": "34.5 Property test"
+    "title": "35.5 Property test"
   },
   {
-    "file": "34-examples.html",
+    "file": "35-examples.html",
     "level": 2,
     "id": "scaffold",
-    "title": "34.6 Scaffolding"
+    "title": "35.6 Scaffolding"
   },
   {
-    "file": "35-property-testing.html",
+    "file": "36-property-testing.html",
     "level": 2,
     "id": "",
-    "title": "35.1 Una property che passa"
+    "title": "36.1 Una property che passa"
   },
   {
-    "file": "35-property-testing.html",
+    "file": "36-property-testing.html",
     "level": 2,
     "id": "",
-    "title": "35.2 Come vengono generati gli argomenti"
+    "title": "36.2 Come vengono generati gli argomenti"
   },
   {
-    "file": "35-property-testing.html",
+    "file": "36-property-testing.html",
     "level": 2,
     "id": "",
-    "title": "35.3 Una property che fallisce, shrinking e regressioni"
+    "title": "36.3 Una property che fallisce, shrinking e regressioni"
   },
   {
-    "file": "35-property-testing.html",
+    "file": "36-property-testing.html",
     "level": 2,
     "id": "",
-    "title": "35.4 Modello di capability"
+    "title": "36.4 Modello di capability"
   },
   {
-    "file": "35-property-testing.html",
+    "file": "36-property-testing.html",
     "level": 2,
     "id": "",
-    "title": "35.5 Limitazioni JavaScript e semantica di skip"
+    "title": "36.5 Limitazioni JavaScript e semantica di skip"
   },
   {
-    "file": "36-grammar.html",
+    "file": "37-grammar.html",
     "level": 2,
     "id": "",
-    "title": "36.1 Programma"
+    "title": "37.1 Programma"
   },
   {
-    "file": "36-grammar.html",
+    "file": "37-grammar.html",
     "level": 2,
     "id": "",
-    "title": "36.2 Dichiarazioni top-level"
+    "title": "37.2 Dichiarazioni top-level"
   },
   {
-    "file": "36-grammar.html",
+    "file": "37-grammar.html",
     "level": 2,
     "id": "",
-    "title": "36.3 Istruzioni"
+    "title": "37.3 Istruzioni"
   },
   {
-    "file": "36-grammar.html",
+    "file": "37-grammar.html",
     "level": 2,
     "id": "",
-    "title": "36.4 Espressioni (precedenza)"
+    "title": "37.4 Espressioni (precedenza)"
   },
   {
-    "file": "36-grammar.html",
+    "file": "37-grammar.html",
     "level": 2,
     "id": "",
-    "title": "36.5 Pattern"
+    "title": "37.5 Pattern"
   },
   {
-    "file": "36-grammar.html",
+    "file": "37-grammar.html",
     "level": 2,
     "id": "",
-    "title": "36.6 Lessico e token"
+    "title": "37.6 Lessico e token"
   },
   {
-    "file": "37-appendix.html",
+    "file": "38-appendix.html",
     "level": 2,
     "id": "",
-    "title": "37.1 Appendice A: parole riservate"
+    "title": "38.1 Appendice A: parole riservate"
   },
   {
-    "file": "37-appendix.html",
+    "file": "38-appendix.html",
     "level": 2,
     "id": "",
-    "title": "37.2 Appendice B: precedenza degli operatori"
+    "title": "38.2 Appendice B: precedenza degli operatori"
   },
   {
-    "file": "37-appendix.html",
+    "file": "38-appendix.html",
     "level": 2,
     "id": "",
-    "title": "37.3 Appendice C: riepilogo dei concetti object-oriented"
+    "title": "38.3 Appendice C: riepilogo dei concetti object-oriented"
   },
   {
-    "file": "37-appendix.html",
+    "file": "38-appendix.html",
     "level": 2,
     "id": "",
-    "title": "37.4 Appendice D: riferimento da riga di comando"
+    "title": "38.4 Appendice D: riferimento da riga di comando"
   },
   {
-    "file": "37-appendix.html",
+    "file": "38-appendix.html",
     "level": 2,
     "id": "",
-    "title": "37.5 Appendice E: baseline del contratto di deploy e osservabilità"
+    "title": "38.5 Appendice E: baseline del contratto di deploy e osservabilità"
   },
   {
-    "file": "37-appendix.html",
+    "file": "38-appendix.html",
     "level": 2,
     "id": "",
-    "title": "37.6 Appendice F: profiling dei programmi MALDA"
+    "title": "38.6 Appendice F: profiling dei programmi MALDA"
   },
   {
-    "file": "37-appendix.html",
+    "file": "38-appendix.html",
     "level": 2,
     "id": "optional-packs",
-    "title": "37.7 Appendice G: pack opzionali"
+    "title": "38.7 Appendice G: pack opzionali"
   },
   {
-    "file": "38-appendix-gpu-billiards.html",
+    "file": "39-appendix-gpu-billiards.html",
     "level": 2,
     "id": "",
-    "title": "38.1 Tavolo giocabile"
+    "title": "39.1 Tavolo giocabile"
   },
   {
-    "file": "38-appendix-gpu-billiards.html",
+    "file": "39-appendix-gpu-billiards.html",
     "level": 2,
     "id": "",
-    "title": "38.2 Controlli"
+    "title": "39.2 Controlli"
   },
   {
-    "file": "38-appendix-gpu-billiards.html",
+    "file": "39-appendix-gpu-billiards.html",
     "level": 2,
     "id": "",
-    "title": "38.3 Rigenerare lo script committato"
+    "title": "39.3 Rigenerare lo script committato"
   }
 ]
