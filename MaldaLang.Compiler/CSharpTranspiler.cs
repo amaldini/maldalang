@@ -11853,7 +11853,6 @@ public class CSharpTranspiler
             case "argmin":
             case "logSumExp":
             case "softmax":
-            case "crossEntropyFromLogits":
             case "randomChoiceWeighted":
             case "seed":
             case "anneal":

@@ -449,7 +449,7 @@ public class DllCompilationTests
             print(int(round(Math.logSumExp([2.0, 1.0, 0.0]) * 1000)));
             var probs = Math.softmax([2.0, 1.0, 0.0]);
             print(int(round(probs[0] * 1000)));
-            print(int(round(Math.crossEntropyFromLogits([2.0, 1.0, 0.0], 0) * 1000)));
+            print(int(round(nn.crossEntropyFromLogits([2.0, 1.0, 0.0], 0) * 1000)));
             print(Math.randomChoiceWeighted([0.0, 1.0, 0.0]));
             print(int(round(Math.randn(0.1) * 1000)));
         ";

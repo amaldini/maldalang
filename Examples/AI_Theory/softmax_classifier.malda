@@ -56,7 +56,7 @@ var correct = 0;
 var loss = 0.0;
 for (var i = 0; i < points.length; i = i + 1) {
     var logits = logitsOf(points[i], w);
-    loss = loss + math.crossEntropyFromLogits(logits, labels[i]);
+    loss = loss + nn.crossEntropyFromLogits(logits, labels[i]);
     if (predict(points[i], w) == labels[i]) {
         correct = correct + 1;
     }

@@ -171,9 +171,10 @@ you want an integer value, not only an integer-accepting call.
 `nn.dense` returns `{ pre, out }`. `nn.denseBackward` needs that `pre` whenever the activation
 is not `linear`, because `dRelu` / `dSigmoid` / the other `nn.d*` helpers differentiate the
 pre-activation. `nn.mseGrad` is elementwise `pred - target` (the gradient of `1/2 (p-t)^2`),
-which is not the gradient of `nn.mse` / `math.mse` (those average). `leakyRelu` and `elu`
-inside `dense` use the default alpha (`0.01` and `1`). `math.relu` / `sigmoid` / `tanh` /
-`mse` stay; `nn.relu` and the rest call the same functions. There is no autograd tape.
+which is not the gradient of `nn.mse` (that averages). `leakyRelu` and `elu`
+inside `dense` use the default alpha (`0.01` and `1`). `math.sigmoid` / `tanh` / `softmax`
+stay, and `nn.sigmoid` / `tanh` / `softmax` call the same functions. `nn.relu`, `nn.mse`,
+and `nn.crossEntropyFromLogits` are only on `nn`. There is no autograd tape.
 
 **Flat built-in names are deprecated aliases.** `sqrt(16)` and `Math.sqrt(16)` both run, but
 the language server reports both as deprecated. Prefer `math.sqrt(16)`. See the namespace

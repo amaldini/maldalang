@@ -15,8 +15,9 @@ and the out-of-scope list below for engines that stay out of core.
 `softmaxGrad`), the student track through XOR / softmax / attention /
 microgpt, a JS decision-boundary playground (`malda play`), hash-embedding
 2D projection + VectorDB neighbors, and host-only `new OnnxModel(path)`
-inspect + forward. `math.relu` / `sigmoid` / `tanh` / `mse` remain and call
-the same functions as `nn.relu` and the rest.
+inspect + forward. `math.sigmoid` / `tanh` / `softmax` remain and call
+the same functions as `nn.sigmoid` / `tanh` / `softmax`. `nn.relu`, `nn.mse`, and
+`nn.crossEntropyFromLogits` are only on `nn`.
 
 **Not in scope:** a `tensor` language type, an autograd tape, `Adam` /
 DataLoader, GPU training, a general ONNX trainer, product apps or vertical
@@ -34,7 +35,8 @@ with an explicit activation derivative, not a module zoo.
    does not build a tape.
 2. **Linear algebra stays on `math.*`.** Activations, local derivatives, and
    one dense layer live on `nn.*`. Do not add `tensor.*` or flat aliases
-   (`AGENTS.md`). `math.relu` / `sigmoid` / `tanh` / `mse` remain.
+   (`AGENTS.md`). `math.sigmoid` / `tanh` / `softmax` remain. `relu`, `mse`, and
+   `crossEntropyFromLogits` are only on `nn`.
 3. **Functions beat keywords.** No new parser syntax for layers or tapes
    ([`docs/roadmap-language-constructs.md`](roadmap-language-constructs.md)).
 4. **Three backends for `math.*` linear algebra and `nn.*`.** Interpreter,
@@ -62,7 +64,7 @@ with an explicit activation derivative, not a module zoo.
 ```text
 N0  roadmap file                          (landed)
 N1  math.dot / matmul / transpose         (landed)
-    math.relu / sigmoid / tanh / mse
+    math.sigmoid / tanh / softmax
 N2  perceptron + softmax_classifier       (landed)
 N3  xor_decision_boundary (malda play)    (landed)
 N4  embedding_2d + OnnxModel              (landed)
@@ -83,10 +85,11 @@ N7  nn.relu / leakyRelu / elu / gelu / silu / softplus
 | `math.dot(a, b)` | 1D vectors, same length, scalar |
 | `math.matmul(a, b)` | 2D@2D, 2D@1D, or 1D@2D |
 | `math.transpose(matrix)` | 2D nested array |
-| `math.relu(x)` / `sigmoid` / `tanh` | Scalar or elementwise 1D/2D |
-| `math.mse(pred, target)` | Mean squared error (scalars or same-shape 1D) |
+| `math.sigmoid(x)` / `tanh` | Scalar or elementwise 1D/2D. Also on `nn` |
+| `math.softmax(array, temperature?)` | Probability normalization. Also on `nn` |
 
-`math.zeros` / `randn` / `softmax` / `crossEntropyFromLogits` already existed.
+`nn.relu`, `nn.mse`, and `nn.crossEntropyFromLogits` are only on `nn`.
+`math.zeros` / `randn` already existed.
 Do not add Glorot init or `oneHot` unless a later slice needs them.
 
 ---
@@ -136,12 +139,14 @@ colored by the XOR MLP, four training points overlaid. No new `ui.chart`.
 ## N7 — `nn.*`
 
 `math.dot` / `matmul` / `transpose` stay the linear-algebra primitives.
-`nn` groups the neural-net helpers. `math.relu` / `sigmoid` / `tanh` / `mse`
-remain and call the same functions.
+`nn` groups the neural-net helpers. `math.sigmoid` / `tanh` / `softmax` remain
+and call the same functions. `relu`, `mse`, and `crossEntropyFromLogits` are only on `nn`.
 
 | Call | Role |
 |------|------|
-| `nn.relu` / `sigmoid` / `tanh` / `leakyRelu` / `elu` / `gelu` / `silu` / `softplus` | Scalar or elementwise 1D/2D. `leakyRelu` alpha defaults to `0.01`; `elu` alpha defaults to `1` |
+| `nn.relu` / `sigmoid` / `tanh` / `leakyRelu` / `elu` / `gelu` / `silu` / `softplus` | Scalar or elementwise 1D/2D. `relu` is only on `nn`. `leakyRelu` alpha defaults to `0.01`; `elu` alpha defaults to `1` |
+| `nn.mse(pred, target)` | Mean squared error. Only on `nn` |
+| `nn.crossEntropyFromLogits(logits, targetIndex)` | Classification loss from logits and a class index. Only on `nn` |
 | `nn.dRelu` / `dLeakyRelu` / `dElu` / `dGelu` / `dSilu` / `dSoftplus` / `dSigmoid` / `dTanh` | Derivative with respect to the pre-activation |
 | `nn.dense(x, weights, bias?, activation?)` | `{ pre, out }`. Weights are `[in, out]` |
 | `nn.denseBackward(x, weights, upstream, activation?, pre?)` | `{ dInput, dWeights, dBias }`. Pass forward `pre` when the activation is not linear |

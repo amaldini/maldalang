@@ -24,11 +24,11 @@ public class MathNeuralBuiltInTests : TestBase
             print(r[1]);
             var t = math.transpose([[1.0, 2.0], [3.0, 4.0]]);
             print(t[0][1]);
-            print(math.relu(-2.0));
-            print(math.relu([ -1.0, 3.0 ])[1]);
+            print(nn.relu(-2.0));
+            print(nn.relu([ -1.0, 3.0 ])[1]);
             print(int(math.sigmoid(0.0) * 10));
             print(int(math.tanh(0.0) * 10));
-            print(int(math.mse([1.0, 3.0], [1.0, 1.0]) * 10));
+            print(int(nn.mse([1.0, 3.0], [1.0, 1.0]) * 10));
             """).Replace("\r", "").Split('\n', StringSplitOptions.RemoveEmptyEntries);
 
         Assert.Equal("11", output[0].Trim());
@@ -50,7 +50,7 @@ public class MathNeuralBuiltInTests : TestBase
             var y = math.matmul([[1.0, 2.0]], [[3.0], [4.0]]);
             print(y[0][0]);
             print(math.dot([2.0, 0.0], [5.0, 9.0]));
-            print(math.mse(2.0, 0.0));
+            print(nn.mse(2.0, 0.0));
             """;
         var interpreted = RunProgram(source);
         var transpiled = TranspiledTestRunner.CompileAndRunFromSource(source);
@@ -75,6 +75,20 @@ public class MathNeuralBuiltInTests : TestBase
                 })
             }, null));
         Assert.Contains("inner dimensions must match", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ReluAndMse_AreOnlyOnNn()
+    {
+        var ex = Assert.Throws<RuntimeException>(() => RunProgram("print(math.relu(1.0));"));
+        Assert.Contains("relu", ex.Message, StringComparison.Ordinal);
+
+        var output = RunProgram("""
+            print(nn.relu(-1.0));
+            print(int(nn.mse(2.0, 0.0)));
+            """).Replace("\r", "").Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal("0", output[0].Trim());
+        Assert.Equal("4", output[1].Trim());
     }
 
     [Fact]

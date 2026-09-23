@@ -29,8 +29,8 @@ public static class StdLibNamespaces
         "exp", "log", "log10", "log2",
         "sin", "cos", "tan", "asin", "acos", "atan", "atan2",
         "hypot", "clamp", "degToRad", "radToDeg", "zeros",
-        "rsqrt", "randn", "argmax", "argmin", "logSumExp", "softmax", "crossEntropyFromLogits",
-        "dot", "matmul", "transpose", "relu", "sigmoid", "tanh", "mse",
+        "rsqrt", "randn", "argmax", "argmin", "logSumExp", "softmax",
+        "dot", "matmul", "transpose", "sigmoid", "tanh",
         "randomChoiceWeighted", "seed", "random", "randomInt", "randomFloat", "anneal"
     };
 
@@ -78,8 +78,8 @@ public static class StdLibNamespaces
     };
 
     /// <summary>
-    /// Neural-net helpers. Activations that already live on <c>math</c> are also here.
-    /// New names have no flat alias.
+    /// Neural-net helpers. <c>sigmoid</c>, <c>tanh</c>, and <c>softmax</c> also live on <c>math</c>.
+    /// <c>relu</c>, <c>mse</c>, and <c>crossEntropyFromLogits</c> are only here. No flat aliases.
     /// </summary>
     public static readonly IReadOnlySet<string> NnMethodNames = new HashSet<string>(StringComparer.Ordinal)
     {

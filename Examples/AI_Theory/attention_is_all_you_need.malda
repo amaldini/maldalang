@@ -209,7 +209,7 @@ function feedForward(x: array, w1: array, b1: array, w2: array, b2: array) -> ar
     var hidden = matMul(x, w1);
     for (var t = 0; t < hidden.length; t = t + 1) {
         for (var j = 0; j < hidden[t].length; j = j + 1) {
-            hidden[t][j] = math.relu(hidden[t][j] + b1[j]);
+            hidden[t][j] = nn.relu(hidden[t][j] + b1[j]);
         }
     }
     var out = matMul(hidden, w2);
@@ -521,7 +521,7 @@ for (var epoch = 1; epoch <= epochs; epoch = epoch + 1) {
         var dLogits = math.zeros(seqLen, vocab);
 
         for (var t = 0; t < seqLen; t = t + 1) {
-            epochLoss = epochLoss + math.crossEntropyFromLogits(step.logits[t], int(tgt[t]));
+            epochLoss = epochLoss + nn.crossEntropyFromLogits(step.logits[t], int(tgt[t]));
             var probs = math.softmax(step.logits[t]);
             for (var c = 0; c < vocab; c = c + 1) {
                 dLogits[t][c] = probs[c];

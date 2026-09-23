@@ -84,14 +84,11 @@ public static class BuiltInRegistry
             "argmin" or
             "logSumExp" or
             "softmax" or
-            "crossEntropyFromLogits" or
             "dot" or
             "matmul" or
             "transpose" or
-            "relu" or
             "sigmoid" or
             "tanh" or
-            "mse" or
             "randomChoiceWeighted" or
             "seed" or
             "anneal" or

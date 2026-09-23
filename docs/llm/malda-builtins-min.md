@@ -96,7 +96,7 @@ different convention from `str.length(s)` / `math.sqrt(x)`. There is no `arr` na
 | `math.abs/round/floor/ceil/sqrt/pow/min/max/sum/average` | Arithmetic |
 | `math.zeros(n)` / `math.zeros(rows, cols)` | 1D or 2D nested array of `0.0`; each 2D row is a fresh array |
 | `math.dot` / `matmul` / `transpose` | Vector dot; 2D@2D / 2D@1D / 1D@2D; 2D transpose |
-| `math.relu` / `sigmoid` / `tanh` / `mse` | Same functions as `nn.relu` / `sigmoid` / `tanh` / `mse` |
+| `math.sigmoid` / `tanh` / `softmax` | Same functions as `nn.sigmoid` / `tanh` / `softmax`. `nn.relu`, `nn.mse`, and `nn.crossEntropyFromLogits` are only on `nn` |
 | `nn.dense` / `denseBackward` | One dense layer. Weights are `[in, out]`. Backward needs the forward `pre` when the activation is not `linear` |
 | `nn.leakyRelu` / `elu` / `gelu` / `silu` / `softplus` | Extra activations (scalar or elementwise). `dRelu` / `dSigmoid` / … are derivatives of the pre-activation |
 | `nn.mseGrad` / `softmaxGrad` | `pred - target`, and `softmax(logits) - oneHot(target)`. `mseGrad` is not the gradient of averaged `mse` |

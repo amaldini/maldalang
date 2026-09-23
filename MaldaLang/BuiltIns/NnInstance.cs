@@ -6,8 +6,9 @@ namespace MaldaLang.BuiltIns;
 using MaldaLang.Interpreter;
 
 /// <summary>
-/// Global <c>nn</c> module. No flat aliases: <c>nn.relu</c>, not <c>relu</c> for the new names.
-/// <c>math.relu</c> / <c>sigmoid</c> / <c>tanh</c> / <c>mse</c> remain.
+/// Global <c>nn</c> module. No flat aliases.
+/// <c>math.sigmoid</c> / <c>tanh</c> / <c>softmax</c> remain; <c>relu</c>, <c>mse</c>, and
+/// <c>crossEntropyFromLogits</c> are only on <c>nn</c>.
 /// </summary>
 public sealed class NnInstance : StdLibModuleInstance
 {
