@@ -475,6 +475,21 @@ th {
     color: var(--ink-soft);
 }
 
+table.sigs > tbody {
+    break-inside: avoid;
+    page-break-inside: avoid;
+}
+
+table.sigs tr.sig td {
+    border-bottom: none;
+    padding-bottom: 0.4mm;
+}
+
+table.sigs tr.sig code {
+    word-break: normal;
+    overflow-wrap: break-word;
+}
+
 /* ------------------------------------------------------------- Callouts */
 
 .info-box,

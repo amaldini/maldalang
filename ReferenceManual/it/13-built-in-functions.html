@@ -98,56 +98,189 @@ print(io.readFile("config.json"));</code></pre>
         <p>Interprete, transpile C# e JavaScript eseguono tutti <code>math.*</code>. Vedi la <a href="../../docs/spec/backend-capability-matrix.md">matrice delle capacità dei backend</a>.</p>
         <pre><code data-run="true" data-expect="5\n8">print(math.abs(-5));
 print(math.pow(2, 3));</code></pre>
-        <table>
+        <table class="sigs">
         <thead>
-        <tr><th>Chiamata</th><th>Argomenti</th><th>Ritorno</th><th>Note</th></tr>
+        <tr><th>Argomenti</th><th>Ritorno</th><th>Note</th></tr>
         </thead>
         <tbody>
-        <tr><td><code>math.abs(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
-        <tr><td><code>math.acos(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
-        <tr><td><code>math.anneal(initial, cost, neighbor, options?)</code></td><td>3-4 arguments: (initial, cost, neighbor, options?)</td><td>{ state, cost, steps }</td><td>Metropolis search; cost/neighbor are unary lambdas (cooling may be a number or unary lambda); options: steps/temp/cooling/schedule/maximize/copy; uses math.random so math.seed pins it; WF1001 outside a workflow step</td></tr>
-        <tr><td><code>math.argmax(array)</code></td><td>1 argument: (array)</td><td>—</td><td></td></tr>
-        <tr><td><code>math.argmin(array)</code></td><td>1 argument: (array)</td><td>—</td><td></td></tr>
-        <tr><td><code>math.asin(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
-        <tr><td><code>math.atan(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
-        <tr><td><code>math.atan2(a, b)</code></td><td>2 arguments</td><td>—</td><td></td></tr>
-        <tr><td><code>math.average(array)</code></td><td>1 argument: (array)</td><td>—</td><td></td></tr>
-        <tr><td><code>math.ceil(x)</code></td><td>1 argument</td><td>—</td><td>returns a float even when whole-valued; integer sinks coerce whole floats; wrap with int() if you need an Integer-tagged value</td></tr>
-        <tr><td><code>math.clamp(x, lo, hi)</code></td><td>3 arguments</td><td>—</td><td></td></tr>
-        <tr><td><code>math.cos(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
-        <tr><td><code>math.degToRad(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
-        <tr><td><code>math.dot(a, b)</code></td><td>2 arguments: (a, b)</td><td>float</td><td>vettori 1D, stessa lunghezza</td></tr>
-        <tr><td><code>math.exp(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
-        <tr><td><code>math.floor(x)</code></td><td>1 argument</td><td>—</td><td>returns a float even when whole-valued (print shows 1, not 1.0); integer sinks coerce whole floats, so str.repeat(&quot;-&quot;, math.floor(n)) works; fractional floats still fail</td></tr>
-        <tr><td><code>math.hypot(a, b)</code></td><td>2 arguments</td><td>—</td><td></td></tr>
-        <tr><td><code>math.log(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
-        <tr><td><code>math.log10(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
-        <tr><td><code>math.log2(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
-        <tr><td><code>math.logSumExp(array)</code></td><td>1 argument: (array)</td><td>—</td><td></td></tr>
-        <tr><td><code>math.max(a, b)</code></td><td>2 arguments or 1 array</td><td>—</td><td></td></tr>
-        <tr><td><code>math.matmul(a, b)</code></td><td>2 arguments: (a, b)</td><td>array</td><td>2D@2D, 2D@1D o 1D@2D</td></tr>
-        <tr><td><code>math.min(a, b)</code></td><td>2 arguments or 1 array</td><td>—</td><td></td></tr>
-        <tr><td><code>math.pow(a, b)</code></td><td>2 arguments</td><td>—</td><td></td></tr>
-        <tr><td><code>math.radToDeg(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
-        <tr><td><code>math.randn(std?, mean?)</code></td><td>0-2 arguments: (std?, mean?)</td><td>—</td><td></td></tr>
-        <tr><td><code>math.random()</code></td><td>0 arguments</td><td>—</td><td>float in [0.0, 1.0)</td></tr>
-        <tr><td><code>math.randomChoiceWeighted(weights)</code></td><td>1 argument: (weights)</td><td>—</td><td></td></tr>
-        <tr><td><code>math.randomFloat(min, max)</code></td><td>2 arguments: (min, max)</td><td>—</td><td>min included, max excluded</td></tr>
-        <tr><td><code>math.randomInt(min, max)</code></td><td>2 arguments: (min, max)</td><td>—</td><td>min and max are BOTH included, unlike half-open ranges elsewhere; math.seed(n) pins the sequence</td></tr>
-        <tr><td><code>math.round(x)</code></td><td>1 argument</td><td>—</td><td>returns a float even when whole-valued; integer sinks coerce whole floats; wrap with int() if you need an Integer-tagged value</td></tr>
-        <tr><td><code>math.rsqrt(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
-        <tr><td><code>math.seed(x)</code></td><td>1 argument</td><td>null</td><td>resets the one generator shared by random, randomInt, randomFloat, randn, randomChoiceWeighted and anneal</td></tr>
-        <tr><td><code>math.sigmoid(x)</code></td><td>1 argument: (x)</td><td>—</td><td>scalare o elementwise 1D/2D</td></tr>
-        <tr><td><code>math.sign(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
-        <tr><td><code>math.sin(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
-        <tr><td><code>math.softmax(array, temperature?)</code></td><td>1-2 arguments: (array, temperature?)</td><td>—</td><td></td></tr>
-        <tr><td><code>math.sqrt(x)</code></td><td>1 argument</td><td>—</td><td>returns a float even when whole-valued (sqrt(4) is 2.0); integer sinks coerce whole floats; wrap with int() if you need an Integer-tagged value</td></tr>
-        <tr><td><code>math.sum(array)</code></td><td>1 argument: (array)</td><td>—</td><td></td></tr>
-        <tr><td><code>math.tan(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
-        <tr><td><code>math.tanh(x)</code></td><td>1 argument: (x)</td><td>—</td><td>scalare o elementwise 1D/2D</td></tr>
-        <tr><td><code>math.transpose(matrix)</code></td><td>1 argument: (matrix)</td><td>array</td><td>matrice 2D nidificata</td></tr>
-        <tr><td><code>math.trunc(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
-        <tr><td><code>math.zeros(n, cols?)</code></td><td>1-2 arguments: (n, cols?)</td><td>array</td><td>1D math.zeros(n) or 2D math.zeros(rows, cols); each 2D row is a new array; cells are 0.0</td></tr>
+        <tr class="sig"><td colspan="3"><code>math.abs(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.acos(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.anneal(initial, cost, neighbor, options?)</code></td></tr>
+        <tr><td>3-4 arguments: (initial, cost, neighbor, options?)</td><td>{ state, cost, steps }</td><td>Metropolis search; cost/neighbor are unary lambdas (cooling may be a number or unary lambda); options: steps/temp/cooling/schedule/maximize/copy; uses math.random so math.seed pins it; WF1001 outside a workflow step</td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.argmax(array)</code></td></tr>
+        <tr><td>1 argument: (array)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.argmin(array)</code></td></tr>
+        <tr><td>1 argument: (array)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.asin(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.atan(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.atan2(a, b)</code></td></tr>
+        <tr><td>2 arguments</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.average(array)</code></td></tr>
+        <tr><td>1 argument: (array)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.ceil(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td>returns a float even when whole-valued; integer sinks coerce whole floats; wrap with int() if you need an Integer-tagged value</td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.clamp(x, lo, hi)</code></td></tr>
+        <tr><td>3 arguments</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.cos(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.degToRad(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.dot(a, b)</code></td></tr>
+        <tr><td>2 arguments: (a, b)</td><td>float</td><td>vettori 1D, stessa lunghezza</td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.exp(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.floor(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td>returns a float even when whole-valued (print shows 1, not 1.0); integer sinks coerce whole floats, so str.repeat(&quot;-&quot;, math.floor(n)) works; fractional floats still fail</td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.hypot(a, b)</code></td></tr>
+        <tr><td>2 arguments</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.log(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.log10(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.log2(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.logSumExp(array)</code></td></tr>
+        <tr><td>1 argument: (array)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.max(a, b)</code></td></tr>
+        <tr><td>2 arguments or 1 array</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.matmul(a, b)</code></td></tr>
+        <tr><td>2 arguments: (a, b)</td><td>array</td><td>2D@2D, 2D@1D o 1D@2D</td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.min(a, b)</code></td></tr>
+        <tr><td>2 arguments or 1 array</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.pow(a, b)</code></td></tr>
+        <tr><td>2 arguments</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.radToDeg(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.randn(std?, mean?)</code></td></tr>
+        <tr><td>0-2 arguments: (std?, mean?)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.random()</code></td></tr>
+        <tr><td>0 arguments</td><td>—</td><td>float in [0.0, 1.0)</td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.randomChoiceWeighted(weights)</code></td></tr>
+        <tr><td>1 argument: (weights)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.randomFloat(min, max)</code></td></tr>
+        <tr><td>2 arguments: (min, max)</td><td>—</td><td>min included, max excluded</td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.randomInt(min, max)</code></td></tr>
+        <tr><td>2 arguments: (min, max)</td><td>—</td><td>min and max are BOTH included, unlike half-open ranges elsewhere; math.seed(n) pins the sequence</td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.round(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td>returns a float even when whole-valued; integer sinks coerce whole floats; wrap with int() if you need an Integer-tagged value</td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.rsqrt(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.seed(x)</code></td></tr>
+        <tr><td>1 argument</td><td>null</td><td>resets the one generator shared by random, randomInt, randomFloat, randn, randomChoiceWeighted and anneal</td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.sigmoid(x)</code></td></tr>
+        <tr><td>1 argument: (x)</td><td>—</td><td>scalare o elementwise 1D/2D</td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.sign(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.sin(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.softmax(array, temperature?)</code></td></tr>
+        <tr><td>1-2 arguments: (array, temperature?)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.sqrt(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td>returns a float even when whole-valued (sqrt(4) is 2.0); integer sinks coerce whole floats; wrap with int() if you need an Integer-tagged value</td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.sum(array)</code></td></tr>
+        <tr><td>1 argument: (array)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.tan(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.tanh(x)</code></td></tr>
+        <tr><td>1 argument: (x)</td><td>—</td><td>scalare o elementwise 1D/2D</td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.transpose(matrix)</code></td></tr>
+        <tr><td>1 argument: (matrix)</td><td>array</td><td>matrice 2D nidificata</td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.trunc(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>math.zeros(n, cols?)</code></td></tr>
+        <tr><td>1-2 arguments: (n, cols?)</td><td>array</td><td>1D math.zeros(n) or 2D math.zeros(rows, cols); each 2D row is a new array; cells are 0.0</td></tr>
         </tbody>
         </table>
         <p><code>math.max</code> e <code>math.min</code> accettano <code>(a, b)</code> o un array numerico non vuoto. Gli aggregati sono anche metodi: <code>values.sum()</code>, <code>values.average()</code>, <code>values.min()</code>, <code>values.max()</code>. La trigonometria è in radianti; un input fuori dominio è <code>NaN</code>, non un errore. <code>math.round</code> usa l'arrotondamento del banchiere.</p>
@@ -190,40 +323,125 @@ print(result.cost);</code></pre>
         <p>Interprete, transpile C# e JavaScript eseguono tutti <code>str.*</code>. Vedi la <a href="../../docs/spec/backend-capability-matrix.md">matrice delle capacità dei backend</a>.</p>
         <pre><code data-run="true" data-expect="hello\ntrue">print(str.lower("HELLO"));
 print(str.startsWith("Hello", "He"));</code></pre>
-        <table>
+        <table class="sigs">
         <thead>
-        <tr><th>Chiamata</th><th>Argomenti</th><th>Ritorno</th><th>Note</th></tr>
+        <tr><th>Argomenti</th><th>Ritorno</th><th>Note</th></tr>
         </thead>
         <tbody>
-        <tr><td><code>str.base64Decode(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
-        <tr><td><code>str.base64Encode(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
-        <tr><td><code>str.endsWith(str, suffix)</code></td><td>2 arguments: (str, suffix)</td><td>—</td><td></td></tr>
-        <tr><td><code>str.extractNumbers(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
-        <tr><td><code>str.includes(array, value)</code></td><td>2 arguments: (array, value)</td><td>—</td><td></td></tr>
-        <tr><td><code>str.indexOf(string, string)</code></td><td>(string, string)</td><td>—</td><td></td></tr>
-        <tr><td><code>str.join(array, separator?)</code></td><td>1-2 arguments: (array, separator?)</td><td>—</td><td></td></tr>
-        <tr><td><code>str.length(x)</code></td><td>1 argument</td><td>—</td><td>accepts a string or an array</td></tr>
-        <tr><td><code>str.lower(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
-        <tr><td><code>str.md5(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
-        <tr><td><code>str.normalizeText(string, options?)</code></td><td>(string, options?)</td><td>—</td><td></td></tr>
-        <tr><td><code>str.padEnd(str, length, padChar?)</code></td><td>2-3 arguments: (str, length, padChar?)</td><td>—</td><td></td></tr>
-        <tr><td><code>str.padStart(str, length, padChar?)</code></td><td>2-3 arguments: (str, length, padChar?)</td><td>—</td><td></td></tr>
-        <tr><td><code>str.regexFind(string, string)</code></td><td>(string, string)</td><td>—</td><td></td></tr>
-        <tr><td><code>str.regexMatch(string, string)</code></td><td>(string, string)</td><td>—</td><td></td></tr>
-        <tr><td><code>str.regexReplace(string, string, string)</code></td><td>(string, string, string)</td><td>—</td><td></td></tr>
-        <tr><td><code>str.repeat(str, count)</code></td><td>2 arguments: (str, count)</td><td>—</td><td>count must be an integer or a whole-valued float; fractional floats are rejected</td></tr>
-        <tr><td><code>str.replace(string, string, string)</code></td><td>(string, string, string)</td><td>—</td><td></td></tr>
-        <tr><td><code>str.sha256(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
-        <tr><td><code>str.similarity(string, string, method?, options?)</code></td><td>(string, string, method?, options?)</td><td>—</td><td></td></tr>
-        <tr><td><code>str.split(string, string?, bool?)</code></td><td>(string, string?, bool?)</td><td>—</td><td></td></tr>
-        <tr><td><code>str.startsWith(str, prefix)</code></td><td>2 arguments: (str, prefix)</td><td>—</td><td></td></tr>
-        <tr><td><code>str.substring(string, int, int)</code></td><td>(string, int, int)</td><td>—</td><td></td></tr>
-        <tr><td><code>str.text(value)</code></td><td>1 argument: (value)</td><td>string (never null)</td><td>null → empty string (unlike string(null) → &quot;null&quot;); use at env/JSON/CLI boundaries</td></tr>
-        <tr><td><code>str.tokenize(string, options?)</code></td><td>(string, options?)</td><td>—</td><td></td></tr>
-        <tr><td><code>str.tokenOverlap(string, string, options?)</code></td><td>(string, string, options?)</td><td>—</td><td></td></tr>
-        <tr><td><code>str.trim(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
-        <tr><td><code>str.trimText(value)</code></td><td>1 argument: (value)</td><td>string (never null)</td><td>null-safe trim: str.trim(str.text(value))</td></tr>
-        <tr><td><code>str.upper(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
+        <tr class="sig"><td colspan="3"><code>str.base64Decode(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>str.base64Encode(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>str.endsWith(str, suffix)</code></td></tr>
+        <tr><td>2 arguments: (str, suffix)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>str.extractNumbers(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>str.includes(array, value)</code></td></tr>
+        <tr><td>2 arguments: (array, value)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>str.indexOf(string, string)</code></td></tr>
+        <tr><td>(string, string)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>str.join(array, separator?)</code></td></tr>
+        <tr><td>1-2 arguments: (array, separator?)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>str.length(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td>accepts a string or an array</td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>str.lower(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>str.md5(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>str.normalizeText(string, options?)</code></td></tr>
+        <tr><td>(string, options?)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>str.padEnd(str, length, padChar?)</code></td></tr>
+        <tr><td>2-3 arguments: (str, length, padChar?)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>str.padStart(str, length, padChar?)</code></td></tr>
+        <tr><td>2-3 arguments: (str, length, padChar?)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>str.regexFind(string, string)</code></td></tr>
+        <tr><td>(string, string)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>str.regexMatch(string, string)</code></td></tr>
+        <tr><td>(string, string)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>str.regexReplace(string, string, string)</code></td></tr>
+        <tr><td>(string, string, string)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>str.repeat(str, count)</code></td></tr>
+        <tr><td>2 arguments: (str, count)</td><td>—</td><td>count must be an integer or a whole-valued float; fractional floats are rejected</td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>str.replace(string, string, string)</code></td></tr>
+        <tr><td>(string, string, string)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>str.sha256(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>str.similarity(string, string, method?, options?)</code></td></tr>
+        <tr><td>(string, string, method?, options?)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>str.split(string, string?, bool?)</code></td></tr>
+        <tr><td>(string, string?, bool?)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>str.startsWith(str, prefix)</code></td></tr>
+        <tr><td>2 arguments: (str, prefix)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>str.substring(string, int, int)</code></td></tr>
+        <tr><td>(string, int, int)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>str.text(value)</code></td></tr>
+        <tr><td>1 argument: (value)</td><td>string (never null)</td><td>null → empty string (unlike string(null) → &quot;null&quot;); use at env/JSON/CLI boundaries</td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>str.tokenize(string, options?)</code></td></tr>
+        <tr><td>(string, options?)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>str.tokenOverlap(string, string, options?)</code></td></tr>
+        <tr><td>(string, string, options?)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>str.trim(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>str.trimText(value)</code></td></tr>
+        <tr><td>1 argument: (value)</td><td>string (never null)</td><td>null-safe trim: str.trim(str.text(value))</td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>str.upper(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td></td></tr>
         </tbody>
         </table>
         <p><code>str.substring(text, startIndex, length)</code> — il terzo argomento è un <strong>conteggio</strong>, non un indice di fine. <code>str.text(value)</code> mappa <code>null</code> su <code>""</code> (a differenza di <code>string(null)</code> → <code>"null"</code>). <code>str.trimText(value)</code> è <code>str.trim(str.text(value))</code>. Usali ai confini env / JSON / CLI. <code>str.repeat</code> rifiuta un conteggio frazionario.</p>
@@ -239,28 +457,77 @@ print(f());                             // WORLD</code></pre>
         <p>Un membro non supportato su una stringa (es. <code>s.foo()</code>) è un errore di runtime. Gli helper di path (<code>io.pathJoin</code>, <code>io.isPathUnder</code>, …) sono in <a href="#files">13.8</a>. Gli helper di <code>~/.malda</code> sono in <a href="#env-host">13.5</a>.</p>
         <h2 id="env-host">13.5 Ambiente e host</h2>
         <p>How-to e il footgun <code>getEnv</code> / <code>str.trim</code>: <a href="12-input-output.html">12.5 Ambiente e host</a>. Solo host (interprete e transpile C#); JavaScript non legge l'ambiente di processo e non chiama Brave / <code>webFetch</code>. Vedi la <a href="../../docs/spec/backend-capability-matrix.md">matrice delle capacità dei backend</a>.</p>
-        <table>
+        <table class="sigs">
         <thead>
-        <tr><th>Chiamata</th><th>Argomenti</th><th>Ritorno</th><th>Note</th></tr>
+        <tr><th>Argomenti</th><th>Ritorno</th><th>Note</th></tr>
         </thead>
         <tbody>
-        <tr><td><code>getAssistantMemory(path?)</code></td><td>0-1 arguments: (path?)</td><td>—</td><td></td></tr>
-        <tr><td><code>getCommandLineArgs()</code></td><td>0 arguments</td><td>—</td><td></td></tr>
-        <tr><td><code>io.getEnv(x)</code></td><td>1 argument</td><td>string, or null when the variable is not set</td><td>unlike io.input (which returns empty string at EOF), missing variables yield null — prefer io.getEnvOr or str.trimText before string sinks</td></tr>
-        <tr><td><code>io.getEnvOr(name, default?)</code></td><td>1-2 arguments: (name, default?)</td><td>string (never null)</td><td>never null; missing variables yield default (empty string when omitted) — preferred before str.trim</td></tr>
-        <tr><td><code>getHostPlatform()</code></td><td>0 arguments</td><td>—</td><td></td></tr>
-        <tr><td><code>getMaldaConfig()</code></td><td>0 arguments</td><td>—</td><td></td></tr>
-        <tr><td><code>getMaldaHome()</code></td><td>0 arguments</td><td>—</td><td></td></tr>
-        <tr><td><code>getProgramDirectory()</code></td><td>0 arguments</td><td>—</td><td></td></tr>
-        <tr><td><code>getSkillNames()</code></td><td>0 arguments</td><td>—</td><td></td></tr>
-        <tr><td><code>io.hasEnv(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
-        <tr><td><code>httpAuthToken</code></td><td>request and optional options object</td><td>—</td><td></td></tr>
-        <tr><td><code>httpBearerToken(request)</code></td><td>1 argument: (request)</td><td>—</td><td></td></tr>
-        <tr><td><code>httpCookieToken</code></td><td>request, cookieName, optional cookieSecret</td><td>—</td><td></td></tr>
-        <tr><td><code>loadSkill(name)</code></td><td>1 argument: (name)</td><td>—</td><td></td></tr>
-        <tr><td><code>loadSkillsFromDir(skillsPath?)</code></td><td>0-1 arguments: (skillsPath?)</td><td>—</td><td></td></tr>
-        <tr><td><code>webFetch(urlOrToken, pathOrMaxBytes?, maxBytes?, timeoutMs?)</code></td><td>1-4 arguments: (urlOrToken, pathOrMaxBytes?, maxBytes?, timeoutMs?)</td><td>—</td><td></td></tr>
-        <tr><td><code>webSearch(query, apiKey?)</code></td><td>at least 1 string argument: (query, apiKey?)</td><td>—</td><td></td></tr>
+        <tr class="sig"><td colspan="3"><code>getAssistantMemory(path?)</code></td></tr>
+        <tr><td>0-1 arguments: (path?)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>getCommandLineArgs()</code></td></tr>
+        <tr><td>0 arguments</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>io.getEnv(x)</code></td></tr>
+        <tr><td>1 argument</td><td>string, or null when the variable is not set</td><td>unlike io.input (which returns empty string at EOF), missing variables yield null — prefer io.getEnvOr or str.trimText before string sinks</td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>io.getEnvOr(name, default?)</code></td></tr>
+        <tr><td>1-2 arguments: (name, default?)</td><td>string (never null)</td><td>never null; missing variables yield default (empty string when omitted) — preferred before str.trim</td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>getHostPlatform()</code></td></tr>
+        <tr><td>0 arguments</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>getMaldaConfig()</code></td></tr>
+        <tr><td>0 arguments</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>getMaldaHome()</code></td></tr>
+        <tr><td>0 arguments</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>getProgramDirectory()</code></td></tr>
+        <tr><td>0 arguments</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>getSkillNames()</code></td></tr>
+        <tr><td>0 arguments</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>io.hasEnv(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>httpAuthToken</code></td></tr>
+        <tr><td>request and optional options object</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>httpBearerToken(request)</code></td></tr>
+        <tr><td>1 argument: (request)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>httpCookieToken</code></td></tr>
+        <tr><td>request, cookieName, optional cookieSecret</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>loadSkill(name)</code></td></tr>
+        <tr><td>1 argument: (name)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>loadSkillsFromDir(skillsPath?)</code></td></tr>
+        <tr><td>0-1 arguments: (skillsPath?)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>webFetch(urlOrToken, pathOrMaxBytes?, maxBytes?, timeoutMs?)</code></td></tr>
+        <tr><td>1-4 arguments: (urlOrToken, pathOrMaxBytes?, maxBytes?, timeoutMs?)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>webSearch(query, apiKey?)</code></td></tr>
+        <tr><td>at least 1 string argument: (query, apiKey?)</td><td>—</td><td></td></tr>
         </tbody>
         </table>
         <h3>13.5.1 Informazioni sull'host</h3>
@@ -311,16 +578,29 @@ var token = httpAuthToken(req, {
         <p><code>math.sum</code> / <code>math.average</code> / <code>math.min</code> / <code>math.max</code> sono in <a href="#math">13.3</a> e funzionano anche come metodi di array. Le righe sotto sono gli helper solo-array. Interprete, transpile C# e JavaScript li eseguono tutti.</p>
         <pre><code data-run="true" data-expect="5, 4, 3, 2, 1\ntrue">print(str.join(reverse([1, 2, 3, 4, 5]), ", "));
 print(includes([1, 2, 3], 3));</code></pre>
-        <table>
+        <table class="sigs">
         <thead>
-        <tr><th>Chiamata</th><th>Argomenti</th><th>Ritorno</th><th>Note</th></tr>
+        <tr><th>Argomenti</th><th>Ritorno</th><th>Note</th></tr>
         </thead>
         <tbody>
-        <tr><td><code>str.includes(array, value)</code></td><td>2 arguments: (array, value)</td><td>—</td><td></td></tr>
-        <tr><td><code>str.join(array, separator?)</code></td><td>1-2 arguments: (array, separator?)</td><td>—</td><td></td></tr>
-        <tr><td><code>reverse(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
-        <tr><td><code>sort(array, compareFn?)</code></td><td>1-2 arguments: (array, compareFn?)</td><td>—</td><td></td></tr>
-        <tr><td><code>toCsv(rows, columns?, options?)</code></td><td>1-3 arguments: (rows, columns?, options?)</td><td>—</td><td></td></tr>
+        <tr class="sig"><td colspan="3"><code>str.includes(array, value)</code></td></tr>
+        <tr><td>2 arguments: (array, value)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>str.join(array, separator?)</code></td></tr>
+        <tr><td>1-2 arguments: (array, separator?)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>reverse(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>sort(array, compareFn?)</code></td></tr>
+        <tr><td>1-2 arguments: (array, compareFn?)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>toCsv(rows, columns?, options?)</code></td></tr>
+        <tr><td>1-3 arguments: (rows, columns?, options?)</td><td>—</td><td></td></tr>
         </tbody>
         </table>
         <h3>13.6.1 Helper di esportazione CSV</h3>
@@ -340,17 +620,33 @@ var csv3 = toCsv(rows, ["name", "score"], {
         <p><code>toCsv(rows, columns?, options?)</code> converte un array di righe in testo CSV. Esegue l'escape delle virgolette e racchiude le celle quando serve (delimitatore/newline/virgolette). Utile per report e endpoint di esportazione dati.</p>
         <h2 id="json">13.7 Funzioni JSON</h2>
         <p>Catalogo degli helper JSON / schema. <code>toJSON</code>, <code>parseJSON</code>, <code>validate</code> e <code>asVariant</code> girano su interprete, transpile C# e JavaScript. <code>evalPrompt</code> è solo host (prompt). Vedi la <a href="../../docs/spec/backend-capability-matrix.md">matrice delle capacità dei backend</a>.</p>
-        <table>
+        <table class="sigs">
         <thead>
-        <tr><th>Chiamata</th><th>Argomenti</th><th>Ritorno</th><th>Note</th></tr>
+        <tr><th>Argomenti</th><th>Ritorno</th><th>Note</th></tr>
         </thead>
         <tbody>
-        <tr><td><code>asVariant(typeName, value)</code></td><td>2 arguments: (typeName, value)</td><td>variant</td><td>throws if typeName is not a sum type or the tagged JSON is invalid; already-a-variant is idempotent; validate() does not coerce</td></tr>
-        <tr><td><code>evalPrompt(prompt, fixture, typeName?)</code></td><td>2-3 arguments: (prompt, fixture, typeName?)</td><td>{ ok, data } | { ok: false, error }</td><td>no LLM; same extract/validate/coerce path as await; {ok,data} or {ok:false,error}; data is a variant for sum types; instance.eval(fixture) is the same helper</td></tr>
-        <tr><td><code>parseJson(value, schemaRef) and optional options object. For a plain JSON reader use parseJSON(text)</code></td><td>2 arguments (value, schemaRef) and optional options object. For a plain JSON reader use parseJSON(text)</td><td>—</td><td>schema-validating parser for LLM output, NOT a plain JSON reader</td></tr>
-        <tr><td><code>parseJSON(the JSON string). For schema-validated LLM JSON use parseJson(value, schemaRef)</code></td><td>1 argument (the JSON string). For schema-validated LLM JSON use parseJson(value, schemaRef)</td><td>—</td><td>plain JSON text to a value; note that parseJson with a lowercase s is a different built-in</td></tr>
-        <tr><td><code>toJSON(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
-        <tr><td><code>validate(schema, value)</code></td><td>2 arguments: (schema, value)</td><td>—</td><td></td></tr>
+        <tr class="sig"><td colspan="3"><code>asVariant(typeName, value)</code></td></tr>
+        <tr><td>2 arguments: (typeName, value)</td><td>variant</td><td>throws if typeName is not a sum type or the tagged JSON is invalid; already-a-variant is idempotent; validate() does not coerce</td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>evalPrompt(prompt, fixture, typeName?)</code></td></tr>
+        <tr><td>2-3 arguments: (prompt, fixture, typeName?)</td><td>{ ok, data } | { ok: false, error }</td><td>no LLM; same extract/validate/coerce path as await; {ok,data} or {ok:false,error}; data is a variant for sum types; instance.eval(fixture) is the same helper</td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>parseJson(value, schemaRef) and optional options object. For a plain JSON reader use parseJSON(text)</code></td></tr>
+        <tr><td>2 arguments (value, schemaRef) and optional options object. For a plain JSON reader use parseJSON(text)</td><td>—</td><td>schema-validating parser for LLM output, NOT a plain JSON reader</td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>parseJSON(the JSON string). For schema-validated LLM JSON use parseJson(value, schemaRef)</code></td></tr>
+        <tr><td>1 argument (the JSON string). For schema-validated LLM JSON use parseJson(value, schemaRef)</td><td>—</td><td>plain JSON text to a value; note that parseJson with a lowercase s is a different built-in</td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>toJSON(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>validate(schema, value)</code></td></tr>
+        <tr><td>2 arguments: (schema, value)</td><td>—</td><td></td></tr>
         </tbody>
         </table>
         <pre><code>var jsonStr = toJSON(obj);  // Convert object to JSON string
@@ -456,38 +752,117 @@ print(label);</code></pre>
         <p>Nomi in catalogo: <code>loadDocuments</code>, <code>splitDocuments</code>, <code>indexInto</code>, <code>formatRetrievedDocs</code>, <code>composePipe</code>, <code>parallelRun</code>, <code>mergeRetrievedDocs</code>, <code>withExamples</code>, <code>evalPrompt</code>, <code>runPrompt</code>, <code>parseJson</code>.</p>
         <h2 id="files">13.8 Funzioni del file system</h2>
         <p>How-to, stili di fallimento, intervalli di righe, token di capability e note sui backend: <a href="12-input-output.html">12. Input/Output</a>. Questa sezione è il catalogo delle firme. L'I/O su file è solo host (interprete e transpile C#); JavaScript ha <code>io.print</code> / <code>io.input</code> / JSON, non i file su disco. Vedi la <a href="../../docs/spec/backend-capability-matrix.md">matrice delle capacità dei backend</a>.</p>
-        <table>
+        <table class="sigs">
         <thead>
-        <tr><th>Chiamata</th><th>Argomenti</th><th>Ritorno</th><th>Note</th></tr>
+        <tr><th>Argomenti</th><th>Ritorno</th><th>Note</th></tr>
         </thead>
         <tbody>
-        <tr><td><code>io.copyFile(src, dest)</code></td><td>2 arguments: (src, dest)</td><td>boolean</td><td>binary-safe overwrite; returns false on I/O failure; rejects embed: src and dest; does not create parent directories</td></tr>
-        <tr><td><code>io.deleteFile(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
-        <tr><td><code>editFile(string, array)</code></td><td>(string, array)</td><td>—</td><td></td></tr>
-        <tr><td><code>io.embeddedFolderRoot(alias)</code></td><td>1 argument: (alias)</td><td>—</td><td></td></tr>
-        <tr><td><code>io.ensureDir(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
-        <tr><td><code>extractDocxText(path)</code></td><td>1 argument: (path)</td><td>—</td><td></td></tr>
-        <tr><td><code>extractPdfText(path, password?)</code></td><td>1-2 arguments: (path, password?)</td><td>—</td><td></td></tr>
-        <tr><td><code>io.getDirectoryName(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
-        <tr><td><code>io.getFileName(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
-        <tr><td><code>io.glob(pattern, dirPath?, ...)</code></td><td>at least 1 argument: (pattern, dirPath?, ...)</td><td>—</td><td></td></tr>
-        <tr><td><code>io.grep(pattern, filePath, ...)</code></td><td>at least 2 arguments: (pattern, filePath, ...)</td><td>—</td><td></td></tr>
-        <tr><td><code>io.hasDirectory(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
-        <tr><td><code>io.hasEmbeddedFolder(alias)</code></td><td>1 argument: (alias)</td><td>—</td><td></td></tr>
-        <tr><td><code>io.hasFile(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
-        <tr><td><code>insertAtLine(filePath, lineNumber, content, ...)</code></td><td>at least 3 arguments: (filePath, lineNumber, content, ...)</td><td>—</td><td></td></tr>
-        <tr><td><code>io.isPathUnder(root, path)</code></td><td>2 arguments: (root, path)</td><td>—</td><td></td></tr>
-        <tr><td><code>io.listDirectory(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
-        <tr><td><code>io.pathExists(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
-        <tr><td><code>io.pathGetExtension(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
-        <tr><td><code>io.pathJoin</code></td><td>at least 1 argument</td><td>—</td><td></td></tr>
-        <tr><td><code>io.pathNormalize(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
-        <tr><td><code>io.readFile(string, int?, int?)</code></td><td>(string, int?, int?)</td><td>—</td><td></td></tr>
-        <tr><td><code>io.readFileBase64(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
-        <tr><td><code>io.readTextFileLines(x)</code></td><td>1 argument</td><td>—</td><td></td></tr>
-        <tr><td><code>io.replaceInFile(string, string, string, int?)</code></td><td>(string, string, string, int?)</td><td>—</td><td></td></tr>
-        <tr><td><code>io.writeFile(a, b)</code></td><td>2 arguments</td><td>—</td><td></td></tr>
-        <tr><td><code>io.writeFileBase64(path, base64Content)</code></td><td>(path, base64Content)</td><td>—</td><td></td></tr>
+        <tr class="sig"><td colspan="3"><code>io.copyFile(src, dest)</code></td></tr>
+        <tr><td>2 arguments: (src, dest)</td><td>boolean</td><td>binary-safe overwrite; returns false on I/O failure; rejects embed: src and dest; does not create parent directories</td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>io.deleteFile(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>editFile(string, array)</code></td></tr>
+        <tr><td>(string, array)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>io.embeddedFolderRoot(alias)</code></td></tr>
+        <tr><td>1 argument: (alias)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>io.ensureDir(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>extractDocxText(path)</code></td></tr>
+        <tr><td>1 argument: (path)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>extractPdfText(path, password?)</code></td></tr>
+        <tr><td>1-2 arguments: (path, password?)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>io.getDirectoryName(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>io.getFileName(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>io.glob(pattern, dirPath?, ...)</code></td></tr>
+        <tr><td>at least 1 argument: (pattern, dirPath?, ...)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>io.grep(pattern, filePath, ...)</code></td></tr>
+        <tr><td>at least 2 arguments: (pattern, filePath, ...)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>io.hasDirectory(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>io.hasEmbeddedFolder(alias)</code></td></tr>
+        <tr><td>1 argument: (alias)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>io.hasFile(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>insertAtLine(filePath, lineNumber, content, ...)</code></td></tr>
+        <tr><td>at least 3 arguments: (filePath, lineNumber, content, ...)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>io.isPathUnder(root, path)</code></td></tr>
+        <tr><td>2 arguments: (root, path)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>io.listDirectory(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>io.pathExists(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>io.pathGetExtension(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>io.pathJoin</code></td></tr>
+        <tr><td>at least 1 argument</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>io.pathNormalize(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>io.readFile(string, int?, int?)</code></td></tr>
+        <tr><td>(string, int?, int?)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>io.readFileBase64(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>io.readTextFileLines(x)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>io.replaceInFile(string, string, string, int?)</code></td></tr>
+        <tr><td>(string, string, string, int?)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>io.writeFile(a, b)</code></td></tr>
+        <tr><td>2 arguments</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>io.writeFileBase64(path, base64Content)</code></td></tr>
+        <tr><td>(path, base64Content)</td><td>—</td><td></td></tr>
         </tbody>
         </table>
         <h3>13.8.0 Cartelle embedded (<code>embed:</code>)</h3>
@@ -503,20 +878,42 @@ var edits = [{"oldText": "old1", "newText": "new1"}, {"oldText": "old2", "newTex
 var result = editFile("file.txt", edits);                 // Apply multiple edits to file</code></pre>
 
         <h3>13.8.1 Linee, binario, eliminazione e testo PDF</h3>
-        <table>
+        <table class="sigs">
             <thead>
-                <tr><th>Funzione</th><th>Restituisce</th><th>Comportamento</th></tr>
+                <tr><th>Restituisce</th><th>Comportamento</th></tr>
             </thead>
-            <tbody>
-                <tr><td><code>pdf.extractText(path, password?)</code></td><td>string</td><td>Estrae il testo da un PDF usando PdfPig (<code>ContentOrderTextExtractor</code>). <code>password</code> opzionale per i file cifrati. Solleva un'eccezione quando il path manca o il PDF non può essere aperto. Solo testo digitale &mdash; i PDF scansionati/immagine richiedono OCR altrove. Preferisci la forma namespaced; il nome CallBuiltIn è <code>extractPdfText</code>.</td></tr>
-                <tr><td><code>doc.extractText(path)</code></td><td>string</td><td>Estrae il testo dei paragrafi del corpo da un Word <code>.docx</code> usando l'Open XML SDK. Solleva un'eccezione quando il path manca, il file non è <code>.docx</code> o il package non può essere aperto. Il <code>.doc</code> binario legacy non è supportato. Preferisci la forma namespaced; il nome CallBuiltIn è <code>extractDocxText</code>.</td></tr>
-                <tr><td><code>readTextFileLines(path)</code></td><td>array di stringhe, oppure <code>null</code></td><td>Legge il file come UTF-8 e lo divide in righe. Restituisce <code>null</code> quando il file manca o non può essere letto.</td></tr>
-                <tr><td><code>deleteFile(path)</code></td><td>boolean</td><td>Elimina il file. Restituisce <code>true</code> quando il file è stato eliminato <em>o era già assente</em>; <code>false</code> su un path vuoto o un fallimento I/O.</td></tr>
-                <tr><td><code>copyFile(src, dest)</code></td><td>boolean</td><td>Copia il file come byte (sovrascrive <code>dest</code>). Restituisce <code>false</code> in caso di fallimento I/O. Rifiuta origine e destinazione <code>embed:</code>. Non crea le cartelle padre. Preferisci <code>io.copyFile</code>.</td></tr>
-                <tr><td><code>insertAtLine(path, lineNumber, content, insertAfter?)</code></td><td>boolean</td><td>Inserisce <code>content</code> (che può coprire più righe) a una riga con indice a base 1. Restituisce <code>false</code> se il file non esiste.</td></tr>
-                <tr><td><code>readFileBase64(path)</code></td><td>string, oppure <code>null</code></td><td>Legge il file come byte e restituisce base64. Restituisce <code>null</code> quando il file manca.</td></tr>
-                <tr><td><code>writeFileBase64(path, base64Content)</code></td><td>boolean</td><td>Decodifica il base64 e scrive i byte. Restituisce <code>false</code> quando l'input non è base64 valido o la scrittura fallisce.</td></tr>
-            </tbody>
+                <tbody>
+                <tr class="sig"><td colspan="2"><code>pdf.extractText(path, password?)</code></td></tr>
+                <tr><td>string</td><td>Estrae il testo da un PDF usando PdfPig (<code>ContentOrderTextExtractor</code>). <code>password</code> opzionale per i file cifrati. Solleva un'eccezione quando il path manca o il PDF non può essere aperto. Solo testo digitale &mdash; i PDF scansionati/immagine richiedono OCR altrove. Preferisci la forma namespaced; il nome CallBuiltIn è <code>extractPdfText</code>.</td></tr>
+                </tbody>
+                <tbody>
+                <tr class="sig"><td colspan="2"><code>doc.extractText(path)</code></td></tr>
+                <tr><td>string</td><td>Estrae il testo dei paragrafi del corpo da un Word <code>.docx</code> usando l'Open XML SDK. Solleva un'eccezione quando il path manca, il file non è <code>.docx</code> o il package non può essere aperto. Il <code>.doc</code> binario legacy non è supportato. Preferisci la forma namespaced; il nome CallBuiltIn è <code>extractDocxText</code>.</td></tr>
+                </tbody>
+                <tbody>
+                <tr class="sig"><td colspan="2"><code>readTextFileLines(path)</code></td></tr>
+                <tr><td>array di stringhe, oppure <code>null</code></td><td>Legge il file come UTF-8 e lo divide in righe. Restituisce <code>null</code> quando il file manca o non può essere letto.</td></tr>
+                </tbody>
+                <tbody>
+                <tr class="sig"><td colspan="2"><code>deleteFile(path)</code></td></tr>
+                <tr><td>boolean</td><td>Elimina il file. Restituisce <code>true</code> quando il file è stato eliminato <em>o era già assente</em>; <code>false</code> su un path vuoto o un fallimento I/O.</td></tr>
+                </tbody>
+                <tbody>
+                <tr class="sig"><td colspan="2"><code>copyFile(src, dest)</code></td></tr>
+                <tr><td>boolean</td><td>Copia il file come byte (sovrascrive <code>dest</code>). Restituisce <code>false</code> in caso di fallimento I/O. Rifiuta origine e destinazione <code>embed:</code>. Non crea le cartelle padre. Preferisci <code>io.copyFile</code>.</td></tr>
+                </tbody>
+                <tbody>
+                <tr class="sig"><td colspan="2"><code>insertAtLine(path, lineNumber, content, insertAfter?)</code></td></tr>
+                <tr><td>boolean</td><td>Inserisce <code>content</code> (che può coprire più righe) a una riga con indice a base 1. Restituisce <code>false</code> se il file non esiste.</td></tr>
+                </tbody>
+                <tbody>
+                <tr class="sig"><td colspan="2"><code>readFileBase64(path)</code></td></tr>
+                <tr><td>string, oppure <code>null</code></td><td>Legge il file come byte e restituisce base64. Restituisce <code>null</code> quando il file manca.</td></tr>
+                </tbody>
+                <tbody>
+                <tr class="sig"><td colspan="2"><code>writeFileBase64(path, base64Content)</code></td></tr>
+                <tr><td>boolean</td><td>Decodifica il base64 e scrive i byte. Restituisce <code>false</code> quando l'input non è base64 valido o la scrittura fallisce.</td></tr>
+                </tbody>
         </table>
         <pre><code>var lines = readTextFileLines("notes.txt");
 if (lines != null) {

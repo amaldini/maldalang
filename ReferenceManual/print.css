@@ -268,6 +268,24 @@ tbody tr:hover {
     background: transparent;
 }
 
+table.sigs > tbody {
+    break-inside: avoid;
+    page-break-inside: avoid;
+}
+
+table.sigs tbody tr:nth-child(even) {
+    background: transparent;
+}
+
+table.sigs > tbody:nth-of-type(even) {
+    background: #fafbfc;
+}
+
+table.sigs tr.sig code {
+    word-break: normal;
+    overflow-wrap: break-word;
+}
+
 /* -------------------------------------------------------------- Callouts */
 
 .info-box,

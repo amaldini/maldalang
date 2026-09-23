@@ -841,6 +841,45 @@ tbody tr:hover {
     background-color: var(--primary-tint);
 }
 
+/* Signature catalogs. The call occupies its own row, so a long name is not
+   squeezed into the first column. One tbody per call: the pair stripes
+   together, and print keeps the two rows on the same page. */
+table.sigs > tbody:nth-of-type(even) {
+    background-color: #fbfcfd;
+}
+
+table.sigs tbody tr:nth-child(even),
+table.sigs tbody tr:hover {
+    background-color: transparent;
+}
+
+table.sigs > tbody:hover {
+    background-color: var(--primary-tint);
+}
+
+table.sigs tr.sig td {
+    border-bottom: none;
+    padding-bottom: 0.15rem;
+}
+
+table.sigs tbody tr:last-child td {
+    border-bottom: 1px solid var(--border-color);
+}
+
+table.sigs > tbody:last-of-type tr:last-child td {
+    border-bottom: none;
+}
+
+table.sigs tr.sig code {
+    background: none;
+    border: none;
+    padding: 0;
+    border-radius: 0;
+    font-size: 0.95rem;
+    word-break: normal;
+    overflow-wrap: break-word;
+}
+
 /* -------------------------------------------------------------- Callouts */
 
 .info-box,

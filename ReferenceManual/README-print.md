@@ -158,6 +158,15 @@ roughly x 80–620, y 120–880, and leave the bottom band dark so the edition
 line still reads. A PNG wrap for a print shop (front + spine + back) is a
 separate artifact — do not fold it into this interior PDF.
 
+## Signature catalogs
+
+Tables of calls (`Call` / `Arguments` / `Returns` / `Notes`, and the Italian
+equivalents) use `class="sigs"`. Each call is its own `<tbody>`: the signature
+is a full-width row (`tr.sig`, `colspan` over the attribute columns) and the
+next row holds arguments, return value, and notes. The pair stripes together
+and is kept on one page. Code inside `tr.sig` breaks on spaces, not inside a
+name. Short comparison tables stay ordinary columns.
+
 ## Why code wraps instead of scrolling
 
 On screen a long line scrolls sideways. On paper there is nowhere to scroll, so
