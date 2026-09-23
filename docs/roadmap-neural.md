@@ -1,6 +1,6 @@
 # MALDA neural-nets kit
 
-**Status:** N0–N4 and N7 landed; N5–N6 docs/examples only  
+**Status:** N0–N4 and N6–N8 landed; N5 partial  
 **Created:** 2026-09-20  
 **Audience:** maintainers extending `math.*`, `nn.*`, and the offline AI_Theory track after Final 1.0
 
@@ -13,7 +13,7 @@ and the out-of-scope list below for engines that stay out of core.
 **Bar today:** `math.dot` / `matmul` / `transpose`, the `nn.*` namespace
 (activations, local derivatives, `dense` / `denseBackward`, `mseGrad`,
 `softmaxGrad`), the student track through XOR / softmax / attention /
-microgpt, a JS decision-boundary playground (`malda play`), hash-embedding
+microgpt, JS decision-boundary playgrounds (`malda play`), hash-embedding
 2D projection + VectorDB neighbors, and host-only `new OnnxModel(path)`
 inspect + forward. `math.sigmoid` / `tanh` / `softmax` remain and call
 the same functions as `nn.sigmoid` / `tanh` / `softmax`. `nn.relu`, `nn.mse`, and
@@ -60,6 +60,7 @@ with an explicit activation derivative, not a module zoo.
 | 5 | **N5** Didactic data | Partial | Inline arrays; `identity.onnx`; `mnist_digits.malda` (5×5 glyphs). No MNIST download, no ImageNet |
 | 6 | **N6** Docs / Web IDE | Landed | Chapter 13 + start-here + catalog |
 | 7 | **N7** `nn.*` namespace | Landed | Activations, local derivatives, dense forward/backward |
+| 8 | **N8** Curriculum programs | Landed | Grad check, init scale, holdout, momentum, RNN, conv, residual/dropout. No new builtins |
 
 ```text
 N0  roadmap file                          (landed)
@@ -67,6 +68,7 @@ N1  math.dot / matmul / transpose         (landed)
     math.sigmoid / tanh / softmax
 N2  perceptron + softmax_classifier       (landed)
 N3  xor_decision_boundary (malda play)    (landed)
+    softmax_decision_boundary (malda play)
 N4  embedding_2d + OnnxModel              (landed)
 N5  tiny fixtures, not a DataLoader       (partial)
     mnist_digits.malda (5x5, not a download)
@@ -75,6 +77,10 @@ N7  nn.relu / leakyRelu / elu / gelu / silu / softplus
     nn.dRelu / dSigmoid / …               (landed)
     nn.dense / denseBackward
     nn.mseGrad / softmaxGrad
+N8  gradcheck_dense / init_scale          (landed)
+    glyph_holdout / momentum_valley
+    rnn_delay / conv_stroke
+    residual_dropout
 ```
 
 ---
@@ -156,6 +162,24 @@ and call the same functions. `relu`, `mse`, and `crossEntropyFromLogits` are onl
 
 `Examples/AI_Theory/xor_neural_net.malda` keeps the named chain rule.
 `Examples/AI_Theory/nn_dense.malda` trains the same XOR net through `nn.dense`.
+
+---
+
+## N8 — Curriculum programs
+
+No new `nn.*` names. Each file stays offline and prints an `ok` line. Files that draw weights call `math.seed`. Local helpers stay in the file that teaches them. The chain starts at `mnist_digits.malda`:
+
+| File | Idea |
+|------|------|
+| `gradcheck_dense.malda` | Central difference vs `nn.denseBackward` on one ReLU layer |
+| `init_scale.malda` | Uniform saturates a deep sigmoid stack; Xavier does not. He keeps ReLU activations smaller than the same uniform draw |
+| `glyph_holdout.malda` | Train the ten 5×5 glyphs; two flipped pixels swap 8 with 9, so holdout is not perfect |
+| `momentum_valley.malda` | Same learning-rate step, with a velocity, on a steep quadratic |
+| `rnn_delay.malda` | Sigmoid recurrence shrinks a gradient; a tanh Elman net recalls a bit from three steps ago |
+| `conv_stroke.malda` | One 3×3 kernel slid across 5×5 dashes. The backward pass adds into those nine weights |
+| `residual_dropout.malda` | A skip beats a deep sigmoid stack on `y = x`; a Bernoulli mask zeros a unit only on the train forward |
+
+`malda play Examples/Games/softmax_decision_boundary.malda` draws the three softmax regions. N5 stays partial: still no MNIST download.
 
 ---
 

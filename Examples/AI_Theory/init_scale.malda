@@ -1,0 +1,97 @@
+// One forward pass, three ways to draw the weights.
+//
+// A deep sigmoid stack with entries from [-1, 1] saturates: units sit
+// near 0 or 1, where the local derivative is ~0. Xavier draws
+// randn(1/sqrt(fanIn)) so the pre-activation stays O(1). On a ReLU
+// stack the same uniform draw makes activations grow layer by layer;
+// He draws randn(sqrt(2/fanIn)) and they stay small. Offline and seeded.
+
+function fillMatrix(rows: int, cols: int, std: float, uniform: bool) -> array {
+    var matrix = [];
+    for (var i = 0; i < rows; i = i + 1) {
+        var row = [];
+        for (var j = 0; j < cols; j = j + 1) {
+            if (uniform) {
+                row.append(math.randomFloat(-1.0, 1.0));
+            } else {
+                row.append(math.randn(std));
+            }
+        }
+        matrix.append(row);
+    }
+    return matrix;
+}
+
+function stack(depth: int, width: int, std: float, uniform: bool) -> array {
+    var layers = [];
+    for (var layer = 0; layer < depth; layer = layer + 1) {
+        layers.append(fillMatrix(width, width, std, uniform));
+    }
+    return layers;
+}
+
+function saturatedSigmoid(x: array, layers: array) -> int {
+    var hidden = x;
+    var count = 0;
+    for (var layer = 0; layer < layers.length; layer = layer + 1) {
+        var pre = math.matmul(hidden, layers[layer]);
+        hidden = nn.sigmoid(pre);
+        for (var i = 0; i < hidden.length; i = i + 1) {
+            if (hidden[i] > 0.95 || hidden[i] < 0.05) {
+                count = count + 1;
+            }
+        }
+    }
+    return count;
+}
+
+function largeRelu(x: array, layers: array) -> int {
+    var hidden = x;
+    var count = 0;
+    for (var layer = 0; layer < layers.length; layer = layer + 1) {
+        var pre = math.matmul(hidden, layers[layer]);
+        hidden = nn.relu(pre);
+        for (var i = 0; i < hidden.length; i = i + 1) {
+            if (hidden[i] > 8.0) {
+                count = count + 1;
+            }
+        }
+    }
+    return count;
+}
+
+var depth = 8;
+var width = 32;
+var fanIn = width;
+var xavierStd = 1.0 / math.sqrt(fanIn);
+var heStd = math.sqrt(2.0 / fanIn);
+
+math.seed(11);
+var input = [];
+for (var i = 0; i < width; i = i + 1) {
+    input.append(math.randn(1.0));
+}
+
+math.seed(11);
+var uniformLayers = stack(depth, width, 1.0, true);
+math.seed(11);
+var xavierLayers = stack(depth, width, xavierStd, false);
+math.seed(11);
+var uniformRelu = stack(depth, width, 1.0, true);
+math.seed(11);
+var heLayers = stack(depth, width, heStd, false);
+
+var uniformSat = saturatedSigmoid(input, uniformLayers);
+var xavierSat = saturatedSigmoid(input, xavierLayers);
+var uniformLarge = largeRelu(input, uniformRelu);
+var heLarge = largeRelu(input, heLayers);
+var total = depth * width;
+
+io.print("Init scale (" + string(depth) + " layers, width " + string(width) + ")");
+io.print("sigmoid saturated  uniform: " + string(uniformSat) + "/" + string(total));
+io.print("sigmoid saturated  xavier:  " + string(xavierSat) + "/" + string(total));
+io.print("relu above 8       uniform: " + string(uniformLarge) + "/" + string(total));
+io.print("relu above 8       he:      " + string(heLarge) + "/" + string(total));
+if (uniformSat > 20 && xavierSat == 0 && uniformLarge > 40 && heLarge == 0) {
+    io.print("init scale ok");
+}

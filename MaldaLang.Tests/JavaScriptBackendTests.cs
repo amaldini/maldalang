@@ -874,6 +874,22 @@ public class JavaScriptBackendTests : TestBase
     }
 
     [Fact]
+    public void JsTranspiler_SoftmaxDecisionBoundary_CreatesCanvasBeforeStart()
+    {
+        var sourcePath = PlanningPaths.ResolveRepoFile("Examples", "Games", "softmax_decision_boundary.malda");
+        var compiler = new Compiler.Compiler();
+        var js = compiler.TranspileToJavaScript(sourcePath);
+
+        Assert.Contains("function startSoftmax()", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.createCanvas(canvas, canvas, \"#app\")", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.start(update, render)", js, StringComparison.Ordinal);
+        var createAt = js.IndexOf("mlRuntime.game.createCanvas(", StringComparison.Ordinal);
+        var startAt = js.IndexOf("mlRuntime.game.start(update, render)", StringComparison.Ordinal);
+        Assert.True(createAt >= 0 && startAt > createAt, "game.createCanvas must be emitted before game.start");
+        Assert.DoesNotContain("mlRuntime.three.", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void GameRuntime_SetPixelAndBlitPixels_WritesImageData()
     {
         Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);

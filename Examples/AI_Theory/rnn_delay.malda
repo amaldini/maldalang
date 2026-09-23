@@ -1,0 +1,233 @@
+// A sigmoid recurrence forgets, then a tiny tanh net remembers a bit.
+//
+// Section 1. h = sigmoid(w * h). The gradient of h_T with respect to h_0
+// is the product of w * sigmoid'(z) at every step. That factor is at most
+// 0.25 * w, so a long product shrinks.
+//
+// Section 2. An Elman net, h_t = tanh(W_hh h_{t-1} + W_xh x_t + b), trained
+// with backpropagation through time to emit the bit from three steps ago.
+// Each matrix step is nn.dense. Offline and seeded — no API key.
+
+function zeros(n: int) -> array {
+    var values = [];
+    for (var i = 0; i < n; i = i + 1) {
+        values.append(0.0);
+    }
+    return values;
+}
+
+function randomMatrix(rows: int, cols: int, scale: float) -> array {
+    var matrix = [];
+    for (var i = 0; i < rows; i = i + 1) {
+        var row = [];
+        for (var j = 0; j < cols; j = j + 1) {
+            row.append(math.randn(scale));
+        }
+        matrix.append(row);
+    }
+    return matrix;
+}
+
+function copyVector(values: array) -> array {
+    var copy = [];
+    for (var i = 0; i < values.length; i = i + 1) {
+        copy.append(values[i]);
+    }
+    return copy;
+}
+
+function addMatrix(weights: array, grad: array) {
+    for (var i = 0; i < weights.length; i = i + 1) {
+        for (var j = 0; j < weights[i].length; j = j + 1) {
+            weights[i][j] = weights[i][j] + grad[i][j];
+        }
+    }
+}
+
+function addVector(bias: array, grad: array) {
+    for (var i = 0; i < bias.length; i = i + 1) {
+        bias[i] = bias[i] + grad[i];
+    }
+}
+
+function sgdMatrix(weights: array, grad: array, lr: float) {
+    for (var i = 0; i < weights.length; i = i + 1) {
+        for (var j = 0; j < weights[i].length; j = j + 1) {
+            weights[i][j] = weights[i][j] - lr * grad[i][j];
+        }
+    }
+}
+
+function sgdVector(bias: array, grad: array, lr: float) {
+    for (var i = 0; i < bias.length; i = i + 1) {
+        bias[i] = bias[i] - lr * grad[i];
+    }
+}
+
+function zeroMatrix(rows: int, cols: int) -> array {
+    var matrix = [];
+    for (var i = 0; i < rows; i = i + 1) {
+        var row = [];
+        for (var j = 0; j < cols; j = j + 1) {
+            row.append(0.0);
+        }
+        matrix.append(row);
+    }
+    return matrix;
+}
+
+function fmtSmall(value: float) -> string {
+    return string(math.round(value * 10000.0) / 10000.0);
+}
+
+var recurWeight = 1.0;
+var hidden = 0.5;
+var grad = 1.0;
+var gradAt1 = 0.0;
+var gradAt12 = 0.0;
+for (var t = 1; t <= 12; t = t + 1) {
+    var z = recurWeight * hidden;
+    var y = math.sigmoid(z);
+    grad = grad * recurWeight * y * (1.0 - y);
+    hidden = y;
+    if (t == 1) {
+        gradAt1 = grad;
+    }
+    if (t == 12) {
+        gradAt12 = grad;
+    }
+}
+
+io.print("Sigmoid recurrence: gradient of h_t w.r.t. h_0");
+io.print("step 1:  " + fmtSmall(gradAt1));
+io.print("step 12: " + fmtSmall(gradAt12));
+
+math.seed(5);
+
+var hiddenSize = 4;
+var lag = 3;
+var length = 6;
+var sequences = 12;
+var epochs = 40;
+var learningRate = 0.5;
+
+var wHh = randomMatrix(hiddenSize, hiddenSize, 0.3);
+var wXh = randomMatrix(1, hiddenSize, 0.5);
+var bH = zeros(hiddenSize);
+var wHy = randomMatrix(hiddenSize, 1, 0.5);
+var bY = zeros(1);
+var zeroBias = zeros(hiddenSize);
+
+var bits = [];
+for (var s = 0; s < sequences; s = s + 1) {
+    var row = [];
+    for (var t = 0; t < length; t = t + 1) {
+        var bit = 0.0;
+        if (math.randomFloat(0.0, 1.0) >= 0.5) {
+            bit = 1.0;
+        }
+        row.append(bit);
+    }
+    bits.append(row);
+}
+
+for (var epoch = 1; epoch <= epochs; epoch = epoch + 1) {
+    for (var s = 0; s < sequences; s = s + 1) {
+        var seq = bits[s];
+        var hPrev = zeros(hiddenSize);
+        var steps = [];
+        for (var t = 0; t < length; t = t + 1) {
+            var rec = nn.dense(hPrev, wHh, zeroBias, "linear");
+            var inp = nn.dense([seq[t]], wXh, bH, "linear");
+            var pre = [];
+            var h = [];
+            for (var i = 0; i < hiddenSize; i = i + 1) {
+                var z = rec.out[i] + inp.out[i];
+                pre.append(z);
+                h.append(math.tanh(z));
+            }
+            var out = nn.dense(h, wHy, bY, "sigmoid");
+            steps.append({
+                "hPrev": hPrev,
+                "h": h,
+                "pre": pre,
+                "recPre": rec.pre,
+                "inpPre": inp.pre,
+                "out": out,
+                "x": seq[t]
+            });
+            hPrev = h;
+        }
+
+        var gHh = zeroMatrix(hiddenSize, hiddenSize);
+        var gXh = zeroMatrix(1, hiddenSize);
+        var gBh = zeros(hiddenSize);
+        var gHy = zeroMatrix(hiddenSize, 1);
+        var gBy = zeros(1);
+        var dhNext = zeros(hiddenSize);
+
+        for (var t = length - 1; t >= 0; t = t - 1) {
+            var stepState = steps[t];
+            var dh = copyVector(dhNext);
+            if (t >= lag) {
+                var target = seq[t - lag];
+                var dOut = nn.mseGrad(stepState.out.out, [target]);
+                var backY = nn.denseBackward(stepState.h, wHy, dOut, "sigmoid", stepState.out.pre);
+                addMatrix(gHy, backY.dWeights);
+                addVector(gBy, backY.dBias);
+                for (var i = 0; i < hiddenSize; i = i + 1) {
+                    dh[i] = dh[i] + backY.dInput[i];
+                }
+            }
+            var dPre = [];
+            for (var i = 0; i < hiddenSize; i = i + 1) {
+                var hValue = stepState.h[i];
+                dPre.append(dh[i] * (1.0 - hValue * hValue));
+            }
+            var backRec = nn.denseBackward(stepState.hPrev, wHh, dPre, "linear", stepState.recPre);
+            var backInp = nn.denseBackward([stepState.x], wXh, dPre, "linear", stepState.inpPre);
+            addMatrix(gHh, backRec.dWeights);
+            addMatrix(gXh, backInp.dWeights);
+            addVector(gBh, backInp.dBias);
+            dhNext = backRec.dInput;
+        }
+
+        sgdMatrix(wHh, gHh, learningRate);
+        sgdMatrix(wXh, gXh, learningRate);
+        sgdVector(bH, gBh, learningRate);
+        sgdMatrix(wHy, gHy, learningRate);
+        sgdVector(bY, gBy, learningRate);
+    }
+}
+
+var correct = 0;
+var scored = 0;
+for (var s = 0; s < sequences; s = s + 1) {
+    var seq = bits[s];
+    var hPrev = zeros(hiddenSize);
+    for (var t = 0; t < length; t = t + 1) {
+        var rec = nn.dense(hPrev, wHh, zeroBias, "linear");
+        var inp = nn.dense([seq[t]], wXh, bH, "linear");
+        var h = [];
+        for (var i = 0; i < hiddenSize; i = i + 1) {
+            h.append(math.tanh(rec.out[i] + inp.out[i]));
+        }
+        if (t >= lag) {
+            var y = nn.dense(h, wHy, bY, "sigmoid").out[0];
+            var predicted = 0.0;
+            if (y >= 0.5) {
+                predicted = 1.0;
+            }
+            if (predicted == seq[t - lag]) {
+                correct = correct + 1;
+            }
+            scored = scored + 1;
+        }
+        hPrev = h;
+    }
+}
+
+io.print("Delay-" + string(lag) + " recall: " + string(correct) + "/" + string(scored));
+if (gradAt12 < gradAt1 * 0.05 && correct * 10 >= scored * 8) {
+    io.print("rnn delay ok");
+}

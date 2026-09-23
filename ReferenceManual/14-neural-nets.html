@@ -116,8 +116,15 @@ print(int(nn.mse([2.0, 0.0], [0.0, 0.0])));</code></pre>
             <li><code>Examples/AI_Theory/nn_dense.malda</code> — the same XOR net through <code>nn.dense</code> and <code>nn.denseBackward</code>, including the in-place learning-rate step.</li>
             <li><code>Examples/AI_Theory/softmax_classifier.malda</code> — three classes in 2D. The loss is <code>nn.crossEntropyFromLogits</code> and the upstream is <code>nn.softmaxGrad</code>.</li>
             <li><code>Examples/AI_Theory/mnist_digits.malda</code> — ten 5×5 glyphs in the MNIST shape. The hidden <code>nn.dense</code> is <code>"relu"</code>; the ten logits are <code>"linear"</code>, so <code>nn.softmaxGrad</code> is the upstream.</li>
+            <li><code>Examples/AI_Theory/gradcheck_dense.malda</code> — one sample. A central difference on each weight matches <code>nn.denseBackward</code>.</li>
+            <li><code>Examples/AI_Theory/init_scale.malda</code> — one forward. Uniform saturates a deep sigmoid stack; Xavier does not. He keeps a ReLU stack smaller than that same uniform draw.</li>
+            <li><code>Examples/AI_Theory/glyph_holdout.malda</code> — the same ten glyphs, plus a copy with two flipped pixels. Train is perfect. Holdout is not, because those flips swap the 8 with the 9.</li>
+            <li><code>Examples/AI_Theory/momentum_valley.malda</code> — the same learning-rate step, with and without a velocity, on a quadratic that is steep in one axis.</li>
+            <li><code>Examples/AI_Theory/rnn_delay.malda</code> — a sigmoid recurrence shrinks its gradient. A small tanh net then recalls the bit from three steps earlier.</li>
+            <li><code>Examples/AI_Theory/conv_stroke.malda</code> — one 3×3 kernel, reused at every window of a 5×5 dash. The backward pass adds into those nine weights.</li>
+            <li><code>Examples/AI_Theory/residual_dropout.malda</code> — a skip connection against a deep sigmoid stack, then a train-time mask that eval does not apply.</li>
         </ol>
-        <p><code>attention_is_all_you_need.malda</code> stays on <code>math.matmul</code> and builds attention from the same layout. <code>microgpt.malda</code> is a tiny character model on that track. <code>new OnnxModel(path)</code> inspects and runs a small model on the host. It does not train, and it is not a substitute for the six files above.</p>
+        <p><code>attention_is_all_you_need.malda</code> stays on <code>math.matmul</code> and builds attention from the same layout. <code>microgpt.malda</code> is a tiny character model on that track. <code>new OnnxModel(path)</code> inspects and runs a small model on the host. It does not train, and it is not a substitute for the files above. <code>malda play Examples/Games/xor_decision_boundary.malda</code> draws the XOR field. <code>malda play Examples/Games/softmax_decision_boundary.malda</code> draws the three softmax regions.</p>
 
         <h2 id="backends">14.7 Backends</h2>
         <p>Interpreter, C# transpile, and JavaScript all run <code>math.dot</code> / <code>matmul</code> / <code>transpose</code> and <code>nn.*</code>. <code>OnnxModel</code> is host-only. There is no tensor type, no autograd tape, and no <code>Adam</code> or data loader in core. There is no flat alias for <code>nn</code> names: write <code>nn.relu</code>, not <code>relu</code>.</p>

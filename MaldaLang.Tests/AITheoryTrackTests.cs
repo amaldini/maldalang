@@ -11,13 +11,13 @@ namespace MaldaLang.Tests;
 public class AITheoryTrackTests : TestBase
 {
     [Fact]
-    public void Catalog_ListsSixOfflineStudentExamples()
+    public void Catalog_ListsOfflineStudentExamples()
     {
         var examples = ExampleProgramsService.GetExamples()
             .Where(example => example.Category == "AI_Theory")
             .ToList();
 
-        Assert.Equal(12, examples.Count);
+        Assert.Equal(19, examples.Count);
         Assert.All(examples, example =>
         {
             Assert.Equal("student", example.Track);
@@ -117,5 +117,64 @@ public class AITheoryTrackTests : TestBase
         var output = await CaptureInterpretAsync(File.ReadAllText(path), path);
         Assert.Contains("Accuracy: 10/10", output);
         Assert.Contains("mnist digits ok", output);
+    }
+
+    [Fact]
+    public async Task GradcheckDense_PrintsOkLine()
+    {
+        var path = PlanningPaths.ResolveRepoPath("Examples", "AI_Theory", "gradcheck_dense.malda");
+        var output = await CaptureInterpretAsync(File.ReadAllText(path), path);
+        Assert.Contains("gradcheck dense ok", output);
+    }
+
+    [Fact]
+    public async Task InitScale_PrintsOkLine()
+    {
+        var path = PlanningPaths.ResolveRepoPath("Examples", "AI_Theory", "init_scale.malda");
+        var output = await CaptureInterpretAsync(File.ReadAllText(path), path);
+        Assert.Contains("init scale ok", output);
+    }
+
+    [Fact]
+    public async Task GlyphHoldout_TrainBeatsHoldout()
+    {
+        var path = PlanningPaths.ResolveRepoPath("Examples", "AI_Theory", "glyph_holdout.malda");
+        var output = await CaptureInterpretAsync(File.ReadAllText(path), path);
+        Assert.Contains("Train accuracy: 10/10", output);
+        Assert.Contains("Holdout accuracy:", output);
+        Assert.DoesNotContain("Holdout accuracy: 10/10", output);
+        Assert.Contains("glyph holdout ok", output);
+    }
+
+    [Fact]
+    public async Task MomentumValley_PrintsOkLine()
+    {
+        var path = PlanningPaths.ResolveRepoPath("Examples", "AI_Theory", "momentum_valley.malda");
+        var output = await CaptureInterpretAsync(File.ReadAllText(path), path);
+        Assert.Contains("momentum valley ok", output);
+    }
+
+    [Fact]
+    public async Task RnnDelay_PrintsOkLine()
+    {
+        var path = PlanningPaths.ResolveRepoPath("Examples", "AI_Theory", "rnn_delay.malda");
+        var output = await CaptureInterpretAsync(File.ReadAllText(path), path);
+        Assert.Contains("rnn delay ok", output);
+    }
+
+    [Fact]
+    public async Task ConvStroke_PrintsOkLine()
+    {
+        var path = PlanningPaths.ResolveRepoPath("Examples", "AI_Theory", "conv_stroke.malda");
+        var output = await CaptureInterpretAsync(File.ReadAllText(path), path);
+        Assert.Contains("conv stroke ok", output);
+    }
+
+    [Fact]
+    public async Task ResidualDropout_PrintsOkLine()
+    {
+        var path = PlanningPaths.ResolveRepoPath("Examples", "AI_Theory", "residual_dropout.malda");
+        var output = await CaptureInterpretAsync(File.ReadAllText(path), path);
+        Assert.Contains("residual dropout ok", output);
     }
 }

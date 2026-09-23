@@ -1,0 +1,158 @@
+// One 3x3 kernel, slid across every 5x5 window.
+//
+// A three-pixel vertical dash and a three-pixel horizontal dash reuse the
+// same nine weights. Each window has its own target: +1 where the dash sits
+// in the center column of the kernel, -1 where it sits in the center row,
+// and 0 elsewhere. The backward pass adds every window into that one kernel.
+// A dense layer on the 25 pixels would keep a separate weight per position.
+// Offline and seeded — no API key.
+
+function blank() -> array {
+    var image = [];
+    for (var r = 0; r < 5; r = r + 1) {
+        var row = [];
+        for (var c = 0; c < 5; c = c + 1) {
+            row.append(0.0);
+        }
+        image.append(row);
+    }
+    return image;
+}
+
+function verticalDash(top: int) -> array {
+    var image = blank();
+    for (var r = top; r < top + 3; r = r + 1) {
+        image[r][2] = 1.0;
+    }
+    return image;
+}
+
+function horizontalDash(left: int) -> array {
+    var image = blank();
+    for (var c = left; c < left + 3; c = c + 1) {
+        image[2][c] = 1.0;
+    }
+    return image;
+}
+
+function windowTargets(vertical: bool, origin: int) -> array {
+    var targets = [];
+    for (var oy = 0; oy < 3; oy = oy + 1) {
+        var row = [];
+        for (var ox = 0; ox < 3; ox = ox + 1) {
+            var value = 0.0;
+            if (vertical && oy == origin && ox == 1) {
+                value = 1.0;
+            }
+            if (!vertical && oy == 1 && ox == origin) {
+                value = -1.0;
+            }
+            row.append(value);
+        }
+        targets.append(row);
+    }
+    return targets;
+}
+
+function columnSum(kernel: array) -> float {
+    return kernel[0][1] + kernel[1][1] + kernel[2][1];
+}
+
+function rowSum(kernel: array) -> float {
+    return kernel[1][0] + kernel[1][1] + kernel[1][2];
+}
+
+function fmt(value: float) -> string {
+    return string(math.round(value * 1000.0) / 1000.0);
+}
+
+function peak(image: array, kernel: array) -> float {
+    var best = -1000.0;
+    for (var oy = 0; oy < 3; oy = oy + 1) {
+        for (var ox = 0; ox < 3; ox = ox + 1) {
+            var acc = 0.0;
+            for (var ky = 0; ky < 3; ky = ky + 1) {
+                for (var kx = 0; kx < 3; kx = kx + 1) {
+                    acc = acc + image[oy + ky][ox + kx] * kernel[ky][kx];
+                }
+            }
+            if (acc > best) {
+                best = acc;
+            }
+        }
+    }
+    return best;
+}
+
+math.seed(4);
+
+var images = [];
+var maps = [];
+var labels = [];
+for (var top = 0; top <= 2; top = top + 1) {
+    images.append(verticalDash(top));
+    maps.append(windowTargets(true, top));
+    labels.append(1);
+}
+for (var left = 0; left <= 2; left = left + 1) {
+    images.append(horizontalDash(left));
+    maps.append(windowTargets(false, left));
+    labels.append(0);
+}
+
+var kernel = [];
+for (var ky = 0; ky < 3; ky = ky + 1) {
+    var kernelRow = [];
+    for (var kx = 0; kx < 3; kx = kx + 1) {
+        kernelRow.append(math.randn(0.05));
+    }
+    kernel.append(kernelRow);
+}
+
+var learningRate = 0.5;
+var epochs = 60;
+
+for (var epoch = 1; epoch <= epochs; epoch = epoch + 1) {
+    for (var s = 0; s < images.length; s = s + 1) {
+        var image = images[s];
+        var target = maps[s];
+        for (var oy = 0; oy < 3; oy = oy + 1) {
+            for (var ox = 0; ox < 3; ox = ox + 1) {
+                var acc = 0.0;
+                for (var ky = 0; ky < 3; ky = ky + 1) {
+                    for (var kx = 0; kx < 3; kx = kx + 1) {
+                        acc = acc + image[oy + ky][ox + kx] * kernel[ky][kx];
+                    }
+                }
+                var dZ = acc - target[oy][ox];
+                for (var ky = 0; ky < 3; ky = ky + 1) {
+                    for (var kx = 0; kx < 3; kx = kx + 1) {
+                        var pixel = image[oy + ky][ox + kx];
+                        kernel[ky][kx] = kernel[ky][kx] - learningRate * dZ * pixel;
+                    }
+                }
+            }
+        }
+    }
+}
+
+var correct = 0;
+for (var s = 0; s < images.length; s = s + 1) {
+    var predicted = 0;
+    if (peak(images[s], kernel) > 0.35) {
+        predicted = 1;
+    }
+    if (predicted == labels[s]) {
+        correct = correct + 1;
+    }
+}
+
+var centerColumn = columnSum(kernel);
+var centerRow = rowSum(kernel);
+io.print("Shared 3x3 kernel on 5x5 strokes");
+io.print("Accuracy: " + string(correct) + "/" + string(images.length));
+io.print("center column: " + fmt(centerColumn));
+io.print("center row:    " + fmt(centerRow));
+if (correct == images.length && centerColumn > centerRow) {
+    io.print("conv stroke ok");
+}

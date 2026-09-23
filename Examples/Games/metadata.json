@@ -472,6 +472,28 @@
       "expectedOutput": "Fills a canvas with a blue/yellow XOR field and four training points.",
       "documentationPath": "/docs/roadmap-neural.md",
       "documentationTitle": "Neural-nets kit"
+    },
+    {
+      "name": "Softmax decision boundary",
+      "description": "Color the plane by a trained 3-class linear softmax and draw the 2D blobs",
+      "file": "softmax_decision_boundary.malda",
+      "track": "student",
+      "difficulty": "intermediate",
+      "minutes": 10,
+      "requires": ["offline"],
+      "concepts": [
+        "softmax",
+        "decision boundary",
+        "game.*",
+        "JavaScript target"
+      ],
+      "prerequisites": [
+        "AI_Theory/softmax_classifier.malda"
+      ],
+      "learningGoal": "See the three regions a linear softmax cuts, instead of only a printed accuracy.",
+      "expectedOutput": "Fills a canvas with three class colors and the training points.",
+      "documentationPath": "/docs/roadmap-neural.md",
+      "documentationTitle": "Neural-nets kit"
     }
   ]
 }

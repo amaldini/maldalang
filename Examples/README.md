@@ -30,7 +30,7 @@ Each folder’s `metadata.json` may tag examples with `requires`:
 |--------|--------|------------------|----------|
 | [Basics](Basics/) | Syntax, control flow, functions, lists, recursion | offline | student |
 | [Algorithms](Algorithms/) | Curated Hanoi / search / sort / graph / DP / RL / annealing | offline | student |
-| [AI_Theory](AI_Theory/) | From-scratch RL / perceptron / XOR / softmax / tiny digits / SVM / Transformer / embeddings / ONNX inspect | offline | student |
+| [AI_Theory](AI_Theory/) | From-scratch RL / perceptron / XOR / softmax / tiny digits / grad check / init / holdout / momentum / RNN / conv / residual / SVM / Transformer / embeddings / ONNX inspect | offline | student |
 | [OOP](OOP/) | Classes and inheritance | offline | student |
 | [Prompts](Prompts/) | `prompt` declarations | api-key (most) | ai-builder |
 | [AI_LLM](AI_LLM/) | LLM clients and conversations (calling a model) | offline / api-key | ai-builder, showcase |

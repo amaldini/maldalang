@@ -1,0 +1,68 @@
+// Finite-difference check of nn.denseBackward on one ReLU layer.
+//
+// chain_rule.malda checks one scalar composite. Here the loss is
+//   L = 1/2 sum_j (out[j] - target[j])^2
+// so nn.mseGrad is dL/d(out), and nn.denseBackward turns that into dL/dW.
+// A central step on each weight should match that matrix away from the
+// ReLU kink. Offline — no API key. Next: init_scale.malda.
+
+function copyMatrix(matrix: array) -> array {
+    var copy = [];
+    for (var i = 0; i < matrix.length; i = i + 1) {
+        var row = [];
+        for (var j = 0; j < matrix[i].length; j = j + 1) {
+            row.append(matrix[i][j]);
+        }
+        copy.append(row);
+    }
+    return copy;
+}
+
+function halfSquared(pred: array, target: array) -> float {
+    var loss = 0.0;
+    for (var i = 0; i < pred.length; i = i + 1) {
+        var delta = pred[i] - target[i];
+        loss = loss + 0.5 * delta * delta;
+    }
+    return loss;
+}
+
+function lossAt(x: array, weights: array, bias: array, target: array) -> float {
+    var layer = nn.dense(x, weights, bias, "relu");
+    return halfSquared(layer.out, target);
+}
+
+function fmtGap(gap: float) -> string {
+    return string(math.round(gap * 1000000.0) / 1000000.0);
+}
+
+var x = [1.0, 0.5];
+var weights = [[0.5, -0.2], [0.3, 0.8]];
+var bias = [0.1, -0.4];
+var target = [0.0, 1.0];
+var epsilon = 0.0001;
+
+var layer = nn.dense(x, weights, bias, "relu");
+var upstream = nn.mseGrad(layer.out, target);
+var back = nn.denseBackward(x, weights, upstream, "relu", layer.pre);
+
+var maxGap = 0.0;
+for (var i = 0; i < weights.length; i = i + 1) {
+    for (var j = 0; j < weights[i].length; j = j + 1) {
+        var plus = copyMatrix(weights);
+        var minus = copyMatrix(weights);
+        plus[i][j] = plus[i][j] + epsilon;
+        minus[i][j] = minus[i][j] - epsilon;
+        var numeric = (lossAt(x, plus, bias, target) - lossAt(x, minus, bias, target)) / (2.0 * epsilon);
+        var gap = math.abs(numeric - back.dWeights[i][j]);
+        if (gap > maxGap) {
+            maxGap = gap;
+        }
+    }
+}
+
+io.print("Grad check: nn.denseBackward vs central difference (ReLU)");
+io.print("max gap: " + fmtGap(maxGap));
+if (maxGap < 0.000001) {
+    io.print("gradcheck dense ok");
+}

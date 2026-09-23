@@ -171,5 +171,5 @@ See [`ReferenceManual/README-print.md`](ReferenceManual/README-print.md). Short 
 - [`docs/roadmap-language-constructs.md`](docs/roadmap-language-constructs.md) — next language constructs (schema/sum types, Mode C, budget, WF determinism)
 - [`docs/roadmap-trust.md`](docs/roadmap-trust.md) — trust plan (strict compile, smoke, gotchas; toolchain 1.0.0 landed)
 - [`docs/roadmap-games.md`](docs/roadmap-games.md) — browser games kit (`game.*` / `three.*`, JS-only; G0–G17 landed)
-- [`docs/roadmap-neural.md`](docs/roadmap-neural.md) — neural-nets kit (`math.matmul`, `nn.*` activations and dense forward/backward, AI_Theory, `OnnxModel`; N0–N4 and N7 landed)
+- [`docs/roadmap-neural.md`](docs/roadmap-neural.md) — neural-nets kit (`math.matmul`, `nn.*` activations and dense forward/backward, AI_Theory, `OnnxModel`; N0–N4 and N6–N8 landed, N5 partial)
 - [`llms.txt`](llms.txt) — compact doc index for LLM tools

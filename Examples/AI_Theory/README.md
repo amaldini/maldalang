@@ -15,6 +15,13 @@ Agents and tools stay in [`Examples/Agents/`](../Agents/).
 | `nn_dense.malda` | Same XOR net via `nn.dense` / `nn.denseBackward` |
 | `softmax_classifier.malda` | 3-class softmax on 2D blobs (`math.matmul`) |
 | `mnist_digits.malda` | Ten 5×5 glyphs, chapter 14 MLP (ReLU hidden, 10 linear logits) |
+| `gradcheck_dense.malda` | Central difference vs `nn.denseBackward` on one ReLU layer |
+| `init_scale.malda` | Uniform vs Xavier vs He on one forward pass |
+| `glyph_holdout.malda` | Same glyphs; two flipped pixels, train perfect and holdout not |
+| `momentum_valley.malda` | SGD vs momentum on a steep quadratic |
+| `rnn_delay.malda` | Vanishing sigmoid recurrence, then a tanh net that recalls a delayed bit |
+| `conv_stroke.malda` | One shared 3×3 kernel on vertical and horizontal dashes |
+| `residual_dropout.malda` | Residual skip vs a deep sigmoid stack, then a train-time dropout mask |
 | `svm_linear.malda` | Soft-margin linear SVM (and why XOR needs a hidden layer) |
 | `attention_is_all_you_need.malda` | Vaswani et al. 2017 Transformer, then reverse a sequence |
 | `microgpt.malda` | Tiny decoder-only GPT (Karpathy port) |
@@ -22,7 +29,9 @@ Agents and tools stay in [`Examples/Agents/`](../Agents/).
 | `onnx_inspect.malda` | `new OnnxModel` inspect + forward on `data/identity.onnx` |
 
 See the XOR decision boundary in the browser with
-`malda play Examples/Games/xor_decision_boundary.malda`.
+`malda play Examples/Games/xor_decision_boundary.malda`, and the three
+softmax regions with
+`malda play Examples/Games/softmax_decision_boundary.malda`.
 Kit roadmap: [`docs/roadmap-neural.md`](../../docs/roadmap-neural.md).
 
 All are seeded with `math.seed` where they use randomness. The student

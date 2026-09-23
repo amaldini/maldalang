@@ -1,0 +1,151 @@
+// Same ten 5x5 glyphs as mnist_digits.malda, plus a held-out copy.
+//
+// Train on the clean rows. Score them, then score a copy where two pixels
+// are flipped (flat indexes 14 and 15). Those two flips swap the 8 glyph
+// with the 9 glyph, so a net that classifies every clean row cannot also
+// classify every flipped row. Offline and seeded — no API key.
+
+function randomMatrix(rows: int, cols: int, scale: float) -> array {
+    var matrix = [];
+    for (var i = 0; i < rows; i = i + 1) {
+        var row = [];
+        for (var j = 0; j < cols; j = j + 1) {
+            row.append(math.randomFloat(-scale, scale));
+        }
+        matrix.append(row);
+    }
+    return matrix;
+}
+
+function zeros(n: int) -> array {
+    var values = [];
+    for (var i = 0; i < n; i = i + 1) {
+        values.append(0.0);
+    }
+    return values;
+}
+
+function sgdMatrix(weights: array, grad: array, lr: float) {
+    for (var i = 0; i < weights.length; i = i + 1) {
+        for (var j = 0; j < weights[i].length; j = j + 1) {
+            weights[i][j] = weights[i][j] - lr * grad[i][j];
+        }
+    }
+}
+
+function sgdVector(bias: array, grad: array, lr: float) {
+    for (var i = 0; i < bias.length; i = i + 1) {
+        bias[i] = bias[i] - lr * grad[i];
+    }
+}
+
+function pixelsOf(rows: array) -> array {
+    var values = [];
+    for (var r = 0; r < rows.length; r = r + 1) {
+        var row = rows[r];
+        for (var c = 0; c < 5; c = c + 1) {
+            var bit = 0.0;
+            if (str.substring(row, c, 1) == "#") {
+                bit = 1.0;
+            }
+            values.append(bit);
+        }
+    }
+    return values;
+}
+
+function copyPixels(pixels: array) -> array {
+    var values = [];
+    for (var i = 0; i < pixels.length; i = i + 1) {
+        values.append(pixels[i]);
+    }
+    return values;
+}
+
+function flipBit(pixels: array, index: int) {
+    if (pixels[index] > 0.5) {
+        pixels[index] = 0.0;
+    } else {
+        pixels[index] = 1.0;
+    }
+}
+
+function predict(pixels: array, w1: array, b1: array, w2: array, b2: array) -> int {
+    var hidden = nn.dense(pixels, w1, b1, "relu");
+    var logits = nn.dense(hidden.out, w2, b2, "linear").out;
+    return math.argmax(logits);
+}
+
+math.seed(7);
+
+var glyphRows = [
+    [".###.", "#...#", "#...#", "#...#", ".###."],
+    ["..#..", ".##..", "..#..", "..#..", ".###."],
+    [".###.", "....#", ".###.", "#....", "#####"],
+    [".###.", "....#", ".###.", "....#", ".###."],
+    ["#...#", "#...#", "#####", "....#", "....#"],
+    ["#####", "#....", "####.", "....#", "####."],
+    [".###.", "#....", "####.", "#...#", ".###."],
+    ["#####", "....#", "...#.", "..#..", ".#..."],
+    [".###.", "#...#", ".###.", "#...#", ".###."],
+    [".###.", "#...#", ".####", "....#", ".###."]
+];
+
+var inputs = [];
+var labels = [];
+for (var d = 0; d < glyphRows.length; d = d + 1) {
+    inputs.append(pixelsOf(glyphRows[d]));
+    labels.append(d);
+}
+
+var holdout = [];
+for (var d = 0; d < inputs.length; d = d + 1) {
+    var flipped = copyPixels(inputs[d]);
+    flipBit(flipped, 14);
+    flipBit(flipped, 15);
+    holdout.append(flipped);
+}
+
+var hiddenSize: int = 24;
+var learningRate: float = 0.25;
+var epochs: int = 40;
+var w1 = randomMatrix(25, hiddenSize, 0.4);
+var b1 = zeros(hiddenSize);
+var w2 = randomMatrix(hiddenSize, 10, 0.3);
+var b2 = zeros(10);
+
+io.print("Glyph holdout (train clean, score two flipped pixels)");
+io.print("");
+
+for (var epoch = 1; epoch <= epochs; epoch = epoch + 1) {
+    for (var s = 0; s < inputs.length; s = s + 1) {
+        var x = inputs[s];
+        var target = labels[s];
+        var hidden = nn.dense(x, w1, b1, "relu");
+        var out = nn.dense(hidden.out, w2, b2, "linear");
+        var upstream = nn.softmaxGrad(out.out, target);
+        var backOut = nn.denseBackward(hidden.out, w2, upstream, "linear", out.pre);
+        var backHidden = nn.denseBackward(x, w1, backOut.dInput, "relu", hidden.pre);
+        sgdMatrix(w2, backOut.dWeights, learningRate);
+        sgdVector(b2, backOut.dBias, learningRate);
+        sgdMatrix(w1, backHidden.dWeights, learningRate);
+        sgdVector(b1, backHidden.dBias, learningRate);
+    }
+}
+
+var trainCorrect = 0;
+var holdoutCorrect = 0;
+for (var s = 0; s < inputs.length; s = s + 1) {
+    if (predict(inputs[s], w1, b1, w2, b2) == labels[s]) {
+        trainCorrect = trainCorrect + 1;
+    }
+    if (predict(holdout[s], w1, b1, w2, b2) == labels[s]) {
+        holdoutCorrect = holdoutCorrect + 1;
+    }
+}
+
+io.print("Train accuracy: " + string(trainCorrect) + "/" + string(inputs.length));
+io.print("Holdout accuracy: " + string(holdoutCorrect) + "/" + string(inputs.length));
+if (trainCorrect == inputs.length && holdoutCorrect < trainCorrect) {
+    io.print("glyph holdout ok");
+}

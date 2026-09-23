@@ -1,0 +1,109 @@
+// Softmax decision regions. JS canvas — run: malda play Examples/Games/softmax_decision_boundary.malda
+// Same 3-class linear softmax as Examples/AI_Theory/softmax_classifier.malda, drawn instead of printed.
+
+function addBias(x0: float, x1: float) -> array {
+    return [x0, x1, 1.0];
+}
+
+function trainSoftmax() -> object {
+    math.seed(3);
+    var points = [];
+    var labels = [];
+    var centers = [[-1.5, -1.2], [1.6, -0.8], [0.1, 1.7]];
+    for (var c = 0; c < 3; c = c + 1) {
+        for (var n = 0; n < 12; n = n + 1) {
+            points.append([centers[c][0] + math.randn(0.25), centers[c][1] + math.randn(0.25)]);
+            labels.append(c);
+        }
+    }
+
+    var w = [
+        [math.randn(0.3), math.randn(0.3), math.randn(0.3)],
+        [math.randn(0.3), math.randn(0.3), math.randn(0.3)],
+        [math.randn(0.3), math.randn(0.3), math.randn(0.3)]
+    ];
+    var learningRate = 0.15;
+    var epochs = 80;
+    for (var epoch = 1; epoch <= epochs; epoch = epoch + 1) {
+        for (var i = 0; i < points.length; i = i + 1) {
+            var x = addBias(points[i][0], points[i][1]);
+            var logits = math.matmul(x, w);
+            var probs = nn.softmax(logits);
+            var target = labels[i];
+            for (var k = 0; k < 3; k = k + 1) {
+                var grad = probs[k];
+                if (k == target) {
+                    grad = grad - 1.0;
+                }
+                for (var d = 0; d < 3; d = d + 1) {
+                    w[d][k] = w[d][k] - learningRate * grad * x[d];
+                }
+            }
+        }
+    }
+
+    var correct = 0;
+    for (var i = 0; i < points.length; i = i + 1) {
+        var logits = math.matmul(addBias(points[i][0], points[i][1]), w);
+        if (math.argmax(logits) == labels[i]) {
+            correct = correct + 1;
+        }
+    }
+
+    return { "w": w, "points": points, "labels": labels, "correct": correct };
+}
+
+function classOf(w: array, x0: float, x1: float) -> int {
+    var logits = math.matmul(addBias(x0, x1), w);
+    return math.argmax(nn.softmax(logits));
+}
+
+function classColor(index: int) -> string {
+    if (index == 0) {
+        return "#3d5a80";
+    }
+    if (index == 1) {
+        return "#ee6c4d";
+    }
+    return "#98c1d9";
+}
+
+function startSoftmax() {
+    var net = trainSoftmax();
+    var canvas = 420;
+    var pad = 40;
+    var grid = 42;
+    var cell = (canvas - pad * 2) / grid;
+    var span = 5.2;
+    var origin = -2.6;
+
+    function render() {
+        game.fillRect(0, 0, canvas, canvas, "#101018");
+        for (var i = 0; i < grid; i = i + 1) {
+            for (var j = 0; j < grid; j = j + 1) {
+                var x0 = origin + (i / (grid - 1)) * span;
+                var x1 = origin + ((grid - 1 - j) / (grid - 1)) * span;
+                var color = classColor(classOf(net.w, x0, x1));
+                game.fillRect(pad + i * cell, pad + j * cell, cell + 0.5, cell + 0.5, color);
+            }
+        }
+
+        for (var p = 0; p < net.points.length; p = p + 1) {
+            var px = pad + ((net.points[p][0] - origin) / span) * (canvas - pad * 2) - 5;
+            var py = pad + ((origin + span - net.points[p][1]) / span) * (canvas - pad * 2) - 5;
+            game.fillRect(px - 1, py - 1, 12, 12, "#f4f4f4");
+            game.fillRect(px, py, 10, 10, classColor(net.labels[p]));
+        }
+
+        game.drawText("Softmax regions  " + string(net.correct) + "/36", 16, 18, "#f4f4f4", "14px sans-serif");
+        game.drawText("Three classes   malda play", 16, canvas - 16, "#c8c8d0", "12px sans-serif");
+    }
+
+    function update(_dtMs) {
+    }
+
+    game.createCanvas(canvas, canvas, "#app");
+    game.start(update, render);
+}
+
+startSoftmax();
