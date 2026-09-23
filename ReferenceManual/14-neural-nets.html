@@ -20,10 +20,11 @@
 
         <h1>14. Neural Nets</h1>
 
-        <p>A dense layer is one matrix multiply, a bias, and an activation. MALDA does not build an autograd tape: you keep the pre-activation from the forward pass and multiply by the local derivative yourself, or you call <code>nn.denseBackward</code>, which does that one step. Signatures live in <a href="13-built-in-functions.html#nn">13.3.3</a>. The student programs are <code>Examples/AI_Theory/</code>.</p>
+        <p>You keep the weights and the bias yourself. A dense layer is one matrix multiply, plus that bias, then an activation. A deeper net is the same pair of calls stacked: the <code>dInput</code> of one layer is the upstream gradient of the layer below it. MALDA does not record an autograd tape and does not apply the step. <code>nn.denseBackward</code> returns the three gradients for that one layer; you subtract <code>learningRate</code> times each gradient from your own arrays.</p>
+        <p>The signature table is <a href="#signatures">14.8</a>. The student programs are <code>Examples/AI_Theory/</code>. This chapter walks one forward, one backward, and the hand-off between two layers, on numbers you can check.</p>
 
         <h2 id="math-layout">14.1 What stays on <code>math</code></h2>
-        <p>Linear algebra stays on <code>math</code>. A weight matrix is <code>[in, out]</code>: one row per input, one column per output, the same layout as <code>math.matmul(x, weights)</code>. Inner dimensions must match.</p>
+        <p>Linear algebra stays on <code>math</code>. A weight matrix is <code>[in, out]</code>: one row per input unit, one column per output unit, the same layout as <code>math.matmul(x, weights)</code>. The inner dimensions must match, so a vector of length 2 multiplies a matrix with 2 rows. Activations and the layer live on <code>nn</code>. Write <code>nn.relu</code>, not <code>relu</code>: there is no flat alias.</p>
         <table>
         <thead>
         <tr><th>Call</th><th>Role</th></tr>
@@ -37,21 +38,48 @@
         <pre><code data-run="true" data-expect="5">print(math.dot([1.0, 2.0], [3.0, 1.0]));</code></pre>
 
         <h2 id="dense">14.2 One dense layer</h2>
-        <p><code>nn.dense(x, weights, bias?, activation?)</code> accepts a vector or a batch matrix. Bias length equals the number of outputs. It returns <code>{ pre, out }</code>.</p>
-        <p><code>pre</code> is the pre-activation, the linear part before the nonlinearity: <code>pre = xW + b</code> (or <code>XW + b</code> for a batch). <code>out</code> is <code>activation(pre)</code>. With no activation, or with <code>"linear"</code>, <code>out</code> is a copy of <code>pre</code>. Save <code>pre</code>. The backward step needs it.</p>
+        <p><code>nn.dense(x, weights, bias?, activation?)</code> accepts one sample as a vector, or several samples as a matrix with one row per sample. The bias has one number per output. Omit it and the bias is zeros. The call returns <code>{ pre, out }</code>.</p>
+        <p><code>pre</code> is the pre-activation, the linear part before the nonlinearity: <code>pre = xW + b</code> (or <code>XW + b</code> for a batch). <code>out</code> is <code>activation(pre)</code>. With no activation, or with <code>"linear"</code>, <code>out</code> is a copy of <code>pre</code> and the local derivative is <code>1</code>. Save <code>pre</code>. The backward step evaluates the activation derivative there, not on <code>out</code>.</p>
+
+        <h3 id="reading-the-matrix">14.2.1 Reading the matrix</h3>
+        <p>Take <code>x = [1, 2]</code>, weights <code>[[0.5, -1], [1, 0]]</code>, and bias <code>[0.25, -0.5]</code>. Column 0 of the matrix is the weights into the first output: <code>0.5</code> from the first input and <code>1</code> from the second. Column 1 is the weights into the second output: <code>-1</code> and <code>0</code>.</p>
+        <p>The first pre-activation is <code>1×0.5 + 2×1 + 0.25 = 2.75</code>. The second is <code>1×(-1) + 2×0 + (-0.5) = -1.5</code>. ReLU leaves <code>2.75</code> and replaces <code>-1.5</code> with <code>0</code>, so <code>out</code> is <code>[2.75, 0]</code>.</p>
         <pre><code data-run="true" data-expect="275\n-150\n275\n0">var layer = nn.dense([1.0, 2.0], [[0.5, -1.0], [1.0, 0.0]], [0.25, -0.5], "relu");
 print(int(layer.pre[0] * 100));
 print(int(layer.pre[1] * 100));
 print(int(layer.out[0] * 100));
 print(int(layer.out[1]));</code></pre>
-        <p>Here <code>pre</code> is <code>[2.75, -1.5]</code>. ReLU leaves <code>2.75</code> and replaces <code>-1.5</code> with <code>0</code>, so <code>out</code> is <code>[2.75, 0]</code>.</p>
+        <h3 id="batch">14.2.2 A batch</h3>
+        <p>Pass a matrix and each row is one sample. The same bias is added to every row. <code>pre</code> and <code>out</code> keep that row layout. A later backward sums the bias gradient over the rows, so two identical samples contribute twice. Divide by the row count yourself when you want a mean.</p>
 
         <h2 id="activations">14.3 Activations</h2>
-        <p><code>relu</code>, <code>leakyRelu</code>, <code>elu</code>, <code>gelu</code>, <code>silu</code>, <code>softplus</code>, <code>sigmoid</code>, <code>tanh</code>, and <code>linear</code> are the names <code>nn.dense</code> accepts. Inside <code>dense</code>, <code>leakyRelu</code> uses alpha <code>0.01</code> and <code>elu</code> uses alpha <code>1</code>. The standalone calls <code>nn.leakyRelu(x, alpha?)</code> and <code>nn.elu(x, alpha?)</code> take an optional alpha.</p>
-        <p>Each <code>nn.d*</code> helper is the derivative with respect to the pre-activation, not with respect to the squashed output. <code>dSigmoid(z) = s * (1 - s)</code> with <code>s = sigmoid(z)</code>.</p>
+        <p><code>nn.dense</code> accepts these names. The matching <code>nn.d*</code> call is the derivative with respect to the pre-activation <code>z</code>. At <code>z = 0</code>, ReLU's derivative is <code>0</code> (the test is <code>z &gt; 0</code>).</p>
+        <table>
+        <thead>
+        <tr><th>Name</th><th>Value</th><th>Derivative at <code>z</code></th></tr>
+        </thead>
+        <tbody>
+        <tr><td><code>linear</code></td><td><code>z</code></td><td><code>1</code>. You may omit <code>pre</code> on the backward call</td></tr>
+        <tr><td><code>relu</code></td><td><code>z</code> when <code>z &gt; 0</code>, else <code>0</code></td><td><code>1</code> or <code>0</code></td></tr>
+        <tr><td><code>leakyRelu</code></td><td><code>z</code> when <code>z &gt; 0</code>, else <code>alpha × z</code></td><td><code>1</code> or <code>alpha</code>. Inside <code>dense</code>, alpha is <code>0.01</code></td></tr>
+        <tr><td><code>elu</code></td><td><code>z</code> when <code>z &gt; 0</code>, else <code>alpha × (exp(z) − 1)</code></td><td><code>1</code> or <code>alpha × exp(z)</code>. Inside <code>dense</code>, alpha is <code>1</code></td></tr>
+        <tr><td><code>sigmoid</code></td><td><code>1 / (1 + exp(−z))</code></td><td><code>s × (1 − s)</code> with <code>s = sigmoid(z)</code>. A pre-activation past about <code>±20</code> saturates, and the derivative is <code>0</code></td></tr>
+        <tr><td><code>tanh</code></td><td><code>tanh(z)</code></td><td><code>1 − tanh(z)²</code></td></tr>
+        <tr><td><code>silu</code></td><td><code>z × sigmoid(z)</code></td><td><code>nn.dSilu</code></td></tr>
+        <tr><td><code>softplus</code></td><td><code>log(1 + exp(z))</code>, which approaches <code>z</code> for a large positive <code>z</code></td><td><code>sigmoid(z)</code></td></tr>
+        <tr><td><code>gelu</code></td><td>the tanh approximation of GELU</td><td><code>nn.dGelu</code></td></tr>
+        </tbody>
+        </table>
+        <p>The standalone calls <code>nn.leakyRelu(x, alpha?)</code> and <code>nn.elu(x, alpha?)</code> take an optional alpha. <code>nn.dense</code> does not: it always uses the defaults above. <code>sigmoid</code>, <code>tanh</code>, and <code>softmax</code> are also on <code>math</code> and call the same functions.</p>
 
         <h2 id="backward">14.4 One backward step</h2>
-        <p><code>nn.denseBackward(x, weights, upstream, activation?, pre?)</code> returns <code>{ dInput, dWeights, dBias }</code>. <code>upstream</code> is dL/d(<code>out</code>). Pass the forward <code>pre</code> whenever the activation is not linear: the local derivative is evaluated at <code>pre</code>. For a batch, bias gradients are summed over the batch.</p>
+        <p><code>nn.denseBackward(x, weights, upstream, activation?, pre?)</code> returns <code>{ dInput, dWeights, dBias }</code>. <code>upstream</code> is the gradient of the loss with respect to <code>out</code>, one number per output, in the same shape as <code>out</code>. The layer multiplies that vector by the activation derivative at <code>pre</code> and calls the result <code>dZ</code>. Then:</p>
+        <ul>
+            <li><code>dBias</code> is <code>dZ</code>. On a batch it is the sum of the rows.</li>
+            <li><code>dWeights[i][j]</code> is input <code>i</code> times <code>dZ[j]</code>. That is the outer product of the input and <code>dZ</code>.</li>
+            <li><code>dInput[i]</code> is the sum over outputs of <code>dZ[j] × weights[i][j]</code>. That vector is what the previous layer receives as its upstream.</li>
+        </ul>
+        <p>On the same layer as <a href="#reading-the-matrix">14.2.1</a>, ReLU's derivative is <code>1</code> at <code>2.75</code> and <code>0</code> at <code>-1.5</code>. An upstream of <code>[1, 1]</code> therefore becomes <code>dZ = [1, 0]</code>. The bias gradient is <code>[1, 0]</code>. The weight gradient is <code>[[1, 0], [2, 0]]</code> because the inputs are <code>1</code> and <code>2</code>. The input gradient is <code>[0.5, 1]</code>: the dead unit drops the second column of <code>W</code> before that multiply. The snippet prints <code>dInput[0] × 10</code>, then the two bias entries.</p>
         <pre><code data-run="true" data-expect="5\n1\n0">var x = [1.0, 2.0];
 var w = [[0.5, -1.0], [1.0, 0.0]];
 var layer = nn.dense(x, w, [0.25, -0.5], "relu");
@@ -59,30 +87,75 @@ var back = nn.denseBackward(x, w, [1.0, 1.0], "relu", layer.pre);
 print(int(back.dInput[0] * 10));
 print(int(back.dBias[0]));
 print(int(back.dBias[1]));</code></pre>
-        <p>ReLU's derivative is <code>0</code> on the negative unit, so that column of the upstream gradient is dropped before the multiply by <code>W</code>. <code>Examples/AI_Theory/xor_neural_net.malda</code> writes the same chain rule with named variables. <code>Examples/AI_Theory/nn_dense.malda</code> trains the same XOR net through <code>nn.dense</code> and <code>nn.denseBackward</code>.</p>
+        <h3 id="second-layer">14.4.1 A second layer</h3>
+        <p>Run the output layer backward first. Its <code>dInput</code> is the hidden layer's upstream, and the hidden layer's forward <code>out</code> is the <code>x</code> that the output layer saw. Both layers need the <code>pre</code> they returned.</p>
+        <pre><code>var hidden = nn.dense(x, w1, b1, "sigmoid");
+var out = nn.dense(hidden.out, w2, b2, "sigmoid");
+var upstream = nn.mseGrad(out.out, [target]);
+var backOut = nn.denseBackward(hidden.out, w2, upstream, "sigmoid", out.pre);
+var backHidden = nn.denseBackward(x, w1, backOut.dInput, "sigmoid", hidden.pre);</code></pre>
+        <p><code>Examples/AI_Theory/xor_neural_net.malda</code> writes those multiplies with named variables. <code>Examples/AI_Theory/nn_dense.malda</code> trains the same 2-4-1 XOR net with the two calls above.</p>
+
+        <h3 id="weight-update">14.4.2 The weight step</h3>
+        <p>There is no optimizer builtin. After the backward calls, subtract <code>learningRate</code> times <code>dWeights</code> from the weight matrix and <code>learningRate</code> times <code>dBias</code> from the bias, entry by entry. A batch bias gradient is a sum, so a learning rate tuned on one sample is large for many rows unless you scale it.</p>
 
         <h2 id="losses">14.5 Losses</h2>
-        <p><code>nn.mse(pred, target)</code> is the mean of squared errors. <code>nn.mseGrad(pred, target)</code> is elementwise <code>pred - target</code>, the gradient of <code>1/2 (pred - target)^2</code>. It is not the gradient of the averaged <code>nn.mse</code>.</p>
-        <p><code>nn.crossEntropyFromLogits(logits, targetIndex)</code> is the classification loss for one class index. <code>nn.softmaxGrad(logits, target)</code> is <code>softmax(logits)</code> minus that class (or minus a same-length numeric vector).</p>
+        <p>On two numbers, <code>nn.mse(pred, target)</code> is the squared difference. On two vectors of the same length it is the mean of those squares. <code>nn.mse(2, 0)</code> is <code>4</code>. <code>nn.mse([2, 0], [0, 0])</code> is <code>2</code>, the mean of <code>4</code> and <code>0</code>.</p>
+        <p><code>nn.mseGrad(pred, target)</code> is elementwise <code>pred − target</code>. That is the derivative of <code>1/2 (pred − target)²</code>, which is what <code>nn_dense.malda</code> accumulates as the epoch loss. The derivative of the value <code>nn.mse</code> itself returns is twice as large on one number, and it is also divided by the length on a vector. Pass <code>mseGrad</code> into <code>denseBackward</code> as <code>upstream</code> when the last layer is a regression output.</p>
+        <pre><code data-run="true" data-expect="4\n2\n2">print(int(nn.mse(2.0, 0.0)));
+print(int(nn.mseGrad(2.0, 0.0)));
+print(int(nn.mse([2.0, 0.0], [0.0, 0.0])));</code></pre>
+        <p><code>nn.crossEntropyFromLogits(logits, targetIndex)</code> is <code>logSumExp(logits) − logits[targetIndex]</code>, the same number as <code>−log(softmax(logits)[targetIndex])</code>. <code>nn.softmaxGrad(logits, target)</code> is <code>softmax(logits)</code> minus a one-hot vector at that class index, or minus a numeric vector of the same length. That gradient is the <code>upstream</code> for a classification layer whose forward activation was <code>"linear"</code>: softmax is inside the loss, not a second nonlinearity on <code>pre</code>.</p>
 
         <h2 id="examples">14.6 Examples</h2>
-        <p>Read them in this order. Each file seeds the RNG and runs offline.</p>
+        <p>Read them in this order. Each file seeds the RNG and runs offline, with no API key.</p>
         <ol>
-            <li><code>Examples/AI_Theory/chain_rule.malda</code> — why backprop multiplies local derivatives</li>
-            <li><code>Examples/AI_Theory/perceptron.malda</code> — one neuron; AND/OR versus XOR</li>
-            <li><code>Examples/AI_Theory/xor_neural_net.malda</code> — a 2-4-1 net with the chain rule written out</li>
-            <li><code>Examples/AI_Theory/nn_dense.malda</code> — the same net through <code>nn.dense</code></li>
-            <li><code>Examples/AI_Theory/softmax_classifier.malda</code> — three classes in 2D</li>
+            <li><code>Examples/AI_Theory/chain_rule.malda</code> — one multiply, and why backprop multiplies local derivatives.</li>
+            <li><code>Examples/AI_Theory/perceptron.malda</code> — one neuron. AND and OR are separable; XOR is not, which is why the next file adds a hidden layer.</li>
+            <li><code>Examples/AI_Theory/xor_neural_net.malda</code> — a 2-4-1 net. Every chain-rule multiply is a named variable, so you can see <code>dZ</code>, <code>dWeights</code>, and <code>dInput</code> before they disappear into a helper.</li>
+            <li><code>Examples/AI_Theory/nn_dense.malda</code> — the same XOR net through <code>nn.dense</code> and <code>nn.denseBackward</code>, including the in-place learning-rate step.</li>
+            <li><code>Examples/AI_Theory/softmax_classifier.malda</code> — three classes in 2D. The loss is <code>nn.crossEntropyFromLogits</code> and the upstream is <code>nn.softmaxGrad</code>.</li>
         </ol>
-        <p><code>attention_is_all_you_need.malda</code> and <code>microgpt.malda</code> stay on the same track. <code>new OnnxModel(path)</code> inspects and runs a small model on the host. It does not train.</p>
+        <p><code>attention_is_all_you_need.malda</code> stays on <code>math.matmul</code> and builds attention from the same layout. <code>microgpt.malda</code> is a tiny character model on that track. <code>new OnnxModel(path)</code> inspects and runs a small model on the host. It does not train, and it is not a substitute for the five files above.</p>
 
         <h2 id="backends">14.7 Backends</h2>
-        <p>Interpreter, C# transpile, and JavaScript all run <code>math.dot</code> / <code>matmul</code> / <code>transpose</code> and <code>nn.*</code>. <code>OnnxModel</code> is host-only. There is no flat alias for <code>nn</code> names: write <code>nn.relu</code>, not <code>relu</code>.</p>
+        <p>Interpreter, C# transpile, and JavaScript all run <code>math.dot</code> / <code>matmul</code> / <code>transpose</code> and <code>nn.*</code>. <code>OnnxModel</code> is host-only. There is no tensor type, no autograd tape, and no <code>Adam</code> or data loader in core. There is no flat alias for <code>nn</code> names: write <code>nn.relu</code>, not <code>relu</code>.</p>
+
+        <h2 id="signatures">14.8 Signatures</h2>
+        <p>Arity and return values. The layer model is the rest of this chapter. Interpreter, C# transpile, and JavaScript all run <code>nn.*</code>. There is no flat alias.</p>
+        <table>
+        <thead>
+        <tr><th>Call</th><th>Arguments</th><th>Returns</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+        <tr><td><code>nn.relu(x)</code></td><td>1 argument: (x)</td><td>—</td><td>scalar or elementwise 1D/2D; max(0, x). Only on <code>nn</code></td></tr>
+        <tr><td><code>nn.sigmoid(x)</code> / <code>tanh</code></td><td>1 argument: (x)</td><td>—</td><td>same functions as <code>math.sigmoid</code> / <code>tanh</code>; scalar or elementwise 1D/2D</td></tr>
+        <tr><td><code>nn.leakyRelu(x, alpha?)</code></td><td>1-2 arguments: (x, alpha?)</td><td>—</td><td>default alpha <code>0.01</code></td></tr>
+        <tr><td><code>nn.elu(x, alpha?)</code></td><td>1-2 arguments: (x, alpha?)</td><td>—</td><td>default alpha <code>1</code></td></tr>
+        <tr><td><code>nn.gelu(x)</code></td><td>1 argument: (x)</td><td>—</td><td>tanh approximation</td></tr>
+        <tr><td><code>nn.silu(x)</code></td><td>1 argument: (x)</td><td>—</td><td><code>x * sigmoid(x)</code></td></tr>
+        <tr><td><code>nn.softplus(x)</code></td><td>1 argument: (x)</td><td>—</td><td>stable <code>log(1 + exp(x))</code></td></tr>
+        <tr><td><code>nn.softmax(array, temperature?)</code></td><td>1-2 arguments: (array, temperature?)</td><td>array</td><td>same function as <code>math.softmax</code></td></tr>
+        <tr><td><code>nn.mse(pred, target)</code></td><td>2 arguments: (pred, target)</td><td>float</td><td>scalars or same-length 1D arrays; mean of squared error. Only on <code>nn</code></td></tr>
+        <tr><td><code>nn.crossEntropyFromLogits(logits, targetIndex)</code></td><td>2 arguments: (logits, targetIndex)</td><td>float</td><td>classification loss from logits and a class index. Only on <code>nn</code></td></tr>
+        <tr><td><code>nn.dRelu(x)</code> / <code>dLeakyRelu</code> / <code>dElu</code> / <code>dGelu</code> / <code>dSilu</code> / <code>dSoftplus</code> / <code>dSigmoid</code> / <code>dTanh</code></td><td>same arguments as the activation</td><td>—</td><td>derivative with respect to the pre-activation. <code>dSigmoid(z) = s*(1-s)</code> with <code>s = sigmoid(z)</code></td></tr>
+        <tr><td><code>nn.dense(x, weights, bias?, activation?)</code></td><td>2-4 arguments: (x, weights, bias?, activation?)</td><td><code>{ pre, out }</code></td><td>vector or batch matrix in, bias length = outputs. Activation names: <code>relu</code>, <code>leakyRelu</code>, <code>elu</code>, <code>gelu</code>, <code>silu</code>, <code>softplus</code>, <code>sigmoid</code>, <code>tanh</code>, <code>linear</code>. <code>leakyRelu</code> / <code>elu</code> inside <code>dense</code> use the default alpha</td></tr>
+        <tr><td><code>nn.denseBackward(x, weights, upstream, activation?, pre?)</code></td><td>3-5 arguments: (x, weights, upstream, activation?, pre?)</td><td><code>{ dInput, dWeights, dBias }</code></td><td><code>upstream</code> is dL/d(out). Pass the forward <code>pre</code> when the activation is not linear. Batch bias gradients are summed over the batch</td></tr>
+        <tr><td><code>nn.mseGrad(pred, target)</code></td><td>2 arguments: (pred, target)</td><td>same rank as <code>pred</code></td><td>elementwise <code>pred - target</code>, the gradient of <code>1/2 (pred - target)^2</code>. Not the gradient of <code>nn.mse</code>, which averages</td></tr>
+        <tr><td><code>nn.softmaxGrad(logits, target)</code></td><td>2 arguments: (logits, target)</td><td>array</td><td><code>softmax(logits) - oneHot(target)</code> when <code>target</code> is a class index, or minus a same-length numeric vector</td></tr>
+        </tbody>
+        </table>
+        <pre><code data-run="true" data-expect="1\n-2\n25\n275\n0">print(int(nn.relu(-2.0) + nn.relu(1.0)));
+print(int(nn.leakyRelu(-2.0) * 100));
+print(int(nn.dSigmoid(0.0) * 100));
+var layer = nn.dense([1.0, 2.0], [[0.5, -1.0], [1.0, 0.0]], [0.25, -0.5], "relu");
+print(int(layer.out[0] * 100));
+print(int(layer.out[1]));</code></pre>
 
         <div class="see-also">
             <h3>See Also</h3>
             <ul>
-                <li><a href="13-built-in-functions.html#nn">13.3.3 Neural-net namespace</a> — signature catalog</li>
+                <li><a href="13-built-in-functions.html#math">13.3 Mathematical Functions</a> — <code>dot</code>, <code>matmul</code>, <code>transpose</code></li>
                 <li><a href="35-examples.html">35. Examples</a> — <code>Examples/AI_Theory/</code></li>
                 <li><a href="../docs/roadmap-neural.md">Neural-nets kit</a> — what is in core and what stays out</li>
             </ul>

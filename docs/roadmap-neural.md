@@ -7,7 +7,7 @@
 This is the plan that makes MALDA a **good place to explore neural nets** —
 Karpathy / from-scratch pedagogy, not PyTorch. Prefer
 [`Examples/AI_Theory/`](../Examples/AI_Theory/README.md),
-[Reference Manual 14](../ReferenceManual/14-neural-nets.html) (signatures in [chapter 13](../ReferenceManual/13-built-in-functions.html#nn)),
+[Reference Manual 14](../ReferenceManual/14-neural-nets.html#signatures) (linear algebra stays in [chapter 13](../ReferenceManual/13-built-in-functions.html#math)),
 and the out-of-scope list below for engines that stay out of core.
 
 **Bar today:** `math.dot` / `matmul` / `transpose`, the `nn.*` namespace

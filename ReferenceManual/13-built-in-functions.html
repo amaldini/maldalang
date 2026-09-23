@@ -68,7 +68,7 @@ print(io.readFile("config.json"));</code></pre>
             </thead>
             <tbody>
                 <tr><td><code>math</code></td><td>Rounding, trigonometry, aggregates, random helpers, LLM math, linear algebra, and the constants <code>math.PI</code>, <code>math.E</code>, <code>math.TAU</code>, <code>math.INF</code>, <code>math.NaN</code></td></tr>
-                <tr><td><code>nn</code></td><td>Neural-net activations, local derivatives, <code>dense</code> / <code>denseBackward</code>, and the loss gradients <code>mseGrad</code> / <code>softmaxGrad</code> — catalog in <a href="#nn">13.3.3</a>, the layer model in <a href="14-neural-nets.html">14. Neural Nets</a>. No flat aliases</td></tr>
+                <tr><td><code>nn</code></td><td>Neural-net activations, local derivatives, <code>dense</code> / <code>denseBackward</code>, and the loss gradients <code>mseGrad</code> / <code>softmaxGrad</code>. Signatures and the layer model are <a href="14-neural-nets.html">14. Neural Nets</a>. No flat aliases</td></tr>
                 <tr><td><code>str</code></td><td>Case, trimming, splitting and joining, padding, regex helpers, similarity, base64, <code>md5</code> / <code>sha256</code></td></tr>
                 <tr><td><code>io</code></td><td><code>print</code>, <code>input</code>, file and path helpers, <code>glob</code>, <code>grep</code>, environment variables, git helpers</td></tr>
                 <tr><td><code>pdf</code></td><td><code>extractText</code> &mdash; read text from a PDF file (digital text layer; no OCR)</td></tr>
@@ -83,7 +83,7 @@ print(io.readFile("config.json"));</code></pre>
         <p>Only the flat names that have a <code>math.</code>, <code>str.</code>, or <code>io.</code> counterpart are considered deprecated aliases. Calling one produces an IDE and language-server warning from source <code>malda-style</code>, in the form <em>Prefer 'io.print(...)' instead of 'print(...)' (deprecated flat alias)</em>. The warning is advisory: nothing is removed at runtime and the transpilers accept both spellings.</p>
         <p>The affected names, mirroring <code>MaldaLang/BuiltIns/StdLibNamespaces.cs</code>:</p>
         <ul>
-            <li><strong>math:</strong> <code>abs</code>, <code>sum</code>, <code>average</code>, <code>max</code>, <code>min</code>, <code>pow</code>, <code>sqrt</code>, <code>floor</code>, <code>ceil</code>, <code>round</code>, <code>trunc</code>, <code>sign</code>, <code>exp</code>, <code>log</code>, <code>log10</code>, <code>log2</code>, <code>sin</code>, <code>cos</code>, <code>tan</code>, <code>asin</code>, <code>acos</code>, <code>atan</code>, <code>atan2</code>, <code>hypot</code>, <code>clamp</code>, <code>degToRad</code>, <code>radToDeg</code>, <code>zeros</code>, <code>rsqrt</code>, <code>randn</code>, <code>argmax</code>, <code>argmin</code>, <code>logSumExp</code>, <code>softmax</code>, <code>crossEntropyFromLogits</code>, <code>dot</code>, <code>matmul</code>, <code>transpose</code>, <code>relu</code>, <code>sigmoid</code>, <code>tanh</code>, <code>mse</code>, <code>randomChoiceWeighted</code>, <code>seed</code>, <code>random</code>, <code>randomInt</code>, <code>randomFloat</code>, <code>anneal</code></li>
+            <li><strong>math:</strong> <code>abs</code>, <code>sum</code>, <code>average</code>, <code>max</code>, <code>min</code>, <code>pow</code>, <code>sqrt</code>, <code>floor</code>, <code>ceil</code>, <code>round</code>, <code>trunc</code>, <code>sign</code>, <code>exp</code>, <code>log</code>, <code>log10</code>, <code>log2</code>, <code>sin</code>, <code>cos</code>, <code>tan</code>, <code>asin</code>, <code>acos</code>, <code>atan</code>, <code>atan2</code>, <code>hypot</code>, <code>clamp</code>, <code>degToRad</code>, <code>radToDeg</code>, <code>zeros</code>, <code>rsqrt</code>, <code>randn</code>, <code>argmax</code>, <code>argmin</code>, <code>logSumExp</code>, <code>softmax</code>, <code>dot</code>, <code>matmul</code>, <code>transpose</code>, <code>sigmoid</code>, <code>tanh</code>, <code>randomChoiceWeighted</code>, <code>seed</code>, <code>random</code>, <code>randomInt</code>, <code>randomFloat</code>, <code>anneal</code></li>
             <li><strong>str:</strong> <code>length</code>, <code>upper</code>, <code>lower</code>, <code>trim</code>, <code>text</code>, <code>trimText</code>, <code>substring</code>, <code>indexOf</code>, <code>replace</code>, <code>split</code>, <code>normalizeText</code>, <code>tokenize</code>, <code>tokenOverlap</code>, <code>similarity</code>, <code>extractNumbers</code>, <code>regexMatch</code>, <code>regexReplace</code>, <code>regexFind</code>, <code>startsWith</code>, <code>endsWith</code>, <code>padStart</code>, <code>padEnd</code>, <code>includes</code>, <code>join</code>, <code>repeat</code>, <code>base64Encode</code>, <code>base64Decode</code>, <code>md5</code>, <code>sha256</code></li>
             <li><strong>io:</strong> <code>print</code>, <code>input</code>, <code>readFile</code>, <code>writeFile</code>, <code>copyFile</code>, <code>readFileBase64</code>, <code>writeFileBase64</code>, <code>readTextFileLines</code>, <code>deleteFile</code>, <code>hasFile</code>, <code>hasDirectory</code>, <code>ensureDir</code>, <code>listDirectory</code>, <code>hasEmbeddedFolder</code>, <code>embeddedFolderRoot</code>, <code>glob</code>, <code>grep</code>, <code>replaceInFile</code>, <code>pathExists</code>, <code>pathJoin</code>, <code>pathNormalize</code>, <code>pathGetExtension</code>, <code>isPathUnder</code>, <code>getEnv</code>, <code>getEnvOr</code>, <code>hasEnv</code>, <code>getFileName</code>, <code>getDirectoryName</code>, <code>gitStatus</code>, <code>gitAdd</code>, <code>gitCommit</code>, <code>gitDiff</code>, <code>gitLog</code>, <code>gitBranch</code>, <code>gitCheckout</code>, <code>gitPull</code>, <code>gitPush</code></li>
         </ul>
@@ -156,7 +156,7 @@ print(math.pow(2, 3));</code></pre>
 var g = math.zeros(3, 4);     // 3 rows, 4 columns
 g[0][0] = 1.0;                // other rows stay zero</code></pre>
         <h4>Neural-net helpers</h4>
-        <p>Linear algebra used by the offline <a href="35-examples.html">AI_Theory</a> track stays on <code>math</code>. Inner dimensions of <code>math.matmul</code> must match. Activations, local derivatives, and a dense layer are <a href="14-neural-nets.html">14. Neural Nets</a>; this chapter keeps the signatures (see <a href="#nn">13.3.3</a>).</p>
+        <p>Linear algebra used by the offline <a href="35-examples.html">AI_Theory</a> track stays on <code>math</code>. Inner dimensions of <code>math.matmul</code> must match. Activations, local derivatives, a dense layer, and the signature table are <a href="14-neural-nets.html">14. Neural Nets</a>.</p>
         <pre><code data-run="true" data-expect="5">print(math.dot([1.0, 2.0], [3.0, 1.0]));</code></pre>
         <h3>13.3.1 LLM-oriented Math Helpers (Reference)</h3>
         <p>See <code>math.seed</code> through <code>math.anneal</code> in the table. Invalid counts or types, empty arrays, a non-positive softmax temperature, or zero total weight throw. <code>math.seed</code> pins <code>math.random</code>, <code>math.randomInt</code>, <code>math.randomFloat</code>, <code>math.randn</code>, <code>math.randomChoiceWeighted</code>, and <code>math.anneal</code>.</p>
@@ -184,37 +184,6 @@ var result = math.anneal(
 );
 print(result.state);
 print(result.cost);</code></pre>
-        <h3 id="nn">13.3.3 Neural-net namespace (<code>nn</code>)</h3>
-        <p>Signature catalog. The layer model — <code>pre = xW + b</code>, the local derivative, and the example track — is <a href="14-neural-nets.html">14. Neural Nets</a>. Interpreter, C# transpile, and JavaScript all run <code>nn.*</code>. There is no flat alias and no autograd tape. Weights are <code>[in, out]</code> (row = from, column = to), the same layout as <code>math.matmul(x, weights)</code>.</p>
-        <p><code>nn.dense</code> returns <code>{ pre, out }</code>. <code>pre</code> is the pre-activation, the linear part before the nonlinearity: <code>pre = xW + b</code> (or <code>XW + b</code> for a batch). <code>out</code> is <code>activation(pre)</code>. With no activation, or with <code>"linear"</code>, <code>out</code> is a copy of <code>pre</code>. Keep <code>pre</code> and pass it to <code>nn.denseBackward</code>: <code>dRelu</code>, <code>dSigmoid</code>, and the other local derivatives are taken at <code>pre</code>, not at <code>out</code>.</p>
-        <table>
-        <thead>
-        <tr><th>Call</th><th>Arguments</th><th>Returns</th><th>Notes</th></tr>
-        </thead>
-        <tbody>
-        <tr><td><code>nn.relu(x)</code></td><td>1 argument: (x)</td><td>—</td><td>scalar or elementwise 1D/2D; max(0, x). Only on <code>nn</code></td></tr>
-        <tr><td><code>nn.sigmoid(x)</code> / <code>tanh</code></td><td>1 argument: (x)</td><td>—</td><td>same functions as <code>math.sigmoid</code> / <code>tanh</code>; scalar or elementwise 1D/2D</td></tr>
-        <tr><td><code>nn.leakyRelu(x, alpha?)</code></td><td>1-2 arguments: (x, alpha?)</td><td>—</td><td>default alpha <code>0.01</code></td></tr>
-        <tr><td><code>nn.elu(x, alpha?)</code></td><td>1-2 arguments: (x, alpha?)</td><td>—</td><td>default alpha <code>1</code></td></tr>
-        <tr><td><code>nn.gelu(x)</code></td><td>1 argument: (x)</td><td>—</td><td>tanh approximation</td></tr>
-        <tr><td><code>nn.silu(x)</code></td><td>1 argument: (x)</td><td>—</td><td><code>x * sigmoid(x)</code></td></tr>
-        <tr><td><code>nn.softplus(x)</code></td><td>1 argument: (x)</td><td>—</td><td>stable <code>log(1 + exp(x))</code></td></tr>
-        <tr><td><code>nn.softmax(array, temperature?)</code></td><td>1-2 arguments: (array, temperature?)</td><td>array</td><td>same function as <code>math.softmax</code></td></tr>
-        <tr><td><code>nn.mse(pred, target)</code></td><td>2 arguments: (pred, target)</td><td>float</td><td>scalars or same-length 1D arrays; mean of squared error. Only on <code>nn</code></td></tr>
-        <tr><td><code>nn.crossEntropyFromLogits(logits, targetIndex)</code></td><td>2 arguments: (logits, targetIndex)</td><td>float</td><td>classification loss from logits and a class index. Only on <code>nn</code></td></tr>
-        <tr><td><code>nn.dRelu(x)</code> / <code>dLeakyRelu</code> / <code>dElu</code> / <code>dGelu</code> / <code>dSilu</code> / <code>dSoftplus</code> / <code>dSigmoid</code> / <code>dTanh</code></td><td>same arguments as the activation</td><td>—</td><td>derivative with respect to the pre-activation. <code>dSigmoid(z) = s*(1-s)</code> with <code>s = sigmoid(z)</code></td></tr>
-        <tr><td><code>nn.dense(x, weights, bias?, activation?)</code></td><td>2-4 arguments: (x, weights, bias?, activation?)</td><td><code>{ pre, out }</code></td><td>vector or batch matrix in, bias length = outputs. Activation names: <code>relu</code>, <code>leakyRelu</code>, <code>elu</code>, <code>gelu</code>, <code>silu</code>, <code>softplus</code>, <code>sigmoid</code>, <code>tanh</code>, <code>linear</code>. <code>leakyRelu</code> / <code>elu</code> inside <code>dense</code> use the default alpha</td></tr>
-        <tr><td><code>nn.denseBackward(x, weights, upstream, activation?, pre?)</code></td><td>3-5 arguments: (x, weights, upstream, activation?, pre?)</td><td><code>{ dInput, dWeights, dBias }</code></td><td><code>upstream</code> is dL/d(out). Pass the forward <code>pre</code> when the activation is not linear. Batch bias gradients are summed over the batch</td></tr>
-        <tr><td><code>nn.mseGrad(pred, target)</code></td><td>2 arguments: (pred, target)</td><td>same rank as <code>pred</code></td><td>elementwise <code>pred - target</code>, the gradient of <code>1/2 (pred - target)^2</code>. Not the gradient of <code>nn.mse</code>, which averages</td></tr>
-        <tr><td><code>nn.softmaxGrad(logits, target)</code></td><td>2 arguments: (logits, target)</td><td>array</td><td><code>softmax(logits) - oneHot(target)</code> when <code>target</code> is a class index, or minus a same-length numeric vector</td></tr>
-        </tbody>
-        </table>
-        <pre><code data-run="true" data-expect="1\n-2\n25\n275\n0">print(int(nn.relu(-2.0) + nn.relu(1.0)));
-print(int(nn.leakyRelu(-2.0) * 100));
-print(int(nn.dSigmoid(0.0) * 100));
-var layer = nn.dense([1.0, 2.0], [[0.5, -1.0], [1.0, 0.0]], [0.25, -0.5], "relu");
-print(int(layer.out[0] * 100));
-print(int(layer.out[1]));</code></pre>
         <h2 id="strings">13.4 String Functions</h2>
         <p>Preferred spelling is <code>str.*</code>. The same names also work as methods on a string value (<code>"hello".upper()</code>). Flat globals are deprecated aliases (see <a href="#stdlib-namespaces">13.2</a>).</p>
         <p>Interpreter, C# transpile, and JavaScript all run <code>str.*</code>. See the <a href="../docs/spec/backend-capability-matrix.md">backend capability matrix</a>.</p>

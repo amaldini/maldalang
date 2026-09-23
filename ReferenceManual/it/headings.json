@@ -853,12 +853,6 @@
   },
   {
     "file": "13-built-in-functions.html",
-    "level": 3,
-    "id": "nn",
-    "title": "13.3.3 Namespace reti neurali (nn)"
-  },
-  {
-    "file": "13-built-in-functions.html",
     "level": 2,
     "id": "strings",
     "title": "13.4 Funzioni sulle stringhe"
@@ -1153,6 +1147,18 @@
   },
   {
     "file": "14-neural-nets.html",
+    "level": 3,
+    "id": "reading-the-matrix",
+    "title": "14.2.1 Leggere la matrice"
+  },
+  {
+    "file": "14-neural-nets.html",
+    "level": 3,
+    "id": "batch",
+    "title": "14.2.2 Un batch"
+  },
+  {
+    "file": "14-neural-nets.html",
     "level": 2,
     "id": "activations",
     "title": "14.3 Attivazioni"
@@ -1162,6 +1168,18 @@
     "level": 2,
     "id": "backward",
     "title": "14.4 Un passo di backward"
+  },
+  {
+    "file": "14-neural-nets.html",
+    "level": 3,
+    "id": "second-layer",
+    "title": "14.4.1 Un secondo layer"
+  },
+  {
+    "file": "14-neural-nets.html",
+    "level": 3,
+    "id": "weight-update",
+    "title": "14.4.2 Il passo sui pesi"
   },
   {
     "file": "14-neural-nets.html",
@@ -1180,6 +1198,12 @@
     "level": 2,
     "id": "backends",
     "title": "14.7 Backend"
+  },
+  {
+    "file": "14-neural-nets.html",
+    "level": 2,
+    "id": "signatures",
+    "title": "14.8 Firme"
   },
   {
     "file": "15-graphs.html",
