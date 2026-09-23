@@ -181,6 +181,21 @@
       "expectedOutput": "Prints training loss and classifies all four XOR inputs, then nn dense ok.",
       "documentationPath": "/docs/start-here.md",
       "documentationTitle": "Start Here"
+    },
+    {
+      "name": "Tiny digits (MNIST loop)",
+      "description": "Train a 5x5 glyph MLP with nn.dense, softmax cross-entropy, and a hand-written learning-rate step — the MNIST loop without the download",
+      "file": "mnist_digits.malda",
+      "track": "student",
+      "difficulty": "intermediate",
+      "minutes": 10,
+      "requires": ["offline"],
+      "concepts": ["MNIST", "dense layer", "ReLU", "cross-entropy", "softmax"],
+      "prerequisites": ["AI_Theory/nn_dense.malda", "AI_Theory/softmax_classifier.malda"],
+      "learningGoal": "Run the chapter 14 two-layer step on ten digit glyphs: ReLU hidden layer, linear logits, nn.softmaxGrad as upstream.",
+      "expectedOutput": "Prints training loss and classifies all ten glyphs, then mnist digits ok.",
+      "documentationPath": "/docs/start-here.md",
+      "documentationTitle": "Start Here"
     }
   ]
 }

@@ -115,8 +115,9 @@ print(int(nn.mse([2.0, 0.0], [0.0, 0.0])));</code></pre>
             <li><code>Examples/AI_Theory/xor_neural_net.malda</code> — a 2-4-1 net. Every chain-rule multiply is a named variable, so you can see <code>dZ</code>, <code>dWeights</code>, and <code>dInput</code> before they disappear into a helper.</li>
             <li><code>Examples/AI_Theory/nn_dense.malda</code> — the same XOR net through <code>nn.dense</code> and <code>nn.denseBackward</code>, including the in-place learning-rate step.</li>
             <li><code>Examples/AI_Theory/softmax_classifier.malda</code> — three classes in 2D. The loss is <code>nn.crossEntropyFromLogits</code> and the upstream is <code>nn.softmaxGrad</code>.</li>
+            <li><code>Examples/AI_Theory/mnist_digits.malda</code> — ten 5×5 glyphs in the MNIST shape. The hidden <code>nn.dense</code> is <code>"relu"</code>; the ten logits are <code>"linear"</code>, so <code>nn.softmaxGrad</code> is the upstream.</li>
         </ol>
-        <p><code>attention_is_all_you_need.malda</code> stays on <code>math.matmul</code> and builds attention from the same layout. <code>microgpt.malda</code> is a tiny character model on that track. <code>new OnnxModel(path)</code> inspects and runs a small model on the host. It does not train, and it is not a substitute for the five files above.</p>
+        <p><code>attention_is_all_you_need.malda</code> stays on <code>math.matmul</code> and builds attention from the same layout. <code>microgpt.malda</code> is a tiny character model on that track. <code>new OnnxModel(path)</code> inspects and runs a small model on the host. It does not train, and it is not a substitute for the six files above.</p>
 
         <h2 id="backends">14.7 Backends</h2>
         <p>Interpreter, C# transpile, and JavaScript all run <code>math.dot</code> / <code>matmul</code> / <code>transpose</code> and <code>nn.*</code>. <code>OnnxModel</code> is host-only. There is no tensor type, no autograd tape, and no <code>Adam</code> or data loader in core. There is no flat alias for <code>nn</code> names: write <code>nn.relu</code>, not <code>relu</code>.</p>

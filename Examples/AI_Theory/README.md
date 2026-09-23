@@ -14,6 +14,7 @@ Agents and tools stay in [`Examples/Agents/`](../Agents/).
 | `xor_neural_net.malda` | 2-4-1 MLP, named chain-rule gradients, XOR |
 | `nn_dense.malda` | Same XOR net via `nn.dense` / `nn.denseBackward` |
 | `softmax_classifier.malda` | 3-class softmax on 2D blobs (`math.matmul`) |
+| `mnist_digits.malda` | Ten 5×5 glyphs, chapter 14 MLP (ReLU hidden, 10 linear logits) |
 | `svm_linear.malda` | Soft-margin linear SVM (and why XOR needs a hidden layer) |
 | `attention_is_all_you_need.malda` | Vaswani et al. 2017 Transformer, then reverse a sequence |
 | `microgpt.malda` | Tiny decoder-only GPT (Karpathy port) |

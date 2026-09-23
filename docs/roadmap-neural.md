@@ -57,7 +57,7 @@ with an explicit activation derivative, not a module zoo.
 | 2 | **N2** Track gaps | Landed | Student path jumped from chain rule to a 2-4-1 MLP |
 | 3 | **N3** Decision-boundary playground | Landed | Print-only nets hide geometry |
 | 4 | **N4** Inspect small models | Landed | Consume-to-learn: embeddings + restricted ONNX |
-| 5 | **N5** Didactic data | Partial | Inline arrays; `identity.onnx` fixture. No ImageNet |
+| 5 | **N5** Didactic data | Partial | Inline arrays; `identity.onnx`; `mnist_digits.malda` (5×5 glyphs). No MNIST download, no ImageNet |
 | 6 | **N6** Docs / Web IDE | Landed | Chapter 13 + start-here + catalog |
 | 7 | **N7** `nn.*` namespace | Landed | Activations, local derivatives, dense forward/backward |
 
@@ -69,6 +69,7 @@ N2  perceptron + softmax_classifier       (landed)
 N3  xor_decision_boundary (malda play)    (landed)
 N4  embedding_2d + OnnxModel              (landed)
 N5  tiny fixtures, not a DataLoader       (partial)
+    mnist_digits.malda (5x5, not a download)
 N6  RM / start-here / catalog             (landed)
 N7  nn.relu / leakyRelu / elu / gelu / silu / softplus
     nn.dRelu / dSigmoid / …               (landed)
@@ -131,7 +132,7 @@ colored by the XOR MLP, four training points overlaid. No new `ui.chart`.
 
 - Language `tensor` / autograd tape / Adam / DataLoader
 - GPU, distributed training, ONNX training loops
-- Downloading MNIST / ImageNet in the OSS repo
+- Downloading MNIST / ImageNet in the OSS repo (`mnist_digits.malda` is ten 5×5 glyphs on the chapter 14 step)
 - A second plotting namespace
 
 ---
