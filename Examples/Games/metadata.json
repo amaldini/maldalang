@@ -497,7 +497,7 @@
     },
     {
       "name": "CartPole neural policy",
-      "description": "REINFORCE policy on CartPole: watch training returns and the cart, then drag the pole with the mouse",
+      "description": "A small net learns a centering CartPole law: watch the cart return to the mark, then drag the pole with the mouse",
       "file": "cartpole_neural.malda",
       "track": "student",
       "difficulty": "advanced",
@@ -505,7 +505,7 @@
       "requires": ["offline"],
       "concepts": [
         "neural network",
-        "policy gradient",
+        "imitation",
         "nn.dense",
         "game.*",
         "JavaScript target"

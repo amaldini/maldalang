@@ -1,11 +1,13 @@
 // CartPole policy gradient on a JS canvas.
 // Run: malda play Examples/Games/cartpole_neural.malda
 //
-// A 4-24-2 net (tanh hidden, linear logits) learns left/right by REINFORCE.
-// Each frame draws the cart and a bar of recent episode returns.
-// Reward is 1 at the track center with no speed, and falls off as the cart
-// drifts or keeps velocity, so a shove should be answered by a return to center.
-// Hold the mouse to drag the pole off balance; the policy tries to recover.
+// A 4-24-2 net (tanh hidden, linear logits) drives the cart.
+// REINFORCE on the episode return does not learn a return to center: ±10 N
+// only helps dozens of steps later, and a short demo never assigns that credit.
+// Each batch is labeled by a linear score — pole angle and rate, plus cart
+// position and speed — that keeps the pole up and walks the cart back to the
+// center mark. nn.denseBackward fits the net to those labels.
+// Hold the mouse to drag the pole; the net tries to recover toward the mark.
 
 function randomMatrix(rows: int, cols: int, scale: float) -> array {
     var matrix = [];
@@ -89,14 +91,6 @@ function applyVector(bias: array, grad: array, lr: float) {
     }
 }
 
-function scaleCopy(values: array, scale: float) -> array {
-    var out = [];
-    for (var i = 0; i < values.length; i = i + 1) {
-        out.append(values[i] * scale);
-    }
-    return out;
-}
-
 function observe(state: array) -> array {
     return [
         state[0] / 2.4,
@@ -107,6 +101,14 @@ function observe(state: array) -> array {
 }
 
 function freshState() -> array {
+    if (math.random() < 0.5) {
+        return [
+            math.randomFloat(-1.3, 1.3),
+            math.randomFloat(-0.4, 0.4),
+            math.randomFloat(-0.05, 0.05),
+            0.0
+        ];
+    }
     return [
         math.randomFloat(-0.05, 0.05),
         0.0,
@@ -180,51 +182,41 @@ function chooseAction(logits: array, greedy: bool) -> int {
     return 0;
 }
 
-function reinforce(w1: array, b1: array, w2: array, b2: array, obs: array, actions: array, rewards: array, lr: float, gamma: float) {
-    var n = rewards.length;
-    if (n < 2) {
+function teacherAction(state: array) -> int {
+    var score = state[2] + 0.3 * state[3] + 0.15 * state[0] + 0.1 * state[1];
+    if (score > 0.0) {
+        return 1;
+    }
+    return 0;
+}
+
+function imitate(w1: array, b1: array, w2: array, b2: array, states: array, lr: float) {
+    var n = states.length;
+    if (n < 1) {
         return;
     }
-    var reversed = [];
-    var running = 0.0;
-    var t = n - 1;
-    while (t >= 0) {
-        running = rewards[t] + gamma * running;
-        reversed.append(running);
-        t = t - 1;
-    }
-    var returns = [];
-    var k = reversed.length - 1;
-    while (k >= 0) {
-        returns.append(reversed[k]);
-        k = k - 1;
-    }
-    var mean = 0.0;
-    for (var i = 0; i < n; i = i + 1) {
-        mean = mean + returns[i];
-    }
-    mean = mean / n;
-    var varSum = 0.0;
-    for (var i = 0; i < n; i = i + 1) {
-        var delta = returns[i] - mean;
-        varSum = varSum + delta * delta;
-    }
-    var std = math.sqrt(varSum / n);
-    if (std < 0.000001) {
-        std = 0.000001;
-    }
-
     var hidden = 24;
     var gw1 = zeroMatrix(4, hidden);
     var gb1 = zeroVector(hidden);
     var gw2 = zeroMatrix(hidden, 2);
     var gb2 = zeroVector(2);
+    var extra = 0;
+    while (extra < 16) {
+        states.append([
+            math.randomFloat(-1.6, 1.6),
+            math.randomFloat(-1.2, 1.2),
+            math.randomFloat(-0.15, 0.15),
+            math.randomFloat(-0.8, 0.8)
+        ]);
+        extra = extra + 1;
+    }
+    n = states.length;
     for (var i = 0; i < n; i = i + 1) {
-        var x = obs[i];
+        var raw = states[i];
+        var x = observe(raw);
         var h = nn.dense(x, w1, b1, "tanh");
         var out = nn.dense(h.out, w2, b2, "linear");
-        var advantage = (returns[i] - mean) / std;
-        var upstream = scaleCopy(nn.softmaxGrad(out.out, actions[i]), advantage);
+        var upstream = nn.softmaxGrad(out.out, teacherAction(raw));
         var backOut = nn.denseBackward(h.out, w2, upstream, "linear", out.pre);
         var backH = nn.denseBackward(x, w1, backOut.dInput, "tanh", h.pre);
         addMatrix(gw1, backH.dWeights);
@@ -252,8 +244,7 @@ function startCartpole() {
     var b1 = randomVector(hidden, 0.05);
     var w2 = randomMatrix(hidden, 2, s2);
     var b2 = randomVector(2, 0.05);
-    var learningRate = 0.08;
-    var gamma = 0.99;
+    var learningRate = 0.35;
 
     var canvasW = 960;
     var canvasH = 560;
@@ -270,9 +261,7 @@ function startCartpole() {
     var chartH = 280;
 
     var state = freshState();
-    var obs = [];
-    var actions = [];
-    var rewards = [];
+    var lesson = [];
     var history = [];
     var episode = 1;
     var episodeReturn = 0.0;
@@ -285,9 +274,7 @@ function startCartpole() {
 
     function resetEpisode() {
         state = freshState();
-        obs = [];
-        actions = [];
-        rewards = [];
+        lesson = [];
         episodeReturn = 0.0;
         episodeSteps = 0.0;
     }
@@ -336,8 +323,9 @@ function startCartpole() {
     }
 
     function finishEpisode() {
-        if (training) {
-            reinforce(w1, b1, w2, b2, obs, actions, rewards, learningRate, gamma);
+        if (training && lesson.length > 0) {
+            imitate(w1, b1, w2, b2, lesson, learningRate);
+            lesson = [];
         }
         history.append(episodeReturn);
         if (history.length > 36) {
@@ -399,15 +387,19 @@ function startCartpole() {
             var hiddenOut = nn.dense(x, w1, b1, "tanh");
             var out = nn.dense(hiddenOut.out, w2, b2, "linear");
             lastProbs = math.softmax(out.out);
-            var action = chooseAction(out.out, !training);
+            var action = chooseAction(out.out, true);
             var poke = mousePoke();
+            if (training) {
+                lesson.append([state[0], state[1], state[2], state[3]]);
+            }
             var done = cartStep(state, action, poke);
             var reward = stepReward(state);
-            obs.append(x);
-            actions.append(action);
-            rewards.append(reward);
             episodeReturn = episodeReturn + reward;
             episodeSteps = episodeSteps + 1.0;
+            if (training && lesson.length >= 24) {
+                imitate(w1, b1, w2, b2, lesson, learningRate);
+                lesson = [];
+            }
             if (done || episodeSteps >= cap) {
                 finishEpisode();
                 break;
