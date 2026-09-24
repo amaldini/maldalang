@@ -17,7 +17,7 @@ public class AITheoryTrackTests : TestBase
             .Where(example => example.Category == "AI_Theory")
             .ToList();
 
-        Assert.Equal(19, examples.Count);
+        Assert.Equal(23, examples.Count);
         Assert.All(examples, example =>
         {
             Assert.Equal("student", example.Track);
@@ -176,5 +176,37 @@ public class AITheoryTrackTests : TestBase
         var path = PlanningPaths.ResolveRepoPath("Examples", "AI_Theory", "residual_dropout.malda");
         var output = await CaptureInterpretAsync(File.ReadAllText(path), path);
         Assert.Contains("residual dropout ok", output);
+    }
+
+    [Fact]
+    public async Task EmbedRow_PrintsOkLine()
+    {
+        var path = PlanningPaths.ResolveRepoPath("Examples", "AI_Theory", "embed_row.malda");
+        var output = await CaptureInterpretAsync(File.ReadAllText(path), path);
+        Assert.Contains("embed row ok", output);
+    }
+
+    [Fact]
+    public async Task NextChar_PrintsOkLine()
+    {
+        var path = PlanningPaths.ResolveRepoPath("Examples", "AI_Theory", "next_char.malda");
+        var output = await CaptureInterpretAsync(File.ReadAllText(path), path);
+        Assert.Contains("next char ok", output);
+    }
+
+    [Fact]
+    public async Task LayerNorm_PrintsOkLine()
+    {
+        var path = PlanningPaths.ResolveRepoPath("Examples", "AI_Theory", "layer_norm.malda");
+        var output = await CaptureInterpretAsync(File.ReadAllText(path), path);
+        Assert.Contains("layer norm ok", output);
+    }
+
+    [Fact]
+    public async Task AttentionStep_PrintsOkLine()
+    {
+        var path = PlanningPaths.ResolveRepoPath("Examples", "AI_Theory", "attention_step.malda");
+        var output = await CaptureInterpretAsync(File.ReadAllText(path), path);
+        Assert.Contains("attention step ok", output);
     }
 }

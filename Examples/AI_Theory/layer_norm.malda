@@ -1,0 +1,109 @@
+// Subtract the mean and divide by the standard deviation, then scale.
+//
+// Section 1. Eight multiplies by a matrix with entries near 1.4. The plain
+// product grows. The same product, normalized after every multiply, stays
+// near 1.
+//
+// Section 2. y = gamma * (x - mean) / std + beta. The loss is
+// 1/2 sum (y - target)^2, so dL/d(gamma[j]) is (y[j] - target[j]) times the
+// normalized unit. A central difference on gamma matches that slope.
+// Offline and seeded — no API key. Next: attention_step.malda.
+
+function copyRow(row: array) -> array {
+    var copy = [];
+    for (var j = 0; j < row.length; j = j + 1) {
+        copy.append(row[j]);
+    }
+    return copy;
+}
+
+function maxAbs(values: array) -> float {
+    var peak = 0.0;
+    for (var i = 0; i < values.length; i = i + 1) {
+        var magnitude = math.abs(values[i]);
+        if (magnitude > peak) {
+            peak = magnitude;
+        }
+    }
+    return peak;
+}
+
+function normalized(x: array) -> array {
+    var mean = math.average(x);
+    var varSum = 0.0;
+    for (var j = 0; j < x.length; j = j + 1) {
+        var delta = x[j] - mean;
+        varSum = varSum + delta * delta;
+    }
+    var inv = math.rsqrt(varSum / float(x.length) + 0.00001);
+    var row = [];
+    for (var j = 0; j < x.length; j = j + 1) {
+        row.append((x[j] - mean) * inv);
+    }
+    return row;
+}
+
+function applyNorm(x: array, gamma: array, beta: array) -> array {
+    var z = normalized(x);
+    var y = [];
+    for (var j = 0; j < z.length; j = j + 1) {
+        y.append(gamma[j] * z[j] + beta[j]);
+    }
+    return y;
+}
+
+function halfSquared(pred: array, target: array) -> float {
+    var loss = 0.0;
+    for (var j = 0; j < pred.length; j = j + 1) {
+        var delta = pred[j] - target[j];
+        loss = loss + 0.5 * delta * delta;
+    }
+    return loss;
+}
+
+math.seed(3);
+
+var w = [
+    [1.4, 0.2, 0.0, 0.1],
+    [0.1, 1.3, 0.2, 0.0],
+    [0.0, 0.2, 1.5, 0.1],
+    [0.2, 0.0, 0.1, 1.4]
+];
+var plain = [0.5, -0.2, 0.8, -0.4];
+var normed = copyRow(plain);
+for (var step = 0; step < 8; step = step + 1) {
+    plain = math.matmul(plain, w);
+    normed = normalized(math.matmul(normed, w));
+}
+var plainPeak = maxAbs(plain);
+var normPeak = maxAbs(normed);
+
+var x = [1.0, 2.0, 3.0, 4.0];
+var gamma = [0.5, -0.3, 1.2, 0.8];
+var beta = [0.1, 0.0, -0.2, 0.4];
+var target = [0.0, 1.0, 0.0, -1.0];
+var epsilon = 0.0001;
+var y = applyNorm(x, gamma, beta);
+var upstream = nn.mseGrad(y, target);
+var z = normalized(x);
+var maxGap = 0.0;
+for (var j = 0; j < gamma.length; j = j + 1) {
+    var plus = copyRow(gamma);
+    var minus = copyRow(gamma);
+    plus[j] = plus[j] + epsilon;
+    minus[j] = minus[j] - epsilon;
+    var numeric = (halfSquared(applyNorm(x, plus, beta), target) - halfSquared(applyNorm(x, minus, beta), target)) / (2.0 * epsilon);
+    var analytic = upstream[j] * z[j];
+    var gap = math.abs(numeric - analytic);
+    if (gap > maxGap) {
+        maxGap = gap;
+    }
+}
+
+io.print("Layer norm: deep product vs normalized product");
+io.print("plain peak: " + string(math.round(plainPeak * 10.0) / 10.0));
+io.print("norm peak: " + string(math.round(normPeak * 1000.0) / 1000.0));
+io.print("gamma gap: " + string(math.round(maxGap * 1000000.0) / 1000000.0));
+if (plainPeak > 20.0 && normPeak < 3.0 && maxGap < 0.0001) {
+    io.print("layer norm ok");
+}

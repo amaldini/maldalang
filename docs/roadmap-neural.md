@@ -1,6 +1,6 @@
 # MALDA neural-nets kit
 
-**Status:** N0–N4 and N6–N8 landed; N5 partial  
+**Status:** N0–N4 and N6–N9 landed; N5 partial  
 **Created:** 2026-09-20  
 **Audience:** maintainers extending `math.*`, `nn.*`, and the offline AI_Theory track after Final 1.0
 
@@ -57,10 +57,11 @@ with an explicit activation derivative, not a module zoo.
 | 2 | **N2** Track gaps | Landed | Student path jumped from chain rule to a 2-4-1 MLP |
 | 3 | **N3** Decision-boundary playground | Landed | Print-only nets hide geometry |
 | 4 | **N4** Inspect small models | Landed | Consume-to-learn: embeddings + restricted ONNX |
-| 5 | **N5** Didactic data | Partial | Inline arrays; `identity.onnx`; `mnist_digits.malda` (5×5 glyphs). No MNIST download, no ImageNet |
+| 5 | **N5** Didactic data | Partial | Inline arrays; `identity.onnx`; `mnist_digits.malda` (5×5 glyphs); `next_char.malda` (repeated word). No MNIST download, no ImageNet |
 | 6 | **N6** Docs / Web IDE | Landed | Chapter 13 + start-here + catalog |
 | 7 | **N7** `nn.*` namespace | Landed | Activations, local derivatives, dense forward/backward |
 | 8 | **N8** Curriculum programs | Landed | Grad check, init scale, holdout, momentum, RNN, conv, residual/dropout. No new builtins |
+| 9 | **N9** Bridge into attention | Landed | Embedding row, bigram, layer norm, one attention head. No new builtins |
 
 ```text
 N0  roadmap file                          (landed)
@@ -81,6 +82,8 @@ N8  gradcheck_dense / init_scale          (landed)
     glyph_holdout / momentum_valley
     rnn_delay / conv_stroke
     residual_dropout
+N9  embed_row / next_char                 (landed)
+    layer_norm / attention_step
 ```
 
 ---
@@ -180,6 +183,19 @@ No new `nn.*` names. Each file stays offline and prints an `ok` line. Files that
 | `residual_dropout.malda` | A skip beats a deep sigmoid stack on `y = x`; a Bernoulli mask zeros a unit only on the train forward |
 
 `malda play Examples/Games/softmax_decision_boundary.malda` draws the three softmax regions. N5 stays partial: still no MNIST download.
+
+---
+
+## N9 — Bridge into attention
+
+No new `nn.*` names. Each file stays offline, calls `math.seed`, and prints an `ok` line. The chain continues `residual_dropout.malda` and stops at the step before `attention_is_all_you_need.malda`. Embeddings, layer norm, and the one attention head stay handwritten.
+
+| File | Idea |
+|------|------|
+| `embed_row.malda` | One step writes the gradient into the selected embedding row and leaves the other rows put |
+| `next_char.malda` | Bigram on a repeated inline word. `nn.crossEntropyFromLogits` plus the same row scatter |
+| `layer_norm.malda` | A deep product grows; mean and standard deviation keep it near 1. Central difference on the scale |
+| `attention_step.malda` | One head, `QK^T / sqrt(d)`, trained onto a marked token. A causal mask blocks position 0 from reading position 2 |
 
 ---
 

@@ -1,0 +1,143 @@
+// One attention head. scores = Q K^T / sqrt(d), then softmax, then weights V.
+//
+// Three tokens, d = 4. Value row 2 is the marker [1, 0, 0, 0]. Training
+// moves query 0 onto that key, so its output copies the marker. A causal
+// mask then sets future scores to a large negative: position 0 can no longer
+// read position 2. Multi-head, positions, and the encoder-decoder stay in
+// attention_is_all_you_need.malda.
+// Offline and seeded — no API key.
+
+function randomMatrix(rows: int, cols: int, scale: float) -> array {
+    var matrix = [];
+    for (var i = 0; i < rows; i = i + 1) {
+        var row = [];
+        for (var j = 0; j < cols; j = j + 1) {
+            row.append(math.randn(scale));
+        }
+        matrix.append(row);
+    }
+    return matrix;
+}
+
+function zeros(rows: int, cols: int) -> array {
+    var matrix = [];
+    for (var i = 0; i < rows; i = i + 1) {
+        var row = [];
+        for (var j = 0; j < cols; j = j + 1) {
+            row.append(0.0);
+        }
+        matrix.append(row);
+    }
+    return matrix;
+}
+
+function scaleRows(matrix: array, scale: float) -> array {
+    var out = [];
+    for (var i = 0; i < matrix.length; i = i + 1) {
+        var row = [];
+        for (var j = 0; j < matrix[i].length; j = j + 1) {
+            row.append(matrix[i][j] * scale);
+        }
+        out.append(row);
+    }
+    return out;
+}
+
+function softmaxRows(logits: array) -> array {
+    var weights = [];
+    for (var i = 0; i < logits.length; i = i + 1) {
+        weights.append(math.softmax(logits[i]));
+    }
+    return weights;
+}
+
+function causalMask(n: int) -> array {
+    var mask = zeros(n, n);
+    for (var i = 0; i < n; i = i + 1) {
+        for (var j = 0; j <= i; j = j + 1) {
+            mask[i][j] = 1.0;
+        }
+    }
+    return mask;
+}
+
+function attend(q: array, k: array, v: array, mask: array, scale: float) -> object {
+    var scores = scaleRows(math.matmul(q, math.transpose(k)), scale);
+    if (mask.length > 0) {
+        for (var i = 0; i < scores.length; i = i + 1) {
+            for (var j = 0; j < scores[i].length; j = j + 1) {
+                if (mask[i][j] < 0.5) {
+                    scores[i][j] = -1.0e9;
+                }
+            }
+        }
+    }
+    var weights = softmaxRows(scores);
+    return { "scores": scores, "weights": weights, "out": math.matmul(weights, v) };
+}
+
+function softmaxBackwardRow(dP: array, p: array) -> array {
+    var dot = 0.0;
+    for (var i = 0; i < p.length; i = i + 1) {
+        dot = dot + dP[i] * p[i];
+    }
+    var dS = [];
+    for (var i = 0; i < p.length; i = i + 1) {
+        dS.append(p[i] * (dP[i] - dot));
+    }
+    return dS;
+}
+
+function sgdMatrix(weights: array, grad: array, lr: float) {
+    for (var i = 0; i < weights.length; i = i + 1) {
+        for (var j = 0; j < weights[i].length; j = j + 1) {
+            weights[i][j] = weights[i][j] - lr * grad[i][j];
+        }
+    }
+}
+
+math.seed(4);
+
+var n = 3;
+var d = 4;
+var scale = math.rsqrt(float(d));
+var q = randomMatrix(n, d, 0.2);
+var k = randomMatrix(n, d, 0.2);
+var v = [
+    [0.0, 0.0, 0.0, 1.0],
+    [0.0, 0.0, 1.0, 0.0],
+    [1.0, 0.0, 0.0, 0.0]
+];
+var marker = [1.0, 0.0, 0.0, 0.0];
+var learningRate = 0.8;
+
+for (var step = 0; step < 60; step = step + 1) {
+    var forward = attend(q, k, v, [], scale);
+    var dOut = zeros(n, d);
+    var grad = nn.mseGrad(forward.out[0], marker);
+    for (var j = 0; j < d; j = j + 1) {
+        dOut[0][j] = grad[j];
+    }
+    var dWeights = math.matmul(dOut, math.transpose(v));
+    var dScores = [];
+    for (var i = 0; i < n; i = i + 1) {
+        dScores.append(softmaxBackwardRow(dWeights[i], forward.weights[i]));
+    }
+    var dScaled = scaleRows(dScores, scale);
+    var dQ = math.matmul(dScaled, k);
+    var dK = math.matmul(math.transpose(dScaled), q);
+    sgdMatrix(q, dQ, learningRate);
+    sgdMatrix(k, dK, learningRate);
+}
+
+var trained = attend(q, k, v, [], scale);
+var masked = attend(q, k, v, causalMask(n), scale);
+var markerWeight = trained.weights[0][2];
+var leaked = masked.weights[0][2];
+
+io.print("Attention step: query 0 attends to token 2");
+io.print("marker weight: " + string(math.round(markerWeight * 1000.0) / 1000.0));
+io.print("causal leak: " + string(math.round(leaked * 1000.0) / 1000.0));
+if (markerWeight > 0.8 && leaked < 0.01) {
+    io.print("attention step ok");
+}

@@ -1,0 +1,92 @@
+// A bigram: the current character predicts the next one.
+//
+// The corpus is "abcdef" three times, stored as class indexes. Each character
+// has one successor. Forward copies that embedding row, then one linear
+// nn.dense maps it to six logits. The loss is nn.crossEntropyFromLogits and
+// the upstream is nn.softmaxGrad. denseBackward returns dInput, and that
+// vector is subtracted from the selected row only.
+// Offline and seeded — no API key. Next: layer_norm.malda.
+
+function zeros(n: int) -> array {
+    var values = [];
+    for (var i = 0; i < n; i = i + 1) {
+        values.append(0.0);
+    }
+    return values;
+}
+
+function randomMatrix(rows: int, cols: int, scale: float) -> array {
+    var matrix = [];
+    for (var i = 0; i < rows; i = i + 1) {
+        var row = [];
+        for (var j = 0; j < cols; j = j + 1) {
+            row.append(math.randn(scale));
+        }
+        matrix.append(row);
+    }
+    return matrix;
+}
+
+function copyRow(row: array) -> array {
+    var copy = [];
+    for (var j = 0; j < row.length; j = j + 1) {
+        copy.append(row[j]);
+    }
+    return copy;
+}
+
+function sgdMatrix(weights: array, grad: array, lr: float) {
+    for (var i = 0; i < weights.length; i = i + 1) {
+        for (var j = 0; j < weights[i].length; j = j + 1) {
+            weights[i][j] = weights[i][j] - lr * grad[i][j];
+        }
+    }
+}
+
+function sgdVector(values: array, grad: array, lr: float) {
+    for (var i = 0; i < values.length; i = i + 1) {
+        values[i] = values[i] - lr * grad[i];
+    }
+}
+
+math.seed(2);
+
+var chars = ["a", "b", "c", "d", "e", "f"];
+var vocab = chars.length;
+var dim = 4;
+var ids = [0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5];
+var table = randomMatrix(vocab, dim, 0.3);
+var weights = randomMatrix(dim, vocab, 0.3);
+var bias = zeros(vocab);
+var learningRate = 0.4;
+
+for (var epoch = 0; epoch < 40; epoch = epoch + 1) {
+    for (var i = 0; i < ids.length - 1; i = i + 1) {
+        var id = ids[i];
+        var target = ids[i + 1];
+        var x = copyRow(table[id]);
+        var layer = nn.dense(x, weights, bias, "linear");
+        var upstream = nn.softmaxGrad(layer.out, target);
+        var back = nn.denseBackward(x, weights, upstream, "linear", layer.pre);
+        sgdMatrix(weights, back.dWeights, learningRate);
+        sgdVector(bias, back.dBias, learningRate);
+        sgdVector(table[id], back.dInput, learningRate);
+    }
+}
+
+var correct = 0;
+for (var id = 0; id < vocab; id = id + 1) {
+    var x = copyRow(table[id]);
+    var layer = nn.dense(x, weights, bias, "linear");
+    var pred = math.argmax(layer.out);
+    var expect = (id + 1) % vocab;
+    io.print(chars[id] + " -> " + chars[pred]);
+    if (pred == expect) {
+        correct = correct + 1;
+    }
+}
+
+io.print("Bigram next char: " + string(correct) + "/" + string(vocab));
+if (correct == vocab) {
+    io.print("next char ok");
+}

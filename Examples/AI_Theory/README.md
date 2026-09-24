@@ -22,6 +22,10 @@ Agents and tools stay in [`Examples/Agents/`](../Agents/).
 | `rnn_delay.malda` | Vanishing sigmoid recurrence, then a tanh net that recalls a delayed bit |
 | `conv_stroke.malda` | One shared 3×3 kernel on vertical and horizontal dashes |
 | `residual_dropout.malda` | Residual skip vs a deep sigmoid stack, then a train-time dropout mask |
+| `embed_row.malda` | One embedding row receives the gradient; the other rows stay put |
+| `next_char.malda` | Bigram on a repeated inline word via `nn.dense` and a row scatter |
+| `layer_norm.malda` | Mean and standard deviation keep a deep product near 1; grad check on the scale |
+| `attention_step.malda` | One head, `QK^T / sqrt(d)`, then a causal mask that hides the future |
 | `svm_linear.malda` | Soft-margin linear SVM (and why XOR needs a hidden layer) |
 | `attention_is_all_you_need.malda` | Vaswani et al. 2017 Transformer, then reverse a sequence |
 | `microgpt.malda` | Tiny decoder-only GPT (Karpathy port) |

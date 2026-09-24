@@ -1,0 +1,81 @@
+// An embedding is a table lookup. The gradient writes into one row.
+//
+// Four tokens, two columns. Forward copies table[id]. The loss is nn.mse
+// against a fixed 2D target. One step on token 0 moves that row and leaves
+// the other three rows where they were. Then every token walks to its target.
+// Offline and seeded — no API key. Next: next_char.malda.
+
+function copyRow(row: array) -> array {
+    var copy = [];
+    for (var j = 0; j < row.length; j = j + 1) {
+        copy.append(row[j]);
+    }
+    return copy;
+}
+
+function rowsEqual(left: array, right: array) -> bool {
+    for (var j = 0; j < left.length; j = j + 1) {
+        if (math.abs(left[j] - right[j]) > 0.000001) {
+            return false;
+        }
+    }
+    return true;
+}
+
+math.seed(1);
+
+var targets = [
+    [1.0, 0.0],
+    [0.0, 1.0],
+    [-1.0, 0.0],
+    [0.0, -1.0]
+];
+var table = [
+    [0.0, 0.0],
+    [0.0, 0.0],
+    [0.0, 0.0],
+    [0.0, 0.0]
+];
+var before = [];
+for (var id = 0; id < table.length; id = id + 1) {
+    before.append(copyRow(table[id]));
+}
+
+var learningRate = 0.5;
+var first = nn.mseGrad(table[0], targets[0]);
+for (var j = 0; j < first.length; j = j + 1) {
+    table[0][j] = table[0][j] - learningRate * first[j];
+}
+
+var othersHeld = true;
+for (var id = 1; id < table.length; id = id + 1) {
+    if (!rowsEqual(table[id], before[id])) {
+        othersHeld = false;
+    }
+}
+var rowMoved = !rowsEqual(table[0], before[0]);
+
+for (var step = 0; step < 20; step = step + 1) {
+    for (var id = 0; id < table.length; id = id + 1) {
+        var grad = nn.mseGrad(table[id], targets[id]);
+        for (var j = 0; j < grad.length; j = j + 1) {
+            table[id][j] = table[id][j] - learningRate * grad[j];
+        }
+    }
+}
+
+var maxMse = 0.0;
+for (var id = 0; id < table.length; id = id + 1) {
+    var loss = nn.mse(table[id], targets[id]);
+    if (loss > maxMse) {
+        maxMse = loss;
+    }
+}
+
+io.print("Embedding row: one gradient, one row");
+io.print("row 0 moved: " + string(rowMoved));
+io.print("other rows held: " + string(othersHeld));
+io.print("max mse: " + string(math.round(maxMse * 1000.0) / 1000.0));
+if (rowMoved && othersHeld && maxMse < 0.01) {
+    io.print("embed row ok");
+}

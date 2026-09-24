@@ -26,7 +26,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | 11-classes-objects.html | 955e958fabbdb33f9670a567d18bab004d23037ba6a619c84bac7612b60f7eb7 |
 | 12-input-output.html | 79799ef2dcadeee4da14f2d1240200f5b7fab9e993bb16eb0ba395f4a56eb89d |
 | 13-built-in-functions.html | 7dffc7467d74c8fdad2c88488d5016946d370bf72ccd5467f816570eb78189a6 |
-| 14-neural-nets.html | aa4aca756d8f844ba173ac41718eefd0debb4f19b1d934377a796c263733e828 |
+| 14-neural-nets.html | c42bbbaec6a783198c63e21c04d1e9820f23adb20ceb7a247fa16af4ea4f91a2 |
 | 15-graphs.html | a8f8f697e3ee38ad7edde5a9af32881daa5a33065d3fe7b4cee29bcc08809794 |
 | 16-vectordb.html | e971314962184785cac6086f4f10b9c2bbd2cbea2111862d0cbfef89ce8e6ecf |
 | 17-database.html | 3cc08a61072e95b218a0d027f5df6e45e5007c9c7547bd028284f0ba4bdb6652 |
