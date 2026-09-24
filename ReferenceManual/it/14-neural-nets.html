@@ -183,7 +183,7 @@ print(int(peakedGrad[1] * 100));</code></pre>
         <p><code>attention_is_all_you_need.malda</code> è il passo dopo quel blocco. Resta su <code>math.matmul</code> e aggiunge l'attenzione multi-testa, le stesse sinusoidi e l'encoder-decoder. <code>microgpt.malda</code> è un modello a caratteri piccolo sullo stesso percorso. <code>embedding_2d.malda</code> proietta un embedding hash ed elenca i vicini di VectorDB. <code>onnx_inspect.malda</code> carica <code>new OnnxModel(path)</code> su un piccolo modello identità: ispezione e un forward, sull'host, senza passo di training. <code>malda play Examples/Games/xor_decision_boundary.malda</code> disegna il campo XOR. <code>malda play Examples/Games/softmax_decision_boundary.malda</code> disegna le tre regioni softmax. <code>malda play Examples/Games/cartpole_neural.malda</code> allena una policy sul canvas.</p>
 
         <h2 id="backends">14.7 Backend</h2>
-        <p>Interprete, transpile C# e JavaScript eseguono tutti <code>math.dot</code> / <code>matmul</code> / <code>transpose</code>, <code>nn.*</code> e <code>new Dense</code> / <code>new Sequential</code>. <code>OnnxModel</code> è solo host. Nel core non ci sono un tipo tensore, un nastro di autograd, né <code>Adam</code> o un data loader. I nomi <code>nn</code> non hanno un alias piatto: scrivi <code>nn.relu</code>, non <code>relu</code>.</p>
+        <p>Interprete, transpile C# e JavaScript eseguono tutti <code>math.dot</code> / <code>matmul</code> / <code>transpose</code>, <code>nn.*</code>, <code>new Dense</code> / <code>new Sequential</code> e le classi di layer in <a href="#other-layers">14.10</a>. <code>OnnxModel</code> è solo host. Nel core non ci sono un tipo tensore, un nastro di autograd, né <code>Adam</code> o un data loader. I nomi <code>nn</code> non hanno un alias piatto: scrivi <code>nn.relu</code>, non <code>relu</code>.</p>
 
         <h2 id="signatures">14.8 Firme</h2>
         <p>Arietà e valori di ritorno. Il modello del layer è il resto di questo capitolo. Interprete, transpile C# e JavaScript eseguono tutti <code>nn.*</code>. Non c'è un alias piatto.</p>
@@ -296,6 +296,74 @@ print(int(loss));
 print(int(fitLayer.weights[0][0] * 100));
 print(int(fitLayer.bias[0] * 100));
 print(int(fitLayer.forward([1.0])[0] * 100));</code></pre>
+
+        <h2 id="other-layers">14.10 Altri layer</h2>
+        <p>Queste classi tengono lo stesso contratto di <code>Dense</code>. I parametri restano tuoi. <code>forward</code> ricorda l'ingresso che ha visto. <code>backward</code> tiene i gradienti. <code>sgd(lr)</code> li sottrae sul posto. Non registrano un nastro, e non sostituiscono i file scritti a mano in <a href="#examples">14.6</a>.</p>
+
+        <h3 id="conv">14.10.1 Conv</h3>
+        <p><code>new Conv(size, scale?)</code> possiede un kernel quadrato, un canale, convoluzione valid, senza bias. La scala di default è <code>1/size</code>. <code>forward(image)</code> restituisce una matrice più piccola dell'immagine di <code>size - 1</code> per lato. <code>backward(upstream)</code> somma ogni finestra in quell'unico kernel e restituisce il gradiente dell'immagine. Su un'immagine 3×3 e il kernel <code>[[1, 0], [0, 1]]</code>, l'uscita è <code>[[6, 8], [12, 14]]</code>. Un upstream di uni rende il gradiente del kernel <code>[[12, 16], [24, 28]]</code>, quindi un passo di <code>1</code> porta i due uni a <code>-11</code> e <code>-27</code>.</p>
+        <pre><code data-run="true" data-expect="6\n14\n-11">var conv = new Conv(2, 0.0);
+conv.kernel[0][0] = 1.0;
+conv.kernel[0][1] = 0.0;
+conv.kernel[1][0] = 0.0;
+conv.kernel[1][1] = 1.0;
+var feat = conv.forward([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]]);
+conv.backward([[1.0, 1.0], [1.0, 1.0]]);
+conv.sgd(1.0);
+print(int(feat[0][0]));
+print(int(feat[1][1]));
+print(int(conv.kernel[0][0]));</code></pre>
+
+        <h3 id="embedding">14.10.2 Embedding</h3>
+        <p><code>new Embedding(rows, dim, scale?)</code> possiede una tabella. La scala di default è <code>1/sqrt(dim)</code>. <code>forward(index)</code> restituisce una copia di quella riga. <code>backward(upstream)</code> tiene un gradiente solo per quella riga. <code>sgd</code> lo scrive lì e lascia ferme le altre righe. L'indice è un intero. Una riga <code>3</code> e un upstream <code>1</code> con learning rate <code>0.5</code> diventa <code>2.5</code>.</p>
+        <pre><code data-run="true" data-expect="3\n25\n9">var emb = new Embedding(2, 1, 0.0);
+emb.table[0][0] = 3.0;
+emb.table[1][0] = 9.0;
+print(int(emb.forward(0)[0]));
+emb.backward([1.0]);
+emb.sgd(0.5);
+print(int(emb.table[0][0] * 10));
+print(int(emb.table[1][0]));</code></pre>
+
+        <h3 id="rnn">14.10.3 Rnn</h3>
+        <p><code>new Rnn(inputSize, hiddenSize, activation?, scale?)</code> possiede <code>weightsXh</code> <code>[input, hidden]</code>, <code>weightsHh</code> <code>[hidden, hidden]</code> e un bias. L'attivazione di default è <code>tanh</code>. La scala di default è <code>1/sqrt(inputSize)</code>. <code>forward(sequence)</code> parte dallo stato nascosto zero e restituisce un vettore nascosto per passo. <code>backward(upstreams)</code> vuole un vettore di gradiente per passo e cammina dalla fine, sommando nei tre gradienti dei parametri. La matrice restituita è un gradiente di ingresso per passo. Con una cella lineare, peso <code>1</code> e ingressi <code>2</code> poi <code>3</code>, gli hidden sono <code>2</code> e <code>3</code>. Un upstream <code>1</code> sul primo passo e un learning rate <code>0.5</code> portano il peso di ingresso a <code>0</code>.</p>
+        <pre><code data-run="true" data-expect="2\n3\n0">var rnn = new Rnn(1, 1, "linear", 0.0);
+rnn.weightsXh[0][0] = 1.0;
+rnn.weightsHh[0][0] = 0.0;
+rnn.bias[0] = 0.0;
+var hs = rnn.forward([[2.0], [3.0]]);
+print(int(hs[0][0]));
+print(int(hs[1][0]));
+rnn.backward([[1.0], [0.0]]);
+rnn.sgd(0.5);
+print(int(rnn.weightsXh[0][0]));</code></pre>
+
+        <h3 id="layer-norm">14.10.4 LayerNorm</h3>
+        <p><code>new LayerNorm(features)</code> possiede <code>gamma</code>, che parte da <code>1</code>, e <code>beta</code>, che parte da <code>0</code>. <code>forward(x)</code> toglie la media, divide per la deviazione standard (epsilon <code>0.00001</code> dentro la radice), poi applica <code>gamma</code> e <code>beta</code>. <code>backward(upstream)</code> restituisce il gradiente dell'ingresso e tiene <code>dGamma</code> e <code>dBeta</code>. Su <code>[1, 3]</code> con entrambi i beta a <code>5</code>, le uscite sommano a <code>10</code>. Un upstream <code>[1, 0]</code> e un passo di <code>1</code> portano <code>gamma[0]</code> a circa <code>2</code> e <code>beta[0]</code> da <code>5</code> a <code>4</code>.</p>
+        <pre><code data-run="true" data-expect="100\n1999\n4">var ln = new LayerNorm(2);
+ln.beta[0] = 5.0;
+ln.beta[1] = 5.0;
+var y = ln.forward([1.0, 3.0]);
+print(int((y[0] + y[1]) * 10));
+ln.backward([1.0, 0.0]);
+ln.sgd(1.0);
+print(int(ln.gamma[0] * 1000));
+print(int(ln.beta[0]));</code></pre>
+
+        <h3 id="attention">14.10.5 Attention</h3>
+        <p><code>new Attention(length, dim, scale?)</code> possiede <code>query</code> e <code>key</code>, ciascuna <code>[length, dim]</code>. La scala dei punteggi è <code>1/sqrt(dim)</code> di default. Passa un numero quando vuoi un altro moltiplicatore. L'estrazione iniziale di <code>query</code> e <code>key</code> usa comunque <code>1/sqrt(dim)</code>. <code>forward(value, mask?)</code> calcola <code>softmax(scale · QK^T)</code> e moltiplica per <code>value</code>. Una voce della maschera sotto <code>0.5</code> sostituisce quel punteggio con un negativo grande prima della softmax, e quella posizione non riceve un gradiente sul punteggio. Dopo <code>forward</code>, <code>probs</code> è la matrice di attenzione. <code>backward(upstream)</code> tiene i gradienti di <code>query</code> e <code>key</code> e restituisce il gradiente di <code>value</code>. Con scala <code>1</code> e query e key a zero, i due valori <code>2</code> e <code>6</code> vengono mediati a <code>4</code>. La maschera causale <code>[[1, 0], [0, 1]]</code> tiene <code>2</code> e <code>6</code>.</p>
+        <pre><code data-run="true" data-expect="4\n4\n2\n6\n0">var head = new Attention(2, 1, 1.0);
+head.query[0][0] = 0.0;
+head.query[1][0] = 0.0;
+head.key[0][0] = 0.0;
+head.key[1][0] = 0.0;
+var plain = head.forward([[2.0], [6.0]]);
+var causal = head.forward([[2.0], [6.0]], [[1.0, 0.0], [0.0, 1.0]]);
+print(int(plain[0][0]));
+print(int(plain[1][0]));
+print(int(causal[0][0]));
+print(int(causal[1][0]));
+print(int(head.probs[0][1] * 1000));</code></pre>
 
         <div class="see-also">
             <h3>Vedi anche</h3>

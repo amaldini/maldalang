@@ -1254,6 +1254,42 @@
     "title": "14.9 Sequential"
   },
   {
+    "file": "14-neural-nets.html",
+    "level": 2,
+    "id": "other-layers",
+    "title": "14.10 Altri layer"
+  },
+  {
+    "file": "14-neural-nets.html",
+    "level": 3,
+    "id": "conv",
+    "title": "14.10.1 Conv"
+  },
+  {
+    "file": "14-neural-nets.html",
+    "level": 3,
+    "id": "embedding",
+    "title": "14.10.2 Embedding"
+  },
+  {
+    "file": "14-neural-nets.html",
+    "level": 3,
+    "id": "rnn",
+    "title": "14.10.3 Rnn"
+  },
+  {
+    "file": "14-neural-nets.html",
+    "level": 3,
+    "id": "layer-norm",
+    "title": "14.10.4 LayerNorm"
+  },
+  {
+    "file": "14-neural-nets.html",
+    "level": 3,
+    "id": "attention",
+    "title": "14.10.5 Attention"
+  },
+  {
     "file": "15-graphs.html",
     "level": 2,
     "id": "",

@@ -7474,8 +7474,482 @@
     })()
   };
 
+  function nnLayerMatrix(rows, cols, scale) {
+    const matrix = [];
+    for (let i = 0; i < rows; i++) {
+      const row = [];
+      for (let j = 0; j < cols; j++) row.push(randomFloatBuiltin(-scale, scale));
+      matrix.push(row);
+    }
+    return matrix;
+  }
+
+  function nnLayerZeros(rows, cols) {
+    const matrix = [];
+    for (let i = 0; i < rows; i++) {
+      const row = [];
+      for (let j = 0; j < cols; j++) row.push(0);
+      matrix.push(row);
+    }
+    return matrix;
+  }
+
+  function nnLayerMatmul(left, right) {
+    const rows = left.length;
+    const inner = left[0].length;
+    const cols = right[0].length;
+    const result = nnLayerZeros(rows, cols);
+    for (let i = 0; i < rows; i++) {
+      for (let k = 0; k < inner; k++) {
+        const value = left[i][k];
+        for (let j = 0; j < cols; j++) result[i][j] += value * right[k][j];
+      }
+    }
+    return result;
+  }
+
+  function nnLayerTranspose(matrix) {
+    const result = nnLayerZeros(matrix[0].length, matrix.length);
+    for (let i = 0; i < matrix.length; i++) {
+      for (let j = 0; j < matrix[i].length; j++) result[j][i] = matrix[i][j];
+    }
+    return result;
+  }
+
+  function nnReadMatrix(name, value, which) {
+    if (!neuralIsMatrix(value)) throw new Error(name + "() " + which + " must be a numeric matrix");
+    const width = value[0].length;
+    const matrix = [];
+    for (let r = 0; r < value.length; r++) {
+      const row = neuralRequireVector(name, value[r], which);
+      if (row.length !== width) throw new Error(name + "() " + which + " rows must have the same length");
+      matrix.push(row);
+    }
+    return matrix;
+  }
+
+  function nnApplyOwnedVector(values, grad, learningRate) {
+    for (let i = 0; i < values.length; i++) values[i] = values[i] - learningRate * grad[i];
+  }
+
+  function nnApplyOwnedMatrix(values, grad, learningRate) {
+    for (let i = 0; i < values.length; i++) nnApplyOwnedVector(values[i], grad[i], learningRate);
+  }
+
+  function Conv(size, scale) {
+    const argc = arguments.length;
+    if (argc < 1 || argc > 2) throw new Error("Conv() expects 1 or 2 arguments: (size, scale?)");
+    this.size = nnRequirePositiveInt("Conv", size, "size");
+    let width = 1 / this.size;
+    if (argc === 2) {
+      width = nnRequireFinite("Conv", scale, "scale");
+      if (width < 0) throw new Error("Conv() scale must be >= 0");
+    }
+    this.kernel = nnLayerMatrix(this.size, this.size, width);
+    this._image = null;
+    this._dKernel = null;
+  }
+
+  Conv.prototype.forward = function (image) {
+    if (arguments.length !== 1) throw new Error("Conv.forward() expects 1 argument: (image)");
+    const pixels = nnReadMatrix("Conv.forward", image, "image");
+    if (pixels.length < this.size || pixels[0].length < this.size) {
+      throw new Error("Conv.forward() image must be at least size x size");
+    }
+    const kernel = nnReadMatrix("Conv.forward", this.kernel, "kernel");
+    const outRows = pixels.length - this.size + 1;
+    const outCols = pixels[0].length - this.size + 1;
+    const output = nnLayerZeros(outRows, outCols);
+    for (let oy = 0; oy < outRows; oy++) {
+      for (let ox = 0; ox < outCols; ox++) {
+        let sum = 0;
+        for (let ky = 0; ky < this.size; ky++) {
+          for (let kx = 0; kx < this.size; kx++) sum += pixels[oy + ky][ox + kx] * kernel[ky][kx];
+        }
+        output[oy][ox] = sum;
+      }
+    }
+    this._image = pixels;
+    return output;
+  };
+
+  Conv.prototype.backward = function (upstream) {
+    if (arguments.length !== 1) throw new Error("Conv.backward() expects 1 argument: (upstream)");
+    if (this._image == null) throw new Error("Conv.backward() requires forward() first");
+    const grad = nnReadMatrix("Conv.backward", upstream, "upstream");
+    const outRows = this._image.length - this.size + 1;
+    const outCols = this._image[0].length - this.size + 1;
+    if (grad.length !== outRows || grad[0].length !== outCols) {
+      throw new Error("Conv.backward() upstream must match the forward output");
+    }
+    const kernel = nnReadMatrix("Conv.backward", this.kernel, "kernel");
+    const dKernel = nnLayerZeros(this.size, this.size);
+    const dImage = nnLayerZeros(this._image.length, this._image[0].length);
+    for (let oy = 0; oy < outRows; oy++) {
+      for (let ox = 0; ox < outCols; ox++) {
+        const dOut = grad[oy][ox];
+        for (let ky = 0; ky < this.size; ky++) {
+          for (let kx = 0; kx < this.size; kx++) {
+            dKernel[ky][kx] += dOut * this._image[oy + ky][ox + kx];
+            dImage[oy + ky][ox + kx] += dOut * kernel[ky][kx];
+          }
+        }
+      }
+    }
+    this._dKernel = dKernel;
+    return dImage;
+  };
+
+  Conv.prototype.sgd = function (learningRate) {
+    if (arguments.length !== 1) throw new Error("Conv.sgd() expects 1 argument: (lr)");
+    if (this._dKernel == null) throw new Error("Conv.sgd() requires backward() first");
+    nnApplyOwnedMatrix(this.kernel, this._dKernel, nnRequireFinite("Conv.sgd", learningRate, "lr"));
+    return null;
+  };
+
+  function Embedding(rows, dim, scale) {
+    const argc = arguments.length;
+    if (argc < 2 || argc > 3) throw new Error("Embedding() expects 2 or 3 arguments: (rows, dim, scale?)");
+    this.rows = nnRequirePositiveInt("Embedding", rows, "rows");
+    this.dim = nnRequirePositiveInt("Embedding", dim, "dim");
+    let width = 1 / Math.sqrt(this.dim);
+    if (argc === 3) {
+      width = nnRequireFinite("Embedding", scale, "scale");
+      if (width < 0) throw new Error("Embedding() scale must be >= 0");
+    }
+    this.table = nnLayerMatrix(this.rows, this.dim, width);
+    this._index = -1;
+    this._dRow = null;
+  }
+
+  Embedding.prototype.forward = function (index) {
+    if (arguments.length !== 1) throw new Error("Embedding.forward() expects 1 argument: (index)");
+    if (typeof index !== "number" || !Number.isInteger(index)) {
+      throw new Error("Embedding.forward() index must be an integer");
+    }
+    if (index < 0 || index >= this.rows) throw new Error("Embedding.forward() index out of range");
+    this._index = index;
+    return this.table[index].slice();
+  };
+
+  Embedding.prototype.backward = function (upstream) {
+    if (arguments.length !== 1) throw new Error("Embedding.backward() expects 1 argument: (upstream)");
+    if (this._index < 0) throw new Error("Embedding.backward() requires forward() first");
+    const grad = neuralRequireVector("Embedding.backward", upstream, "upstream");
+    if (grad.length !== this.dim) throw new Error("Embedding.backward() upstream length must match dim");
+    this._dRow = grad;
+    return null;
+  };
+
+  Embedding.prototype.sgd = function (learningRate) {
+    if (arguments.length !== 1) throw new Error("Embedding.sgd() expects 1 argument: (lr)");
+    if (this._dRow == null || this._index < 0) throw new Error("Embedding.sgd() requires backward() first");
+    nnApplyOwnedVector(this.table[this._index], this._dRow, nnRequireFinite("Embedding.sgd", learningRate, "lr"));
+    return null;
+  };
+
+  function Rnn(inputSize, hiddenSize, activation, scale) {
+    const argc = arguments.length;
+    if (argc < 2 || argc > 4) {
+      throw new Error("Rnn() expects 2 to 4 arguments: (inputSize, hiddenSize, activation?, scale?)");
+    }
+    this.inputSize = nnRequirePositiveInt("Rnn", inputSize, "inputSize");
+    this.hiddenSize = nnRequirePositiveInt("Rnn", hiddenSize, "hiddenSize");
+    this.activation = "tanh";
+    if (argc >= 3) {
+      if (typeof activation !== "string" || NN_DENSE_ACTIVATIONS.indexOf(activation) < 0) {
+        throw new Error("Rnn() unknown activation '" + activation + "'");
+      }
+      this.activation = activation;
+    }
+    let width = 1 / Math.sqrt(this.inputSize);
+    if (argc === 4) {
+      width = nnRequireFinite("Rnn", scale, "scale");
+      if (width < 0) throw new Error("Rnn() scale must be >= 0");
+    }
+    this.weightsXh = nnLayerMatrix(this.inputSize, this.hiddenSize, width);
+    this.weightsHh = nnLayerMatrix(this.hiddenSize, this.hiddenSize, width);
+    const bias = [];
+    for (let j = 0; j < this.hiddenSize; j++) bias.push(randomFloatBuiltin(-width, width));
+    this.bias = bias;
+    this._steps = null;
+    this._dXh = null;
+    this._dHh = null;
+    this._dBias = null;
+  }
+
+  Rnn.prototype.forward = function (sequence) {
+    if (arguments.length !== 1 || !Array.isArray(sequence) || sequence.length === 0) {
+      throw new Error("Rnn.forward() expects 1 argument: (sequence)");
+    }
+    const wxh = nnReadMatrix("Rnn.forward", this.weightsXh, "weightsXh");
+    const whh = nnReadMatrix("Rnn.forward", this.weightsHh, "weightsHh");
+    const bias = neuralRequireVector("Rnn.forward", this.bias, "bias");
+    let hidden = [];
+    for (let j = 0; j < this.hiddenSize; j++) hidden.push(0);
+    const steps = [];
+    const outputs = [];
+    const act = this.activation === "linear" ? null : this.activation;
+    for (let t = 0; t < sequence.length; t++) {
+      const input = neuralRequireVector("Rnn.forward", sequence[t], "sequence");
+      if (input.length !== this.inputSize) throw new Error("Rnn.forward() each input length must match inputSize");
+      const pre = bias.slice();
+      for (let j = 0; j < this.hiddenSize; j++) {
+        for (let i = 0; i < this.inputSize; i++) pre[j] += input[i] * wxh[i][j];
+        for (let i = 0; i < this.hiddenSize; i++) pre[j] += hidden[i] * whh[i][j];
+      }
+      const next = [];
+      for (let j = 0; j < this.hiddenSize; j++) next.push(nnApplyActivation(act, pre[j]));
+      steps.push({ input: input, hidden: hidden.slice(), pre: pre });
+      hidden = next;
+      outputs.push(next);
+    }
+    this._steps = steps;
+    return outputs;
+  };
+
+  Rnn.prototype.backward = function (upstreams) {
+    if (arguments.length !== 1 || !Array.isArray(upstreams)) {
+      throw new Error("Rnn.backward() expects 1 argument: (upstreams)");
+    }
+    if (this._steps == null) throw new Error("Rnn.backward() requires forward() first");
+    if (upstreams.length !== this._steps.length) {
+      throw new Error("Rnn.backward() upstreams must have one vector per step");
+    }
+    const wxh = nnReadMatrix("Rnn.backward", this.weightsXh, "weightsXh");
+    const whh = nnReadMatrix("Rnn.backward", this.weightsHh, "weightsHh");
+    const dXh = nnLayerZeros(this.inputSize, this.hiddenSize);
+    const dHh = nnLayerZeros(this.hiddenSize, this.hiddenSize);
+    const dBias = [];
+    for (let j = 0; j < this.hiddenSize; j++) dBias.push(0);
+    const dInputs = [];
+    let dhNext = [];
+    for (let j = 0; j < this.hiddenSize; j++) dhNext.push(0);
+    const act = this.activation === "linear" ? null : this.activation;
+    for (let t = this._steps.length - 1; t >= 0; t--) {
+      const upstream = neuralRequireVector("Rnn.backward", upstreams[t], "upstreams");
+      if (upstream.length !== this.hiddenSize) {
+        throw new Error("Rnn.backward() each upstream length must match hiddenSize");
+      }
+      const step = this._steps[t];
+      const dPre = [];
+      for (let j = 0; j < this.hiddenSize; j++) {
+        dPre.push((upstream[j] + dhNext[j]) * nnApplyDerivative(act, step.pre[j]));
+      }
+      for (let i = 0; i < this.inputSize; i++) {
+        for (let j = 0; j < this.hiddenSize; j++) dXh[i][j] += step.input[i] * dPre[j];
+      }
+      for (let i = 0; i < this.hiddenSize; i++) {
+        for (let j = 0; j < this.hiddenSize; j++) dHh[i][j] += step.hidden[i] * dPre[j];
+      }
+      for (let j = 0; j < this.hiddenSize; j++) dBias[j] += dPre[j];
+      const dInput = [];
+      for (let i = 0; i < this.inputSize; i++) {
+        let sum = 0;
+        for (let j = 0; j < this.hiddenSize; j++) sum += dPre[j] * wxh[i][j];
+        dInput.push(sum);
+      }
+      dInputs[t] = dInput;
+      dhNext = [];
+      for (let i = 0; i < this.hiddenSize; i++) {
+        let sum = 0;
+        for (let j = 0; j < this.hiddenSize; j++) sum += dPre[j] * whh[i][j];
+        dhNext.push(sum);
+      }
+    }
+    this._dXh = dXh;
+    this._dHh = dHh;
+    this._dBias = dBias;
+    return dInputs;
+  };
+
+  Rnn.prototype.sgd = function (learningRate) {
+    if (arguments.length !== 1) throw new Error("Rnn.sgd() expects 1 argument: (lr)");
+    if (this._dXh == null || this._dHh == null || this._dBias == null) {
+      throw new Error("Rnn.sgd() requires backward() first");
+    }
+    const step = nnRequireFinite("Rnn.sgd", learningRate, "lr");
+    nnApplyOwnedMatrix(this.weightsXh, this._dXh, step);
+    nnApplyOwnedMatrix(this.weightsHh, this._dHh, step);
+    nnApplyOwnedVector(this.bias, this._dBias, step);
+    return null;
+  };
+
+  function LayerNorm(features) {
+    if (arguments.length !== 1) throw new Error("LayerNorm() expects 1 argument: (features)");
+    this.features = nnRequirePositiveInt("LayerNorm", features, "features");
+    this.gamma = [];
+    this.beta = [];
+    for (let i = 0; i < this.features; i++) {
+      this.gamma.push(1);
+      this.beta.push(0);
+    }
+    this._xhat = null;
+    this._rstd = 0;
+    this._dGamma = null;
+    this._dBeta = null;
+  }
+
+  LayerNorm.prototype.forward = function (x) {
+    if (arguments.length !== 1) throw new Error("LayerNorm.forward() expects 1 argument: (x)");
+    const input = neuralRequireVector("LayerNorm.forward", x, "x");
+    if (input.length !== this.features) throw new Error("LayerNorm.forward() length must match features");
+    let mean = 0;
+    for (let i = 0; i < input.length; i++) mean += input[i];
+    mean /= input.length;
+    let variance = 0;
+    for (let i = 0; i < input.length; i++) {
+      const delta = input[i] - mean;
+      variance += delta * delta;
+    }
+    variance /= input.length;
+    this._rstd = 1 / Math.sqrt(variance + 0.00001);
+    this._xhat = [];
+    const output = [];
+    for (let i = 0; i < input.length; i++) {
+      const hat = (input[i] - mean) * this._rstd;
+      this._xhat.push(hat);
+      output.push(this.gamma[i] * hat + this.beta[i]);
+    }
+    return output;
+  };
+
+  LayerNorm.prototype.backward = function (upstream) {
+    if (arguments.length !== 1) throw new Error("LayerNorm.backward() expects 1 argument: (upstream)");
+    if (this._xhat == null) throw new Error("LayerNorm.backward() requires forward() first");
+    const grad = neuralRequireVector("LayerNorm.backward", upstream, "upstream");
+    if (grad.length !== this.features) throw new Error("LayerNorm.backward() upstream length must match features");
+    const dGamma = [];
+    const dBeta = [];
+    const dxhat = [];
+    for (let i = 0; i < this.features; i++) {
+      dBeta.push(grad[i]);
+      dGamma.push(grad[i] * this._xhat[i]);
+      dxhat.push(grad[i] * this.gamma[i]);
+    }
+    let meanDx = 0;
+    let meanDxX = 0;
+    for (let i = 0; i < this.features; i++) {
+      meanDx += dxhat[i];
+      meanDxX += dxhat[i] * this._xhat[i];
+    }
+    meanDx /= this.features;
+    meanDxX /= this.features;
+    const dInput = [];
+    for (let i = 0; i < this.features; i++) {
+      dInput.push(this._rstd * (dxhat[i] - meanDx - this._xhat[i] * meanDxX));
+    }
+    this._dGamma = dGamma;
+    this._dBeta = dBeta;
+    return dInput;
+  };
+
+  LayerNorm.prototype.sgd = function (learningRate) {
+    if (arguments.length !== 1) throw new Error("LayerNorm.sgd() expects 1 argument: (lr)");
+    if (this._dGamma == null || this._dBeta == null) throw new Error("LayerNorm.sgd() requires backward() first");
+    const step = nnRequireFinite("LayerNorm.sgd", learningRate, "lr");
+    nnApplyOwnedVector(this.gamma, this._dGamma, step);
+    nnApplyOwnedVector(this.beta, this._dBeta, step);
+    return null;
+  };
+
+  function Attention(length, dim, scale) {
+    const argc = arguments.length;
+    if (argc < 2 || argc > 3) throw new Error("Attention() expects 2 or 3 arguments: (length, dim, scale?)");
+    this.length = nnRequirePositiveInt("Attention", length, "length");
+    this.dim = nnRequirePositiveInt("Attention", dim, "dim");
+    this.scale = argc === 3 ? nnRequireFinite("Attention", scale, "scale") : 1 / Math.sqrt(this.dim);
+    const width = 1 / Math.sqrt(this.dim);
+    this.query = nnLayerMatrix(this.length, this.dim, width);
+    this.key = nnLayerMatrix(this.length, this.dim, width);
+    this._value = null;
+    this._probs = null;
+    this._blocked = null;
+    this._dQuery = null;
+    this._dKey = null;
+  }
+
+  Object.defineProperty(Attention.prototype, "probs", {
+    get: function () {
+      if (this._probs == null) throw new Error("Attention.probs requires forward() first");
+      return this._probs.map(function (row) { return row.slice(); });
+    }
+  });
+
+  Attention.prototype.forward = function (value, mask) {
+    const argc = arguments.length;
+    if (argc < 1 || argc > 2) throw new Error("Attention.forward() expects 1 or 2 arguments: (value, mask?)");
+    const tokens = nnReadMatrix("Attention.forward", value, "value");
+    if (tokens.length !== this.length || tokens[0].length !== this.dim) {
+      throw new Error("Attention.forward() value must be length x dim");
+    }
+    let maskMatrix = null;
+    if (argc === 2) {
+      maskMatrix = nnReadMatrix("Attention.forward", mask, "mask");
+      if (maskMatrix.length !== this.length || maskMatrix[0].length !== this.length) {
+        throw new Error("Attention.forward() mask must be length x length");
+      }
+    }
+    const query = nnReadMatrix("Attention.forward", this.query, "query");
+    const key = nnReadMatrix("Attention.forward", this.key, "key");
+    const scores = nnLayerMatmul(query, nnLayerTranspose(key));
+    const probs = [];
+    const blocked = [];
+    for (let i = 0; i < this.length; i++) {
+      const row = [];
+      blocked[i] = [];
+      for (let j = 0; j < this.length; j++) {
+        blocked[i][j] = maskMatrix != null && maskMatrix[i][j] < 0.5;
+        row.push(blocked[i][j] ? -1.0e9 : scores[i][j] * this.scale);
+      }
+      probs.push(nnSoftmax(row));
+    }
+    this._value = tokens;
+    this._probs = probs;
+    this._blocked = blocked;
+    return nnLayerMatmul(probs, tokens);
+  };
+
+  Attention.prototype.backward = function (upstream) {
+    if (arguments.length !== 1) throw new Error("Attention.backward() expects 1 argument: (upstream)");
+    if (this._value == null || this._probs == null) throw new Error("Attention.backward() requires forward() first");
+    const grad = nnReadMatrix("Attention.backward", upstream, "upstream");
+    if (grad.length !== this.length || grad[0].length !== this.dim) {
+      throw new Error("Attention.backward() upstream must be length x dim");
+    }
+    const dProbs = nnLayerMatmul(grad, nnLayerTranspose(this._value));
+    const dScores = nnLayerZeros(this.length, this.length);
+    for (let i = 0; i < this.length; i++) {
+      let dot = 0;
+      for (let j = 0; j < this.length; j++) dot += dProbs[i][j] * this._probs[i][j];
+      for (let j = 0; j < this.length; j++) {
+        const local = this._probs[i][j] * (dProbs[i][j] - dot);
+        dScores[i][j] = this._blocked[i][j] ? 0 : local * this.scale;
+      }
+    }
+    const query = nnReadMatrix("Attention.backward", this.query, "query");
+    const key = nnReadMatrix("Attention.backward", this.key, "key");
+    this._dQuery = nnLayerMatmul(dScores, key);
+    this._dKey = nnLayerMatmul(nnLayerTranspose(dScores), query);
+    return nnLayerMatmul(nnLayerTranspose(this._probs), grad);
+  };
+
+  Attention.prototype.sgd = function (learningRate) {
+    if (arguments.length !== 1) throw new Error("Attention.sgd() expects 1 argument: (lr)");
+    if (this._dQuery == null || this._dKey == null) throw new Error("Attention.sgd() requires backward() first");
+    const step = nnRequireFinite("Attention.sgd", learningRate, "lr");
+    nnApplyOwnedMatrix(this.query, this._dQuery, step);
+    nnApplyOwnedMatrix(this.key, this._dKey, step);
+    return null;
+  };
+
   global.Dense = Dense;
   global.Sequential = Sequential;
+  global.Conv = Conv;
+  global.Embedding = Embedding;
+  global.Rnn = Rnn;
+  global.LayerNorm = LayerNorm;
+  global.Attention = Attention;
   global.mlRuntime = Object.assign({}, global.mlRuntime || {}, runtime);
   if (typeof global.random !== "function") {
     global.random = randomBuiltin;

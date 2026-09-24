@@ -1,6 +1,6 @@
 # MALDA neural-nets kit
 
-**Status:** N0–N4 and N6–N11 landed; N5 partial  
+**Status:** N0–N4 and N6–N12 landed; N5 partial  
 **Created:** 2026-09-20  
 **Audience:** maintainers extending `math.*`, `nn.*`, and the offline AI_Theory track after Final 1.0
 
@@ -65,6 +65,7 @@ layers and can apply online SGD. They are not a module zoo and not a tape.
 | 9 | **N9** Bridge into attention | Landed | Embedding row, bigram, layer norm, one attention head. No new builtins |
 | 10 | **N10** Bridge into the transformer | Landed | Context MLP, sinusoids, gradient clip, Adam moments, one decoder block. No new builtins |
 | 11 | **N11** `Dense` / `Sequential` | Landed | Host classes plus `nn.sequential`. Fixed dense stack, online SGD. No tape, no Adam |
+| 12 | **N12** Local layers | Landed | `Conv`, `Embedding`, `Rnn`, `LayerNorm`, `Attention`. Same `forward` / `backward` / `sgd` contract. No tape |
 
 ```text
 N0  roadmap file                          (landed)
@@ -148,7 +149,7 @@ colored by the XOR MLP, four training points overlaid. No new `ui.chart`.
 ## Out of scope (keep out of core)
 
 - Language `tensor` / autograd tape / an Adam builtin / DataLoader
-- A module zoo beyond the fixed dense stack (`Dense` / `Sequential` / `nn.sequential`)
+- A module zoo beyond `Dense` / `Sequential` and the five local layers `Conv`, `Embedding`, `Rnn`, `LayerNorm`, `Attention`
 - GPU, distributed training, ONNX training loops
 - Downloading MNIST / ImageNet in the OSS repo (`mnist_digits.malda` is ten 5×5 glyphs on the chapter 14 step)
 - A second plotting namespace

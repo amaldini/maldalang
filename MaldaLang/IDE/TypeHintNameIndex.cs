@@ -54,6 +54,11 @@ public sealed class TypeHintNameIndex
         "OnnxModel",
         "Dense",
         "Sequential",
+        "Conv",
+        "Embedding",
+        "Rnn",
+        "LayerNorm",
+        "Attention",
     };
 
     private static readonly HashSet<string> HostClassSet =

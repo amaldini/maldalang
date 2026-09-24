@@ -183,7 +183,7 @@ print(int(peakedGrad[1] * 100));</code></pre>
         <p><code>attention_is_all_you_need.malda</code> is the step after that block. It stays on <code>math.matmul</code> and adds multi-head attention, the same sinusoids, and the encoder-decoder. <code>microgpt.malda</code> is a tiny character model on that track. <code>embedding_2d.malda</code> projects a hash embedding and lists VectorDB neighbors. <code>onnx_inspect.malda</code> loads <code>new OnnxModel(path)</code> on a small identity model: inspect and one forward, on the host, with no training step. <code>malda play Examples/Games/xor_decision_boundary.malda</code> draws the XOR field. <code>malda play Examples/Games/softmax_decision_boundary.malda</code> draws the three softmax regions. <code>malda play Examples/Games/cartpole_neural.malda</code> trains a policy on the canvas.</p>
 
         <h2 id="backends">14.7 Backends</h2>
-        <p>Interpreter, C# transpile, and JavaScript all run <code>math.dot</code> / <code>matmul</code> / <code>transpose</code>, <code>nn.*</code>, and <code>new Dense</code> / <code>new Sequential</code>. <code>OnnxModel</code> is host-only. There is no tensor type, no autograd tape, and no <code>Adam</code> or data loader in core. There is no flat alias for <code>nn</code> names: write <code>nn.relu</code>, not <code>relu</code>.</p>
+        <p>Interpreter, C# transpile, and JavaScript all run <code>math.dot</code> / <code>matmul</code> / <code>transpose</code>, <code>nn.*</code>, <code>new Dense</code> / <code>new Sequential</code>, and the layer classes in <a href="#other-layers">14.10</a>. <code>OnnxModel</code> is host-only. There is no tensor type, no autograd tape, and no <code>Adam</code> or data loader in core. There is no flat alias for <code>nn</code> names: write <code>nn.relu</code>, not <code>relu</code>.</p>
 
         <h2 id="signatures">14.8 Signatures</h2>
         <p>Arity and return values. The layer model is the rest of this chapter. Interpreter, C# transpile, and JavaScript all run <code>nn.*</code>. There is no flat alias.</p>
@@ -296,6 +296,74 @@ print(int(loss));
 print(int(fitLayer.weights[0][0] * 100));
 print(int(fitLayer.bias[0] * 100));
 print(int(fitLayer.forward([1.0])[0] * 100));</code></pre>
+
+        <h2 id="other-layers">14.10 Other layers</h2>
+        <p>These classes keep the same contract as <code>Dense</code>. You own the parameters. <code>forward</code> remembers the input it saw. <code>backward</code> stores the gradients. <code>sgd(lr)</code> subtracts them in place. They do not record a tape, and they do not replace the handwritten files in <a href="#examples">14.6</a>.</p>
+
+        <h3 id="conv">14.10.1 Conv</h3>
+        <p><code>new Conv(size, scale?)</code> owns one square kernel, one channel, valid convolution, no bias. The default scale is <code>1/size</code>. <code>forward(image)</code> returns a matrix smaller than the image by <code>size - 1</code> on each side. <code>backward(upstream)</code> adds every window into that one kernel and returns the image gradient. On a 3×3 image and the kernel <code>[[1, 0], [0, 1]]</code>, the output is <code>[[6, 8], [12, 14]]</code>. An upstream of ones makes the kernel gradient <code>[[12, 16], [24, 28]]</code>, so a step of <code>1</code> moves the two ones to <code>-11</code> and <code>-27</code>.</p>
+        <pre><code data-run="true" data-expect="6\n14\n-11">var conv = new Conv(2, 0.0);
+conv.kernel[0][0] = 1.0;
+conv.kernel[0][1] = 0.0;
+conv.kernel[1][0] = 0.0;
+conv.kernel[1][1] = 1.0;
+var feat = conv.forward([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]]);
+conv.backward([[1.0, 1.0], [1.0, 1.0]]);
+conv.sgd(1.0);
+print(int(feat[0][0]));
+print(int(feat[1][1]));
+print(int(conv.kernel[0][0]));</code></pre>
+
+        <h3 id="embedding">14.10.2 Embedding</h3>
+        <p><code>new Embedding(rows, dim, scale?)</code> owns a table. The default scale is <code>1/sqrt(dim)</code>. <code>forward(index)</code> returns a copy of that row. <code>backward(upstream)</code> stores a gradient for that row only. <code>sgd</code> writes it there and leaves the other rows put. An index is an integer. A row of <code>3</code> and an upstream of <code>1</code> at learning rate <code>0.5</code> becomes <code>2.5</code>.</p>
+        <pre><code data-run="true" data-expect="3\n25\n9">var emb = new Embedding(2, 1, 0.0);
+emb.table[0][0] = 3.0;
+emb.table[1][0] = 9.0;
+print(int(emb.forward(0)[0]));
+emb.backward([1.0]);
+emb.sgd(0.5);
+print(int(emb.table[0][0] * 10));
+print(int(emb.table[1][0]));</code></pre>
+
+        <h3 id="rnn">14.10.3 Rnn</h3>
+        <p><code>new Rnn(inputSize, hiddenSize, activation?, scale?)</code> owns <code>weightsXh</code> <code>[input, hidden]</code>, <code>weightsHh</code> <code>[hidden, hidden]</code>, and a bias. The default activation is <code>tanh</code>. The default scale is <code>1/sqrt(inputSize)</code>. <code>forward(sequence)</code> starts the hidden state at zero and returns one hidden vector per step. <code>backward(upstreams)</code> needs one gradient vector per step and walks from the end, adding into the three parameter gradients. The returned matrix is one input gradient per step. With a linear cell, weight <code>1</code>, and inputs <code>2</code> then <code>3</code>, the hiddens are <code>2</code> and <code>3</code>. An upstream of <code>1</code> on the first step and a learning rate of <code>0.5</code> moves the input weight to <code>0</code>.</p>
+        <pre><code data-run="true" data-expect="2\n3\n0">var rnn = new Rnn(1, 1, "linear", 0.0);
+rnn.weightsXh[0][0] = 1.0;
+rnn.weightsHh[0][0] = 0.0;
+rnn.bias[0] = 0.0;
+var hs = rnn.forward([[2.0], [3.0]]);
+print(int(hs[0][0]));
+print(int(hs[1][0]));
+rnn.backward([[1.0], [0.0]]);
+rnn.sgd(0.5);
+print(int(rnn.weightsXh[0][0]));</code></pre>
+
+        <h3 id="layer-norm">14.10.4 LayerNorm</h3>
+        <p><code>new LayerNorm(features)</code> owns <code>gamma</code>, starting at <code>1</code>, and <code>beta</code>, starting at <code>0</code>. <code>forward(x)</code> subtracts the mean, divides by the standard deviation (epsilon <code>0.00001</code> inside the square root), then applies <code>gamma</code> and <code>beta</code>. <code>backward(upstream)</code> returns the input gradient and stores <code>dGamma</code> and <code>dBeta</code>. On <code>[1, 3]</code> with both betas set to <code>5</code>, the outputs sum to <code>10</code>. An upstream of <code>[1, 0]</code> and a step of <code>1</code> moves <code>gamma[0]</code> to about <code>2</code> and <code>beta[0]</code> from <code>5</code> to <code>4</code>.</p>
+        <pre><code data-run="true" data-expect="100\n1999\n4">var ln = new LayerNorm(2);
+ln.beta[0] = 5.0;
+ln.beta[1] = 5.0;
+var y = ln.forward([1.0, 3.0]);
+print(int((y[0] + y[1]) * 10));
+ln.backward([1.0, 0.0]);
+ln.sgd(1.0);
+print(int(ln.gamma[0] * 1000));
+print(int(ln.beta[0]));</code></pre>
+
+        <h3 id="attention">14.10.5 Attention</h3>
+        <p><code>new Attention(length, dim, scale?)</code> owns <code>query</code> and <code>key</code>, each <code>[length, dim]</code>. The score scale defaults to <code>1/sqrt(dim)</code>. Pass a number when you want a different multiplier. The initial draw of <code>query</code> and <code>key</code> still uses <code>1/sqrt(dim)</code>. <code>forward(value, mask?)</code> computes <code>softmax(scale · QK^T)</code> and multiplies by <code>value</code>. A mask entry below <code>0.5</code> replaces that score with a large negative before the softmax, and that position does not receive a score gradient. After <code>forward</code>, <code>probs</code> is the attention matrix. <code>backward(upstream)</code> stores gradients for <code>query</code> and <code>key</code> and returns the value gradient. With scale <code>1</code> and zero query and key, two values <code>2</code> and <code>6</code> are averaged to <code>4</code>. The causal mask <code>[[1, 0], [0, 1]]</code> keeps <code>2</code> and <code>6</code>.</p>
+        <pre><code data-run="true" data-expect="4\n4\n2\n6\n0">var head = new Attention(2, 1, 1.0);
+head.query[0][0] = 0.0;
+head.query[1][0] = 0.0;
+head.key[0][0] = 0.0;
+head.key[1][0] = 0.0;
+var plain = head.forward([[2.0], [6.0]]);
+var causal = head.forward([[2.0], [6.0]], [[1.0, 0.0], [0.0, 1.0]]);
+print(int(plain[0][0]));
+print(int(plain[1][0]));
+print(int(causal[0][0]));
+print(int(causal[1][0]));
+print(int(head.probs[0][1] * 1000));</code></pre>
 
         <div class="see-also">
             <h3>See Also</h3>

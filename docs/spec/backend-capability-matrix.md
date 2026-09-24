@@ -55,7 +55,7 @@ These strings are what `@property` / `runProperty` use via `GetRequiredCapabilit
 | Grounded values (`grounded.wrap` / GraphMemory `ask`) | yes | yes | wrap only (GraphMemory n/a) |
 | VectorDB (`new VectorDB` / `add` / `searchSimilar` / `asRetriever`) | yes | yes | no |
 | ONNX inspect (`new OnnxModel` / `inputs` / `outputs` / `run`) | yes | yes | no |
-| Neural helpers (`nn.dense` / activations / `denseBackward` / `Dense` / `Sequential`) | yes | yes | yes |
+| Neural helpers (`nn.dense` / activations / `denseBackward` / `Dense` / `Sequential` / `Conv` / `Embedding` / `Rnn` / `LayerNorm` / `Attention`) | yes | yes | yes |
 | Capability tokens (`cap.fileRead` / `cap.httpGet` / `cap.mcpCall` / `cap.shell`) | yes | yes | mint / `is` / `confine` (consume host-only) |
 | HttpServer / RestServer / sessions | yes | yes | no |
 | UIHost / `ui.*` server-driven UI | yes† | yes† | no |

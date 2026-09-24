@@ -99,6 +99,7 @@ different convention from `str.length(s)` / `math.sqrt(x)`. There is no `arr` na
 | `math.sigmoid` / `tanh` / `softmax` | Same functions as `nn.sigmoid` / `tanh` / `softmax`. `nn.relu`, `nn.mse`, and `nn.crossEntropyFromLogits` are only on `nn` |
 | `nn.dense` / `denseBackward` | One dense layer. Weights are `[in, out]`. Backward needs the forward `pre` when the activation is not `linear` |
 | `new Dense` / `new Sequential` / `nn.sequential` | Fixed dense stack. `fit` is online SGD (`mse` or `crossEntropy`). Not a tape and not Adam |
+| `new Conv` / `Embedding` / `Rnn` / `LayerNorm` / `Attention` | Same contract as `Dense`: `forward`, `backward`, `sgd`. No tape |
 | `nn.leakyRelu` / `elu` / `gelu` / `silu` / `softplus` | Extra activations (scalar or elementwise). `dRelu` / `dSigmoid` / … are derivatives of the pre-activation |
 | `nn.mseGrad` / `softmaxGrad` | `pred - target`, and `softmax(logits) - oneHot(target)`. `mseGrad` is not the gradient of averaged `mse` |
 | `math.floor` / `round` / `ceil` / `sqrt` | Always return a **float**; whole-valued results coerce at integer sinks (`repeat`, indexes, …) |

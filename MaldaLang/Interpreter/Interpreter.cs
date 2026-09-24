@@ -3833,6 +3833,10 @@ public partial class Interpreter
         {
             return await CreateSequentialAsync(expr.Arguments);
         }
+        else if (expr.ClassName is "Conv" or "Embedding" or "Rnn" or "LayerNorm" or "Attention")
+        {
+            return await CreateNeuralLayerAsync(expr.ClassName, expr.Arguments);
+        }
         else if (expr.ClassName == "Conversation")
         {
             return await CreateConversationAsync(expr.Arguments);
@@ -4062,6 +4066,22 @@ public partial class Interpreter
         foreach (var arg in args)
             values.Add(await EvaluateAsync(arg));
         return RuntimeValue.Object(new BuiltIns.SequentialInstance(values));
+    }
+
+    private async Task<RuntimeValue> CreateNeuralLayerAsync(string className, List<Expression> args)
+    {
+        var values = new List<RuntimeValue>(args.Count);
+        foreach (var arg in args)
+            values.Add(await EvaluateAsync(arg));
+        ObjectInstance instance = className switch
+        {
+            "Conv" => new BuiltIns.ConvInstance(values),
+            "Embedding" => new BuiltIns.EmbeddingInstance(values),
+            "Rnn" => new BuiltIns.RnnInstance(values),
+            "LayerNorm" => new BuiltIns.LayerNormInstance(values),
+            _ => new BuiltIns.AttentionInstance(values)
+        };
+        return RuntimeValue.Object(instance);
     }
     
     private async Task<RuntimeValue> CreateConversationAsync(List<Expression> args)
@@ -4306,6 +4326,26 @@ public partial class Interpreter
         else if (instance is BuiltIns.SequentialInstance sequential)
         {
             return sequential.CallMethod(methodName, arguments, this);
+        }
+        else if (instance is BuiltIns.ConvInstance convLayer)
+        {
+            return convLayer.CallMethod(methodName, arguments, this);
+        }
+        else if (instance is BuiltIns.EmbeddingInstance embedding)
+        {
+            return embedding.CallMethod(methodName, arguments, this);
+        }
+        else if (instance is BuiltIns.RnnInstance rnn)
+        {
+            return rnn.CallMethod(methodName, arguments, this);
+        }
+        else if (instance is BuiltIns.LayerNormInstance layerNorm)
+        {
+            return layerNorm.CallMethod(methodName, arguments, this);
+        }
+        else if (instance is BuiltIns.AttentionInstance attention)
+        {
+            return attention.CallMethod(methodName, arguments, this);
         }
         else if (instance is BuiltIns.LLMClientBridge.LLMClientBridgeInstance bridgeClient)
         {

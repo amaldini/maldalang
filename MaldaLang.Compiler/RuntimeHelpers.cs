@@ -575,6 +575,7 @@ public static class RuntimeHelpers
 
     // One stable List<object> per List<RuntimeValue> identity (matches generated RuntimeHelpers).
     private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<List<RuntimeValue>, List<object>> RvListToObjectListCache = new();
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<List<object>, List<RuntimeValue>> ObjectListToRvListCache = new();
 
     // Array and dictionary operations
     public static List<object> GetArray(object? value)
@@ -588,26 +589,37 @@ public static class RuntimeHelpers
             return list;
         if (unwrapped is List<RuntimeValue> runtimeValueList)
         {
-            return RvListToObjectListCache.GetValue(runtimeValueList, static source =>
-            {
-                var result = new List<object>(source.Count);
-                foreach (var item in source)
-                {
-                    result.Add(item.Type switch
-                    {
-                        MaldaLang.Interpreter.ValueType.Integer => item.AsInteger(),
-                        MaldaLang.Interpreter.ValueType.Float => item.AsFloat(),
-                        MaldaLang.Interpreter.ValueType.String => item.AsString(),
-                        MaldaLang.Interpreter.ValueType.Boolean => item.AsBoolean(),
-                        MaldaLang.Interpreter.ValueType.Array => GetArray(item.AsArray()),
-                        MaldaLang.Interpreter.ValueType.Object => item.AsObject(),
-                        _ => null
-                    });
-                }
-                return result;
-            });
+            return RvListToObjectListCache.GetValue(runtimeValueList, static source => BridgeRuntimeArray(source));
         }
         throw new InvalidOperationException($"Value is not an array: {value?.GetType()}");
+    }
+
+    private static List<object> BridgeRuntimeArray(List<RuntimeValue> source)
+    {
+        var result = new List<object>(source.Count);
+        ObjectListToRvListCache.Add(result, source);
+        foreach (var item in source)
+        {
+            result.Add(item.Type switch
+            {
+                MaldaLang.Interpreter.ValueType.Integer => item.AsInteger(),
+                MaldaLang.Interpreter.ValueType.Float => item.AsFloat(),
+                MaldaLang.Interpreter.ValueType.String => item.AsString(),
+                MaldaLang.Interpreter.ValueType.Boolean => item.AsBoolean(),
+                MaldaLang.Interpreter.ValueType.Array => GetArray(item.AsArray()),
+                MaldaLang.Interpreter.ValueType.Object => item.AsObject(),
+                _ => null
+            });
+        }
+
+        return result;
+    }
+
+    /// <summary>Writes an indexed update on a bridged array back into the runtime array.</summary>
+    public static void SyncIndexed(List<object> arr, int index, object? newValue)
+    {
+        if (ObjectListToRvListCache.TryGetValue(arr, out var source) && (uint)index < (uint)source.Count)
+            source[index] = ToRuntimeValue(newValue);
     }
 
     public static object ArrayAppend(List<object> arr, object? item)
