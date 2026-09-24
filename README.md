@@ -50,13 +50,13 @@ malda Examples/Basics/first_look.malda
 - **Language & runtime** — objects, functions, actors, exceptions, namespaced standard library (`io` / `math` / `str`)
 - **Three backends, documented overlap** — interpret for iteration; transpile to a .NET executable; compile a **browser subset** to JavaScript (no agents, HTTP servers, or workflows on the JS path). Matrix: [`docs/spec/backend-capability-matrix.md`](docs/spec/backend-capability-matrix.md)
 - **AI** — `prompt` declarations, agents, tools, MCP
-- **Neural nets** — from-scratch track after the basics: perceptron, XOR, then the chapter 14 dense stack (`nn.dense`, `Sequential`). Offline, no API key. Guide: [`docs/start-here.md`](docs/start-here.md). Manual: [chapter 14](ReferenceManual/14-neural-nets.html)
+- **Neural nets** — from-scratch track after the basics: perceptron, XOR, then the chapter 14 dense stack (`nn.dense`, `Sequential`) and the local layers `Conv`, `Embedding`, `Rnn`, `LayerNorm`, `Attention`. Offline, no API key. Guide: [`docs/start-here.md`](docs/start-here.md). Manual: [chapter 14](ReferenceManual/14-neural-nets.html)
 - **Web** — REST decorators and `@PAGE` / `@AIPAGE` on the host runtime
 - **Workflows** — durable `step` / retry / compensate on local SQLite (single writer, not a cluster)
 - **Types** — annotations feed the IDE/LSP (mismatches are Errors by default in the editor); runtime stays dynamic. `malda compile --mode transpile` / `publish` refuses emit on those Errors (`--lenient-types` to skip)
 - **Tooling** — Desktop IDE (Windows reference), Web IDE (browser playground — not Desktop parity), VS Code + LSP
 
-**What this is not:** a Temporal cluster, a full static type system, or three equal backends. Workflows are local SQLite (single writer). JavaScript is a browser subset. Spec Final 1.0 is the language kernel; the toolchain is **1.0.28** (publish is the type boundary).
+**What this is not:** a Temporal cluster, a full static type system, or three equal backends. Workflows are local SQLite (single writer). JavaScript is a browser subset. Spec Final 1.0 is the language kernel; the toolchain is **1.0.29** (publish is the type boundary).
 
 The two largest showcases were written entirely by coding agents, even though MALDA is in no
 model's training data, because [`docs/llm/`](docs/llm/) ships a compact language pack for that
