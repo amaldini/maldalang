@@ -1,6 +1,6 @@
 # MALDA neural-nets kit
 
-**Status:** N0–N4 and N6–N10 landed; N5 partial  
+**Status:** N0–N4 and N6–N11 landed; N5 partial  
 **Created:** 2026-09-20  
 **Audience:** maintainers extending `math.*`, `nn.*`, and the offline AI_Theory track after Final 1.0
 
@@ -23,7 +23,8 @@ the same functions as `nn.sigmoid` / `tanh` / `softmax`. `nn.relu`, `nn.mse`, an
 builtin / DataLoader, GPU training, a general ONNX trainer, product apps or vertical
 packs (`AGENTS.md`). Serious inference runtimes stay an **optional pack out
 of tree** (`MaldaLang.Compiler/OptionalPack/`). `nn.dense` is one layer
-with an explicit activation derivative, not a module zoo.
+with an explicit activation derivative. `Dense` / `Sequential` stack those
+layers and can apply online SGD. They are not a module zoo and not a tape.
 
 ---
 
@@ -63,6 +64,7 @@ with an explicit activation derivative, not a module zoo.
 | 8 | **N8** Curriculum programs | Landed | Grad check, init scale, holdout, momentum, RNN, conv, residual/dropout. No new builtins |
 | 9 | **N9** Bridge into attention | Landed | Embedding row, bigram, layer norm, one attention head. No new builtins |
 | 10 | **N10** Bridge into the transformer | Landed | Context MLP, sinusoids, gradient clip, Adam moments, one decoder block. No new builtins |
+| 11 | **N11** `Dense` / `Sequential` | Landed | Host classes plus `nn.sequential`. Fixed dense stack, online SGD. No tape, no Adam |
 
 ```text
 N0  roadmap file                          (landed)
@@ -88,6 +90,8 @@ N9  embed_row / next_char                 (landed)
 N10 next_char_mlp / positional_encoding   (landed)
     grad_clip / adam_valley
     sentence_decoder
+N11 Dense / Sequential / nn.sequential   (landed)
+    online SGD on a fixed dense stack
 ```
 
 ---
@@ -144,6 +148,7 @@ colored by the XOR MLP, four training points overlaid. No new `ui.chart`.
 ## Out of scope (keep out of core)
 
 - Language `tensor` / autograd tape / an Adam builtin / DataLoader
+- A module zoo beyond the fixed dense stack (`Dense` / `Sequential` / `nn.sequential`)
 - GPU, distributed training, ONNX training loops
 - Downloading MNIST / ImageNet in the OSS repo (`mnist_digits.malda` is ten 5×5 glyphs on the chapter 14 step)
 - A second plotting namespace
@@ -169,6 +174,22 @@ and call the same functions. `relu`, `mse`, and `crossEntropyFromLogits` are onl
 
 `Examples/AI_Theory/xor_neural_net.malda` keeps the named chain rule.
 `Examples/AI_Theory/nn_dense.malda` trains the same XOR net through `nn.dense`.
+
+---
+
+## N11 — `Dense` / `Sequential`
+
+A fixed stack of dense layers. `forward` / `backward` call `nn.dense` / `nn.denseBackward`. `fit` is online SGD and returns the mean loss of the last epoch. `loss` is `"mse"` or `"crossEntropy"`. There is no tape and no Adam. Interpreter, C# transpile, and JavaScript all run it.
+
+| Call | Role |
+|------|------|
+| `new Dense(in, out, activation?, scale?)` | One layer. Default scale is `1/sqrt(in)`. Same RNG as `math.seed` |
+| `new Sequential([dense, ...])` | Stack of `Dense` instances |
+| `nn.sequential([[in, out, activation?, scale?], ...])` | Same stack from layer specs |
+| `forward` / `backward` / `sgd` | Vector in. `sgd(lr)` applies the gradients stored by `backward` |
+| `Sequential.fit(inputs, targets, epochs, lr, loss?)` | One sample at a time. Default loss is `mse` |
+
+`Examples/AI_Theory/sequential_xor.malda` is the 2-4-1 XOR net. `xor_neural_net.malda` and `nn_dense.malda` stay handwritten.
 
 ---
 

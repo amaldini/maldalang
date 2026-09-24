@@ -86,7 +86,7 @@ public static class StdLibNamespaces
         "relu", "sigmoid", "tanh", "mse", "softmax", "crossEntropyFromLogits",
         "leakyRelu", "elu", "gelu", "silu", "softplus",
         "dRelu", "dLeakyRelu", "dElu", "dGelu", "dSilu", "dSoftplus", "dSigmoid", "dTanh",
-        "dense", "denseBackward", "mseGrad", "softmaxGrad"
+        "dense", "denseBackward", "mseGrad", "softmaxGrad", "sequential"
     };
 
     public static readonly IReadOnlySet<string> IoMethodNames = new HashSet<string>(StringComparer.Ordinal)

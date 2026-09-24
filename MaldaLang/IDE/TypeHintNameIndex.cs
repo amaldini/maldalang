@@ -52,6 +52,8 @@ public sealed class TypeHintNameIndex
         "VectorDB",
         "GraphMemory",
         "OnnxModel",
+        "Dense",
+        "Sequential",
     };
 
     private static readonly HashSet<string> HostClassSet =

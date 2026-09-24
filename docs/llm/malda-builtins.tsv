@@ -277,6 +277,7 @@ runPrompt	runPrompt	at least 1 argument (promptInstance or text)
 runProperty	runProperty	1-3 arguments: (name, iterations?, seed?)		
 runWorkflowInstance	runWorkflowInstance	at least 1 argument: (instanceId)		
 seed	math.seed	1 argument	resets the one generator shared by random, randomInt, randomFloat, randn, randomChoiceWeighted and anneal	null
+sequential	nn.sequential	1 argument: (layers)		
 setAgentStatusBanner	setAgentStatusBanner	1 string argument (status banner line)		
 setAgentVerbosePhase	setAgentVerbosePhase	1 string argument (phase label)		
 setDefaultAgent	setDefaultAgent	an Agent instance		

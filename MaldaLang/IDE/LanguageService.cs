@@ -1321,7 +1321,7 @@ public class LanguageService : ILanguageService
         (StdLibNamespaces.CapModule, "cap.fileRead(path) — unforgeable file / HTTP / MCP / shell capability tokens"),
         (StdLibNamespaces.AgentsModule, "agents.define / agents.team — role specs plus a relation graph"),
         (StdLibNamespaces.TraceModule, "trace.span / journal / lastUsage — run observability"),
-        (StdLibNamespaces.NnModule, "nn.dense / activations / local derivatives — neural-net helpers")
+        (StdLibNamespaces.NnModule, "nn.dense / sequential / activations — neural-net helpers")
     };
 
     private static bool TryAddStdLibNamespaceMembers(string moduleName, List<CompletionItem> members)

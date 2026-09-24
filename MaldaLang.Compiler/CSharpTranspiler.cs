@@ -3169,6 +3169,26 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("}");
         WriteIndent();
+        _output.AppendLine("else if (instance is MaldaLang.BuiltIns.DenseInstance denseLayer)");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("result = denseLayer.CallMethod(methodName, runtimeArgs, MaldaLang.Runtime.TranspiledBuiltinRuntime.GetOrCreateInterpreter());");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+        WriteIndent();
+        _output.AppendLine("else if (instance is MaldaLang.BuiltIns.SequentialInstance sequentialNet)");
+        WriteIndent();
+        _output.AppendLine("{");
+        _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("result = sequentialNet.CallMethod(methodName, runtimeArgs, MaldaLang.Runtime.TranspiledBuiltinRuntime.GetOrCreateInterpreter());");
+        _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+        WriteIndent();
         _output.AppendLine("else if (instance is MaldaLang.BuiltIns.GraphMemoryInstance graphMemory)");
         WriteIndent();
         _output.AppendLine("{");
@@ -12142,6 +12162,27 @@ public class CSharpTranspiler
             _output.Append(")))");
             return;
         }
+
+        if (className is "Dense" or "Sequential")
+        {
+            var instanceType = className == "Dense"
+                ? "MaldaLang.BuiltIns.DenseInstance"
+                : "MaldaLang.BuiltIns.SequentialInstance";
+            _output.Append("new ");
+            _output.Append(instanceType);
+            _output.Append("(new System.Collections.Generic.List<MaldaLang.Interpreter.RuntimeValue> { ");
+            for (var i = 0; i < newExpr.Arguments.Count; i++)
+            {
+                if (i > 0)
+                    _output.Append(", ");
+                _output.Append("RuntimeHelpers.ToRuntimeValue(");
+                TranspileExpression(newExpr.Arguments[i]);
+                _output.Append(")");
+            }
+
+            _output.Append(" })");
+            return;
+        }
         
         if (className == "LLMClient" && newExpr.Arguments.Count == 3)
         {
@@ -12510,6 +12551,8 @@ public class CSharpTranspiler
             "LlamaCppClient" => "MaldaLang.BuiltIns.LlamaCppClientInstance",
             "LlamaEmbedder" => "MaldaLang.BuiltIns.LlamaEmbedderInstance",
             "OnnxModel" => "MaldaLang.BuiltIns.OnnxModelInstance",
+            "Dense" => "MaldaLang.BuiltIns.DenseInstance",
+            "Sequential" => "MaldaLang.BuiltIns.SequentialInstance",
             "Conversation" => "MaldaLang.BuiltIns.ConversationInstance",
             "Tool" => "MaldaLang.BuiltIns.ToolInstance",
             "Agent" => "MaldaLang.BuiltIns.AgentInstance",

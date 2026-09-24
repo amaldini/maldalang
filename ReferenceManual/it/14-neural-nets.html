@@ -20,7 +20,7 @@
 
         <h1>14. Reti neurali</h1>
 
-        <p>Pesi e bias restano array tuoi. Un layer denso è un prodotto di matrici, più quel bias, poi un'attivazione. Una rete più profonda è la stessa coppia di chiamate impilata: il <code>dInput</code> di un layer è il gradiente upstream del layer sotto. MALDA non registra un nastro di autograd e non applica il passo. <code>nn.denseBackward</code> restituisce i tre gradienti di quel solo layer; tu sottrai <code>learningRate</code> volte ciascun gradiente dai tuoi array.</p>
+        <p>Pesi e bias restano array tuoi. Un layer denso è un prodotto di matrici, più quel bias, poi un'attivazione. Una rete più profonda è la stessa coppia di chiamate impilata: il <code>dInput</code> di un layer è il gradiente upstream del layer sotto. <code>nn.dense</code> e <code>nn.denseBackward</code> non registrano un nastro di autograd e non applicano il passo. <code>nn.denseBackward</code> restituisce i tre gradienti di quel solo layer; tu sottrai <code>learningRate</code> volte ciascun gradiente dai tuoi array. <a href="#sequential">14.9</a> è una pila fissa di quei layer che può applicare SGD al posto tuo.</p>
         <p>La tabella delle firme è <a href="#signatures">14.8</a>. I programmi per studenti sono in <code>Examples/AI_Theory/</code>. Questo capitolo percorre un forward, un backward e il passaggio fra due layer, su numeri che si possono ricontrollare.</p>
 
         <h2 id="math-layout">14.1 Cosa resta su <code>math</code></h2>
@@ -136,7 +136,7 @@ print(int(nn.mse([2.0, 0.0], [0.0, 0.0])));</code></pre>
         <p><code>attention_is_all_you_need.malda</code> è il passo dopo <code>sentence_decoder.malda</code>. Resta su <code>math.matmul</code> e aggiunge l'attenzione multi-testa, le stesse sinusoidi e l'encoder-decoder. <code>microgpt.malda</code> è un modello a caratteri piccolo sullo stesso percorso. <code>new OnnxModel(path)</code> ispeziona ed esegue un modello piccolo sull'host. Non allena, e non sostituisce i file sopra. <code>malda play Examples/Games/xor_decision_boundary.malda</code> disegna il campo XOR. <code>malda play Examples/Games/softmax_decision_boundary.malda</code> disegna le tre regioni softmax.</p>
 
         <h2 id="backends">14.7 Backend</h2>
-        <p>Interprete, transpile C# e JavaScript eseguono tutti <code>math.dot</code> / <code>matmul</code> / <code>transpose</code> e <code>nn.*</code>. <code>OnnxModel</code> è solo host. Nel core non ci sono un tipo tensore, un nastro di autograd, né <code>Adam</code> o un data loader. I nomi <code>nn</code> non hanno un alias piatto: scrivi <code>nn.relu</code>, non <code>relu</code>.</p>
+        <p>Interprete, transpile C# e JavaScript eseguono tutti <code>math.dot</code> / <code>matmul</code> / <code>transpose</code>, <code>nn.*</code> e <code>new Dense</code> / <code>new Sequential</code>. <code>OnnxModel</code> è solo host. Nel core non ci sono un tipo tensore, un nastro di autograd, né <code>Adam</code> o un data loader. I nomi <code>nn</code> non hanno un alias piatto: scrivi <code>nn.relu</code>, non <code>relu</code>.</p>
 
         <h2 id="signatures">14.8 Firme</h2>
         <p>Arietà e valori di ritorno. Il modello del layer è il resto di questo capitolo. Interprete, transpile C# e JavaScript eseguono tutti <code>nn.*</code>. Non c'è un alias piatto.</p>
@@ -211,6 +211,36 @@ print(int(nn.dSigmoid(0.0) * 100));
 var layer = nn.dense([1.0, 2.0], [[0.5, -1.0], [1.0, 0.0]], [0.25, -0.5], "relu");
 print(int(layer.out[0] * 100));
 print(int(layer.out[1]));</code></pre>
+
+        <h2 id="sequential">14.9 Sequential</h2>
+        <p><code>new Dense(inFeatures, outFeatures, activation?, scale?)</code> possiede una matrice di pesi <code>[in, out]</code> e un bias. La scala di default è <code>1/sqrt(inFeatures)</code>, estratta dallo stesso generatore di <code>math.seed</code>. <code>forward(x)</code> restituisce il vettore di uscita e ricorda <code>pre</code>. <code>backward(upstream)</code> chiama <code>nn.denseBackward</code> e tiene <code>dWeights</code> e <code>dBias</code>. <code>sgd(lr)</code> sottrae quei gradienti sul posto. L'ingresso è un vettore, non un batch.</p>
+        <p><code>new Sequential([dense, ...])</code> impila quei layer. <code>forward</code>, <code>backward</code> e <code>sgd</code> percorrono la pila. <code>fit(inputs, targets, epochs, lr, loss?)</code> è SGD online, un campione alla volta, e restituisce la loss media dell'ultima epoca. <code>loss</code> è <code>"mse"</code> (il default; un target è un numero o un vettore) oppure <code>"crossEntropy"</code> (un indice di classe; l'ultimo layer resta <code>"linear"</code>). È ancora il backward del layer denso. Non è un nastro, e non è Adam.</p>
+        <p><code>nn.sequential([[in, out, activation?, scale?], ...])</code> costruisce lo stesso <code>Sequential</code>. <code>Examples/AI_Theory/sequential_xor.malda</code> allena la rete XOR 2-4-1 in questo modo. <code>nn_dense.malda</code> scrive ancora ogni passo a mano.</p>
+        <table class="sigs">
+        <thead>
+        <tr><th>Argomenti</th><th>Restituisce</th><th>Note</th></tr>
+        </thead>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>new Dense(inFeatures, outFeatures, activation?, scale?)</code></td></tr>
+        <tr><td>2-4 argomenti</td><td><code>Dense</code></td><td>proprietà <code>weights</code>, <code>bias</code>, <code>activation</code>, <code>inFeatures</code>, <code>outFeatures</code>. I nomi di attivazione sono quelli di <code>nn.dense</code>, default <code>linear</code></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>Dense.forward(x)</code> / <code>backward(upstream)</code> / <code>sgd(lr)</code></td></tr>
+        <tr><td>1 argomento</td><td>vettore, vettore, null</td><td><code>backward</code> richiede un <code>forward</code> precedente. <code>sgd</code> richiede un <code>backward</code> precedente</td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>new Sequential(layers)</code> / <code>nn.sequential(layers)</code></td></tr>
+        <tr><td>1 argomento</td><td><code>Sequential</code></td><td><code>new Sequential</code> riceve istanze <code>Dense</code>. <code>nn.sequential</code> riceve righe <code>[in, out, activation?, scale?]</code></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>Sequential.fit(inputs, targets, epochs, lr, loss?)</code></td></tr>
+        <tr><td>4-5 argomenti</td><td>float</td><td>loss media dell'ultima epoca. <code>loss</code> è <code>mse</code> o <code>crossEntropy</code></td></tr>
+        </tbody>
+        </table>
+        <pre><code data-run="true" data-expect="7">var layer = new Dense(1, 1, "linear", 0.0);
+layer.weights[0][0] = 2.0;
+layer.bias[0] = 1.0;
+print(int(layer.forward([3.0])[0]));</code></pre>
 
         <div class="see-also">
             <h3>Vedi anche</h3>

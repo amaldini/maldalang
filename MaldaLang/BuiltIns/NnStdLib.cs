@@ -45,6 +45,7 @@ public static class NnStdLib
             "denseBackward" => DenseBackward(args),
             "mseGrad" => MseGrad(args),
             "softmaxGrad" => SoftmaxGrad(args),
+            "sequential" => Sequential(args),
             _ => throw new Exception($"Unknown nn method: {methodName}")
         };
 
@@ -136,6 +137,12 @@ public static class NnStdLib
             var t = Math.Tanh(z);
             return 1.0 - t * t;
         });
+    }
+
+    public static RuntimeValue Sequential(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("sequential", args, 1, 1, "layers");
+        return RuntimeValue.Object(SequentialInstance.FromSpecs(args[0]));
     }
 
     public static RuntimeValue Dense(List<RuntimeValue> args)

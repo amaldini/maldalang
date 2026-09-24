@@ -3825,6 +3825,14 @@ public partial class Interpreter
         {
             return await CreateOnnxModelAsync(expr.Arguments);
         }
+        else if (expr.ClassName == "Dense")
+        {
+            return await CreateDenseAsync(expr.Arguments);
+        }
+        else if (expr.ClassName == "Sequential")
+        {
+            return await CreateSequentialAsync(expr.Arguments);
+        }
         else if (expr.ClassName == "Conversation")
         {
             return await CreateConversationAsync(expr.Arguments);
@@ -4038,6 +4046,22 @@ public partial class Interpreter
             throw new RuntimeException("OnnxModel() expects 1 argument: (path)");
 
         return RuntimeValue.Object(new BuiltIns.OnnxModelInstance(pathValue.AsString()));
+    }
+
+    private async Task<RuntimeValue> CreateDenseAsync(List<Expression> args)
+    {
+        var values = new List<RuntimeValue>(args.Count);
+        foreach (var arg in args)
+            values.Add(await EvaluateAsync(arg));
+        return RuntimeValue.Object(new BuiltIns.DenseInstance(values));
+    }
+
+    private async Task<RuntimeValue> CreateSequentialAsync(List<Expression> args)
+    {
+        var values = new List<RuntimeValue>(args.Count);
+        foreach (var arg in args)
+            values.Add(await EvaluateAsync(arg));
+        return RuntimeValue.Object(new BuiltIns.SequentialInstance(values));
     }
     
     private async Task<RuntimeValue> CreateConversationAsync(List<Expression> args)
@@ -4274,6 +4298,14 @@ public partial class Interpreter
         else if (instance is BuiltIns.OnnxModelInstance onnxModel)
         {
             return onnxModel.CallMethod(methodName, arguments, this);
+        }
+        else if (instance is BuiltIns.DenseInstance dense)
+        {
+            return dense.CallMethod(methodName, arguments, this);
+        }
+        else if (instance is BuiltIns.SequentialInstance sequential)
+        {
+            return sequential.CallMethod(methodName, arguments, this);
         }
         else if (instance is BuiltIns.LLMClientBridge.LLMClientBridgeInstance bridgeClient)
         {

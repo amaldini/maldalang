@@ -183,6 +183,21 @@
       "documentationTitle": "Start Here"
     },
     {
+      "name": "Sequential XOR",
+      "description": "Train the XOR MLP with new Sequential and Dense.fit instead of a handwritten step",
+      "file": "sequential_xor.malda",
+      "track": "student",
+      "difficulty": "intermediate",
+      "minutes": 6,
+      "requires": ["offline"],
+      "concepts": ["dense layer", "Sequential", "SGD", "XOR"],
+      "prerequisites": ["AI_Theory/nn_dense.malda"],
+      "learningGoal": "Define a 2-4-1 sigmoid stack and train it with online SGD in a few lines.",
+      "expectedOutput": "Prints the last-epoch loss and classifies all four XOR inputs, then sequential xor ok.",
+      "documentationPath": "/docs/start-here.md",
+      "documentationTitle": "Start Here"
+    },
+    {
       "name": "Tiny digits (MNIST loop)",
       "description": "Train a 5x5 glyph MLP with nn.dense, softmax cross-entropy, and a hand-written learning-rate step — the MNIST loop without the download",
       "file": "mnist_digits.malda",

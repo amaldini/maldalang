@@ -1,0 +1,45 @@
+// XOR multilayer perceptron (2 -> 4 -> 1) using Dense and Sequential.
+//
+// nn_dense.malda writes each nn.denseBackward and the learning-rate step.
+// Sequential.fit is online SGD on that same stack of dense layers.
+// It is not an autograd tape. Offline and seeded — no API key.
+
+function fmt(x: float) -> string {
+    return string(math.round(x * 1000.0) / 1000.0);
+}
+
+math.seed(42);
+
+var net = new Sequential([
+    new Dense(2, 4, "sigmoid", 1.0),
+    new Dense(4, 1, "sigmoid", 1.0)
+]);
+
+var inputs = [[0.0, 0.0], [0.0, 1.0], [1.0, 0.0], [1.0, 1.0]];
+var targets = [0.0, 1.0, 1.0, 0.0];
+
+var loss = net.fit(inputs, targets, 800, 0.8);
+io.print("epoch 800: loss=" + fmt(loss));
+io.print("");
+io.print("Predictions after training:");
+
+var correct = 0;
+for (var s = 0; s < inputs.length; s = s + 1) {
+    var x = inputs[s];
+    var target = targets[s];
+    var y = net.forward(x)[0];
+    var predicted = 0;
+    if (y >= 0.5) {
+        predicted = 1;
+    }
+    if (predicted == int(target)) {
+        correct = correct + 1;
+    }
+    io.print("  " + string(int(x[0])) + " " + string(int(x[1])) + " target " + string(int(target)) + " pred " + fmt(y));
+}
+
+io.print("");
+io.print("Accuracy: " + string(correct) + "/" + string(inputs.length));
+if (correct == inputs.length) {
+    io.print("sequential xor ok");
+}

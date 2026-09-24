@@ -2534,6 +2534,194 @@
     anneal: mathAnneal
   };
 
+  const NN_DENSE_ACTIVATIONS = ["relu", "leakyRelu", "elu", "gelu", "silu", "softplus", "sigmoid", "tanh", "linear"];
+
+  function nnRequirePositiveInt(name, value, which) {
+    if (typeof value !== "number" || !Number.isFinite(value) || Math.floor(value) !== value) {
+      throw new Error(name + "() " + which + " must be an integer");
+    }
+    if (value <= 0) throw new Error(name + "() " + which + " must be > 0");
+    return value;
+  }
+
+  function nnRequireFinite(name, value, which) {
+    const number = neuralAsNumeric(name, value);
+    if (!Number.isFinite(number)) throw new Error(name + "() " + which + " must be finite");
+    return number;
+  }
+
+  function nnApplySgdVector(values, grad, learningRate) {
+    for (let i = 0; i < values.length; i++) {
+      values[i] = values[i] - learningRate * grad[i];
+    }
+  }
+
+  function nnApplySgdMatrix(weights, grad, learningRate) {
+    for (let i = 0; i < weights.length; i++) {
+      nnApplySgdVector(weights[i], grad[i], learningRate);
+    }
+  }
+
+  function Dense(inFeatures, outFeatures, activation, scale) {
+    const argc = arguments.length;
+    if (argc < 2 || argc > 4) {
+      throw new Error("Dense() expects 2 to 4 arguments: (inFeatures, outFeatures, activation?, scale?)");
+    }
+    this.inFeatures = nnRequirePositiveInt("Dense", inFeatures, "inFeatures");
+    this.outFeatures = nnRequirePositiveInt("Dense", outFeatures, "outFeatures");
+    this.activation = "linear";
+    if (argc >= 3) {
+      if (typeof activation !== "string" || NN_DENSE_ACTIVATIONS.indexOf(activation) < 0) {
+        throw new Error("Dense() unknown activation '" + activation + "'");
+      }
+      this.activation = activation;
+    }
+    let width = 1 / Math.sqrt(this.inFeatures);
+    if (argc === 4) {
+      width = nnRequireFinite("Dense", scale, "scale");
+      if (width < 0) throw new Error("Dense() scale must be >= 0");
+    }
+    const weights = [];
+    for (let i = 0; i < this.inFeatures; i++) {
+      const row = [];
+      for (let j = 0; j < this.outFeatures; j++) row.push(randomFloatBuiltin(-width, width));
+      weights.push(row);
+    }
+    const bias = [];
+    for (let j = 0; j < this.outFeatures; j++) bias.push(randomFloatBuiltin(-width, width));
+    this.weights = weights;
+    this.bias = bias;
+    this._lastInput = null;
+    this._pre = null;
+    this._dWeights = null;
+    this._dBias = null;
+  }
+
+  Dense.prototype.forward = function (x) {
+    if (arguments.length !== 1) throw new Error("Dense.forward() expects 1 argument: (x)");
+    if (neuralIsMatrix(x)) throw new Error("Dense.forward() expects a numeric vector");
+    const result = this.activation === "linear"
+      ? nnDense(x, this.weights, this.bias)
+      : nnDense(x, this.weights, this.bias, this.activation);
+    this._lastInput = x;
+    this._pre = result.pre;
+    return result.out;
+  };
+
+  Dense.prototype.backward = function (upstream) {
+    if (arguments.length !== 1) throw new Error("Dense.backward() expects 1 argument: (upstream)");
+    if (this._lastInput == null || this._pre == null) {
+      throw new Error("Dense.backward() requires forward() first");
+    }
+    const result = this.activation === "linear"
+      ? nnDenseBackward(this._lastInput, this.weights, upstream)
+      : nnDenseBackward(this._lastInput, this.weights, upstream, this.activation, this._pre);
+    this._dWeights = result.dWeights;
+    this._dBias = result.dBias;
+    return result.dInput;
+  };
+
+  Dense.prototype.sgd = function (learningRate) {
+    if (arguments.length !== 1) throw new Error("Dense.sgd() expects 1 argument: (lr)");
+    if (this._dWeights == null || this._dBias == null) {
+      throw new Error("Dense.sgd() requires backward() first");
+    }
+    const step = nnRequireFinite("Dense.sgd", learningRate, "lr");
+    nnApplySgdMatrix(this.weights, this._dWeights, step);
+    nnApplySgdVector(this.bias, this._dBias, step);
+    return null;
+  };
+
+  function Sequential(layers) {
+    if (arguments.length !== 1 || !Array.isArray(layers) || layers.length === 0) {
+      throw new Error("Sequential() expects 1 argument: (layers)");
+    }
+    for (let i = 0; i < layers.length; i++) {
+      if (!(layers[i] instanceof Dense)) {
+        throw new Error("Sequential() expects an array of Dense layers");
+      }
+    }
+    this.layers = layers;
+  }
+
+  Sequential.prototype.forward = function (x) {
+    if (arguments.length !== 1) throw new Error("Sequential.forward() expects 1 argument: (x)");
+    let current = x;
+    for (let i = 0; i < this.layers.length; i++) current = this.layers[i].forward(current);
+    return current;
+  };
+
+  Sequential.prototype.backward = function (upstream) {
+    if (arguments.length !== 1) throw new Error("Sequential.backward() expects 1 argument: (upstream)");
+    let grad = upstream;
+    for (let i = this.layers.length - 1; i >= 0; i--) grad = this.layers[i].backward(grad);
+    return grad;
+  };
+
+  Sequential.prototype.sgd = function (learningRate) {
+    if (arguments.length !== 1) throw new Error("Sequential.sgd() expects 1 argument: (lr)");
+    for (let i = 0; i < this.layers.length; i++) this.layers[i].sgd(learningRate);
+    return null;
+  };
+
+  Sequential.prototype.fit = function (inputs, targets, epochs, learningRate, lossName) {
+    const argc = arguments.length;
+    if (argc < 4 || argc > 5) {
+      throw new Error("Sequential.fit() expects 4 or 5 arguments: (inputs, targets, epochs, lr, loss?)");
+    }
+    if (!Array.isArray(inputs) || !Array.isArray(targets) || inputs.length === 0 || inputs.length !== targets.length) {
+      throw new Error("Sequential.fit() inputs and targets must be non-empty and the same length");
+    }
+    const steps = nnRequirePositiveInt("Sequential.fit", epochs, "epochs");
+    const rate = nnRequireFinite("Sequential.fit", learningRate, "lr");
+    const loss = argc === 5 ? lossName : "mse";
+    if (loss !== "mse" && loss !== "crossEntropy") {
+      throw new Error("Sequential.fit() loss must be \"mse\" or \"crossEntropy\"");
+    }
+    let mean = 0;
+    for (let epoch = 0; epoch < steps; epoch++) {
+      let total = 0;
+      for (let sample = 0; sample < inputs.length; sample++) {
+        const output = this.forward(inputs[sample]);
+        let upstream;
+        if (loss === "mse") {
+          let target = targets[sample];
+          if (!Array.isArray(target)) {
+            if (output.length !== 1) throw new Error("Sequential.fit() scalar targets require one output");
+            target = [target];
+          }
+          total += mathMse(output, target);
+          upstream = nnMseGrad(output, target);
+        } else {
+          total += nnCrossEntropyFromLogits(output, targets[sample]);
+          upstream = nnSoftmaxGrad(output, targets[sample]);
+        }
+        this.backward(upstream);
+        this.sgd(rate);
+      }
+      mean = total / inputs.length;
+    }
+    return mean;
+  };
+
+  function nnSequential(layers) {
+    nnArity("sequential", arguments.length, 1, 1, "layers");
+    if (!Array.isArray(layers) || layers.length === 0) {
+      throw new Error("sequential() expects an array of [in, out, activation?, scale?]");
+    }
+    const built = [];
+    for (let i = 0; i < layers.length; i++) {
+      const row = layers[i];
+      if (!Array.isArray(row) || row.length < 2 || row.length > 4) {
+        throw new Error("sequential() expects an array of [in, out, activation?, scale?]");
+      }
+      if (row.length === 2) built.push(new Dense(row[0], row[1]));
+      else if (row.length === 3) built.push(new Dense(row[0], row[1], row[2]));
+      else built.push(new Dense(row[0], row[1], row[2], row[3]));
+    }
+    return new Sequential(built);
+  }
+
   const nnStdLib = {
     relu: mathRelu,
     sigmoid: mathSigmoid,
@@ -2557,7 +2745,8 @@
     dense: nnDense,
     denseBackward: nnDenseBackward,
     mseGrad: nnMseGrad,
-    softmaxGrad: nnSoftmaxGrad
+    softmaxGrad: nnSoftmaxGrad,
+    sequential: nnSequential
   };
 
   function strUpper(value) { return coerceToString(value).toUpperCase(); }
@@ -7285,6 +7474,8 @@
     })()
   };
 
+  global.Dense = Dense;
+  global.Sequential = Sequential;
   global.mlRuntime = Object.assign({}, global.mlRuntime || {}, runtime);
   if (typeof global.random !== "function") {
     global.random = randomBuiltin;

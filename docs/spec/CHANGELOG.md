@@ -539,7 +539,7 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 
 | Date | Change |
 |------|--------|
-| 2026-09-14 | PATCH: ship-contract follow-up (fullstack HTTP, jobs journal, ASK wrapper, Tier 0 C# PR slice) |
+| 2026-09-24 | MINOR: host classes `Dense` / `Sequential` and `nn.sequential` (fixed dense stack, online SGD; no tape, no Adam) |
 | 2026-09-06 | MINOR: `executePlan` `step.out` + `fixture` typed outputs (`evalPrompt` coerce path) |
 | 2026-09-06 | MINOR: sum-type constructor namespaces (`Result.Ok`); clash diagnostic; `import { T }` no longer flattens constructors |
 | 2026-09-05 | PATCH: HTTP ship traces (`HttpTraceParityTests`) for `Templates/webapi` `/api/health`; RestServer `start()` + `use()` options now match C# transpile |
