@@ -1,0 +1,73 @@
+// The same valley as momentum_valley.malda, with Adam's two moments.
+//
+// f(x, y) = 1/2 * ax * x^2 + 1/2 * ay * y^2. Plain SGD uses one learning
+// rate, so the steep axis overshoots. Adam keeps a moment m and a second
+// moment v, corrects the bias of the early steps, and divides:
+//   m = beta1 * m + (1 - beta1) * grad
+//   v = beta2 * v + (1 - beta2) * grad^2
+//   mHat = m / (1 - beta1^t)
+//   vHat = v / (1 - beta2^t)
+//   param = param - learningRate * mHat / (sqrt(vHat) + epsilon)
+// You still own m, v, and t. There is no optimizer builtin.
+// Offline — no API key. Next: rnn_delay.malda.
+
+function distance(x: float, y: float) -> float {
+    return math.sqrt(x * x + y * y);
+}
+
+function fmt(value: float) -> string {
+    return string(math.round(value * 1000.0) / 1000.0);
+}
+
+var ax = 0.15;
+var ay = 11.0;
+var learningRate = 0.2;
+var beta1 = 0.9;
+var beta2 = 0.999;
+var epsilon = 1.0e-8;
+var steps = 40;
+var x0 = 3.0;
+var y0 = 1.0;
+
+var sgdX = x0;
+var sgdY = y0;
+for (var step = 0; step < steps; step = step + 1) {
+    var gx = ax * sgdX;
+    var gy = ay * sgdY;
+    sgdX = sgdX - learningRate * gx;
+    sgdY = sgdY - learningRate * gy;
+}
+
+var adamX = x0;
+var adamY = y0;
+var mx = 0.0;
+var my = 0.0;
+var vx = 0.0;
+var vy = 0.0;
+for (var step = 0; step < steps; step = step + 1) {
+    var t = step + 1;
+    var gx = ax * adamX;
+    var gy = ay * adamY;
+    mx = beta1 * mx + (1.0 - beta1) * gx;
+    my = beta1 * my + (1.0 - beta1) * gy;
+    vx = beta2 * vx + (1.0 - beta2) * gx * gx;
+    vy = beta2 * vy + (1.0 - beta2) * gy * gy;
+    var bc1 = 1.0 - math.pow(beta1, float(t));
+    var bc2 = 1.0 - math.pow(beta2, float(t));
+    var mxHat = mx / bc1;
+    var myHat = my / bc1;
+    var vxHat = vx / bc2;
+    var vyHat = vy / bc2;
+    adamX = adamX - learningRate * mxHat / (math.sqrt(vxHat) + epsilon);
+    adamY = adamY - learningRate * myHat / (math.sqrt(vyHat) + epsilon);
+}
+
+var sgdDistance = distance(sgdX, sgdY);
+var adamDistance = distance(adamX, adamY);
+
+io.print("Adam on a steep valley (" + string(steps) + " steps)");
+io.print("sgd distance:  " + fmt(sgdDistance));
+io.print("adam distance: " + fmt(adamDistance));
+if (adamDistance < 0.5 && sgdDistance > adamDistance * 5.0) {
+    io.print("adam valley ok");
+}

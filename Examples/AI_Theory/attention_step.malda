@@ -3,8 +3,8 @@
 // Three tokens, d = 4. Value row 2 is the marker [1, 0, 0, 0]. Training
 // moves query 0 onto that key, so its output copies the marker. A causal
 // mask then sets future scores to a large negative: position 0 can no longer
-// read position 2. Multi-head, positions, and the encoder-decoder stay in
-// attention_is_all_you_need.malda.
+// read position 2. Sinusoidal positions are positional_encoding.malda.
+// Multi-head and the encoder-decoder stay in attention_is_all_you_need.malda.
 // Offline and seeded — no API key.
 
 function randomMatrix(rows: int, cols: int, scale: float) -> array {

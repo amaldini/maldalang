@@ -19,13 +19,18 @@ Agents and tools stay in [`Examples/Agents/`](../Agents/).
 | `init_scale.malda` | Uniform vs Xavier vs He on one forward pass |
 | `glyph_holdout.malda` | Same glyphs; two flipped pixels, train perfect and holdout not |
 | `momentum_valley.malda` | SGD vs momentum on a steep quadratic |
+| `grad_clip.malda` | Same learning rate; a length cap keeps the steep step small |
+| `adam_valley.malda` | Adam's bias-corrected moments on that same valley |
 | `rnn_delay.malda` | Vanishing sigmoid recurrence, then a tanh net that recalls a delayed bit |
 | `conv_stroke.malda` | One shared 3×3 kernel on vertical and horizontal dashes |
 | `residual_dropout.malda` | Residual skip vs a deep sigmoid stack, then a train-time dropout mask |
 | `embed_row.malda` | One embedding row receives the gradient; the other rows stay put |
 | `next_char.malda` | Bigram on a repeated inline word via `nn.dense` and a row scatter |
+| `next_char_mlp.malda` | Two-character context: `a` has two successors, a hidden layer names both |
 | `layer_norm.malda` | Mean and standard deviation keep a deep product near 1; grad check on the scale |
 | `attention_step.malda` | One head, `QK^T / sqrt(d)`, then a causal mask that hides the future |
+| `positional_encoding.malda` | Fixed sinusoidal positions; position 0 is `sin(0)` / `cos(0)` |
+| `sentence_decoder.malda` | One causal block overfits `abca` → `bcab`, with a clipped dense step |
 | `svm_linear.malda` | Soft-margin linear SVM (and why XOR needs a hidden layer) |
 | `attention_is_all_you_need.malda` | Vaswani et al. 2017 Transformer, then reverse a sequence |
 | `microgpt.malda` | Tiny decoder-only GPT (Karpathy port) |

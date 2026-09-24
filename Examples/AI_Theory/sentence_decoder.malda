@@ -1,0 +1,256 @@
+// One decoder block overfits one sentence.
+//
+// The sentence is "abca". Each position predicts the next character,
+// "bcab". A token row plus the fixed sinusoid from positional_encoding.malda
+// is the query, the key, and the value. attend is the causal head from
+// attention_step.malda. The residual sum goes through one linear nn.dense
+// to three logits. The loss is nn.crossEntropyFromLogits. Before the
+// learning-rate step, each dense gradient is rescaled when its length
+// exceeds maxNorm — the same cap as grad_clip.malda. The embedding rows
+// receive dInput from the residual and from the attention backward.
+// Offline and seeded — no API key. Next: attention_is_all_you_need.malda.
+
+function zeros(n: int) -> array {
+    var values = [];
+    for (var i = 0; i < n; i = i + 1) {
+        values.append(0.0);
+    }
+    return values;
+}
+
+function randomMatrix(rows: int, cols: int, scale: float) -> array {
+    var matrix = [];
+    for (var i = 0; i < rows; i = i + 1) {
+        var row = [];
+        for (var j = 0; j < cols; j = j + 1) {
+            row.append(math.randn(scale));
+        }
+        matrix.append(row);
+    }
+    return matrix;
+}
+
+function copyRow(row: array) -> array {
+    var copy = [];
+    for (var j = 0; j < row.length; j = j + 1) {
+        copy.append(row[j]);
+    }
+    return copy;
+}
+
+function addRows(left: array, right: array) -> array {
+    var out = [];
+    for (var j = 0; j < left.length; j = j + 1) {
+        out.append(left[j] + right[j]);
+    }
+    return out;
+}
+
+function scaleRows(matrix: array, scale: float) -> array {
+    var out = [];
+    for (var i = 0; i < matrix.length; i = i + 1) {
+        var row = [];
+        for (var j = 0; j < matrix[i].length; j = j + 1) {
+            row.append(matrix[i][j] * scale);
+        }
+        out.append(row);
+    }
+    return out;
+}
+
+function positionalEncoding(length: int, dModel: int) -> array {
+    var pe = math.zeros(length, dModel);
+    for (var pos = 0; pos < length; pos = pos + 1) {
+        for (var i = 0; i < dModel; i = i + 2) {
+            var denom = math.pow(10000.0, float(i) / float(dModel));
+            var angle = float(pos) / denom;
+            pe[pos][i] = math.sin(angle);
+            if (i + 1 < dModel) {
+                pe[pos][i + 1] = math.cos(angle);
+            }
+        }
+    }
+    return pe;
+}
+
+function causalMask(n: int) -> array {
+    var mask = math.zeros(n, n);
+    for (var i = 0; i < n; i = i + 1) {
+        for (var j = 0; j <= i; j = j + 1) {
+            mask[i][j] = 1.0;
+        }
+    }
+    return mask;
+}
+
+function attend(q: array, k: array, v: array, mask: array, scale: float) -> object {
+    var scores = scaleRows(math.matmul(q, math.transpose(k)), scale);
+    for (var i = 0; i < scores.length; i = i + 1) {
+        for (var j = 0; j < scores[i].length; j = j + 1) {
+            if (mask[i][j] < 0.5) {
+                scores[i][j] = -1.0e9;
+            }
+        }
+    }
+    var weights = [];
+    for (var i = 0; i < scores.length; i = i + 1) {
+        weights.append(math.softmax(scores[i]));
+    }
+    return { "weights": weights, "out": math.matmul(weights, v) };
+}
+
+function softmaxBackwardRow(dP: array, p: array) -> array {
+    var sum = 0.0;
+    for (var i = 0; i < p.length; i = i + 1) {
+        sum = sum + dP[i] * p[i];
+    }
+    var dS = [];
+    for (var i = 0; i < p.length; i = i + 1) {
+        dS.append(p[i] * (dP[i] - sum));
+    }
+    return dS;
+}
+
+function vectorNorm(values: array) -> float {
+    var sum = 0.0;
+    for (var i = 0; i < values.length; i = i + 1) {
+        sum = sum + values[i] * values[i];
+    }
+    return math.sqrt(sum);
+}
+
+function clipVector(values: array, maxNorm: float) -> array {
+    var length = vectorNorm(values);
+    if (length <= maxNorm || length == 0.0) {
+        return values;
+    }
+    var scale = maxNorm / length;
+    var out = [];
+    for (var i = 0; i < values.length; i = i + 1) {
+        out.append(values[i] * scale);
+    }
+    return out;
+}
+
+function clipMatrix(matrix: array, maxNorm: float) -> array {
+    var flat = [];
+    for (var i = 0; i < matrix.length; i = i + 1) {
+        for (var j = 0; j < matrix[i].length; j = j + 1) {
+            flat.append(matrix[i][j]);
+        }
+    }
+    var clipped = clipVector(flat, maxNorm);
+    var out = [];
+    var cursor = 0;
+    for (var i = 0; i < matrix.length; i = i + 1) {
+        var row = [];
+        for (var j = 0; j < matrix[i].length; j = j + 1) {
+            row.append(clipped[cursor]);
+            cursor = cursor + 1;
+        }
+        out.append(row);
+    }
+    return out;
+}
+
+function sgdMatrix(weights: array, grad: array, lr: float) {
+    for (var i = 0; i < weights.length; i = i + 1) {
+        for (var j = 0; j < weights[i].length; j = j + 1) {
+            weights[i][j] = weights[i][j] - lr * grad[i][j];
+        }
+    }
+}
+
+function sgdVector(values: array, grad: array, lr: float) {
+    for (var i = 0; i < values.length; i = i + 1) {
+        values[i] = values[i] - lr * grad[i];
+    }
+}
+
+function addInto(dest: array, src: array) {
+    for (var i = 0; i < dest.length; i = i + 1) {
+        for (var j = 0; j < dest[i].length; j = j + 1) {
+            dest[i][j] = dest[i][j] + src[i][j];
+        }
+    }
+}
+
+math.seed(5);
+
+var chars = ["a", "b", "c"];
+var ids = [0, 1, 2, 0];
+var targets = [1, 2, 0, 1];
+var seq = ids.length;
+var vocab = chars.length;
+var d = 4;
+var embed = randomMatrix(vocab, d, 0.4);
+var weights = randomMatrix(d, vocab, 0.4);
+var bias = zeros(vocab);
+var pe = positionalEncoding(seq, d);
+var scale = math.rsqrt(float(d));
+var mask = causalMask(seq);
+var learningRate = 0.45;
+var maxNorm = 5.0;
+
+for (var epoch = 0; epoch < 120; epoch = epoch + 1) {
+    var x = [];
+    for (var t = 0; t < seq; t = t + 1) {
+        x.append(addRows(copyRow(embed[ids[t]]), pe[t]));
+    }
+    var forward = attend(x, x, x, mask, scale);
+    var dH = math.zeros(seq, d);
+    for (var t = 0; t < seq; t = t + 1) {
+        var hidden = addRows(forward.out[t], x[t]);
+        var layer = nn.dense(hidden, weights, bias, "linear");
+        var upstream = nn.softmaxGrad(layer.out, targets[t]);
+        var back = nn.denseBackward(hidden, weights, upstream, "linear", layer.pre);
+        var dWeights = clipMatrix(back.dWeights, maxNorm);
+        var dBias = clipVector(back.dBias, maxNorm);
+        var dHidden = clipVector(back.dInput, maxNorm);
+        sgdMatrix(weights, dWeights, learningRate);
+        sgdVector(bias, dBias, learningRate);
+        for (var j = 0; j < d; j = j + 1) {
+            dH[t][j] = dHidden[j];
+        }
+    }
+    var dWeightsAttn = math.matmul(dH, math.transpose(x));
+    var dScores = [];
+    for (var i = 0; i < seq; i = i + 1) {
+        dScores.append(softmaxBackwardRow(dWeightsAttn[i], forward.weights[i]));
+    }
+    var dScaled = scaleRows(dScores, scale);
+    var dQ = math.matmul(dScaled, x);
+    var dK = math.matmul(math.transpose(dScaled), x);
+    var dV = math.matmul(math.transpose(forward.weights), dH);
+    var dX = math.zeros(seq, d);
+    addInto(dX, dQ);
+    addInto(dX, dK);
+    addInto(dX, dV);
+    addInto(dX, dH);
+    for (var t = 0; t < seq; t = t + 1) {
+        sgdVector(embed[ids[t]], clipVector(dX[t], maxNorm), learningRate);
+    }
+}
+
+var x = [];
+for (var t = 0; t < seq; t = t + 1) {
+    x.append(addRows(copyRow(embed[ids[t]]), pe[t]));
+}
+var forward = attend(x, x, x, mask, scale);
+var predicted = "";
+var correct = 0;
+for (var t = 0; t < seq; t = t + 1) {
+    var hidden = addRows(forward.out[t], x[t]);
+    var layer = nn.dense(hidden, weights, bias, "linear");
+    var pred = math.argmax(layer.out);
+    predicted = predicted + chars[pred];
+    if (pred == targets[t]) {
+        correct = correct + 1;
+    }
+}
+
+io.print("Sentence abca -> " + predicted);
+io.print("Decoder next chars: " + string(correct) + "/" + string(seq));
+if (correct == seq) {
+    io.print("sentence decoder ok");
+}

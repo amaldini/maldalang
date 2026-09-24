@@ -1,6 +1,6 @@
 # MALDA neural-nets kit
 
-**Status:** N0–N4 and N6–N9 landed; N5 partial  
+**Status:** N0–N4 and N6–N10 landed; N5 partial  
 **Created:** 2026-09-20  
 **Audience:** maintainers extending `math.*`, `nn.*`, and the offline AI_Theory track after Final 1.0
 
@@ -19,8 +19,8 @@ inspect + forward. `math.sigmoid` / `tanh` / `softmax` remain and call
 the same functions as `nn.sigmoid` / `tanh` / `softmax`. `nn.relu`, `nn.mse`, and
 `nn.crossEntropyFromLogits` are only on `nn`.
 
-**Not in scope:** a `tensor` language type, an autograd tape, `Adam` /
-DataLoader, GPU training, a general ONNX trainer, product apps or vertical
+**Not in scope:** a `tensor` language type, an autograd tape, an `Adam`
+builtin / DataLoader, GPU training, a general ONNX trainer, product apps or vertical
 packs (`AGENTS.md`). Serious inference runtimes stay an **optional pack out
 of tree** (`MaldaLang.Compiler/OptionalPack/`). `nn.dense` is one layer
 with an explicit activation derivative, not a module zoo.
@@ -62,6 +62,7 @@ with an explicit activation derivative, not a module zoo.
 | 7 | **N7** `nn.*` namespace | Landed | Activations, local derivatives, dense forward/backward |
 | 8 | **N8** Curriculum programs | Landed | Grad check, init scale, holdout, momentum, RNN, conv, residual/dropout. No new builtins |
 | 9 | **N9** Bridge into attention | Landed | Embedding row, bigram, layer norm, one attention head. No new builtins |
+| 10 | **N10** Bridge into the transformer | Landed | Context MLP, sinusoids, gradient clip, Adam moments, one decoder block. No new builtins |
 
 ```text
 N0  roadmap file                          (landed)
@@ -84,6 +85,9 @@ N8  gradcheck_dense / init_scale          (landed)
     residual_dropout
 N9  embed_row / next_char                 (landed)
     layer_norm / attention_step
+N10 next_char_mlp / positional_encoding   (landed)
+    grad_clip / adam_valley
+    sentence_decoder
 ```
 
 ---
@@ -139,7 +143,7 @@ colored by the XOR MLP, four training points overlaid. No new `ui.chart`.
 
 ## Out of scope (keep out of core)
 
-- Language `tensor` / autograd tape / Adam / DataLoader
+- Language `tensor` / autograd tape / an Adam builtin / DataLoader
 - GPU, distributed training, ONNX training loops
 - Downloading MNIST / ImageNet in the OSS repo (`mnist_digits.malda` is ten 5×5 glyphs on the chapter 14 step)
 - A second plotting namespace
@@ -188,7 +192,7 @@ No new `nn.*` names. Each file stays offline and prints an `ok` line. Files that
 
 ## N9 — Bridge into attention
 
-No new `nn.*` names. Each file stays offline, calls `math.seed`, and prints an `ok` line. The chain continues `residual_dropout.malda` and stops at the step before `attention_is_all_you_need.malda`. Embeddings, layer norm, and the one attention head stay handwritten.
+No new `nn.*` names. Each file stays offline, calls `math.seed`, and prints an `ok` line. The chain continues `residual_dropout.malda` and stops at `attention_step.malda`. N10 continues from there to `attention_is_all_you_need.malda`. Embeddings, layer norm, and the one attention head stay handwritten.
 
 | File | Idea |
 |------|------|
@@ -196,6 +200,20 @@ No new `nn.*` names. Each file stays offline, calls `math.seed`, and prints an `
 | `next_char.malda` | Bigram on a repeated inline word. `nn.crossEntropyFromLogits` plus the same row scatter |
 | `layer_norm.malda` | A deep product grows; mean and standard deviation keep it near 1. Central difference on the scale |
 | `attention_step.malda` | One head, `QK^T / sqrt(d)`, trained onto a marked token. A causal mask blocks position 0 from reading position 2 |
+
+---
+
+## N10 — Bridge into the transformer
+
+No new `nn.*` names. Adam and the gradient clip stay programs: you still own the moments and the cap. Each file stays offline and prints an `ok` line. The chain inserts `next_char_mlp.malda` after `next_char.malda`, `grad_clip.malda` and `adam_valley.malda` after `momentum_valley.malda`, and `positional_encoding.malda` plus `sentence_decoder.malda` after `attention_step.malda`, before `attention_is_all_you_need.malda`.
+
+| File | Idea |
+|------|------|
+| `next_char_mlp.malda` | Both samples end on `a`. A hidden layer on the two embedding rows names `b` after `x` and `c` after `y` |
+| `grad_clip.malda` | The same learning rate explodes on a steep quadratic; a length cap walks toward zero |
+| `adam_valley.malda` | Bias-corrected `m` and `v` on the momentum valley. SGD stays far |
+| `positional_encoding.malda` | Fixed `sin` / `cos` positions. Position 0 is `0, 1`. Position 1 matches `sin(1)` and `cos(1)` |
+| `sentence_decoder.malda` | One causal block overfits `abca` → `bcab`. The dense gradient is clipped before the step |
 
 ---
 

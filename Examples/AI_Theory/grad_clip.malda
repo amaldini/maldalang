@@ -1,0 +1,49 @@
+// One steep step, with and without a cap on the gradient length.
+//
+// f(x) = 1/2 * steep * x^2. At x = 4 the gradient is steep * 4.
+// The same learning rate times that gradient jumps past zero and the
+// magnitude grows. Clipping rescales the gradient so its absolute value
+// is at most maxNorm, and the same learning rate walks toward zero.
+// This is the hand step from chapter 14.4.2. sentence_decoder.malda
+// uses the same cap on a dense gradient.
+// Offline — no API key. Next: adam_valley.malda.
+
+function fmt(value: float) -> string {
+    return string(math.round(value * 1000.0) / 1000.0);
+}
+
+function clipScalar(grad: float, maxNorm: float) -> float {
+    var length = math.abs(grad);
+    if (length > maxNorm) {
+        return grad * maxNorm / length;
+    }
+    return grad;
+}
+
+var steep = 50.0;
+var learningRate = 0.05;
+var maxNorm = 1.0;
+var steps = 80;
+var x0 = 4.0;
+
+var raw = x0;
+for (var step = 0; step < steps; step = step + 1) {
+    var grad = steep * raw;
+    raw = raw - learningRate * grad;
+}
+
+var clipped = x0;
+for (var step = 0; step < steps; step = step + 1) {
+    var grad = clipScalar(steep * clipped, maxNorm);
+    clipped = clipped - learningRate * grad;
+}
+
+var rawAbs = math.abs(raw);
+var clippedAbs = math.abs(clipped);
+
+io.print("Gradient clip on a steep quadratic (" + string(steps) + " steps)");
+io.print("unclipped |x|: " + fmt(rawAbs));
+io.print("clipped |x|:   " + fmt(clippedAbs));
+if (clippedAbs < 1.0 && rawAbs > 10.0) {
+    io.print("grad clip ok");
+}

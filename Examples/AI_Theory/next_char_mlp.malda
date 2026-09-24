@@ -1,0 +1,123 @@
+// Two characters of context. The last character alone is not enough.
+//
+// Both samples end on "a". After "x a" the next character is "b"; after
+// "y a" it is "c". A bigram that only reads "a" has two successors, so it
+// cannot name both. The input is the concatenation of the two embedding
+// rows. One ReLU nn.dense and one linear nn.dense then score the five
+// characters. denseBackward returns dInput, and that vector is split back
+// onto the two rows.
+// Offline and seeded — no API key. Next: layer_norm.malda.
+
+function zeros(n: int) -> array {
+    var values = [];
+    for (var i = 0; i < n; i = i + 1) {
+        values.append(0.0);
+    }
+    return values;
+}
+
+function randomMatrix(rows: int, cols: int, scale: float) -> array {
+    var matrix = [];
+    for (var i = 0; i < rows; i = i + 1) {
+        var row = [];
+        for (var j = 0; j < cols; j = j + 1) {
+            row.append(math.randn(scale));
+        }
+        matrix.append(row);
+    }
+    return matrix;
+}
+
+function copyRow(row: array) -> array {
+    var copy = [];
+    for (var j = 0; j < row.length; j = j + 1) {
+        copy.append(row[j]);
+    }
+    return copy;
+}
+
+function concat(left: array, right: array) -> array {
+    var values = copyRow(left);
+    for (var j = 0; j < right.length; j = j + 1) {
+        values.append(right[j]);
+    }
+    return values;
+}
+
+function sgdMatrix(weights: array, grad: array, lr: float) {
+    for (var i = 0; i < weights.length; i = i + 1) {
+        for (var j = 0; j < weights[i].length; j = j + 1) {
+            weights[i][j] = weights[i][j] - lr * grad[i][j];
+        }
+    }
+}
+
+function sgdVector(values: array, grad: array, lr: float) {
+    for (var i = 0; i < values.length; i = i + 1) {
+        values[i] = values[i] - lr * grad[i];
+    }
+}
+
+function predict(table: array, prev: int, cur: int, w1: array, b1: array, w2: array, b2: array) -> int {
+    var x = concat(table[prev], table[cur]);
+    var hidden = nn.dense(x, w1, b1, "relu");
+    var logits = nn.dense(hidden.out, w2, b2, "linear");
+    return math.argmax(logits.out);
+}
+
+math.seed(3);
+
+var chars = ["x", "y", "a", "b", "c"];
+var vocab = chars.length;
+var dim = 4;
+var hidden = 8;
+var xId = 0;
+var yId = 1;
+var aId = 2;
+var bId = 3;
+var cId = 4;
+var samples = [
+    [xId, aId, bId],
+    [yId, aId, cId]
+];
+var table = randomMatrix(vocab, dim, 0.4);
+var w1 = randomMatrix(dim * 2, hidden, 0.4);
+var b1 = zeros(hidden);
+var w2 = randomMatrix(hidden, vocab, 0.4);
+var b2 = zeros(vocab);
+var learningRate = 0.35;
+
+for (var epoch = 0; epoch < 80; epoch = epoch + 1) {
+    for (var s = 0; s < samples.length; s = s + 1) {
+        var prev = samples[s][0];
+        var cur = samples[s][1];
+        var target = samples[s][2];
+        var x = concat(table[prev], table[cur]);
+        var layer1 = nn.dense(x, w1, b1, "relu");
+        var layer2 = nn.dense(layer1.out, w2, b2, "linear");
+        var upstream = nn.softmaxGrad(layer2.out, target);
+        var back2 = nn.denseBackward(layer1.out, w2, upstream, "linear", layer2.pre);
+        var back1 = nn.denseBackward(x, w1, back2.dInput, "relu", layer1.pre);
+        sgdMatrix(w2, back2.dWeights, learningRate);
+        sgdVector(b2, back2.dBias, learningRate);
+        sgdMatrix(w1, back1.dWeights, learningRate);
+        sgdVector(b1, back1.dBias, learningRate);
+        var dPrev = [];
+        var dCur = [];
+        for (var j = 0; j < dim; j = j + 1) {
+            dPrev.append(back1.dInput[j]);
+            dCur.append(back1.dInput[dim + j]);
+        }
+        sgdVector(table[prev], dPrev, learningRate);
+        sgdVector(table[cur], dCur, learningRate);
+    }
+}
+
+var predB = predict(table, xId, aId, w1, b1, w2, b2);
+var predC = predict(table, yId, aId, w1, b1, w2, b2);
+io.print("Last character a has two successors, b and c");
+io.print("x a -> " + chars[predB]);
+io.print("y a -> " + chars[predC]);
+if (predB == bId && predC == cId) {
+    io.print("next char mlp ok");
+}

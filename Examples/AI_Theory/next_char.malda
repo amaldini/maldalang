@@ -5,7 +5,7 @@
 // nn.dense maps it to six logits. The loss is nn.crossEntropyFromLogits and
 // the upstream is nn.softmaxGrad. denseBackward returns dInput, and that
 // vector is subtracted from the selected row only.
-// Offline and seeded — no API key. Next: layer_norm.malda.
+// Offline and seeded — no API key. Next: next_char_mlp.malda.
 
 function zeros(n: int) -> array {
     var values = [];

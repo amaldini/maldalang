@@ -1,0 +1,48 @@
+// Fixed sinusoidal positions, the encoding from Vaswani et al. 2017 §3.5.
+//
+// PE(pos, 2i) = sin(pos / 10000^(2i/d))
+// PE(pos, 2i+1) = cos(pos / 10000^(2i/d))
+// Position 0 is [0, 1, ...] because sin(0) is 0 and cos(0) is 1.
+// Position 1 matches sin(1) and cos(1) on that first pair. Nothing is
+// trained. The same formula is added to token vectors in sentence_decoder.malda.
+// Offline — no API key. Next: sentence_decoder.malda.
+
+function positionalEncoding(length: int, dModel: int) -> array {
+    var pe = math.zeros(length, dModel);
+    for (var pos = 0; pos < length; pos = pos + 1) {
+        for (var i = 0; i < dModel; i = i + 2) {
+            var denom = math.pow(10000.0, float(i) / float(dModel));
+            var angle = float(pos) / denom;
+            pe[pos][i] = math.sin(angle);
+            if (i + 1 < dModel) {
+                pe[pos][i + 1] = math.cos(angle);
+            }
+        }
+    }
+    return pe;
+}
+
+var length = 8;
+var dModel = 8;
+var pe = positionalEncoding(length, dModel);
+var originEven = pe[0][0];
+var originOdd = pe[0][1];
+var sinGap = math.abs(pe[1][0] - math.sin(1.0));
+var cosGap = math.abs(pe[1][1] - math.cos(1.0));
+var inRange = true;
+for (var pos = 0; pos < length; pos = pos + 1) {
+    for (var i = 0; i < dModel; i = i + 1) {
+        if (pe[pos][i] < -1.0001 || pe[pos][i] > 1.0001) {
+            inRange = false;
+        }
+    }
+}
+
+io.print("Positional encoding: sin / cos, fixed");
+io.print("pos0 even: " + string(math.round(originEven * 1000.0) / 1000.0));
+io.print("pos0 odd: " + string(math.round(originOdd * 1000.0) / 1000.0));
+io.print("pos1 sin gap: " + string(math.round(sinGap * 1000.0) / 1000.0));
+io.print("pos1 cos gap: " + string(math.round(cosGap * 1000.0) / 1000.0));
+if (math.abs(originEven) < 0.001 && math.abs(originOdd - 1.0) < 0.001 && sinGap < 0.001 && cosGap < 0.001 && inRange) {
+    io.print("positional encoding ok");
+}

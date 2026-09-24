@@ -17,7 +17,7 @@ public class AITheoryTrackTests : TestBase
             .Where(example => example.Category == "AI_Theory")
             .ToList();
 
-        Assert.Equal(23, examples.Count);
+        Assert.Equal(28, examples.Count);
         Assert.All(examples, example =>
         {
             Assert.Equal("student", example.Track);
@@ -208,5 +208,48 @@ public class AITheoryTrackTests : TestBase
         var path = PlanningPaths.ResolveRepoPath("Examples", "AI_Theory", "attention_step.malda");
         var output = await CaptureInterpretAsync(File.ReadAllText(path), path);
         Assert.Contains("attention step ok", output);
+    }
+
+    [Fact]
+    public async Task GradClip_PrintsOkLine()
+    {
+        var path = PlanningPaths.ResolveRepoPath("Examples", "AI_Theory", "grad_clip.malda");
+        var output = await CaptureInterpretAsync(File.ReadAllText(path), path);
+        Assert.Contains("grad clip ok", output);
+    }
+
+    [Fact]
+    public async Task AdamValley_PrintsOkLine()
+    {
+        var path = PlanningPaths.ResolveRepoPath("Examples", "AI_Theory", "adam_valley.malda");
+        var output = await CaptureInterpretAsync(File.ReadAllText(path), path);
+        Assert.Contains("adam valley ok", output);
+    }
+
+    [Fact]
+    public async Task NextCharMlp_PrintsOkLine()
+    {
+        var path = PlanningPaths.ResolveRepoPath("Examples", "AI_Theory", "next_char_mlp.malda");
+        var output = await CaptureInterpretAsync(File.ReadAllText(path), path);
+        Assert.Contains("x a -> b", output);
+        Assert.Contains("y a -> c", output);
+        Assert.Contains("next char mlp ok", output);
+    }
+
+    [Fact]
+    public async Task PositionalEncoding_PrintsOkLine()
+    {
+        var path = PlanningPaths.ResolveRepoPath("Examples", "AI_Theory", "positional_encoding.malda");
+        var output = await CaptureInterpretAsync(File.ReadAllText(path), path);
+        Assert.Contains("positional encoding ok", output);
+    }
+
+    [Fact]
+    public async Task SentenceDecoder_PrintsOkLine()
+    {
+        var path = PlanningPaths.ResolveRepoPath("Examples", "AI_Theory", "sentence_decoder.malda");
+        var output = await CaptureInterpretAsync(File.ReadAllText(path), path);
+        Assert.Contains("abca -> bcab", output);
+        Assert.Contains("sentence decoder ok", output);
     }
 }
