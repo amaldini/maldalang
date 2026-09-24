@@ -1,0 +1,497 @@
+// CartPole policy gradient on a JS canvas.
+// Run: malda play Examples/Games/cartpole_neural.malda
+//
+// A 4-24-2 net (tanh hidden, linear logits) learns left/right by REINFORCE.
+// Each frame draws the cart and a bar of recent episode returns.
+// Reward is 1 at the track center with no speed, and falls off as the cart
+// drifts or keeps velocity, so a shove should be answered by a return to center.
+// Hold the mouse to drag the pole off balance; the policy tries to recover.
+
+function randomMatrix(rows: int, cols: int, scale: float) -> array {
+    var matrix = [];
+    for (var i = 0; i < rows; i = i + 1) {
+        var row = [];
+        for (var j = 0; j < cols; j = j + 1) {
+            row.append(math.randomFloat(-scale, scale));
+        }
+        matrix.append(row);
+    }
+    return matrix;
+}
+
+function randomVector(n: int, scale: float) -> array {
+    var values = [];
+    for (var i = 0; i < n; i = i + 1) {
+        values.append(math.randomFloat(-scale, scale));
+    }
+    return values;
+}
+
+function zeroMatrix(rows: int, cols: int) -> array {
+    var matrix = [];
+    for (var i = 0; i < rows; i = i + 1) {
+        var row = [];
+        for (var j = 0; j < cols; j = j + 1) {
+            row.append(0.0);
+        }
+        matrix.append(row);
+    }
+    return matrix;
+}
+
+function zeroVector(n: int) -> array {
+    var values = [];
+    for (var i = 0; i < n; i = i + 1) {
+        values.append(0.0);
+    }
+    return values;
+}
+
+function addMatrix(dst: array, src: array) {
+    for (var i = 0; i < dst.length; i = i + 1) {
+        for (var j = 0; j < dst[i].length; j = j + 1) {
+            dst[i][j] = dst[i][j] + src[i][j];
+        }
+    }
+}
+
+function addVector(dst: array, src: array) {
+    for (var i = 0; i < dst.length; i = i + 1) {
+        dst[i] = dst[i] + src[i];
+    }
+}
+
+function applyMatrix(weights: array, grad: array, lr: float) {
+    for (var i = 0; i < weights.length; i = i + 1) {
+        for (var j = 0; j < weights[i].length; j = j + 1) {
+            var g = grad[i][j];
+            if (g > 5.0) {
+                g = 5.0;
+            }
+            if (g < -5.0) {
+                g = -5.0;
+            }
+            weights[i][j] = weights[i][j] - lr * g;
+        }
+    }
+}
+
+function applyVector(bias: array, grad: array, lr: float) {
+    for (var i = 0; i < bias.length; i = i + 1) {
+        var g = grad[i];
+        if (g > 5.0) {
+            g = 5.0;
+        }
+        if (g < -5.0) {
+            g = -5.0;
+        }
+        bias[i] = bias[i] - lr * g;
+    }
+}
+
+function scaleCopy(values: array, scale: float) -> array {
+    var out = [];
+    for (var i = 0; i < values.length; i = i + 1) {
+        out.append(values[i] * scale);
+    }
+    return out;
+}
+
+function observe(state: array) -> array {
+    return [
+        state[0] / 2.4,
+        state[1] / 2.5,
+        state[2] / 0.20944,
+        state[3] / 2.5
+    ];
+}
+
+function freshState() -> array {
+    return [
+        math.randomFloat(-0.05, 0.05),
+        0.0,
+        math.randomFloat(-0.05, 0.05),
+        0.0
+    ];
+}
+
+// Gym CartPole-v1, Euler. poke is an extra rad/s kick on the pole (mouse).
+function cartStep(state: array, action: int, poke: float) -> bool {
+    var gravity = 9.8;
+    var massCart = 1.0;
+    var massPole = 0.1;
+    var totalMass = massCart + massPole;
+    var length = 0.5;
+    var poleMassLength = massPole * length;
+    var force = -10.0;
+    if (action == 1) {
+        force = 10.0;
+    }
+    var tau = 0.02;
+    var x = state[0];
+    var xDot = state[1];
+    var theta = state[2];
+    var thetaDot = state[3];
+    var costheta = math.cos(theta);
+    var sintheta = math.sin(theta);
+    var temp = (force + poleMassLength * thetaDot * thetaDot * sintheta) / totalMass;
+    var thetaAcc = (gravity * sintheta - costheta * temp) / (length * (1.333333333 - massPole * costheta * costheta / totalMass));
+    var xAcc = temp - poleMassLength * thetaAcc * costheta / totalMass;
+    x = x + tau * xDot;
+    xDot = xDot + tau * xAcc;
+    theta = theta + tau * thetaDot;
+    thetaDot = thetaDot + tau * thetaAcc + poke;
+    state[0] = x;
+    state[1] = xDot;
+    state[2] = theta;
+    state[3] = thetaDot;
+    if (x < -2.4 || x > 2.4) {
+        return true;
+    }
+    if (theta < -0.20944 || theta > 0.20944) {
+        return true;
+    }
+    return false;
+}
+
+// 1 on the center mark at rest. Position and speed each spend part of that 1,
+// so coasting while the pole stays upright scores less than coming back.
+function stepReward(state: array) -> float {
+    var xTerm = state[0] / 2.4;
+    var vTerm = state[1] / 2.0;
+    var reward = 1.0 - 0.65 * xTerm * xTerm - 0.35 * vTerm * vTerm;
+    if (reward < 0.05) {
+        reward = 0.05;
+    }
+    return reward;
+}
+
+function chooseAction(logits: array, greedy: bool) -> int {
+    if (greedy) {
+        if (logits[1] > logits[0]) {
+            return 1;
+        }
+        return 0;
+    }
+    var probs = math.softmax(logits);
+    if (math.random() > probs[0]) {
+        return 1;
+    }
+    return 0;
+}
+
+function reinforce(w1: array, b1: array, w2: array, b2: array, obs: array, actions: array, rewards: array, lr: float, gamma: float) {
+    var n = rewards.length;
+    if (n < 2) {
+        return;
+    }
+    var reversed = [];
+    var running = 0.0;
+    var t = n - 1;
+    while (t >= 0) {
+        running = rewards[t] + gamma * running;
+        reversed.append(running);
+        t = t - 1;
+    }
+    var returns = [];
+    var k = reversed.length - 1;
+    while (k >= 0) {
+        returns.append(reversed[k]);
+        k = k - 1;
+    }
+    var mean = 0.0;
+    for (var i = 0; i < n; i = i + 1) {
+        mean = mean + returns[i];
+    }
+    mean = mean / n;
+    var varSum = 0.0;
+    for (var i = 0; i < n; i = i + 1) {
+        var delta = returns[i] - mean;
+        varSum = varSum + delta * delta;
+    }
+    var std = math.sqrt(varSum / n);
+    if (std < 0.000001) {
+        std = 0.000001;
+    }
+
+    var hidden = 24;
+    var gw1 = zeroMatrix(4, hidden);
+    var gb1 = zeroVector(hidden);
+    var gw2 = zeroMatrix(hidden, 2);
+    var gb2 = zeroVector(2);
+    for (var i = 0; i < n; i = i + 1) {
+        var x = obs[i];
+        var h = nn.dense(x, w1, b1, "tanh");
+        var out = nn.dense(h.out, w2, b2, "linear");
+        var advantage = (returns[i] - mean) / std;
+        var upstream = scaleCopy(nn.softmaxGrad(out.out, actions[i]), advantage);
+        var backOut = nn.denseBackward(h.out, w2, upstream, "linear", out.pre);
+        var backH = nn.denseBackward(x, w1, backOut.dInput, "tanh", h.pre);
+        addMatrix(gw1, backH.dWeights);
+        addVector(gb1, backH.dBias);
+        addMatrix(gw2, backOut.dWeights);
+        addVector(gb2, backOut.dBias);
+    }
+    var step = lr / n;
+    applyMatrix(w1, gw1, step);
+    applyVector(b1, gb1, step);
+    applyMatrix(w2, gw2, step);
+    applyVector(b2, gb2, step);
+}
+
+function fmt(x: float) -> string {
+    return string(math.round(x * 10.0) / 10.0);
+}
+
+function startCartpole() {
+    math.seed(7);
+    var hidden = 24;
+    var s1 = math.sqrt(6.0 / 28.0);
+    var s2 = math.sqrt(6.0 / 26.0);
+    var w1 = randomMatrix(4, hidden, s1);
+    var b1 = randomVector(hidden, 0.05);
+    var w2 = randomMatrix(hidden, 2, s2);
+    var b2 = randomVector(2, 0.05);
+    var learningRate = 0.08;
+    var gamma = 0.99;
+
+    var canvasW = 960;
+    var canvasH = 560;
+    var worldLeft = 36;
+    var worldW = 620;
+    var trackY = 392;
+    var pxPerM = worldW / 4.8;
+    var cartW = 72;
+    var cartH = 28;
+    var polePx = 150;
+    var chartLeft = 680;
+    var chartBottom = 470;
+    var chartW = 250;
+    var chartH = 280;
+
+    var state = freshState();
+    var obs = [];
+    var actions = [];
+    var rewards = [];
+    var history = [];
+    var episode = 1;
+    var episodeReturn = 0.0;
+    var episodeSteps = 0.0;
+    var avgReturn = 0.0;
+    var training = true;
+    var fellFlash = 0;
+    var lastProbs = [0.5, 0.5];
+    var dragging = false;
+
+    function resetEpisode() {
+        state = freshState();
+        obs = [];
+        actions = [];
+        rewards = [];
+        episodeReturn = 0.0;
+        episodeSteps = 0.0;
+    }
+
+    function resetNet() {
+        math.seed(7);
+        w1 = randomMatrix(4, hidden, s1);
+        b1 = randomVector(hidden, 0.05);
+        w2 = randomMatrix(hidden, 2, s2);
+        b2 = randomVector(2, 0.05);
+        history = [];
+        episode = 1;
+        avgReturn = 0.0;
+        fellFlash = 0;
+        training = true;
+        resetEpisode();
+    }
+
+    function screenCartX() -> float {
+        return worldLeft + worldW / 2.0 + state[0] * pxPerM;
+    }
+
+    function tipOfPole() -> array {
+        var hingeX = screenCartX();
+        var hingeY = trackY - cartH;
+        return [
+            hingeX + math.sin(state[2]) * polePx,
+            hingeY - math.cos(state[2]) * polePx
+        ];
+    }
+
+    function mousePoke() -> float {
+        dragging = game.isMouseDown(0);
+        if (!dragging) {
+            return 0.0;
+        }
+        var tip = tipOfPole();
+        var kick = (game.getMouseX() - tip[0]) * 0.00012;
+        if (kick > 0.02) {
+            kick = 0.02;
+        }
+        if (kick < -0.02) {
+            kick = -0.02;
+        }
+        return kick;
+    }
+
+    function finishEpisode() {
+        if (training) {
+            reinforce(w1, b1, w2, b2, obs, actions, rewards, learningRate, gamma);
+        }
+        history.append(episodeReturn);
+        if (history.length > 36) {
+            history.shift();
+        }
+        var recentSum = 0.0;
+        var count = 0.0;
+        var start = history.length - 12;
+        if (start < 0) {
+            start = 0;
+        }
+        for (var i = start; i < history.length; i = i + 1) {
+            recentSum = recentSum + history[i];
+            count = count + 1.0;
+        }
+        if (count > 0.0) {
+            avgReturn = recentSum / count;
+        }
+        episode = episode + 1;
+        fellFlash = 28;
+    }
+
+    function update(dtMs) {
+        if (game.wasKeyPressed("r")) {
+            resetNet();
+        }
+        if (game.wasKeyPressed("p")) {
+            training = !training;
+            resetEpisode();
+        }
+
+        var steps = 1;
+        if (training) {
+            steps = 4;
+        } else {
+            steps = int(dtMs / 16.0);
+            if (steps < 1) {
+                steps = 1;
+            }
+            if (steps > 3) {
+                steps = 3;
+            }
+        }
+        if (fellFlash > 0) {
+            fellFlash = fellFlash - 1;
+            if (fellFlash == 0) {
+                resetEpisode();
+            }
+            steps = 0;
+        }
+
+        var cap = 220;
+        if (!training) {
+            cap = 2000;
+        }
+
+        for (var s = 0; s < steps; s = s + 1) {
+            var x = observe(state);
+            var hiddenOut = nn.dense(x, w1, b1, "tanh");
+            var out = nn.dense(hiddenOut.out, w2, b2, "linear");
+            lastProbs = math.softmax(out.out);
+            var action = chooseAction(out.out, !training);
+            var poke = mousePoke();
+            var done = cartStep(state, action, poke);
+            var reward = stepReward(state);
+            obs.append(x);
+            actions.append(action);
+            rewards.append(reward);
+            episodeReturn = episodeReturn + reward;
+            episodeSteps = episodeSteps + 1.0;
+            if (done || episodeSteps >= cap) {
+                finishEpisode();
+                break;
+            }
+        }
+    }
+
+    function render() {
+        game.fillRect(0, 0, canvasW, canvasH, "#12141c");
+        game.fillRect(worldLeft, 70, worldW, 430, "#1a1e2a");
+
+        var cartX = screenCartX();
+        var hingeY = trackY - cartH;
+        game.fillRect(worldLeft + 16, trackY + 18, worldW - 32, 6, "#3c455c");
+        game.fillRect(worldLeft + 16, trackY + 8, 4, 16, "#8d97ad");
+        game.fillRect(worldLeft + worldW / 2.0 - 2, trackY + 2, 4, 22, "#d7deea");
+        game.fillRect(worldLeft + worldW - 20, trackY + 8, 4, 16, "#8d97ad");
+
+        var tip = tipOfPole();
+        var poleColor = "#f4f1ea";
+        if (dragging) {
+            poleColor = "#ff8b7a";
+            game.drawLine(tip[0], tip[1], game.getMouseX(), game.getMouseY(), "#ffb4a8", 2);
+        }
+        if (fellFlash > 0) {
+            poleColor = "#ffd166";
+        }
+        game.drawLine(cartX, hingeY, tip[0], tip[1], poleColor, 6);
+        game.fillCircle(tip[0], tip[1], 9, "#ff6b6b");
+
+        var bodyX = cartX - cartW / 2.0;
+        var bodyY = trackY - cartH;
+        game.fillRect(bodyX, bodyY, cartW, cartH, "#e8c56b");
+        game.fillCircle(bodyX + 16, trackY + 6, 8, "#2a3144");
+        game.fillCircle(bodyX + cartW - 16, trackY + 6, 8, "#2a3144");
+
+        var barW = 200;
+        var barX = worldLeft + 24;
+        var barY = 96;
+        game.fillRect(barX, barY, barW, 10, "#2a3144");
+        game.fillRect(barX, barY, barW * lastProbs[0], 10, "#7eb6ff");
+        game.fillRect(barX + barW * lastProbs[0], barY, barW * lastProbs[1], 10, "#ffb86b");
+        game.drawText("left " + fmt(lastProbs[0] * 100.0) + "%", barX, barY - 8, "#9ec4ff", "13px sans-serif");
+        game.drawText("right " + fmt(lastProbs[1] * 100.0) + "%", barX + 120, barY - 8, "#ffd0a1", "13px sans-serif");
+
+        var mode = "TRAINING";
+        var hint = "Hold the mouse on the pole to knock it over";
+        if (!training) {
+            mode = "PLAY";
+            hint = "Drag to shove it — the net should return to the mark";
+        }
+        game.drawText("CartPole", worldLeft + 8, 36, "#f4f4f4", "22px sans-serif");
+        game.drawText(mode, worldLeft + 130, 36, "#ffd166", "18px sans-serif");
+        game.drawText(hint, worldLeft + 8, 58, "#c8c8d4", "14px sans-serif");
+        game.drawText("episode " + string(episode) + "   return " + string(int(episodeReturn)) + "   avg " + fmt(avgReturn), worldLeft + 8, 448, "#f4f4f4", "16px sans-serif");
+        game.drawText("P play/train    R reset weights", worldLeft + 8, 474, "#9aa3b5", "14px sans-serif");
+
+        game.drawText("episode return", chartLeft, 78, "#f4f4f4", "16px sans-serif");
+        game.fillRect(chartLeft, chartBottom - chartH, chartW, chartH, "#1c2030");
+        var targetY = chartBottom - chartH * (200.0 / 250.0);
+        game.drawLine(chartLeft, targetY, chartLeft + chartW, targetY, "#3d4a38", 1);
+        if (history.length > 0) {
+            var slot = chartW / history.length;
+            for (var i = 0; i < history.length; i = i + 1) {
+                var h = history[i] / 250.0 * chartH;
+                if (h > chartH) {
+                    h = chartH;
+                }
+                var color = "#6fbf8b";
+                if (history[i] < 40.0) {
+                    color = "#d46a6a";
+                }
+                game.fillRect(chartLeft + i * slot + 1, chartBottom - h, slot - 2, h, color);
+            }
+        }
+        game.drawText("taller stays centered   line = 200", chartLeft, chartBottom + 22, "#9aa3b5", "13px sans-serif");
+        if (avgReturn >= 160.0 && training) {
+            game.drawText("balancing — press P to play", chartLeft, 110, "#b6f0c2", "14px sans-serif");
+        }
+    }
+
+    game.createCanvas(canvasW, canvasH, "#app");
+    game.setBackground("#12141c");
+    game.start(update, render);
+}
+
+startCartpole();

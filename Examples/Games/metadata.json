@@ -494,6 +494,29 @@
       "expectedOutput": "Fills a canvas with three class colors and the training points.",
       "documentationPath": "/docs/roadmap-neural.md",
       "documentationTitle": "Neural-nets kit"
+    },
+    {
+      "name": "CartPole neural policy",
+      "description": "REINFORCE policy on CartPole: watch training returns and the cart, then drag the pole with the mouse",
+      "file": "cartpole_neural.malda",
+      "track": "student",
+      "difficulty": "advanced",
+      "minutes": 12,
+      "requires": ["offline"],
+      "concepts": [
+        "neural network",
+        "policy gradient",
+        "nn.dense",
+        "game.*",
+        "JavaScript target"
+      ],
+      "prerequisites": [
+        "AI_Theory/nn_dense.malda"
+      ],
+      "learningGoal": "See a small policy learn to balance a pole, and knock it off with the mouse.",
+      "expectedOutput": "Animates CartPole while a return chart climbs; mouse drag pushes the pole.",
+      "documentationPath": "/docs/roadmap-neural.md",
+      "documentationTitle": "Neural-nets kit"
     }
   ]
 }

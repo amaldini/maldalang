@@ -36,6 +36,8 @@ See the XOR decision boundary in the browser with
 `malda play Examples/Games/xor_decision_boundary.malda`, and the three
 softmax regions with
 `malda play Examples/Games/softmax_decision_boundary.malda`.
+A CartPole policy that trains on the canvas, and that you can shove with the mouse, is
+`malda play Examples/Games/cartpole_neural.malda`.
 Kit roadmap: [`docs/roadmap-neural.md`](../../docs/roadmap-neural.md).
 
 All are seeded with `math.seed` where they use randomness. The student
