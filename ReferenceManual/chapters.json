@@ -15,7 +15,7 @@
     { "file": "11-classes-objects.html", "title": "Classes & Objects", "category": "Language Fundamentals", "description": "OOP features, inheritance" },
     { "file": "12-input-output.html", "title": "Input/Output", "category": "Standard Library", "description": "Console, files, paths, environment, host I/O, and capability tokens" },
     { "file": "13-built-in-functions.html", "title": "Built-in Functions", "category": "Standard Library", "description": "Stdlib catalog: conversion, math, strings, files, JSON, dates; indexes into host, AI, and web helpers" },
-    { "file": "14-neural-nets.html", "title": "Neural Nets", "category": "Standard Library", "description": "Dense layers, activations, local derivatives, and one backward step" },
+    { "file": "14-neural-nets.html", "title": "Neural Nets", "category": "Standard Library", "description": "Dense layers, activations, losses, one backward step, and Sequential SGD" },
     { "file": "15-graphs.html", "title": "Graphs", "category": "Standard Library", "description": "Graph data structures and algorithms" },
     { "file": "16-vectordb.html", "title": "VectorDB", "category": "Standard Library", "description": "Vector database for similarity search" },
     { "file": "17-database.html", "title": "Database Support", "category": "Standard Library", "description": "SQLite, SQL Server, and PostgreSQL clients" },

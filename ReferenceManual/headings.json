@@ -1189,9 +1189,51 @@
   },
   {
     "file": "14-neural-nets.html",
+    "level": 3,
+    "id": "classification",
+    "title": "14.5.1 Classification"
+  },
+  {
+    "file": "14-neural-nets.html",
     "level": 2,
     "id": "examples",
     "title": "14.6 Examples"
+  },
+  {
+    "file": "14-neural-nets.html",
+    "level": 3,
+    "id": "track-xor",
+    "title": "14.6.1 One neuron, then a hidden layer"
+  },
+  {
+    "file": "14-neural-nets.html",
+    "level": 3,
+    "id": "track-class",
+    "title": "14.6.2 A classifier"
+  },
+  {
+    "file": "14-neural-nets.html",
+    "level": 3,
+    "id": "track-check",
+    "title": "14.6.3 Check the gradient and the scale"
+  },
+  {
+    "file": "14-neural-nets.html",
+    "level": 3,
+    "id": "track-step",
+    "title": "14.6.4 The step you still write"
+  },
+  {
+    "file": "14-neural-nets.html",
+    "level": 3,
+    "id": "track-shapes",
+    "title": "14.6.5 Shapes that are not one dense call"
+  },
+  {
+    "file": "14-neural-nets.html",
+    "level": 3,
+    "id": "track-attention",
+    "title": "14.6.6 From one row to one decoder block"
   },
   {
     "file": "14-neural-nets.html",
@@ -1204,6 +1246,12 @@
     "level": 2,
     "id": "signatures",
     "title": "14.8 Signatures"
+  },
+  {
+    "file": "14-neural-nets.html",
+    "level": 2,
+    "id": "sequential",
+    "title": "14.9 Sequential"
   },
   {
     "file": "15-graphs.html",

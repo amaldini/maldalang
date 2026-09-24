@@ -20,11 +20,12 @@
 
         <h1>14. Neural Nets</h1>
 
-        <p>You keep the weights and the bias yourself. A dense layer is one matrix multiply, plus that bias, then an activation. A deeper net is the same pair of calls stacked: the <code>dInput</code> of one layer is the upstream gradient of the layer below it. <code>nn.dense</code> and <code>nn.denseBackward</code> do not record an autograd tape and do not apply the step. <code>nn.denseBackward</code> returns the three gradients for that one layer; you subtract <code>learningRate</code> times each gradient from your own arrays. <a href="#sequential">14.9</a> is a fixed stack of those layers that can apply SGD for you.</p>
-        <p>The signature table is <a href="#signatures">14.8</a>. The student programs are <code>Examples/AI_Theory/</code>. This chapter walks one forward, one backward, and the hand-off between two layers, on numbers you can check.</p>
+        <p>You keep the weights and the bias yourself. <code>nn.dense</code> is one matrix multiply, plus that bias, then an activation. <code>nn.denseBackward</code> returns the three gradients of that one layer and stops. It does not record an autograd tape, and it does not change your arrays. You subtract <code>learningRate</code> times each gradient, or you hand a fixed stack of layers to <a href="#sequential">14.9</a>, which applies that same step for you.</p>
+        <p>A deeper net is the same pair of calls stacked. Run the output layer backward first. Its <code>dInput</code> is the upstream gradient of the layer below it. Both layers need the <code>pre</code> they returned on the way forward, because the activation derivative is evaluated there.</p>
+        <p>This chapter recomputes one forward, one backward, a two-row batch, the hand-off between two layers, both losses, and one <code>Sequential.fit</code> step. The signature tables are <a href="#signatures">14.8</a> and <a href="#sequential">14.9</a>. <a href="#examples">14.6</a> is the order of the offline programs in <code>Examples/AI_Theory/</code>, which write the same products with named variables before a helper hides them.</p>
 
         <h2 id="math-layout">14.1 What stays on <code>math</code></h2>
-        <p>Linear algebra stays on <code>math</code>. A weight matrix is <code>[in, out]</code>: one row per input unit, one column per output unit, the same layout as <code>math.matmul(x, weights)</code>. The inner dimensions must match, so a vector of length 2 multiplies a matrix with 2 rows. Activations and the layer live on <code>nn</code>. Write <code>nn.relu</code>, not <code>relu</code>: there is no flat alias.</p>
+        <p>Linear algebra stays on <code>math</code>. A weight matrix is <code>[in, out]</code>: one row per input unit, one column per output unit, the same layout as <code>math.matmul(x, weights)</code>. The inner dimensions must match, so a vector of length 2 multiplies a matrix with 2 rows. The product below is the linear part of the layer in <a href="#reading-the-matrix">14.2.1</a>, before the bias <code>[0.25, -0.5]</code> is added. Activations and the layer live on <code>nn</code>. Write <code>nn.relu</code>, not <code>relu</code>: there is no flat alias.</p>
         <table>
         <thead>
         <tr><th>Call</th><th>Role</th></tr>
@@ -35,7 +36,9 @@
         <tr><td><code>nn.relu</code> / <code>mse</code> / <code>crossEntropyFromLogits</code></td><td>Only on <code>nn</code>. There is no <code>math.relu</code></td></tr>
         </tbody>
         </table>
-        <pre><code data-run="true" data-expect="5">print(math.dot([1.0, 2.0], [3.0, 1.0]));</code></pre>
+        <pre><code data-run="true" data-expect="5\n25\n-10">print(math.dot([1.0, 2.0], [3.0, 1.0]));
+print(int(math.matmul([1.0, 2.0], [[0.5, -1.0], [1.0, 0.0]])[0] * 10));
+print(int(math.matmul([1.0, 2.0], [[0.5, -1.0], [1.0, 0.0]])[1] * 10));</code></pre>
 
         <h2 id="dense">14.2 One dense layer</h2>
         <p><code>nn.dense(x, weights, bias?, activation?)</code> accepts one sample as a vector, or several samples as a matrix with one row per sample. The bias has one number per output. Omit it and the bias is zeros. The call returns <code>{ pre, out }</code>.</p>
@@ -50,7 +53,21 @@ print(int(layer.pre[1] * 100));
 print(int(layer.out[0] * 100));
 print(int(layer.out[1]));</code></pre>
         <h3 id="batch">14.2.2 A batch</h3>
-        <p>Pass a matrix and each row is one sample. The same bias is added to every row. <code>pre</code> and <code>out</code> keep that row layout. A later backward sums the bias gradient over the rows, so two identical samples contribute twice. Divide by the row count yourself when you want a mean.</p>
+        <p>Pass a matrix and each row is one sample. The same weights and the same bias apply to every row. <code>pre</code> and <code>out</code> keep that row layout, so <code>pre[0]</code> is the first sample. Two copies of <code>[1, 2]</code> each produce the pre-activation <code>[2.75, -1.5]</code> from <a href="#reading-the-matrix">14.2.1</a>.</p>
+        <p>The matching backward sums over the rows. Each row has <code>dZ = [1, 0]</code>, so the bias gradient is <code>[2, 0]</code> and the weight gradient is <code>[[2, 0], [4, 0]]</code>, twice the single-sample gradient. <code>dInput</code> stays one row per sample: the first row is still <code>[0.5, 1]</code>. Divide by the row count yourself when you want a mean. A learning rate tuned on one sample is large for many rows unless you scale it.</p>
+        <pre><code data-run="true" data-expect="275\n-150\n2\n0\n2\n4\n0\n5\n1">var x = [[1.0, 2.0], [1.0, 2.0]];
+var w = [[0.5, -1.0], [1.0, 0.0]];
+var layer = nn.dense(x, w, [0.25, -0.5], "relu");
+var back = nn.denseBackward(x, w, [[1.0, 1.0], [1.0, 1.0]], "relu", layer.pre);
+print(int(layer.pre[0][0] * 100));
+print(int(layer.pre[0][1] * 100));
+print(int(back.dBias[0]));
+print(int(back.dBias[1]));
+print(int(back.dWeights[0][0]));
+print(int(back.dWeights[1][0]));
+print(int(back.dWeights[0][1]));
+print(int(back.dInput[0][0] * 10));
+print(int(back.dInput[0][1]));</code></pre>
 
         <h2 id="activations">14.3 Activations</h2>
         <p><code>nn.dense</code> accepts these names. The matching <code>nn.d*</code> call is the derivative with respect to the pre-activation <code>z</code>. At <code>z = 0</code>, ReLU's derivative is <code>0</code> (the test is <code>z &gt; 0</code>).</p>
@@ -71,6 +88,11 @@ print(int(layer.out[1]));</code></pre>
         </tbody>
         </table>
         <p>The standalone calls <code>nn.leakyRelu(x, alpha?)</code> and <code>nn.elu(x, alpha?)</code> take an optional alpha. <code>nn.dense</code> does not: it always uses the defaults above. <code>sigmoid</code>, <code>tanh</code>, and <code>softmax</code> are also on <code>math</code> and call the same functions.</p>
+        <p>Save <code>pre</code> because several of these derivatives are a test on <code>z</code>, and <code>out</code> has already folded that test. ReLU's derivative at <code>0</code> is <code>0</code>. At <code>3</code> it is <code>1</code>. Sigmoid at <code>0</code> is <code>0.5</code>, and its derivative there is <code>0.25</code>. A pre-activation past about <code>±20</code> makes that derivative <code>0</code>, which is why a deep stack of sigmoids needs a small initial scale (<a href="#track-check">14.6.3</a>).</p>
+        <pre><code data-run="true" data-expect="0\n1\n50\n25">print(int(nn.dRelu(0.0)));
+print(int(nn.dRelu(3.0)));
+print(int(nn.sigmoid(0.0) * 100));
+print(int(nn.dSigmoid(0.0) * 100));</code></pre>
 
         <h2 id="backward">14.4 One backward step</h2>
         <p><code>nn.denseBackward(x, weights, upstream, activation?, pre?)</code> returns <code>{ dInput, dWeights, dBias }</code>. <code>upstream</code> is the gradient of the loss with respect to <code>out</code>, one number per output, in the same shape as <code>out</code>. The layer multiplies that vector by the activation derivative at <code>pre</code> and calls the result <code>dZ</code>. Then:</p>
@@ -79,14 +101,17 @@ print(int(layer.out[1]));</code></pre>
             <li><code>dWeights[i][j]</code> is input <code>i</code> times <code>dZ[j]</code>. That is the outer product of the input and <code>dZ</code>.</li>
             <li><code>dInput[i]</code> is the sum over outputs of <code>dZ[j] × weights[i][j]</code>. That vector is what the previous layer receives as its upstream.</li>
         </ul>
-        <p>On the same layer as <a href="#reading-the-matrix">14.2.1</a>, ReLU's derivative is <code>1</code> at <code>2.75</code> and <code>0</code> at <code>-1.5</code>. An upstream of <code>[1, 1]</code> therefore becomes <code>dZ = [1, 0]</code>. The bias gradient is <code>[1, 0]</code>. The weight gradient is <code>[[1, 0], [2, 0]]</code> because the inputs are <code>1</code> and <code>2</code>. The input gradient is <code>[0.5, 1]</code>: the dead unit drops the second column of <code>W</code> before that multiply. The snippet prints <code>dInput[0] × 10</code>, then the two bias entries.</p>
-        <pre><code data-run="true" data-expect="5\n1\n0">var x = [1.0, 2.0];
+        <p>On the same layer as <a href="#reading-the-matrix">14.2.1</a>, ReLU's derivative is <code>1</code> at <code>2.75</code> and <code>0</code> at <code>-1.5</code>. An upstream of <code>[1, 1]</code> therefore becomes <code>dZ = [1, 0]</code>. The bias gradient is <code>[1, 0]</code>. The weight gradient is <code>[[1, 0], [2, 0]]</code> because the inputs are <code>1</code> and <code>2</code>. The input gradient is <code>[0.5, 1]</code>: the dead unit drops the second column of <code>W</code> before that multiply. The snippet prints <code>dInput[0] × 10</code>, the two bias entries, then <code>dWeights[0][0]</code>, <code>dWeights[1][0]</code>, and <code>dWeights[0][1]</code>.</p>
+        <pre><code data-run="true" data-expect="5\n1\n0\n1\n2\n0">var x = [1.0, 2.0];
 var w = [[0.5, -1.0], [1.0, 0.0]];
 var layer = nn.dense(x, w, [0.25, -0.5], "relu");
 var back = nn.denseBackward(x, w, [1.0, 1.0], "relu", layer.pre);
 print(int(back.dInput[0] * 10));
 print(int(back.dBias[0]));
-print(int(back.dBias[1]));</code></pre>
+print(int(back.dBias[1]));
+print(int(back.dWeights[0][0]));
+print(int(back.dWeights[1][0]));
+print(int(back.dWeights[0][1]));</code></pre>
         <h3 id="second-layer">14.4.1 A second layer</h3>
         <p>Run the output layer backward first. Its <code>dInput</code> is the hidden layer's upstream, and the hidden layer's forward <code>out</code> is the <code>x</code> that the output layer saw. Both layers need the <code>pre</code> they returned.</p>
         <pre><code>var hidden = nn.dense(x, w1, b1, "sigmoid");
@@ -98,6 +123,20 @@ var backHidden = nn.denseBackward(x, w1, backOut.dInput, "sigmoid", hidden.pre);
 
         <h3 id="weight-update">14.4.2 The weight step</h3>
         <p>There is no optimizer builtin. After the backward calls, subtract <code>learningRate</code> times <code>dWeights</code> from the weight matrix and <code>learningRate</code> times <code>dBias</code> from the bias, entry by entry. A batch bias gradient is a sum, so a learning rate tuned on one sample is large for many rows unless you scale it.</p>
+        <p>Take one input <code>2</code>, weight <code>1</code>, bias <code>0</code>, and target <code>6</code>, with a linear activation. The forward output is <code>2</code>. <code>nn.mseGrad</code> is <code>2 − 6 = −4</code>. The weight gradient is <code>2 × −4 = −8</code> and the bias gradient is <code>−4</code>. A learning rate of <code>0.25</code> moves the weight to <code>1 − 0.25 × (−8) = 3</code> and the bias to <code>1</code>. The next forward is <code>3 × 2 + 1 = 7</code>, closer to <code>6</code>. The snippet prints the first output, the weight gradient, the updated weight, the updated bias, and the output after the step.</p>
+        <pre><code data-run="true" data-expect="2\n-8\n3\n1\n7">var w = [[1.0]];
+var b = [0.0];
+var layer = nn.dense([2.0], w, b, "linear");
+var back = nn.denseBackward([2.0], w, nn.mseGrad(layer.out, [6.0]), "linear", layer.pre);
+var lr = 0.25;
+print(int(layer.out[0]));
+print(int(back.dWeights[0][0]));
+w[0][0] = w[0][0] - lr * back.dWeights[0][0];
+b[0] = b[0] - lr * back.dBias[0];
+print(int(w[0][0]));
+print(int(b[0]));
+var again = nn.dense([2.0], w, b, "linear");
+print(int(again.out[0]));</code></pre>
 
         <h2 id="losses">14.5 Losses</h2>
         <p>On two numbers, <code>nn.mse(pred, target)</code> is the squared difference. On two vectors of the same length it is the mean of those squares. <code>nn.mse(2, 0)</code> is <code>4</code>. <code>nn.mse([2, 0], [0, 0])</code> is <code>2</code>, the mean of <code>4</code> and <code>0</code>.</p>
@@ -105,35 +144,43 @@ var backHidden = nn.denseBackward(x, w1, backOut.dInput, "sigmoid", hidden.pre);
         <pre><code data-run="true" data-expect="4\n2\n2">print(int(nn.mse(2.0, 0.0)));
 print(int(nn.mseGrad(2.0, 0.0)));
 print(int(nn.mse([2.0, 0.0], [0.0, 0.0])));</code></pre>
+        <h3 id="classification">14.5.1 Classification</h3>
         <p><code>nn.crossEntropyFromLogits(logits, targetIndex)</code> is <code>logSumExp(logits) − logits[targetIndex]</code>, the same number as <code>−log(softmax(logits)[targetIndex])</code>. <code>nn.softmaxGrad(logits, target)</code> is <code>softmax(logits)</code> minus a one-hot vector at that class index, or minus a numeric vector of the same length. That gradient is the <code>upstream</code> for a classification layer whose forward activation was <code>"linear"</code>: softmax is inside the loss, not a second nonlinearity on <code>pre</code>.</p>
+        <p>Two equal logits <code>[0, 0]</code> and target class <code>0</code> give a softmax of <code>[0.5, 0.5]</code>. The loss is <code>−log(0.5)</code>, and <code>int(loss × 1000)</code> prints <code>693</code>. The gradient is <code>[−0.5, 0.5]</code>. Logits <code>[2, 0]</code> already prefer class <code>0</code>, so the same scaling prints a loss of <code>126</code> and gradient entries <code>−11</code> and <code>11</code> (the truncation of about <code>±0.119</code>). Leave the last layer <code>"linear"</code> and pass <code>softmaxGrad</code> in as <code>upstream</code>.</p>
+        <pre><code data-run="true" data-expect="693\n-5\n5\n126\n-11\n11">var flat = nn.crossEntropyFromLogits([0.0, 0.0], 0);
+var flatGrad = nn.softmaxGrad([0.0, 0.0], 0);
+print(int(flat * 1000));
+print(int(flatGrad[0] * 10));
+print(int(flatGrad[1] * 10));
+var peaked = nn.crossEntropyFromLogits([2.0, 0.0], 0);
+var peakedGrad = nn.softmaxGrad([2.0, 0.0], 0);
+print(int(peaked * 1000));
+print(int(peakedGrad[0] * 100));
+print(int(peakedGrad[1] * 100));</code></pre>
 
         <h2 id="examples">14.6 Examples</h2>
-        <p>Read them in this order. Each file seeds the RNG and runs offline, with no API key.</p>
-        <ol>
-            <li><code>Examples/AI_Theory/chain_rule.malda</code> — one multiply, and why backprop multiplies local derivatives.</li>
-            <li><code>Examples/AI_Theory/perceptron.malda</code> — one neuron. AND and OR are separable; XOR is not, which is why the next file adds a hidden layer.</li>
-            <li><code>Examples/AI_Theory/xor_neural_net.malda</code> — a 2-4-1 net. Every chain-rule multiply is a named variable, so you can see <code>dZ</code>, <code>dWeights</code>, and <code>dInput</code> before they disappear into a helper.</li>
-            <li><code>Examples/AI_Theory/nn_dense.malda</code> — the same XOR net through <code>nn.dense</code> and <code>nn.denseBackward</code>, including the in-place learning-rate step.</li>
-            <li><code>Examples/AI_Theory/softmax_classifier.malda</code> — three classes in 2D. The loss is <code>nn.crossEntropyFromLogits</code> and the upstream is <code>nn.softmaxGrad</code>.</li>
-            <li><code>Examples/AI_Theory/mnist_digits.malda</code> — ten 5×5 glyphs in the MNIST shape. The hidden <code>nn.dense</code> is <code>"relu"</code>; the ten logits are <code>"linear"</code>, so <code>nn.softmaxGrad</code> is the upstream.</li>
-            <li><code>Examples/AI_Theory/gradcheck_dense.malda</code> — one sample. A central difference on each weight matches <code>nn.denseBackward</code>.</li>
-            <li><code>Examples/AI_Theory/init_scale.malda</code> — one forward. Uniform saturates a deep sigmoid stack; Xavier does not. He keeps a ReLU stack smaller than that same uniform draw.</li>
-            <li><code>Examples/AI_Theory/glyph_holdout.malda</code> — the same ten glyphs, plus a copy with two flipped pixels. Train is perfect. Holdout is not, because those flips swap the 8 with the 9.</li>
-            <li><code>Examples/AI_Theory/momentum_valley.malda</code> — the same learning-rate step, with and without a velocity, on a quadratic that is steep in one axis.</li>
-            <li><code>Examples/AI_Theory/grad_clip.malda</code> — that same learning rate on a steeper quadratic. Unclipped, the magnitude grows. A cap on the gradient length walks toward zero.</li>
-            <li><code>Examples/AI_Theory/adam_valley.malda</code> — the momentum valley again. You keep <code>m</code>, <code>v</code>, and the step counter, and the bias-corrected step finishes near the origin.</li>
-            <li><code>Examples/AI_Theory/rnn_delay.malda</code> — a sigmoid recurrence shrinks its gradient. A small tanh net then recalls the bit from three steps earlier.</li>
-            <li><code>Examples/AI_Theory/conv_stroke.malda</code> — one 3×3 kernel, reused at every window of a 5×5 dash. The backward pass adds into those nine weights.</li>
-            <li><code>Examples/AI_Theory/residual_dropout.malda</code> — a skip connection against a deep sigmoid stack, then a train-time mask that eval does not apply.</li>
-            <li><code>Examples/AI_Theory/embed_row.malda</code> — one step writes the gradient into the selected embedding row and leaves the other rows put.</li>
-            <li><code>Examples/AI_Theory/next_char.malda</code> — a bigram on a repeated word. The loss is <code>nn.crossEntropyFromLogits</code>, and the dense gradient scatters back into that one row.</li>
-            <li><code>Examples/AI_Theory/next_char_mlp.malda</code> — both samples end on <code>a</code>. One successor is <code>b</code> and the other is <code>c</code>. A ReLU hidden layer on the two embedding rows names both.</li>
-            <li><code>Examples/AI_Theory/layer_norm.malda</code> — a deep product grows; subtracting the mean and dividing by the standard deviation keeps it near 1. A central difference checks the scale.</li>
-            <li><code>Examples/AI_Theory/attention_step.malda</code> — one head. Scores are <code>QK^T / sqrt(d)</code>. Training puts the mass on a marked token, then a causal mask stops position 0 from reading position 2.</li>
-            <li><code>Examples/AI_Theory/positional_encoding.malda</code> — fixed sinusoids. Position 0 is <code>sin(0)</code> and <code>cos(0)</code>. Position 1 matches <code>sin(1)</code> and <code>cos(1)</code>.</li>
-            <li><code>Examples/AI_Theory/sentence_decoder.malda</code> — one causal block. Token plus sinusoid, residual attention, one linear readout. It overfits <code>abca</code> to <code>bcab</code>, and the dense gradient is clipped before the step.</li>
-        </ol>
-        <p><code>attention_is_all_you_need.malda</code> is the step after <code>sentence_decoder.malda</code>. It stays on <code>math.matmul</code> and adds multi-head attention, the same sinusoids, and the encoder-decoder. <code>microgpt.malda</code> is a tiny character model on that track. <code>new OnnxModel(path)</code> inspects and runs a small model on the host. It does not train, and it is not a substitute for the files above. <code>malda play Examples/Games/xor_decision_boundary.malda</code> draws the XOR field. <code>malda play Examples/Games/softmax_decision_boundary.malda</code> draws the three softmax regions.</p>
+        <p>Read the files in the order below. Each one seeds the RNG where it draws weights, runs offline, and needs no API key. The calls in this chapter are enough to read them. What changes from file to file is the idea: a hidden layer, a held-out glyph, a velocity you store yourself, one shared kernel, one attention head.</p>
+        <p>The same folder also holds <code>svm_linear.malda</code> and <code>sarsa_cliff.malda</code>. Those are a margin classifier and a tabular cliff, not a dense stack.</p>
+
+        <h3 id="track-xor">14.6.1 One neuron, then a hidden layer</h3>
+        <p><code>chain_rule.malda</code> is one multiply, and the reason backprop multiplies local derivatives. <code>perceptron.malda</code> is one neuron: AND and OR are separable, XOR is not. <code>xor_neural_net.malda</code> adds the hidden layer as a 2-4-1 net and names every product, so <code>dZ</code>, <code>dWeights</code>, and <code>dInput</code> are still variables. <code>nn_dense.malda</code> trains that same net with <code>nn.dense</code> and <code>nn.denseBackward</code>, including the in-place learning-rate step from <a href="#weight-update">14.4.2</a>. <code>sequential_xor.malda</code> is the same XOR net through <code>Sequential.fit</code>.</p>
+
+        <h3 id="track-class">14.6.2 A classifier</h3>
+        <p><code>softmax_classifier.malda</code> separates three classes in 2D. The loss is <code>nn.crossEntropyFromLogits</code> and the upstream is <code>nn.softmaxGrad</code>, as in <a href="#classification">14.5.1</a>. <code>mnist_digits.malda</code> uses ten 5×5 glyphs in the MNIST shape. The hidden <code>nn.dense</code> is <code>"relu"</code>. The ten logits are <code>"linear"</code>. <code>glyph_holdout.malda</code> trains those ten glyphs, then scores a copy with two flipped pixels. Train is perfect. Holdout is not, because those flips swap the 8 with the 9. There is no MNIST download.</p>
+
+        <h3 id="track-check">14.6.3 Check the gradient and the scale</h3>
+        <p><code>gradcheck_dense.malda</code> nudges each weight of one ReLU sample by a central difference and matches <code>nn.denseBackward</code>. <code>init_scale.malda</code> is one forward through a deep stack. A wide uniform draw saturates the sigmoids, so the local derivative from <a href="#activations">14.3</a> collapses. Dividing by <code>sqrt(in)</code> (Xavier) keeps that stack responsive. The He draw keeps a ReLU stack smaller than the same uniform draw. <code>new Dense</code> uses <code>1/sqrt(inFeatures)</code> by default.</p>
+
+        <h3 id="track-step">14.6.4 The step you still write</h3>
+        <p>Momentum, a length cap, and Adam are programs. They are not builtins. Each one starts from the subtraction in <a href="#weight-update">14.4.2</a>. <code>momentum_valley.malda</code> keeps a velocity on a quadratic that is steep in one axis. <code>grad_clip.malda</code> uses a steeper quadratic: unclipped, the magnitude grows; a cap on the gradient length walks toward zero. <code>adam_valley.malda</code> keeps <code>m</code>, <code>v</code>, and the step counter. The bias-corrected step finishes near the origin, while plain SGD stays far.</p>
+
+        <h3 id="track-shapes">14.6.5 Shapes that are not one dense call</h3>
+        <p>These three files still use the local derivative and the learning-rate step. The layout is the lesson. <code>rnn_delay.malda</code> shows a sigmoid recurrence shrinking its gradient, then a small tanh net that recalls the bit from three steps earlier. <code>conv_stroke.malda</code> reuses one 3×3 kernel at every window of a 5×5 dash, and the backward pass adds into those nine weights. <code>residual_dropout.malda</code> puts a skip next to a deep sigmoid stack, then a train-time mask that eval does not apply.</p>
+
+        <h3 id="track-attention">14.6.6 From one row to one decoder block</h3>
+        <p><code>embed_row.malda</code> writes the gradient into the selected embedding row and leaves the other rows put. <code>next_char.malda</code> is a bigram on a repeated word: the loss is <code>nn.crossEntropyFromLogits</code>, and the dense gradient scatters back into that one row. <code>next_char_mlp.malda</code> is the case a bigram cannot name. Both samples end on <code>a</code>, one successor is <code>b</code>, the other is <code>c</code>, and a ReLU hidden layer on the two embedding rows names both. <code>layer_norm.malda</code> subtracts the mean and divides by the standard deviation so a deep product stays near 1, then checks the scale with a central difference.</p>
+        <p><code>attention_step.malda</code> is one head. Scores are <code>QK^T / sqrt(d)</code>. Training puts the mass on a marked token, then a causal mask stops position 0 from reading position 2. <code>positional_encoding.malda</code> adds fixed sinusoids: position 0 is <code>sin(0)</code> and <code>cos(0)</code>, and position 1 matches <code>sin(1)</code> and <code>cos(1)</code>. <code>sentence_decoder.malda</code> is one causal block: token plus sinusoid, residual attention, one linear readout. It overfits <code>abca</code> to <code>bcab</code>, and the dense gradient is clipped before the step.</p>
+        <p><code>attention_is_all_you_need.malda</code> is the step after that block. It stays on <code>math.matmul</code> and adds multi-head attention, the same sinusoids, and the encoder-decoder. <code>microgpt.malda</code> is a tiny character model on that track. <code>embedding_2d.malda</code> projects a hash embedding and lists VectorDB neighbors. <code>onnx_inspect.malda</code> loads <code>new OnnxModel(path)</code> on a small identity model: inspect and one forward, on the host, with no training step. <code>malda play Examples/Games/xor_decision_boundary.malda</code> draws the XOR field. <code>malda play Examples/Games/softmax_decision_boundary.malda</code> draws the three softmax regions. <code>malda play Examples/Games/cartpole_neural.malda</code> trains a policy on the canvas.</p>
 
         <h2 id="backends">14.7 Backends</h2>
         <p>Interpreter, C# transpile, and JavaScript all run <code>math.dot</code> / <code>matmul</code> / <code>transpose</code>, <code>nn.*</code>, and <code>new Dense</code> / <code>new Sequential</code>. <code>OnnxModel</code> is host-only. There is no tensor type, no autograd tape, and no <code>Adam</code> or data loader in core. There is no flat alias for <code>nn</code> names: write <code>nn.relu</code>, not <code>relu</code>.</p>
@@ -213,8 +260,9 @@ print(int(layer.out[0] * 100));
 print(int(layer.out[1]));</code></pre>
 
         <h2 id="sequential">14.9 Sequential</h2>
-        <p><code>new Dense(inFeatures, outFeatures, activation?, scale?)</code> owns one weight matrix <code>[in, out]</code> and one bias. The default scale is <code>1/sqrt(inFeatures)</code>, drawn with the same generator as <code>math.seed</code>. <code>forward(x)</code> returns the output vector and remembers <code>pre</code>. <code>backward(upstream)</code> calls <code>nn.denseBackward</code> and keeps <code>dWeights</code> and <code>dBias</code>. <code>sgd(lr)</code> subtracts those gradients in place. The input is one vector, not a batch.</p>
-        <p><code>new Sequential([dense, ...])</code> stacks those layers. <code>forward</code>, <code>backward</code>, and <code>sgd</code> walk the stack. <code>fit(inputs, targets, epochs, lr, loss?)</code> is online SGD, one sample at a time, and returns the mean loss of the last epoch. <code>loss</code> is <code>"mse"</code> (the default; a target is a number or a vector) or <code>"crossEntropy"</code> (a class index; leave the last layer <code>"linear"</code>). This is still the dense backward pass. It is not a tape, and it is not Adam.</p>
+        <p><code>new Dense(inFeatures, outFeatures, activation?, scale?)</code> owns one weight matrix <code>[in, out]</code> and one bias. The default scale is <code>1/sqrt(inFeatures)</code>, drawn with the same generator as <code>math.seed</code>. Pass <code>0</code> when you want zeros and will write the entries yourself. <code>forward(x)</code> returns the output vector and remembers <code>pre</code> and the input. <code>backward(upstream)</code> calls <code>nn.denseBackward</code> and keeps <code>dWeights</code> and <code>dBias</code>. <code>sgd(lr)</code> subtracts those gradients in place. The input is one vector, not a batch. Call <code>forward</code> before <code>backward</code>, and <code>backward</code> before <code>sgd</code>.</p>
+        <p><code>new Sequential([dense, ...])</code> stacks those layers. <code>forward</code>, <code>backward</code>, and <code>sgd</code> walk the stack. <code>backward</code> starts at the last layer, so you pass only the loss gradient. <code>fit(inputs, targets, epochs, lr, loss?)</code> is online SGD: each sample is a forward, a backward, and an <code>sgd</code> before the next sample is seen. It returns the mean loss of the last epoch, measured before that epoch's steps. <code>loss</code> is <code>"mse"</code> (the default; a target is a number or a vector) or <code>"crossEntropy"</code> (a class index; leave the last layer <code>"linear"</code>). This is still the dense backward pass. It is not a tape, and it is not Adam.</p>
+        <p>The snippet builds a 1-to-1 linear layer of zeros and fits one sample, input <code>[1]</code> and target <code>2</code>, for one epoch at learning rate <code>0.5</code>. The reported loss is <code>4</code>, the squared error of the zero prediction. The step then sets both the weight and the bias to <code>1</code>, so the next forward of <code>[1]</code> is <code>2</code>. The prints are that loss, the weight and the bias times 100, and the forward times 100. The first three lines are a separate layer: weight <code>2</code> and bias <code>1</code> on input <code>3</code> print <code>7</code>.</p>
         <p><code>nn.sequential([[in, out, activation?, scale?], ...])</code> builds the same <code>Sequential</code>. <code>Examples/AI_Theory/sequential_xor.malda</code> trains the 2-4-1 XOR net this way. <code>nn_dense.malda</code> still writes each step by hand.</p>
         <table class="sigs">
         <thead>
@@ -237,10 +285,17 @@ print(int(layer.out[1]));</code></pre>
         <tr><td>4-5 arguments</td><td>float</td><td>mean loss of the last epoch. <code>loss</code> is <code>mse</code> or <code>crossEntropy</code></td></tr>
         </tbody>
         </table>
-        <pre><code data-run="true" data-expect="7">var layer = new Dense(1, 1, "linear", 0.0);
+        <pre><code data-run="true" data-expect="7\n4\n100\n100\n200">var layer = new Dense(1, 1, "linear", 0.0);
 layer.weights[0][0] = 2.0;
 layer.bias[0] = 1.0;
-print(int(layer.forward([3.0])[0]));</code></pre>
+print(int(layer.forward([3.0])[0]));
+var fitLayer = new Dense(1, 1, "linear", 0.0);
+var net = new Sequential([fitLayer]);
+var loss = net.fit([[1.0]], [2.0], 1, 0.5);
+print(int(loss));
+print(int(fitLayer.weights[0][0] * 100));
+print(int(fitLayer.bias[0] * 100));
+print(int(fitLayer.forward([1.0])[0] * 100));</code></pre>
 
         <div class="see-also">
             <h3>See Also</h3>

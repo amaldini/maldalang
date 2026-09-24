@@ -15,7 +15,7 @@
     { "file": "11-classes-objects.html", "title": "Classi e oggetti", "category": "Language Fundamentals", "description": "Funzionalità OOP, ereditarietà" },
     { "file": "12-input-output.html", "title": "Input/Output", "category": "Standard Library", "description": "Console, file, path, ambiente, I/O dell'host e token di capability" },
     { "file": "13-built-in-functions.html", "title": "Funzioni built-in", "category": "Standard Library", "description": "Catalogo stdlib: conversioni, math, stringhe, file, JSON, date; indici verso helper host, AI e web" },
-    { "file": "14-neural-nets.html", "title": "Reti neurali", "category": "Standard Library", "description": "Layer densi, attivazioni, derivate locali e un passo di backward" },
+    { "file": "14-neural-nets.html", "title": "Reti neurali", "category": "Standard Library", "description": "Layer densi, attivazioni, loss, un passo di backward e SGD con Sequential" },
     { "file": "15-graphs.html", "title": "Grafi", "category": "Standard Library", "description": "Strutture dati a grafo e algoritmi" },
     { "file": "16-vectordb.html", "title": "VectorDB", "category": "Standard Library", "description": "Database vettoriale per la similarity search" },
     { "file": "17-database.html", "title": "Supporto database", "category": "Standard Library", "description": "Client SQLite, SQL Server e PostgreSQL" },
