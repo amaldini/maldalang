@@ -2379,6 +2379,113 @@
     return grad;
   }
 
+  function mathRsqrt(value) {
+    if (arguments.length !== 1) {
+      throw new Error("rsqrt() expects 1 argument");
+    }
+    return 1 / Math.sqrt(neuralAsNumeric("rsqrt", value));
+  }
+
+  function mathRandn(std, mean) {
+    if (arguments.length > 2) {
+      throw new Error("randn() expects 0-2 arguments: (std?, mean?)");
+    }
+    const deviation = arguments.length >= 1 ? neuralAsNumeric("randn", std) : 1;
+    const center = arguments.length === 2 ? neuralAsNumeric("randn", mean) : 0;
+    // Box-Muller, same shared generator as random / seed.
+    const u1 = Math.max(nextRandomUnit(), 1e-12);
+    const u2 = nextRandomUnit();
+    const z0 = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+    return center + z0 * deviation;
+  }
+
+  function mathExtremeIndex(name, array, preferGreater) {
+    if (!Array.isArray(array)) {
+      throw new Error(name + "() expects an array argument");
+    }
+    if (array.length === 0) {
+      throw new Error(name + "() expects a non-empty array");
+    }
+    let bestIdx = 0;
+    let bestVal = neuralAsNumeric(name, array[0]);
+    for (let i = 1; i < array.length; i++) {
+      const v = neuralAsNumeric(name, array[i]);
+      if (preferGreater ? v > bestVal : v < bestVal) {
+        bestVal = v;
+        bestIdx = i;
+      }
+    }
+    return bestIdx;
+  }
+
+  function mathArgmax(array) {
+    if (arguments.length !== 1) {
+      throw new Error("argmax() expects 1 argument: (array)");
+    }
+    return mathExtremeIndex("argmax", array, true);
+  }
+
+  function mathArgmin(array) {
+    if (arguments.length !== 1) {
+      throw new Error("argmin() expects 1 argument: (array)");
+    }
+    return mathExtremeIndex("argmin", array, false);
+  }
+
+  function mathLogSumExp(array) {
+    if (arguments.length !== 1) {
+      throw new Error("logSumExp() expects 1 argument: (array)");
+    }
+    if (!Array.isArray(array)) {
+      throw new Error("logSumExp() expects an array argument");
+    }
+    if (array.length === 0) {
+      throw new Error("logSumExp() expects a non-empty array");
+    }
+    let maxVal = neuralAsNumeric("logSumExp", array[0]);
+    for (let i = 1; i < array.length; i++) {
+      const v = neuralAsNumeric("logSumExp", array[i]);
+      if (v > maxVal) maxVal = v;
+    }
+    let sumExp = 0;
+    for (let i = 0; i < array.length; i++) {
+      sumExp += Math.exp(neuralAsNumeric("logSumExp", array[i]) - maxVal);
+    }
+    return maxVal + Math.log(sumExp);
+  }
+
+  function mathRandomChoiceWeighted(weights) {
+    if (arguments.length !== 1) {
+      throw new Error("randomChoiceWeighted() expects 1 argument: (weights)");
+    }
+    if (!Array.isArray(weights)) {
+      throw new Error("randomChoiceWeighted() expects an array argument");
+    }
+    if (weights.length === 0) {
+      throw new Error("randomChoiceWeighted() expects a non-empty array");
+    }
+    const values = [];
+    let total = 0;
+    for (let i = 0; i < weights.length; i++) {
+      const w = neuralAsNumeric("randomChoiceWeighted", weights[i]);
+      if (w < 0) {
+        throw new Error("randomChoiceWeighted() weights must be >= 0");
+      }
+      values.push(w);
+      total += w;
+    }
+    if (!(total > 0)) {
+      throw new Error("randomChoiceWeighted() sum of weights must be > 0");
+    }
+    let r = nextRandomUnit() * total;
+    let cumulative = 0;
+    for (let i = 0; i < values.length; i++) {
+      cumulative += values[i];
+      if (r <= cumulative) return i;
+    }
+    return values.length - 1;
+  }
+
   const mathStdLib = {
     abs: mathAbs,
     sum: mathSum,
@@ -2408,11 +2515,18 @@
     degToRad: (value) => coerceToFloat(value) * Math.PI / 180,
     radToDeg: (value) => coerceToFloat(value) * 180 / Math.PI,
     zeros: mathZeros,
+    rsqrt: mathRsqrt,
+    randn: mathRandn,
+    argmax: mathArgmax,
+    argmin: mathArgmin,
+    logSumExp: mathLogSumExp,
+    softmax: nnSoftmax,
     dot: mathDot,
     matmul: mathMatMul,
     transpose: mathTranspose,
     sigmoid: mathSigmoid,
     tanh: mathTanh,
+    randomChoiceWeighted: mathRandomChoiceWeighted,
     random: randomBuiltin,
     randomInt: randomIntBuiltin,
     randomFloat: randomFloatBuiltin,

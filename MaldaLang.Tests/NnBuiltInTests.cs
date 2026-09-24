@@ -155,6 +155,86 @@ public class NnBuiltInTests : TestBase
             var layer = nn.dense([1.0], [[2.0]], [0.0], "relu");
             print(layer.out[0]);
             """);
-        Assert.Contains("mlRuntime.nn.dense(", js, StringComparison.Ordinal);
+            Assert.Contains("mlRuntime.nn.dense(", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void JsRuntime_RandnArgmaxAndSoftmaxTrainingStep()
+    {
+        var runtimePath = PlanningPaths.ResolveRepoFile("Examples", "Web", "wwwroot", "malda-js-runtime.js");
+        var root = Path.Combine(Path.GetTempPath(), "malda_math_js_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        var scriptPath = Path.Combine(root, "math-check.js");
+        File.WriteAllText(scriptPath, """
+            const ml = require(process.argv[2]);
+            if (typeof ml.math.randn !== "function") throw new Error("randn missing");
+            if (typeof ml.math.argmax !== "function") throw new Error("argmax missing");
+            ml.math.seed(3);
+            const first = ml.math.randn(0.25);
+            const second = ml.math.randn(0.25, 1);
+            if (!Number.isFinite(first) || !Number.isFinite(second)) throw new Error("randn not finite");
+            ml.math.seed(3);
+            if (ml.math.randn(0.25) !== first) throw new Error("randn ignores seed");
+            if (ml.math.argmax([0.1, 0.7, 0.2]) !== 1) throw new Error("argmax");
+            if (ml.math.argmax([2, 2, 1]) !== 0) throw new Error("argmax tie");
+            if (ml.math.argmin([0.1, 0.7, 0.2]) !== 0) throw new Error("argmin");
+            if (Math.abs(ml.math.rsqrt(4) - 0.5) > 1e-12) throw new Error("rsqrt");
+            if (Math.abs(ml.math.logSumExp([0, 0]) - Math.log(2)) > 1e-12) throw new Error("logSumExp");
+            const probs = ml.math.softmax([1, 2, 3]);
+            const sum = probs[0] + probs[1] + probs[2];
+            if (Math.abs(sum - 1) > 1e-9) throw new Error("softmax");
+            if (ml.math.randomChoiceWeighted([0, 1, 0]) !== 1) throw new Error("randomChoiceWeighted");
+
+            ml.math.seed(3);
+            const points = [];
+            const labels = [];
+            const centers = [[-1.5, -1.2], [1.6, -0.8], [0.1, 1.7]];
+            for (let c = 0; c < 3; c++) {
+              for (let n = 0; n < 12; n++) {
+                points.push([centers[c][0] + ml.math.randn(0.25), centers[c][1] + ml.math.randn(0.25)]);
+                labels.push(c);
+              }
+            }
+            const w = [
+              [ml.math.randn(0.3), ml.math.randn(0.3), ml.math.randn(0.3)],
+              [ml.math.randn(0.3), ml.math.randn(0.3), ml.math.randn(0.3)],
+              [ml.math.randn(0.3), ml.math.randn(0.3), ml.math.randn(0.3)]
+            ];
+            const x = [points[0][0], points[0][1], 1];
+            const logits = ml.math.matmul(x, w);
+            const cls = ml.math.argmax(ml.nn.softmax(logits));
+            if (cls !== labels[0] && (cls < 0 || cls > 2)) throw new Error("class " + cls);
+            let threw = false;
+            try { ml.math.randn(1, 0, 0); } catch (e) { threw = true; }
+            if (!threw) throw new Error("randn arity");
+            process.stdout.write("ok\n");
+            """);
+
+        try
+        {
+            var startInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = System.Environment.GetEnvironmentVariable("MALDA_NODE_PATH") is { Length: > 0 } nodePath
+                    ? nodePath
+                    : "node",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            startInfo.ArgumentList.Add(scriptPath);
+            startInfo.ArgumentList.Add(runtimePath);
+            using var process = System.Diagnostics.Process.Start(startInfo);
+            Assert.NotNull(process);
+            var stdout = process.StandardOutput.ReadToEnd();
+            var stderr = process.StandardError.ReadToEnd();
+            process.WaitForExit();
+            Assert.True(process.ExitCode == 0, stderr + stdout);
+            Assert.Contains("ok", stdout, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
     }
 }
