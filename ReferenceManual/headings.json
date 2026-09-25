@@ -1195,6 +1195,12 @@
   },
   {
     "file": "14-neural-nets.html",
+    "level": 3,
+    "id": "policy",
+    "title": "14.5.2 A return instead of a label"
+  },
+  {
+    "file": "14-neural-nets.html",
     "level": 2,
     "id": "examples",
     "title": "14.6 Examples"
