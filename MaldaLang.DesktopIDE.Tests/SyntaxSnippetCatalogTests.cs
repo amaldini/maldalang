@@ -95,7 +95,10 @@ public class SyntaxSnippetCatalogTests
             "suite",
             "context",
             "policy",
-            "within-statement"
+            "within-statement",
+            "nn-dense",
+            "dense-layer",
+            "sequential-fit"
         ];
 
         var missing = required.Where(id => !ids.Contains(id)).ToList();

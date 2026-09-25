@@ -718,6 +718,18 @@ public class LanguageService : ILanguageService
             });
         }
 
+        foreach (var cls in NeuralCompletionCatalog.HostClasses)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            completions.Add(new CompletionItem
+            {
+                Label = cls.Name,
+                Kind = "class",
+                Detail = cls.Detail,
+                InsertText = cls.InsertText
+            });
+        }
+
         foreach (var module in StdLibModuleCompletions)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -778,24 +790,29 @@ public class LanguageService : ILanguageService
                 return null;
             }
 
-            var (callLine, callCol, name) = openParen.Value;
+            var (callLine, callCol, name, receiver) = openParen.Value;
             var activeParam = CountCommasBeforePosition(lines, callLine, callCol, line, column);
 
-            List<string>? parameters = null;
-            try
+            var receiverType = ResolveCallReceiverType(source, receiver, line, cancellationToken);
+            List<string>? parameters = NeuralCompletionCatalog.TryGetMemberParameters(receiverType, name);
+            if (parameters == null)
             {
-                var statements = ParseStatements(source, sourceFileName: null, cancellationToken);
-                parameters = FindFunctionParameters(statements, name);
-            }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            catch
-            {
-                // Incomplete buffers still offer built-in signatures.
+                try
+                {
+                    var statements = ParseStatements(source, sourceFileName: null, cancellationToken);
+                    parameters = FindFunctionParameters(statements, name);
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch
+                {
+                    // Incomplete buffers still offer built-in signatures.
+                }
             }
 
+            parameters ??= NeuralCompletionCatalog.TryGetConstructorParameters(name);
             parameters ??= GetBuiltInParameters(name);
             if (parameters == null || parameters.Count == 0)
             {
@@ -819,7 +836,54 @@ public class LanguageService : ILanguageService
         }
     }
 
-    private static (int line, int col, string name)? FindCallOpenParen(string[] lines, int line0, int char0)
+    private string? ResolveCallReceiverType(string source, string? receiver, int line, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(receiver))
+            return null;
+        if (receiver == StdLibNamespaces.NnModule)
+            return StdLibNamespaces.NnModule;
+
+        try
+        {
+            var statements = ParseStatements(source, sourceFileName: null, cancellationToken);
+            var resolved = FindVariableType(statements, receiver, line);
+            if (resolved != null)
+                return resolved;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch
+        {
+            // The open call may be unfinished. Declarations above the cursor still count.
+        }
+
+        if (line <= 0)
+            return null;
+
+        try
+        {
+            var lines = source.Replace("\r\n", "\n").Split('\n');
+            if (line > lines.Length)
+                return null;
+            var prefix = string.Join('\n', lines.Take(line));
+            if (string.IsNullOrWhiteSpace(prefix))
+                return null;
+            var statements = ParseStatements(prefix, sourceFileName: null, cancellationToken);
+            return FindVariableType(statements, receiver, line);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static (int line, int col, string name, string? receiver)? FindCallOpenParen(string[] lines, int line0, int char0)
     {
         var line = line0;
         var col = char0;
@@ -853,7 +917,7 @@ public class LanguageService : ILanguageService
                     var name = lines[line].Substring(col, parenCol - col).Trim();
                     if (name.Length > 0)
                     {
-                        return (line, parenCol, name);
+                        return (line, parenCol, name, ReadReceiverBefore(lines[line], col));
                     }
 
                     return null;
@@ -864,6 +928,26 @@ public class LanguageService : ILanguageService
         }
 
         return null;
+    }
+
+    private static string? ReadReceiverBefore(string lineText, int nameStart)
+    {
+        var index = nameStart;
+        while (index > 0 && char.IsWhiteSpace(lineText[index - 1]))
+            index--;
+        if (index <= 0 || lineText[index - 1] != '.')
+            return null;
+
+        index--;
+        while (index > 0 && char.IsWhiteSpace(lineText[index - 1]))
+            index--;
+        var end = index;
+        while (index > 0 && (char.IsLetterOrDigit(lineText[index - 1]) || lineText[index - 1] == '_'))
+            index--;
+        if (index >= end)
+            return null;
+
+        return lineText.Substring(index, end - index);
     }
 
     private static int CountCommasBeforePosition(string[] lines, int openLine, int openCol, int line0, int char0)
@@ -1071,6 +1155,23 @@ public class LanguageService : ILanguageService
         {
             resolvedType = FindVariableType(statements, objectName, line);
         }
+
+        if (resolvedType == null)
+        {
+            var recovered = StripUnfinishedMemberAccessLine(source, line);
+            if (recovered != null)
+            {
+                try
+                {
+                    statements = ParseStatements(recovered, sourceFileName: null, CancellationToken.None);
+                    resolvedType = FindVariableType(statements, objectName, line);
+                }
+                catch
+                {
+                    // Keep the unresolved name so stdlib and host classes can still match.
+                }
+            }
+        }
         
         // Use resolved type if found, otherwise use objectName directly
         string typeToCheck = resolvedType ?? objectName;
@@ -1182,7 +1283,11 @@ public class LanguageService : ILanguageService
         }
         else if (TryAddStdLibNamespaceMembers(typeToCheck, members))
         {
-            // math / str / io / pdf / doc / result / option members
+            // math / str / io / pdf / doc / result / option / nn members
+        }
+        else if (NeuralCompletionCatalog.TryAddMembers(typeToCheck, members))
+        {
+            // Dense / Sequential / Conv / Embedding / Rnn / LayerNorm / Attention / OnnxModel
         }
         else if (TryAddSumTypeNamespaceMembers(typeToCheck, source, members) ||
                  TryAddSumTypeNamespaceMembers(objectName, source, members))
@@ -1275,6 +1380,13 @@ public class LanguageService : ILanguageService
 
         if (functionCall.Callee is MemberAccessExpression memberAccess)
         {
+            if (memberAccess.Object is IdentifierExpression moduleName &&
+                moduleName.Name == StdLibNamespaces.NnModule &&
+                memberAccess.Member == "sequential")
+            {
+                return "Sequential";
+            }
+
             var receiverType = InferExpressionType(statements, memberAccess.Object, line);
             if (receiverType == "Array" && IsArrayReturningArrayMethod(memberAccess.Member))
                 return "Array";
@@ -1349,11 +1461,14 @@ public class LanguageService : ILanguageService
             : moduleName;
         foreach (var method in methods.OrderBy(name => name, StringComparer.Ordinal))
         {
+            var detail = canonical == StdLibNamespaces.NnModule
+                ? NeuralCompletionCatalog.NnMethodDetail(method)
+                : $"{canonical}.{method}()";
             members.Add(new CompletionItem
             {
                 Label = method,
                 Kind = "method",
-                Detail = $"{canonical}.{method}()",
+                Detail = detail,
                 InsertText = method + "()"
             });
         }
@@ -1544,6 +1659,33 @@ public class LanguageService : ILanguageService
         return source + "\nnull";
     }
 
+    /// <summary>
+    /// Drops a cursor line that is only <c>name.</c> or <c>name.partial</c> so earlier
+    /// declarations still parse for member completion.
+    /// </summary>
+    private static string? StripUnfinishedMemberAccessLine(string source, int line)
+    {
+        var lines = source.Replace("\r\n", "\n").Split('\n');
+        if (line < 0 || line >= lines.Length)
+            return null;
+
+        var current = lines[line].Trim();
+        var dot = current.LastIndexOf('.');
+        if (dot <= 0)
+            return null;
+
+        var after = current[(dot + 1)..];
+        if (after.Length > 0 && after.Any(ch => !char.IsLetterOrDigit(ch) && ch != '_'))
+            return null;
+
+        var before = current[..dot].Trim();
+        if (before.Length == 0 || before.Any(ch => !char.IsLetterOrDigit(ch) && ch != '_'))
+            return null;
+
+        lines[line] = string.Empty;
+        return string.Join('\n', lines);
+    }
+
     private void ExtractSymbols(List<MaldaLang.Parser.AST.Statements.Statement> statements, 
         List<CompletionItem> completions, int line, int column)
     {
@@ -1646,6 +1788,12 @@ public class LanguageService : ILanguageService
             {
                 return keywordInfo;
             }
+
+            var neuralHover = TryGetNeuralHover(source, token, statements, line);
+            if (neuralHover != null)
+            {
+                return neuralHover;
+            }
             
             // Look up symbol information (local + imported schemas/types when path known)
             return GetSymbolInfo(statements, token.Lexeme, sourceFileName);
@@ -1724,10 +1872,75 @@ public class LanguageService : ILanguageService
 
     private Token? FindTokenAtPosition(List<Token> tokens, int line, int column)
     {
-        return tokens.FirstOrDefault(t => t.Line == line && t.Column <= column && 
-            t.Column + t.Lexeme.Length >= column);
+        return tokens.FirstOrDefault(t => t.Line == line && t.Column <= column &&
+            column < t.Column + t.Lexeme.Length);
     }
     
+    private string? TryGetNeuralHover(string source, Token token, List<Statement> statements, int line)
+    {
+        if (token.Type != TokenType.Identifier || string.IsNullOrEmpty(token.Lexeme))
+            return null;
+
+        var receiver = ReceiverBeforeToken(source, token);
+        if (receiver == StdLibNamespaces.NnModule)
+            return NeuralCompletionCatalog.TryGetHover(StdLibNamespaces.NnModule, token.Lexeme);
+
+        if (!string.IsNullOrEmpty(receiver))
+        {
+            var memberHover = NeuralCompletionCatalog.TryGetHover(
+                FindVariableType(statements, receiver, line),
+                token.Lexeme);
+            if (memberHover != null)
+                return memberHover;
+        }
+
+        if (DeclaresSymbol(statements, token.Lexeme))
+            return null;
+
+        if (token.Lexeme == StdLibNamespaces.NnModule)
+            return NeuralCompletionCatalog.ModuleHover;
+
+        return NeuralCompletionCatalog.TryGetClassHover(token.Lexeme);
+    }
+
+    private static string? ReceiverBeforeToken(string source, Token token)
+    {
+        var lines = source.Split('\n');
+        var lineIndex = token.Line - 1;
+        if (lineIndex < 0 || lineIndex >= lines.Length)
+            return null;
+
+        var lineText = lines[lineIndex].TrimEnd('\r');
+        var nameStart = token.Column - 1;
+        if (nameStart < 0 || nameStart > lineText.Length)
+            return null;
+
+        return ReadReceiverBefore(lineText, nameStart);
+    }
+
+    private static bool DeclaresSymbol(List<Statement> statements, string name)
+    {
+        foreach (var stmt in statements)
+        {
+            if (stmt is FunctionDeclaration function && function.Name == name)
+                return true;
+            if (stmt is ClassDeclaration type && type.Name == name)
+                return true;
+            if (stmt is PromptDeclaration prompt && prompt.Name == name)
+                return true;
+            if (stmt is VarDeclStatement variable && variable.Name == name)
+                return true;
+            if (stmt is WorkflowDeclaration workflow && workflow.Name == name)
+                return true;
+            if (stmt is SchemaDeclaration schema && schema.Name == name)
+                return true;
+            if (stmt is TypeDeclaration sumType && sumType.TypeName == name)
+                return true;
+        }
+
+        return false;
+    }
+
     private static string? GetKeywordHoverInfo(Token token, string source, int line, int column, List<Statement>? statements = null)
     {
         if (token.Type == TokenType.Identifier &&

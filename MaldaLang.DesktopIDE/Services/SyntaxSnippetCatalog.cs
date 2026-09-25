@@ -550,7 +550,25 @@ public static class SyntaxSnippetCatalog
                 "Utilities",
                 "Sleep",
                 "Pause execution for milliseconds.",
-                $"sleep({CaretMarker}100);")
+                $"sleep({CaretMarker}100);"),
+            Snippet(
+                "nn-dense",
+                "Neural",
+                "nn.dense",
+                "One dense forward. Weights are [in, out]. Returns { pre, out }.",
+                $"var step = nn.dense({CaretMarker}[1.0, 0.0], [[0.1, 0.2], [0.3, 0.4]], [0.0, 0.0], \"relu\");\nio.print(step.out);"),
+            Snippet(
+                "dense-layer",
+                "Neural",
+                "Dense Layer",
+                "new Dense owns the weights. Call forward, then backward, then sgd. There is no tape.",
+                $"var layer = new Dense(2, 1, \"relu\");\nvar y = layer.forward([{CaretMarker}1.0, 0.0]);\nlayer.backward(nn.mseGrad(y, [1.0]));\nlayer.sgd(0.1);"),
+            Snippet(
+                "sequential-fit",
+                "Neural",
+                "Sequential.fit",
+                "Online SGD over a stack of Dense layers. loss is \"mse\" or \"crossEntropy\".",
+                $"var net = new Sequential([\n\tnew Dense(2, 4, \"sigmoid\"),\n\tnew Dense(4, 1, \"sigmoid\")\n]);\nvar loss = net.fit(\n\t[[0.0, 0.0], [0.0, 1.0]],\n\t[[0.0], [1.0]],\n\t{CaretMarker}20,\n\t0.5\n);\nio.print(loss);")
         };
     }
 
