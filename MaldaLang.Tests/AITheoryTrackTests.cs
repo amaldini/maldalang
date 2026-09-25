@@ -17,7 +17,7 @@ public class AITheoryTrackTests : TestBase
             .Where(example => example.Category == "AI_Theory")
             .ToList();
 
-        Assert.Equal(28, examples.Count);
+        Assert.Equal(30, examples.Count);
         Assert.All(examples, example =>
         {
             Assert.Equal("student", example.Track);
@@ -117,6 +117,16 @@ public class AITheoryTrackTests : TestBase
         var output = await CaptureInterpretAsync(File.ReadAllText(path), path);
         Assert.Contains("Accuracy: 10/10", output);
         Assert.Contains("mnist digits ok", output);
+    }
+
+    [Fact]
+    public async Task ReinforceBandit_PrintsOkLine()
+    {
+        var path = PlanningPaths.ResolveRepoPath("Examples", "AI_Theory", "reinforce_bandit.malda");
+        var output = await CaptureInterpretAsync(File.ReadAllText(path), path);
+        Assert.Contains("P(right | +1):", output);
+        Assert.Contains("P(left | -1):", output);
+        Assert.Contains("reinforce ok", output);
     }
 
     [Fact]

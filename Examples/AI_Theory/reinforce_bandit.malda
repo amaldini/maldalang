@@ -1,0 +1,137 @@
+// REINFORCE on a one-step contextual bandit.
+//
+// There is no class label. The net samples an action from softmax(logits).
+// The return is +1 when the action matches the sign of the state, else -1.
+// A baseline (the mean return so far) is subtracted, and that advantage
+// scales nn.softmaxGrad. Descending that gradient is -advantage * log pi(a):
+// the one-step case of REINFORCE. Chapter 14.5.2 walks the same product
+// on a zero weight row. This file is a 1-4-2 net (tanh hidden, linear logits).
+//
+// cartpole_neural.malda does not use this scale. A push of ±10 N shows up
+// many steps later, and a short demo never assigns that credit from the
+// raw episode return. The canvas net is fit to a score of the pole and the cart.
+// Offline and seeded — no API key.
+
+function randomMatrix(rows: int, cols: int, scale: float) -> array {
+    var matrix = [];
+    for (var i = 0; i < rows; i = i + 1) {
+        var row = [];
+        for (var j = 0; j < cols; j = j + 1) {
+            row.append(math.randomFloat(-scale, scale));
+        }
+        matrix.append(row);
+    }
+    return matrix;
+}
+
+function zeros(n: int) -> array {
+    var values = [];
+    for (var i = 0; i < n; i = i + 1) {
+        values.append(0.0);
+    }
+    return values;
+}
+
+function sgdMatrix(weights: array, grad: array, lr: float) {
+    for (var i = 0; i < weights.length; i = i + 1) {
+        for (var j = 0; j < weights[i].length; j = j + 1) {
+            weights[i][j] = weights[i][j] - lr * grad[i][j];
+        }
+    }
+}
+
+function sgdVector(bias: array, grad: array, lr: float) {
+    for (var i = 0; i < bias.length; i = i + 1) {
+        bias[i] = bias[i] - lr * grad[i];
+    }
+}
+
+function scale(values: array, factor: float) -> array {
+    var scaled = [];
+    for (var i = 0; i < values.length; i = i + 1) {
+        scaled.append(values[i] * factor);
+    }
+    return scaled;
+}
+
+function fmt(x: float) -> string {
+    return string(math.round(x * 1000.0) / 1000.0);
+}
+
+function correctAction(state: float) -> int {
+    if (state > 0.0) {
+        return 1;
+    }
+    return 0;
+}
+
+function actionProb(state: float, w1: array, b1: array, w2: array, b2: array) -> float {
+    var hidden = nn.dense([state], w1, b1, "tanh");
+    var out = nn.dense(hidden.out, w2, b2, "linear");
+    var probs = math.softmax(out.out);
+    return probs[correctAction(state)];
+}
+
+math.seed(4);
+
+var hiddenSize: int = 4;
+var learningRate: float = 0.35;
+var episodes: int = 800;
+var w1 = randomMatrix(1, hiddenSize, 0.5);
+var b1 = zeros(hiddenSize);
+var w2 = randomMatrix(hiddenSize, 2, 0.5);
+var b2 = zeros(2);
+var baseline = 0.0;
+var seen = 0.0;
+var recent = 0.0;
+var recentCount = 0.0;
+
+io.print("REINFORCE bandit (state ±1 -> 4 tanh -> 2 logits)");
+io.print("upstream = nn.softmaxGrad(logits, action) * (reward - baseline)");
+io.print("");
+
+for (var ep = 0; ep < episodes; ep = ep + 1) {
+    var state = 1.0;
+    if (ep % 2 == 1) {
+        state = -1.0;
+    }
+    var x = [state];
+    var hidden = nn.dense(x, w1, b1, "tanh");
+    var out = nn.dense(hidden.out, w2, b2, "linear");
+    var probs = math.softmax(out.out);
+    var action = 0;
+    if (math.random() >= probs[0]) {
+        action = 1;
+    }
+    var reward = -1.0;
+    if (action == correctAction(state)) {
+        reward = 1.0;
+    }
+    var advantage = reward - baseline;
+    seen = seen + 1.0;
+    baseline = baseline + (reward - baseline) / seen;
+
+    var upstream = scale(nn.softmaxGrad(out.out, action), advantage);
+    var backOut = nn.denseBackward(hidden.out, w2, upstream, "linear", out.pre);
+    var backHidden = nn.denseBackward(x, w1, backOut.dInput, "tanh", hidden.pre);
+    sgdMatrix(w2, backOut.dWeights, learningRate);
+    sgdVector(b2, backOut.dBias, learningRate);
+    sgdMatrix(w1, backHidden.dWeights, learningRate);
+    sgdVector(b1, backHidden.dBias, learningRate);
+
+    if (ep >= episodes - 100) {
+        recent = recent + reward;
+        recentCount = recentCount + 1.0;
+    }
+}
+
+var pPos = actionProb(1.0, w1, b1, w2, b2);
+var pNeg = actionProb(-1.0, w1, b1, w2, b2);
+var late = recent / recentCount;
+
+io.print("P(right | +1): " + fmt(pPos));
+io.print("P(left | -1):  " + fmt(pNeg));
+io.print("late mean return: " + fmt(late));
+if (pPos > 0.8 && pNeg > 0.8 && late > 0.5) {
+    io.print("reinforce ok");
+}

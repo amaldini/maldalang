@@ -22,7 +22,7 @@
 
         <p>You keep the weights and the bias yourself. <code>nn.dense</code> is one matrix multiply, plus that bias, then an activation. <code>nn.denseBackward</code> returns the three gradients of that one layer and stops. It does not record an autograd tape, and it does not change your arrays. You subtract <code>learningRate</code> times each gradient, or you hand a fixed stack of layers to <a href="#sequential">14.9</a>, which applies that same step for you.</p>
         <p>A deeper net is the same pair of calls stacked. Run the output layer backward first. Its <code>dInput</code> is the upstream gradient of the layer below it. Both layers need the <code>pre</code> they returned on the way forward, because the activation derivative is evaluated there.</p>
-        <p>This chapter recomputes one forward, one backward, a two-row batch, the hand-off between two layers, both losses, and one <code>Sequential.fit</code> step. The signature tables are <a href="#signatures">14.8</a> and <a href="#sequential">14.9</a>. <a href="#examples">14.6</a> is the order of the offline programs in <code>Examples/AI_Theory/</code>, which write the same products with named variables before a helper hides them.</p>
+        <p>This chapter recomputes one forward, one backward, a two-row batch, the hand-off between two layers, both losses, one policy step, and one <code>Sequential.fit</code> step. The signature tables are <a href="#signatures">14.8</a> and <a href="#sequential">14.9</a>. <a href="#examples">14.6</a> is the order of the offline programs in <code>Examples/AI_Theory/</code>, which write the same products with named variables before a helper hides them.</p>
 
         <h2 id="math-layout">14.1 What stays on <code>math</code></h2>
         <p>Linear algebra stays on <code>math</code>. A weight matrix is <code>[in, out]</code>: one row per input unit, one column per output unit, the same layout as <code>math.matmul(x, weights)</code>. The inner dimensions must match, so a vector of length 2 multiplies a matrix with 2 rows. The product below is the linear part of the layer in <a href="#reading-the-matrix">14.2.1</a>, before the bias <code>[0.25, -0.5]</code> is added. Activations and the layer live on <code>nn</code>. Write <code>nn.relu</code>, not <code>relu</code>: there is no flat alias.</p>
@@ -120,6 +120,22 @@ var upstream = nn.mseGrad(out.out, [target]);
 var backOut = nn.denseBackward(hidden.out, w2, upstream, "sigmoid", out.pre);
 var backHidden = nn.denseBackward(x, w1, backOut.dInput, "sigmoid", hidden.pre);</code></pre>
         <p><code>Examples/AI_Theory/xor_neural_net.malda</code> writes those multiplies with named variables. <code>Examples/AI_Theory/nn_dense.malda</code> trains the same 2-4-1 XOR net with the two calls above.</p>
+        <p>On a linear pair every local derivative is <code>1</code>, so the hand-off is the product itself. The input is <code>2</code>, the hidden weight is <code>3</code>, and the hidden bias is <code>0</code>, so the hidden output is <code>6</code>. The output weight is <code>0.5</code> and the output bias is <code>0</code>, so the prediction is <code>3</code>. The target is <code>1</code>, and <code>nn.mseGrad</code> is <code>3 − 1 = 2</code>. The output weight gradient is <code>6 × 2 = 12</code>. The output <code>dInput</code> is <code>2 × 0.5 = 1</code>, and that <code>1</code> is the hidden layer's upstream. The hidden weight gradient is <code>2 × 1 = 2</code>. The snippet prints the hidden output, the prediction, the output weight gradient, the hidden upstream, and the hidden weight gradient.</p>
+        <pre><code data-run="true" data-expect="6\n3\n12\n1\n2">var x = [2.0];
+var w1 = [[3.0]];
+var b1 = [0.0];
+var hidden = nn.dense(x, w1, b1, "linear");
+var w2 = [[0.5]];
+var b2 = [0.0];
+var out = nn.dense(hidden.out, w2, b2, "linear");
+var upstream = nn.mseGrad(out.out, [1.0]);
+var backOut = nn.denseBackward(hidden.out, w2, upstream, "linear", out.pre);
+var backHidden = nn.denseBackward(x, w1, backOut.dInput, "linear", hidden.pre);
+print(int(hidden.out[0]));
+print(int(out.out[0]));
+print(int(backOut.dWeights[0][0]));
+print(int(backOut.dInput[0]));
+print(int(backHidden.dWeights[0][0]));</code></pre>
 
         <h3 id="weight-update">14.4.2 The weight step</h3>
         <p>There is no optimizer builtin. After the backward calls, subtract <code>learningRate</code> times <code>dWeights</code> from the weight matrix and <code>learningRate</code> times <code>dBias</code> from the bias, entry by entry. A batch bias gradient is a sum, so a learning rate tuned on one sample is large for many rows unless you scale it.</p>
@@ -158,7 +174,34 @@ print(int(peaked * 1000));
 print(int(peakedGrad[0] * 100));
 print(int(peakedGrad[1] * 100));</code></pre>
 
+        <h3 id="policy">14.5.2 A return instead of a label</h3>
+        <p>A classifier is handed the right class. A policy samples an action from <code>softmax(logits)</code>, and the environment answers with a return. That return is the teacher.</p>
+        <p><code>nn.softmaxGrad(logits, action)</code> is still <code>softmax</code> minus a one-hot. On a labeled example the one-hot is the true class, and that gradient is the <code>upstream</code>. On REINFORCE the one-hot is the action you just sampled, and you multiply the gradient by the return <code>G</code> before <code>denseBackward</code>. The quantity you descend is <code>−G × log π(action)</code>. A positive <code>G</code> makes that action more likely under the subtraction in <a href="#weight-update">14.4.2</a>. A negative <code>G</code> makes it less likely. A <code>G</code> of <code>0</code> leaves the weights where they are.</p>
+        <p>On one step the return is the reward. On a longer episode, <code>G</code> at a step is the sum of the rewards from that step through the end, discounted if you want a factor below <code>1</code>. You keep that sum in a variable.</p>
+        <p>One step, in numbers. The state is <code>1</code>. The weights and the bias are zero, so both logits are <code>0</code> and both actions have probability <code>0.5</code>. The sampled action is <code>1</code> and the return is <code>1</code>. <code>nn.softmaxGrad</code> at action <code>1</code> is <code>[0.5, −0.5]</code>. Times the return, that vector is the upstream. A learning rate of <code>1</code> moves the weight row to <code>[−0.5, 0.5]</code> and the bias to the same pair. The next forward on state <code>1</code> prefers action <code>1</code>. <code>int(probability × 100)</code> is <code>88</code>. The snippet prints the upstream times 10, the updated weight row times 10, and that probability.</p>
+        <pre><code data-run="true" data-expect="5\n-5\n-5\n5\n88">var x = [1.0];
+var w = [[0.0, 0.0]];
+var b = [0.0, 0.0];
+var layer = nn.dense(x, w, b, "linear");
+var grad = nn.softmaxGrad(layer.out, 1);
+var upstream = [grad[0] * 1.0, grad[1] * 1.0];
+var back = nn.denseBackward(x, w, upstream, "linear", layer.pre);
+print(int(upstream[0] * 10));
+print(int(upstream[1] * 10));
+w[0][0] = w[0][0] - 1.0 * back.dWeights[0][0];
+w[0][1] = w[0][1] - 1.0 * back.dWeights[0][1];
+b[0] = b[0] - 1.0 * back.dBias[0];
+b[1] = b[1] - 1.0 * back.dBias[1];
+print(int(w[0][0] * 10));
+print(int(w[0][1] * 10));
+var again = nn.dense(x, w, b, "linear");
+var probs = math.softmax(again.out);
+print(int(probs[1] * 100));</code></pre>
+        <p>A number you subtract from <code>G</code> that ignores the action is a baseline. The usual choice is the mean return so far. The expected update is the same, and a long run of <code>+1</code> rewards stops arriving at full scale. <code>Examples/AI_Theory/reinforce_bandit.malda</code> is that loop on a 1-4-2 net. The state is <code>+1</code> or <code>−1</code>. Action <code>1</code> is the match for <code>+1</code>, and action <code>0</code> is the match for <code>−1</code>. The hidden layer is <code>tanh</code>, the logits are <code>linear</code>, and the upstream is <code>softmaxGrad</code> times <code>reward − baseline</code>.</p>
+        <p><code>malda play Examples/Games/cartpole_neural.malda</code> fits a canvas net to a score of pole angle, angular rate, cart position, and cart speed. A force of <code>±10</code> N shows up many steps later, so that short demo keeps the score as the teacher. The bandit is the program where the return arrives on the same step.</p>
+
         <h2 id="examples">14.6 Examples</h2>
+        <p>The same three moves run through every file. A loss, or a return, names an upstream. <code>nn.denseBackward</code> turns that upstream into <code>dInput</code>, <code>dWeights</code>, and <code>dBias</code>. You subtract the learning rate times each gradient, or you store a velocity, a cap, or Adam's moments and then subtract. A second layer takes the first layer's <code>dInput</code>. A classifier passes <code>nn.softmaxGrad</code> of a known class. A policy passes that same vector times a return (<a href="#policy">14.5.2</a>). A convolution, a recurrence, and an attention head change which numbers are multiplied. You still own the step.</p>
         <p>Read the files in the order below. Each one seeds the RNG where it draws weights, runs offline, and needs no API key. The calls in this chapter are enough to read them. What changes from file to file is the idea: a hidden layer, a held-out glyph, a velocity you store yourself, one shared kernel, one attention head.</p>
         <p>The same folder also holds <code>svm_linear.malda</code> and <code>sarsa_cliff.malda</code>. Those are a margin classifier and a tabular cliff, not a dense stack.</p>
 
@@ -167,6 +210,7 @@ print(int(peakedGrad[1] * 100));</code></pre>
 
         <h3 id="track-class">14.6.2 A classifier</h3>
         <p><code>softmax_classifier.malda</code> separates three classes in 2D. The loss is <code>nn.crossEntropyFromLogits</code> and the upstream is <code>nn.softmaxGrad</code>, as in <a href="#classification">14.5.1</a>. <code>mnist_digits.malda</code> uses ten 5×5 glyphs in the MNIST shape. The hidden <code>nn.dense</code> is <code>"relu"</code>. The ten logits are <code>"linear"</code>. <code>glyph_holdout.malda</code> trains those ten glyphs, then scores a copy with two flipped pixels. Train is perfect. Holdout is not, because those flips swap the 8 with the 9. There is no MNIST download.</p>
+        <p><code>reinforce_bandit.malda</code> keeps <code>nn.softmaxGrad</code> and passes the sampled action as the index. The scale is the return minus a baseline (<a href="#policy">14.5.2</a>). The state is <code>+1</code> or <code>−1</code>, the hidden layer is <code>tanh</code>, and the two logits are <code>linear</code>.</p>
 
         <h3 id="track-check">14.6.3 Check the gradient and the scale</h3>
         <p><code>gradcheck_dense.malda</code> nudges each weight of one ReLU sample by a central difference and matches <code>nn.denseBackward</code>. <code>init_scale.malda</code> is one forward through a deep stack. A wide uniform draw saturates the sigmoids, so the local derivative from <a href="#activations">14.3</a> collapses. Dividing by <code>sqrt(in)</code> (Xavier) keeps that stack responsive. The He draw keeps a ReLU stack smaller than the same uniform draw. <code>new Dense</code> uses <code>1/sqrt(inFeatures)</code> by default.</p>
@@ -180,7 +224,7 @@ print(int(peakedGrad[1] * 100));</code></pre>
         <h3 id="track-attention">14.6.6 From one row to one decoder block</h3>
         <p><code>embed_row.malda</code> writes the gradient into the selected embedding row and leaves the other rows put. <code>next_char.malda</code> is a bigram on a repeated word: the loss is <code>nn.crossEntropyFromLogits</code>, and the dense gradient scatters back into that one row. <code>next_char_mlp.malda</code> is the case a bigram cannot name. Both samples end on <code>a</code>, one successor is <code>b</code>, the other is <code>c</code>, and a ReLU hidden layer on the two embedding rows names both. <code>layer_norm.malda</code> subtracts the mean and divides by the standard deviation so a deep product stays near 1, then checks the scale with a central difference.</p>
         <p><code>attention_step.malda</code> is one head. Scores are <code>QK^T / sqrt(d)</code>. Training puts the mass on a marked token, then a causal mask stops position 0 from reading position 2. <code>positional_encoding.malda</code> adds fixed sinusoids: position 0 is <code>sin(0)</code> and <code>cos(0)</code>, and position 1 matches <code>sin(1)</code> and <code>cos(1)</code>. <code>sentence_decoder.malda</code> is one causal block: token plus sinusoid, residual attention, one linear readout. It overfits <code>abca</code> to <code>bcab</code>, and the dense gradient is clipped before the step.</p>
-        <p><code>attention_is_all_you_need.malda</code> is the step after that block. It stays on <code>math.matmul</code> and adds multi-head attention, the same sinusoids, and the encoder-decoder. <code>microgpt.malda</code> is a tiny character model on that track. <code>embedding_2d.malda</code> projects a hash embedding and lists VectorDB neighbors. <code>onnx_inspect.malda</code> loads <code>new OnnxModel(path)</code> on a small identity model: inspect and one forward, on the host, with no training step. <code>malda play Examples/Games/xor_decision_boundary.malda</code> draws the XOR field. <code>malda play Examples/Games/softmax_decision_boundary.malda</code> draws the three softmax regions. <code>malda play Examples/Games/cartpole_neural.malda</code> trains a policy on the canvas.</p>
+        <p><code>attention_is_all_you_need.malda</code> is the step after that block. It stays on <code>math.matmul</code> and adds multi-head attention, the same sinusoids, and the encoder-decoder. <code>microgpt.malda</code> is a tiny character model on that track. <code>embedding_2d.malda</code> projects a hash embedding and lists VectorDB neighbors. <code>onnx_inspect.malda</code> loads <code>new OnnxModel(path)</code> on a small identity model: inspect and one forward, on the host, with no training step. <code>malda play Examples/Games/xor_decision_boundary.malda</code> draws the XOR field. <code>malda play Examples/Games/softmax_decision_boundary.malda</code> draws the three softmax regions. <code>malda play Examples/Games/cartpole_neural.malda</code> fits a canvas policy to a score of the pole and the cart. The return itself is <a href="#policy">14.5.2</a>.</p>
 
         <h2 id="backends">14.7 Backends</h2>
         <p>Interpreter, C# transpile, and JavaScript all run <code>math.dot</code> / <code>matmul</code> / <code>transpose</code>, <code>nn.*</code>, <code>new Dense</code> / <code>new Sequential</code>, and the layer classes in <a href="#other-layers">14.10</a>. <code>OnnxModel</code> is host-only. There is no tensor type, no autograd tape, and no <code>Adam</code> or data loader in core. There is no flat alias for <code>nn</code> names: write <code>nn.relu</code>, not <code>relu</code>.</p>

@@ -209,6 +209,22 @@
       "prerequisites": ["AI_Theory/nn_dense.malda", "AI_Theory/softmax_classifier.malda"],
       "learningGoal": "Run the chapter 14 two-layer step on ten digit glyphs: ReLU hidden layer, linear logits, nn.softmaxGrad as upstream.",
       "expectedOutput": "Prints training loss and classifies all ten glyphs, then mnist digits ok.",
+      "next": "AI_Theory/reinforce_bandit.malda",
+      "documentationPath": "/docs/start-here.md",
+      "documentationTitle": "Start Here"
+    },
+    {
+      "name": "REINFORCE bandit",
+      "description": "One-step policy gradient: a 1-4-2 net samples an action and scales nn.softmaxGrad by the return minus a baseline",
+      "file": "reinforce_bandit.malda",
+      "track": "student",
+      "difficulty": "advanced",
+      "minutes": 10,
+      "requires": ["offline"],
+      "concepts": ["REINFORCE", "policy gradient", "softmax", "baseline", "dense layer"],
+      "prerequisites": ["AI_Theory/mnist_digits.malda"],
+      "learningGoal": "See nn.softmaxGrad of a sampled action, scaled by the return, raise the probability of the matching action.",
+      "expectedOutput": "Prints both action probabilities above 0.8 and a positive late return, then reinforce ok.",
       "next": "AI_Theory/gradcheck_dense.malda",
       "documentationPath": "/docs/start-here.md",
       "documentationTitle": "Start Here"

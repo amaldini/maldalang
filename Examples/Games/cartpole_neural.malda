@@ -4,6 +4,8 @@
 // A 4-24-2 net (tanh hidden, linear logits) drives the cart.
 // REINFORCE on the episode return does not learn a return to center: ±10 N
 // only helps dozens of steps later, and a short demo never assigns that credit.
+// The one-step case, where the return is the teacher, is
+// Examples/AI_Theory/reinforce_bandit.malda (chapter 14.5.2).
 // Each batch is labeled by a linear score — pole angle and rate, plus cart
 // position and speed — that keeps the pole up and walks the cart back to the
 // center mark. nn.denseBackward fits the net to those labels.

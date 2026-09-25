@@ -122,7 +122,8 @@ After `chain_rule.malda`:
 3. `softmax_classifier.malda` — 3-class 2D softmax
 
 SVM / attention / microgpt stay. Do not mix tabular RL (`sarsa_cliff`) into
-the net files.
+the net files. A neural policy gradient stays a net file
+(`reinforce_bandit.malda`).
 
 ---
 
@@ -196,10 +197,11 @@ A fixed stack of dense layers. `forward` / `backward` call `nn.dense` / `nn.dens
 
 ## N8 — Curriculum programs
 
-No new `nn.*` names. Each file stays offline and prints an `ok` line. Files that draw weights call `math.seed`. Local helpers stay in the file that teaches them. The chain starts at `mnist_digits.malda`:
+No new `nn.*` names. Each file stays offline and prints an `ok` line. Files that draw weights call `math.seed`. Local helpers stay in the file that teaches them. The chain starts at `mnist_digits.malda`, then the one-step policy gradient, then the checks below. `cartpole_neural.malda` stays a shaped score of the pole and the cart.
 
 | File | Idea |
 |------|------|
+| `reinforce_bandit.malda` | `nn.softmaxGrad` of the sampled action, scaled by `reward − baseline`, on a 1-4-2 net |
 | `gradcheck_dense.malda` | Central difference vs `nn.denseBackward` on one ReLU layer |
 | `init_scale.malda` | Uniform saturates a deep sigmoid stack; Xavier does not. He keeps ReLU activations smaller than the same uniform draw |
 | `glyph_holdout.malda` | Train the ten 5×5 glyphs; two flipped pixels swap 8 with 9, so holdout is not perfect |

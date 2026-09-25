@@ -16,6 +16,7 @@ Agents and tools stay in [`Examples/Agents/`](../Agents/).
 | `sequential_xor.malda` | Same XOR net via `new Sequential` and `fit` |
 | `softmax_classifier.malda` | 3-class softmax on 2D blobs (`math.matmul`) |
 | `mnist_digits.malda` | Ten 5×5 glyphs, chapter 14 MLP (ReLU hidden, 10 linear logits) |
+| `reinforce_bandit.malda` | One-step REINFORCE: `nn.softmaxGrad` scaled by return minus a baseline |
 | `gradcheck_dense.malda` | Central difference vs `nn.denseBackward` on one ReLU layer |
 | `init_scale.malda` | Uniform vs Xavier vs He on one forward pass |
 | `glyph_holdout.malda` | Same glyphs; two flipped pixels, train perfect and holdout not |
@@ -43,7 +44,8 @@ See the XOR decision boundary in the browser with
 softmax regions with
 `malda play Examples/Games/softmax_decision_boundary.malda`.
 A CartPole policy that trains on the canvas, and that you can shove with the mouse, is
-`malda play Examples/Games/cartpole_neural.malda`.
+`malda play Examples/Games/cartpole_neural.malda`. That canvas net fits a score of
+the pole and the cart. The return-scaled step is `reinforce_bandit.malda`.
 Kit roadmap: [`docs/roadmap-neural.md`](../../docs/roadmap-neural.md).
 
 All are seeded with `math.seed` where they use randomness. The student
