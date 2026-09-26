@@ -122,7 +122,7 @@ public partial class PackageBrowserWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Error loading available packages: {ex.Message}\n\nShowing installed packages instead.", 
+            IdePromptWindow.Show($"Error loading available packages: {ex.Message}\n\nShowing installed packages instead.", 
                 "Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
             LoadInstalledPackages();
         }
@@ -144,7 +144,7 @@ public partial class PackageBrowserWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Error searching packages: {ex.Message}", "Error", 
+            IdePromptWindow.Show($"Error searching packages: {ex.Message}", "Error", 
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -168,26 +168,26 @@ public partial class PackageBrowserWindow : Window
                 var success = await _packageManager.InstallAsync(selectedPackage.Name, selectedPackage.Version);
                 if (success)
                 {
-                    MessageBox.Show($"Package {selectedPackage.Name} installed successfully", 
+                    IdePromptWindow.Show($"Package {selectedPackage.Name} installed successfully", 
                         "Success", MessageBoxButton.OK, MessageBoxImage.Information);
                     // Refresh the available packages list
                     LoadAvailablePackages();
                 }
                 else
                 {
-                    MessageBox.Show($"Failed to install package {selectedPackage.Name}", 
+                    IdePromptWindow.Show($"Failed to install package {selectedPackage.Name}", 
                         "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error installing package: {ex.Message}", 
+                IdePromptWindow.Show($"Error installing package: {ex.Message}", 
                     "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
         else
         {
-            MessageBox.Show("Please select a package to install", 
+            IdePromptWindow.Show("Please select a package to install", 
                 "No Selection", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
@@ -196,7 +196,7 @@ public partial class PackageBrowserWindow : Window
     {
         if (PackagesDataGrid.SelectedItem is PackageInfo selectedPackage)
         {
-            var result = MessageBox.Show(
+            var result = IdePromptWindow.Show(
                 $"Are you sure you want to uninstall {selectedPackage.Name}@{selectedPackage.Version}?",
                 "Confirm Uninstall", MessageBoxButton.YesNo, MessageBoxImage.Question);
             
@@ -207,27 +207,27 @@ public partial class PackageBrowserWindow : Window
                     var success = _packageManager.Uninstall(selectedPackage.Name, selectedPackage.Version);
                     if (success)
                     {
-                        MessageBox.Show($"Package {selectedPackage.Name} uninstalled successfully", 
+                        IdePromptWindow.Show($"Package {selectedPackage.Name} uninstalled successfully", 
                             "Success", MessageBoxButton.OK, MessageBoxImage.Information);
                         // Refresh the available packages list
                         LoadAvailablePackages();
                     }
                     else
                     {
-                        MessageBox.Show($"Failed to uninstall package {selectedPackage.Name}", 
+                        IdePromptWindow.Show($"Failed to uninstall package {selectedPackage.Name}", 
                             "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                     }
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"Error uninstalling package: {ex.Message}", 
+                    IdePromptWindow.Show($"Error uninstalling package: {ex.Message}", 
                         "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
         }
         else
         {
-            MessageBox.Show("Please select a package to uninstall", 
+            IdePromptWindow.Show("Please select a package to uninstall", 
                 "No Selection", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }

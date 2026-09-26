@@ -41,7 +41,7 @@ public partial class ReplayToHereDialog : Window
         var dir = WorkingDirTextBox.Text?.Trim();
         if (string.IsNullOrEmpty(dir))
         {
-            MessageBox.Show(this, "Please enter a working directory.", "Replay to Here", MessageBoxButton.OK, MessageBoxImage.Warning);
+            IdePromptWindow.Show(this, "Please enter a working directory.", "Replay to Here", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
         WorkingDirectory = dir;

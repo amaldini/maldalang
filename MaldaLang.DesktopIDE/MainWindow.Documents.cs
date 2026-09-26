@@ -187,6 +187,7 @@ public partial class MainWindow
 
     private void RefreshDocumentTabs()
     {
+        UpdateWindowChrome();
         if (DocumentTabsPanel == null)
         {
             return;
@@ -282,7 +283,7 @@ public partial class MainWindow
 
         if (document.IsDirty)
         {
-            var saveChoice = MessageBox.Show(
+            var saveChoice = IdePromptWindow.Show(
                 $"Save changes to {GetDocumentDisplayName(document)} before closing?",
                 "Unsaved Changes",
                 MessageBoxButton.YesNoCancel,
@@ -399,7 +400,7 @@ public partial class MainWindow
             RefreshDocumentTabs();
             if (showSuccessMessage)
             {
-                MessageBox.Show("File saved successfully.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+                IdePromptWindow.Show("File saved successfully.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
             }
 
             return true;
@@ -470,7 +471,7 @@ public partial class MainWindow
 
         if (showSuccessMessage)
         {
-            MessageBox.Show("File saved successfully.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+            IdePromptWindow.Show("File saved successfully.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         return true;
@@ -795,7 +796,7 @@ public partial class MainWindow
         {
             var dirtyNames = string.Join(", ", dirtyDocuments.Select(GetDocumentDisplayName));
             var message = $"Reloading will discard unsaved changes in: {dirtyNames}\n\nContinue?";
-            var choice = MessageBox.Show(
+            var choice = IdePromptWindow.Show(
                 message,
                 "Reload Open Files",
                 MessageBoxButton.YesNo,
@@ -1101,7 +1102,7 @@ public partial class MainWindow
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "Open Folder", MessageBoxButton.OK, MessageBoxImage.Warning);
+            IdePromptWindow.Show(this, ex.Message, "Open Folder", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
@@ -1111,10 +1112,13 @@ public partial class MainWindow
         var root = _workspaceFiles.ExplicitWorkspaceRoot;
         if (string.IsNullOrWhiteSpace(root))
         {
-            WorkspaceFolderLabel.Text = "Open a folder to browse .malda files.";
+            WorkspaceEmptyState.Visibility = Visibility.Visible;
+            WorkspaceFolderLabel.Visibility = Visibility.Collapsed;
             return;
         }
 
+        WorkspaceEmptyState.Visibility = Visibility.Collapsed;
+        WorkspaceFolderLabel.Visibility = Visibility.Visible;
         WorkspaceFolderLabel.Text = root;
         var files = _workspaceFiles.GetExplicitWorkspaceMaldaFiles();
         foreach (var path in files)

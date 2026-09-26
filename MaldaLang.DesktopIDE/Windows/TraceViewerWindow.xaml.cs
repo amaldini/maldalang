@@ -215,7 +215,7 @@ public partial class TraceViewerWindow : Window
         var idx = EventsDataGrid.SelectedIndex;
         if (idx < 0 || idx >= _session.Events.Count)
         {
-            MessageBox.Show(this, "Select an event first.", "Replay to Here", MessageBoxButton.OK, MessageBoxImage.Information);
+            IdePromptWindow.Show(this, "Select an event first.", "Replay to Here", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
         _session.Context.StepTo(idx);
@@ -231,11 +231,11 @@ public partial class TraceViewerWindow : Window
             var msg = restored.Count == 0
                 ? "No files to restore at this step."
                 : $"Restored {restored.Count} file(s):\n" + string.Join("\n", restored.Take(20)) + (restored.Count > 20 ? "\n..." : "");
-            MessageBox.Show(this, msg, "Replay to Here", MessageBoxButton.OK, MessageBoxImage.Information);
+            IdePromptWindow.Show(this, msg, "Replay to Here", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "Replay to Here failed", MessageBoxButton.OK, MessageBoxImage.Warning);
+            IdePromptWindow.Show(this, ex.Message, "Replay to Here failed", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
@@ -244,7 +244,7 @@ public partial class TraceViewerWindow : Window
         var idx = EventsDataGrid.SelectedIndex;
         if (idx < 0 || idx >= _session.Events.Count)
         {
-            MessageBox.Show(this, "Select an event first.", "Run from Here", MessageBoxButton.OK, MessageBoxImage.Information);
+            IdePromptWindow.Show(this, "Select an event first.", "Run from Here", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
         _session.Context.StepTo(idx);
@@ -261,7 +261,7 @@ public partial class TraceViewerWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "Run from Here failed", MessageBoxButton.OK, MessageBoxImage.Warning);
+            IdePromptWindow.Show(this, ex.Message, "Run from Here failed", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
@@ -270,7 +270,7 @@ public partial class TraceViewerWindow : Window
         var idx = EventsDataGrid.SelectedIndex;
         if (idx < 0 || idx >= _session.Events.Count)
         {
-            MessageBox.Show(this, "Select an event first.", "Branch from Here", MessageBoxButton.OK, MessageBoxImage.Information);
+            IdePromptWindow.Show(this, "Select an event first.", "Branch from Here", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
         _session.Context.StepTo(idx);
@@ -287,11 +287,11 @@ public partial class TraceViewerWindow : Window
             var replayWindow = new AgentReplayWindow(_themeService, dlg.WorkingDirectory, state, branchSessionId, traceBaseDir) { Owner = this };
             replayWindow.Show();
             var tracePath = Path.Combine(traceBaseDir, branchSessionId + ".malda-trace.jsonl");
-            MessageBox.Show(this, $"Branch created. New trace will be written to:\n{tracePath}", "Branch from Here", MessageBoxButton.OK, MessageBoxImage.Information);
+            IdePromptWindow.Show(this, $"Branch created. New trace will be written to:\n{tracePath}", "Branch from Here", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "Branch from Here failed", MessageBoxButton.OK, MessageBoxImage.Warning);
+            IdePromptWindow.Show(this, ex.Message, "Branch from Here failed", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 }

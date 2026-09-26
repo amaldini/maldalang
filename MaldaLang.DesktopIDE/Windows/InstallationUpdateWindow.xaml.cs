@@ -219,7 +219,7 @@ public partial class InstallationUpdateWindow : Window
         }
 
         message += "\n\nContinue?";
-        var result = MessageBox.Show(
+        var result = IdePromptWindow.Show(
             this,
             message,
             "Update Installation",

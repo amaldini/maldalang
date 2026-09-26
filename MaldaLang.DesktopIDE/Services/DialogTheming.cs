@@ -77,6 +77,82 @@ public static class DialogTheming
         resources["ErrorBrush"] = Freeze(theme.ErrorColor);
         resources["WarningBrush"] = Freeze(theme.WarningColor);
         resources["InfoBrush"] = Freeze(theme.InfoColor);
+        resources["SuccessBrush"] = Freeze(theme.SuccessColor);
+        resources["ScrollBarTrackBrush"] = Freeze(ScrollTrack(theme));
+        resources["ScrollBarThumbBrush"] = Freeze(ScrollThumb(theme));
+        resources["ScrollBarThumbHoverBrush"] = Freeze(ScrollThumbHover(theme));
+    }
+
+    public static void CopyChrome(FrameworkElement source, FrameworkElement target)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(target);
+
+        string[] keys =
+        [
+            "WindowBackgroundBrush",
+            "MainBackgroundBrush",
+            "SidebarBackgroundBrush",
+            "ToolbarBackgroundBrush",
+            "ToolbarBorderBrush",
+            "EditorBackgroundBrush",
+            "EditorForegroundBrush",
+            "EditorLineNumbersBrush",
+            "TextForegroundBrush",
+            "TextSecondaryBrush",
+            "ButtonBackgroundBrush",
+            "ButtonForegroundBrush",
+            "ButtonBorderBrush",
+            "ButtonHoverBrush",
+            "ButtonHoverBorderBrush",
+            "PrimaryButtonBackgroundBrush",
+            "PrimaryButtonForegroundBrush",
+            "PrimaryButtonBorderBrush",
+            "PrimaryButtonHoverBrush",
+            "PrimaryButtonHoverBorderBrush",
+            "TabBackgroundBrush",
+            "TabActiveBackgroundBrush",
+            "TabForegroundBrush",
+            "TabHoverBrush",
+            "InputBackgroundBrush",
+            "InputForegroundBrush",
+            "InputBorderBrush",
+            "BorderBrush",
+            "GridSplitterBackgroundBrush",
+            "ListBackgroundBrush",
+            "ListForegroundBrush",
+            "ListBorderBrush",
+            "DebugAccentBrush",
+            "ErrorBrush",
+            "WarningBrush",
+            "InfoBrush",
+            "SuccessBrush",
+            "ScrollBarTrackBrush",
+            "ScrollBarThumbBrush",
+            "ScrollBarThumbHoverBrush"
+        ];
+
+        foreach (var key in keys)
+        {
+            if (source.TryFindResource(key) is SolidColorBrush solid)
+            {
+                target.Resources[key] = Freeze(solid.Color);
+            }
+        }
+    }
+
+    private static Color ScrollTrack(Theme theme) => Shift(theme.ListBackground, theme.IsDark ? 24 : -16);
+
+    private static Color ScrollThumb(Theme theme) => Shift(theme.ListBackground, theme.IsDark ? 56 : -40);
+
+    private static Color ScrollThumbHover(Theme theme) => Shift(theme.ListBackground, theme.IsDark ? 78 : -64);
+
+    private static Color Shift(Color color, int delta)
+    {
+        return Color.FromRgb(
+            (byte)Math.Clamp(color.R + delta, 0, 255),
+            (byte)Math.Clamp(color.G + delta, 0, 255),
+            (byte)Math.Clamp(color.B + delta, 0, 255));
     }
 
     private static SolidColorBrush Freeze(Color color)

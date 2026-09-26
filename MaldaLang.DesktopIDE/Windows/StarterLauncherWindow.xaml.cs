@@ -183,7 +183,7 @@ public partial class StarterLauncherWindow : Window
     {
         if (SelectedStarter == null)
         {
-            MessageBox.Show(this, "Choose a starter before continuing.", "Starter Required", MessageBoxButton.OK, MessageBoxImage.Information);
+            IdePromptWindow.Show(this, "Choose a starter before continuing.", "Starter Required", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 

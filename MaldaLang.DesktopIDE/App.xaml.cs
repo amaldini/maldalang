@@ -16,7 +16,7 @@ public partial class App : Application
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
             if (request is null)
             {
-                MessageBox.Show(
+                IdePromptWindow.Show(
                     error ?? "Could not apply the installation update.",
                     "Update failed",
                     MessageBoxButton.OK,

@@ -89,6 +89,17 @@ public partial class MainWindow
             if (StepIntoButton != null) StepIntoButton.IsEnabled = canStep;
             if (StepOutButton != null) StepOutButton.IsEnabled = canStep;
             if (PauseButton != null) PauseButton.IsEnabled = canPause;
+            if (DebugTransportBar != null)
+            {
+                if (isDebugRunning && DebugTransportBar.Visibility != Visibility.Visible)
+                {
+                    SwitchToTab("debug");
+                }
+
+                DebugTransportBar.Visibility = isDebugRunning ? Visibility.Visible : Visibility.Collapsed;
+            }
+
+            UpdateWindowChrome();
             CommandManager.InvalidateRequerySuggested();
         });
     }

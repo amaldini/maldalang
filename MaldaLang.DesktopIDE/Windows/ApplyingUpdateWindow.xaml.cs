@@ -44,7 +44,7 @@ public partial class ApplyingUpdateWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(
+            IdePromptWindow.Show(
                 this,
                 ex.Message,
                 "Update failed",

@@ -1,0 +1,35 @@
+<Window x:Class="MaldaLang.DesktopIDE.Windows.IdePromptWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="MALDA"
+        Width="460"
+        SizeToContent="Height"
+        MinWidth="360"
+        MaxWidth="560"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        FontFamily="Segoe UI, Segoe UI Variable, sans-serif"
+        Background="{DynamicResource WindowBackgroundBrush}"
+        Foreground="{DynamicResource TextForegroundBrush}">
+    <Border Padding="20,18,20,16" BorderBrush="{DynamicResource AccentBorderBrush}" BorderThickness="3,0,0,0">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <ScrollViewer MaxHeight="320" VerticalScrollBarVisibility="Auto">
+                <TextBlock x:Name="MessageText"
+                           TextWrapping="Wrap"
+                           FontSize="13"
+                           LineHeight="20"
+                           Foreground="{DynamicResource TextForegroundBrush}"/>
+            </ScrollViewer>
+            <StackPanel x:Name="ButtonBar"
+                        Grid.Row="1"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        Margin="0,16,0,0"/>
+        </Grid>
+    </Border>
+</Window>

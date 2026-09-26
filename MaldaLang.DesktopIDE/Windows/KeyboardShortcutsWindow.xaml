@@ -1,0 +1,31 @@
+<Window x:Class="MaldaLang.DesktopIDE.Windows.KeyboardShortcutsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Keyboard Shortcuts"
+        Width="520"
+        Height="560"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        FontFamily="Segoe UI, Segoe UI Variable, sans-serif"
+        Background="{DynamicResource WindowBackgroundBrush}"
+        Foreground="{DynamicResource TextForegroundBrush}">
+    <DockPanel Margin="20,16,20,16">
+        <Button DockPanel.Dock="Bottom"
+                Content="Close"
+                HorizontalAlignment="Right"
+                Margin="0,12,0,0"
+                MinWidth="84"
+                IsCancel="True"
+                IsDefault="True"
+                Style="{StaticResource ToolbarPrimaryButton}"
+                Click="Close_Click"/>
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <TextBlock x:Name="ShortcutsText"
+                       FontFamily="Consolas"
+                       FontSize="13"
+                       LineHeight="20"
+                       TextWrapping="Wrap"
+                       Foreground="{DynamicResource TextForegroundBrush}"/>
+        </ScrollViewer>
+    </DockPanel>
+</Window>

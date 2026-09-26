@@ -39,11 +39,11 @@
                                                FontSize="12"
                                                Foreground="{DynamicResource TextForegroundBrush}"/>
                                     <TextBlock Text="{Binding Path}"
-                                               FontSize="10"
+                                               FontSize="12"
                                                Margin="0,2,0,0"
                                                Foreground="{DynamicResource TextSecondaryBrush}"
                                                TextTrimming="CharacterEllipsis"/>
-                                    <TextBlock FontSize="10"
+                                    <TextBlock FontSize="12"
                                                Margin="0,2,0,0"
                                                Foreground="{DynamicResource TextSecondaryBrush}">
                                         <Run Text="{Binding Size, StringFormat='{}{0:N0} bytes'}"/>

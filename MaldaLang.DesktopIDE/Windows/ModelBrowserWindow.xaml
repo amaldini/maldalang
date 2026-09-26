@@ -130,7 +130,7 @@
                                    Text=""
                                    HorizontalAlignment="Center"
                                    Foreground="{DynamicResource TextSecondaryBrush}"
-                                   FontSize="10"
+                                   FontSize="12"
                                    Margin="0,4,0,0"
                                    TextWrapping="Wrap"
                                    MaxWidth="400"/>
@@ -207,7 +207,7 @@
                                                FontSize="12"
                                                Foreground="{DynamicResource TextForegroundBrush}"/>
                                     <TextBlock Text="{Binding ModelId}"
-                                               FontSize="10"
+                                               FontSize="12"
                                                Margin="0,2,0,0"
                                                Foreground="{DynamicResource TextSecondaryBrush}"/>
                                     <ProgressBar Value="{Binding Percentage}"
@@ -217,7 +217,7 @@
                                                  Margin="0,4,0,2"
                                                  Foreground="{DynamicResource PrimaryButtonBackgroundBrush}"/>
                                     <TextBlock Text="{Binding ProgressText}"
-                                               FontSize="10"
+                                               FontSize="12"
                                                Foreground="{DynamicResource TextSecondaryBrush}"/>
                                 </StackPanel>
                                 <Button Grid.Column="1"
@@ -262,11 +262,11 @@
                                                FontSize="12"
                                                Foreground="{DynamicResource TextForegroundBrush}"/>
                                     <TextBlock Text="{Binding Path}"
-                                               FontSize="10"
+                                               FontSize="12"
                                                Margin="0,2,0,0"
                                                Foreground="{DynamicResource TextSecondaryBrush}"
                                                TextTrimming="CharacterEllipsis"/>
-                                    <TextBlock FontSize="10"
+                                    <TextBlock FontSize="12"
                                                Margin="0,2,0,0"
                                                Foreground="{DynamicResource TextSecondaryBrush}">
                                         <Run Text="{Binding Size, StringFormat='{}{0:N0} bytes'}"/>

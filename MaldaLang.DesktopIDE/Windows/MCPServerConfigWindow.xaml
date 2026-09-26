@@ -39,7 +39,7 @@
                                            FontWeight="Bold"
                                            FontSize="12"
                                            Foreground="{DynamicResource TextForegroundBrush}"/>
-                                <TextBlock FontSize="10"
+                                <TextBlock FontSize="12"
                                            Margin="0,2,0,0"
                                            Foreground="{DynamicResource TextSecondaryBrush}">
                                     <Run Text="{Binding Command, Mode=OneWay}"/>

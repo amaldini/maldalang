@@ -298,11 +298,13 @@ public partial class MainWindow
         // Track cursor position and selection for AI chat panel
         CodeEditor.TextArea.Caret.PositionChanged += (s, e) =>
         {
-            if (_activeTab == "ai" && _aiChatPanel != null)
+            if (AIChatPanel != null && AIChatPanel.Visibility == Visibility.Visible && _aiChatPanel != null)
             {
                 _aiChatPanel.CursorPosition = GetCursorPosition();
                 _aiChatPanel.SelectedCode = GetSelectedText();
             }
+
+            UpdateWindowChrome();
 
             ScheduleSignatureHelp();
             ScheduleDocumentHighlightRefresh();
@@ -310,7 +312,7 @@ public partial class MainWindow
         
         CodeEditor.TextArea.SelectionChanged += (s, e) =>
         {
-            if (_activeTab == "ai" && _aiChatPanel != null)
+            if (AIChatPanel != null && AIChatPanel.Visibility == Visibility.Visible && _aiChatPanel != null)
             {
                 _aiChatPanel.SelectedCode = GetSelectedText();
             }
@@ -1224,9 +1226,12 @@ public partial class MainWindow
         ErrorsListBox.Items.Clear();
         foreach (var diagnostic in diagnostics)
         {
-            // Add Diagnostic objects directly - the DataTemplate will handle the display
             ErrorsListBox.Items.Add(diagnostic);
         }
+
+        var errors = diagnostics.Count(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
+        var warnings = diagnostics.Count(diagnostic => diagnostic.Severity == DiagnosticSeverity.Warning);
+        UpdateProblemsBadge(errors, warnings);
     }
 
     private void NavigateGoToDefinition_Click(object sender, RoutedEventArgs e)
@@ -1255,7 +1260,7 @@ public partial class MainWindow
             : _symbolNavigationService.GetDefinition(CodeEditor.Text, line, column, sourceKey);
         if (definition == null)
         {
-            MessageBox.Show("No definition found at the current cursor position.", "Go to Definition", MessageBoxButton.OK, MessageBoxImage.Information);
+            IdePromptWindow.Show("No definition found at the current cursor position.", "Go to Definition", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
@@ -1270,7 +1275,7 @@ public partial class MainWindow
         var target = _symbolNavigationService.PrepareRename(CodeEditor.Text, line, column, sourceKey);
         if (target == null)
         {
-            MessageBox.Show("Place the cursor on a symbol to find its references.", "Find References", MessageBoxButton.OK, MessageBoxImage.Information);
+            IdePromptWindow.Show("Place the cursor on a symbol to find its references.", "Find References", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
@@ -1338,7 +1343,7 @@ public partial class MainWindow
         var target = _symbolNavigationService.PrepareRename(CodeEditor.Text, line, column, sourceKey);
         if (target == null)
         {
-            MessageBox.Show("Place the cursor on a symbol to rename it.", "Rename Symbol", MessageBoxButton.OK, MessageBoxImage.Information);
+            IdePromptWindow.Show("Place the cursor on a symbol to rename it.", "Rename Symbol", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
@@ -1357,7 +1362,7 @@ public partial class MainWindow
             var fileCount = ApplyWorkspaceTextEdits(workspaceEdits, workspaceDocuments);
             UpdateDiagnostics();
             RefreshOutline();
-            MessageBox.Show(
+            IdePromptWindow.Show(
                 $"Renamed '{target.Name}' to '{newName}' in {fileCount} file{(fileCount == 1 ? string.Empty : "s")}.",
                 "Rename Symbol",
                 MessageBoxButton.OK,
@@ -1368,7 +1373,7 @@ public partial class MainWindow
         var edits = _symbolNavigationService.Rename(CodeEditor.Text, line, column, newName, sourceKey);
         if (edits == null || edits.Count == 0)
         {
-            MessageBox.Show("Rename could not be applied at the current cursor position.", "Rename Symbol", MessageBoxButton.OK, MessageBoxImage.Warning);
+            IdePromptWindow.Show("Rename could not be applied at the current cursor position.", "Rename Symbol", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
@@ -1376,7 +1381,7 @@ public partial class MainWindow
         SaveEditorIntoActiveDocument();
         UpdateDiagnostics();
         RefreshOutline();
-        MessageBox.Show($"Renamed '{target.Name}' to '{newName}' in the current document.", "Rename Symbol", MessageBoxButton.OK, MessageBoxImage.Information);
+        IdePromptWindow.Show($"Renamed '{target.Name}' to '{newName}' in the current document.", "Rename Symbol", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     private void ApplyTextEdits(List<TextEditInfo> edits)
@@ -1496,7 +1501,7 @@ public partial class MainWindow
         var documentKey = ResolveDocumentKeyForLocation(sourceKey, location.Span.Line);
         if (documentKey == null)
         {
-            MessageBox.Show($"Could not open '{sourceKey}'.", "Go to Definition", MessageBoxButton.OK, MessageBoxImage.Warning);
+            IdePromptWindow.Show($"Could not open '{sourceKey}'.", "Go to Definition", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
@@ -1592,7 +1597,7 @@ public partial class MainWindow
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"Could not write '{path}': {ex.Message}", "Rename Symbol", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    IdePromptWindow.Show($"Could not write '{path}': {ex.Message}", "Rename Symbol", MessageBoxButton.OK, MessageBoxImage.Warning);
                 }
             }
         }
@@ -1682,7 +1687,7 @@ public partial class MainWindow
         var symbols = _symbolNavigationService.GetWorkspaceSymbols(documents, null);
         if (symbols.Count == 0)
         {
-            MessageBox.Show("No workspace symbols found.", "Go to Symbol", MessageBoxButton.OK, MessageBoxImage.Information);
+            IdePromptWindow.Show("No workspace symbols found.", "Go to Symbol", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
@@ -2054,7 +2059,7 @@ public partial class MainWindow
             var edits = _editorQuickFixService.ToBatchEdits(diagnostics);
             if (edits.Count == 0)
             {
-                MessageBox.Show("No autofixable errors found.", "Quick Fix", MessageBoxButton.OK, MessageBoxImage.Information);
+                IdePromptWindow.Show("No autofixable errors found.", "Quick Fix", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
@@ -2062,7 +2067,7 @@ public partial class MainWindow
             UpdateDiagnostics();
             if (fixedCount > 0)
             {
-                MessageBox.Show(
+                IdePromptWindow.Show(
                     $"Successfully fixed {fixedCount} error{(fixedCount > 1 ? "s" : string.Empty)}.",
                     "Quick Fix Complete",
                     MessageBoxButton.OK,
@@ -2071,7 +2076,7 @@ public partial class MainWindow
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Error applying autofixes: {ex.Message}", "Quick Fix Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            IdePromptWindow.Show($"Error applying autofixes: {ex.Message}", "Quick Fix Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -2096,7 +2101,7 @@ public partial class MainWindow
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Error applying autofix: {ex.Message}", "Quick Fix Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            IdePromptWindow.Show($"Error applying autofix: {ex.Message}", "Quick Fix Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 

@@ -109,6 +109,7 @@ public partial class MainWindow : Window
     private readonly EditorQuickFixService _editorQuickFixService = new();
     private readonly ToolCallLogService _toolCallLogService;
     private readonly ThemeService _themeService;
+    private readonly LayoutSettingsService _layoutSettings;
     private readonly TypeAnalysisSettingsService _typeAnalysisSettingsService;
     private readonly CodeDiffService _codeDiffService;
     private readonly MCPServerConfigService _mcpConfigService;
@@ -140,6 +141,9 @@ public partial class MainWindow : Window
     private CancellationTokenSource? _runCancellation;
     private Process? _activeRunProcess;
     private readonly object _activeRunProcessLock = new();
+    private bool _outputOnRight = true;
+    private string _bottomTab = "errors";
+    private string _sideTab = "output";
     private string _activeTab = "output";
     private DispatcherTimer? _diagnosticsTimer;
     private readonly List<int> _breakpointLines = new();
@@ -173,11 +177,11 @@ public partial class MainWindow : Window
     private bool IsWebUiMaximized => _maximizedSidebarTab == "webui";
     private bool IsAiPanelMaximized => _maximizedSidebarTab == "ai";
     private GridLength _editorColumnBeforeMaximize = new(1, GridUnitType.Star);
-    private GridLength _sidebarColumnBeforeMaximize = new(300);
+    private GridLength _sidebarColumnBeforeMaximize = new(420);
     private GridLength _leftSplitterColumnBeforeMaximize = new(5);
     private GridLength _rightSplitterColumnBeforeMaximize = new(5);
     private double _syntaxPanelColumnMinWidthBeforeMaximize = 220;
-    private double _sidebarColumnMinWidthBeforeMaximize = 250;
+    private double _sidebarColumnMinWidthBeforeMaximize = 280;
     private Visibility _mainMenuVisibilityBeforeMaximize = Visibility.Visible;
     private Visibility _mainToolbarVisibilityBeforeMaximize = Visibility.Visible;
     private Visibility _editorPaneVisibilityBeforeMaximize = Visibility.Visible;
@@ -193,6 +197,24 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        _layoutSettings = new LayoutSettingsService();
+        _layoutSettings.Load();
+        _outputOnRight = _layoutSettings.OutputOnRight;
+        if (_outputOnRight)
+        {
+            _sideTab = "output";
+            _bottomTab = "errors";
+            _activeTab = "output";
+        }
+        else
+        {
+            _sideTab = "ai";
+            _bottomTab = "output";
+            _activeTab = "output";
+        }
+
+        PlaceBottomPanels();
+        ApplyOutputDock(_outputOnRight, refreshChrome: false);
         
         // Setup keyboard shortcuts
         SetupKeyboardShortcuts();
@@ -722,6 +744,7 @@ public partial class MainWindow : Window
         Resources["ErrorBrush"] = new SolidColorBrush(theme.ErrorColor);
         Resources["WarningBrush"] = new SolidColorBrush(theme.WarningColor);
         Resources["InfoBrush"] = new SolidColorBrush(theme.InfoColor);
+        Resources["SuccessBrush"] = new SolidColorBrush(theme.SuccessColor);
         EditorPopupTheming.PublishApplicationResources(theme);
         if (_completionWindow != null)
         {
@@ -1874,7 +1897,7 @@ public partial class MainWindow : Window
         var example = ExampleProgramsService.GetExampleByRelativePath(relativeExamplePath);
         if (example == null)
         {
-            MessageBox.Show(this, "The requested example could not be loaded.", "Example Not Found", MessageBoxButton.OK, MessageBoxImage.Information);
+            IdePromptWindow.Show(this, "The requested example could not be loaded.", "Example Not Found", MessageBoxButton.OK, MessageBoxImage.Information);
             return false;
         }
 
@@ -1962,20 +1985,40 @@ public partial class MainWindow : Window
 
     private void SwitchToTab(string tab)
     {
-        if (_maximizedSidebarTab != null && _maximizedSidebarTab != tab)
+        if (_maximizedSidebarTab != null && IsSidePanel(tab) && _maximizedSidebarTab != tab)
         {
             SetSidebarPanelMaximized(_maximizedSidebarTab, false);
         }
 
         _activeTab = tab;
-        
-        OutputPanel.Visibility = tab == "output" ? Visibility.Visible : Visibility.Collapsed;
-        DebugPanel.Visibility = tab == "debug" ? Visibility.Visible : Visibility.Collapsed;
-        ToolCallsPanel.Visibility = tab == "toolcalls" ? Visibility.Visible : Visibility.Collapsed;
-        ErrorsPanel.Visibility = tab == "errors" ? Visibility.Visible : Visibility.Collapsed;
-        SearchPanel.Visibility = tab == "search" ? Visibility.Visible : Visibility.Collapsed;
-        AIChatPanel.Visibility = tab == "ai" ? Visibility.Visible : Visibility.Collapsed;
-        WebUIPanel.Visibility = tab == "webui" ? Visibility.Visible : Visibility.Collapsed;
+        if (IsSidePanel(tab))
+        {
+            _sideTab = tab;
+            AIChatPanel.Visibility = tab == "ai" ? Visibility.Visible : Visibility.Collapsed;
+            WebUIPanel.Visibility = tab == "webui" ? Visibility.Visible : Visibility.Collapsed;
+            if (_outputOnRight)
+            {
+                OutputPanel.Visibility = tab == "output" ? Visibility.Visible : Visibility.Collapsed;
+            }
+
+            if (tab == "ai")
+            {
+                UpdateAIChatPanelContext();
+            }
+        }
+        else
+        {
+            _bottomTab = tab;
+            if (!_outputOnRight)
+            {
+                OutputPanel.Visibility = tab == "output" ? Visibility.Visible : Visibility.Collapsed;
+            }
+
+            DebugPanel.Visibility = tab == "debug" ? Visibility.Visible : Visibility.Collapsed;
+            ToolCallsPanel.Visibility = tab == "toolcalls" ? Visibility.Visible : Visibility.Collapsed;
+            ErrorsPanel.Visibility = tab == "errors" ? Visibility.Visible : Visibility.Collapsed;
+            SearchPanel.Visibility = tab == "search" ? Visibility.Visible : Visibility.Collapsed;
+        }
         
         // Update button styles using theme colors
         UpdateTabButtonBackgrounds();
@@ -2004,19 +2047,21 @@ public partial class MainWindow : Window
                     if (itemHeader == "Show Syntax Panel")
                         childMenuItem.IsChecked = _isSyntaxPanelVisible;
                     else if (itemHeader == "Show Output Panel")
-                        childMenuItem.IsChecked = _activeTab == "output";
+                        childMenuItem.IsChecked = _outputOnRight ? _sideTab == "output" : _bottomTab == "output";
+                    else if (itemHeader == "Output on the Right")
+                        childMenuItem.IsChecked = _outputOnRight;
                     else if (itemHeader == "Show Debug Panel")
-                        childMenuItem.IsChecked = _activeTab == "debug";
+                        childMenuItem.IsChecked = _bottomTab == "debug";
                     else if (itemHeader == "Show Tool Calls Panel")
-                        childMenuItem.IsChecked = _activeTab == "toolcalls";
-                    else if (itemHeader == "Show Errors Panel")
-                        childMenuItem.IsChecked = _activeTab == "errors";
+                        childMenuItem.IsChecked = _bottomTab == "toolcalls";
+                    else if (itemHeader == "Show Problems Panel")
+                        childMenuItem.IsChecked = _bottomTab == "errors";
                     else if (itemHeader == "Show Search Panel")
-                        childMenuItem.IsChecked = _activeTab == "search";
+                        childMenuItem.IsChecked = _bottomTab == "search";
                     else if (itemHeader == "Show AI Panel")
-                        childMenuItem.IsChecked = _activeTab == "ai";
+                        childMenuItem.IsChecked = _sideTab == "ai";
                     else if (itemHeader == "Show Web UI Panel")
-                        childMenuItem.IsChecked = _activeTab == "webui";
+                        childMenuItem.IsChecked = _sideTab == "webui";
                     else if (itemHeader == "Maximize AI Panel")
                         childMenuItem.IsChecked = IsAiPanelMaximized;
                     else if (itemHeader == "Maximize Web Preview")
@@ -2047,13 +2092,14 @@ public partial class MainWindow : Window
         var accentBrush = new SolidColorBrush(theme.DebugAccent);
         var transparent = Brushes.Transparent;
 
-        ApplySidebarTabChrome(OutputTabButton, _activeTab == "output", activeBrush, inactiveBrush, accentBrush, transparent);
-        ApplySidebarTabChrome(DebugTabButton, _activeTab == "debug", activeBrush, inactiveBrush, accentBrush, transparent);
-        ApplySidebarTabChrome(ToolCallsTabButton, _activeTab == "toolcalls", activeBrush, inactiveBrush, accentBrush, transparent);
-        ApplySidebarTabChrome(ErrorsTabButton, _activeTab == "errors", activeBrush, inactiveBrush, accentBrush, transparent);
-        ApplySidebarTabChrome(SearchTabButton, _activeTab == "search", activeBrush, inactiveBrush, accentBrush, transparent);
-        ApplySidebarTabChrome(AITabButton, _activeTab == "ai", activeBrush, inactiveBrush, accentBrush, transparent);
-        ApplySidebarTabChrome(WebUITabButton, _activeTab == "webui", activeBrush, inactiveBrush, accentBrush, transparent);
+        ApplySidebarTabChrome(OutputTabButton, _outputOnRight ? _sideTab == "output" : _bottomTab == "output", activeBrush, inactiveBrush, accentBrush, transparent);
+        ApplySidebarTabChrome(DebugTabButton, _bottomTab == "debug", activeBrush, inactiveBrush, accentBrush, transparent);
+        ApplySidebarTabChrome(ToolCallsTabButton, _bottomTab == "toolcalls", activeBrush, inactiveBrush, accentBrush, transparent);
+        ApplySidebarTabChrome(ErrorsTabButton, _bottomTab == "errors", activeBrush, inactiveBrush, accentBrush, transparent);
+        ApplySidebarTabChrome(SearchTabButton, _bottomTab == "search", activeBrush, inactiveBrush, accentBrush, transparent);
+        ApplySidebarTabChrome(AITabButton, _sideTab == "ai", activeBrush, inactiveBrush, accentBrush, transparent);
+        ApplySidebarTabChrome(WebUITabButton, _sideTab == "webui", activeBrush, inactiveBrush, accentBrush, transparent);
+        UpdateViewMenuStates();
         RefreshDocumentTabs();
     }
 
@@ -2184,14 +2230,31 @@ public partial class MainWindow : Window
             }
             else
             {
-                // If hiding, switch to another tab
-                if (_activeTab == "output")
+                if (_outputOnRight)
+                {
+                    if (_sideTab == "output")
+                    {
+                        SwitchToTab("ai");
+                    }
+                }
+                else if (_bottomTab == "output")
                 {
                     SwitchToTab("errors");
                 }
             }
             UpdateViewMenuStates();
         }
+    }
+
+    private void ViewToggleOutputOnRight_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem menuItem)
+        {
+            return;
+        }
+
+        ApplyOutputDock(menuItem.IsChecked, refreshChrome: true);
+        _layoutSettings.SetOutputOnRight(menuItem.IsChecked);
     }
     
     private void ViewToggleDebugPanel_Click(object sender, RoutedEventArgs e)
@@ -2204,7 +2267,7 @@ public partial class MainWindow : Window
             }
             else
             {
-                if (_activeTab == "debug")
+                if (_bottomTab == "debug")
                 {
                     SwitchToTab("output");
                 }
@@ -2223,7 +2286,7 @@ public partial class MainWindow : Window
             }
             else
             {
-                if (_activeTab == "toolcalls")
+                if (_bottomTab == "toolcalls")
                 {
                     SwitchToTab("output");
                 }
@@ -2242,7 +2305,7 @@ public partial class MainWindow : Window
             }
             else
             {
-                if (_activeTab == "errors")
+                if (_bottomTab == "errors")
                 {
                     SwitchToTab("output");
                 }
@@ -2259,7 +2322,7 @@ public partial class MainWindow : Window
             {
                 SearchTabButton_Click(sender, e);
             }
-            else if (_activeTab == "search")
+            else if (_bottomTab == "search")
             {
                 SwitchToTab("output");
             }
@@ -2278,9 +2341,9 @@ public partial class MainWindow : Window
             }
             else
             {
-                if (_activeTab == "ai")
+                if (_sideTab == "ai")
                 {
-                    SwitchToTab("output");
+                    SwitchToTab("webui");
                 }
             }
             UpdateViewMenuStates();
@@ -2297,9 +2360,9 @@ public partial class MainWindow : Window
             }
             else
             {
-                if (_activeTab == "webui")
+                if (_sideTab == "webui")
                 {
-                    SwitchToTab("output");
+                    SwitchToTab("ai");
                 }
             }
             UpdateViewMenuStates();
@@ -2317,7 +2380,7 @@ public partial class MainWindow : Window
         var uri = TryResolveWebViewUri(target);
         if (uri == null)
         {
-            MessageBox.Show(this, "Enter a valid URL or a local HTML file path.", "Web UI", MessageBoxButton.OK, MessageBoxImage.Warning);
+            IdePromptWindow.Show(this, "Enter a valid URL or a local HTML file path.", "Web UI", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
@@ -2345,7 +2408,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, $"Could not open URL: {ex.Message}", "Web UI", MessageBoxButton.OK, MessageBoxImage.Warning);
+            IdePromptWindow.Show(this, $"Could not open URL: {ex.Message}", "Web UI", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
@@ -2402,7 +2465,7 @@ public partial class MainWindow : Window
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, $"Failed to open Web UI: {ex.Message}", "Web UI", MessageBoxButton.OK, MessageBoxImage.Warning);
+                IdePromptWindow.Show(this, $"Failed to open Web UI: {ex.Message}", "Web UI", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         });
     }
@@ -2577,7 +2640,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "Trace load failed", MessageBoxButton.OK, MessageBoxImage.Warning);
+            IdePromptWindow.Show(this, ex.Message, "Trace load failed", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
     
@@ -2604,9 +2667,7 @@ public partial class MainWindow : Window
 
     private void ToolsLoadExample_Click(object sender, RoutedEventArgs e)
     {
-        // Focus the example combo box and show it
-        // ExampleComboBox removed - examples are now browsed via ExampleBrowserWindow
-        // Could also open a dialog here, but for now just focus the combo
+        BrowseExamplesButton_Click(sender, e);
     }
     
     // Help Menu
@@ -2628,7 +2689,7 @@ public partial class MainWindow : Window
 
     private void HelpAbout_Click(object sender, RoutedEventArgs e)
     {
-        MessageBox.Show(
+        IdePromptWindow.Show(
             "MALDA: The AI-First Programming Language - Desktop IDE\n\n" +
             "Version 1.0\n\n" +
             "A desktop IDE for the Multi Agent Language with Development Automation (MALDA).\n" +
@@ -2656,7 +2717,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        MessageBox.Show(
+        IdePromptWindow.Show(
             this,
             "Could not find the local reference manual. Opening online documentation instead.",
             "Reference Manual",
@@ -2710,54 +2771,15 @@ public partial class MainWindow : Window
         }
         catch
         {
-            MessageBox.Show("Could not open documentation. Please visit the project repository manually.",
+            IdePromptWindow.Show("Could not open documentation. Please visit the project repository manually.",
                 "Documentation", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
     
     private void HelpShortcuts_Click(object sender, RoutedEventArgs e)
     {
-        var shortcuts = "Keyboard Shortcuts:\n\n" +
-            "File:\n" +
-            "  Ctrl+N - New File\n" +
-            "  Ctrl+O - Open File\n" +
-            "  Ctrl+S - Save File\n" +
-            "  Ctrl+Shift+S - Save As\n" +
-            "  Alt+F4 - Exit\n\n" +
-            "Edit:\n" +
-            "  Ctrl+Z - Undo\n" +
-            "  Ctrl+Y - Redo\n" +
-            "  Ctrl+X - Cut\n" +
-            "  Ctrl+C - Copy\n" +
-            "  Ctrl+V - Paste\n" +
-            "  Ctrl+A - Select All\n" +
-            "  Ctrl+F - Find\n" +
-            "  Ctrl+H - Replace\n" +
-            "  Ctrl+Alt+F - Format Document\n" +
-            "  Ctrl+. - Quick Fix\n\n" +
-            "View:\n" +
-            "  Ctrl+Shift+L - Toggle Syntax Panel\n" +
-            "  Shift+F7 - Maximize / restore AI Panel\n" +
-            "  Shift+F6 - Maximize / restore Web Preview\n" +
-            "  Esc - Restore the maximized AI or Web Preview panel\n\n" +
-            "Run:\n" +
-            "  Ctrl+F5 - Run without debugging\n" +
-            "  F5 - Start Debugging / Continue\n" +
-            "  Shift+F5 - Stop\n" +
-            "  F6 - Preview Web\n" +
-            "  Ctrl+Shift+B - Compile\n\n" +
-            "Debug:\n" +
-            "  F5 - Continue when paused\n" +
-            "  F10 - Step Over\n" +
-            "  F11 - Step Into\n" +
-            "  Shift+F11 - Step Out\n" +
-            "  F9 - Toggle Breakpoint\n" +
-            "  F5 on dom.*/game.*/three.* files debugs in Web Preview\n" +
-            "  F5 on @client()+@server() files debugs host + Web Preview together";
-        
-        MessageBox.Show(shortcuts, "Keyboard Shortcuts", MessageBoxButton.OK, MessageBoxImage.Information);
+        ShowKeyboardShortcuts();
     }
-
     private async Task StopJsDebuggerAsync()
     {
         var debugger = _jsDebugger;

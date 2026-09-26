@@ -346,7 +346,7 @@ public partial class MainWindow
     {
         if (_pendingRegressionRequest == null)
         {
-            MessageBox.Show(
+            IdePromptWindow.Show(
                 this,
                 "No valid property failure CI payload is currently available in output.",
                 "Create Regression",
@@ -364,7 +364,7 @@ public partial class MainWindow
             File.WriteAllText(outputPath, content);
 
             OpenFileAndIncludedDocuments(outputPath);
-            MessageBox.Show(
+            IdePromptWindow.Show(
                 this,
                 $"Regression created:\n{outputPath}",
                 "Create Regression",
@@ -373,7 +373,7 @@ public partial class MainWindow
         }
         catch (Exception ex)
         {
-            MessageBox.Show(
+            IdePromptWindow.Show(
                 this,
                 $"Failed to create regression artifact.\n{ex.Message}",
                 "Create Regression",
@@ -493,7 +493,7 @@ public partial class MainWindow
     {
         if (string.IsNullOrWhiteSpace(sourcePath) || !File.Exists(sourcePath))
         {
-            MessageBox.Show(
+            IdePromptWindow.Show(
                 this,
                 "Save the current full-stack MALDA file before running it.",
                 "Run Full-Stack App",
@@ -858,7 +858,7 @@ public partial class MainWindow
         var source = sourceForExecution.Source;
         if (string.IsNullOrWhiteSpace(source))
         {
-            MessageBox.Show("Please enter some code to compile.", "No Code", MessageBoxButton.OK, MessageBoxImage.Warning);
+            IdePromptWindow.Show("Please enter some code to compile.", "No Code", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
@@ -1161,14 +1161,14 @@ public partial class MainWindow
 
                 if (compilationMode == Compiler.CompilationMode.PWA)
                 {
-                    MessageBox.Show($"Compilation successful!\n\nPWA saved to:\n{finalPath}", "Compilation Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+                    IdePromptWindow.Show($"Compilation successful!\n\nPWA saved to:\n{finalPath}", "Compilation Complete", MessageBoxButton.OK, MessageBoxImage.Information);
                     return;
                 }
 
                 if (compilationMode == Compiler.CompilationMode.JavaScript)
                 {
                     var distributionDirectory = Path.GetDirectoryName(Path.GetFullPath(finalPath)) ?? Directory.GetCurrentDirectory();
-                    MessageBox.Show(
+                    IdePromptWindow.Show(
                         $"Compilation successful!\n\nJavaScript distribution saved to:\n{distributionDirectory}\n\nOpen index.html to run the app.",
                         "Compilation Complete",
                         MessageBoxButton.OK,
@@ -1193,7 +1193,7 @@ public partial class MainWindow
                         }
                         catch { /* ignore */ }
                     }
-                    MessageBox.Show($"Compilation successful!\n\nDLL saved to:\n{finalPath}", "Compilation Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+                    IdePromptWindow.Show($"Compilation successful!\n\nDLL saved to:\n{finalPath}", "Compilation Complete", MessageBoxButton.OK, MessageBoxImage.Information);
                     return;
                 }
                 
@@ -1230,7 +1230,7 @@ public partial class MainWindow
                     File.Copy(result.OutputPath, outputPath, true);
                 }
 
-                MessageBox.Show(
+                IdePromptWindow.Show(
                     $"Compilation successful!\n\nOutput saved to:\n{finalPath}",
                     "Success",
                     MessageBoxButton.OK,
@@ -1239,7 +1239,7 @@ public partial class MainWindow
             }
             else
             {
-                MessageBox.Show(
+                IdePromptWindow.Show(
                     $"Compilation failed:\n\n{result.ErrorMessage}",
                     "Compilation Error",
                     MessageBoxButton.OK,
@@ -1250,7 +1250,7 @@ public partial class MainWindow
         catch (Exception ex)
         {
             progressWindow.Close();
-            MessageBox.Show(
+            IdePromptWindow.Show(
                 $"An error occurred during compilation:\n\n{ex.Message}",
                 "Error",
                 MessageBoxButton.OK,
@@ -1267,7 +1267,7 @@ public partial class MainWindow
         }
         catch (Exception ex)
         {
-            MessageBox.Show(
+            IdePromptWindow.Show(
                 this,
                 $"Could not open web preview.\n\n{ex.Message}",
                 "Web Preview",

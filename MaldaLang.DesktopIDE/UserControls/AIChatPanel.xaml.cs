@@ -216,7 +216,7 @@ public partial class AIChatPanel : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Error opening model selection: {ex.Message}\n\n{ex.StackTrace}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            IdePromptWindow.Show($"Error opening model selection: {ex.Message}\n\n{ex.StackTrace}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -444,7 +444,7 @@ public partial class AIChatPanel : UserControl
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"Error opening full-screen message: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    IdePromptWindow.Show($"Error opening full-screen message: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             };
             headerPanel.Children.Add(expandButton);

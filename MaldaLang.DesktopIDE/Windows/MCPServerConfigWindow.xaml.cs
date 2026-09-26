@@ -308,7 +308,7 @@ public partial class MCPServerConfigWindow : Window
         if (_currentServer == null)
             return;
 
-        var result = MessageBox.Show(
+        var result = IdePromptWindow.Show(
             $"Are you sure you want to delete server '{_currentServer.Name}'?",
             "Confirm Delete",
             MessageBoxButton.YesNo,
@@ -412,7 +412,7 @@ public partial class MCPServerConfigWindow : Window
             UpdateToolsList();
             UpdateButtons();
 
-            MessageBox.Show(
+            IdePromptWindow.Show(
                 $"Successfully connected to '{_currentServer.Name}'.",
                 "Connection Successful",
                 MessageBoxButton.OK,
@@ -420,7 +420,7 @@ public partial class MCPServerConfigWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(
+            IdePromptWindow.Show(
                 $"Failed to connect: {ex.Message}",
                 "Connection Failed",
                 MessageBoxButton.OK,
@@ -454,7 +454,7 @@ public partial class MCPServerConfigWindow : Window
         UpdateButtons();
         LoadServers();
 
-        MessageBox.Show(
+        IdePromptWindow.Show(
             "Server configuration saved.",
             "Saved",
             MessageBoxButton.OK,

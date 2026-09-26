@@ -78,4 +78,14 @@ public class Theme
     public Color ErrorColor { get; set; }
     public Color WarningColor { get; set; }
     public Color InfoColor { get; set; }
+
+    /// <summary>
+    /// Affirmative status color. Derived so every palette stays readable without a per-theme literal.
+    /// </summary>
+    public Color SuccessColor =>
+        string.Equals(Name, "HighContrast", StringComparison.Ordinal)
+            ? Color.FromRgb(0, 255, 0)
+            : IsDark
+                ? Color.FromRgb(74, 222, 128)
+                : Color.FromRgb(22, 163, 74);
 }

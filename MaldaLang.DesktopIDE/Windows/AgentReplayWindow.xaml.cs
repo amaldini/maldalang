@@ -111,7 +111,7 @@ public partial class AgentReplayWindow : Window
         var prompt = PromptTextBox.Text?.Trim();
         if (string.IsNullOrEmpty(prompt))
         {
-            MessageBox.Show(this, "Enter a prompt.", "Run from Here", MessageBoxButton.OK, MessageBoxImage.Information);
+            IdePromptWindow.Show(this, "Enter a prompt.", "Run from Here", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
@@ -151,7 +151,7 @@ public partial class AgentReplayWindow : Window
         catch (Exception ex)
         {
             Dispatcher.Invoke(() =>
-                MessageBox.Show(this, ex.Message, "Think failed", MessageBoxButton.OK, MessageBoxImage.Warning));
+                IdePromptWindow.Show(this, ex.Message, "Think failed", MessageBoxButton.OK, MessageBoxImage.Warning));
         }
         finally
         {

@@ -144,7 +144,7 @@ public partial class ModelBrowserWindow : Window
             LoadingTextBlock.Text = $"Error loading models: {ex.Message}";
             LoadingStatusTextBlock.Text = "Please check your internet connection and try again.";
             LoadingPanel.Visibility = Visibility.Visible;
-            MessageBox.Show($"Error loading models: {ex.Message}\n\nPlease check your internet connection and try again.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            IdePromptWindow.Show($"Error loading models: {ex.Message}\n\nPlease check your internet connection and try again.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
         {
@@ -410,7 +410,7 @@ public partial class ModelBrowserWindow : Window
         // Check if already downloading
         if (_downloadService.IsDownloading(modelId))
         {
-            MessageBox.Show("This model is already being downloaded.", "Download In Progress", MessageBoxButton.OK, MessageBoxImage.Information);
+            IdePromptWindow.Show("This model is already being downloaded.", "Download In Progress", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
@@ -456,14 +456,14 @@ public partial class ModelBrowserWindow : Window
                         _storageService.RegisterModel(modelId, destinationPath, fileName);
                         LoadInstalledModels();
                         UpdateDetailsPanel();
-                        MessageBox.Show($"Model downloaded successfully!\n\nSaved to: {destinationPath}", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+                        IdePromptWindow.Show($"Model downloaded successfully!\n\nSaved to: {destinationPath}", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
                     }
                     else
                     {
                         // Only show message if not cancelled by user
                         if (item != null && !item.ProgressText.Contains("cancelled", StringComparison.OrdinalIgnoreCase))
                         {
-                            MessageBox.Show("Download failed.", "Download Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
+                            IdePromptWindow.Show("Download failed.", "Download Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
                         }
                     }
                 });
@@ -477,7 +477,7 @@ public partial class ModelBrowserWindow : Window
                         _activeDownloads.Remove(item);
                         _downloadItems.Remove(modelId);
                     }
-                    MessageBox.Show($"Error downloading model: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    IdePromptWindow.Show($"Error downloading model: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                     UpdateDetailsPanel();
                 });
             }
@@ -539,7 +539,7 @@ public partial class ModelBrowserWindow : Window
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error opening file: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                IdePromptWindow.Show($"Error opening file: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
     }
@@ -548,7 +548,7 @@ public partial class ModelBrowserWindow : Window
     {
         if (sender is Button button && button.Tag is InstalledModel model)
         {
-            var result = MessageBox.Show(
+            var result = IdePromptWindow.Show(
                 $"Are you sure you want to delete this model?\n\n{model.FileName}\n\nThis will permanently delete the file.",
                 "Confirm Delete",
                 MessageBoxButton.YesNo,
@@ -559,11 +559,11 @@ public partial class ModelBrowserWindow : Window
                 if (_storageService.DeleteModel(model.Id, model.FileName))
                 {
                     LoadInstalledModels();
-                    MessageBox.Show("Model deleted successfully.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+                    IdePromptWindow.Show("Model deleted successfully.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
                 else
                 {
-                    MessageBox.Show("Failed to delete the model file.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    IdePromptWindow.Show("Failed to delete the model file.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
         }

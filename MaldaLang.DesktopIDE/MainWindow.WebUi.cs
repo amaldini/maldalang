@@ -17,6 +17,13 @@ public partial class MainWindow
         {
             SetSidebarPanelMaximized(_maximizedSidebarTab, false);
             e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.P && Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift))
+        {
+            ShowCommandPalette();
+            e.Handled = true;
         }
     }
 
@@ -141,6 +148,7 @@ public partial class MainWindow
     {
         MainMenu.Visibility = Visibility.Collapsed;
         MainToolbar.Visibility = Visibility.Collapsed;
+        StatusBar.Visibility = Visibility.Collapsed;
         SyntaxPanel.Visibility = Visibility.Collapsed;
         SyntaxPanelSplitter.Visibility = Visibility.Collapsed;
         EditorPane.Visibility = Visibility.Collapsed;
@@ -160,6 +168,7 @@ public partial class MainWindow
     {
         MainMenu.Visibility = _mainMenuVisibilityBeforeMaximize;
         MainToolbar.Visibility = _mainToolbarVisibilityBeforeMaximize;
+        StatusBar.Visibility = Visibility.Visible;
         EditorPane.Visibility = _editorPaneVisibilityBeforeMaximize;
         SidebarTabBar.Visibility = _sidebarTabBarVisibilityBeforeMaximize;
         SidebarSplitter.Visibility = _sidebarSplitterVisibilityBeforeMaximize;

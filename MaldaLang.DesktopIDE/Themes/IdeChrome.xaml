@@ -80,9 +80,69 @@
     </Style>
 
     <Style x:Key="IdeSuccessIcon" TargetType="Path" BasedOn="{StaticResource IdeIcon}">
-        <Setter Property="Stroke" Value="#22C55E"/>
-        <Setter Property="Fill" Value="#22C55E"/>
+        <Setter Property="Stroke" Value="{DynamicResource SuccessBrush}"/>
+        <Setter Property="Fill" Value="{DynamicResource SuccessBrush}"/>
         <Setter Property="StrokeThickness" Value="0"/>
+    </Style>
+
+    <Style TargetType="ScrollBar">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Width" Value="10"/>
+        <Setter Property="MinWidth" Value="10"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ScrollBar">
+                    <Grid x:Name="Root" Background="Transparent" Margin="1,2">
+                        <Track x:Name="PART_Track" IsDirectionReversed="True" Focusable="False">
+                            <Track.DecreaseRepeatButton>
+                                <RepeatButton Command="ScrollBar.PageUpCommand" Opacity="0" Focusable="False"/>
+                            </Track.DecreaseRepeatButton>
+                            <Track.IncreaseRepeatButton>
+                                <RepeatButton Command="ScrollBar.PageDownCommand" Opacity="0" Focusable="False"/>
+                            </Track.IncreaseRepeatButton>
+                            <Track.Thumb>
+                                <Thumb>
+                                    <Thumb.Style>
+                                        <Style TargetType="Thumb">
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="Thumb">
+                                                        <Border x:Name="ThumbBorder"
+                                                                Background="{DynamicResource ScrollBarThumbBrush}"
+                                                                CornerRadius="4"
+                                                                Margin="1,0"/>
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter TargetName="ThumbBorder" Property="Background" Value="{DynamicResource ScrollBarThumbHoverBrush}"/>
+                                                            </Trigger>
+                                                            <Trigger Property="IsDragging" Value="True">
+                                                                <Setter TargetName="ThumbBorder" Property="Background" Value="{DynamicResource ScrollBarThumbHoverBrush}"/>
+                                                            </Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Style>
+                                    </Thumb.Style>
+                                </Thumb>
+                            </Track.Thumb>
+                        </Track>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="Orientation" Value="Horizontal">
+                            <Setter Property="Width" Value="Auto"/>
+                            <Setter Property="Height" Value="10"/>
+                            <Setter Property="MinHeight" Value="10"/>
+                            <Setter TargetName="Root" Property="LayoutTransform">
+                                <Setter.Value>
+                                    <RotateTransform Angle="-90"/>
+                                </Setter.Value>
+                            </Setter>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <Style x:Key="IdeDangerIcon" TargetType="Path" BasedOn="{StaticResource IdeIcon}">
