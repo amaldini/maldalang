@@ -197,7 +197,7 @@ A fixed stack of dense layers. `forward` / `backward` call `nn.dense` / `nn.dens
 
 ## N8 — Curriculum programs
 
-No new `nn.*` names. Each file stays offline and prints an `ok` line. Files that draw weights call `math.seed`. Local helpers stay in the file that teaches them. The chain starts at `mnist_digits.malda`, then the one-step policy gradient, then the checks below. `cartpole_neural.malda` stays a shaped score of the pole and the cart.
+No new `nn.*` names. Each file stays offline and prints an `ok` line. Files that draw weights call `math.seed`. Local helpers stay in the file that teaches them. The chain starts at `mnist_digits.malda`, then the one-step policy gradient, then the checks below. `cartpole_neural.malda` stays a shaped score of the pole and the cart. `grand_prix_neural.malda` fits the same dense layer to a coach on simplified Grand Prix centerlines (`malda play`).
 
 | File | Idea |
 |------|------|

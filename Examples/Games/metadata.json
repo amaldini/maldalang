@@ -517,6 +517,29 @@
       "expectedOutput": "Animates CartPole while a return chart climbs; mouse drag pushes the pole.",
       "documentationPath": "/docs/roadmap-neural.md",
       "documentationTitle": "Neural-nets kit"
+    },
+    {
+      "name": "Grand Prix neural race",
+      "description": "Eight cars share one net and learn to drive simplified layouts of real Grand Prix circuits",
+      "file": "grand_prix_neural.malda",
+      "track": "student",
+      "difficulty": "advanced",
+      "minutes": 15,
+      "requires": ["offline"],
+      "concepts": [
+        "neural network",
+        "imitation",
+        "nn.dense",
+        "game.*",
+        "JavaScript target"
+      ],
+      "prerequisites": [
+        "Games/cartpole_neural.malda"
+      ],
+      "learningGoal": "Watch a small policy take over from a coach on a closed racing line, and drive one of the cars yourself.",
+      "expectedOutput": "Renders a circuit and a grid. The neural-share bar rises as the loss falls.",
+      "documentationPath": "/docs/roadmap-neural.md",
+      "documentationTitle": "Neural-nets kit"
     }
   ]
 }
