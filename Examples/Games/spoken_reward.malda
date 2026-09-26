@@ -1,0 +1,708 @@
+// Spoken reward.
+// Run: malda play Examples/Games/spoken_reward.malda
+//
+// Four colored orbs sit in a dark field. A sentence names which to seek and
+// which to fear. Drag paints more desire; shift-drag, or the fear brush,
+// paints aversion. The net sees x, y, x², and y² (4-12-1, tanh then
+// linear) and is fit with nn.denseBackward. The squares let a hill stay a
+// hill. The heatmap is what the net believes, not the reward itself. The
+// creature climbs the net, so after the sentence flips it keeps walking
+// the old hill until the belief catches up.
+//
+// Prompts are host-only, and this canvas is JavaScript, so the sentence is
+// a small grammar in this file. "be afraid of blue" sets blue to fear and
+// the other orbs to quiet. Keys 1–4 are the four sentences on the buttons.
+// Enter applies the line. Wipe and forget are words too.
+// The sentence splitter takes an explicit space: the JavaScript str.split
+// with no separator cuts into characters.
+
+function randomMatrix(rows: int, cols: int, scale: float) -> array {
+    var matrix = [];
+    for (var i = 0; i < rows; i = i + 1) {
+        var row = [];
+        for (var j = 0; j < cols; j = j + 1) {
+            row.append(math.randomFloat(-scale, scale));
+        }
+        matrix.append(row);
+    }
+    return matrix;
+}
+
+function randomVector(n: int, scale: float) -> array {
+    var values = [];
+    for (var i = 0; i < n; i = i + 1) {
+        values.append(math.randomFloat(-scale, scale));
+    }
+    return values;
+}
+
+function applyMatrix(weights: array, grad: array, lr: float) {
+    for (var i = 0; i < weights.length; i = i + 1) {
+        for (var j = 0; j < weights[i].length; j = j + 1) {
+            var g = grad[i][j];
+            if (g > 3.0) {
+                g = 3.0;
+            }
+            if (g < -3.0) {
+                g = -3.0;
+            }
+            weights[i][j] = weights[i][j] - lr * g;
+        }
+    }
+}
+
+function applyVector(bias: array, grad: array, lr: float) {
+    for (var i = 0; i < bias.length; i = i + 1) {
+        var g = grad[i];
+        if (g > 3.0) {
+            g = 3.0;
+        }
+        if (g < -3.0) {
+            g = -3.0;
+        }
+        bias[i] = bias[i] - lr * g;
+    }
+}
+
+function makeGrid(n: int) -> array {
+    var rows = [];
+    for (var j = 0; j < n; j = j + 1) {
+        var row = [];
+        for (var i = 0; i < n; i = i + 1) {
+            row.append(0.0);
+        }
+        rows.append(row);
+    }
+    return rows;
+}
+
+function verbSign(word: string) -> float {
+    if (word == "chase" or word == "seek" or word == "love" or word == "follow" or word == "want" or word == "eat" or word == "toward" or word == "towards") {
+        return 1.0;
+    }
+    if (word == "fear" or word == "flee" or word == "avoid" or word == "hate" or word == "afraid" or word == "scared") {
+        return -1.0;
+    }
+    return 0.0;
+}
+
+function colorIndexOf(word: string) -> int {
+    if (word == "blue") {
+        return 0;
+    }
+    if (word == "red") {
+        return 1;
+    }
+    if (word == "gold" or word == "yellow") {
+        return 2;
+    }
+    if (word == "green") {
+        return 3;
+    }
+    return -1;
+}
+
+function isIgnored(word: string) -> bool {
+    var bag = " be a an the of to and please now from my me i it is are very just really that this with for you your ";
+    return str.indexOf(bag, " " + word + " ") >= 0;
+}
+
+function shade(v: float) -> string {
+    var t = v;
+    if (t > 1.0) {
+        t = 1.0;
+    }
+    if (t < -1.0) {
+        t = -1.0;
+    }
+    if (t >= 0.0) {
+        var g = int(22 + t * 150);
+        var r = int(14 + t * 28);
+        var b = int(24 + t * 36);
+        return "rgb(" + string(r) + "," + string(g) + "," + string(b) + ")";
+    }
+    var a = -t;
+    var r2 = int(32 + a * 170);
+    var g2 = int(12 + a * 18);
+    var b2 = int(22 + a * 36);
+    return "rgb(" + string(r2) + "," + string(g2) + "," + string(b2) + ")";
+}
+
+function fmt3(x: float) -> string {
+    return string(math.round(x * 1000.0) / 1000.0);
+}
+
+function startSpoken() {
+    math.seed(11);
+    var hidden = 12;
+    var gridN = 26;
+    var w1 = randomMatrix(4, hidden, 0.4);
+    var b1 = randomVector(hidden, 0.05);
+    var w2 = randomMatrix(hidden, 1, 0.35);
+    var b2 = [0.0];
+        var liveLr = 0.03;
+    var ink = makeGrid(gridN);
+    var law = [0.0, 0.0, 0.0, 0.0];
+    var colorName = ["blue", "red", "gold", "green"];
+    var colorHex = ["#6cb6ff", "#ff6b7a", "#f0c14a", "#5dce8a"];
+    var moteX = [-0.58, 0.6, 0.08, -0.16];
+    var moteY = [0.12, -0.16, 0.58, -0.58];
+    var presets = ["chase blue", "afraid of blue", "chase gold", "fear red"];
+
+    var canvasW = 880;
+    var canvasH = 760;
+    var arenaX = 28;
+    var arenaY = 64;
+    var arenaS = 520;
+    var margin = 28;
+
+    var px = 0.12;
+    var py = -0.08;
+    var vx = 0.0;
+    var vy = 0.0;
+    var lossEma = 1.0;
+    var line = "";
+    var status = "";
+    var statusBad = false;
+    var fearBrush = false;
+    var held = false;
+    var repeatKey = "";
+    var repeatTicks = 0;
+    var tick = 0;
+    var trailX = [];
+    var trailY = [];
+
+    function zeroLaw() {
+        for (var i = 0; i < 4; i = i + 1) {
+            law[i] = 0.0;
+        }
+    }
+
+    function clearInk() {
+        for (var j = 0; j < gridN; j = j + 1) {
+            for (var i = 0; i < gridN; i = i + 1) {
+                ink[j][i] = 0.0;
+            }
+        }
+    }
+
+    function forgetMind() {
+        w1 = randomMatrix(4, hidden, 0.4);
+        b1 = randomVector(hidden, 0.05);
+        w2 = randomMatrix(hidden, 1, 0.35);
+        b2 = [0.0];
+        lossEma = 1.0;
+        vx = 0.0;
+        vy = 0.0;
+    }
+
+    function cellCol(nx: float) -> int {
+        var i = int(math.floor((nx + 1.0) * 0.5 * gridN));
+        if (i < 0) {
+            return 0;
+        }
+        if (i >= gridN) {
+            return gridN - 1;
+        }
+        return i;
+    }
+
+    function cellRow(ny: float) -> int {
+        var j = int(math.floor((1.0 - ((ny + 1.0) * 0.5)) * gridN));
+        if (j < 0) {
+            return 0;
+        }
+        if (j >= gridN) {
+            return gridN - 1;
+        }
+        return j;
+    }
+
+    function spokenAt(nx: float, ny: float) -> float {
+        var sum = 0.0;
+        for (var i = 0; i < 4; i = i + 1) {
+            var dx = nx - moteX[i];
+            var dy = ny - moteY[i];
+            var influence = math.exp(-(dx * dx + dy * dy) / 0.16);
+            sum = sum + law[i] * influence;
+        }
+        return sum;
+    }
+
+    function targetAt(nx: float, ny: float) -> float {
+        var sample = spokenAt(nx, ny) + ink[cellRow(ny)][cellCol(nx)];
+        return math.clamp(sample, -1.0, 1.0);
+    }
+
+    function features(nx: float, ny: float) -> array {
+        return [nx, ny, nx * nx, ny * ny];
+    }
+
+    function predict(nx: float, ny: float) -> float {
+        var h = nn.dense(features(nx, ny), w1, b1, "tanh");
+        var out = nn.dense(h.out, w2, b2, "linear");
+        return out.out[0];
+    }
+
+    function trainAt(nx: float, ny: float, lr: float) {
+        var x = features(nx, ny);
+        var target = targetAt(nx, ny);
+        var h = nn.dense(x, w1, b1, "tanh");
+        var out = nn.dense(h.out, w2, b2, "linear");
+        var pred = out.out[0];
+        var upstream = [pred - target];
+        var backOut = nn.denseBackward(h.out, w2, upstream, "linear", out.pre);
+        var backH = nn.denseBackward(x, w1, backOut.dInput, "tanh", h.pre);
+        applyMatrix(w1, backH.dWeights, lr);
+        applyVector(b1, backH.dBias, lr);
+        applyMatrix(w2, backOut.dWeights, lr);
+        applyVector(b2, backOut.dBias, lr);
+        var err = pred - target;
+        if (err < 0.0) {
+            err = -err;
+        }
+        lossEma = lossEma * 0.97 + err * 0.03;
+    }
+
+    function learnSome(lr: float) {
+        trainAt(math.randomFloat(-1.0, 1.0), math.randomFloat(-1.0, 1.0), lr);
+        trainAt(math.randomFloat(-1.0, 1.0), math.randomFloat(-1.0, 1.0), lr);
+        var m = int(math.floor(math.randomFloat(0.0, 4.0)));
+        trainAt(math.clamp(moteX[m] + math.randomFloat(-0.28, 0.28), -1.0, 1.0), math.clamp(moteY[m] + math.randomFloat(-0.28, 0.28), -1.0, 1.0), lr);
+        trainAt(moteX[m], moteY[m], lr);
+        trainAt(math.clamp(px + math.randomFloat(-0.2, 0.2), -1.0, 1.0), math.clamp(py + math.randomFloat(-0.2, 0.2), -1.0, 1.0), lr);
+    }
+
+    function applySentence(text: string) {
+        var words = str.split(str.lower(str.trim(text)), " ");
+        if (words.length == 0) {
+            status = "say a color";
+            statusBad = true;
+            return;
+        }
+        var named = false;
+        for (var i = 0; i < words.length; i = i + 1) {
+            if (colorIndexOf(words[i]) >= 0) {
+                named = true;
+            }
+        }
+        if (named) {
+            zeroLaw();
+        }
+        var sign = 1.0;
+        var acted = false;
+        for (var k = 0; k < words.length; k = k + 1) {
+            var word = words[k];
+            if (word == "") {
+                continue;
+            }
+            var verb = verbSign(word);
+            if (verb != 0.0) {
+                sign = verb;
+            } else if (word == "not") {
+                sign = -sign;
+            } else if (word == "wipe" or word == "clear") {
+                clearInk();
+                acted = true;
+            } else if (word == "forget" or word == "reset") {
+                forgetMind();
+                acted = true;
+            } else if (word == "hush" or word == "silence" or word == "quiet") {
+                zeroLaw();
+                acted = true;
+            } else if (not isIgnored(word)) {
+                var ci = colorIndexOf(word);
+                if (ci >= 0) {
+                    law[ci] = sign;
+                    acted = true;
+                }
+            }
+        }
+        if (named or acted) {
+            status = text;
+            statusBad = false;
+        } else {
+            status = "no color in that sentence";
+            statusBad = true;
+        }
+    }
+
+    function lawLine() -> string {
+        var text = "";
+        for (var i = 0; i < 4; i = i + 1) {
+            if (i > 0) {
+                text = text + "   ";
+            }
+            var stance = "quiet";
+            if (law[i] > 0.2) {
+                stance = "seek";
+            } else if (law[i] < -0.2) {
+                stance = "fear";
+            }
+            text = text + colorName[i] + " " + stance;
+        }
+        return text;
+    }
+
+    function screenX(nx: float) -> float {
+        return arenaX + (nx + 1.0) * 0.5 * arenaS;
+    }
+
+    function screenY(ny: float) -> float {
+        return arenaY + (1.0 - (ny + 1.0) * 0.5) * arenaS;
+    }
+
+    function mouseWorld() -> array {
+        var nx = (game.getMouseX() - arenaX) / arenaS * 2.0 - 1.0;
+        var ny = 1.0 - (game.getMouseY() - arenaY) / arenaS * 2.0;
+        return [nx, ny];
+    }
+
+    function inArena() -> bool {
+        return game.pointInRect(game.getMouseX(), game.getMouseY(), arenaX, arenaY, arenaS, arenaS);
+    }
+
+    function rowRect(col: int, row: int) -> array {
+        var w = 200;
+        var h = 36;
+        var x = margin + col * (w + 8);
+        var y = arenaY + arenaS + 16 + row * 44;
+        return [x, y, w, h];
+    }
+
+    function hitRow(col: int, row: int) -> bool {
+        var rect = rowRect(col, row);
+        return game.pointInRect(game.getMouseX(), game.getMouseY(), rect[0], rect[1], rect[2], rect[3]);
+    }
+
+    function overAnyButton() -> bool {
+        for (var col = 0; col < 4; col = col + 1) {
+            if (hitRow(col, 0) or hitRow(col, 1)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function paintStroke() {
+        var world = mouseWorld();
+        var sign = 1.0;
+        if (fearBrush or game.isKeyDown("shift")) {
+            sign = -1.0;
+        }
+        var cx = cellCol(world[0]);
+        var cy = cellRow(world[1]);
+        for (var j = cy - 2; j <= cy + 2; j = j + 1) {
+            for (var i = cx - 2; i <= cx + 2; i = i + 1) {
+                if (i >= 0 and i < gridN and j >= 0 and j < gridN) {
+                    var dx = i - cx;
+                    var dy = j - cy;
+                    var fall = math.exp(-(dx * dx + dy * dy) / 1.7);
+                    ink[j][i] = math.clamp(ink[j][i] + sign * 0.16 * fall, -1.0, 1.0);
+                }
+            }
+        }
+    }
+
+    function pushTrail() {
+        trailX.append(px);
+        trailY.append(py);
+        if (trailX.length > 18) {
+            for (var i = 0; i < trailX.length - 1; i = i + 1) {
+                trailX[i] = trailX[i + 1];
+                trailY[i] = trailY[i + 1];
+            }
+            trailX.pop();
+            trailY.pop();
+        }
+    }
+
+    function stepCreature() {
+        if (held) {
+            vx = vx * 0.8;
+            vy = vy * 0.8;
+            return;
+        }
+        var eps = 0.06;
+        var gx = predict(px + eps, py) - predict(px - eps, py);
+        var gy = predict(px, py + eps) - predict(px, py - eps);
+        vx = vx * 0.9 + gx * 0.055;
+        vy = vy * 0.9 + gy * 0.055;
+        var speed = math.sqrt(vx * vx + vy * vy);
+        var cap = 0.02;
+        if (speed > cap) {
+            vx = vx / speed * cap;
+            vy = vy / speed * cap;
+        }
+        px = px + vx;
+        py = py + vy;
+        if (px > 0.9) {
+            px = 0.9;
+            vx = 0.0;
+        }
+        if (px < -0.9) {
+            px = -0.9;
+            vx = 0.0;
+        }
+        if (py > 0.9) {
+            py = 0.9;
+            vy = 0.0;
+        }
+        if (py < -0.9) {
+            py = -0.9;
+            vy = 0.0;
+        }
+        pushTrail();
+    }
+
+    function consumeKey(ch: string) -> bool {
+        if (game.wasKeyPressed(ch)) {
+            repeatKey = ch;
+            repeatTicks = 0;
+            return true;
+        }
+        if (repeatKey == ch and game.isKeyDown(ch)) {
+            repeatTicks = repeatTicks + 1;
+            if (repeatTicks > 16 and repeatTicks % 4 == 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function typeLine() {
+        if (repeatKey != "" and not game.isKeyDown(repeatKey)) {
+            repeatKey = "";
+            repeatTicks = 0;
+        }
+        var alphabet = "abcdefghijklmnopqrstuvwxyz";
+        for (var i = 0; i < 26; i = i + 1) {
+            var ch = str.substring(alphabet, i, 1);
+            if (consumeKey(ch) and str.length(line) < 72) {
+                line = line + ch;
+            }
+        }
+        if (consumeKey(" ") and str.length(line) < 72) {
+            line = line + " ";
+        }
+        if (consumeKey("backspace") and str.length(line) > 0) {
+            line = str.substring(line, 0, str.length(line) - 1);
+        }
+        if (game.wasKeyPressed("enter")) {
+            applySentence(line);
+        }
+        if (game.wasKeyPressed("escape")) {
+            line = "";
+        }
+        if (game.wasKeyPressed("1")) {
+            line = presets[0];
+            applySentence(line);
+        }
+        if (game.wasKeyPressed("2")) {
+            line = presets[1];
+            applySentence(line);
+        }
+        if (game.wasKeyPressed("3")) {
+            line = presets[2];
+            applySentence(line);
+        }
+        if (game.wasKeyPressed("4")) {
+            line = presets[3];
+            applySentence(line);
+        }
+    }
+
+    function clickButtons() {
+        if (not game.wasMousePressed(0)) {
+            return;
+        }
+        for (var col = 0; col < 4; col = col + 1) {
+            if (hitRow(col, 0)) {
+                line = presets[col];
+                applySentence(line);
+                return;
+            }
+        }
+        if (hitRow(0, 1)) {
+            fearBrush = not fearBrush;
+            return;
+        }
+        if (hitRow(1, 1)) {
+            clearInk();
+            status = "ink wiped";
+            statusBad = false;
+            return;
+        }
+        if (hitRow(2, 1)) {
+            forgetMind();
+            status = "mind cleared";
+            statusBad = false;
+            return;
+        }
+        if (hitRow(3, 1)) {
+            held = not held;
+        }
+    }
+
+    function drawButton(rect: array, label: string, hot: bool, on: bool) {
+        var fill = "#171b26";
+        if (on) {
+            fill = "#3a2430";
+        }
+        if (hot) {
+            fill = "#243044";
+        }
+        if (on and hot) {
+            fill = "#4a3040";
+        }
+        game.fillRect(rect[0], rect[1], rect[2], rect[3], fill);
+        var edge = "#334058";
+        if (on) {
+            edge = "#c47c8a";
+        }
+        game.strokeRect(rect[0], rect[1], rect[2], rect[3], edge, 1);
+        game.drawText(label, rect[0] + 14, rect[1] + 23, "#e7edf5", "15px Segoe UI, sans-serif");
+    }
+
+    function render() {
+        tick = tick + 1;
+        game.fillRect(0, 0, canvasW, canvasH, "#090b10");
+        game.drawText("Spoken reward", margin, 28, "#f4f7fb", "20px Segoe UI, sans-serif");
+        game.drawText("belief " + fmt3(lossEma), canvasW - 168, 28, "#8b93a7", "14px Segoe UI, sans-serif");
+        game.drawText("The color is what the net believes. The orbs flip with the sentence.", margin, 50, "#8b93a7", "13px Segoe UI, sans-serif");
+
+        var cell = arenaS / gridN;
+        for (var j = 0; j < gridN; j = j + 1) {
+            for (var i = 0; i < gridN; i = i + 1) {
+                var nx = (i + 0.5) / gridN * 2.0 - 1.0;
+                var ny = 1.0 - (j + 0.5) / gridN * 2.0;
+                game.fillRect(arenaX + i * cell, arenaY + j * cell, cell + 0.6, cell + 0.6, shade(predict(nx, ny)));
+            }
+        }
+
+        for (var r = 0; r < gridN; r = r + 1) {
+            for (var c = 0; c < gridN; c = c + 1) {
+                var mark = ink[r][c];
+                if (mark > 0.18 or mark < -0.18) {
+                    var dot = "#d6ffe8";
+                    if (mark < 0.0) {
+                        dot = "#ffd0d4";
+                    }
+                    game.fillCircle(arenaX + (c + 0.5) * cell, arenaY + (r + 0.5) * cell, 3.2, dot);
+                }
+            }
+        }
+
+        for (var m = 0; m < 4; m = m + 1) {
+            var ox = screenX(moteX[m]);
+            var oy = screenY(moteY[m]);
+            game.fillCircle(ox, oy, 16, colorHex[m]);
+            var core = "#2a2e38";
+            if (law[m] > 0.2) {
+                core = "#d9ffe8";
+            } else if (law[m] < -0.2) {
+                core = "#ffd0d6";
+            }
+            game.fillCircle(ox, oy, 7, core);
+            game.strokeCircle(ox, oy, 16, "#f4f7fb", 1.25);
+            game.drawText(colorName[m], ox + 20, oy + 4, colorHex[m], "13px Segoe UI, sans-serif");
+        }
+
+        var shown = trailX.length;
+        if (shown > 16) {
+            shown = 16;
+        }
+        var startAt = trailX.length - shown;
+        for (var t = 0; t < shown; t = t + 1) {
+            var age = (t + 1) / shown;
+            game.setAlpha(0.08 + age * 0.35);
+            game.fillCircle(screenX(trailX[startAt + t]), screenY(trailY[startAt + t]), 4 + age * 3, "#f4f7fb");
+        }
+        game.setAlpha(1);
+
+        var hx = screenX(px);
+        var hy = screenY(py);
+        game.fillCircle(hx, hy, 11, "#f7f9fc");
+        game.strokeCircle(hx, hy, 11, "#1a1e28", 2);
+        game.drawLine(hx, hy, hx + vx * 640, hy - vy * 640, "#1a1e28", 2);
+
+        if (inArena() and not overAnyButton()) {
+            var brush = "#d9ffe8";
+            if (fearBrush or game.isKeyDown("shift")) {
+                brush = "#ffd0d6";
+            }
+            game.strokeCircle(game.getMouseX(), game.getMouseY(), 10, brush, 1.5);
+        }
+
+        game.setAlpha(0.62);
+        game.fillRect(arenaX, arenaY + arenaS - 26, arenaS, 26, "#05070c");
+        game.setAlpha(1);
+        game.drawText(lawLine(), arenaX + 12, arenaY + arenaS - 8, "#d5dbe6", "13px Segoe UI, sans-serif");
+
+        for (var col = 0; col < 4; col = col + 1) {
+            drawButton(rowRect(col, 0), presets[col], hitRow(col, 0), false);
+        }
+        var brushLabel = "brush: seek";
+        if (fearBrush) {
+            brushLabel = "brush: fear";
+        }
+        var holdLabel = "hold";
+        if (held) {
+            holdLabel = "resume";
+        }
+        drawButton(rowRect(0, 1), brushLabel, hitRow(0, 1), fearBrush);
+        drawButton(rowRect(1, 1), "wipe ink", hitRow(1, 1), false);
+        drawButton(rowRect(2, 1), "forget mind", hitRow(2, 1), false);
+        drawButton(rowRect(3, 1), holdLabel, hitRow(3, 1), held);
+
+        var box = rowRect(0, 2);
+        var boxW = 200 * 4 + 8 * 3;
+        game.fillRect(box[0], box[1], boxW, 44, "#10141c");
+        game.strokeRect(box[0], box[1], boxW, 44, "#334058", 1);
+        var shownLine = line;
+        var lineColor = "#f4f7fb";
+        if (shownLine == "") {
+            shownLine = "type a law, then Enter";
+            lineColor = "#6d7588";
+        }
+        var caret = "";
+        if (tick % 50 < 25) {
+            caret = "|";
+        }
+        if (line == "") {
+            caret = "";
+        }
+        game.drawText(shownLine + caret, box[0] + 14, box[1] + 27, lineColor, "16px Segoe UI, sans-serif");
+
+        var hintColor = "#8b93a7";
+        if (statusBad) {
+            hintColor = "#e0a0a0";
+        }
+        var hint = status;
+        if (hint == "") {
+            hint = "drag paints seek    shift-drag paints fear    1–4 speak the buttons";
+        }
+        game.drawText(hint, margin, canvasH - 18, hintColor, "13px Segoe UI, sans-serif");
+    }
+
+    function update(_dtMs) {
+        typeLine();
+        clickButtons();
+        if (game.isMouseDown(0) and inArena() and not overAnyButton()) {
+            paintStroke();
+        }
+        learnSome(liveLr);
+        stepCreature();
+    }
+
+    applySentence("chase blue");
+    for (var warm = 0; warm < 2800; warm = warm + 1) {
+        trainAt(math.randomFloat(-1.0, 1.0), math.randomFloat(-1.0, 1.0), 0.08);
+        var mote = int(math.floor(math.randomFloat(0.0, 4.0)));
+        trainAt(math.clamp(moteX[mote] + math.randomFloat(-0.22, 0.22), -1.0, 1.0), math.clamp(moteY[mote] + math.randomFloat(-0.22, 0.22), -1.0, 1.0), 0.08);
+    }
+    game.createCanvas(canvasW, canvasH, "#app");
+    game.startFixed(update, render);
+}
+
+startSpoken();

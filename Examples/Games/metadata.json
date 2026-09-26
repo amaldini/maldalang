@@ -564,6 +564,30 @@
       "expectedOutput": "Shows a paper pad, class bars, kernels, and ReLU maps. Holdout reaches 10/10, then the pad classifies ink.",
       "documentationPath": "/docs/roadmap-neural.md",
       "documentationTitle": "Neural-nets kit"
+    },
+    {
+      "name": "Spoken reward",
+      "description": "Paint a desire or name it in a sentence. A small net learns the field, and a creature climbs what the net believes",
+      "file": "spoken_reward.malda",
+      "track": "student",
+      "difficulty": "advanced",
+      "minutes": 10,
+      "requires": ["offline"],
+      "concepts": [
+        "neural network",
+        "nn.dense",
+        "reward",
+        "game.*",
+        "JavaScript target"
+      ],
+      "prerequisites": [
+        "AI_Theory/nn_dense.malda",
+        "Games/xor_decision_boundary.malda"
+      ],
+      "learningGoal": "Watch a sentence change the reward while the net, and the creature, catch up a moment later.",
+      "expectedOutput": "Draws a belief field, four colored orbs, and a creature that climbs the net. Buttons and a typed line rewrite the law.",
+      "documentationPath": "/docs/roadmap-neural.md",
+      "documentationTitle": "Neural-nets kit"
     }
   ]
 }
