@@ -84,7 +84,7 @@ N7  nn.relu / leakyRelu / elu / gelu / silu / softplus
     nn.mseGrad / softmaxGrad
 N8  gradcheck_dense / init_scale          (landed)
     glyph_holdout / momentum_valley
-    rnn_delay / conv_stroke
+    rnn_delay / conv_stroke / conv_classifier
     residual_dropout
 N9  embed_row / next_char                 (landed)
     layer_norm / attention_step
@@ -208,6 +208,7 @@ No new `nn.*` names. Each file stays offline and prints an `ok` line. Files that
 | `momentum_valley.malda` | Same learning-rate step, with a velocity, on a steep quadratic |
 | `rnn_delay.malda` | Sigmoid recurrence shrinks a gradient; a tanh Elman net recalls a bit from three steps ago |
 | `conv_stroke.malda` | One 3×3 kernel slid across 5×5 dashes. The backward pass adds into those nine weights |
+| `conv_classifier.malda` | Same dashes through `new Conv(3)` and a sigmoid `Dense`. The map is flattened; `Dense.backward` is reshaped into `Conv.backward` |
 | `residual_dropout.malda` | A skip beats a deep sigmoid stack on `y = x`; a Bernoulli mask zeros a unit only on the train forward |
 
 `malda play Examples/Games/softmax_decision_boundary.malda` draws the three softmax regions. N5 stays partial: still no MNIST download.

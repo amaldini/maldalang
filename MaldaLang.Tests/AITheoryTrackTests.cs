@@ -181,6 +181,14 @@ public class AITheoryTrackTests : TestBase
     }
 
     [Fact]
+    public async Task ConvClassifier_PrintsOkLine()
+    {
+        var path = PlanningPaths.ResolveRepoPath("Examples", "AI_Theory", "conv_classifier.malda");
+        var output = await CaptureInterpretAsync(File.ReadAllText(path), path);
+        Assert.Contains("conv classifier ok", output);
+    }
+
+    [Fact]
     public async Task ResidualDropout_PrintsOkLine()
     {
         var path = PlanningPaths.ResolveRepoPath("Examples", "AI_Theory", "residual_dropout.malda");

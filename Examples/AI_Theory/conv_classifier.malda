@@ -1,0 +1,120 @@
+// One Conv and one Dense head on the same 5x5 dashes.
+//
+// conv_stroke.malda writes each window and adds into the kernel by hand.
+// new Conv(3) owns that kernel. forward returns the 3x3 map. Flattening
+// it is the input to a sigmoid unit that names the dash: 1 vertical, 0
+// horizontal. Dense.backward is a length-9 vector; reshaping it is the
+// upstream Conv.backward adds into those nine weights. It is not a tape.
+// Offline and seeded — no API key.
+
+function blank() -> array {
+    var image = [];
+    for (var r = 0; r < 5; r = r + 1) {
+        var row = [];
+        for (var c = 0; c < 5; c = c + 1) {
+            row.append(0.0);
+        }
+        image.append(row);
+    }
+    return image;
+}
+
+function verticalDash(top: int) -> array {
+    var image = blank();
+    for (var r = top; r < top + 3; r = r + 1) {
+        image[r][2] = 1.0;
+    }
+    return image;
+}
+
+function horizontalDash(left: int) -> array {
+    var image = blank();
+    for (var c = left; c < left + 3; c = c + 1) {
+        image[2][c] = 1.0;
+    }
+    return image;
+}
+
+function flatten(map: array) -> array {
+    var flat = [];
+    for (var r = 0; r < map.length; r = r + 1) {
+        var row = map[r];
+        for (var c = 0; c < row.length; c = c + 1) {
+            flat.append(row[c]);
+        }
+    }
+    return flat;
+}
+
+function asMap(flat: array) -> array {
+    var map = [];
+    var i = 0;
+    for (var r = 0; r < 3; r = r + 1) {
+        var row = [];
+        for (var c = 0; c < 3; c = c + 1) {
+            row.append(flat[i]);
+            i = i + 1;
+        }
+        map.append(row);
+    }
+    return map;
+}
+
+function fmt(value: float) -> string {
+    return string(math.round(value * 1000.0) / 1000.0);
+}
+
+math.seed(4);
+
+var conv = new Conv(3, 0.5);
+var head = new Dense(9, 1, "sigmoid", 0.5);
+
+var images = [];
+var targets = [];
+for (var top = 0; top <= 2; top = top + 1) {
+    images.append(verticalDash(top));
+    targets.append(1.0);
+}
+for (var left = 0; left <= 2; left = left + 1) {
+    images.append(horizontalDash(left));
+    targets.append(0.0);
+}
+
+var learningRate = 0.8;
+var epochs = 80;
+
+for (var epoch = 1; epoch <= epochs; epoch = epoch + 1) {
+    for (var s = 0; s < images.length; s = s + 1) {
+        var feat = conv.forward(images[s]);
+        var y = head.forward(flatten(feat));
+        var dY = nn.mseGrad(y, [targets[s]]);
+        var dFeat = head.backward(dY);
+        conv.backward(asMap(dFeat));
+        head.sgd(learningRate);
+        conv.sgd(learningRate);
+    }
+}
+
+io.print("Conv 3x3 plus a sigmoid head on 5x5 strokes");
+var correct = 0;
+for (var s = 0; s < images.length; s = s + 1) {
+    var y = head.forward(flatten(conv.forward(images[s])))[0];
+    var predicted = 0;
+    if (y >= 0.5) {
+        predicted = 1;
+    }
+    var label = int(targets[s]);
+    if (predicted == label) {
+        correct = correct + 1;
+    }
+    var kind = "horizontal";
+    if (label == 1) {
+        kind = "vertical";
+    }
+    io.print("  " + kind + " target " + string(label) + " pred " + fmt(y));
+}
+
+io.print("Accuracy: " + string(correct) + "/" + string(images.length));
+if (correct == images.length) {
+    io.print("conv classifier ok");
+}

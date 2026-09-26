@@ -25,6 +25,7 @@ Agents and tools stay in [`Examples/Agents/`](../Agents/).
 | `adam_valley.malda` | Adam's bias-corrected moments on that same valley |
 | `rnn_delay.malda` | Vanishing sigmoid recurrence, then a tanh net that recalls a delayed bit |
 | `conv_stroke.malda` | One shared 3×3 kernel on vertical and horizontal dashes |
+| `conv_classifier.malda` | Same dashes through `new Conv(3)` and a sigmoid `Dense` head |
 | `residual_dropout.malda` | Residual skip vs a deep sigmoid stack, then a train-time dropout mask |
 | `embed_row.malda` | One embedding row receives the gradient; the other rows stay put |
 | `next_char.malda` | Bigram on a repeated inline word via `nn.dense` and a row scatter |
