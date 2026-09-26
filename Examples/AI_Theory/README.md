@@ -47,7 +47,8 @@ softmax regions with
 A CartPole policy that trains on the canvas, and that you can shove with the mouse, is
 `malda play Examples/Games/cartpole_neural.malda`. That canvas net fits a score of
 the pole and the cart. The same dense layer drives a Grand Prix grid in
-`malda play Examples/Games/grand_prix_neural.malda`. The return-scaled step is `reinforce_bandit.malda`.
+`malda play Examples/Games/grand_prix_neural.malda`. A conv net that reads a digit you draw is
+`malda play Examples/Games/digits_cnn.malda`. The return-scaled step is `reinforce_bandit.malda`.
 Kit roadmap: [`docs/roadmap-neural.md`](../../docs/roadmap-neural.md).
 
 All are seeded with `math.seed` where they use randomness. The student

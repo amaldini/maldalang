@@ -1,0 +1,868 @@
+// Handwritten digits on a JS canvas.
+// Run: malda play Examples/Games/digits_cnn.malda
+//
+// The page is a 16×16 ink grid. Four Conv(3) filters (one channel, valid)
+// read it, leaky ReLU and a 2×2 max-pool follow, then a 48-unit ReLU dense
+// layer and 10 linear logits. new Conv / new Dense own the weights.
+// nn.softmaxGrad is the loss gradient. There is no tape.
+// Training glyphs are marker strokes with shift, scale, rotation, and wobble.
+// Draw your own digit; if the guess is wrong, click that numeral to teach it.
+
+function blank(n) -> array {
+    var image = [];
+    for (var r = 0; r < n; r = r + 1) {
+        var row = [];
+        for (var c = 0; c < n; c = c + 1) {
+            row.append(0.0);
+        }
+        image.append(row);
+    }
+    return image;
+}
+
+function copyImage(src) -> array {
+    var image = [];
+    for (var r = 0; r < src.length; r = r + 1) {
+        var row = [];
+        var from = src[r];
+        for (var c = 0; c < from.length; c = c + 1) {
+            row.append(from[c]);
+        }
+        image.append(row);
+    }
+    return image;
+}
+
+function inkMass(image) -> float {
+    var sum = 0.0;
+    for (var r = 0; r < image.length; r = r + 1) {
+        var row = image[r];
+        for (var c = 0; c < row.length; c = c + 1) {
+            sum = sum + row[c];
+        }
+    }
+    return sum;
+}
+
+function stamp(image, x, y) {
+    var radius = 1.62;
+    var n = image.length;
+    var x0 = int(math.floor(x - radius));
+    var y0 = int(math.floor(y - radius));
+    var x1 = int(math.floor(x + radius));
+    var y1 = int(math.floor(y + radius));
+    if (x0 < 0) {
+        x0 = 0;
+    }
+    if (y0 < 0) {
+        y0 = 0;
+    }
+    if (x1 > n - 1) {
+        x1 = n - 1;
+    }
+    if (y1 > n - 1) {
+        y1 = n - 1;
+    }
+    for (var r = y0; r <= y1; r = r + 1) {
+        for (var c = x0; c <= x1; c = c + 1) {
+            var dx = (c + 0.5) - x;
+            var dy = (r + 0.5) - y;
+            var dist = math.hypot(dx, dy);
+            if (dist < radius) {
+                var ink = 1.0 - dist / radius;
+                var next = image[r][c] + ink * ink * 0.92;
+                if (next > 1.0) {
+                    next = 1.0;
+                }
+                image[r][c] = next;
+            }
+        }
+    }
+}
+
+function paintLine(image, x0, y0, x1, y1) {
+    var dist = math.hypot(x1 - x0, y1 - y0);
+    var steps = int(dist * 2.4) + 1;
+    for (var i = 0; i <= steps; i = i + 1) {
+        var t = i / steps;
+        stamp(image, x0 + (x1 - x0) * t, y0 + (y1 - y0) * t);
+    }
+}
+
+function spin(x, y, deg) -> array {
+    if (deg == 0.0) {
+        return [x, y];
+    }
+    var rad = math.degToRad(deg);
+    var c = math.cos(rad);
+    var s = math.sin(rad);
+    var dx = x - 0.5;
+    var dy = y - 0.5;
+    return [0.5 + dx * c - dy * s, 0.5 + dx * s + dy * c];
+}
+
+function digitStrokes(digit) -> array {
+    if (digit == 0) {
+        return [[[0.50, 0.16], [0.72, 0.24], [0.82, 0.46], [0.76, 0.70], [0.50, 0.84], [0.26, 0.72], [0.18, 0.48], [0.28, 0.24], [0.50, 0.16]]];
+    }
+    if (digit == 1) {
+        return [[[0.36, 0.30], [0.52, 0.16], [0.52, 0.84]], [[0.34, 0.84], [0.70, 0.84]]];
+    }
+    if (digit == 2) {
+        return [[[0.24, 0.34], [0.34, 0.18], [0.62, 0.16], [0.78, 0.32], [0.66, 0.48], [0.26, 0.78], [0.78, 0.82]]];
+    }
+    if (digit == 3) {
+        return [[[0.26, 0.24], [0.64, 0.16], [0.78, 0.32], [0.60, 0.46], [0.40, 0.50]], [[0.48, 0.50], [0.76, 0.58], [0.74, 0.76], [0.52, 0.86], [0.26, 0.74]]];
+    }
+    if (digit == 4) {
+        return [[[0.68, 0.14], [0.68, 0.86]], [[0.22, 0.56], [0.82, 0.56]], [[0.68, 0.16], [0.24, 0.56]]];
+    }
+    if (digit == 5) {
+        return [[[0.76, 0.18], [0.30, 0.20], [0.24, 0.46], [0.52, 0.40], [0.76, 0.54], [0.76, 0.74], [0.52, 0.86], [0.28, 0.76]]];
+    }
+    if (digit == 6) {
+        return [[[0.70, 0.26], [0.46, 0.14], [0.26, 0.34], [0.24, 0.62], [0.42, 0.84], [0.66, 0.78], [0.74, 0.60], [0.56, 0.46], [0.32, 0.56]]];
+    }
+    if (digit == 7) {
+        return [[[0.22, 0.20], [0.80, 0.16], [0.40, 0.86]], [[0.38, 0.46], [0.68, 0.42]]];
+    }
+    if (digit == 8) {
+        return [[[0.50, 0.50], [0.30, 0.36], [0.28, 0.20], [0.50, 0.14], [0.72, 0.22], [0.70, 0.38], [0.50, 0.50], [0.30, 0.64], [0.28, 0.80], [0.50, 0.86], [0.72, 0.78], [0.70, 0.62], [0.50, 0.50]]];
+    }
+    return [[[0.42, 0.52], [0.26, 0.36], [0.36, 0.16], [0.64, 0.14], [0.78, 0.32], [0.68, 0.50], [0.42, 0.54]], [[0.62, 0.46], [0.76, 0.66], [0.56, 0.86], [0.34, 0.76]]];
+}
+
+function raster(digit, shiftX, shiftY, scale, angle, wiggle) -> array {
+    var image = blank(16);
+    var strokes = digitStrokes(digit);
+    var span = 12.4 * scale;
+    var origin = (16.0 - span) / 2.0;
+    for (var s = 0; s < strokes.length; s = s + 1) {
+        var stroke = strokes[s];
+        var pts = [];
+        for (var i = 0; i < stroke.length; i = i + 1) {
+            var p = spin(stroke[i][0], stroke[i][1], angle);
+            var x = origin + shiftX + p[0] * span;
+            var y = origin + shiftY + p[1] * span;
+            if (wiggle > 0.0) {
+                x = x + math.randomFloat(-wiggle, wiggle);
+                y = y + math.randomFloat(-wiggle, wiggle);
+            }
+            pts.append([x, y]);
+        }
+        for (var i = 1; i < pts.length; i = i + 1) {
+            paintLine(image, pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1]);
+        }
+    }
+    return image;
+}
+
+function maxPool(map) -> object {
+    var width = map.length;
+    var side = int(width / 2);
+    var pooled = [];
+    var which = [];
+    for (var r = 0; r < side; r = r + 1) {
+        var row = [];
+        var wrow = [];
+        for (var c = 0; c < side; c = c + 1) {
+            var best = -1000000.0;
+            var bi = 0;
+            for (var dy = 0; dy < 2; dy = dy + 1) {
+                for (var dx = 0; dx < 2; dx = dx + 1) {
+                    var sr = r * 2 + dy;
+                    var sc = c * 2 + dx;
+                    var value = map[sr][sc];
+                    if (value > best) {
+                        best = value;
+                        bi = sr * width + sc;
+                    }
+                }
+            }
+            row.append(best);
+            wrow.append(bi);
+        }
+        pooled.append(row);
+        which.append(wrow);
+    }
+    return { "out": pooled, "which": which };
+}
+
+function unpool(grad, which, width) -> array {
+    var out = blank(width);
+    var side = grad.length;
+    for (var r = 0; r < side; r = r + 1) {
+        for (var c = 0; c < side; c = c + 1) {
+            var idx = int(which[r][c]);
+            var sr = int(idx / width);
+            var sc = idx - sr * width;
+            out[sr][sc] = grad[r][c];
+        }
+    }
+    return out;
+}
+
+function mulMaps(a, b) -> array {
+    var out = [];
+    for (var r = 0; r < a.length; r = r + 1) {
+        var row = [];
+        var ar = a[r];
+        var br = b[r];
+        for (var c = 0; c < ar.length; c = c + 1) {
+            row.append(ar[c] * br[c]);
+        }
+        out.append(row);
+    }
+    return out;
+}
+
+function flattenPools(pools) -> array {
+    var flat = [];
+    for (var f = 0; f < pools.length; f = f + 1) {
+        var map = pools[f].out;
+        for (var r = 0; r < map.length; r = r + 1) {
+            var row = map[r];
+            for (var c = 0; c < row.length; c = c + 1) {
+                flat.append(row[c]);
+            }
+        }
+    }
+    return flat;
+}
+
+function takeMap(flat, filterIndex, side) -> array {
+    var map = [];
+    var base = filterIndex * side * side;
+    var i = 0;
+    for (var r = 0; r < side; r = r + 1) {
+        var row = [];
+        for (var c = 0; c < side; c = c + 1) {
+            row.append(flat[base + i]);
+            i = i + 1;
+        }
+        map.append(row);
+    }
+    return map;
+}
+
+function peakOf(map) -> float {
+    var peak = 0.0001;
+    for (var r = 0; r < map.length; r = r + 1) {
+        var row = map[r];
+        for (var c = 0; c < row.length; c = c + 1) {
+            var a = math.abs(row[c]);
+            if (a > peak) {
+                peak = a;
+            }
+        }
+    }
+    return peak;
+}
+
+function rgb(r, g, b) -> string {
+    return "rgb(" + string(int(r)) + "," + string(int(g)) + "," + string(int(b)) + ")";
+}
+
+function inkColor(v) -> string {
+    var t = v;
+    if (t < 0.0) {
+        t = 0.0;
+    }
+    if (t > 1.0) {
+        t = 1.0;
+    }
+    return rgb(246.0 - t * 224.0, 242.0 - t * 220.0, 234.0 - t * 214.0);
+}
+
+function diverging(v, peak) -> string {
+    var t = v / peak;
+    if (t > 1.0) {
+        t = 1.0;
+    }
+    if (t < -1.0) {
+        t = -1.0;
+    }
+    if (t >= 0.0) {
+        return rgb(36.0 + t * 196.0, 34.0 + t * 78.0, 32.0 + t * 24.0);
+    }
+    var u = 0.0 - t;
+    return rgb(32.0 + u * 20.0, 40.0 + u * 70.0, 52.0 + u * 150.0);
+}
+
+function heat(v, peak) -> string {
+    var t = v / peak;
+    if (t < 0.0) {
+        t = 0.0;
+    }
+    if (t > 1.0) {
+        t = 1.0;
+    }
+    return rgb(20.0 + t * 214.0, 22.0 + t * 148.0, 30.0 + t * 48.0);
+}
+
+function fmt2(value) -> string {
+    return string(math.round(value * 100.0) / 100.0);
+}
+
+function clampRange(v, lo, hi) -> float {
+    if (v < lo) {
+        return lo;
+    }
+    if (v > hi) {
+        return hi;
+    }
+    return v;
+}
+
+function startDigits() {
+    math.seed(11);
+    var filters = [];
+    for (var f = 0; f < 4; f = f + 1) {
+        filters.append(new Conv(3, 0.22));
+    }
+    var hidden = new Dense(196, 48, "relu");
+    var head = new Dense(48, 10, "linear");
+    var convLr = 0.035;
+    var denseLr = 0.09;
+
+    var canvasW = 1080;
+    var canvasH = 720;
+    var padX = 32;
+    var padY = 92;
+    var cell = 24;
+    var gridPx = cell * 16;
+    var clearX = 32;
+    var clearY = 500;
+    var clearW = 112;
+    var clearH = 34;
+    var thumbX = 78;
+    var thumbY = 576;
+    var thumbPitchX = 62;
+    var thumbPitchY = 70;
+    var colX = 468;
+    var cardY = 92;
+    var cardW = 580;
+    var cardH = 158;
+    var barY = 274;
+    var barRow = 22;
+    var barTrack = 200;
+    var filtX = 790;
+    var filtY = 274;
+    var teachY = 548;
+    var keySize = 32;
+    var keyPitch = 36;
+
+    var pad = blank(16);
+    var probes = [];
+    var trainImages = [];
+    var trainLabels = [];
+    var jobs = [];
+    var poses = [
+        [1.15, 0.30, 0.90, -12.0],
+        [-1.05, -0.40, 1.06, 10.0],
+        [0.20, 1.10, 0.84, -6.0],
+        [-0.50, 0.55, 1.08, 13.0],
+        [1.20, -0.80, 0.96, 7.0],
+        [-1.15, 0.20, 1.00, -9.0],
+        [0.10, -1.00, 0.88, 4.0],
+        [-0.30, 0.15, 1.06, -14.0]
+    ];
+    for (var d = 0; d < 10; d = d + 1) {
+        jobs.append([d, 0.0, 0.0, 1.0, 0.0, 0.0, 1]);
+    }
+    for (var d = 0; d < 10; d = d + 1) {
+        for (var p = 0; p < poses.length; p = p + 1) {
+            var pose = poses[p];
+            jobs.append([d, pose[0], pose[1], pose[2], pose[3], 0.42, 0]);
+        }
+    }
+
+    var jobIndex = 0;
+    var seen = 0;
+    var holdout = 0;
+    var stable = 0;
+    var phase = "train";
+    var announced = false;
+    var smoothLoss = -1.0;
+    var lastLog = 0;
+    var frame = 0;
+    var painting = false;
+    var hasLast = false;
+    var lastGx = 0.0;
+    var lastGy = 0.0;
+    var note = "Draw while it learns.";
+    var noteLeft = 4200.0;
+    var armed = -1;
+    var showcase = 0;
+    var lastProbs = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1];
+    var shown = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1];
+    var lastGuess = 0;
+    var lastActs = [];
+    var probeOk = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    var lossHist = [];
+    var viewKind = "font";
+
+    function say(text) {
+        note = text;
+        noteLeft = 2400.0;
+    }
+
+    function forwardImage(image) -> object {
+        var pres = [];
+        var acts = [];
+        var pools = [];
+        for (var f = 0; f < filters.length; f = f + 1) {
+            var pre = filters[f].forward(image);
+            var act = nn.leakyRelu(pre);
+            pres.append(pre);
+            acts.append(act);
+            pools.append(maxPool(act));
+        }
+        var flat = flattenPools(pools);
+        var mid = hidden.forward(flat);
+        var logits = head.forward(mid);
+        return { "pres": pres, "acts": acts, "pools": pools, "logits": logits };
+    }
+
+    function trainSample(image, label) -> float {
+        var pass = forwardImage(image);
+        var dLogits = nn.softmaxGrad(pass.logits, label);
+        var dMid = head.backward(dLogits);
+        var dFlat = hidden.backward(dMid);
+        var side = pass.pools[0].out.length;
+        var mapW = pass.pres[0].length;
+        for (var f = 0; f < filters.length; f = f + 1) {
+            var dPool = takeMap(dFlat, f, side);
+            var dAct = unpool(dPool, pass.pools[f].which, mapW);
+            var dPre = mulMaps(nn.dLeakyRelu(pass.pres[f]), dAct);
+            filters[f].backward(dPre);
+        }
+        for (var f = 0; f < filters.length; f = f + 1) {
+            filters[f].sgd(convLr);
+        }
+        head.sgd(denseLr);
+        hidden.sgd(denseLr);
+        return nn.crossEntropyFromLogits(pass.logits, label);
+    }
+
+    function predict(image) {
+        var pass = forwardImage(image);
+        lastActs = pass.acts;
+        lastProbs = nn.softmax(pass.logits);
+        lastGuess = math.argmax(pass.logits);
+    }
+
+    function scoreProbes() -> int {
+        var correct = 0;
+        for (var d = 0; d < probes.length; d = d + 1) {
+            var pass = forwardImage(probes[d]);
+            if (math.argmax(pass.logits) == d) {
+                probeOk[d] = 1;
+                correct = correct + 1;
+            } else {
+                probeOk[d] = 0;
+            }
+        }
+        return correct;
+    }
+
+    function clearPad() {
+        pad = blank(16);
+        painting = false;
+        hasLast = false;
+        armed = -1;
+    }
+
+    function teach(digit) {
+        if (inkMass(pad) < 1.6) {
+            say("Draw a digit first.");
+            return;
+        }
+        var sample = copyImage(pad);
+        trainImages.append(sample);
+        trainLabels.append(digit);
+        for (var i = 0; i < 6; i = i + 1) {
+            trainSample(sample, digit);
+        }
+        for (var i = 0; i < 10; i = i + 1) {
+            var k = math.randomInt(0, trainImages.length - 1);
+            trainSample(trainImages[k], trainLabels[k]);
+        }
+        say("Learned this drawing as " + string(digit) + ".");
+        predict(pad);
+    }
+
+    function thumbOrigin(index) -> array {
+        var col = index;
+        var row = 0;
+        if (index >= 5) {
+            col = index - 5;
+            row = 1;
+        }
+        return [thumbX + col * thumbPitchX, thumbY + row * thumbPitchY];
+    }
+
+    function overPad(mx, my) -> bool {
+        return game.pointInRect(mx, my, padX, padY, gridPx, gridPx);
+    }
+
+    function update(dtMs) {
+        frame = frame + 1;
+        if (noteLeft > 0.0) {
+            noteLeft = noteLeft - dtMs;
+        }
+
+        if (game.wasKeyPressed("c") or game.wasKeyPressed("backspace")) {
+            clearPad();
+        }
+        for (var d = 0; d < 10; d = d + 1) {
+            if (game.wasKeyPressed(string(d))) {
+                teach(d);
+            }
+        }
+
+        var mx = game.getMouseX();
+        var my = game.getMouseY();
+        if (game.wasMousePressed(0)) {
+            if (game.pointInRect(mx, my, clearX, clearY, clearW, clearH)) {
+                clearPad();
+            } else {
+                var taught = false;
+                for (var d = 0; d < 10; d = d + 1) {
+                    var kx = colX + d * keyPitch;
+                    if (game.pointInRect(mx, my, kx, teachY, keySize, keySize)) {
+                        teach(d);
+                        taught = true;
+                    }
+                }
+                if (!taught && probes.length == 10) {
+                    for (var d = 0; d < 10; d = d + 1) {
+                        var origin = thumbOrigin(d);
+                        if (game.pointInRect(mx, my, origin[0] - 4, origin[1] - 4, 56, 56)) {
+                            pad = copyImage(probes[d]);
+                            armed = d;
+                            painting = false;
+                            hasLast = false;
+                        }
+                    }
+                }
+                if (overPad(mx, my)) {
+                    painting = true;
+                    armed = -1;
+                }
+            }
+        }
+        if (!game.isMouseDown(0)) {
+            painting = false;
+            hasLast = false;
+        }
+        if (painting) {
+            var gx = clampRange((mx - padX) / cell, 0.0, 15.99);
+            var gy = clampRange((my - padY) / cell, 0.0, 15.99);
+            if (hasLast) {
+                paintLine(pad, lastGx, lastGy, gx, gy);
+            } else {
+                stamp(pad, gx, gy);
+            }
+            lastGx = gx;
+            lastGy = gy;
+            hasLast = true;
+        }
+
+        var built = 0;
+        while (jobIndex < jobs.length && built < 2) {
+            var job = jobs[jobIndex];
+            var image = raster(job[0], job[1], job[2], job[3], job[4], job[5]);
+            if (job[6] == 1) {
+                probes.append(image);
+            } else {
+                trainImages.append(image);
+                trainLabels.append(job[0]);
+            }
+            jobIndex = jobIndex + 1;
+            built = built + 1;
+        }
+
+        if (phase == "train" && trainImages.length > 0) {
+            var steps = 6;
+            if (jobIndex < jobs.length) {
+                steps = 3;
+            }
+            var batch = 0.0;
+            for (var s = 0; s < steps; s = s + 1) {
+                var k = math.randomInt(0, trainImages.length - 1);
+                var loss = trainSample(trainImages[k], trainLabels[k]);
+                batch = batch + loss;
+                seen = seen + 1;
+            }
+            batch = batch / steps;
+            if (smoothLoss < 0.0) {
+                smoothLoss = batch;
+            } else {
+                smoothLoss = smoothLoss * 0.92 + batch * 0.08;
+            }
+            lossHist.append(smoothLoss);
+            if (lossHist.length > 56) {
+                lossHist.shift();
+            }
+            if (seen - lastLog >= 80) {
+                io.print("holdout " + string(holdout) + "/10  loss " + fmt2(smoothLoss) + "  step " + string(seen));
+                lastLog = seen;
+            }
+        }
+
+        if (probes.length == 10 && frame % 12 == 0) {
+            holdout = scoreProbes();
+            if (phase == "train" && jobIndex >= jobs.length) {
+                if (holdout == 10 && seen >= trainImages.length * 4) {
+                    stable = stable + 1;
+                } else {
+                    stable = 0;
+                }
+                if ((stable >= 2 && holdout == 10) or seen >= trainImages.length * 22) {
+                    phase = "ready";
+                }
+            }
+        }
+        if (phase == "ready" && !announced) {
+            io.print("digits cnn ready " + string(holdout) + "/10");
+            announced = true;
+            if (holdout == 10) {
+                say("All ten glyphs read. Draw one.");
+            } else {
+                say("Paused at " + string(holdout) + "/10. Teach a miss.");
+            }
+        }
+
+        var mass = inkMass(pad);
+        if (mass >= 1.6) {
+            predict(pad);
+            if (armed >= 0) {
+                viewKind = "font";
+            } else {
+                viewKind = "ink";
+            }
+        } else if (probes.length == 10) {
+            if (frame % 72 == 0 && armed < 0) {
+                showcase = (showcase + 1) % 10;
+            }
+            var show = showcase;
+            if (armed >= 0) {
+                show = armed;
+            }
+            predict(probes[show]);
+            viewKind = "font";
+        }
+
+        for (var i = 0; i < 10; i = i + 1) {
+            shown[i] = shown[i] * 0.62 + lastProbs[i] * 0.38;
+        }
+    }
+
+    function drawInk(image, x, y, stride, gap) {
+        var n = image.length;
+        for (var r = 0; r < n; r = r + 1) {
+            for (var c = 0; c < n; c = c + 1) {
+                game.fillRect(x + c * stride, y + r * stride, stride - gap, stride - gap, inkColor(image[r][c]));
+            }
+        }
+    }
+
+    function drawButton(x, y, w, h, label, hot) {
+        var fill = "#222733";
+        var edge = "#3c4558";
+        if (hot) {
+            fill = "#2c3344";
+            edge = "#e2a56a";
+        }
+        game.fillRect(x, y, w, h, fill);
+        game.strokeRect(x, y, w, h, edge, 1);
+        game.drawText(label, x + 16, y + 22, "#f4f0e8", "14px Segoe UI, sans-serif");
+    }
+
+    function render() {
+        var mx = game.getMouseX();
+        var my = game.getMouseY();
+        game.clear();
+        game.fillRect(0, 0, canvasW, 3, "#e2a56a");
+        game.drawText("MALDA", 32, 36, "#e2a56a", "12px Segoe UI, sans-serif");
+        game.drawText("Handwritten digits", 32, 62, "#f4f0e8", "28px Georgia, serif");
+        game.drawText("16x16 ink   4 conv 3x3   max-pool   48 ReLU   10 logits", 360, 62, "#9a958c", "14px Segoe UI, sans-serif");
+
+        var status = "Inking samples  " + string(jobIndex) + "/" + string(jobs.length);
+        if (jobIndex >= jobs.length && phase != "ready") {
+            status = "Training   loss " + fmt2(smoothLoss) + "   holdout " + string(holdout) + "/10";
+        }
+        if (phase == "ready") {
+            status = "Ready   holdout " + string(holdout) + "/10   loss " + fmt2(smoothLoss);
+        }
+        game.drawText(status, 700, 36, "#c8c2b8", "13px Segoe UI, sans-serif");
+
+        game.fillRect(padX + 8, padY + 10, gridPx + 28, gridPx + 28, "#0b0d12");
+        game.fillRect(padX - 16, padY - 16, gridPx + 32, gridPx + 32, "#e4ddd0");
+        game.fillRect(padX - 12, padY - 12, gridPx + 24, gridPx + 24, "#f7f3ea");
+        drawInk(pad, padX, padY, cell, 1);
+        if (overPad(mx, my)) {
+            game.strokeCircle(mx, my, 8, "rgba(40,32,24,0.35)", 1.5);
+        }
+
+        drawButton(clearX, clearY, clearW, clearH, "Clear", game.pointInRect(mx, my, clearX, clearY, clearW, clearH));
+        var hint = note;
+        if (noteLeft <= 0.0) {
+            hint = "Drag to draw.  C clears.";
+        }
+        game.drawText(hint, 160, 524, "#9a958c", "13px Segoe UI, sans-serif");
+
+        game.drawText("TRAINING GLYPHS", thumbX, thumbY - 22, "#8d887e", "11px Segoe UI, sans-serif");
+        var show = showcase;
+        if (armed >= 0) {
+            show = armed;
+        }
+        for (var d = 0; d < probes.length; d = d + 1) {
+            var origin = thumbOrigin(d);
+            var tx = origin[0];
+            var ty = origin[1];
+            var hotThumb = game.pointInRect(mx, my, tx - 4, ty - 4, 56, 56);
+            var paper = "#f7f3ea";
+            if (d == show && viewKind == "font") {
+                paper = "#f3e2cc";
+            }
+            game.fillRect(tx - 5, ty - 5, 58, 58, paper);
+            if (hotThumb or d == armed) {
+                game.strokeRect(tx - 6, ty - 6, 60, 60, "#e2a56a", 2);
+            }
+            drawInk(probes[d], tx, ty, 3, 0);
+            var dot = "#3a4252";
+            if (probeOk[d] == 1) {
+                dot = "#7dcea0";
+            } else if (seen > 40) {
+                dot = "#c47c6a";
+            }
+            game.fillCircle(tx + 46, ty - 1, 4, dot);
+        }
+
+        game.fillRect(colX, cardY, cardW, cardH, "#1a1e27");
+        game.strokeRect(colX, cardY, cardW, cardH, "#2e3544", 1);
+        var guessColor = "#6a655c";
+        if (holdout >= 8) {
+            guessColor = "#f4f0e8";
+        }
+        if (phase == "ready" && holdout == 10 && shown[lastGuess] > 0.45) {
+            guessColor = "#f0d7b8";
+        }
+        var guess = "–";
+        if (shown[lastGuess] > 0.18 or inkMass(pad) >= 1.6) {
+            guess = string(lastGuess);
+        }
+        game.drawText(guess, colX + 36, cardY + 112, guessColor, "84px Georgia, serif");
+        var pct = string(int(shown[lastGuess] * 100.0)) + "%";
+        game.drawText(pct, colX + 150, cardY + 78, "#f4f0e8", "28px Segoe UI, sans-serif");
+        var caption = "reading a training glyph";
+        if (viewKind == "ink") {
+            caption = "your handwriting";
+        }
+        if (armed >= 0) {
+            caption = "glyph " + string(armed) + " loaded onto the page";
+        }
+        game.drawText(caption, colX + 150, cardY + 108, "#9a958c", "14px Segoe UI, sans-serif");
+        game.drawText("softmax", colX + 150, cardY + 132, "#6a655c", "12px Segoe UI, sans-serif");
+
+        for (var i = 0; i < 10; i = i + 1) {
+            var y = barY + i * barRow;
+            var hotBar = i == lastGuess && shown[i] > 0.18;
+            var track = "#242a36";
+            var fill = "#6f93b0";
+            if (hotBar) {
+                fill = "#e2a56a";
+            }
+            game.drawText(string(i), colX, y + 14, "#c8c2b8", "13px Segoe UI, sans-serif");
+            game.fillRect(colX + 22, y + 4, barTrack, 12, track);
+            var bw = shown[i] * barTrack;
+            if (bw < 2.0) {
+                bw = 2.0;
+            }
+            game.fillRect(colX + 22, y + 4, bw, 12, fill);
+            if (shown[i] >= 0.08 or hotBar) {
+                game.drawText(string(int(shown[i] * 100.0)), colX + 22 + barTrack + 8, y + 14, "#9a958c", "12px Segoe UI, sans-serif");
+            }
+        }
+
+        game.drawText("KERNELS", filtX, filtY - 8, "#8d887e", "11px Segoe UI, sans-serif");
+        game.drawText("RELU MAPS", filtX + 118, filtY - 8, "#8d887e", "11px Segoe UI, sans-serif");
+        for (var f = 0; f < filters.length; f = f + 1) {
+            var row = int(f / 2);
+            var col = f - row * 2;
+            var kx = filtX + col * 148;
+            var ky = filtY + 8 + row * 128;
+            var kernel = filters[f].kernel;
+            var kPeak = peakOf(kernel);
+            for (var r = 0; r < kernel.length; r = r + 1) {
+                for (var c = 0; c < kernel[r].length; c = c + 1) {
+                    game.fillRect(kx + c * 16, ky + r * 16, 15, 15, diverging(kernel[r][c], kPeak));
+                }
+            }
+            if (lastActs.length > f) {
+                var act = lastActs[f];
+                var aPeak = peakOf(act);
+                var mx0 = kx + 56;
+                for (var r = 0; r < act.length; r = r + 1) {
+                    for (var c = 0; c < act[r].length; c = c + 1) {
+                        game.fillRect(mx0 + c * 4, ky + r * 4, 4, 4, heat(act[r][c], aPeak));
+                    }
+                }
+            }
+        }
+
+        game.drawText("THIS INK IS", colX, teachY - 8, "#8d887e", "11px Segoe UI, sans-serif");
+        for (var d = 0; d < 10; d = d + 1) {
+            var kx = colX + d * keyPitch;
+            var hot = game.pointInRect(mx, my, kx, teachY, keySize, keySize);
+            var fill = "#222733";
+            var edge = "#3c4558";
+            if (hot) {
+                fill = "#3a2e22";
+                edge = "#e2a56a";
+            }
+            game.fillRect(kx, teachY, keySize, keySize, fill);
+            game.strokeRect(kx, teachY, keySize, keySize, edge, 1);
+            game.drawText(string(d), kx + 11, teachY + 22, "#f4f0e8", "16px Georgia, serif");
+        }
+
+        game.drawText("LOSS", colX, 604, "#8d887e", "11px Segoe UI, sans-serif");
+        game.fillRect(colX, 612, 360, 42, "#1a1e27");
+        if (lossHist.length > 1) {
+            var peak = 0.001;
+            for (var i = 0; i < lossHist.length; i = i + 1) {
+                if (lossHist[i] > peak) {
+                    peak = lossHist[i];
+                }
+            }
+            var bw = 360.0 / lossHist.length;
+            for (var i = 0; i < lossHist.length; i = i + 1) {
+                var bh = (lossHist[i] / peak) * 36.0;
+                if (bh < 1.0) {
+                    bh = 1.0;
+                }
+                game.fillRect(colX + i * bw, 652 - bh, bw + 0.3, bh, "#e2a56a");
+            }
+        }
+
+        var progress = 0.0;
+        if (phase == "ready") {
+            progress = 1.0;
+        } else if (trainImages.length > 0) {
+            progress = seen / (trainImages.length * 10.0);
+            if (progress > 1.0) {
+                progress = 1.0;
+            }
+        }
+        game.fillRect(32, canvasH - 18, canvasW - 64, 3, "#242a36");
+        game.fillRect(32, canvasH - 18, (canvasW - 64) * progress, 3, "#e2a56a");
+    }
+
+    game.createCanvas(canvasW, canvasH, "#app");
+    game.setBackground("#12141a");
+    game.start(update, render);
+}
+
+startDigits();

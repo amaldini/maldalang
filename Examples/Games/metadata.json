@@ -540,6 +540,30 @@
       "expectedOutput": "Renders a circuit and a grid. The neural-share bar rises as the loss falls.",
       "documentationPath": "/docs/roadmap-neural.md",
       "documentationTitle": "Neural-nets kit"
+    },
+    {
+      "name": "Handwritten digits CNN",
+      "description": "Draw a digit on a 16×16 page. Four convolutions and a small dense head learn a marker font, then read your ink",
+      "file": "digits_cnn.malda",
+      "track": "student",
+      "difficulty": "advanced",
+      "minutes": 12,
+      "requires": ["offline"],
+      "concepts": [
+        "convolution",
+        "neural network",
+        "handwriting",
+        "game.*",
+        "JavaScript target"
+      ],
+      "prerequisites": [
+        "AI_Theory/conv_classifier.malda",
+        "AI_Theory/mnist_digits.malda"
+      ],
+      "learningGoal": "Watch a small conv net learn ten glyphs, then draw a digit and teach a miss.",
+      "expectedOutput": "Shows a paper pad, class bars, kernels, and ReLU maps. Holdout reaches 10/10, then the pad classifies ink.",
+      "documentationPath": "/docs/roadmap-neural.md",
+      "documentationTitle": "Neural-nets kit"
     }
   ]
 }
