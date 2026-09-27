@@ -306,6 +306,17 @@
       "summary": "Database vettoriale in-process per similarity search e embedding."
     },
     {
+      "id": "neural-net",
+      "term": "Rete neurale",
+      "aliases": ["rete neurale", "reti neurali", "neural net", "nn", "percettrone", "backpropagation"],
+      "href": "14-neural-nets.html#what-a-net-is",
+      "also": [
+        "14-neural-nets.html#dense",
+        "14-neural-nets.html#examples"
+      ],
+      "summary": "Una funzione fatta di unità impilate. Ogni unità è una somma pesata, un bias e un'attivazione. L'allenamento sposta i pesi; il forward li usa."
+    },
+    {
       "id": "graph",
       "term": "graph",
       "aliases": ["grafi", "graphs", "directed", "undirected"],
