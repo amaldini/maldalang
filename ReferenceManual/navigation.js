@@ -808,6 +808,24 @@ const FALLBACK_GLOSSARY_EN = [
         "summary": "In-process vector database for similarity search and embeddings."
     },
     {
+        "id": "neural-net",
+        "term": "Neural net",
+        "aliases": [
+            "neural network",
+            "neural nets",
+            "nn",
+            "perceptron",
+            "backpropagation",
+            "backprop"
+        ],
+        "href": "14-neural-nets.html#what-a-net-is",
+        "summary": "A function of stacked units. Each unit is a weighted sum, a bias, and an activation. Training nudges the weights; a forward pass uses them.",
+        "also": [
+            "14-neural-nets.html#dense",
+            "14-neural-nets.html#examples"
+        ]
+    },
+    {
         "id": "graph",
         "term": "graph",
         "aliases": [
@@ -1779,6 +1797,24 @@ const FALLBACK_GLOSSARY_IT = [
         ],
         "href": "16-vectordb.html",
         "summary": "Database vettoriale in-process per similarity search e embedding."
+    },
+    {
+        "id": "neural-net",
+        "term": "Rete neurale",
+        "aliases": [
+            "rete neurale",
+            "reti neurali",
+            "neural net",
+            "nn",
+            "percettrone",
+            "backpropagation"
+        ],
+        "href": "14-neural-nets.html#what-a-net-is",
+        "summary": "Una funzione fatta di unità impilate. Ogni unità è una somma pesata, un bias e un'attivazione. L'allenamento sposta i pesi; il forward li usa.",
+        "also": [
+            "14-neural-nets.html#dense",
+            "14-neural-nets.html#examples"
+        ]
     },
     {
         "id": "graph",

@@ -304,6 +304,17 @@
       "summary": "In-process vector database for similarity search and embeddings."
     },
     {
+      "id": "neural-net",
+      "term": "Neural net",
+      "aliases": ["neural network", "neural nets", "nn", "perceptron", "backpropagation", "backprop"],
+      "href": "14-neural-nets.html#what-a-net-is",
+      "also": [
+        "14-neural-nets.html#dense",
+        "14-neural-nets.html#examples"
+      ],
+      "summary": "A function of stacked units. Each unit is a weighted sum, a bias, and an activation. Training nudges the weights; a forward pass uses them."
+    },
+    {
       "id": "graph",
       "term": "graph",
       "aliases": ["graphs", "directed", "undirected"],

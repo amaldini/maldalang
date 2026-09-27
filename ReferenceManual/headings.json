@@ -1136,164 +1136,188 @@
   {
     "file": "14-neural-nets.html",
     "level": 2,
+    "id": "what-a-net-is",
+    "title": "14.1 What a neural net is"
+  },
+  {
+    "file": "14-neural-nets.html",
+    "level": 3,
+    "id": "one-unit",
+    "title": "14.1.1 One unit"
+  },
+  {
+    "file": "14-neural-nets.html",
+    "level": 3,
+    "id": "layers",
+    "title": "14.1.2 Layers"
+  },
+  {
+    "file": "14-neural-nets.html",
+    "level": 3,
+    "id": "training",
+    "title": "14.1.3 Training, then using the net"
+  },
+  {
+    "file": "14-neural-nets.html",
+    "level": 2,
     "id": "math-layout",
-    "title": "14.1 What stays on math"
+    "title": "14.2 What stays on math"
   },
   {
     "file": "14-neural-nets.html",
     "level": 2,
     "id": "dense",
-    "title": "14.2 One dense layer"
+    "title": "14.3 One dense layer"
   },
   {
     "file": "14-neural-nets.html",
     "level": 3,
     "id": "reading-the-matrix",
-    "title": "14.2.1 Reading the matrix"
+    "title": "14.3.1 Reading the matrix"
   },
   {
     "file": "14-neural-nets.html",
     "level": 3,
     "id": "batch",
-    "title": "14.2.2 A batch"
+    "title": "14.3.2 A batch"
   },
   {
     "file": "14-neural-nets.html",
     "level": 2,
     "id": "activations",
-    "title": "14.3 Activations"
+    "title": "14.4 Activations"
   },
   {
     "file": "14-neural-nets.html",
     "level": 2,
     "id": "backward",
-    "title": "14.4 One backward step"
+    "title": "14.5 One backward step"
   },
   {
     "file": "14-neural-nets.html",
     "level": 3,
     "id": "second-layer",
-    "title": "14.4.1 A second layer"
+    "title": "14.5.1 A second layer"
   },
   {
     "file": "14-neural-nets.html",
     "level": 3,
     "id": "weight-update",
-    "title": "14.4.2 The weight step"
+    "title": "14.5.2 The weight step"
   },
   {
     "file": "14-neural-nets.html",
     "level": 2,
     "id": "losses",
-    "title": "14.5 Losses"
+    "title": "14.6 Losses"
   },
   {
     "file": "14-neural-nets.html",
     "level": 3,
     "id": "classification",
-    "title": "14.5.1 Classification"
+    "title": "14.6.1 Classification"
   },
   {
     "file": "14-neural-nets.html",
     "level": 3,
     "id": "policy",
-    "title": "14.5.2 A return instead of a label"
+    "title": "14.6.2 A return instead of a label"
   },
   {
     "file": "14-neural-nets.html",
     "level": 2,
     "id": "examples",
-    "title": "14.6 Examples"
+    "title": "14.7 Examples"
   },
   {
     "file": "14-neural-nets.html",
     "level": 3,
     "id": "track-xor",
-    "title": "14.6.1 One neuron, then a hidden layer"
+    "title": "14.7.1 One neuron, then a hidden layer"
   },
   {
     "file": "14-neural-nets.html",
     "level": 3,
     "id": "track-class",
-    "title": "14.6.2 A classifier"
+    "title": "14.7.2 A classifier"
   },
   {
     "file": "14-neural-nets.html",
     "level": 3,
     "id": "track-check",
-    "title": "14.6.3 Check the gradient and the scale"
+    "title": "14.7.3 Check the gradient and the scale"
   },
   {
     "file": "14-neural-nets.html",
     "level": 3,
     "id": "track-step",
-    "title": "14.6.4 The step you still write"
+    "title": "14.7.4 The step you still write"
   },
   {
     "file": "14-neural-nets.html",
     "level": 3,
     "id": "track-shapes",
-    "title": "14.6.5 Shapes that are not one dense call"
+    "title": "14.7.5 Shapes that are not one dense call"
   },
   {
     "file": "14-neural-nets.html",
     "level": 3,
     "id": "track-attention",
-    "title": "14.6.6 From one row to one decoder block"
+    "title": "14.7.6 From one row to one decoder block"
   },
   {
     "file": "14-neural-nets.html",
     "level": 2,
     "id": "backends",
-    "title": "14.7 Backends"
+    "title": "14.8 Backends"
   },
   {
     "file": "14-neural-nets.html",
     "level": 2,
     "id": "signatures",
-    "title": "14.8 Signatures"
+    "title": "14.9 Signatures"
   },
   {
     "file": "14-neural-nets.html",
     "level": 2,
     "id": "sequential",
-    "title": "14.9 Sequential"
+    "title": "14.10 Sequential"
   },
   {
     "file": "14-neural-nets.html",
     "level": 2,
     "id": "other-layers",
-    "title": "14.10 Other layers"
+    "title": "14.11 Other layers"
   },
   {
     "file": "14-neural-nets.html",
     "level": 3,
     "id": "conv",
-    "title": "14.10.1 Conv"
+    "title": "14.11.1 Conv"
   },
   {
     "file": "14-neural-nets.html",
     "level": 3,
     "id": "embedding",
-    "title": "14.10.2 Embedding"
+    "title": "14.11.2 Embedding"
   },
   {
     "file": "14-neural-nets.html",
     "level": 3,
     "id": "rnn",
-    "title": "14.10.3 Rnn"
+    "title": "14.11.3 Rnn"
   },
   {
     "file": "14-neural-nets.html",
     "level": 3,
     "id": "layer-norm",
-    "title": "14.10.4 LayerNorm"
+    "title": "14.11.4 LayerNorm"
   },
   {
     "file": "14-neural-nets.html",
     "level": 3,
     "id": "attention",
-    "title": "14.10.5 Attention"
+    "title": "14.11.5 Attention"
   },
   {
     "file": "15-graphs.html",

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="MALDA reti neurali - layer densi, attivazioni e un passo di backward locale">
+    <meta name="description" content="MALDA reti neurali - che cos'è una rete, come impara, layer densi, attivazioni e un passo di backward locale">
     <title>14. Reti neurali - Manuale di riferimento MALDA</title>
     <link rel="stylesheet" href="../styles.css">
     <link rel="stylesheet" href="../syntax.css">
@@ -20,13 +20,45 @@
 
         <h1>14. Reti neurali</h1>
 
-        <p>Leggi questo capitolo se ti interessano le reti neurali: per capire come funzionano, o per realizzarne una piccola dentro un programma MALDA. I pesi li conservi tu. I programmi in <code>Examples/AI_Theory/</code> li addestrano offline, senza chiave API. Il capitolo è facoltativo. Saltarlo lascia invariati prompt, agenti e il resto di MALDA.</p>
-        <p>Pesi e bias restano array tuoi. <code>nn.dense</code> è un prodotto di matrici, più quel bias, poi un'attivazione. <code>nn.denseBackward</code> restituisce i tre gradienti di quel solo layer e si ferma. Non registra un nastro di autograd e non modifica i tuoi array. Tu sottrai <code>learningRate</code> volte ciascun gradiente, oppure passi una pila fissa di layer a <a href="#sequential">14.9</a>, che applica lo stesso passo al posto tuo.</p>
-        <p>Una rete più profonda è la stessa coppia di chiamate impilata. Il backward del layer di uscita viene per primo. Il suo <code>dInput</code> è il gradiente upstream del layer sotto. Entrambi i layer hanno bisogno della <code>pre</code> restituita nel forward, perché la derivata dell'attivazione si calcola lì.</p>
-        <p>Questo capitolo ricalcola un forward, un backward, un batch di due righe, il passaggio fra due layer, entrambe le loss, un passo di policy e un passo di <code>Sequential.fit</code>. Le tabelle delle firme sono <a href="#signatures">14.8</a> e <a href="#sequential">14.9</a>. <a href="#examples">14.6</a> è l'ordine dei programmi offline in <code>Examples/AI_Theory/</code>, che scrivono gli stessi prodotti con variabili con nome prima che un helper li nasconda.</p>
+        <p>Leggi questo capitolo per vedere che cos'è una rete neurale e come ne impara una piccola, o per realizzarne una dentro un programma MALDA. <a href="#what-a-net-is">14.1</a> è l'idea, senza chiamate di libreria. I programmi in <code>Examples/AI_Theory/</code> si allenano offline, senza chiave API. Il capitolo è facoltativo. Saltarlo lascia invariati prompt, agenti e il resto di MALDA.</p>
 
-        <h2 id="math-layout">14.1 Cosa resta su <code>math</code></h2>
-        <p>L'algebra lineare resta su <code>math</code>. Una matrice di pesi è <code>[in, out]</code>: una riga per unità di ingresso, una colonna per unità di uscita, lo stesso layout di <code>math.matmul(x, weights)</code>. Le dimensioni interne devono coincidere, quindi un vettore di lunghezza 2 moltiplica una matrice con 2 righe. Il prodotto sotto è la parte lineare del layer in <a href="#reading-the-matrix">14.2.1</a>, prima del bias <code>[0.25, -0.5]</code>. Attivazioni e layer stanno su <code>nn</code>. Scrivi <code>nn.relu</code>, non <code>relu</code>: non c'è un alias piatto.</p>
+        <h2 id="what-a-net-is">14.1 Che cos'è una rete neurale</h2>
+        <p>Una rete neurale è una funzione da una lista di numeri a un'altra lista di numeri. È fatta di unità. Ogni unità moltiplica i suoi ingressi per pesi memorizzati, aggiunge un bias e passa quella somma attraverso un'attivazione. Pesi e bias sono numeri ordinari che tieni tu. L'allenamento cambia quei numeri. La forma della funzione resta ferma.</p>
+        <p>Una rete serve quando la regola è più facile da mostrare che da scrivere. Quattro righe di AND stanno in una tabella. Un'immagine, l'angolo di un palo o il carattere successivo di una parola no: gli ingressi sono troppi, e vuoi comunque una risposta per un ingresso che non hai elencato. I pesi sono un'ipotesi compatta di quella regola, adattata agli esempi che hai elencato. Gli esempi di questo capitolo stanno in una pagina. Una rete più grande esegue lo stesso ciclo.</p>
+
+        <h3 id="one-unit">14.1.1 Un'unità</h3>
+        <p>Un'unità legge un vettore <code>x</code>, tiene un peso per ogni componente e tiene un bias. La somma pesata è <code>z = math.dot(x, w) + b</code>. L'attivazione legge <code>z</code> e scrive l'uscita dell'unità.</p>
+        <p>Un'attivazione a gradino restituisce <code>1</code> quando <code>z &gt;= 0</code> e <code>0</code> altrimenti. Quell'unità è un percettrone. I pesi sotto realizzano AND. Entrambi gli ingressi devono essere <code>1</code> perché la somma pesata più il bias <code>-1.5</code> sia almeno <code>0</code>. Le quattro stampe sono i quattro angoli, nell'ordine <code>[0, 0]</code>, <code>[0, 1]</code>, <code>[1, 0]</code>, <code>[1, 1]</code>.</p>
+        <pre><code data-run="true" data-expect="0\n0\n0\n1">function stepUnit(x, w, b) {
+    var z = math.dot(x, w) + b;
+    if (z >= 0.0) {
+        return 1;
+    }
+    return 0;
+}
+var w = [1.0, 1.0];
+var b = -1.5;
+print(stepUnit([0.0, 0.0], w, b));
+print(stepUnit([0.0, 1.0], w, b));
+print(stepUnit([1.0, 0.0], w, b));
+print(stepUnit([1.0, 1.0], w, b));</code></pre>
+        <p><code>Examples/AI_Theory/perceptron.malda</code> cerca pesi come questi. AND e OR escono giusti. XOR resta sbagliato. Le due uscite che dovrebbero essere <code>1</code> stanno su angoli opposti, e un solo taglio rettilineo ne lascia una sul lato <code>0</code>. Un layer nascosto, con una piega fra lui e l'uscita, può metterle entrambe. Quel programma è <code>xor_neural_net.malda</code>, una rete 2-4-1: 2 ingressi, 4 unità in mezzo, 1 uscita.</p>
+
+        <h3 id="layers">14.1.2 Layer</h3>
+        <p>Un layer è più unità che condividono l'ingresso e tengono pesi distinti. La sua uscita è un numero per unità. Il layer successivo legge quel vettore come sua <code>x</code>. Il target lo scrivi per l'ultimo layer. I layer di mezzo sono nascosti. I loro valori sono quelli che fanno combaciare l'ultimo layer.</p>
+        <p>Fra i layer, un'attivazione piega la somma. ReLU tiene la parte positiva e sostituisce il resto con <code>0</code>. La sigmoid schiaccia la somma in un intervallo vicino a <code>0</code> e <code>1</code>. Quella piega è il motivo per cui un layer successivo può combinare i tagli fatti da un layer precedente. Una pila di prodotti semplici, senza piega in mezzo, collassa in un solo prodotto, e un solo prodotto è ancora un taglio rettilineo. I nomi e le formule sono in <a href="#activations">14.4</a>.</p>
+
+        <h3 id="training">14.1.3 Allenamento, poi uso della rete</h3>
+        <p>Usare la rete è un passo forward. Gli ingressi attraversano ogni layer fino all'uscita, e i pesi restano fermi. Quel passo, finito l'allenamento, è l'inferenza.</p>
+        <p>L'allenamento è il ciclo che sposta i pesi. Scegli una loss, un numero piccolo quando l'uscita coincide con l'esempio. Per un numero che volevi, l'errore al quadrato basta (<code>nn.mse</code> in <a href="#losses">14.6</a>). Per un'etichetta di classe, la loss è alta quando la rete mette la sua confidenza sulla classe sbagliata. Il gradiente di quella loss è la direzione in cui ciascun peso aumenta la loss. Sottrai una frazione del gradiente dal peso. La frazione è il learning rate. Percorri quella sottrazione dall'ultimo layer al primo, e ogni layer impara come ha contribuito. Quel percorso è la backpropagation.</p>
+        <p>Un passaggio sugli esempi è un'epoca. Lo ripeti. Quando ti fermi, un passo forward è la funzione allenata. <code>Examples/AI_Theory/</code> scrive questo ciclo nell'ordine di <a href="#examples">14.7</a>. Da <a href="#math-layout">14.2</a> in poi, lo stesso ciclo è <code>nn.dense</code> per il forward e <code>nn.denseBackward</code> per i gradienti di un layer. I pesi restano tuoi.</p>
+
+        <p>Pesi e bias restano array tuoi. <code>nn.dense</code> è un prodotto di matrici, più quel bias, poi un'attivazione. <code>nn.denseBackward</code> restituisce i tre gradienti di quel solo layer e si ferma. Non registra un nastro di autograd e non modifica i tuoi array. Tu sottrai <code>learningRate</code> volte ciascun gradiente, oppure passi una pila fissa di layer a <a href="#sequential">14.10</a>, che applica lo stesso passo al posto tuo.</p>
+        <p>Una rete più profonda è la stessa coppia di chiamate impilata. Il backward del layer di uscita viene per primo. Il suo <code>dInput</code> è il gradiente upstream del layer sotto. Entrambi i layer hanno bisogno della <code>pre</code> restituita nel forward, perché la derivata dell'attivazione si calcola lì.</p>
+        <p>Questo capitolo ricalcola un forward, un backward, un batch di due righe, il passaggio fra due layer, entrambe le loss, un passo di policy e un passo di <code>Sequential.fit</code>. Le tabelle delle firme sono <a href="#signatures">14.9</a> e <a href="#sequential">14.10</a>. <a href="#examples">14.7</a> è l'ordine dei programmi offline in <code>Examples/AI_Theory/</code>, che scrivono gli stessi prodotti con variabili con nome prima che un helper li nasconda.</p>
+
+        <h2 id="math-layout">14.2 Cosa resta su <code>math</code></h2>
+        <p>L'algebra lineare resta su <code>math</code>. Una matrice di pesi è <code>[in, out]</code>: una riga per unità di ingresso, una colonna per unità di uscita, lo stesso layout di <code>math.matmul(x, weights)</code>. Le dimensioni interne devono coincidere, quindi un vettore di lunghezza 2 moltiplica una matrice con 2 righe. Il prodotto sotto è la parte lineare del layer in <a href="#reading-the-matrix">14.3.1</a>, prima del bias <code>[0.25, -0.5]</code>. Attivazioni e layer stanno su <code>nn</code>. Scrivi <code>nn.relu</code>, non <code>relu</code>: non c'è un alias piatto.</p>
         <table>
         <thead>
         <tr><th>Chiamata</th><th>Ruolo</th></tr>
@@ -41,11 +73,11 @@
 print(int(math.matmul([1.0, 2.0], [[0.5, -1.0], [1.0, 0.0]])[0] * 10));
 print(int(math.matmul([1.0, 2.0], [[0.5, -1.0], [1.0, 0.0]])[1] * 10));</code></pre>
 
-        <h2 id="dense">14.2 Un layer denso</h2>
+        <h2 id="dense">14.3 Un layer denso</h2>
         <p><code>nn.dense(x, weights, bias?, activation?)</code> accetta un campione come vettore, oppure più campioni come matrice con una riga per campione. Il bias ha un numero per uscita. Se lo ometti, il bias è zero. La chiamata restituisce <code>{ pre, out }</code>.</p>
         <p><code>pre</code> è la pre-attivazione, la parte lineare prima della non linearità: <code>pre = xW + b</code> (oppure <code>XW + b</code> per un batch). <code>out</code> è <code>activation(pre)</code>. Senza attivazione, o con <code>"linear"</code>, <code>out</code> è una copia di <code>pre</code> e la derivata locale è <code>1</code>. Conserva <code>pre</code>. Il backward calcola la derivata dell'attivazione lì, non su <code>out</code>.</p>
 
-        <h3 id="reading-the-matrix">14.2.1 Leggere la matrice</h3>
+        <h3 id="reading-the-matrix">14.3.1 Leggere la matrice</h3>
         <p>Prendi <code>x = [1, 2]</code>, pesi <code>[[0.5, -1], [1, 0]]</code> e bias <code>[0.25, -0.5]</code>. La colonna 0 della matrice sono i pesi verso la prima uscita: <code>0.5</code> dal primo ingresso e <code>1</code> dal secondo. La colonna 1 sono i pesi verso la seconda uscita: <code>-1</code> e <code>0</code>.</p>
         <p>La prima pre-attivazione è <code>1×0.5 + 2×1 + 0.25 = 2.75</code>. La seconda è <code>1×(-1) + 2×0 + (-0.5) = -1.5</code>. ReLU lascia <code>2.75</code> e sostituisce <code>-1.5</code> con <code>0</code>, quindi <code>out</code> è <code>[2.75, 0]</code>.</p>
         <pre><code data-run="true" data-expect="275\n-150\n275\n0">var layer = nn.dense([1.0, 2.0], [[0.5, -1.0], [1.0, 0.0]], [0.25, -0.5], "relu");
@@ -53,8 +85,8 @@ print(int(layer.pre[0] * 100));
 print(int(layer.pre[1] * 100));
 print(int(layer.out[0] * 100));
 print(int(layer.out[1]));</code></pre>
-        <h3 id="batch">14.2.2 Un batch</h3>
-        <p>Se passi una matrice, ogni riga è un campione. Gli stessi pesi e lo stesso bias valgono per ogni riga. <code>pre</code> e <code>out</code> tengono quel layout per righe, quindi <code>pre[0]</code> è il primo campione. Due copie di <code>[1, 2]</code> producono ciascuna la pre-attivazione <code>[2.75, -1.5]</code> di <a href="#reading-the-matrix">14.2.1</a>.</p>
+        <h3 id="batch">14.3.2 Un batch</h3>
+        <p>Se passi una matrice, ogni riga è un campione. Gli stessi pesi e lo stesso bias valgono per ogni riga. <code>pre</code> e <code>out</code> tengono quel layout per righe, quindi <code>pre[0]</code> è il primo campione. Due copie di <code>[1, 2]</code> producono ciascuna la pre-attivazione <code>[2.75, -1.5]</code> di <a href="#reading-the-matrix">14.3.1</a>.</p>
         <p>Il backward corrispondente somma sulle righe. Ogni riga ha <code>dZ = [1, 0]</code>, quindi il gradiente del bias è <code>[2, 0]</code> e quello dei pesi è <code>[[2, 0], [4, 0]]</code>, il doppio del gradiente su un solo campione. <code>dInput</code> resta una riga per campione: la prima riga è ancora <code>[0.5, 1]</code>. Dividi per il numero di righe quando vuoi una media. Un learning rate tarato su un campione è grande su molte righe, a meno di scalarlo.</p>
         <pre><code data-run="true" data-expect="275\n-150\n2\n0\n2\n4\n0\n5\n1">var x = [[1.0, 2.0], [1.0, 2.0]];
 var w = [[0.5, -1.0], [1.0, 0.0]];
@@ -70,7 +102,7 @@ print(int(back.dWeights[0][1]));
 print(int(back.dInput[0][0] * 10));
 print(int(back.dInput[0][1]));</code></pre>
 
-        <h2 id="activations">14.3 Attivazioni</h2>
+        <h2 id="activations">14.4 Attivazioni</h2>
         <p><code>nn.dense</code> accetta questi nomi. La chiamata <code>nn.d*</code> corrispondente è la derivata rispetto alla pre-attivazione <code>z</code>. In <code>z = 0</code> la derivata di ReLU è <code>0</code> (il test è <code>z &gt; 0</code>).</p>
         <table>
         <thead>
@@ -89,20 +121,20 @@ print(int(back.dInput[0][1]));</code></pre>
         </tbody>
         </table>
         <p>Le chiamate <code>nn.leakyRelu(x, alpha?)</code> e <code>nn.elu(x, alpha?)</code> accettano un alpha opzionale. <code>nn.dense</code> no: usa sempre i default sopra. <code>sigmoid</code>, <code>tanh</code> e <code>softmax</code> stanno anche su <code>math</code> e chiamano le stesse funzioni.</p>
-        <p>Conserva <code>pre</code> perché molte di queste derivate sono un test su <code>z</code>, e <code>out</code> ha già piegato quel test. La derivata di ReLU in <code>0</code> è <code>0</code>. In <code>3</code> è <code>1</code>. La sigmoid in <code>0</code> vale <code>0.5</code>, e la sua derivata lì è <code>0.25</code>. Una pre-attivazione oltre circa <code>±20</code> rende quella derivata <code>0</code>, ed è per questo che una pila profonda di sigmoid ha bisogno di una scala iniziale piccola (<a href="#track-check">14.6.3</a>).</p>
+        <p>Conserva <code>pre</code> perché molte di queste derivate sono un test su <code>z</code>, e <code>out</code> ha già piegato quel test. La derivata di ReLU in <code>0</code> è <code>0</code>. In <code>3</code> è <code>1</code>. La sigmoid in <code>0</code> vale <code>0.5</code>, e la sua derivata lì è <code>0.25</code>. Una pre-attivazione oltre circa <code>±20</code> rende quella derivata <code>0</code>, ed è per questo che una pila profonda di sigmoid ha bisogno di una scala iniziale piccola (<a href="#track-check">14.7.3</a>).</p>
         <pre><code data-run="true" data-expect="0\n1\n50\n25">print(int(nn.dRelu(0.0)));
 print(int(nn.dRelu(3.0)));
 print(int(nn.sigmoid(0.0) * 100));
 print(int(nn.dSigmoid(0.0) * 100));</code></pre>
 
-        <h2 id="backward">14.4 Un passo di backward</h2>
+        <h2 id="backward">14.5 Un passo di backward</h2>
         <p><code>nn.denseBackward(x, weights, upstream, activation?, pre?)</code> restituisce <code>{ dInput, dWeights, dBias }</code>. <code>upstream</code> è il gradiente della loss rispetto a <code>out</code>, un numero per uscita, con la stessa forma di <code>out</code>. Il layer moltiplica quel vettore per la derivata dell'attivazione in <code>pre</code> e chiama il risultato <code>dZ</code>. Poi:</p>
         <ul>
             <li><code>dBias</code> è <code>dZ</code>. In batch è la somma delle righe.</li>
             <li><code>dWeights[i][j]</code> è l'ingresso <code>i</code> per <code>dZ[j]</code>. È il prodotto esterno fra l'ingresso e <code>dZ</code>.</li>
             <li><code>dInput[i]</code> è la somma sulle uscite di <code>dZ[j] × weights[i][j]</code>. Quel vettore è l'upstream che riceve il layer precedente.</li>
         </ul>
-        <p>Sullo stesso layer di <a href="#reading-the-matrix">14.2.1</a>, la derivata di ReLU è <code>1</code> in <code>2.75</code> e <code>0</code> in <code>-1.5</code>. Un upstream <code>[1, 1]</code> diventa quindi <code>dZ = [1, 0]</code>. Il gradiente del bias è <code>[1, 0]</code>. Il gradiente dei pesi è <code>[[1, 0], [2, 0]]</code> perché gli ingressi sono <code>1</code> e <code>2</code>. Il gradiente dell'ingresso è <code>[0.5, 1]</code>: l'unità spenta scarta la seconda colonna di <code>W</code> prima di quel prodotto. Lo snippet stampa <code>dInput[0] × 10</code>, le due componenti del bias, poi <code>dWeights[0][0]</code>, <code>dWeights[1][0]</code> e <code>dWeights[0][1]</code>.</p>
+        <p>Sullo stesso layer di <a href="#reading-the-matrix">14.3.1</a>, la derivata di ReLU è <code>1</code> in <code>2.75</code> e <code>0</code> in <code>-1.5</code>. Un upstream <code>[1, 1]</code> diventa quindi <code>dZ = [1, 0]</code>. Il gradiente del bias è <code>[1, 0]</code>. Il gradiente dei pesi è <code>[[1, 0], [2, 0]]</code> perché gli ingressi sono <code>1</code> e <code>2</code>. Il gradiente dell'ingresso è <code>[0.5, 1]</code>: l'unità spenta scarta la seconda colonna di <code>W</code> prima di quel prodotto. Lo snippet stampa <code>dInput[0] × 10</code>, le due componenti del bias, poi <code>dWeights[0][0]</code>, <code>dWeights[1][0]</code> e <code>dWeights[0][1]</code>.</p>
         <pre><code data-run="true" data-expect="5\n1\n0\n1\n2\n0">var x = [1.0, 2.0];
 var w = [[0.5, -1.0], [1.0, 0.0]];
 var layer = nn.dense(x, w, [0.25, -0.5], "relu");
@@ -113,7 +145,7 @@ print(int(back.dBias[1]));
 print(int(back.dWeights[0][0]));
 print(int(back.dWeights[1][0]));
 print(int(back.dWeights[0][1]));</code></pre>
-        <h3 id="second-layer">14.4.1 Un secondo layer</h3>
+        <h3 id="second-layer">14.5.1 Un secondo layer</h3>
         <p>Il backward del layer di uscita viene per primo. Il suo <code>dInput</code> è l'upstream del layer nascosto, e l'<code>out</code> del forward nascosto è la <code>x</code> che il layer di uscita ha visto. Entrambi i layer hanno bisogno della <code>pre</code> che hanno restituito.</p>
         <pre><code>var hidden = nn.dense(x, w1, b1, "sigmoid");
 var out = nn.dense(hidden.out, w2, b2, "sigmoid");
@@ -138,7 +170,7 @@ print(int(backOut.dWeights[0][0]));
 print(int(backOut.dInput[0]));
 print(int(backHidden.dWeights[0][0]));</code></pre>
 
-        <h3 id="weight-update">14.4.2 Il passo sui pesi</h3>
+        <h3 id="weight-update">14.5.2 Il passo sui pesi</h3>
         <p>Non c'è un ottimizzatore built-in. Dopo i backward, sottrai <code>learningRate</code> volte <code>dWeights</code> dalla matrice dei pesi e <code>learningRate</code> volte <code>dBias</code> dal bias, elemento per elemento. Il gradiente del bias in batch è una somma, quindi un learning rate tarato su un campione è grande su molte righe, a meno di scalarlo.</p>
         <p>Prendi un ingresso <code>2</code>, peso <code>1</code>, bias <code>0</code> e target <code>6</code>, con attivazione lineare. L'uscita del forward è <code>2</code>. <code>nn.mseGrad</code> vale <code>2 − 6 = −4</code>. Il gradiente del peso è <code>2 × −4 = −8</code> e quello del bias è <code>−4</code>. Un learning rate di <code>0.25</code> porta il peso a <code>1 − 0.25 × (−8) = 3</code> e il bias a <code>1</code>. Il forward successivo è <code>3 × 2 + 1 = 7</code>, più vicino a <code>6</code>. Lo snippet stampa la prima uscita, il gradiente del peso, il peso aggiornato, il bias aggiornato e l'uscita dopo il passo.</p>
         <pre><code data-run="true" data-expect="2\n-8\n3\n1\n7">var w = [[1.0]];
@@ -155,13 +187,13 @@ print(int(b[0]));
 var again = nn.dense([2.0], w, b, "linear");
 print(int(again.out[0]));</code></pre>
 
-        <h2 id="losses">14.5 Loss</h2>
+        <h2 id="losses">14.6 Loss</h2>
         <p>Su due numeri, <code>nn.mse(pred, target)</code> è la differenza al quadrato. Su due vettori della stessa lunghezza è la media di quei quadrati. <code>nn.mse(2, 0)</code> vale <code>4</code>. <code>nn.mse([2, 0], [0, 0])</code> vale <code>2</code>, la media di <code>4</code> e <code>0</code>.</p>
         <p><code>nn.mseGrad(pred, target)</code> è <code>pred − target</code> elemento per elemento. È la derivata di <code>1/2 (pred − target)²</code>, il termine che <code>nn_dense.malda</code> accumula come loss dell'epoca. La derivata del valore che restituisce <code>nn.mse</code> è il doppio su un solo numero, e in più è divisa per la lunghezza su un vettore. Passa <code>mseGrad</code> a <code>denseBackward</code> come <code>upstream</code> quando l'ultimo layer è un'uscita di regressione.</p>
         <pre><code data-run="true" data-expect="4\n2\n2">print(int(nn.mse(2.0, 0.0)));
 print(int(nn.mseGrad(2.0, 0.0)));
 print(int(nn.mse([2.0, 0.0], [0.0, 0.0])));</code></pre>
-        <h3 id="classification">14.5.1 Classificazione</h3>
+        <h3 id="classification">14.6.1 Classificazione</h3>
         <p><code>nn.crossEntropyFromLogits(logits, targetIndex)</code> è <code>logSumExp(logits) − logits[targetIndex]</code>, lo stesso numero di <code>−log(softmax(logits)[targetIndex])</code>. <code>nn.softmaxGrad(logits, target)</code> è <code>softmax(logits)</code> meno un vettore one-hot su quell'indice di classe, oppure meno un vettore numerico della stessa lunghezza. Quel gradiente è l'<code>upstream</code> di un layer di classificazione la cui attivazione forward era <code>"linear"</code>: la softmax sta nella loss, non è una seconda non linearità su <code>pre</code>.</p>
         <p>Due logit uguali <code>[0, 0]</code> e la classe target <code>0</code> danno una softmax <code>[0.5, 0.5]</code>. La loss è <code>−log(0.5)</code>, e <code>int(loss × 1000)</code> stampa <code>693</code>. Il gradiente è <code>[−0.5, 0.5]</code>. I logit <code>[2, 0]</code> preferiscono già la classe <code>0</code>, quindi la stessa scala stampa una loss di <code>126</code> e componenti di gradiente <code>−11</code> e <code>11</code> (il troncamento di circa <code>±0.119</code>). Lascia l'ultimo layer <code>"linear"</code> e passa <code>softmaxGrad</code> come <code>upstream</code>.</p>
         <pre><code data-run="true" data-expect="693\n-5\n5\n126\n-11\n11">var flat = nn.crossEntropyFromLogits([0.0, 0.0], 0);
@@ -175,9 +207,9 @@ print(int(peaked * 1000));
 print(int(peakedGrad[0] * 100));
 print(int(peakedGrad[1] * 100));</code></pre>
 
-        <h3 id="policy">14.5.2 Un ritorno al posto di un'etichetta</h3>
+        <h3 id="policy">14.6.2 Un ritorno al posto di un'etichetta</h3>
         <p>A un classificatore viene data la classe giusta. Una policy campiona un'azione da <code>softmax(logits)</code>, e l'ambiente risponde con un ritorno. Quel ritorno è l'insegnante.</p>
-        <p><code>nn.softmaxGrad(logits, action)</code> è ancora <code>softmax</code> meno un one-hot. Su un esempio etichettato l'one-hot è la classe vera, e quel gradiente è l'<code>upstream</code>. In REINFORCE l'one-hot è l'azione appena campionata, e moltiplichi il gradiente per il ritorno <code>G</code> prima di <code>denseBackward</code>. La quantità che scendi è <code>−G × log π(azione)</code>. Un <code>G</code> positivo rende quell'azione più probabile con la sottrazione di <a href="#weight-update">14.4.2</a>. Un <code>G</code> negativo la rende meno probabile. Un <code>G</code> pari a <code>0</code> lascia i pesi dove sono.</p>
+        <p><code>nn.softmaxGrad(logits, action)</code> è ancora <code>softmax</code> meno un one-hot. Su un esempio etichettato l'one-hot è la classe vera, e quel gradiente è l'<code>upstream</code>. In REINFORCE l'one-hot è l'azione appena campionata, e moltiplichi il gradiente per il ritorno <code>G</code> prima di <code>denseBackward</code>. La quantità che scendi è <code>−G × log π(azione)</code>. Un <code>G</code> positivo rende quell'azione più probabile con la sottrazione di <a href="#weight-update">14.5.2</a>. Un <code>G</code> negativo la rende meno probabile. Un <code>G</code> pari a <code>0</code> lascia i pesi dove sono.</p>
         <p>Su un solo passo il ritorno è la ricompensa. Su un episodio più lungo, <code>G</code> a un passo è la somma delle ricompense da quel passo fino alla fine, scontata se vuoi un fattore sotto <code>1</code>. Quella somma sta in una variabile tua.</p>
         <p>Un passo, coi numeri. Lo stato è <code>1</code>. Pesi e bias sono zero, quindi entrambi i logit sono <code>0</code> e entrambe le azioni hanno probabilità <code>0.5</code>. L'azione campionata è <code>1</code> e il ritorno è <code>1</code>. <code>nn.softmaxGrad</code> sull'azione <code>1</code> è <code>[0.5, −0.5]</code>. Moltiplicato per il ritorno, quel vettore è l'upstream. Un learning rate di <code>1</code> porta la riga dei pesi a <code>[−0.5, 0.5]</code> e il bias alla stessa coppia. Il forward successivo sullo stato <code>1</code> preferisce l'azione <code>1</code>. <code>int(probabilità × 100)</code> vale <code>88</code>. Lo snippet stampa l'upstream per 10, la riga dei pesi aggiornata per 10 e quella probabilità.</p>
         <pre><code data-run="true" data-expect="5\n-5\n-5\n5\n88">var x = [1.0];
@@ -201,36 +233,36 @@ print(int(probs[1] * 100));</code></pre>
         <p>Un numero che sottrai a <code>G</code> e che ignora l'azione è una baseline. La scelta usuale è la media dei ritorni visti finora. L'aggiornamento atteso è lo stesso, e una lunga serie di ricompense <code>+1</code> smette di arrivare a scala piena. <code>Examples/AI_Theory/reinforce_bandit.malda</code> è quel ciclo su una rete 1-4-2. Lo stato è <code>+1</code> o <code>−1</code>. L'azione <code>1</code> è quella giusta per <code>+1</code>, e l'azione <code>0</code> è quella giusta per <code>−1</code>. Il layer nascosto è <code>tanh</code>, i logit sono <code>linear</code>, e l'upstream è <code>softmaxGrad</code> per <code>ricompensa − baseline</code>.</p>
         <p><code>malda play Examples/Games/cartpole_neural.malda</code> adatta una rete sul canvas a un punteggio di angolo del palo, velocità angolare, posizione del carrello e velocità del carrello. Una forza di <code>±10</code> N si vede molti passi dopo, quindi quella demo breve tiene il punteggio come insegnante. Il bandit è il programma in cui il ritorno arriva nello stesso passo. <code>malda play Examples/Games/grand_prix_neural.malda</code> adatta lo stesso strato denso a un coach di guida su tracciati semplificati di circuiti di Gran Premio. <code>malda play Examples/Games/spoken_reward.malda</code> adatta una rete 4-12-1, su x, y, x² e y², a una ricompensa che dipingi o nomini in una frase. La creatura sale sulla rete, quindi continua per un momento nella direzione vecchia dopo che la frase cambia.</p>
 
-        <h2 id="examples">14.6 Esempi</h2>
-        <p>Gli stessi tre movimenti attraversano ogni file. Una loss, o un ritorno, dà un nome all'upstream. <code>nn.denseBackward</code> trasforma quell'upstream in <code>dInput</code>, <code>dWeights</code> e <code>dBias</code>. Sottrai il learning rate per ciascun gradiente, oppure tieni una velocità, un tetto o i momenti di Adam e poi sottrai. Un secondo layer riceve il <code>dInput</code> del primo. Un classificatore passa <code>nn.softmaxGrad</code> di una classe nota. Una policy passa lo stesso vettore per un ritorno (<a href="#policy">14.5.2</a>). Una convoluzione, una ricorrenza e una testa di attenzione cambiano quali numeri si moltiplicano. Il passo resta tuo.</p>
+        <h2 id="examples">14.7 Esempi</h2>
+        <p>Gli stessi tre movimenti attraversano ogni file. Una loss, o un ritorno, dà un nome all'upstream. <code>nn.denseBackward</code> trasforma quell'upstream in <code>dInput</code>, <code>dWeights</code> e <code>dBias</code>. Sottrai il learning rate per ciascun gradiente, oppure tieni una velocità, un tetto o i momenti di Adam e poi sottrai. Un secondo layer riceve il <code>dInput</code> del primo. Un classificatore passa <code>nn.softmaxGrad</code> di una classe nota. Una policy passa lo stesso vettore per un ritorno (<a href="#policy">14.6.2</a>). Una convoluzione, una ricorrenza e una testa di attenzione cambiano quali numeri si moltiplicano. Il passo resta tuo.</p>
         <p>Leggi i file nell'ordine sotto. Ognuno fissa il RNG quando estrae i pesi, gira offline e non ha bisogno di una chiave API. Le chiamate di questo capitolo bastano per leggerli. Quello che cambia da un file all'altro è l'idea: un layer nascosto, un glifo tenuto fuori, una velocità che tieni tu, un kernel condiviso, una testa di attenzione.</p>
         <p>La stessa cartella contiene anche <code>svm_linear.malda</code> e <code>sarsa_cliff.malda</code>. Sono un classificatore a margine e un cliff tabellare, non una pila densa.</p>
 
-        <h3 id="track-xor">14.6.1 Un neurone, poi un layer nascosto</h3>
-        <p><code>chain_rule.malda</code> è un prodotto, e il motivo per cui la backpropagation moltiplica le derivate locali. <code>perceptron.malda</code> è un neurone: AND e OR sono separabili, XOR no. <code>xor_neural_net.malda</code> aggiunge il layer nascosto come rete 2-4-1 e dà un nome a ogni prodotto, così <code>dZ</code>, <code>dWeights</code> e <code>dInput</code> restano variabili. <code>nn_dense.malda</code> allena la stessa rete con <code>nn.dense</code> e <code>nn.denseBackward</code>, compreso il passo in place del learning rate di <a href="#weight-update">14.4.2</a>. <code>sequential_xor.malda</code> è la stessa rete XOR tramite <code>Sequential.fit</code>.</p>
+        <h3 id="track-xor">14.7.1 Un neurone, poi un layer nascosto</h3>
+        <p><code>chain_rule.malda</code> è un prodotto, e il motivo per cui la backpropagation moltiplica le derivate locali. <code>perceptron.malda</code> è un neurone: AND e OR sono separabili, XOR no. <code>xor_neural_net.malda</code> aggiunge il layer nascosto come rete 2-4-1 e dà un nome a ogni prodotto, così <code>dZ</code>, <code>dWeights</code> e <code>dInput</code> restano variabili. <code>nn_dense.malda</code> allena la stessa rete con <code>nn.dense</code> e <code>nn.denseBackward</code>, compreso il passo in place del learning rate di <a href="#weight-update">14.5.2</a>. <code>sequential_xor.malda</code> è la stessa rete XOR tramite <code>Sequential.fit</code>.</p>
 
-        <h3 id="track-class">14.6.2 Un classificatore</h3>
-        <p><code>softmax_classifier.malda</code> separa tre classi in 2D. La loss è <code>nn.crossEntropyFromLogits</code> e l'upstream è <code>nn.softmaxGrad</code>, come in <a href="#classification">14.5.1</a>. <code>mnist_digits.malda</code> usa dieci glifi 5×5 nella forma MNIST. Il <code>nn.dense</code> nascosto è <code>"relu"</code>. I dieci logit sono <code>"linear"</code>. <code>glyph_holdout.malda</code> allena quei dieci glifi, poi valuta una copia con due pixel invertiti. Il train è perfetto. L'holdout no, perché quei flip scambiano l'8 con il 9. Non c'è un download di MNIST.</p>
-        <p><code>reinforce_bandit.malda</code> tiene <code>nn.softmaxGrad</code> e passa l'azione campionata come indice. La scala è il ritorno meno una baseline (<a href="#policy">14.5.2</a>). Lo stato è <code>+1</code> o <code>−1</code>, il layer nascosto è <code>tanh</code> e i due logit sono <code>linear</code>.</p>
+        <h3 id="track-class">14.7.2 Un classificatore</h3>
+        <p><code>softmax_classifier.malda</code> separa tre classi in 2D. La loss è <code>nn.crossEntropyFromLogits</code> e l'upstream è <code>nn.softmaxGrad</code>, come in <a href="#classification">14.6.1</a>. <code>mnist_digits.malda</code> usa dieci glifi 5×5 nella forma MNIST. Il <code>nn.dense</code> nascosto è <code>"relu"</code>. I dieci logit sono <code>"linear"</code>. <code>glyph_holdout.malda</code> allena quei dieci glifi, poi valuta una copia con due pixel invertiti. Il train è perfetto. L'holdout no, perché quei flip scambiano l'8 con il 9. Non c'è un download di MNIST.</p>
+        <p><code>reinforce_bandit.malda</code> tiene <code>nn.softmaxGrad</code> e passa l'azione campionata come indice. La scala è il ritorno meno una baseline (<a href="#policy">14.6.2</a>). Lo stato è <code>+1</code> o <code>−1</code>, il layer nascosto è <code>tanh</code> e i due logit sono <code>linear</code>.</p>
 
-        <h3 id="track-check">14.6.3 Controllare il gradiente e la scala</h3>
-        <p><code>gradcheck_dense.malda</code> sposta ogni peso di un campione ReLU con una differenza centrale e lo confronta con <code>nn.denseBackward</code>. <code>init_scale.malda</code> è un forward attraverso una pila profonda. Un'estrazione uniforme larga satura le sigmoid, quindi la derivata locale di <a href="#activations">14.3</a> crolla. Dividere per <code>sqrt(in)</code> (Xavier) tiene quella pila reattiva. L'estrazione He tiene una pila ReLU più piccola della stessa estrazione uniforme. <code>new Dense</code> usa <code>1/sqrt(inFeatures)</code> di default.</p>
+        <h3 id="track-check">14.7.3 Controllare il gradiente e la scala</h3>
+        <p><code>gradcheck_dense.malda</code> sposta ogni peso di un campione ReLU con una differenza centrale e lo confronta con <code>nn.denseBackward</code>. <code>init_scale.malda</code> è un forward attraverso una pila profonda. Un'estrazione uniforme larga satura le sigmoid, quindi la derivata locale di <a href="#activations">14.4</a> crolla. Dividere per <code>sqrt(in)</code> (Xavier) tiene quella pila reattiva. L'estrazione He tiene una pila ReLU più piccola della stessa estrazione uniforme. <code>new Dense</code> usa <code>1/sqrt(inFeatures)</code> di default.</p>
 
-        <h3 id="track-step">14.6.4 Il passo che scrivi ancora tu</h3>
-        <p>Momentum, un tetto sulla lunghezza e Adam sono programmi. Non sono built-in. Ognuno parte dalla sottrazione di <a href="#weight-update">14.4.2</a>. <code>momentum_valley.malda</code> tiene una velocità su una quadratica ripida in un asse. <code>grad_clip.malda</code> usa una quadratica più ripida: senza tetto la magnitudine cresce; un tetto sulla lunghezza del gradiente cammina verso zero. <code>adam_valley.malda</code> tiene <code>m</code>, <code>v</code> e il contatore del passo. Il passo corretto per il bias finisce vicino all'origine, mentre l'SGD semplice resta lontano.</p>
+        <h3 id="track-step">14.7.4 Il passo che scrivi ancora tu</h3>
+        <p>Momentum, un tetto sulla lunghezza e Adam sono programmi. Non sono built-in. Ognuno parte dalla sottrazione di <a href="#weight-update">14.5.2</a>. <code>momentum_valley.malda</code> tiene una velocità su una quadratica ripida in un asse. <code>grad_clip.malda</code> usa una quadratica più ripida: senza tetto la magnitudine cresce; un tetto sulla lunghezza del gradiente cammina verso zero. <code>adam_valley.malda</code> tiene <code>m</code>, <code>v</code> e il contatore del passo. Il passo corretto per il bias finisce vicino all'origine, mentre l'SGD semplice resta lontano.</p>
 
-        <h3 id="track-shapes">14.6.5 Forme che non sono una sola chiamata densa</h3>
+        <h3 id="track-shapes">14.7.5 Forme che non sono una sola chiamata densa</h3>
         <p>Il layout è la lezione. <code>rnn_delay.malda</code> mostra una ricorrenza sigmoid che riduce il gradiente, poi una piccola rete tanh che ricorda il bit di tre passi prima. <code>conv_stroke.malda</code> riusa un kernel 3×3 a ogni finestra di un trattino 5×5, e il passo indietro somma in quei nove pesi. <code>conv_classifier.malda</code> allena gli stessi trattini con <code>new Conv(3)</code> e un <code>Dense</code> sigmoid. La mappa 3×3 viene appiattita, e <code>Dense.backward</code> viene rimodellata in <code>Conv.backward</code>. <code>residual_dropout.malda</code> mette un salto accanto a una pila sigmoid profonda, poi una maschera solo in training che la valutazione non applica.</p>
 
-        <h3 id="track-attention">14.6.6 Da una riga a un blocco decoder</h3>
+        <h3 id="track-attention">14.7.6 Da una riga a un blocco decoder</h3>
         <p><code>embed_row.malda</code> scrive il gradiente nella riga di embedding scelta e lascia ferme le altre righe. <code>next_char.malda</code> è un bigramma su una parola ripetuta: la loss è <code>nn.crossEntropyFromLogits</code>, e il gradiente del denso torna in quella sola riga. <code>next_char_mlp.malda</code> è il caso che un bigramma non sa nominare. Entrambi i campioni finiscono su <code>a</code>, un successore è <code>b</code>, l'altro è <code>c</code>, e un layer nascosto ReLU sulle due righe di embedding li nomina entrambi. <code>layer_norm.malda</code> toglie la media e divide per la deviazione standard così un prodotto profondo resta vicino a 1, poi controlla la scala con una differenza centrale.</p>
         <p><code>attention_step.malda</code> è una testa. I punteggi sono <code>QK^T / sqrt(d)</code>. L'allenamento mette la massa su un token segnato, poi una maschera causale impedisce alla posizione 0 di leggere la posizione 2. <code>positional_encoding.malda</code> aggiunge sinusoidi fisse: la posizione 0 è <code>sin(0)</code> e <code>cos(0)</code>, e la posizione 1 coincide con <code>sin(1)</code> e <code>cos(1)</code>. <code>sentence_decoder.malda</code> è un blocco causale: token più sinusoide, attenzione residua, una lettura lineare. Fa overfitting di <code>abca</code> su <code>bcab</code>, e il gradiente del denso è limitato prima del passo.</p>
-        <p><code>attention_is_all_you_need.malda</code> è il passo dopo quel blocco. Resta su <code>math.matmul</code> e aggiunge l'attenzione multi-testa, le stesse sinusoidi e l'encoder-decoder. <code>microgpt.malda</code> è un modello a caratteri piccolo sullo stesso percorso. <code>embedding_2d.malda</code> proietta un embedding hash ed elenca i vicini di VectorDB. <code>onnx_inspect.malda</code> carica <code>new OnnxModel(path)</code> su un piccolo modello identità: ispezione e un forward, sull'host, senza passo di training. <code>malda play Examples/Games/xor_decision_boundary.malda</code> disegna il campo XOR. <code>malda play Examples/Games/softmax_decision_boundary.malda</code> disegna le tre regioni softmax. <code>malda play Examples/Games/cartpole_neural.malda</code> adatta una policy sul canvas a un punteggio di palo e carrello. <code>malda play Examples/Games/grand_prix_neural.malda</code> adatta quella policy a un coach di guida su otto circuiti di Gran Premio. <code>malda play Examples/Games/spoken_reward.malda</code> adatta una rete 4-12-1 a una ricompensa dipinta o detta, e la creatura segue la rete anziché la ricompensa. Il ritorno in sé è <a href="#policy">14.5.2</a>.</p>
+        <p><code>attention_is_all_you_need.malda</code> è il passo dopo quel blocco. Resta su <code>math.matmul</code> e aggiunge l'attenzione multi-testa, le stesse sinusoidi e l'encoder-decoder. <code>microgpt.malda</code> è un modello a caratteri piccolo sullo stesso percorso. <code>embedding_2d.malda</code> proietta un embedding hash ed elenca i vicini di VectorDB. <code>onnx_inspect.malda</code> carica <code>new OnnxModel(path)</code> su un piccolo modello identità: ispezione e un forward, sull'host, senza passo di training. <code>malda play Examples/Games/xor_decision_boundary.malda</code> disegna il campo XOR. <code>malda play Examples/Games/softmax_decision_boundary.malda</code> disegna le tre regioni softmax. <code>malda play Examples/Games/cartpole_neural.malda</code> adatta una policy sul canvas a un punteggio di palo e carrello. <code>malda play Examples/Games/grand_prix_neural.malda</code> adatta quella policy a un coach di guida su otto circuiti di Gran Premio. <code>malda play Examples/Games/spoken_reward.malda</code> adatta una rete 4-12-1 a una ricompensa dipinta o detta, e la creatura segue la rete anziché la ricompensa. Il ritorno in sé è <a href="#policy">14.6.2</a>.</p>
 
-        <h2 id="backends">14.7 Backend</h2>
-        <p>Interprete, transpile C# e JavaScript eseguono tutti <code>math.dot</code> / <code>matmul</code> / <code>transpose</code>, <code>nn.*</code>, <code>new Dense</code> / <code>new Sequential</code> e le classi di layer in <a href="#other-layers">14.10</a>. <code>OnnxModel</code> è solo host. Nel core non ci sono un tipo tensore, un nastro di autograd, né <code>Adam</code> o un data loader. I nomi <code>nn</code> non hanno un alias piatto: scrivi <code>nn.relu</code>, non <code>relu</code>.</p>
+        <h2 id="backends">14.8 Backend</h2>
+        <p>Interprete, transpile C# e JavaScript eseguono tutti <code>math.dot</code> / <code>matmul</code> / <code>transpose</code>, <code>nn.*</code>, <code>new Dense</code> / <code>new Sequential</code> e le classi di layer in <a href="#other-layers">14.11</a>. <code>OnnxModel</code> è solo host. Nel core non ci sono un tipo tensore, un nastro di autograd, né <code>Adam</code> o un data loader. I nomi <code>nn</code> non hanno un alias piatto: scrivi <code>nn.relu</code>, non <code>relu</code>.</p>
 
-        <h2 id="signatures">14.8 Firme</h2>
+        <h2 id="signatures">14.9 Firme</h2>
         <p>Arietà e valori di ritorno. Il modello del layer è il resto di questo capitolo. Interprete, transpile C# e JavaScript eseguono tutti <code>nn.*</code>. Non c'è un alias piatto.</p>
         <table class="sigs">
         <thead>
@@ -304,7 +336,7 @@ var layer = nn.dense([1.0, 2.0], [[0.5, -1.0], [1.0, 0.0]], [0.25, -0.5], "relu"
 print(int(layer.out[0] * 100));
 print(int(layer.out[1]));</code></pre>
 
-        <h2 id="sequential">14.9 Sequential</h2>
+        <h2 id="sequential">14.10 Sequential</h2>
         <p><code>new Dense(inFeatures, outFeatures, activation?, scale?)</code> possiede una matrice di pesi <code>[in, out]</code> e un bias. La scala di default è <code>1/sqrt(inFeatures)</code>, estratta dallo stesso generatore di <code>math.seed</code>. Passa <code>0</code> quando vuoi zeri e scriverai tu le componenti. <code>forward(x)</code> restituisce il vettore di uscita e ricorda <code>pre</code> e l'ingresso. <code>backward(upstream)</code> chiama <code>nn.denseBackward</code> e tiene <code>dWeights</code> e <code>dBias</code>. <code>sgd(lr)</code> sottrae quei gradienti sul posto. L'ingresso è un vettore, non un batch. Chiama <code>forward</code> prima di <code>backward</code>, e <code>backward</code> prima di <code>sgd</code>.</p>
         <p><code>new Sequential([dense, ...])</code> impila quei layer. <code>forward</code>, <code>backward</code> e <code>sgd</code> percorrono la pila. <code>backward</code> parte dall'ultimo layer, quindi passi solo il gradiente della loss. <code>fit(inputs, targets, epochs, lr, loss?)</code> è SGD online: ogni campione è un forward, un backward e un <code>sgd</code> prima del campione successivo. Restituisce la loss media dell'ultima epoca, misurata prima dei passi di quell'epoca. <code>loss</code> è <code>"mse"</code> (il default; un target è un numero o un vettore) oppure <code>"crossEntropy"</code> (un indice di classe; l'ultimo layer resta <code>"linear"</code>). È ancora il backward del layer denso. Non è un nastro, e non è Adam.</p>
         <p>Lo snippet costruisce un layer lineare 1-a-1 di zeri e fa il fit di un campione, ingresso <code>[1]</code> e target <code>2</code>, per un'epoca con learning rate <code>0.5</code>. La loss riportata è <code>4</code>, l'errore al quadrato della predizione zero. Il passo poi porta peso e bias a <code>1</code>, quindi il forward successivo di <code>[1]</code> vale <code>2</code>. Le stampe sono quella loss, peso e bias per 100, e il forward per 100. Le prime tre righe sono un layer a parte: peso <code>2</code> e bias <code>1</code> sull'ingresso <code>3</code> stampano <code>7</code>.</p>
@@ -342,10 +374,10 @@ print(int(fitLayer.weights[0][0] * 100));
 print(int(fitLayer.bias[0] * 100));
 print(int(fitLayer.forward([1.0])[0] * 100));</code></pre>
 
-        <h2 id="other-layers">14.10 Altri layer</h2>
-        <p>Queste classi tengono lo stesso contratto di <code>Dense</code>. I parametri restano tuoi. <code>forward</code> ricorda l'ingresso che ha visto. <code>backward</code> tiene i gradienti. <code>sgd(lr)</code> li sottrae sul posto. Non registrano un nastro, e non sostituiscono i file scritti a mano in <a href="#examples">14.6</a>.</p>
+        <h2 id="other-layers">14.11 Altri layer</h2>
+        <p>Queste classi tengono lo stesso contratto di <code>Dense</code>. I parametri restano tuoi. <code>forward</code> ricorda l'ingresso che ha visto. <code>backward</code> tiene i gradienti. <code>sgd(lr)</code> li sottrae sul posto. Non registrano un nastro, e non sostituiscono i file scritti a mano in <a href="#examples">14.7</a>.</p>
 
-        <h3 id="conv">14.10.1 Conv</h3>
+        <h3 id="conv">14.11.1 Conv</h3>
         <p><code>new Conv(size, scale?)</code> possiede un kernel quadrato, un canale, convoluzione valid, senza bias. La scala di default è <code>1/size</code>. <code>forward(image)</code> restituisce una matrice più piccola dell'immagine di <code>size - 1</code> per lato. <code>backward(upstream)</code> somma ogni finestra in quell'unico kernel e restituisce il gradiente dell'immagine. Su un'immagine 3×3 e il kernel <code>[[1, 0], [0, 1]]</code>, l'uscita è <code>[[6, 8], [12, 14]]</code>. Un upstream di uni rende il gradiente del kernel <code>[[12, 16], [24, 28]]</code>, quindi un passo di <code>1</code> porta i due uni a <code>-11</code> e <code>-27</code>. <code>Examples/AI_Theory/conv_classifier.malda</code> allena questo layer più un <code>Dense</code> sigmoid sui trattini 5×5 di <code>conv_stroke.malda</code>. La mappa viene appiattita, e il gradiente d'ingresso del denso viene rimodellato in <code>backward</code>.</p>
         <pre><code data-run="true" data-expect="6\n14\n-11">var conv = new Conv(2, 0.0);
 conv.kernel[0][0] = 1.0;
@@ -359,7 +391,7 @@ print(int(feat[0][0]));
 print(int(feat[1][1]));
 print(int(conv.kernel[0][0]));</code></pre>
 
-        <h3 id="embedding">14.10.2 Embedding</h3>
+        <h3 id="embedding">14.11.2 Embedding</h3>
         <p><code>new Embedding(rows, dim, scale?)</code> possiede una tabella. La scala di default è <code>1/sqrt(dim)</code>. <code>forward(index)</code> restituisce una copia di quella riga. <code>backward(upstream)</code> tiene un gradiente solo per quella riga. <code>sgd</code> lo scrive lì e lascia ferme le altre righe. L'indice è un intero. Una riga <code>3</code> e un upstream <code>1</code> con learning rate <code>0.5</code> diventa <code>2.5</code>.</p>
         <pre><code data-run="true" data-expect="3\n25\n9">var emb = new Embedding(2, 1, 0.0);
 emb.table[0][0] = 3.0;
@@ -370,7 +402,7 @@ emb.sgd(0.5);
 print(int(emb.table[0][0] * 10));
 print(int(emb.table[1][0]));</code></pre>
 
-        <h3 id="rnn">14.10.3 Rnn</h3>
+        <h3 id="rnn">14.11.3 Rnn</h3>
         <p><code>new Rnn(inputSize, hiddenSize, activation?, scale?)</code> possiede <code>weightsXh</code> <code>[input, hidden]</code>, <code>weightsHh</code> <code>[hidden, hidden]</code> e un bias. L'attivazione di default è <code>tanh</code>. La scala di default è <code>1/sqrt(inputSize)</code>. <code>forward(sequence)</code> parte dallo stato nascosto zero e restituisce un vettore nascosto per passo. <code>backward(upstreams)</code> vuole un vettore di gradiente per passo e cammina dalla fine, sommando nei tre gradienti dei parametri. La matrice restituita è un gradiente di ingresso per passo. Con una cella lineare, peso <code>1</code> e ingressi <code>2</code> poi <code>3</code>, gli hidden sono <code>2</code> e <code>3</code>. Un upstream <code>1</code> sul primo passo e un learning rate <code>0.5</code> portano il peso di ingresso a <code>0</code>.</p>
         <pre><code data-run="true" data-expect="2\n3\n0">var rnn = new Rnn(1, 1, "linear", 0.0);
 rnn.weightsXh[0][0] = 1.0;
@@ -383,7 +415,7 @@ rnn.backward([[1.0], [0.0]]);
 rnn.sgd(0.5);
 print(int(rnn.weightsXh[0][0]));</code></pre>
 
-        <h3 id="layer-norm">14.10.4 LayerNorm</h3>
+        <h3 id="layer-norm">14.11.4 LayerNorm</h3>
         <p><code>new LayerNorm(features)</code> possiede <code>gamma</code>, che parte da <code>1</code>, e <code>beta</code>, che parte da <code>0</code>. <code>forward(x)</code> toglie la media, divide per la deviazione standard (epsilon <code>0.00001</code> dentro la radice), poi applica <code>gamma</code> e <code>beta</code>. <code>backward(upstream)</code> restituisce il gradiente dell'ingresso e tiene <code>dGamma</code> e <code>dBeta</code>. Su <code>[1, 3]</code> con entrambi i beta a <code>5</code>, le uscite sommano a <code>10</code>. Un upstream <code>[1, 0]</code> e un passo di <code>1</code> portano <code>gamma[0]</code> a circa <code>2</code> e <code>beta[0]</code> da <code>5</code> a <code>4</code>.</p>
         <pre><code data-run="true" data-expect="100\n1999\n4">var ln = new LayerNorm(2);
 ln.beta[0] = 5.0;
@@ -395,7 +427,7 @@ ln.sgd(1.0);
 print(int(ln.gamma[0] * 1000));
 print(int(ln.beta[0]));</code></pre>
 
-        <h3 id="attention">14.10.5 Attention</h3>
+        <h3 id="attention">14.11.5 Attention</h3>
         <p><code>new Attention(length, dim, scale?)</code> possiede <code>query</code> e <code>key</code>, ciascuna <code>[length, dim]</code>. La scala dei punteggi è <code>1/sqrt(dim)</code> di default. Passa un numero quando vuoi un altro moltiplicatore. L'estrazione iniziale di <code>query</code> e <code>key</code> usa comunque <code>1/sqrt(dim)</code>. <code>forward(value, mask?)</code> calcola <code>softmax(scale · QK^T)</code> e moltiplica per <code>value</code>. Una voce della maschera sotto <code>0.5</code> sostituisce quel punteggio con un negativo grande prima della softmax, e quella posizione non riceve un gradiente sul punteggio. Dopo <code>forward</code>, <code>probs</code> è la matrice di attenzione. <code>backward(upstream)</code> tiene i gradienti di <code>query</code> e <code>key</code> e restituisce il gradiente di <code>value</code>. Con scala <code>1</code> e query e key a zero, i due valori <code>2</code> e <code>6</code> vengono mediati a <code>4</code>. La maschera causale <code>[[1, 0], [0, 1]]</code> tiene <code>2</code> e <code>6</code>.</p>
         <pre><code data-run="true" data-expect="4\n4\n2\n6\n0">var head = new Attention(2, 1, 1.0);
 head.query[0][0] = 0.0;
