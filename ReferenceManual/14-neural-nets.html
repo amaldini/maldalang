@@ -50,7 +50,25 @@ print(stepUnit([1.0, 1.0], w, b));</code></pre>
 
         <h3 id="training">14.1.3 Training, then using the net</h3>
         <p>Using the net is a forward pass. The inputs flow through each layer to the output, and the weights stay still. That pass, after training has finished, is inference.</p>
-        <p>Training is the loop that moves the weights. You pick a loss, one number that is small when the output matches the example. For a number you wanted, squared error is enough (<code>nn.mse</code> in <a href="#losses">14.6</a>). For a class label, the loss is high when the net puts its confidence on the wrong class. The gradient of that loss is the direction in which each weight increases the loss. You subtract a fraction of the gradient from the weight. The fraction is the learning rate. Walk that subtraction from the last layer back to the first, and each layer learns how it contributed. That walk is backpropagation.</p>
+        <p>Training is the loop that moves the weights. You pick a loss, one number that is small when the output matches the example. For a number you wanted, squared error is enough (<code>nn.mse</code> in <a href="#losses">14.6</a>). For a class label, the loss is high when the net puts its confidence on the wrong class. For one weight, the gradient is how much that loss grows when the weight grows a little. You subtract a fraction of the gradient from the weight. The fraction is the learning rate.</p>
+        <p>Each weight meets the rest of the net as two numbers: the input it multiplied, and the slope arriving from the unit after it. The chain rule writes the slope of the whole net as the product of those local slopes. Start at the output and multiply back toward the input. That product is backpropagation.</p>
+        <p>One input and two linear units. The input is <code>2</code>. The hidden weight is <code>3</code> and the hidden bias is <code>0</code>, so the hidden unit writes <code>6</code>. The output weight is <code>0.5</code> and the output bias is <code>0</code>, so the prediction is <code>3</code>. The target is <code>1</code>. Half the squared error has slope <code>pred − target</code>, here <code>3 − 1 = 2</code>. <a href="#losses">14.6</a> names that slope <code>nn.mseGrad</code>. Both units are linear, so each activation derivative is <code>1</code>. The product that remains is the number the weight multiplied, times the slope arriving from the unit after it. The output weight multiplied <code>6</code>, so its gradient is <code>6 × 2 = 12</code>. The prediction was <code>0.5</code> times the hidden output, so the slope arriving at the hidden unit is <code>2 × 0.5 = 1</code>. The hidden weight multiplied the input <code>2</code>, so its gradient is <code>2 × 1 = 2</code>. A learning rate times <code>12</code> comes off the output weight, and a learning rate times <code>2</code> comes off the hidden weight. The snippet prints the hidden output, the prediction, the output-weight gradient, the slope at the hidden output, and the hidden-weight gradient. The same numbers, as two library calls, are <a href="#second-layer">14.5.1</a>. <code>Examples/AI_Theory/chain_rule.malda</code> checks this product on a curve.</p>
+        <pre><code data-run="true" data-expect="6\n3\n12\n1\n2">var x = 2.0;
+var w1 = 3.0;
+var b1 = 0.0;
+var hidden = w1 * x + b1;
+var w2 = 0.5;
+var b2 = 0.0;
+var pred = w2 * hidden + b2;
+var dPred = pred - 1.0;
+var dW2 = hidden * dPred;
+var dHidden = w2 * dPred;
+var dW1 = x * dHidden;
+print(int(hidden));
+print(int(pred));
+print(int(dW2));
+print(int(dHidden));
+print(int(dW1));</code></pre>
         <p>One pass over the examples is an epoch. You repeat it. When you stop, a forward pass is the trained function. <code>Examples/AI_Theory/</code> writes this loop in the order in <a href="#examples">14.7</a>. From <a href="#math-layout">14.2</a> on, the same loop is <code>nn.dense</code> for the forward and <code>nn.denseBackward</code> for one layer's gradients. You still own the weights.</p>
 
         <p>You keep the weights and the bias yourself. <code>nn.dense</code> is one matrix multiply, plus that bias, then an activation. <code>nn.denseBackward</code> returns the three gradients of that one layer and stops. It does not record an autograd tape, and it does not change your arrays. You subtract <code>learningRate</code> times each gradient, or you hand a fixed stack of layers to <a href="#sequential">14.10</a>, which applies that same step for you.</p>
@@ -153,7 +171,7 @@ var upstream = nn.mseGrad(out.out, [target]);
 var backOut = nn.denseBackward(hidden.out, w2, upstream, "sigmoid", out.pre);
 var backHidden = nn.denseBackward(x, w1, backOut.dInput, "sigmoid", hidden.pre);</code></pre>
         <p><code>Examples/AI_Theory/xor_neural_net.malda</code> writes those multiplies with named variables. <code>Examples/AI_Theory/nn_dense.malda</code> trains the same 2-4-1 XOR net with the two calls above.</p>
-        <p>On a linear pair every local derivative is <code>1</code>, so the hand-off is the product itself. The input is <code>2</code>, the hidden weight is <code>3</code>, and the hidden bias is <code>0</code>, so the hidden output is <code>6</code>. The output weight is <code>0.5</code> and the output bias is <code>0</code>, so the prediction is <code>3</code>. The target is <code>1</code>, and <code>nn.mseGrad</code> is <code>3 − 1 = 2</code>. The output weight gradient is <code>6 × 2 = 12</code>. The output <code>dInput</code> is <code>2 × 0.5 = 1</code>, and that <code>1</code> is the hidden layer's upstream. The hidden weight gradient is <code>2 × 1 = 2</code>. The snippet prints the hidden output, the prediction, the output weight gradient, the hidden upstream, and the hidden weight gradient.</p>
+        <p>These are the two linear units from <a href="#training">14.1.3</a>. On a linear pair every local derivative is <code>1</code>, so the hand-off is the product itself. The input is <code>2</code>, the hidden weight is <code>3</code>, and the hidden bias is <code>0</code>, so the hidden output is <code>6</code>. The output weight is <code>0.5</code> and the output bias is <code>0</code>, so the prediction is <code>3</code>. The target is <code>1</code>, and <code>nn.mseGrad</code> is <code>3 − 1 = 2</code>. The output weight gradient is <code>6 × 2 = 12</code>. The output <code>dInput</code> is <code>2 × 0.5 = 1</code>, and that <code>1</code> is the hidden layer's upstream. The hidden weight gradient is <code>2 × 1 = 2</code>. The snippet prints the hidden output, the prediction, the output weight gradient, the hidden upstream, and the hidden weight gradient.</p>
         <pre><code data-run="true" data-expect="6\n3\n12\n1\n2">var x = [2.0];
 var w1 = [[3.0]];
 var b1 = [0.0];
