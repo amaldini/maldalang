@@ -50,7 +50,25 @@ print(stepUnit([1.0, 1.0], w, b));</code></pre>
 
         <h3 id="training">14.1.3 Allenamento, poi uso della rete</h3>
         <p>Usare la rete è un passo forward. Gli ingressi attraversano ogni layer fino all'uscita, e i pesi restano fermi. Quel passo, finito l'allenamento, è l'inferenza.</p>
-        <p>L'allenamento è il ciclo che sposta i pesi. Scegli una loss, un numero piccolo quando l'uscita coincide con l'esempio. Per un numero che volevi, l'errore al quadrato basta (<code>nn.mse</code> in <a href="#losses">14.6</a>). Per un'etichetta di classe, la loss è alta quando la rete mette la sua confidenza sulla classe sbagliata. Il gradiente di quella loss è la direzione in cui ciascun peso aumenta la loss. Sottrai una frazione del gradiente dal peso. La frazione è il learning rate. Percorri quella sottrazione dall'ultimo layer al primo, e ogni layer impara come ha contribuito. Quel percorso è la backpropagation.</p>
+        <p>L'allenamento è il ciclo che sposta i pesi. Scegli una loss, un numero piccolo quando l'uscita coincide con l'esempio. Per un numero che volevi, l'errore al quadrato basta (<code>nn.mse</code> in <a href="#losses">14.6</a>). Per un'etichetta di classe, la loss è alta quando la rete mette la sua confidenza sulla classe sbagliata. Per un solo peso, il gradiente è di quanto quella loss cresce quando il peso cresce di poco. Sottrai una frazione del gradiente dal peso. La frazione è il learning rate.</p>
+        <p>Ogni peso incontra il resto della rete come due numeri: l'ingresso che ha moltiplicato, e la pendenza che arriva dall'unità successiva. La regola della catena scrive la pendenza dell'intera rete come il prodotto di quelle pendenze locali. Parti dall'uscita e moltiplica all'indietro verso l'ingresso. Quel prodotto è la backpropagation.</p>
+        <p>Un ingresso e due unità lineari. L'ingresso è <code>2</code>. Il peso nascosto è <code>3</code> e il bias nascosto è <code>0</code>, quindi l'unità nascosta scrive <code>6</code>. Il peso d'uscita è <code>0.5</code> e il bias d'uscita è <code>0</code>, quindi la previsione è <code>3</code>. Il target è <code>1</code>. Il passo usa la derivata di metà dell'errore al quadrato, cioè <code>pred − target</code>, qui <code>3 − 1 = 2</code>. <a href="#losses">14.6</a> chiama quella pendenza <code>nn.mseGrad</code>. Entrambe le unità sono lineari, quindi la derivata di ciascuna attivazione è <code>1</code>. Nel prodotto resta il numero che il peso ha moltiplicato, per la pendenza che arriva dall'unità dopo. Il peso d'uscita ha moltiplicato <code>6</code>, quindi il suo gradiente è <code>6 × 2 = 12</code>. La previsione era <code>0.5</code> volte l'uscita nascosta, quindi la pendenza che arriva all'unità nascosta è <code>2 × 0.5 = 1</code>. Il peso nascosto ha moltiplicato l'ingresso <code>2</code>, quindi il suo gradiente è <code>2 × 1 = 2</code>. Un learning rate volte <code>12</code> si toglie dal peso d'uscita, e un learning rate volte <code>2</code> si toglie dal peso nascosto. Lo snippet stampa l'uscita nascosta, la previsione, il gradiente del peso d'uscita, la pendenza sull'uscita nascosta e il gradiente del peso nascosto. Gli stessi numeri, come due chiamate di libreria, sono in <a href="#second-layer">14.5.1</a>. <code>Examples/AI_Theory/chain_rule.malda</code> verifica questo prodotto su una curva.</p>
+        <pre><code data-run="true" data-expect="6\n3\n12\n1\n2">var x = 2.0;
+var w1 = 3.0;
+var b1 = 0.0;
+var hidden = w1 * x + b1;
+var w2 = 0.5;
+var b2 = 0.0;
+var pred = w2 * hidden + b2;
+var dPred = pred - 1.0;
+var dW2 = hidden * dPred;
+var dHidden = w2 * dPred;
+var dW1 = x * dHidden;
+print(int(hidden));
+print(int(pred));
+print(int(dW2));
+print(int(dHidden));
+print(int(dW1));</code></pre>
         <p>Un passaggio sugli esempi è un'epoca. Lo ripeti. Quando ti fermi, un passo forward è la funzione allenata. <code>Examples/AI_Theory/</code> scrive questo ciclo nell'ordine di <a href="#examples">14.7</a>. Da <a href="#math-layout">14.2</a> in poi, lo stesso ciclo è <code>nn.dense</code> per il forward e <code>nn.denseBackward</code> per i gradienti di un layer. I pesi restano tuoi.</p>
 
         <p>Pesi e bias restano array tuoi. <code>nn.dense</code> è un prodotto di matrici, più quel bias, poi un'attivazione. <code>nn.denseBackward</code> restituisce i tre gradienti di quel solo layer e si ferma. Non registra un nastro di autograd e non modifica i tuoi array. Tu sottrai <code>learningRate</code> volte ciascun gradiente, oppure passi una pila fissa di layer a <a href="#sequential">14.10</a>, che applica lo stesso passo al posto tuo.</p>
@@ -153,7 +171,7 @@ var upstream = nn.mseGrad(out.out, [target]);
 var backOut = nn.denseBackward(hidden.out, w2, upstream, "sigmoid", out.pre);
 var backHidden = nn.denseBackward(x, w1, backOut.dInput, "sigmoid", hidden.pre);</code></pre>
         <p><code>Examples/AI_Theory/xor_neural_net.malda</code> scrive quei prodotti con variabili con nome. <code>Examples/AI_Theory/nn_dense.malda</code> allena la stessa rete XOR 2-4-1 con le due chiamate sopra.</p>
-        <p>Su una coppia lineare ogni derivata locale è <code>1</code>, quindi il passaggio è il prodotto stesso. L'ingresso è <code>2</code>, il peso nascosto è <code>3</code> e il bias nascosto è <code>0</code>, quindi l'uscita nascosta è <code>6</code>. Il peso d'uscita è <code>0.5</code> e il bias d'uscita è <code>0</code>, quindi la previsione è <code>3</code>. Il target è <code>1</code>, e <code>nn.mseGrad</code> vale <code>3 − 1 = 2</code>. Il gradiente del peso d'uscita è <code>6 × 2 = 12</code>. Il <code>dInput</code> d'uscita è <code>2 × 0.5 = 1</code>, e quell'<code>1</code> è l'upstream del layer nascosto. Il gradiente del peso nascosto è <code>2 × 1 = 2</code>. Lo snippet stampa l'uscita nascosta, la previsione, il gradiente del peso d'uscita, l'upstream nascosto e il gradiente del peso nascosto.</p>
+        <p>Sono le due unità lineari di <a href="#training">14.1.3</a>. Su una coppia lineare ogni derivata locale è <code>1</code>, quindi il passaggio è il prodotto stesso. L'ingresso è <code>2</code>, il peso nascosto è <code>3</code> e il bias nascosto è <code>0</code>, quindi l'uscita nascosta è <code>6</code>. Il peso d'uscita è <code>0.5</code> e il bias d'uscita è <code>0</code>, quindi la previsione è <code>3</code>. Il target è <code>1</code>, e <code>nn.mseGrad</code> vale <code>3 − 1 = 2</code>. Il gradiente del peso d'uscita è <code>6 × 2 = 12</code>. Il <code>dInput</code> d'uscita è <code>2 × 0.5 = 1</code>, e quell'<code>1</code> è l'upstream del layer nascosto. Il gradiente del peso nascosto è <code>2 × 1 = 2</code>. Lo snippet stampa l'uscita nascosta, la previsione, il gradiente del peso d'uscita, l'upstream nascosto e il gradiente del peso nascosto.</p>
         <pre><code data-run="true" data-expect="6\n3\n12\n1\n2">var x = [2.0];
 var w1 = [[3.0]];
 var b1 = [0.0];
