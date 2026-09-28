@@ -408,6 +408,7 @@ public class JavaScriptBackendTests : TestBase
             game.createCanvas(640, 360, "#app");
             game.fillRect(10, 20, 30, 40, "#33cc66");
             game.start(update, render);
+            game.stop();
             var leftPressed = game.isKeyDown("arrowleft");
             """;
         var compiler = new Compiler.Compiler();
@@ -417,6 +418,8 @@ public class JavaScriptBackendTests : TestBase
         Assert.Contains("mlRuntime.game.createCanvas(640, 360, \"#app\")", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.fillRect(10, 20, 30, 40, \"#33cc66\")", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.start(update, render)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.game.stop()", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("callActorOrVoidStop(game)", js, StringComparison.Ordinal);
         Assert.Contains("let leftPressed = mlRuntime.game.isKeyDown(\"arrowleft\");", js, StringComparison.Ordinal);
     }
 

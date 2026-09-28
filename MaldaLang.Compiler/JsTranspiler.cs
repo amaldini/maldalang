@@ -1440,7 +1440,8 @@ public class JsTranspiler
     {
         if (functionCall.Callee is MemberAccessExpression stopCall &&
             stopCall.Member == "stop" &&
-            functionCall.Arguments.Count == 0)
+            functionCall.Arguments.Count == 0 &&
+            !IsGameLoopStop(stopCall))
         {
             return $"mlRuntime.actors.callActorOrVoidStop({TranspileExpression(stopCall.Object)})";
         }
@@ -1800,6 +1801,10 @@ public class JsTranspiler
         isStatic = false;
         return false;
     }
+
+    private bool IsGameLoopStop(MemberAccessExpression stopCall) =>
+        stopCall.Object is IdentifierExpression { Name: "game" } gameName &&
+        IsUnshadowedRuntimeModule(gameName.Name);
 
     private bool IsUnshadowedRuntimeModule(string name) =>
         JsRuntimeModules.Contains(name) && !IsLocalName(name);
