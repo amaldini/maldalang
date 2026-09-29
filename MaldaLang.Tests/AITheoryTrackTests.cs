@@ -17,7 +17,7 @@ public class AITheoryTrackTests : TestBase
             .Where(example => example.Category == "AI_Theory")
             .ToList();
 
-        Assert.Equal(30, examples.Count);
+        Assert.Equal(33, examples.Count);
         Assert.All(examples, example =>
         {
             Assert.Equal("student", example.Track);
@@ -48,6 +48,28 @@ public class AITheoryTrackTests : TestBase
         Assert.NotNull(xor);
         Assert.Contains("AI_Theory/perceptron.malda", xor!.Prerequisites);
         Assert.Equal("AI_Theory/softmax_classifier.malda", xor.Next);
+    }
+
+    [Fact]
+    public void Catalog_ConvChain_IncludesComposableCnn()
+    {
+        var classifier = ExampleProgramsService.GetExampleByRelativePath("AI_Theory/conv_classifier.malda");
+        Assert.NotNull(classifier);
+        Assert.Equal("AI_Theory/cnn_basic_layers.malda", classifier!.Next);
+
+        var layers = ExampleProgramsService.GetExampleByRelativePath("AI_Theory/cnn_basic_layers.malda");
+        Assert.NotNull(layers);
+        Assert.Contains("AI_Theory/conv_classifier.malda", layers!.Prerequisites);
+        Assert.Equal("AI_Theory/cnn_composable.malda", layers.Next);
+
+        var cnn = ExampleProgramsService.GetExampleByRelativePath("AI_Theory/cnn_composable.malda");
+        Assert.NotNull(cnn);
+        Assert.Contains("AI_Theory/cnn_basic_layers.malda", cnn!.Prerequisites);
+        Assert.Equal("student", cnn.Track);
+        Assert.Equal("AI_Theory/residual_dropout.malda", cnn.Next);
+
+        var residual = ExampleProgramsService.GetExampleByRelativePath("AI_Theory/residual_dropout.malda");
+        Assert.Contains("AI_Theory/cnn_composable.malda", residual!.Prerequisites);
     }
 
     [Fact]

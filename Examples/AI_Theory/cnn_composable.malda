@@ -3,7 +3,7 @@
 // Each block is its own Sequential. The outer Sequential trains them
 // together. Dropout2D stays on the feature map. The classifier is Dense.
 
-function createConvBlock(inChannels: int, outChannels: int) -> object {
+function createConvBlock(inChannels: int, outChannels: int) -> Sequential {
     return new Sequential([
         new Conv2D(inChannels, outChannels, 3, 1, "same", 0.1),
         new BatchNorm2D(outChannels),
@@ -13,7 +13,7 @@ function createConvBlock(inChannels: int, outChannels: int) -> object {
     ]);
 }
 
-function createClassifier(inputSize: int, numClasses: int) -> object {
+function createClassifier(inputSize: int, numClasses: int) -> Sequential {
     return new Sequential([
         new Flatten(),
         new Dense(inputSize, 8, "relu", 0.1),
