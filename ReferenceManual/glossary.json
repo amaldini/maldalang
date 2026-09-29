@@ -336,7 +336,7 @@
         "14-neural-nets.html#conv-net",
         "14-neural-nets.html#conv"
       ],
-      "summary": "A shared kernel slid across a map. Conv is one channel. Conv2D adds channels, stride, and padding. A full conv net is 14.11.7."
+      "summary": "A shared kernel slid across a map. Backward sums each window into that kernel and returns the image gradient. Conv2D adds channels, a bias, stride, and padding. A full conv net is 14.11.7."
     },
     {
       "id": "graph",

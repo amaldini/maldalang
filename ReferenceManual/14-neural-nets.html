@@ -270,7 +270,7 @@ print(int(probs[1] * 100));</code></pre>
         <p>Momentum, a length cap, and Adam are programs. They are not builtins. Each one starts from the subtraction in <a href="#weight-update">14.5.2</a>. <code>momentum_valley.malda</code> keeps a velocity on a quadratic that is steep in one axis. <code>grad_clip.malda</code> uses a steeper quadratic: unclipped, the magnitude grows; a cap on the gradient length walks toward zero. <code>adam_valley.malda</code> keeps <code>m</code>, <code>v</code>, and the step counter. The bias-corrected step finishes near the origin, while plain SGD stays far.</p>
 
         <h3 id="track-shapes">14.7.5 Shapes that are not one dense call</h3>
-        <p>The layout is the lesson. <code>rnn_delay.malda</code> shows a sigmoid recurrence shrinking its gradient, then a small tanh net that recalls the bit from three steps earlier. <code>conv_stroke.malda</code> reuses one 3×3 kernel at every window of a 5×5 dash, and the backward pass adds into those nine weights. <code>conv_classifier.malda</code> trains those same dashes with <code>new Conv(3)</code> and a sigmoid <code>Dense</code>. The 3×3 map is flattened, and <code>Dense.backward</code> is reshaped into <code>Conv.backward</code>. <code>cnn_basic_layers.malda</code> walks one CHW map through <code>Conv2D</code>, <code>Activation</code>, pooling, and <code>Flatten</code> (<a href="#conv2d">14.11.6</a>). <code>cnn_composable.malda</code> stacks two of those blocks inside an outer <code>Sequential</code> and trains the classifier with <code>nn.mseGrad</code> (<a href="#compose">14.10.1</a>, <a href="#conv-net">14.11.7</a>). <code>residual_dropout.malda</code> puts a skip next to a deep sigmoid stack, then a train-time mask that eval does not apply.</p>
+        <p>The layout is the lesson. <code>rnn_delay.malda</code> shows a sigmoid recurrence shrinking its gradient, then a small tanh net that recalls the bit from three steps earlier. <code>conv_stroke.malda</code> reuses one 3×3 kernel at every window of a 5×5 dash, and each window adds the upstream times the pixel under that weight (<a href="#conv">14.11.1</a>). <code>conv_classifier.malda</code> trains those same dashes with <code>new Conv(3)</code> and a sigmoid <code>Dense</code>. The 3×3 map is flattened, and <code>Dense.backward</code> is reshaped into <code>Conv.backward</code>. <code>cnn_basic_layers.malda</code> walks one CHW map through <code>Conv2D</code>, <code>Activation</code>, pooling, and <code>Flatten</code> (<a href="#conv2d">14.11.6</a>). <code>cnn_composable.malda</code> stacks two of those blocks inside an outer <code>Sequential</code> and trains the classifier with <code>nn.mseGrad</code> (<a href="#compose">14.10.1</a>, <a href="#conv-net">14.11.7</a>). <code>residual_dropout.malda</code> puts a skip next to a deep sigmoid stack, then a train-time mask that eval does not apply.</p>
 
         <h3 id="track-attention">14.7.6 From one row to one decoder block</h3>
         <p><code>embed_row.malda</code> writes the gradient into the selected embedding row and leaves the other rows put. <code>next_char.malda</code> is a bigram on a repeated word: the loss is <code>nn.crossEntropyFromLogits</code>, and the dense gradient scatters back into that one row. <code>next_char_mlp.malda</code> is the case a bigram cannot name. Both samples end on <code>a</code>, one successor is <code>b</code>, the other is <code>c</code>, and a ReLU hidden layer on the two embedding rows names both. <code>layer_norm.malda</code> subtracts the mean and divides by the standard deviation so a deep product stays near 1, then checks the scale with a central difference.</p>
@@ -416,18 +416,28 @@ print(int(hidden.weights[0][0]));</code></pre>
         <p>These classes keep the same contract as <code>Dense</code>. You own the parameters. <code>forward</code> remembers the input it saw. <code>backward</code> stores the gradients. <code>sgd(lr)</code> subtracts them in place. They do not record a tape, and they do not replace the handwritten files in <a href="#examples">14.7</a>.</p>
 
         <h3 id="conv">14.11.1 Conv</h3>
-        <p><code>new Conv(size, scale?)</code> owns one square kernel, one channel, valid convolution, no bias. The default scale is <code>1/size</code>. <code>forward(image)</code> returns a matrix smaller than the image by <code>size - 1</code> on each side. <code>backward(upstream)</code> adds every window into that one kernel and returns the image gradient. On a 3×3 image and the kernel <code>[[1, 0], [0, 1]]</code>, the output is <code>[[6, 8], [12, 14]]</code>. An upstream of ones makes the kernel gradient <code>[[12, 16], [24, 28]]</code>, so a step of <code>1</code> moves the two ones to <code>-11</code> and <code>-27</code>. <code>Examples/AI_Theory/conv_classifier.malda</code> trains this layer plus a sigmoid <code>Dense</code> on the 5×5 dashes from <code>conv_stroke.malda</code>. The map is flattened, and the dense input gradient is reshaped into <code>backward</code>.</p>
-        <pre><code data-run="true" data-expect="6\n14\n-11">var conv = new Conv(2, 0.0);
+        <p><code>new Conv(size, scale?)</code> owns one square kernel, one channel, valid convolution, no bias. The default scale is <code>1/size</code>. <code>forward(image)</code> returns a matrix smaller than the image by <code>size - 1</code> on each side. <code>backward(upstream)</code> stores one kernel gradient and returns the image gradient, a matrix the same shape as the image. The kernel gradient is not a field. A step of <code>1</code> subtracts it, so each new entry is the old entry minus that gradient. <code>Examples/AI_Theory/conv_classifier.malda</code> trains this layer plus a sigmoid <code>Dense</code> on the 5×5 dashes from <code>conv_stroke.malda</code>. The map is flattened, and the dense input gradient is reshaped into <code>backward</code>.</p>
+        <p>Each kernel cell is the weight from <a href="#training">14.1.3</a>, shared by every window. At window <code>(oy, ox)</code> the cell <code>(ky, kx)</code> multiplied <code>image[oy + ky][ox + kx]</code>, and the slope arriving from that window is <code>upstream[oy][ox]</code>. The kernel gradient at <code>(ky, kx)</code> is the sum of those products. The image gradient is the other product from <a href="#backward">14.5</a>: each window adds <code>upstream[oy][ox] × kernel[ky][kx]</code> onto the pixels it covered. Overlapping windows add. The kernel gradient uses the input and the upstream. The image gradient uses the kernel and the upstream.</p>
+        <p>On a 3×3 ramp and the kernel <code>[[1, 0], [0, 1]]</code>, the output is <code>[[6, 8], [12, 14]]</code>. An upstream of ones visits four windows. Cell <code>(0, 0)</code> sat on <code>1</code>, <code>2</code>, <code>4</code>, and <code>5</code>, so its gradient is <code>12</code>. Cell <code>(0, 1)</code> sat on <code>2</code>, <code>3</code>, <code>5</code>, and <code>6</code>, so its gradient is <code>16</code>. Cell <code>(1, 0)</code> sat on <code>4</code>, <code>5</code>, <code>7</code>, and <code>8</code>, so its gradient is <code>24</code>. Cell <code>(1, 1)</code> sat on <code>5</code>, <code>6</code>, <code>8</code>, and <code>9</code>, so its gradient is <code>28</code>. A step of <code>1</code> moves the two ones to <code>-11</code> and <code>-27</code>, and the two zeros to <code>-16</code> and <code>-24</code>.</p>
+        <p>Those four windows also write the image gradient. The top-left window adds <code>1</code> at <code>(0, 0)</code> and at <code>(1, 1)</code>, where the kernel is <code>1</code>. The bottom-right window adds <code>1</code> at <code>(1, 1)</code> and at <code>(2, 2)</code>. The center is <code>2</code> because both windows land there. The corner <code>(0, 2)</code> stays <code>0</code>, because the only kernel cell that covers it is a <code>0</code>. The map is <code>[[1, 1, 0], [1, 2, 1], [0, 1, 1]]</code>. The snippet prints the top-left output, the bottom-right output, the image gradient at <code>(0, 0)</code>, <code>(1, 1)</code>, and <code>(0, 2)</code>, then the kernel after the step.</p>
+        <pre><code data-run="true" data-expect="6\n14\n1\n2\n0\n-11\n-16\n-24\n-27">var conv = new Conv(2, 0.0);
 conv.kernel[0][0] = 1.0;
 conv.kernel[0][1] = 0.0;
 conv.kernel[1][0] = 0.0;
 conv.kernel[1][1] = 1.0;
 var feat = conv.forward([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]]);
-conv.backward([[1.0, 1.0], [1.0, 1.0]]);
-conv.sgd(1.0);
+var dImage = conv.backward([[1.0, 1.0], [1.0, 1.0]]);
 print(int(feat[0][0]));
 print(int(feat[1][1]));
-print(int(conv.kernel[0][0]));</code></pre>
+print(int(dImage[0][0]));
+print(int(dImage[1][1]));
+print(int(dImage[0][2]));
+conv.sgd(1.0);
+print(int(conv.kernel[0][0]));
+print(int(conv.kernel[0][1]));
+print(int(conv.kernel[1][0]));
+print(int(conv.kernel[1][1]));</code></pre>
+        <p><code>conv_stroke.malda</code> writes that same product for nine weights, <code>learningRate × (acc − target) × pixel</code>, with <code>pixel</code> the image cell under the weight. It subtracts inside the window loop, so the next window sees a kernel the previous window already moved. <code>Conv.backward</code> sums every window first, and <code>sgd</code> subtracts once.</p>
 
         <h3 id="embedding">14.11.2 Embedding</h3>
         <p><code>new Embedding(rows, dim, scale?)</code> owns a table. The default scale is <code>1/sqrt(dim)</code>. <code>forward(index)</code> returns a copy of that row. <code>backward(upstream)</code> stores a gradient for that row only. <code>sgd</code> writes it there and leaves the other rows put. An index is an integer. A row of <code>3</code> and an upstream of <code>1</code> at learning rate <code>0.5</code> becomes <code>2.5</code>.</p>
@@ -481,14 +491,14 @@ print(int(causal[1][0]));
 print(int(head.probs[0][1] * 1000));</code></pre>
 
         <h3 id="conv2d">14.11.6 Convolution</h3>
-        <p>A dense layer on a flattened picture stores one weight per pixel. A convolution stores one small kernel and slides it. Every window multiplies those same numbers, so a stroke the kernel has learned at the top-left is the same stroke at the bottom-right. <code>Conv</code> in <a href="#conv">14.11.1</a> is that slide on one channel, with no bias. <code>Conv2D</code> is the same slide with several input channels, several output channels, a bias, a stride, and padding. <code>backward</code> adds every window into that one kernel. That is the addition <code>conv_stroke.malda</code> writes by hand for nine weights.</p>
+        <p>A dense layer on a flattened picture stores one weight per pixel. A convolution stores one small kernel and slides it. Every window multiplies those same numbers, so a stroke the kernel has learned at the top-left is the same stroke at the bottom-right. <code>Conv</code> in <a href="#conv">14.11.1</a> is that slide on one channel, with no bias. <code>Conv2D</code> is the same slide with several input channels, several output channels, a bias, a stride, and padding. Each of those kernels keeps the two products from <a href="#conv">14.11.1</a>. The sums are <a href="#conv-backward">below</a>.</p>
         <p>One sample is CHW: a list of channels, each channel a list of rows, each row a list of numbers. <code>input[0][0][0]</code> is a number, and <code>forward</code> returns CHW. A batch is a list of samples, NCHW, so <code>input[0][0][0]</code> is a row and <code>forward</code> returns NCHW. A list that holds one CHW map is a batch of one, and the result stays NCHW. The snippet prints the corner of a CHW picture, the number <code>1</code>, and the length of that same corner once the picture sits inside a batch, which is <code>2</code>.</p>
         <pre><code data-run="true" data-expect="1\n2">var picture = [[[1.0, 2.0], [3.0, 4.0]]];
 var batched = [picture];
 print(int(picture[0][0][0]));
 print(batched[0][0][0].length);</code></pre>
-        <p><code>new Conv2D(inChannels, outChannels, kernelSize, stride?, padding?, scale?)</code> owns weights <code>[inChannels, outChannels, kernel, kernel]</code> and a bias of length <code>outChannels</code>. One output cell is the bias of that output channel plus, for every input channel, the dot product of that channel's kernel with the window under it. The kernel that reads input channel <code>ic</code> and writes output channel <code>oc</code> is <code>weights[ic][oc]</code>. The window for output row <code>oh</code> and column <code>ow</code> starts at <code>oh * stride - padTop</code> and <code>ow * stride - padLeft</code>. A cell that lands off the image contributes <code>0</code>. The default stride is <code>1</code>, the default padding is <code>"valid"</code>, and the default scale is <code>1/sqrt(inChannels * kernel * kernel)</code>. Pass <code>0</code> for a zero kernel and write the entries yourself. <code>sgd(lr)</code> subtracts the stored gradients. Call <code>forward</code> before <code>backward</code>.</p>
-        <p><code>"valid"</code> uses no padding. The output height is <code>(height - kernelSize) / stride + 1</code>, with the division truncated, and the same formula for the width. A 3×3 image, kernel <code>2</code>, stride <code>1</code>, is 2×2, which is the map in the last snippet of this section. An image smaller than the kernel fails. <code>"same"</code> sets the output height to <code>ceil(height / stride)</code>, written <code>(height + stride - 1) / stride</code>, and the same for the width. The kernel may hang off the edge. The pad on the top is half the extra rows, truncated, so a leftover row of zeros sits on the bottom. A leftover column sits on the right. With an odd kernel and stride <code>1</code>, <code>"same"</code> keeps the height and the width.</p>
+        <p><code>new Conv2D(inChannels, outChannels, kernelSize, stride?, padding?, scale?)</code> owns weights <code>[inChannels, outChannels, kernel, kernel]</code> and a bias of length <code>outChannels</code>. One output cell is the bias of that output channel plus, for every input channel, the dot product of that channel's kernel with the window under it. The kernel that reads input channel <code>ic</code> and writes output channel <code>oc</code> is <code>weights[ic][oc]</code>. The window for output row <code>oh</code> and column <code>ow</code> starts at <code>oh * stride - padTop</code> and <code>ow * stride - padLeft</code>. A cell that lands off the image contributes <code>0</code>. The default stride is <code>1</code>, the default padding is <code>"valid"</code>, and the default scale is <code>1/sqrt(inChannels * kernel * kernel)</code>. Pass <code>0</code> for a zero kernel and write the entries yourself. Call <code>forward</code> before <code>backward</code>.</p>
+        <p><code>"valid"</code> uses no padding. The output height is <code>(height - kernelSize) / stride + 1</code>, with the division truncated, and the same formula for the width. A 3×3 image, kernel <code>2</code>, stride <code>1</code>, is 2×2, which is the map in the ramp snippet below. An image smaller than the kernel fails. <code>"same"</code> sets the output height to <code>ceil(height / stride)</code>, written <code>(height + stride - 1) / stride</code>, and the same for the width. The kernel may hang off the edge. The pad on the top is half the extra rows, truncated, so a leftover row of zeros sits on the bottom. A leftover column sits on the right. With an odd kernel and stride <code>1</code>, <code>"same"</code> keeps the height and the width.</p>
         <p>On a 4×4 ramp and a 3×3 kernel that is <code>1</code> only at the center, <code>"valid"</code> is 2×2 and the corners are <code>6</code> and <code>11</code>, the centers of the four windows. <code>"same"</code> with stride <code>1</code> keeps 4×4, and the top-left cell is <code>1</code>, the corner of the image, because the center of that window lands on the corner. A 2×2 kernel with stride <code>2</code> and the diagonal weights <code>[[1, 0], [0, 1]]</code> steps without overlap. The top-left window is <code>1 + 6 = 7</code> and the bottom-right is <code>11 + 16 = 27</code>. The prints are the valid height, those two corners, the same height, the same top-left, the stride-2 height, and the two stride-2 corners.</p>
         <pre><code data-run="true" data-expect="2\n6\n11\n4\n1\n2\n7\n27">var image = [[[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0], [9.0, 10.0, 11.0, 12.0], [13.0, 14.0, 15.0, 16.0]]];
 var valid = new Conv2D(1, 1, 3, 1, "valid", 0.0);
@@ -525,6 +535,108 @@ var pooled = pool.forward(y);
 print(int(y[0][0][0]));
 print(int(y[0][1][1]));
 print(int(pooled[0][0][0]));</code></pre>
+        <p id="conv-backward"><code>backward(upstream)</code> takes a map in the shape <code>forward</code> returned, and it returns the input gradient in the layout <code>forward</code> saw, CHW or NCHW. It stores a weight gradient of shape <code>[inChannels, outChannels, kernel, kernel]</code> and a bias gradient of length <code>outChannels</code>. There is no field for either one. <code>sgd(lr)</code> subtracts them in place, and it needs a prior <code>backward</code>. One output cell on channel <code>oc</code>, at row <code>oh</code> and column <code>ow</code>, carries an upstream number <code>grad</code>. The window starts where the forward window started.</p>
+        <ul>
+            <li>The bias gradient of channel <code>oc</code> gains <code>grad</code>, once for that output cell.</li>
+            <li>For each input channel <code>ic</code> and each kernel cell <code>(kh, kw)</code> that lands on the image, the weight gradient at <code>weights[ic][oc][kh][kw]</code> gains <code>grad</code> times the input cell under it.</li>
+            <li>That same pair adds <code>grad</code> times the weight onto the input gradient at that cell.</li>
+        </ul>
+        <p>A cell that lands off the image adds nothing and receives nothing. Overlapping windows add, on the kernel and on the image. A batch sums the weight gradient and the bias gradient across samples. Each sample keeps its own input gradient. Divide by the sample count yourself when you want a mean, as in <a href="#batch">14.3.2</a>.</p>
+        <p>A 1×1 kernel is the dense product from <a href="#backward">14.5</a>. One input channel, weight <code>3</code>, bias <code>0</code>, and pixel <code>2</code> write <code>6</code>. An upstream of <code>4</code> makes the weight gradient <code>4 × 2 = 8</code>, the bias gradient <code>4</code>, and the input gradient <code>4 × 3 = 12</code>. A step of <code>1</code> moves the weight from <code>3</code> to <code>−5</code> and the bias from <code>0</code> to <code>−4</code>. A second output channel with weight <code>5</code> and upstream <code>1</code> writes <code>10</code> on the forward pass. Its kernel receives <code>1 × 2 = 2</code>, so the step leaves that weight at <code>3</code>. The first channel's weight still moves to <code>−5</code>. The single input cell receives both channels: <code>4 × 3 + 1 × 5 = 17</code>. Two input channels split the other way. Channel <code>0</code> holds <code>2</code> with weight <code>1</code>, channel <code>1</code> holds <code>3</code> with weight <code>4</code>, and the output is <code>14</code>. An upstream of <code>1</code> gives those kernels gradients <code>2</code> and <code>3</code>, so the step leaves them at <code>−1</code> and <code>1</code>. The input gradient is the weight that channel wrote through: <code>1</code> on channel <code>0</code> and <code>4</code> on channel <code>1</code>. The snippet prints the one-channel output, its input gradient, the weight, and the bias; then the two output-channel values, the shared input gradient, both weights, and both biases; then the two-input output, both input-channel gradients, and both weights.</p>
+        <pre><code data-run="true" data-expect="6\n12\n-5\n-4\n6\n10\n17\n-5\n3\n-4\n-1\n14\n1\n4\n-1\n1">var dot = new Conv2D(1, 1, 1, 1, "valid", 0.0);
+dot.weights[0][0][0][0] = 3.0;
+dot.bias[0] = 0.0;
+var y = dot.forward([[[2.0]]]);
+var dIn = dot.backward([[[4.0]]]);
+print(int(y[0][0][0]));
+print(int(dIn[0][0][0]));
+dot.sgd(1.0);
+print(int(dot.weights[0][0][0][0]));
+print(int(dot.bias[0]));
+var outs = new Conv2D(1, 2, 1, 1, "valid", 0.0);
+outs.weights[0][0][0][0] = 3.0;
+outs.weights[0][1][0][0] = 5.0;
+outs.bias[0] = 0.0;
+outs.bias[1] = 0.0;
+var yOut = outs.forward([[[2.0]]]);
+var dOut = outs.backward([[[4.0]], [[1.0]]]);
+print(int(yOut[0][0][0]));
+print(int(yOut[1][0][0]));
+print(int(dOut[0][0][0]));
+outs.sgd(1.0);
+print(int(outs.weights[0][0][0][0]));
+print(int(outs.weights[0][1][0][0]));
+print(int(outs.bias[0]));
+print(int(outs.bias[1]));
+var ins = new Conv2D(2, 1, 1, 1, "valid", 0.0);
+ins.weights[0][0][0][0] = 1.0;
+ins.weights[1][0][0][0] = 4.0;
+ins.bias[0] = 0.0;
+var yIn = ins.forward([[[2.0]], [[3.0]]]);
+var dChan = ins.backward([[[1.0]]]);
+print(int(yIn[0][0][0]));
+print(int(dChan[0][0][0]));
+print(int(dChan[1][0][0]));
+ins.sgd(1.0);
+print(int(ins.weights[0][0][0][0]));
+print(int(ins.weights[1][0][0][0]));</code></pre>
+        <p>The 3×3 ramp from <a href="#conv">14.11.1</a>, with the same diagonal kernel and an upstream of ones, returns the same image gradient: <code>1</code> at the top-left, <code>2</code> at the center, <code>0</code> at <code>(0, 2)</code>. The corner weight moves from <code>1</code> to <code>−11</code>. <code>Conv</code> has no bias. Here the bias gradient is the sum of the four upstream ones, so a step of <code>1</code> moves the bias from <code>0</code> to <code>−4</code>. Two copies of that ramp, passed as NCHW, leave the first sample's center at <code>2</code>. The corner weight moves by <code>24</code>, twice <code>12</code>, from <code>1</code> to <code>−23</code>. The bias moves by <code>8</code>, twice <code>4</code>, from <code>0</code> to <code>−8</code>.</p>
+        <p>Padding is a zero input. A 1×1 image of <code>7</code>, a 3×3 kernel, and <code>"same"</code> keep a 1×1 output. The window hangs off on every side, and only the center kernel cell sees the <code>7</code>. With that center set to <code>1</code>, the forward cell is <code>7</code> and an upstream of <code>1</code> makes the center gradient <code>7</code>. The eight cells that saw only padding keep gradient <code>0</code>. The one image cell receives <code>1 × 1</code>. A step of <code>1</code> moves the center from <code>1</code> to <code>−6</code>, leaves a corner at <code>0</code>, and moves the bias from <code>0</code> to <code>−1</code>. The snippet prints the ramp's image gradient at those three cells, the corner weight, and the bias; then the batched center, corner weight, and bias; then the padded output, its input gradient, the center weight, a corner weight, and the bias.</p>
+        <pre><code data-run="true" data-expect="1\n2\n0\n-11\n-4\n2\n-23\n-8\n7\n1\n-6\n0\n-1">var conv = new Conv2D(1, 1, 2, 1, "valid", 0.0);
+conv.weights[0][0][0][0] = 1.0;
+conv.weights[0][0][0][1] = 0.0;
+conv.weights[0][0][1][0] = 0.0;
+conv.weights[0][0][1][1] = 1.0;
+conv.bias[0] = 0.0;
+var picture = [[[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]]];
+var dIn = conv.forward(picture);
+dIn = conv.backward([[[1.0, 1.0], [1.0, 1.0]]]);
+print(int(dIn[0][0][0]));
+print(int(dIn[0][1][1]));
+print(int(dIn[0][0][2]));
+conv.sgd(1.0);
+print(int(conv.weights[0][0][0][0]));
+print(int(conv.bias[0]));
+var batch = new Conv2D(1, 1, 2, 1, "valid", 0.0);
+batch.weights[0][0][0][0] = 1.0;
+batch.weights[0][0][0][1] = 0.0;
+batch.weights[0][0][1][0] = 0.0;
+batch.weights[0][0][1][1] = 1.0;
+batch.bias[0] = 0.0;
+var up = [[[[1.0, 1.0], [1.0, 1.0]]], [[[1.0, 1.0], [1.0, 1.0]]]];
+var dBatch = batch.forward([picture, picture]);
+dBatch = batch.backward(up);
+print(int(dBatch[0][0][1][1]));
+batch.sgd(1.0);
+print(int(batch.weights[0][0][0][0]));
+print(int(batch.bias[0]));
+var pad = new Conv2D(1, 1, 3, 1, "same", 0.0);
+pad.weights[0][0][1][1] = 1.0;
+pad.bias[0] = 0.0;
+var yPad = pad.forward([[[7.0]]]);
+var dPad = pad.backward([[[1.0]]]);
+print(int(yPad[0][0][0]));
+print(int(dPad[0][0][0]));
+pad.sgd(1.0);
+print(int(pad.weights[0][0][1][1]));
+print(int(pad.weights[0][0][0][0]));
+print(int(pad.bias[0]));</code></pre>
+        <p>A stride equal to the kernel size lays the windows side by side. On the 4×4 ramp, the same diagonal 2×2 kernel, and stride <code>2</code>, an upstream of ones covers each image cell with one window. The top-left cell receives the kernel's <code>1</code>. The cell beside it sits under a kernel <code>0</code>, so its image gradient is <code>0</code>. Kernel cell <code>(0, 0)</code> summed <code>1 + 3 + 9 + 11 = 24</code>. Kernel cell <code>(1, 1)</code> summed <code>6 + 8 + 14 + 16 = 44</code>. A step of <code>1</code> moves those ones to <code>−23</code> and <code>−43</code>. The bias gradient is again the four upstream ones, so the bias moves to <code>−4</code>. The snippet prints the two image cells, the two kernel ones, and the bias.</p>
+        <pre><code data-run="true" data-expect="1\n0\n-23\n-43\n-4">var stepped = new Conv2D(1, 1, 2, 2, "valid", 0.0);
+stepped.weights[0][0][0][0] = 1.0;
+stepped.weights[0][0][0][1] = 0.0;
+stepped.weights[0][0][1][0] = 0.0;
+stepped.weights[0][0][1][1] = 1.0;
+stepped.bias[0] = 0.0;
+var image = [[[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0], [9.0, 10.0, 11.0, 12.0], [13.0, 14.0, 15.0, 16.0]]];
+var dStep = stepped.forward(image);
+dStep = stepped.backward([[[1.0, 1.0], [1.0, 1.0]]]);
+print(int(dStep[0][0][0]));
+print(int(dStep[0][0][1]));
+stepped.sgd(1.0);
+print(int(stepped.weights[0][0][0][0]));
+print(int(stepped.weights[0][0][1][1]));
+print(int(stepped.bias[0]));</code></pre>
 
         <h3 id="conv-net">14.11.7 A convolutional net</h3>
         <p>A convolutional net is a <code>Sequential</code>. The early layers read a map. The last layer returns a vector, so the losses in <a href="#losses">14.6</a> still apply. Between them the map gets smaller and the channel count usually grows. Group those layers into smaller nets with <a href="#compose">14.10.1</a>.</p>
@@ -559,6 +671,10 @@ print(int(cnn.forward(image)[0]));</code></pre>
         <tbody>
         <tr class="sig"><td colspan="3"><code>new Conv2D(inChannels, outChannels, kernelSize, stride?, padding?, scale?)</code></td></tr>
         <tr><td>3-6 arguments</td><td><code>Conv2D</code></td><td>weights <code>[in, out, k, k]</code>, bias length <code>out</code>. Stride <code>1</code>, padding <code>"valid"</code> or <code>"same"</code>, scale <code>1/sqrt(in * k * k)</code></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>Conv2D.forward(input)</code> / <code>backward(upstream)</code> / <code>sgd(lr)</code></td></tr>
+        <tr><td>1 argument</td><td>map, map, null</td><td><code>backward</code> returns the input gradient and needs a prior <code>forward</code>. The weight gradient matches <code>weights</code>. The bias gradient sums <code>upstream</code> over space and batch. <code>sgd</code> needs a prior <code>backward</code></td></tr>
         </tbody>
         <tbody>
         <tr class="sig"><td colspan="3"><code>new MaxPool2D(poolSize, stride?)</code> / <code>AvgPool2D</code></td></tr>

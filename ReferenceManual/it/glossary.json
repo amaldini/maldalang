@@ -338,7 +338,7 @@
         "14-neural-nets.html#conv-net",
         "14-neural-nets.html#conv"
       ],
-      "summary": "Un kernel condiviso fatto scorrere su una mappa. Conv è un canale. Conv2D aggiunge canali, stride e padding. Una rete conv completa è 14.11.7."
+      "summary": "Un kernel condiviso fatto scorrere su una mappa. Il passo indietro somma ogni finestra in quel kernel e restituisce il gradiente dell'immagine. Conv2D aggiunge canali, un bias, stride e padding. Una rete conv completa è 14.11.7."
     },
     {
       "id": "graph",

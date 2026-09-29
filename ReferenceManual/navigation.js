@@ -855,7 +855,7 @@ const FALLBACK_GLOSSARY_EN = [
             "convolutional neural network"
         ],
         "href": "14-neural-nets.html#conv2d",
-        "summary": "A shared kernel slid across a map. Conv is one channel. Conv2D adds channels, stride, and padding. A full conv net is 14.11.7.",
+        "summary": "A shared kernel slid across a map. Backward sums each window into that kernel and returns the image gradient. Conv2D adds channels, a bias, stride, and padding. A full conv net is 14.11.7.",
         "also": [
             "14-neural-nets.html#conv-net",
             "14-neural-nets.html#conv"
@@ -1882,7 +1882,7 @@ const FALLBACK_GLOSSARY_IT = [
             "rete convoluzionale"
         ],
         "href": "14-neural-nets.html#conv2d",
-        "summary": "Un kernel condiviso fatto scorrere su una mappa. Conv è un canale. Conv2D aggiunge canali, stride e padding. Una rete conv completa è 14.11.7.",
+        "summary": "Un kernel condiviso fatto scorrere su una mappa. Il passo indietro somma ogni finestra in quel kernel e restituisce il gradiente dell'immagine. Conv2D aggiunge canali, un bias, stride e padding. Una rete conv completa è 14.11.7.",
         "also": [
             "14-neural-nets.html#conv-net",
             "14-neural-nets.html#conv"
