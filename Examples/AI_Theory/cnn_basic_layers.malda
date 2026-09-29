@@ -1,0 +1,71 @@
+// Simple CNN example using basic layers
+//
+// Demonstrates basic usage of CNN layers for feature extraction
+// from a small 4x4 image using a simple convolutional network.
+
+io.print("Simple CNN Layer Example");
+io.print("");
+
+math.seed(42);
+
+// Create a simple 4x4 single-channel image
+var image = [[[
+    [1.0, 2.0, 3.0, 4.0],
+    [5.0, 6.0, 7.0, 8.0],
+    [9.0, 10.0, 11.0, 12.0],
+    [13.0, 14.0, 15.0, 16.0]
+]]];
+
+io.print("Input image (4x4, 1 channel):");
+for (var r = 0; r < 4; r = r + 1) {
+    var row = "";
+    for (var c = 0; c < 4; c = c + 1) {
+        row = row + string(int(image[0][0][r][c])) + " ";
+    }
+    io.print("  " + row);
+}
+
+// 1. Convolution: Extract features with 2x2 filters
+io.print("");
+io.print("1. Apply Conv2D (1->2 channels, 2x2 kernel, valid padding):");
+var conv = new Conv2D(1, 2, 2, 1, "valid", 0.1);
+var features = conv.forward(image);
+io.print("   Output shape: 3x3, 2 channels");
+
+// 2. Max pooling: Reduce spatial dimensions
+io.print("");
+io.print("2. Apply MaxPool2D (2x2 pool, stride 2):");
+var pool = new MaxPool2D(2, 2);
+var pooled = pool.forward(features);
+io.print("   Output shape: 1x1, 2 channels");
+
+// 3. Global average pooling: Alternative to flattening
+io.print("");
+io.print("3. Apply GlobalAvgPool2D:");
+var globalPool = new GlobalAvgPool2D();
+var pooledAlt = globalPool.forward(features);
+io.print("   Output: vector of length " + string(pooledAlt.length));
+
+// 4. Flatten: Convert to 1D for dense layers
+io.print("");
+io.print("4. Apply Flatten:");
+var flatten = new Flatten();
+var flat = flatten.forward(pooled);
+io.print("   Output: vector of length " + string(flat.length));
+
+// 5. Dense layer: Final classification
+io.print("");
+io.print("5. Apply Dense layer (2->1):");
+var dense = new Dense(2, 1, "sigmoid", 0.1);
+var output = dense.forward(flat);
+io.print("   Output: " + string(output[0]));
+
+io.print("");
+io.print("✓ Basic CNN pipeline complete!");
+io.print("");
+io.print("Layer types demonstrated:");
+io.print("  • Conv2D - Multi-channel convolution");
+io.print("  • MaxPool2D - Spatial downsampling");
+io.print("  • GlobalAvgPool2D - Global pooling");
+io.print("  • Flatten - Spatial to vector");
+io.print("  • Dense - Fully connected");
