@@ -1168,7 +1168,7 @@ public partial class Interpreter
         function.ParameterDecorators = decl.ParameterDecorators;
         // Always define functions in the global environment to ensure they're accessible
         _globals.Define(decl.Name, RuntimeValue.Function(function));
-        
+
         // Check for @Tool decorator and register tool
         if (decl.Decorators != null)
         {
@@ -1178,6 +1178,39 @@ public partial class Interpreter
                 RegisterToolFromDecorator(function, toolDecorator, decl);
             }
         }
+    }
+
+    /// <summary>
+    /// Binds a <c>function</c> declared inside a block, function body, loop, or match.
+    /// The top-level declaration pass never sees these, and skipping them left the name
+    /// undefined (for example <c>memoryEmbed</c> in the assistant script). The closure is
+    /// the active environment, so the function reads enclosing locals when it is called.
+    /// </summary>
+    private RuntimeValue? BindLocalFunction(FunctionDeclaration decl)
+    {
+        var function = new FunctionValue(decl, _environment);
+        function.Decorators = decl.Decorators;
+        function.ParameterDecorators = decl.ParameterDecorators;
+        _environment.Define(decl.Name, RuntimeValue.Function(function));
+
+        if (decl.Decorators != null)
+        {
+            var toolDecorator = decl.Decorators.FirstOrDefault(d => d.Name == "Tool");
+            if (toolDecorator != null && !LocalToolAlreadyRegistered(toolDecorator))
+                RegisterToolFromDecorator(function, toolDecorator, decl);
+        }
+
+        return null;
+    }
+
+    private bool LocalToolAlreadyRegistered(Decorator toolDecorator)
+    {
+        if (toolDecorator.Arguments == null || toolDecorator.Arguments.Count == 0)
+            return false;
+
+        var nameValue = EvaluateDecoratorArgumentSync(toolDecorator.Arguments[0]);
+        return nameValue.Type == ValueType.String
+            && ToolRegistry.Instance.GetTool(nameValue.AsString()) != null;
     }
     
     private void DefinePrompt(PromptDeclaration decl)
@@ -1833,7 +1866,7 @@ public partial class Interpreter
                 UsingResourceStatement usingResource => await ExecuteUsingResourceAsync(usingResource),
                 DeferStatement deferStmt => ExecuteDefer(deferStmt),
                 ImportStatement importStmt => await ExecuteImportAsync(importStmt),
-                FunctionDeclaration funcDecl => null, // Already handled
+                FunctionDeclaration funcDecl => BindLocalFunction(funcDecl),
                 ClassDeclaration classDecl => null, // Already handled
                 ActorDeclaration actorDecl => null, // Already handled
                 PromptDeclaration => null, // Already handled
