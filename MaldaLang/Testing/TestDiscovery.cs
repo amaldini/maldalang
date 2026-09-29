@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using MaldaLang.BuiltIns;
 
 public sealed class TestDiscovery
 {
@@ -27,8 +28,8 @@ public sealed class TestDiscovery
             return Array.Empty<string>();
         }
 
-        var discovered = Directory
-            .EnumerateFiles(absoluteRoot, "*.malda", SearchOption.AllDirectories)
+        var discovered = SafeDirectoryWalk
+            .EnumerateFiles(absoluteRoot, "*.malda")
             .Where(IsDiscoverableFile)
             .OrderBy(NormalizePath, StringComparer.OrdinalIgnoreCase)
             .ToList();

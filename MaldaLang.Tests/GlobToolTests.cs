@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Andrea Maldini
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
+using System.Diagnostics;
 using MaldaLang.BuiltIns;
 using MaldaLang.Interpreter;
 using Xunit;
@@ -196,6 +197,90 @@ public class GlobToolTests
         }
         finally
         {
+            TryDeleteDirectory(tempRoot);
+        }
+    }
+
+    [Fact]
+    public void GlobAndGrep_DoNotFollowDirectoryJunctionCycle()
+    {
+        if (!OperatingSystem.IsWindows())
+            return;
+
+        var tempRoot = Path.Combine(Path.GetTempPath(), "malda-glob-junction-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempRoot);
+        var sub = Path.Combine(tempRoot, "sub");
+        Directory.CreateDirectory(sub);
+        File.WriteAllText(Path.Combine(tempRoot, "a.txt"), "hi");
+        File.WriteAllText(Path.Combine(sub, "b.txt"), "there");
+        var junction = Path.Combine(tempRoot, "loop");
+
+        var link = Process.Start(new ProcessStartInfo
+        {
+            FileName = "cmd.exe",
+            Arguments = $"/c mklink /J \"{junction}\" \"{tempRoot}\"",
+            CreateNoWindow = true,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true
+        });
+        Assert.NotNull(link);
+        link!.WaitForExit();
+        Assert.True(link.ExitCode == 0, link.StandardError.ReadToEnd());
+
+        try
+        {
+            var (paths, count, truncated) = ParseGlobResult(CallGlob("**/*", tempRoot));
+            Assert.False(truncated);
+            Assert.Equal(2, count);
+            Assert.Contains("a.txt", paths);
+            Assert.Contains("sub/b.txt", paths);
+            Assert.DoesNotContain(paths, p => p.Contains("loop", StringComparison.OrdinalIgnoreCase));
+
+            var withDirs = ParseGlobResult(CallGlob("**/*", tempRoot, includeDirectories: true));
+            Assert.Contains("loop", withDirs.Paths);
+            Assert.Contains("sub", withDirs.Paths);
+            Assert.DoesNotContain(withDirs.Paths, p => p.Contains("loop/loop", StringComparison.OrdinalIgnoreCase));
+            Assert.True(withDirs.Count < 20);
+
+            var grep = BuiltInFunctions.CallBuiltIn(
+                "grep",
+                new List<RuntimeValue>
+                {
+                    RuntimeValue.String("hi"),
+                    RuntimeValue.String(tempRoot)
+                },
+                null);
+            Assert.NotEqual(ValueType.String, grep.Type);
+            var grepPaths = grep.AsArray()
+                .Select(item => item.AsObject().Get("filePath", null)!.AsString())
+                .ToList();
+            Assert.Contains(grepPaths, p => p.EndsWith("a.txt", StringComparison.OrdinalIgnoreCase));
+            Assert.DoesNotContain(grepPaths, p => p.Contains($"{Path.DirectorySeparatorChar}loop{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase));
+
+            var listing = BuiltInFunctions.CallBuiltIn(
+                "listDirectory",
+                new List<RuntimeValue> { RuntimeValue.String(tempRoot) },
+                null);
+            var names = listing.AsArray()
+                .Select(item => item.AsObject().Get("name", null)!.AsString())
+                .ToList();
+            Assert.Contains("loop", names);
+            Assert.Contains("a.txt", names);
+            var loopEntry = listing.AsArray().First(item => item.AsObject().Get("name", null)!.AsString() == "loop");
+            Assert.Equal("directory", loopEntry.AsObject().Get("type", null)!.AsString());
+        }
+        finally
+        {
+            try
+            {
+                if (Directory.Exists(junction))
+                    Directory.Delete(junction, recursive: false);
+            }
+            catch
+            {
+                // best effort; recursive delete must not follow the junction
+            }
             TryDeleteDirectory(tempRoot);
         }
     }

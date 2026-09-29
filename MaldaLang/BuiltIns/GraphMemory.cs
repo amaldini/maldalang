@@ -568,8 +568,9 @@ public class GraphMemoryInstance : ObjectInstance
     
     private RuntimeValue CallPrune(List<RuntimeValue> args)
     {
-        if (args.Count < 1 || args[0].Type != ValueType.Object || args[0].AsObject() is not JsonObject options)
+        if (args.Count < 1)
             throw new RuntimeException("prune() expects 1 object argument (options)");
+        var options = RequireJsonObject(args[0], "prune() expects 1 object argument (options)");
         
         EnsureInitialized();
         
@@ -663,11 +664,7 @@ public class GraphMemoryInstance : ObjectInstance
     {
         JsonObject? options = null;
         if (args.Count >= 1)
-        {
-            if (args[0].Type != ValueType.Object || args[0].AsObject() is not JsonObject optionsArg)
-                throw new RuntimeException("consolidate() expects 0-1 object argument (options?)");
-            options = optionsArg;
-        }
+            options = RequireJsonObject(args[0], "consolidate() expects 0-1 object argument (options?)");
         
         EnsureInitialized();
         
@@ -740,11 +737,7 @@ public class GraphMemoryInstance : ObjectInstance
     {
         JsonObject? options = null;
         if (args.Count >= 1)
-        {
-            if (args[0].Type != ValueType.Object || args[0].AsObject() is not JsonObject optionsArg)
-                throw new RuntimeException("reflect() expects 0-1 object argument (options?)");
-            options = optionsArg;
-        }
+            options = RequireJsonObject(args[0], "reflect() expects 0-1 object argument (options?)");
         
         EnsureInitialized();
         
@@ -864,11 +857,7 @@ public class GraphMemoryInstance : ObjectInstance
 
         JsonObject? options = null;
         if (args.Count >= 1)
-        {
-            if (args[0].Type != ValueType.Object || args[0].AsObject() is not JsonObject optionsArg)
-                throw new RuntimeException("reflectAsync() expects 0-1 object argument (options?)");
-            options = optionsArg;
-        }
+            options = RequireJsonObject(args[0], "reflectAsync() expects 0-1 object argument (options?)");
 
         var savePath = GetStringOption(options, "savePath");
         var reflectArgs = new List<RuntimeValue>();
@@ -1553,13 +1542,13 @@ public class GraphMemoryInstance : ObjectInstance
             if (args[1].Type == ValueType.String)
             {
                 loadArgs.Add(args[1]);
-                if (args.Count >= 3 && args[2].Type == ValueType.Object && args[2].AsObject() is JsonObject optionsArg)
-                    options = optionsArg;
+                if (args.Count >= 3 && args[2].Type == ValueType.Object)
+                    options = RequireJsonObject(args[2], "indexDocuments() options must be an object");
             }
-            else if (args[1].Type == ValueType.Object && args[1].AsObject() is JsonObject optionsOnly)
+            else if (args[1].Type == ValueType.Object)
             {
                 loadArgs.Add(RuntimeValue.String("."));
-                options = optionsOnly;
+                options = RequireJsonObject(args[1], "indexDocuments() options must be an object");
             }
         }
         
@@ -3318,8 +3307,9 @@ public class GraphMemoryInstance : ObjectInstance
 
     private RuntimeValue CallEnforceLimits(List<RuntimeValue> args)
     {
-        if (args.Count < 1 || args[0].Type != ValueType.Object || args[0].AsObject() is not JsonObject options)
+        if (args.Count < 1)
             throw new RuntimeException("enforceLimits() expects 1 object argument (options)");
+        var options = RequireJsonObject(args[0], "enforceLimits() expects 1 object argument (options)");
         
         EnsureInitialized();
         
@@ -3536,9 +3526,7 @@ public class GraphMemoryInstance : ObjectInstance
         JsonObject? saveOptions = null;
         if (args.Count >= 2)
         {
-            if (args[1].Type != ValueType.Object || args[1].AsObject() is not JsonObject optionsArg)
-                throw new RuntimeException("save() optional second argument must be options object");
-            saveOptions = optionsArg;
+            saveOptions = RequireJsonObject(args[1], "save() optional second argument must be options object");
         }
 
         var filePath = args[0].AsString();
@@ -3557,9 +3545,7 @@ public class GraphMemoryInstance : ObjectInstance
         JsonObject? loadOptions = null;
         if (args.Count >= 2)
         {
-            if (args[1].Type != ValueType.Object || args[1].AsObject() is not JsonObject optionsArg)
-                throw new RuntimeException("load() optional second argument must be options object");
-            loadOptions = optionsArg;
+            loadOptions = RequireJsonObject(args[1], "load() optional second argument must be options object");
         }
         var migrateDualIndex = GetBoolOption(loadOptions, "migrateDualIndex", true);
         var filePath = args[0].AsString();
@@ -3721,11 +3707,11 @@ public class GraphMemoryInstance : ObjectInstance
         {
             if (args[1].Type == ValueType.String)
                 pattern = args[1].AsString();
-            else if (args[1].Type == ValueType.Object && args[1].AsObject() is JsonObject optsOnly)
-                options = optsOnly;
+            else if (args[1].Type == ValueType.Object)
+                options = RequireJsonObject(args[1], "startKbWatch() options must be an object");
         }
-        if (args.Count >= 3 && args[2].Type == ValueType.Object && args[2].AsObject() is JsonObject opts)
-            options = opts;
+        if (args.Count >= 3 && args[2].Type == ValueType.Object)
+            options = RequireJsonObject(args[2], "startKbWatch() options must be an object");
         var scope = GetStringOption(options, "scope") ?? "global";
         _kbWatchSavePath = GetStringOption(options, "savePath");
         var debounceMs = GetIntOption(options, "debounceMs", 2000);
@@ -3777,9 +3763,7 @@ public class GraphMemoryInstance : ObjectInstance
         JsonObject? options = null;
         if (args.Count >= 2)
         {
-            if (args[1].Type != ValueType.Object || args[1].AsObject() is not JsonObject opts)
-                throw new RuntimeException("forgetByScope() optional second argument must be options object");
-            options = opts;
+            options = RequireJsonObject(args[1], "forgetByScope() optional second argument must be options object");
         }
         var pruneOpts = new JsonObject();
         pruneOpts.Set("scope", RuntimeValue.String(scope));
@@ -3797,9 +3781,7 @@ public class GraphMemoryInstance : ObjectInstance
         JsonObject? options = null;
         if (args.Count >= 2)
         {
-            if (args[1].Type != ValueType.Object || args[1].AsObject() is not JsonObject opts)
-                throw new RuntimeException("forgetByCategory() optional second argument must be options object");
-            options = opts;
+            options = RequireJsonObject(args[1], "forgetByCategory() optional second argument must be options object");
         }
         EnsureInitialized();
         var scopeFilter = GetStringOption(options, "scope");
@@ -3836,9 +3818,7 @@ public class GraphMemoryInstance : ObjectInstance
         JsonObject? options = null;
         if (args.Count >= 2)
         {
-            if (args[1].Type != ValueType.Object || args[1].AsObject() is not JsonObject opts)
-                throw new RuntimeException("forgetByTag() optional second argument must be options object");
-            options = opts;
+            options = RequireJsonObject(args[1], "forgetByTag() optional second argument must be options object");
         }
         EnsureInitialized();
         var scopeFilter = GetStringOption(options, "scope");
@@ -4053,9 +4033,17 @@ public class GraphMemoryInstance : ObjectInstance
     }
 
     /// <summary>
-    /// Interpreter object literals are <see cref="JsonObject"/>; transpiled ones are
-    /// <see cref="DictionaryInstance"/>. GraphMemory option/metadata helpers expect JsonObject.
+    /// <c>{ }</c> literals are <see cref="JsonObject"/>. <c>dict { }</c> and transpiled
+    /// object literals are <see cref="DictionaryInstance"/>. Option helpers expect JsonObject.
     /// </summary>
+    private static JsonObject RequireJsonObject(RuntimeValue value, string errorMessage)
+    {
+        var options = CoerceToJsonObject(value);
+        if (options == null)
+            throw new RuntimeException(errorMessage);
+        return options;
+    }
+
     private static JsonObject? CoerceToJsonObject(RuntimeValue value)
     {
         if (value.Type != ValueType.Object)

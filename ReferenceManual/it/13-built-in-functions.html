@@ -943,6 +943,7 @@ var docText = doc.extractText("brief.docx");</code></pre>
         <ul>
             <li><code>dirPath</code> ha default <code>"."</code>, <code>maxResults</code> <code>200</code> (limitato a 500), <code>includeDirectories</code> <code>false</code> e i due argomenti stringa rimanenti <code>""</code>.</li>
             <li>In caso di successo restituisce un oggetto <code>{ items, count, truncated }</code>, dove ogni item è <code>{ name, type, path }</code> e <code>truncated</code> indica se il risultato ha raggiunto <code>maxResults</code>.</li>
+            <li><code>glob</code> e <code>grep</code> ricorsivi non seguono junction di directory né link simbolici. Il link stesso può comunque comparire in un <code>listDirectory</code> di un solo livello.</li>
         </ul>
         <pre><code>var found = glob("**/*.malda", "Examples");
 print(found.count);

@@ -53,7 +53,7 @@ internal static class GlobHelper
         foreach (var dir in excludes)
             matcher.AddExclude($"**/{dir}/**");
 
-        var result = matcher.Execute(new DirectoryInfoWrapper(new DirectoryInfo(absoluteRoot)));
+        var result = matcher.Execute(new SkippingReparseDirectoryInfo(new DirectoryInfo(absoluteRoot)));
 
         var candidates = new List<(string RelativePath, string Name, bool IsDirectory)>();
 
@@ -67,7 +67,7 @@ internal static class GlobHelper
 
         if (includeDirectories)
         {
-            foreach (var dir in Directory.EnumerateDirectories(absoluteRoot, "*", SearchOption.AllDirectories))
+            foreach (var dir in SafeDirectoryWalk.EnumerateDirectories(absoluteRoot))
             {
                 if (IsUnderExcludedDirectory(dir, absoluteRoot, excludes))
                     continue;
@@ -137,4 +137,72 @@ internal static class GlobHelper
             return normalizedRel;
         }
     }
+}
+
+/// <summary>
+/// <see cref="DirectoryInfoWrapper"/> that does not yield directory junctions or
+/// symbolic links, so <c>Matcher</c> cannot recurse through a cycle.
+/// </summary>
+internal sealed class SkippingReparseDirectoryInfo : DirectoryInfoBase
+{
+    private readonly DirectoryInfo _directory;
+
+    public SkippingReparseDirectoryInfo(DirectoryInfo directory)
+    {
+        _directory = directory;
+    }
+
+    public override string Name => _directory.Name;
+
+    public override string FullName => _directory.FullName;
+
+    public override DirectoryInfoBase? ParentDirectory
+    {
+        get
+        {
+            var parent = _directory.Parent;
+            return parent == null ? null : new SkippingReparseDirectoryInfo(parent);
+        }
+    }
+
+    public override IEnumerable<FileSystemInfoBase> EnumerateFileSystemInfos()
+    {
+        List<string> entries;
+        try
+        {
+            entries = Directory.EnumerateFileSystemEntries(_directory.FullName).ToList();
+        }
+        catch (Exception)
+        {
+            yield break;
+        }
+
+        foreach (var entry in entries)
+        {
+            FileAttributes attrs;
+            try
+            {
+                attrs = File.GetAttributes(entry);
+            }
+            catch (Exception)
+            {
+                continue;
+            }
+
+            var isDirectory = (attrs & FileAttributes.Directory) != 0;
+            if (isDirectory && (attrs & FileAttributes.ReparsePoint) != 0)
+                continue;
+
+            if (isDirectory)
+                yield return new SkippingReparseDirectoryInfo(new DirectoryInfo(entry));
+            else
+                yield return new FileInfoWrapper(new FileInfo(entry));
+        }
+    }
+
+    public override DirectoryInfoBase GetDirectory(string path)
+        => new SkippingReparseDirectoryInfo(new DirectoryInfo(Path.Combine(_directory.FullName, path)));
+
+    public override FileInfoBase GetFile(string path)
+        => new FileInfoWrapper(new FileInfo(Path.Combine(_directory.FullName, path)));
 }

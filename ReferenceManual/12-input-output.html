@@ -292,7 +292,7 @@ io.deleteFile("_rm_cap_note.txt");</code></pre>
 var found = io.glob("_rm_io_glob.txt", ".");
 io.print(found.count);
 io.deleteFile("_rm_io_glob.txt");</code></pre>
-        <p>Default <code>glob</code> cap is 200 results (hard cap 500); the result is <code>{ items, count, truncated }</code> with each item <code>{ name, type, path }</code>. <code>grep</code> defaults to recursive search with line numbers. Argument lists and the count-only shape are in <a href="13-built-in-functions.html">13.8.2</a>.</p>
+        <p>Default <code>glob</code> cap is 200 results (hard cap 500); the result is <code>{ items, count, truncated }</code> with each item <code>{ name, type, path }</code>. <code>grep</code> defaults to recursive search with line numbers. Recursive search does not enter directory junctions or symbolic links, so a link that points back at a parent cannot loop. Argument lists and the count-only shape are in <a href="13-built-in-functions.html">13.8.2</a>.</p>
 
         <h2>12.8 Sleep</h2>
         <p><code>sleep(milliseconds)</code> pauses without spinning the CPU. The argument must be a non-negative integer. It is a built-in, not an <code>io.*</code> member. Useful for keep-alive loops around a server.</p>

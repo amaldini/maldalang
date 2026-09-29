@@ -6038,7 +6038,7 @@ public static class BuiltInFunctions
         catch (Exception ex)
         {
             // Re-throw with more context for debugging
-            throw new Exception($"listDirectory() failed: {ex.Message}", ex);
+            throw new Exception($"listDirectory() failed: {SafeDirectoryWalk.ShortMessage(ex.Message)}", ex);
         }
     }
 
@@ -6584,7 +6584,7 @@ public static class BuiltInFunctions
         }
         catch (Exception ex)
         {
-            return RuntimeValue.String($"Error in glob: {ex.Message}");
+            return RuntimeValue.String($"Error in glob: {SafeDirectoryWalk.ShortMessage(ex.Message)}");
         }
     }
     
@@ -6629,7 +6629,7 @@ public static class BuiltInFunctions
                 }
                 catch (Exception ex)
                 {
-                    return RuntimeValue.String($"Error: Invalid regex pattern: {ex.Message}");
+                    return RuntimeValue.String($"Error: Invalid regex pattern: {SafeDirectoryWalk.ShortMessage(ex.Message)}");
                 }
             }
             else
@@ -6719,11 +6719,11 @@ public static class BuiltInFunctions
                     // Recursively get all files
                     try
                     {
-                        filesToSearch.AddRange(Directory.GetFiles(filePath, "*", SearchOption.AllDirectories));
+                        filesToSearch.AddRange(SafeDirectoryWalk.EnumerateFiles(filePath));
                     }
                     catch (Exception ex)
                     {
-                        return RuntimeValue.String($"Error accessing directory: {ex.Message}");
+                        return RuntimeValue.String($"Error accessing directory: {SafeDirectoryWalk.ShortMessage(ex.Message)}");
                     }
                 }
                 else
@@ -6735,7 +6735,7 @@ public static class BuiltInFunctions
                     }
                     catch (Exception ex)
                     {
-                        return RuntimeValue.String($"Error accessing directory: {ex.Message}");
+                        return RuntimeValue.String($"Error accessing directory: {SafeDirectoryWalk.ShortMessage(ex.Message)}");
                     }
                 }
             }
@@ -6779,7 +6779,7 @@ public static class BuiltInFunctions
         }
         catch (Exception ex)
         {
-            return RuntimeValue.String($"Error in grep: {ex.Message}");
+            return RuntimeValue.String($"Error in grep: {SafeDirectoryWalk.ShortMessage(ex.Message)}");
         }
     }
     

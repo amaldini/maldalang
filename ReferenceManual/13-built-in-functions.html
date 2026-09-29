@@ -942,6 +942,7 @@ var docText = doc.extractText("brief.docx");</code></pre>
         <ul>
             <li><code>dirPath</code> defaults to <code>"."</code>, <code>maxResults</code> to <code>200</code> (capped at 500), <code>includeDirectories</code> to <code>false</code>, and the two remaining string arguments to <code>""</code>.</li>
             <li>On success it returns an object <code>{ items, count, truncated }</code>, where each item is <code>{ name, type, path }</code> and <code>truncated</code> reports whether the result hit <code>maxResults</code>.</li>
+            <li>Recursive <code>glob</code> and <code>grep</code> do not follow directory junctions or symbolic links. The link itself can still appear in a one-level <code>listDirectory</code> result.</li>
         </ul>
         <pre><code>var found = glob("**/*.malda", "Examples");
 print(found.count);

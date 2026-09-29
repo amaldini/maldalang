@@ -4040,7 +4040,7 @@ public partial class ConversationInstance : ObjectInstance
         }
         catch (Exception ex)
         {
-            return RuntimeValue.String($"Error executing tool: {ex.Message}");
+            return RuntimeValue.String($"Error executing tool: {SafeDirectoryWalk.ShortMessage(ex.Message)}");
         }
     }
 

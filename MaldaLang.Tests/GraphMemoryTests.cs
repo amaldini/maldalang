@@ -962,6 +962,45 @@ public class GraphMemoryTests : TestBase
         Assert.Contains("semantic", output);
         Assert.Contains("consolidate", output);
     }
+
+    [Fact]
+    public void MaintainMemory_AcceptsDictOptions()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), "malda-mem-dict-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        var basePath = Path.Combine(tempDir, "assistant").Replace("\\", "/");
+        try
+        {
+            var source = $@"
+                var memory = new GraphMemory();
+                memory.initialize();
+                memory.remember(""Question one"", ""Answer one"", {{ ""type"": ""episodic"", ""source"": ""agent"" }});
+                memory.remember(""Question two"", ""Answer two"", {{ ""type"": ""episodic"", ""source"": ""agent"" }});
+                memory.remember(""Question three"", ""Answer three"", {{ ""type"": ""episodic"", ""source"": ""agent"" }});
+                var opts = dict {{ ""maxEpisodic"": 30, ""minEpisodic"": 3 }};
+                var result = memory.consolidate(opts);
+                print(result.semanticNodesCreated);
+                var pruneOpts = dict {{ ""type"": ""episodic"", ""olderThanDays"": 30, ""consolidated"": true }};
+                var removed = memory.prune(pruneOpts);
+                print(removed >= 0);
+                var limitOpts = dict {{ ""maxNodes"": 5000, ""type"": ""episodic"" }};
+                var limited = memory.enforceLimits(limitOpts);
+                print(limited >= 0);
+                var saveOpts = dict {{}};
+                memory.save(""{basePath}"", saveOpts);
+                print(""saved"");
+            ";
+            var output = RunProgram(source);
+            Assert.Contains("1", output);
+            Assert.Contains("true", output);
+            Assert.Contains("saved", output);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+                Directory.Delete(tempDir, true);
+        }
+    }
     
     [Fact]
     public void Reflect_ParsesLlmJson_CreatesSemanticFacts()

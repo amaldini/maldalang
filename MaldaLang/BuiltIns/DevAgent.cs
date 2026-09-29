@@ -197,7 +197,7 @@ public class DevAgentInstance : AgentInstance
             return RuntimeValue.Integer(0);
 
         var indexed = 0;
-        foreach (var file in Directory.EnumerateFiles(fullWorkDir, "*.*", SearchOption.AllDirectories))
+        foreach (var file in SafeDirectoryWalk.EnumerateFiles(fullWorkDir, "*.*"))
         {
             if (file.Contains($"{Path.DirectorySeparatorChar}.git{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
                 || file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)

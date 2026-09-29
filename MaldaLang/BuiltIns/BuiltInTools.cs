@@ -575,7 +575,7 @@ public static class BuiltInTools
         }
         catch (Exception ex)
         {
-            return RuntimeValue.String($"Error executing glob tool: {ex.Message}");
+            return RuntimeValue.String($"Error executing glob tool: {SafeDirectoryWalk.ShortMessage(ex.Message)}");
         }
     }
     
