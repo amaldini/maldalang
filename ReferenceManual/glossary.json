@@ -310,9 +310,33 @@
       "href": "14-neural-nets.html#what-a-net-is",
       "also": [
         "14-neural-nets.html#dense",
+        "14-neural-nets.html#compose",
+        "14-neural-nets.html#conv2d",
         "14-neural-nets.html#examples"
       ],
-      "summary": "A function of stacked units. Each unit is a weighted sum, a bias, and an activation. Training nudges the weights; a forward pass uses them."
+      "summary": "A function of stacked units. Each unit is a weighted sum, a bias, and an activation. Training nudges the weights; a forward pass uses them. Smaller nets compose with Sequential. A picture uses a shared kernel."
+    },
+    {
+      "id": "network-composition",
+      "term": "Network composition",
+      "aliases": ["composition", "smaller networks", "nested sequential", "Sequential"],
+      "href": "14-neural-nets.html#compose",
+      "also": [
+        "14-neural-nets.html#sequential",
+        "14-neural-nets.html#conv-net"
+      ],
+      "summary": "A Sequential is a layer. Nest them so one net is built from smaller nets. nn.sequential still builds only Dense rows."
+    },
+    {
+      "id": "convolution",
+      "term": "Convolution",
+      "aliases": ["cnn", "conv", "conv2d", "Conv2D", "convolutional", "convolutional neural network"],
+      "href": "14-neural-nets.html#conv2d",
+      "also": [
+        "14-neural-nets.html#conv-net",
+        "14-neural-nets.html#conv"
+      ],
+      "summary": "A shared kernel slid across a map. Conv is one channel. Conv2D adds channels, stride, and padding. A full conv net is 14.11.7."
     },
     {
       "id": "graph",

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="MALDA neural nets - what a net is, how it learns, dense layers, activations, and one local backward step">
+    <meta name="description" content="MALDA neural nets - what a net is, how it learns, dense layers, convolution, and nets built from smaller nets">
     <title>14. Neural Nets - MALDA Reference Manual</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="syntax.css">
@@ -20,7 +20,7 @@
 
         <h1>14. Neural Nets</h1>
 
-        <p>Read this chapter to see what a neural net is and how a small one learns, or to build one inside a MALDA program. <a href="#what-a-net-is">14.1</a> is the idea, with no library call. The programs in <code>Examples/AI_Theory/</code> train offline, with no API key. The chapter is optional. Skipping it leaves prompts, agents, and the rest of MALDA unchanged.</p>
+        <p>Read this chapter to see what a neural net is and how a small one learns, or to build one inside a MALDA program. <a href="#what-a-net-is">14.1</a> is the idea, with no library call. A picture reuses one small kernel (<a href="#conv2d">14.11.6</a>). A larger net is a stack of smaller nets (<a href="#compose">14.10.1</a>). The programs in <code>Examples/AI_Theory/</code> train offline, with no API key. The chapter is optional. Skipping it leaves prompts, agents, and the rest of MALDA unchanged.</p>
 
         <h2 id="what-a-net-is">14.1 What a neural net is</h2>
         <p>A neural net is a function from a list of numbers to another list of numbers. It is built from units. Each unit multiplies its inputs by stored weights, adds a bias, and passes that sum through an activation. The weights and the bias are ordinary numbers you keep. Training changes those numbers. The shape of the function stays put.</p>
@@ -270,7 +270,7 @@ print(int(probs[1] * 100));</code></pre>
         <p>Momentum, a length cap, and Adam are programs. They are not builtins. Each one starts from the subtraction in <a href="#weight-update">14.5.2</a>. <code>momentum_valley.malda</code> keeps a velocity on a quadratic that is steep in one axis. <code>grad_clip.malda</code> uses a steeper quadratic: unclipped, the magnitude grows; a cap on the gradient length walks toward zero. <code>adam_valley.malda</code> keeps <code>m</code>, <code>v</code>, and the step counter. The bias-corrected step finishes near the origin, while plain SGD stays far.</p>
 
         <h3 id="track-shapes">14.7.5 Shapes that are not one dense call</h3>
-        <p>The layout is the lesson. <code>rnn_delay.malda</code> shows a sigmoid recurrence shrinking its gradient, then a small tanh net that recalls the bit from three steps earlier. <code>conv_stroke.malda</code> reuses one 3×3 kernel at every window of a 5×5 dash, and the backward pass adds into those nine weights. <code>conv_classifier.malda</code> trains those same dashes with <code>new Conv(3)</code> and a sigmoid <code>Dense</code>. The 3×3 map is flattened, and <code>Dense.backward</code> is reshaped into <code>Conv.backward</code>. <code>cnn_basic_layers.malda</code> walks one CHW map through <code>Conv2D</code>, <code>Activation</code>, pooling, and <code>Flatten</code>. <code>cnn_composable.malda</code> stacks two of those blocks inside an outer <code>Sequential</code> and trains the classifier with <code>nn.mseGrad</code>. <code>residual_dropout.malda</code> puts a skip next to a deep sigmoid stack, then a train-time mask that eval does not apply.</p>
+        <p>The layout is the lesson. <code>rnn_delay.malda</code> shows a sigmoid recurrence shrinking its gradient, then a small tanh net that recalls the bit from three steps earlier. <code>conv_stroke.malda</code> reuses one 3×3 kernel at every window of a 5×5 dash, and the backward pass adds into those nine weights. <code>conv_classifier.malda</code> trains those same dashes with <code>new Conv(3)</code> and a sigmoid <code>Dense</code>. The 3×3 map is flattened, and <code>Dense.backward</code> is reshaped into <code>Conv.backward</code>. <code>cnn_basic_layers.malda</code> walks one CHW map through <code>Conv2D</code>, <code>Activation</code>, pooling, and <code>Flatten</code> (<a href="#conv2d">14.11.6</a>). <code>cnn_composable.malda</code> stacks two of those blocks inside an outer <code>Sequential</code> and trains the classifier with <code>nn.mseGrad</code> (<a href="#compose">14.10.1</a>, <a href="#conv-net">14.11.7</a>). <code>residual_dropout.malda</code> puts a skip next to a deep sigmoid stack, then a train-time mask that eval does not apply.</p>
 
         <h3 id="track-attention">14.7.6 From one row to one decoder block</h3>
         <p><code>embed_row.malda</code> writes the gradient into the selected embedding row and leaves the other rows put. <code>next_char.malda</code> is a bigram on a repeated word: the loss is <code>nn.crossEntropyFromLogits</code>, and the dense gradient scatters back into that one row. <code>next_char_mlp.malda</code> is the case a bigram cannot name. Both samples end on <code>a</code>, one successor is <code>b</code>, the other is <code>c</code>, and a ReLU hidden layer on the two embedding rows names both. <code>layer_norm.malda</code> subtracts the mean and divides by the standard deviation so a deep product stays near 1, then checks the scale with a central difference.</p>
@@ -356,7 +356,7 @@ print(int(layer.out[1]));</code></pre>
 
         <h2 id="sequential">14.10 Sequential</h2>
         <p><code>new Dense(inFeatures, outFeatures, activation?, scale?)</code> owns one weight matrix <code>[in, out]</code> and one bias. The default scale is <code>1/sqrt(inFeatures)</code>, drawn with the same generator as <code>math.seed</code>. Pass <code>0</code> when you want zeros and will write the entries yourself. <code>forward(x)</code> returns the output vector and remembers <code>pre</code> and the input. <code>backward(upstream)</code> calls <code>nn.denseBackward</code> and keeps <code>dWeights</code> and <code>dBias</code>. <code>sgd(lr)</code> subtracts those gradients in place. The input is one vector, not a batch. Call <code>forward</code> before <code>backward</code>, and <code>backward</code> before <code>sgd</code>.</p>
-        <p><code>new Sequential([layer, ...])</code> stacks any layer that has <code>forward</code> and <code>backward</code>, including a nested <code>Sequential</code>. <code>sgd</code> skips a layer that has no <code>sgd</code>. <code>forward</code>, <code>backward</code>, and <code>sgd</code> walk the stack. <code>backward</code> starts at the last layer, so you pass only the loss gradient. <code>fit(inputs, targets, epochs, lr, loss?)</code> is online SGD: each sample is a forward, a backward, and an <code>sgd</code> before the next sample is seen. It returns the mean loss of the last epoch, measured before that epoch's steps. <code>loss</code> is <code>"mse"</code> (the default; a target is a number or a vector) or <code>"crossEntropy"</code> (a class index; leave the last layer <code>"linear"</code>). <code>fit</code> expects a vector output. It is not a tape, and it is not Adam.</p>
+        <p><code>new Sequential([layer, ...])</code> stacks any layer that has <code>forward</code> and <code>backward</code>, including a nested <code>Sequential</code>. That nested net is one layer of the outer net (<a href="#compose">14.10.1</a>). <code>sgd</code> skips a layer that has no <code>sgd</code>. <code>forward</code>, <code>backward</code>, and <code>sgd</code> walk the stack. <code>backward</code> starts at the last layer, so you pass only the loss gradient. <code>fit(inputs, targets, epochs, lr, loss?)</code> is online SGD: each sample is a forward, a backward, and an <code>sgd</code> before the next sample is seen. It returns the mean loss of the last epoch, measured before that epoch's steps. <code>loss</code> is <code>"mse"</code> (the default; a target is a number or a vector) or <code>"crossEntropy"</code> (a class index; leave the last layer <code>"linear"</code>). <code>fit</code> expects a vector output. It is not a tape, and it is not Adam.</p>
         <p>The snippet builds a 1-to-1 linear layer of zeros and fits one sample, input <code>[1]</code> and target <code>2</code>, for one epoch at learning rate <code>0.5</code>. The reported loss is <code>4</code>, the squared error of the zero prediction. The step then sets both the weight and the bias to <code>1</code>, so the next forward of <code>[1]</code> is <code>2</code>. The prints are that loss, the weight and the bias times 100, and the forward times 100. The first three lines are a separate layer: weight <code>2</code> and bias <code>1</code> on input <code>3</code> print <code>7</code>.</p>
         <p><code>nn.sequential([[in, out, activation?, scale?], ...])</code> builds the same <code>Sequential</code>. <code>Examples/AI_Theory/sequential_xor.malda</code> trains the 2-4-1 XOR net this way. <code>nn_dense.malda</code> still writes each step by hand.</p>
         <table class="sigs">
@@ -391,6 +391,26 @@ print(int(loss));
 print(int(fitLayer.weights[0][0] * 100));
 print(int(fitLayer.bias[0] * 100));
 print(int(fitLayer.forward([1.0])[0] * 100));</code></pre>
+
+        <h3 id="compose">14.10.1 Composition from smaller nets</h3>
+        <p>A <code>Sequential</code> is a layer. Another <code>Sequential</code> can hold it. The outer net calls that child as one layer. <code>forward</code> calls <code>forward</code> on each child and passes that child's output to the next child. <code>backward</code> starts at the last child and passes the gradient that child returns to the child before it. <code>sgd</code> calls <code>sgd</code> on each child. A nested <code>Sequential</code> does the same walk on its own layers, so one outer <code>sgd</code> steps every weight in the tree. <code>layers</code> on the outer net is the list of children you passed.</p>
+        <p><code>nn.sequential([[in, out, activation?, scale?], ...])</code> builds a <code>Sequential</code> of <code>Dense</code> layers from those rows. A conv block, a classifier, or any mix of layer classes is <code>new Sequential([...])</code>. <code>fit</code> walks that same tree. The last layer has to return a vector, because the loss compares that vector with the target. A stack that still ends on a map has no vector for <code>mse</code> or <code>crossEntropy</code>. End the net with <code>Flatten</code> or a global pool, then a <code>Dense</code>, when you want <code>fit</code> to train a picture. <code>Examples/AI_Theory/cnn_composable.malda</code> builds two conv blocks and a classifier as three <code>Sequential</code> values, puts them in one outer <code>Sequential</code>, and trains with <code>forward</code>, <code>nn.mseGrad</code>, <code>backward</code>, and <code>sgd</code> so it can count correct labels along the way. The shape of that net is <a href="#conv-net">14.11.7</a>.</p>
+        <p>The snippet is two one-unit linear nets. The stem multiplies by <code>2</code>. The head multiplies by <code>3</code> and adds <code>1</code>. The input <code>4</code> becomes <code>8</code>, then <code>25</code>. <code>layers.length</code> is <code>2</code>. An upstream of <code>1</code> and a learning rate of <code>1</code> move the head weight from <code>3</code> to <code>−5</code>, because that weight multiplied <code>8</code>. The stem weight moves from <code>2</code> to <code>−10</code>: the head sent an upstream of <code>3</code>, and the stem multiplied the input <code>4</code>.</p>
+        <pre><code data-run="true" data-expect="2\n25\n-5\n-10">var hidden = new Dense(1, 1, "linear", 0.0);
+hidden.weights[0][0] = 2.0;
+hidden.bias[0] = 0.0;
+var stem = new Sequential([hidden]);
+var outLayer = new Dense(1, 1, "linear", 0.0);
+outLayer.weights[0][0] = 3.0;
+outLayer.bias[0] = 1.0;
+var head = new Sequential([outLayer]);
+var net = new Sequential([stem, head]);
+print(net.layers.length);
+print(int(net.forward([4.0])[0]));
+net.backward([1.0]);
+net.sgd(1.0);
+print(int(outLayer.weights[0][0]));
+print(int(hidden.weights[0][0]));</code></pre>
 
         <h2 id="other-layers">14.11 Other layers</h2>
         <p>These classes keep the same contract as <code>Dense</code>. You own the parameters. <code>forward</code> remembers the input it saw. <code>backward</code> stores the gradients. <code>sgd(lr)</code> subtracts them in place. They do not record a tape, and they do not replace the handwritten files in <a href="#examples">14.7</a>.</p>
@@ -460,10 +480,39 @@ print(int(causal[0][0]));
 print(int(causal[1][0]));
 print(int(head.probs[0][1] * 1000));</code></pre>
 
-        <h3 id="conv2d">14.11.6 Conv2D and the spatial layers</h3>
-        <p><code>new Conv2D(inChannels, outChannels, kernelSize, stride?, padding?, scale?)</code> owns weights <code>[inChannels, outChannels, kernel, kernel]</code> and a bias of length <code>outChannels</code>. The default stride is <code>1</code>, the default padding is <code>"valid"</code>, and the default scale is <code>1/sqrt(inChannels * kernel * kernel)</code>. Pass <code>0</code> for a zero kernel and write the entries yourself. An input is CHW when <code>input[0][0][0]</code> is a number, and NCHW when that slot is a row. A batch of one stays NCHW. <code>"same"</code> padding makes each side <code>ceil(input / stride)</code>. <code>backward(upstream)</code> needs one prior <code>forward</code>. <code>sgd(lr)</code> subtracts the stored gradients.</p>
-        <p><code>MaxPool2D(poolSize, stride?)</code> and <code>AvgPool2D</code> downsample. The default stride is the pool size. <code>backward</code> takes only the upstream; the spatial size is the one <code>forward</code> stored. <code>Flatten</code> turns a nested numeric tensor into one vector and restores that shape on the way back. <code>GlobalAvgPool2D</code> and <code>GlobalMaxPool2D</code> reduce each channel to one number: a vector when the input was CHW, and <code>[batch, channels]</code> when it was NCHW. <code>BatchNorm2D(numFeatures, momentum?, eps?)</code> normalizes each channel over the batch and the spatial axes. The defaults are momentum <code>0.1</code> and epsilon <code>0.00001</code>. <code>train()</code> and <code>eval()</code> switch the mode. <code>backward</code> needs a training <code>forward</code>. <code>Dropout2D(p)</code> drops elements of a CHW or NCHW map. <code>p</code> is in <code>[0, 1)</code>. <code>eval()</code>, and <code>p</code> of <code>0</code>, leave the map unchanged. It has no <code>sgd</code>. <code>Activation(name)</code> applies one elementwise activation to a vector or a nested tensor. The names match <code>Dense</code>. It has no parameters.</p>
-        <p>On a CHW image <code>[[[1, 2, 3], [4, 5, 6], [7, 8, 9]]]</code> and the 2×2 kernel <code>[[1, 0], [0, 1]]</code>, the top-left output is <code>6</code> and the bottom-right is <code>14</code>. <code>MaxPool2D(2)</code> of that 2×2 map is <code>14</code>.</p>
+        <h3 id="conv2d">14.11.6 Convolution</h3>
+        <p>A dense layer on a flattened picture stores one weight per pixel. A convolution stores one small kernel and slides it. Every window multiplies those same numbers, so a stroke the kernel has learned at the top-left is the same stroke at the bottom-right. <code>Conv</code> in <a href="#conv">14.11.1</a> is that slide on one channel, with no bias. <code>Conv2D</code> is the same slide with several input channels, several output channels, a bias, a stride, and padding. <code>backward</code> adds every window into that one kernel. That is the addition <code>conv_stroke.malda</code> writes by hand for nine weights.</p>
+        <p>One sample is CHW: a list of channels, each channel a list of rows, each row a list of numbers. <code>input[0][0][0]</code> is a number, and <code>forward</code> returns CHW. A batch is a list of samples, NCHW, so <code>input[0][0][0]</code> is a row and <code>forward</code> returns NCHW. A list that holds one CHW map is a batch of one, and the result stays NCHW. The snippet prints the corner of a CHW picture, the number <code>1</code>, and the length of that same corner once the picture sits inside a batch, which is <code>2</code>.</p>
+        <pre><code data-run="true" data-expect="1\n2">var picture = [[[1.0, 2.0], [3.0, 4.0]]];
+var batched = [picture];
+print(int(picture[0][0][0]));
+print(batched[0][0][0].length);</code></pre>
+        <p><code>new Conv2D(inChannels, outChannels, kernelSize, stride?, padding?, scale?)</code> owns weights <code>[inChannels, outChannels, kernel, kernel]</code> and a bias of length <code>outChannels</code>. One output cell is the bias of that output channel plus, for every input channel, the dot product of that channel's kernel with the window under it. The kernel that reads input channel <code>ic</code> and writes output channel <code>oc</code> is <code>weights[ic][oc]</code>. The window for output row <code>oh</code> and column <code>ow</code> starts at <code>oh * stride - padTop</code> and <code>ow * stride - padLeft</code>. A cell that lands off the image contributes <code>0</code>. The default stride is <code>1</code>, the default padding is <code>"valid"</code>, and the default scale is <code>1/sqrt(inChannels * kernel * kernel)</code>. Pass <code>0</code> for a zero kernel and write the entries yourself. <code>sgd(lr)</code> subtracts the stored gradients. Call <code>forward</code> before <code>backward</code>.</p>
+        <p><code>"valid"</code> uses no padding. The output height is <code>(height - kernelSize) / stride + 1</code>, with the division truncated, and the same formula for the width. A 3×3 image, kernel <code>2</code>, stride <code>1</code>, is 2×2, which is the map in the last snippet of this section. An image smaller than the kernel fails. <code>"same"</code> sets the output height to <code>ceil(height / stride)</code>, written <code>(height + stride - 1) / stride</code>, and the same for the width. The kernel may hang off the edge. The pad on the top is half the extra rows, truncated, so a leftover row of zeros sits on the bottom. A leftover column sits on the right. With an odd kernel and stride <code>1</code>, <code>"same"</code> keeps the height and the width.</p>
+        <p>On a 4×4 ramp and a 3×3 kernel that is <code>1</code> only at the center, <code>"valid"</code> is 2×2 and the corners are <code>6</code> and <code>11</code>, the centers of the four windows. <code>"same"</code> with stride <code>1</code> keeps 4×4, and the top-left cell is <code>1</code>, the corner of the image, because the center of that window lands on the corner. A 2×2 kernel with stride <code>2</code> and the diagonal weights <code>[[1, 0], [0, 1]]</code> steps without overlap. The top-left window is <code>1 + 6 = 7</code> and the bottom-right is <code>11 + 16 = 27</code>. The prints are the valid height, those two corners, the same height, the same top-left, the stride-2 height, and the two stride-2 corners.</p>
+        <pre><code data-run="true" data-expect="2\n6\n11\n4\n1\n2\n7\n27">var image = [[[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0], [9.0, 10.0, 11.0, 12.0], [13.0, 14.0, 15.0, 16.0]]];
+var valid = new Conv2D(1, 1, 3, 1, "valid", 0.0);
+valid.weights[0][0][1][1] = 1.0;
+valid.bias[0] = 0.0;
+var yv = valid.forward(image);
+print(yv[0].length);
+print(int(yv[0][0][0]));
+print(int(yv[0][1][1]));
+var same = new Conv2D(1, 1, 3, 1, "same", 0.0);
+same.weights[0][0][1][1] = 1.0;
+same.bias[0] = 0.0;
+var ys = same.forward(image);
+print(ys[0].length);
+print(int(ys[0][0][0]));
+var stepped = new Conv2D(1, 1, 2, 2, "valid", 0.0);
+stepped.weights[0][0][0][0] = 1.0;
+stepped.weights[0][0][1][1] = 1.0;
+stepped.bias[0] = 0.0;
+var ys2 = stepped.forward(image);
+print(ys2[0].length);
+print(int(ys2[0][0][0]));
+print(int(ys2[0][1][1]));</code></pre>
+        <p>The 3×3 ramp from <a href="#conv">14.11.1</a>, as one channel, with the same diagonal 2×2 kernel. The top-left output is <code>1 + 5 = 6</code>. The bottom-right is <code>5 + 9 = 14</code>. <code>MaxPool2D(2)</code> of that 2×2 map keeps <code>14</code>.</p>
         <pre><code data-run="true" data-expect="6\n14\n14">var conv = new Conv2D(1, 1, 2, 1, "valid", 0.0);
 conv.weights[0][0][0][0] = 1.0;
 conv.weights[0][0][0][1] = 0.0;
@@ -476,6 +525,66 @@ var pooled = pool.forward(y);
 print(int(y[0][0][0]));
 print(int(y[0][1][1]));
 print(int(pooled[0][0][0]));</code></pre>
+
+        <h3 id="conv-net">14.11.7 A convolutional net</h3>
+        <p>A convolutional net is a <code>Sequential</code>. The early layers read a map. The last layer returns a vector, so the losses in <a href="#losses">14.6</a> still apply. Between them the map gets smaller and the channel count usually grows. Group those layers into smaller nets with <a href="#compose">14.10.1</a>.</p>
+        <p>One block in <code>Examples/AI_Theory/cnn_composable.malda</code> is itself a <code>Sequential</code>: <code>Conv2D</code> with <code>"same"</code> padding, <code>BatchNorm2D</code>, <code>Activation("relu")</code>, <code>Dropout2D</code>, and <code>MaxPool2D(2)</code>. With an odd kernel and stride <code>1</code>, <code>"same"</code> keeps the height and the width. The pool of <code>2</code>, whose default stride is the pool size, then halves each side. A 5×5 map with that pool is 2×2. The size uses the <code>"valid"</code> formula, so a leftover row or column sits outside every window.</p>
+        <p><code>Activation(name)</code> applies one name from <a href="#activations">14.4</a> to every cell of a vector or a nested map. A stack of convolutions with no bend between them collapses into one linear filter, for the same reason a stack of plain products does in <a href="#layers">14.1.2</a>. <code>BatchNorm2D(numFeatures, momentum?, eps?)</code> shifts each channel to mean <code>0</code> and variance <code>1</code>, over the batch and the spatial cells, then multiplies by <code>gamma</code> (starting at <code>1</code>) and adds <code>beta</code> (starting at <code>0</code>). The defaults are momentum <code>0.1</code> and epsilon <code>0.00001</code>. <code>train()</code> uses the batch and updates <code>runningMean</code> and <code>runningVar</code>. Before any training forward those running values are <code>0</code> and <code>1</code>. <code>eval()</code> uses the running values. <code>backward</code> needs a training <code>forward</code>. <code>Dropout2D(p)</code>, with <code>p</code> in <code>[0, 1)</code>, keeps each element with probability <code>1 - p</code> during training and multiplies the kept elements by <code>1 / (1 - p)</code>. <code>eval()</code>, and <code>p</code> of <code>0</code>, copy the map. It has no <code>sgd</code>.</p>
+        <p><code>Flatten</code> walks the nested numbers in storage order, channel then row then column, and returns one vector. <code>backward</code> writes that vector back into the shape <code>forward</code> saw. <code>GlobalAvgPool2D</code> and <code>GlobalMaxPool2D</code> reduce each channel to one number: a vector when the input was CHW, and <code>[batch, channels]</code> when it was NCHW. <code>MaxPool2D</code> sends the upstream to the cell that held the maximum. A tie keeps the earlier cell, left to right, then top to bottom. <code>AvgPool2D</code> writes the mean of the window. Its <code>backward</code> adds the upstream, divided by the window area, into every cell. Overlapping windows add. Pool and flatten have no <code>sgd</code>. <code>backward</code> on a pool takes only the upstream. The spatial size is the one <code>forward</code> stored.</p>
+        <p>The classifier is another <code>Sequential</code>: <code>Flatten</code>, a <code>Dense</code> with <code>"relu"</code>, and a <code>Dense</code> with <code>"linear"</code> scores. <code>cnn_composable.malda</code> uses an 8×8 one-channel image. The first block has 4 output channels, so the pool yields 4×4×4. The second block has 8 output channels, so the next pool yields 2×2×8, which is 32 numbers. The classifier is <code>Dense(32, 8, "relu")</code> then <code>Dense(8, 2, "linear")</code>. The outer <code>Sequential</code> is those two blocks and the classifier. <code>layers.length</code> on the outer net is <code>3</code>. One <code>forward</code> walks all three. One <code>backward</code> starts at the classifier. One <code>sgd</code> steps every layer in the tree that has <code>sgd</code>. The training loop passes <code>nn.mseGrad</code> of a one-hot target. <code>fit</code> does that walk when the output is a vector and the loss is <code>"mse"</code> or <code>"crossEntropy"</code>. The example writes the loop so it can count correct labels. <code>cnn_basic_layers.malda</code> is the same layers called one at a time, on one CHW map, including <code>GlobalAvgPool2D</code> and a <code>Dropout2D</code> left in <code>eval()</code>.</p>
+        <p>The snippet is that composition on the 4×4 ramp. The block is a <code>Sequential</code> of a 3×3 <code>"same"</code> convolution, center weight <code>1</code>, and <code>MaxPool2D(2)</code>. The map stays 4×4, then the pool yields 2×2. Those four numbers are <code>6</code>, <code>8</code>, <code>14</code>, and <code>16</code>. The classifier is a <code>Sequential</code> of <code>Flatten</code> and a linear <code>Dense</code> whose four weights are <code>1</code>. The sum is <code>44</code>. The outer net's <code>layers.length</code> is <code>2</code>. The block's <code>layers.length</code> is <code>2</code>.</p>
+        <pre><code data-run="true" data-expect="2\n2\n44">function convPool() {
+    var conv = new Conv2D(1, 1, 3, 1, "same", 0.0);
+    conv.weights[0][0][1][1] = 1.0;
+    conv.bias[0] = 0.0;
+    return new Sequential([conv, new MaxPool2D(2)]);
+}
+var image = [[[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0], [9.0, 10.0, 11.0, 12.0], [13.0, 14.0, 15.0, 16.0]]];
+var block = convPool();
+var dense = new Dense(4, 1, "linear", 0.0);
+dense.weights[0][0] = 1.0;
+dense.weights[1][0] = 1.0;
+dense.weights[2][0] = 1.0;
+dense.weights[3][0] = 1.0;
+dense.bias[0] = 0.0;
+var classifier = new Sequential([new Flatten(), dense]);
+var cnn = new Sequential([block, classifier]);
+print(cnn.layers.length);
+print(block.layers.length);
+print(int(cnn.forward(image)[0]));</code></pre>
+        <table class="sigs">
+        <thead>
+        <tr><th>Arguments</th><th>Returns</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>new Conv2D(inChannels, outChannels, kernelSize, stride?, padding?, scale?)</code></td></tr>
+        <tr><td>3-6 arguments</td><td><code>Conv2D</code></td><td>weights <code>[in, out, k, k]</code>, bias length <code>out</code>. Stride <code>1</code>, padding <code>"valid"</code> or <code>"same"</code>, scale <code>1/sqrt(in * k * k)</code></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>new MaxPool2D(poolSize, stride?)</code> / <code>AvgPool2D</code></td></tr>
+        <tr><td>1-2 arguments</td><td>map</td><td>default stride is the pool size. No <code>sgd</code></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>new Flatten()</code></td></tr>
+        <tr><td>no arguments</td><td>vector</td><td>channel, then row, then column. <code>backward</code> restores the shape. No <code>sgd</code></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>new GlobalAvgPool2D()</code> / <code>GlobalMaxPool2D()</code></td></tr>
+        <tr><td>no arguments</td><td>vector or <code>[batch, channels]</code></td><td>one number per channel. No <code>sgd</code></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>new BatchNorm2D(numFeatures, momentum?, eps?)</code></td></tr>
+        <tr><td>1-3 arguments</td><td>map</td><td>momentum <code>0.1</code>, epsilon <code>0.00001</code>. <code>train()</code> / <code>eval()</code>. <code>gamma</code>, <code>beta</code>, <code>runningMean</code>, <code>runningVar</code></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>new Dropout2D(p)</code></td></tr>
+        <tr><td>1 argument</td><td>map</td><td><code>p</code> in <code>[0, 1)</code>. Inverted dropout. <code>eval()</code> copies the map. No <code>sgd</code></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>new Activation(name)</code></td></tr>
+        <tr><td>1 argument</td><td>same shape</td><td>names match <code>Dense</code>. No parameters</td></tr>
+        </tbody>
+        </table>
 
         <div class="see-also">
             <h3>See Also</h3>

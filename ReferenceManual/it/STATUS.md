@@ -26,7 +26,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | 11-classes-objects.html | 299f5f7deb9add4c51acf5f9c580b4e682dc622bf27818811f69e2f36a14e7a7 |
 | 12-input-output.html | 84cc9ec1769799bfb4dc491d4d8614e598eabcc2c24ff83f9b0371229090a3ad |
 | 13-built-in-functions.html | 1cc31ae7f3fc557761524377630296cdc5c87a4a15e44d31c18727a023f05712 |
-| 14-neural-nets.html | 2561673d2593ef66dafc9c55776cdc407ed0cd349b95c6237ced2996f7c5f176 |
+| 14-neural-nets.html | 7d05344d9ff936959bf5a929919a349603f76b86a0ce78b5d3fbb532475d943a |
 | 15-graphs.html | 29eacf76dfffe1af9cfaf7ca364b6abf59872959e5b0d170a12994abac40accd |
 | 16-vectordb.html | 74344737d42fb8e8457ca022823b119a4f0b8a9279ff411206acd216dd005a15 |
 | 17-database.html | f83bdad57eecf1d2ac3c58f75dd996f13233bf9a9adeb3e9446905ceb6185f32 |
@@ -47,7 +47,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | 32-dotnet-interop.html | 0774c7a058ac268de6529142eab83a12e0f22ca76e9b942aa25b35caaa29cd96 |
 | 33-device-integration.html | f2664750c8d520e56c8d0152c06b8a2c4994ecaf656c21312134676f271187fc |
 | 34-personal-assistant.html | 1ae1348d29a0673d950457c0e8d9ced4b5e2a58a69894adbc7c6e19ba412d9a1 |
-| 35-examples.html | d23b256b1e33241f25008e32614487a1e9212acb59d1a5d3c80dc303f9252447 |
+| 35-examples.html | d5f72405f5738d1ec88d3f23025b14776c7ef1e89ada3031493500e2bd8b35dc |
 | 36-property-testing.html | 0090c9a00c1d40c7ce07df48d69683ff2fc933fe564dacd7107f2b4f2f063752 |
 | 37-grammar.html | 0e1a4e5c2958c7393419bb7d12185a1ed4bece8004f85328a42aa302e4b0e151 |
 | 38-appendix.html | 1976be984911bda65555ac25cd74889b7acbfe1834be404974f73f47522153f9 |

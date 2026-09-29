@@ -262,7 +262,7 @@ Tensors are CHW when `input[0][0][0]` is a number, and NCHW when that slot is a 
 | `new Dropout2D(p)` | Element dropout on CHW/NCHW. No `sgd` |
 | `new Activation(name)` | Elementwise. Names match `Dense`. No parameters |
 
-`Examples/AI_Theory/cnn_basic_layers.malda` walks one CHW map. `cnn_composable.malda` trains two conv blocks plus a classifier. `conv_classifier.malda` stays the one-channel `Conv`.
+`Examples/AI_Theory/cnn_basic_layers.malda` walks one CHW map. `cnn_composable.malda` trains two conv blocks plus a classifier. `conv_classifier.malda` stays the one-channel `Conv`. The reference manual covers composition in [14.10.1](../ReferenceManual/14-neural-nets.html#compose) and convolution in [14.11.6](../ReferenceManual/14-neural-nets.html#conv2d) and [14.11.7](../ReferenceManual/14-neural-nets.html#conv-net).
 
 ---
 

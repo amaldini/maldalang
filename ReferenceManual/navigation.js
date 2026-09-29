@@ -819,10 +819,46 @@ const FALLBACK_GLOSSARY_EN = [
             "backprop"
         ],
         "href": "14-neural-nets.html#what-a-net-is",
-        "summary": "A function of stacked units. Each unit is a weighted sum, a bias, and an activation. Training nudges the weights; a forward pass uses them.",
+        "summary": "A function of stacked units. Each unit is a weighted sum, a bias, and an activation. Training nudges the weights; a forward pass uses them. Smaller nets compose with Sequential. A picture uses a shared kernel.",
         "also": [
             "14-neural-nets.html#dense",
+            "14-neural-nets.html#compose",
+            "14-neural-nets.html#conv2d",
             "14-neural-nets.html#examples"
+        ]
+    },
+    {
+        "id": "network-composition",
+        "term": "Network composition",
+        "aliases": [
+            "composition",
+            "smaller networks",
+            "nested sequential",
+            "Sequential"
+        ],
+        "href": "14-neural-nets.html#compose",
+        "summary": "A Sequential is a layer. Nest them so one net is built from smaller nets. nn.sequential still builds only Dense rows.",
+        "also": [
+            "14-neural-nets.html#sequential",
+            "14-neural-nets.html#conv-net"
+        ]
+    },
+    {
+        "id": "convolution",
+        "term": "Convolution",
+        "aliases": [
+            "cnn",
+            "conv",
+            "conv2d",
+            "Conv2D",
+            "convolutional",
+            "convolutional neural network"
+        ],
+        "href": "14-neural-nets.html#conv2d",
+        "summary": "A shared kernel slid across a map. Conv is one channel. Conv2D adds channels, stride, and padding. A full conv net is 14.11.7.",
+        "also": [
+            "14-neural-nets.html#conv-net",
+            "14-neural-nets.html#conv"
         ]
     },
     {
@@ -1810,10 +1846,46 @@ const FALLBACK_GLOSSARY_IT = [
             "backpropagation"
         ],
         "href": "14-neural-nets.html#what-a-net-is",
-        "summary": "Una funzione fatta di unità impilate. Ogni unità è una somma pesata, un bias e un'attivazione. L'allenamento sposta i pesi; il forward li usa.",
+        "summary": "Una funzione fatta di unità impilate. Ogni unità è una somma pesata, un bias e un'attivazione. L'allenamento sposta i pesi; il forward li usa. Le reti più piccole si compongono con Sequential. Un'immagine usa un kernel condiviso.",
         "also": [
             "14-neural-nets.html#dense",
+            "14-neural-nets.html#compose",
+            "14-neural-nets.html#conv2d",
             "14-neural-nets.html#examples"
+        ]
+    },
+    {
+        "id": "network-composition",
+        "term": "Composizione di reti",
+        "aliases": [
+            "composizione",
+            "reti più piccole",
+            "sequential annidato",
+            "Sequential"
+        ],
+        "href": "14-neural-nets.html#compose",
+        "summary": "Un Sequential è un layer. Annidali così una rete è fatta di reti più piccole. nn.sequential costruisce ancora solo righe Dense.",
+        "also": [
+            "14-neural-nets.html#sequential",
+            "14-neural-nets.html#conv-net"
+        ]
+    },
+    {
+        "id": "convolution",
+        "term": "Convoluzione",
+        "aliases": [
+            "cnn",
+            "conv",
+            "conv2d",
+            "Conv2D",
+            "convoluzionale",
+            "rete convoluzionale"
+        ],
+        "href": "14-neural-nets.html#conv2d",
+        "summary": "Un kernel condiviso fatto scorrere su una mappa. Conv è un canale. Conv2D aggiunge canali, stride e padding. Una rete conv completa è 14.11.7.",
+        "also": [
+            "14-neural-nets.html#conv-net",
+            "14-neural-nets.html#conv"
         ]
     },
     {

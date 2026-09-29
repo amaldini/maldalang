@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="MALDA reti neurali - che cos'è una rete, come impara, layer densi, attivazioni e un passo di backward locale">
+    <meta name="description" content="MALDA reti neurali - che cos'è una rete, come impara, layer densi, convoluzione e reti fatte di reti più piccole">
     <title>14. Reti neurali - Manuale di riferimento MALDA</title>
     <link rel="stylesheet" href="../styles.css">
     <link rel="stylesheet" href="../syntax.css">
@@ -20,7 +20,7 @@
 
         <h1>14. Reti neurali</h1>
 
-        <p>Leggi questo capitolo per vedere che cos'è una rete neurale e come ne impara una piccola, o per realizzarne una dentro un programma MALDA. <a href="#what-a-net-is">14.1</a> è l'idea, senza chiamate di libreria. I programmi in <code>Examples/AI_Theory/</code> si allenano offline, senza chiave API. Il capitolo è facoltativo. Saltarlo lascia invariati prompt, agenti e il resto di MALDA.</p>
+        <p>Leggi questo capitolo per vedere che cos'è una rete neurale e come ne impara una piccola, o per realizzarne una dentro un programma MALDA. <a href="#what-a-net-is">14.1</a> è l'idea, senza chiamate di libreria. Un'immagine riusa un kernel piccolo (<a href="#conv2d">14.11.6</a>). Una rete più grande è una pila di reti più piccole (<a href="#compose">14.10.1</a>). I programmi in <code>Examples/AI_Theory/</code> si allenano offline, senza chiave API. Il capitolo è facoltativo. Saltarlo lascia invariati prompt, agenti e il resto di MALDA.</p>
 
         <h2 id="what-a-net-is">14.1 Che cos'è una rete neurale</h2>
         <p>Una rete neurale è una funzione da una lista di numeri a un'altra lista di numeri. È fatta di unità. Ogni unità moltiplica i suoi ingressi per pesi memorizzati, aggiunge un bias e passa quella somma attraverso un'attivazione. Pesi e bias sono numeri ordinari che tieni tu. L'allenamento cambia quei numeri. La forma della funzione resta ferma.</p>
@@ -270,7 +270,7 @@ print(int(probs[1] * 100));</code></pre>
         <p>Momentum, un tetto sulla lunghezza e Adam sono programmi. Non sono built-in. Ognuno parte dalla sottrazione di <a href="#weight-update">14.5.2</a>. <code>momentum_valley.malda</code> tiene una velocità su una quadratica ripida in un asse. <code>grad_clip.malda</code> usa una quadratica più ripida: senza tetto la magnitudine cresce; un tetto sulla lunghezza del gradiente cammina verso zero. <code>adam_valley.malda</code> tiene <code>m</code>, <code>v</code> e il contatore del passo. Il passo corretto per il bias finisce vicino all'origine, mentre l'SGD semplice resta lontano.</p>
 
         <h3 id="track-shapes">14.7.5 Forme che non sono una sola chiamata densa</h3>
-        <p>Il layout è la lezione. <code>rnn_delay.malda</code> mostra una ricorrenza sigmoid che riduce il gradiente, poi una piccola rete tanh che ricorda il bit di tre passi prima. <code>conv_stroke.malda</code> riusa un kernel 3×3 a ogni finestra di un trattino 5×5, e il passo indietro somma in quei nove pesi. <code>conv_classifier.malda</code> allena gli stessi trattini con <code>new Conv(3)</code> e un <code>Dense</code> sigmoid. La mappa 3×3 viene appiattita, e <code>Dense.backward</code> viene rimodellata in <code>Conv.backward</code>. <code>cnn_basic_layers.malda</code> percorre una mappa CHW attraverso <code>Conv2D</code>, <code>Activation</code>, il pooling e <code>Flatten</code>. <code>cnn_composable.malda</code> impila due di quei blocchi dentro un <code>Sequential</code> esterno e allena il classificatore con <code>nn.mseGrad</code>. <code>residual_dropout.malda</code> mette un salto accanto a una pila sigmoid profonda, poi una maschera solo in training che la valutazione non applica.</p>
+        <p>Il layout è la lezione. <code>rnn_delay.malda</code> mostra una ricorrenza sigmoid che riduce il gradiente, poi una piccola rete tanh che ricorda il bit di tre passi prima. <code>conv_stroke.malda</code> riusa un kernel 3×3 a ogni finestra di un trattino 5×5, e il passo indietro somma in quei nove pesi. <code>conv_classifier.malda</code> allena gli stessi trattini con <code>new Conv(3)</code> e un <code>Dense</code> sigmoid. La mappa 3×3 viene appiattita, e <code>Dense.backward</code> viene rimodellata in <code>Conv.backward</code>. <code>cnn_basic_layers.malda</code> percorre una mappa CHW attraverso <code>Conv2D</code>, <code>Activation</code>, il pooling e <code>Flatten</code> (<a href="#conv2d">14.11.6</a>). <code>cnn_composable.malda</code> impila due di quei blocchi dentro un <code>Sequential</code> esterno e allena il classificatore con <code>nn.mseGrad</code> (<a href="#compose">14.10.1</a>, <a href="#conv-net">14.11.7</a>). <code>residual_dropout.malda</code> mette un salto accanto a una pila sigmoid profonda, poi una maschera solo in training che la valutazione non applica.</p>
 
         <h3 id="track-attention">14.7.6 Da una riga a un blocco decoder</h3>
         <p><code>embed_row.malda</code> scrive il gradiente nella riga di embedding scelta e lascia ferme le altre righe. <code>next_char.malda</code> è un bigramma su una parola ripetuta: la loss è <code>nn.crossEntropyFromLogits</code>, e il gradiente del denso torna in quella sola riga. <code>next_char_mlp.malda</code> è il caso che un bigramma non sa nominare. Entrambi i campioni finiscono su <code>a</code>, un successore è <code>b</code>, l'altro è <code>c</code>, e un layer nascosto ReLU sulle due righe di embedding li nomina entrambi. <code>layer_norm.malda</code> toglie la media e divide per la deviazione standard così un prodotto profondo resta vicino a 1, poi controlla la scala con una differenza centrale.</p>
@@ -356,7 +356,7 @@ print(int(layer.out[1]));</code></pre>
 
         <h2 id="sequential">14.10 Sequential</h2>
         <p><code>new Dense(inFeatures, outFeatures, activation?, scale?)</code> possiede una matrice di pesi <code>[in, out]</code> e un bias. La scala di default è <code>1/sqrt(inFeatures)</code>, estratta dallo stesso generatore di <code>math.seed</code>. Passa <code>0</code> quando vuoi zeri e scriverai tu le componenti. <code>forward(x)</code> restituisce il vettore di uscita e ricorda <code>pre</code> e l'ingresso. <code>backward(upstream)</code> chiama <code>nn.denseBackward</code> e tiene <code>dWeights</code> e <code>dBias</code>. <code>sgd(lr)</code> sottrae quei gradienti sul posto. L'ingresso è un vettore, non un batch. Chiama <code>forward</code> prima di <code>backward</code>, e <code>backward</code> prima di <code>sgd</code>.</p>
-        <p><code>new Sequential([layer, ...])</code> impila qualsiasi layer che abbia <code>forward</code> e <code>backward</code>, compreso un <code>Sequential</code> annidato. <code>sgd</code> salta un layer che non ha <code>sgd</code>. <code>forward</code>, <code>backward</code> e <code>sgd</code> percorrono la pila. <code>backward</code> parte dall'ultimo layer, quindi passi solo il gradiente della loss. <code>fit(inputs, targets, epochs, lr, loss?)</code> è SGD online: ogni campione è un forward, un backward e un <code>sgd</code> prima del campione successivo. Restituisce la loss media dell'ultima epoca, misurata prima dei passi di quell'epoca. <code>loss</code> è <code>"mse"</code> (il default; un target è un numero o un vettore) oppure <code>"crossEntropy"</code> (un indice di classe; l'ultimo layer resta <code>"linear"</code>). <code>fit</code> si aspetta un'uscita vettoriale. Non è un nastro, e non è Adam.</p>
+        <p><code>new Sequential([layer, ...])</code> impila qualsiasi layer che abbia <code>forward</code> e <code>backward</code>, compreso un <code>Sequential</code> annidato. Quella rete annidata è un layer della rete esterna (<a href="#compose">14.10.1</a>). <code>sgd</code> salta un layer che non ha <code>sgd</code>. <code>forward</code>, <code>backward</code> e <code>sgd</code> percorrono la pila. <code>backward</code> parte dall'ultimo layer, quindi passi solo il gradiente della loss. <code>fit(inputs, targets, epochs, lr, loss?)</code> è SGD online: ogni campione è un forward, un backward e un <code>sgd</code> prima del campione successivo. Restituisce la loss media dell'ultima epoca, misurata prima dei passi di quell'epoca. <code>loss</code> è <code>"mse"</code> (il default; un target è un numero o un vettore) oppure <code>"crossEntropy"</code> (un indice di classe; l'ultimo layer resta <code>"linear"</code>). <code>fit</code> si aspetta un'uscita vettoriale. Non è un nastro, e non è Adam.</p>
         <p>Lo snippet costruisce un layer lineare 1-a-1 di zeri e fa il fit di un campione, ingresso <code>[1]</code> e target <code>2</code>, per un'epoca con learning rate <code>0.5</code>. La loss riportata è <code>4</code>, l'errore al quadrato della predizione zero. Il passo poi porta peso e bias a <code>1</code>, quindi il forward successivo di <code>[1]</code> vale <code>2</code>. Le stampe sono quella loss, peso e bias per 100, e il forward per 100. Le prime tre righe sono un layer a parte: peso <code>2</code> e bias <code>1</code> sull'ingresso <code>3</code> stampano <code>7</code>.</p>
         <p><code>nn.sequential([[in, out, activation?, scale?], ...])</code> costruisce lo stesso <code>Sequential</code>. <code>Examples/AI_Theory/sequential_xor.malda</code> allena la rete XOR 2-4-1 in questo modo. <code>nn_dense.malda</code> scrive ancora ogni passo a mano.</p>
         <table class="sigs">
@@ -391,6 +391,26 @@ print(int(loss));
 print(int(fitLayer.weights[0][0] * 100));
 print(int(fitLayer.bias[0] * 100));
 print(int(fitLayer.forward([1.0])[0] * 100));</code></pre>
+
+        <h3 id="compose">14.10.1 Composizione da reti più piccole</h3>
+        <p>Un <code>Sequential</code> è un layer. Un altro <code>Sequential</code> può contenerlo. La rete esterna chiama quel figlio come un solo layer. <code>forward</code> chiama <code>forward</code> su ogni figlio e passa l'uscita di quel figlio al figlio successivo. <code>backward</code> parte dall'ultimo figlio e passa il gradiente che quel figlio restituisce al figlio precedente. <code>sgd</code> chiama <code>sgd</code> su ogni figlio. Un <code>Sequential</code> annidato fa la stessa passeggiata sui propri layer, quindi un solo <code>sgd</code> esterno aggiorna ogni peso dell'albero. <code>layers</code> sulla rete esterna è la lista dei figli che hai passato.</p>
+        <p><code>nn.sequential([[in, out, activation?, scale?], ...])</code> costruisce un <code>Sequential</code> di layer <code>Dense</code> da quelle righe. Un blocco convoluzionale, un classificatore, o un misto di classi di layer è <code>new Sequential([...])</code>. <code>fit</code> percorre lo stesso albero. L'ultimo layer deve restituire un vettore, perché la loss confronta quel vettore con il target. Una pila che finisce ancora su una mappa non ha un vettore per <code>mse</code> o <code>crossEntropy</code>. Chiudi la rete con <code>Flatten</code> o un pool globale, poi un <code>Dense</code>, quando vuoi che <code>fit</code> alleni un'immagine. <code>Examples/AI_Theory/cnn_composable.malda</code> costruisce due blocchi conv e un classificatore come tre valori <code>Sequential</code>, li mette in un <code>Sequential</code> esterno, e allena con <code>forward</code>, <code>nn.mseGrad</code>, <code>backward</code> e <code>sgd</code>, così può contare le etichette corrette lungo il percorso. La forma di quella rete è <a href="#conv-net">14.11.7</a>.</p>
+        <p>Lo snippet sono due reti lineari di un'unità. Lo stem moltiplica per <code>2</code>. La head moltiplica per <code>3</code> e aggiunge <code>1</code>. L'ingresso <code>4</code> diventa <code>8</code>, poi <code>25</code>. <code>layers.length</code> è <code>2</code>. Un upstream di <code>1</code> e un learning rate di <code>1</code> portano il peso della head da <code>3</code> a <code>−5</code>, perché quel peso ha moltiplicato <code>8</code>. Il peso dello stem passa da <code>2</code> a <code>−10</code>: la head ha mandato un upstream di <code>3</code>, e lo stem ha moltiplicato l'ingresso <code>4</code>.</p>
+        <pre><code data-run="true" data-expect="2\n25\n-5\n-10">var hidden = new Dense(1, 1, "linear", 0.0);
+hidden.weights[0][0] = 2.0;
+hidden.bias[0] = 0.0;
+var stem = new Sequential([hidden]);
+var outLayer = new Dense(1, 1, "linear", 0.0);
+outLayer.weights[0][0] = 3.0;
+outLayer.bias[0] = 1.0;
+var head = new Sequential([outLayer]);
+var net = new Sequential([stem, head]);
+print(net.layers.length);
+print(int(net.forward([4.0])[0]));
+net.backward([1.0]);
+net.sgd(1.0);
+print(int(outLayer.weights[0][0]));
+print(int(hidden.weights[0][0]));</code></pre>
 
         <h2 id="other-layers">14.11 Altri layer</h2>
         <p>Queste classi tengono lo stesso contratto di <code>Dense</code>. I parametri restano tuoi. <code>forward</code> ricorda l'ingresso che ha visto. <code>backward</code> tiene i gradienti. <code>sgd(lr)</code> li sottrae sul posto. Non registrano un nastro, e non sostituiscono i file scritti a mano in <a href="#examples">14.7</a>.</p>
@@ -460,10 +480,39 @@ print(int(causal[0][0]));
 print(int(causal[1][0]));
 print(int(head.probs[0][1] * 1000));</code></pre>
 
-        <h3 id="conv2d">14.11.6 Conv2D e i layer spaziali</h3>
-        <p><code>new Conv2D(inChannels, outChannels, kernelSize, stride?, padding?, scale?)</code> possiede pesi <code>[inChannels, outChannels, kernel, kernel]</code> e un bias di lunghezza <code>outChannels</code>. Lo stride di default è <code>1</code>, il padding di default è <code>"valid"</code>, e la scala di default è <code>1/sqrt(inChannels * kernel * kernel)</code>. Passa <code>0</code> per un kernel di zeri e scrivi tu le componenti. Un ingresso è CHW quando <code>input[0][0][0]</code> è un numero, e NCHW quando quello slot è una riga. Un batch di uno resta NCHW. Il padding <code>"same"</code> rende ogni lato <code>ceil(input / stride)</code>. <code>backward(upstream)</code> richiede un <code>forward</code> precedente. <code>sgd(lr)</code> sottrae i gradienti memorizzati.</p>
-        <p><code>MaxPool2D(poolSize, stride?)</code> e <code>AvgPool2D</code> riducono la mappa. Lo stride di default è la dimensione del pool. <code>backward</code> riceve solo l'upstream; la dimensione spaziale è quella memorizzata da <code>forward</code>. <code>Flatten</code> trasforma un tensore numerico annidato in un vettore e ripristina quella forma al ritorno. <code>GlobalAvgPool2D</code> e <code>GlobalMaxPool2D</code> riducono ogni canale a un numero: un vettore se l'ingresso era CHW, e <code>[batch, channels]</code> se era NCHW. <code>BatchNorm2D(numFeatures, momentum?, eps?)</code> normalizza ogni canale sul batch e sugli assi spaziali. I default sono momentum <code>0.1</code> ed epsilon <code>0.00001</code>. <code>train()</code> e <code>eval()</code> cambiano la modalità. <code>backward</code> richiede un <code>forward</code> in training. <code>Dropout2D(p)</code> azzera elementi di una mappa CHW o NCHW. <code>p</code> sta in <code>[0, 1)</code>. <code>eval()</code>, e <code>p</code> uguale a <code>0</code>, lasciano la mappa invariata. Non ha <code>sgd</code>. <code>Activation(name)</code> applica un'attivazione elemento per elemento a un vettore o a un tensore annidato. I nomi sono quelli di <code>Dense</code>. Non ha parametri.</p>
-        <p>Su un'immagine CHW <code>[[[1, 2, 3], [4, 5, 6], [7, 8, 9]]]</code> e il kernel 2×2 <code>[[1, 0], [0, 1]]</code>, l'uscita in alto a sinistra è <code>6</code> e quella in basso a destra è <code>14</code>. <code>MaxPool2D(2)</code> di quella mappa 2×2 vale <code>14</code>.</p>
+        <h3 id="conv2d">14.11.6 Convoluzione</h3>
+        <p>Un layer denso su un'immagine appiattita tiene un peso per pixel. Una convoluzione tiene un kernel piccolo e lo fa scorrere. Ogni finestra moltiplica quegli stessi numeri, quindi un tratto che il kernel ha imparato in alto a sinistra è lo stesso tratto in basso a destra. <code>Conv</code> in <a href="#conv">14.11.1</a> è quello scorrimento su un canale, senza bias. <code>Conv2D</code> è lo stesso scorrimento con più canali di ingresso, più canali di uscita, un bias, uno stride e un padding. <code>backward</code> somma ogni finestra in quell'unico kernel. È la somma che <code>conv_stroke.malda</code> scrive a mano per nove pesi.</p>
+        <p>Un campione è CHW: una lista di canali, ogni canale una lista di righe, ogni riga una lista di numeri. <code>input[0][0][0]</code> è un numero, e <code>forward</code> restituisce CHW. Un batch è una lista di campioni, NCHW, quindi <code>input[0][0][0]</code> è una riga e <code>forward</code> restituisce NCHW. Una lista che contiene una sola mappa CHW è un batch di uno, e il risultato resta NCHW. Lo snippet stampa l'angolo di un'immagine CHW, il numero <code>1</code>, e la lunghezza di quello stesso angolo quando l'immagine sta dentro un batch, che è <code>2</code>.</p>
+        <pre><code data-run="true" data-expect="1\n2">var picture = [[[1.0, 2.0], [3.0, 4.0]]];
+var batched = [picture];
+print(int(picture[0][0][0]));
+print(batched[0][0][0].length);</code></pre>
+        <p><code>new Conv2D(inChannels, outChannels, kernelSize, stride?, padding?, scale?)</code> possiede pesi <code>[inChannels, outChannels, kernel, kernel]</code> e un bias di lunghezza <code>outChannels</code>. Una cella di uscita è il bias di quel canale di uscita più, per ogni canale di ingresso, il prodotto scalare del kernel di quel canale con la finestra sotto. Il kernel che legge il canale di ingresso <code>ic</code> e scrive il canale di uscita <code>oc</code> è <code>weights[ic][oc]</code>. La finestra della riga di uscita <code>oh</code> e della colonna <code>ow</code> parte da <code>oh * stride - padTop</code> e <code>ow * stride - padLeft</code>. Una cella che cade fuori dall'immagine contribuisce <code>0</code>. Lo stride di default è <code>1</code>, il padding di default è <code>"valid"</code>, e la scala di default è <code>1/sqrt(inChannels * kernel * kernel)</code>. Passa <code>0</code> per un kernel di zeri e scrivi tu le componenti. <code>sgd(lr)</code> sottrae i gradienti memorizzati. Chiama <code>forward</code> prima di <code>backward</code>.</p>
+        <p><code>"valid"</code> non usa padding. L'altezza di uscita è <code>(height - kernelSize) / stride + 1</code>, con la divisione troncata, e la stessa formula per la larghezza. Un'immagine 3×3, kernel <code>2</code>, stride <code>1</code>, è 2×2, la mappa dell'ultimo snippet di questa sezione. Un'immagine più piccola del kernel fallisce. <code>"same"</code> pone l'altezza di uscita a <code>ceil(height / stride)</code>, scritto <code>(height + stride - 1) / stride</code>, e lo stesso per la larghezza. Il kernel può sporgere dal bordo. Il pad in alto è metà delle righe extra, troncata, quindi una riga residua di zeri sta in basso. Una colonna residua sta a destra. Con un kernel dispari e stride <code>1</code>, <code>"same"</code> mantiene altezza e larghezza.</p>
+        <p>Su una rampa 4×4 e un kernel 3×3 che vale <code>1</code> solo al centro, <code>"valid"</code> è 2×2 e gli angoli sono <code>6</code> e <code>11</code>, i centri delle quattro finestre. <code>"same"</code> con stride <code>1</code> tiene 4×4, e la cella in alto a sinistra è <code>1</code>, l'angolo dell'immagine, perché il centro di quella finestra cade sull'angolo. Un kernel 2×2 con stride <code>2</code> e i pesi diagonali <code>[[1, 0], [0, 1]]</code> avanza senza sovrapposizione. La finestra in alto a sinistra è <code>1 + 6 = 7</code> e quella in basso a destra è <code>11 + 16 = 27</code>. Le stampe sono l'altezza valid, quei due angoli, l'altezza same, l'angolo in alto a sinistra di same, l'altezza con stride 2, e i due angoli con stride 2.</p>
+        <pre><code data-run="true" data-expect="2\n6\n11\n4\n1\n2\n7\n27">var image = [[[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0], [9.0, 10.0, 11.0, 12.0], [13.0, 14.0, 15.0, 16.0]]];
+var valid = new Conv2D(1, 1, 3, 1, "valid", 0.0);
+valid.weights[0][0][1][1] = 1.0;
+valid.bias[0] = 0.0;
+var yv = valid.forward(image);
+print(yv[0].length);
+print(int(yv[0][0][0]));
+print(int(yv[0][1][1]));
+var same = new Conv2D(1, 1, 3, 1, "same", 0.0);
+same.weights[0][0][1][1] = 1.0;
+same.bias[0] = 0.0;
+var ys = same.forward(image);
+print(ys[0].length);
+print(int(ys[0][0][0]));
+var stepped = new Conv2D(1, 1, 2, 2, "valid", 0.0);
+stepped.weights[0][0][0][0] = 1.0;
+stepped.weights[0][0][1][1] = 1.0;
+stepped.bias[0] = 0.0;
+var ys2 = stepped.forward(image);
+print(ys2[0].length);
+print(int(ys2[0][0][0]));
+print(int(ys2[0][1][1]));</code></pre>
+        <p>La rampa 3×3 di <a href="#conv">14.11.1</a>, come un canale, con lo stesso kernel diagonale 2×2. L'uscita in alto a sinistra è <code>1 + 5 = 6</code>. Quella in basso a destra è <code>5 + 9 = 14</code>. <code>MaxPool2D(2)</code> di quella mappa 2×2 tiene <code>14</code>.</p>
         <pre><code data-run="true" data-expect="6\n14\n14">var conv = new Conv2D(1, 1, 2, 1, "valid", 0.0);
 conv.weights[0][0][0][0] = 1.0;
 conv.weights[0][0][0][1] = 0.0;
@@ -476,6 +525,66 @@ var pooled = pool.forward(y);
 print(int(y[0][0][0]));
 print(int(y[0][1][1]));
 print(int(pooled[0][0][0]));</code></pre>
+
+        <h3 id="conv-net">14.11.7 Una rete convoluzionale</h3>
+        <p>Una rete convoluzionale è un <code>Sequential</code>. I primi layer leggono una mappa. L'ultimo layer restituisce un vettore, quindi le loss di <a href="#losses">14.6</a> valgono ancora. In mezzo la mappa si rimpicciolisce e il numero di canali di solito cresce. Raggruppa quei layer in reti più piccole con <a href="#compose">14.10.1</a>.</p>
+        <p>Un blocco in <code>Examples/AI_Theory/cnn_composable.malda</code> è a sua volta un <code>Sequential</code>: <code>Conv2D</code> con padding <code>"same"</code>, <code>BatchNorm2D</code>, <code>Activation("relu")</code>, <code>Dropout2D</code> e <code>MaxPool2D(2)</code>. Con un kernel dispari e stride <code>1</code>, <code>"same"</code> mantiene altezza e larghezza. Il pool di <code>2</code>, il cui stride di default è la dimensione del pool, dimezza poi ogni lato. Una mappa 5×5 con quel pool è 2×2. La dimensione usa la formula <code>"valid"</code>, quindi una riga o una colonna residua resta fuori da ogni finestra.</p>
+        <p><code>Activation(name)</code> applica un nome di <a href="#activations">14.4</a> a ogni cella di un vettore o di una mappa annidata. Una pila di convoluzioni senza una piega in mezzo collassa in un solo filtro lineare, per la stessa ragione per cui una pila di prodotti semplici lo fa in <a href="#layers">14.1.2</a>. <code>BatchNorm2D(numFeatures, momentum?, eps?)</code> porta ogni canale a media <code>0</code> e varianza <code>1</code>, sul batch e sulle celle spaziali, poi moltiplica per <code>gamma</code> (che parte da <code>1</code>) e aggiunge <code>beta</code> (che parte da <code>0</code>). I default sono momentum <code>0.1</code> ed epsilon <code>0.00001</code>. <code>train()</code> usa il batch e aggiorna <code>runningMean</code> e <code>runningVar</code>. Prima di qualsiasi forward in training quei valori correnti sono <code>0</code> e <code>1</code>. <code>eval()</code> usa i valori correnti. <code>backward</code> richiede un <code>forward</code> in training. <code>Dropout2D(p)</code>, con <code>p</code> in <code>[0, 1)</code>, tiene ogni elemento con probabilità <code>1 - p</code> durante il training e moltiplica gli elementi tenuti per <code>1 / (1 - p)</code>. <code>eval()</code>, e <code>p</code> uguale a <code>0</code>, copiano la mappa. Non ha <code>sgd</code>.</p>
+        <p><code>Flatten</code> percorre i numeri annidati nell'ordine in cui sono memorizzati, canale poi riga poi colonna, e restituisce un vettore. <code>backward</code> riscrive quel vettore nella forma vista da <code>forward</code>. <code>GlobalAvgPool2D</code> e <code>GlobalMaxPool2D</code> riducono ogni canale a un numero: un vettore se l'ingresso era CHW, e <code>[batch, channels]</code> se era NCHW. <code>MaxPool2D</code> manda l'upstream alla cella che teneva il massimo. Un pareggio tiene la cella precedente, da sinistra a destra, poi dall'alto in basso. <code>AvgPool2D</code> scrive la media della finestra. Il suo <code>backward</code> somma l'upstream, diviso per l'area della finestra, in ogni cella. Le finestre che si sovrappongono si sommano. Pool e flatten non hanno <code>sgd</code>. Il <code>backward</code> di un pool riceve solo l'upstream. La dimensione spaziale è quella memorizzata da <code>forward</code>.</p>
+        <p>Il classificatore è un altro <code>Sequential</code>: <code>Flatten</code>, un <code>Dense</code> con <code>"relu"</code>, e un <code>Dense</code> con punteggi <code>"linear"</code>. <code>cnn_composable.malda</code> usa un'immagine 8×8 a un canale. Il primo blocco ha 4 canali di uscita, quindi il pool produce 4×4×4. Il secondo blocco ha 8 canali di uscita, quindi il pool successivo produce 2×2×8, cioè 32 numeri. Il classificatore è <code>Dense(32, 8, "relu")</code> poi <code>Dense(8, 2, "linear")</code>. Il <code>Sequential</code> esterno sono quei due blocchi e il classificatore. <code>layers.length</code> sulla rete esterna è <code>3</code>. Un <code>forward</code> percorre tutti e tre. Un <code>backward</code> parte dal classificatore. Un <code>sgd</code> aggiorna ogni layer dell'albero che ha <code>sgd</code>. Il ciclo di allenamento passa <code>nn.mseGrad</code> di un target one-hot. <code>fit</code> fa quella passeggiata quando l'uscita è un vettore e la loss è <code>"mse"</code> o <code>"crossEntropy"</code>. L'esempio scrive il ciclo per poter contare le etichette corrette. <code>cnn_basic_layers.malda</code> chiama gli stessi layer uno alla volta, su una mappa CHW, compreso <code>GlobalAvgPool2D</code> e un <code>Dropout2D</code> lasciato in <code>eval()</code>.</p>
+        <p>Lo snippet è quella composizione sulla rampa 4×4. Il blocco è un <code>Sequential</code> di una convoluzione 3×3 <code>"same"</code>, peso centrale <code>1</code>, e <code>MaxPool2D(2)</code>. La mappa resta 4×4, poi il pool produce 2×2. Quei quattro numeri sono <code>6</code>, <code>8</code>, <code>14</code> e <code>16</code>. Il classificatore è un <code>Sequential</code> di <code>Flatten</code> e un <code>Dense</code> lineare i cui quattro pesi sono <code>1</code>. La somma è <code>44</code>. <code>layers.length</code> della rete esterna è <code>2</code>. <code>layers.length</code> del blocco è <code>2</code>.</p>
+        <pre><code data-run="true" data-expect="2\n2\n44">function convPool() {
+    var conv = new Conv2D(1, 1, 3, 1, "same", 0.0);
+    conv.weights[0][0][1][1] = 1.0;
+    conv.bias[0] = 0.0;
+    return new Sequential([conv, new MaxPool2D(2)]);
+}
+var image = [[[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0], [9.0, 10.0, 11.0, 12.0], [13.0, 14.0, 15.0, 16.0]]];
+var block = convPool();
+var dense = new Dense(4, 1, "linear", 0.0);
+dense.weights[0][0] = 1.0;
+dense.weights[1][0] = 1.0;
+dense.weights[2][0] = 1.0;
+dense.weights[3][0] = 1.0;
+dense.bias[0] = 0.0;
+var classifier = new Sequential([new Flatten(), dense]);
+var cnn = new Sequential([block, classifier]);
+print(cnn.layers.length);
+print(block.layers.length);
+print(int(cnn.forward(image)[0]));</code></pre>
+        <table class="sigs">
+        <thead>
+        <tr><th>Argomenti</th><th>Restituisce</th><th>Note</th></tr>
+        </thead>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>new Conv2D(inChannels, outChannels, kernelSize, stride?, padding?, scale?)</code></td></tr>
+        <tr><td>3-6 argomenti</td><td><code>Conv2D</code></td><td>pesi <code>[in, out, k, k]</code>, bias di lunghezza <code>out</code>. Stride <code>1</code>, padding <code>"valid"</code> o <code>"same"</code>, scala <code>1/sqrt(in * k * k)</code></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>new MaxPool2D(poolSize, stride?)</code> / <code>AvgPool2D</code></td></tr>
+        <tr><td>1-2 argomenti</td><td>mappa</td><td>lo stride di default è la dimensione del pool. Niente <code>sgd</code></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>new Flatten()</code></td></tr>
+        <tr><td>nessun argomento</td><td>vettore</td><td>canale, poi riga, poi colonna. <code>backward</code> ripristina la forma. Niente <code>sgd</code></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>new GlobalAvgPool2D()</code> / <code>GlobalMaxPool2D()</code></td></tr>
+        <tr><td>nessun argomento</td><td>vettore o <code>[batch, channels]</code></td><td>un numero per canale. Niente <code>sgd</code></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>new BatchNorm2D(numFeatures, momentum?, eps?)</code></td></tr>
+        <tr><td>1-3 argomenti</td><td>mappa</td><td>momentum <code>0.1</code>, epsilon <code>0.00001</code>. <code>train()</code> / <code>eval()</code>. <code>gamma</code>, <code>beta</code>, <code>runningMean</code>, <code>runningVar</code></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>new Dropout2D(p)</code></td></tr>
+        <tr><td>1 argomento</td><td>mappa</td><td><code>p</code> in <code>[0, 1)</code>. Dropout invertito. <code>eval()</code> copia la mappa. Niente <code>sgd</code></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>new Activation(name)</code></td></tr>
+        <tr><td>1 argomento</td><td>stessa forma</td><td>i nomi sono quelli di <code>Dense</code>. Nessun parametro</td></tr>
+        </tbody>
+        </table>
 
         <div class="see-also">
             <h3>Vedi anche</h3>

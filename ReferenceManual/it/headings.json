@@ -1285,6 +1285,12 @@
   },
   {
     "file": "14-neural-nets.html",
+    "level": 3,
+    "id": "compose",
+    "title": "14.10.1 Composizione da reti più piccole"
+  },
+  {
+    "file": "14-neural-nets.html",
     "level": 2,
     "id": "other-layers",
     "title": "14.11 Altri layer"
@@ -1323,7 +1329,13 @@
     "file": "14-neural-nets.html",
     "level": 3,
     "id": "conv2d",
-    "title": "14.11.6 Conv2D e i layer spaziali"
+    "title": "14.11.6 Convoluzione"
+  },
+  {
+    "file": "14-neural-nets.html",
+    "level": 3,
+    "id": "conv-net",
+    "title": "14.11.7 Una rete convoluzionale"
   },
   {
     "file": "15-graphs.html",
