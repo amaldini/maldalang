@@ -12273,7 +12273,9 @@ public class CSharpTranspiler
             return;
         }
 
-        if (className is "Dense" or "Sequential" or "Conv" or "Embedding" or "Rnn" or "LayerNorm" or "Attention")
+        if (className is "Dense" or "Sequential" or "Conv" or "Conv2D" or "MaxPool2D" or "AvgPool2D"
+            or "Flatten" or "BatchNorm2D" or "Dropout2D" or "GlobalAvgPool2D" or "GlobalMaxPool2D"
+            or "Activation" or "Embedding" or "Rnn" or "LayerNorm" or "Attention")
         {
             var instanceType = MapBuiltInClassName(className);
             _output.Append("new ");
