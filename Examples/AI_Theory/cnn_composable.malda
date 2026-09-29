@@ -1,0 +1,110 @@
+// A small CNN built from smaller networks.
+//
+// Each block is its own Sequential. The outer Sequential trains them
+// together. Dropout2D stays on the feature map. The classifier is Dense.
+
+function createConvBlock(inChannels: int, outChannels: int) -> object {
+    return new Sequential([
+        new Conv2D(inChannels, outChannels, 3, 1, "same", 0.1),
+        new BatchNorm2D(outChannels),
+        new Activation("relu"),
+        new Dropout2D(0.0),
+        new MaxPool2D(2, 2)
+    ]);
+}
+
+function createClassifier(inputSize: int, numClasses: int) -> object {
+    return new Sequential([
+        new Flatten(),
+        new Dense(inputSize, 8, "relu", 0.1),
+        new Dense(8, numClasses, "linear", 0.1)
+    ]);
+}
+
+function createSimpleImage(value: float) -> array {
+    var channels = [];
+    var channel = [];
+    for (var r = 0; r < 8; r = r + 1) {
+        var row = [];
+        for (var c = 0; c < 8; c = c + 1) {
+            row.append(value + (r * 8 + c) * 0.01);
+        }
+        channel.append(row);
+    }
+    channels.append(channel);
+    return channels;
+}
+
+io.print("Building a CNN from smaller networks...");
+math.seed(42);
+
+// 8x8x1, same padding, then pool 2 -> 4x4x4
+// 4x4x4, same padding, then pool 2 -> 2x2x8 = 32
+var convBlock1 = createConvBlock(1, 4);
+var convBlock2 = createConvBlock(4, 8);
+var classifier = createClassifier(32, 2);
+var cnn = new Sequential([convBlock1, convBlock2, classifier]);
+
+io.print("Conv block: Conv2D + BatchNorm2D + Activation relu + Dropout2D(0) + MaxPool2D");
+io.print("Classifier: Flatten + Dense relu + Dense linear");
+io.print("");
+
+var images = [];
+var labels = [];
+for (var i = 0; i < 4; i = i + 1) {
+    images.append(createSimpleImage(0.8));
+    labels.append(0);
+}
+for (var i = 0; i < 4; i = i + 1) {
+    images.append(createSimpleImage(0.2));
+    labels.append(1);
+}
+
+io.print("Training on 8 images...");
+var learningRate = 0.05;
+var epochs = 40;
+
+for (var epoch = 0; epoch < epochs; epoch = epoch + 1) {
+    var totalLoss = 0.0;
+    var correct = 0;
+    for (var s = 0; s < images.length; s = s + 1) {
+        var output = cnn.forward(images[s]);
+        var target = [0.0, 0.0];
+        target[labels[s]] = 1.0;
+        totalLoss = totalLoss + nn.mse(output, target);
+        var predicted = 0;
+        if (output[1] > output[0]) {
+            predicted = 1;
+        }
+        if (predicted == labels[s]) {
+            correct = correct + 1;
+        }
+        cnn.backward(nn.mseGrad(output, target));
+        cnn.sgd(learningRate);
+    }
+    if ((epoch + 1) % 10 == 0) {
+        var avgLoss = totalLoss / float(images.length);
+        var accuracy = float(correct) / float(images.length) * 100.0;
+        io.print("Epoch " + string(epoch + 1) + " loss=" + string(avgLoss) + " accuracy=" + string(accuracy));
+    }
+}
+
+io.print("");
+var correct = 0;
+for (var s = 0; s < images.length; s = s + 1) {
+    var output = cnn.forward(images[s]);
+    var predicted = 0;
+    if (output[1] > output[0]) {
+        predicted = 1;
+    }
+    if (predicted == labels[s]) {
+        correct = correct + 1;
+    }
+    io.print("Sample " + string(s) + " predicted=" + string(predicted) + " actual=" + string(labels[s]));
+}
+
+var finalAccuracy = float(correct) / float(images.length) * 100.0;
+io.print("Final accuracy: " + string(finalAccuracy));
+if (finalAccuracy >= 80.0) {
+    io.print("The CNN separated the two image groups.");
+}

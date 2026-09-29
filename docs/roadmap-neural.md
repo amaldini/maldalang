@@ -1,6 +1,6 @@
 # MALDA neural-nets kit
 
-**Status:** N0–N4 and N6–N12 landed; N5 partial  
+**Status:** N0–N4 and N6–N13 landed; N5 partial  
 **Created:** 2026-09-20  
 **Audience:** maintainers extending `math.*`, `nn.*`, and the offline AI_Theory track after Final 1.0
 
@@ -66,6 +66,7 @@ layers and can apply online SGD. They are not a module zoo and not a tape.
 | 10 | **N10** Bridge into the transformer | Landed | Context MLP, sinusoids, gradient clip, Adam moments, one decoder block. No new builtins |
 | 11 | **N11** `Dense` / `Sequential` | Landed | Host classes plus `nn.sequential`. Fixed dense stack, online SGD. No tape, no Adam |
 | 12 | **N12** Local layers | Landed | `Conv`, `Embedding`, `Rnn`, `LayerNorm`, `Attention`. Same `forward` / `backward` / `sgd` contract. No tape |
+| 13 | **N13** Spatial layers | Landed | `Conv2D`, pooling, `Flatten`, `BatchNorm2D`, `Dropout2D`, `Activation`. `Sequential` stacks any of them. No tape, no Adam |
 
 ```text
 N0  roadmap file                          (landed)
@@ -93,6 +94,9 @@ N10 next_char_mlp / positional_encoding   (landed)
     sentence_decoder
 N11 Dense / Sequential / nn.sequential   (landed)
     online SGD on a fixed dense stack
+N13 Conv2D / pools / Flatten / BatchNorm2D
+    Dropout2D / Activation                (landed)
+    Sequential stacks those layers
 ```
 
 ---
@@ -150,7 +154,7 @@ colored by the XOR MLP, four training points overlaid. No new `ui.chart`.
 ## Out of scope (keep out of core)
 
 - Language `tensor` / autograd tape / an Adam builtin / DataLoader
-- A module zoo beyond `Dense` / `Sequential` and the five local layers `Conv`, `Embedding`, `Rnn`, `LayerNorm`, `Attention`
+- A module zoo beyond `Dense` / `Sequential`, the five local layers `Conv`, `Embedding`, `Rnn`, `LayerNorm`, `Attention`, and the spatial layers in N13 (`Conv2D`, `MaxPool2D`, `AvgPool2D`, `Flatten`, `BatchNorm2D`, `Dropout2D`, `GlobalAvgPool2D`, `GlobalMaxPool2D`, `Activation`)
 - GPU, distributed training, ONNX training loops
 - Downloading MNIST / ImageNet in the OSS repo (`mnist_digits.malda` is ten 5×5 glyphs on the chapter 14 step)
 - A second plotting namespace
@@ -186,7 +190,7 @@ A fixed stack of dense layers. `forward` / `backward` call `nn.dense` / `nn.dens
 | Call | Role |
 |------|------|
 | `new Dense(in, out, activation?, scale?)` | One layer. Default scale is `1/sqrt(in)`. Same RNG as `math.seed` |
-| `new Sequential([dense, ...])` | Stack of `Dense` instances |
+| `new Sequential([layer, ...])` | Stack of layers with `forward` and `backward`. `sgd` skips a layer that has none. `nn.sequential` still builds `Dense` from specs |
 | `nn.sequential([[in, out, activation?, scale?], ...])` | Same stack from layer specs |
 | `forward` / `backward` / `sgd` | Vector in. `sgd(lr)` applies the gradients stored by `backward` |
 | `Sequential.fit(inputs, targets, epochs, lr, loss?)` | One sample at a time. Default loss is `mse` |
@@ -239,6 +243,26 @@ No new `nn.*` names. Adam and the gradient clip stay programs: you still own the
 | `adam_valley.malda` | Bias-corrected `m` and `v` on the momentum valley. SGD stays far |
 | `positional_encoding.malda` | Fixed `sin` / `cos` positions. Position 0 is `0, 1`. Position 1 matches `sin(1)` and `cos(1)` |
 | `sentence_decoder.malda` | One causal block overfits `abca` → `bcab`. The dense gradient is clipped before the step |
+
+---
+
+## N13 — Spatial layers
+
+Host classes, same contract as `Dense`: `forward` remembers the input, `backward` stores gradients, `sgd` subtracts them. No tape and no Adam. Interpreter, C# transpile, and JavaScript all run them. `new Sequential` accepts these layers and a nested `Sequential`. `nn.sequential` still builds a `Dense` stack. `Sequential.fit` still expects a vector output.
+
+Tensors are CHW when `input[0][0][0]` is a number, and NCHW when that slot is a row. A batch of one stays NCHW. `Conv2D` padding `"same"` uses `ceil(input / stride)` on each axis. Pool `backward` takes only the upstream. `Dropout2D` drops elements of a CHW or NCHW map; `eval()`, and `p` of `0`, leave the map unchanged. `Activation` is elementwise on a vector or a nested tensor so a conv block inside `Sequential` can be nonlinear.
+
+| Call | Role |
+|------|------|
+| `new Conv2D(inChannels, outChannels, kernelSize, stride?, padding?, scale?)` | Weights `[in, out, k, k]` and a bias. Default scale `1/sqrt(in * k * k)`. Padding `"valid"` or `"same"` |
+| `new MaxPool2D(poolSize, stride?)` / `AvgPool2D` | Downsample. Default stride is the pool size |
+| `new Flatten()` | Nested numeric tensor to one vector, and back |
+| `new GlobalAvgPool2D()` / `GlobalMaxPool2D()` | One number per channel |
+| `new BatchNorm2D(numFeatures, momentum?, eps?)` | Per-channel norm. `train()` / `eval()`. `backward` needs a training forward |
+| `new Dropout2D(p)` | Element dropout on CHW/NCHW. No `sgd` |
+| `new Activation(name)` | Elementwise. Names match `Dense`. No parameters |
+
+`Examples/AI_Theory/cnn_basic_layers.malda` walks one CHW map. `cnn_composable.malda` trains two conv blocks plus a classifier. `conv_classifier.malda` stays the one-channel `Conv`.
 
 ---
 

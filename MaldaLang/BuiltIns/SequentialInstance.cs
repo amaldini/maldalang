@@ -3,17 +3,19 @@
 
 namespace MaldaLang.BuiltIns;
 
+using System;
 using System.Collections.Generic;
 using MaldaLang.Interpreter;
 using ValueType = MaldaLang.Interpreter.ValueType;
 
 /// <summary>
-/// A fixed stack of <see cref="DenseInstance"/> layers. <c>fit</c> is online SGD.
+/// A fixed stack of neural network layers (Dense, Conv2D, pooling, etc.). <c>fit</c> is online SGD.
 /// It is not an autograd tape and it does not implement Adam.
+/// Supports any layer with forward/backward/sgd methods for composable networks.
 /// </summary>
 public sealed class SequentialInstance : ObjectInstance
 {
-    private readonly List<DenseInstance> _layers;
+    private readonly List<ObjectInstance> _layers;
 
     public SequentialInstance(List<RuntimeValue> args) : base(null)
     {
@@ -22,7 +24,7 @@ public sealed class SequentialInstance : ObjectInstance
         _layers = ReadLayers(args[0]);
     }
 
-    private SequentialInstance(List<DenseInstance> layers) : base(null)
+    private SequentialInstance(List<ObjectInstance> layers) : base(null)
     {
         _layers = layers;
     }
@@ -35,7 +37,7 @@ public sealed class SequentialInstance : ObjectInstance
         if (rows.Count == 0)
             throw new RuntimeException("sequential() expects at least one layer");
 
-        var layers = new List<DenseInstance>(rows.Count);
+        var layers = new List<ObjectInstance>(rows.Count);
         foreach (var row in rows)
         {
             if (row.Type != ValueType.Array)
@@ -92,7 +94,14 @@ public sealed class SequentialInstance : ObjectInstance
     {
         var current = input;
         foreach (var layer in _layers)
-            current = layer.Forward(current);
+        {
+            // Call forward method on the layer
+            var forwardMethod = layer.Get("forward");
+            if (forwardMethod.Type != ValueType.Function)
+                throw new RuntimeException("Sequential layer must have a forward() method");
+            
+            current = CallLayerMethod(layer, "forward", new List<RuntimeValue> { current });
+        }
         return current;
     }
 
@@ -102,7 +111,14 @@ public sealed class SequentialInstance : ObjectInstance
             throw new RuntimeException("Sequential.backward() expects 1 argument: (upstream)");
         var upstream = args[0];
         for (var i = _layers.Count - 1; i >= 0; i--)
-            upstream = _layers[i].Backward(new List<RuntimeValue> { upstream });
+        {
+            var layer = _layers[i];
+            var backwardMethod = layer.Get("backward");
+            if (backwardMethod.Type != ValueType.Function)
+                throw new RuntimeException("Sequential layer must have a backward() method");
+            
+            upstream = CallLayerMethod(layer, "backward", new List<RuntimeValue> { upstream });
+        }
         return upstream;
     }
 
@@ -112,7 +128,10 @@ public sealed class SequentialInstance : ObjectInstance
             throw new RuntimeException("Sequential.sgd() expects 1 argument: (lr)");
         var learningRate = DenseInstance.RequireFinite("Sequential.sgd", args[0], "lr");
         foreach (var layer in _layers)
-            layer.Sgd(learningRate);
+        {
+            if (HasMethod(layer, "sgd"))
+                CallLayerMethod(layer, "sgd", new List<RuntimeValue> { RuntimeValue.Float(learningRate) });
+        }
         return RuntimeValue.Null();
     }
 
@@ -171,23 +190,113 @@ public sealed class SequentialInstance : ObjectInstance
         return RuntimeValue.Float(mean);
     }
 
-    private static List<DenseInstance> ReadLayers(RuntimeValue value)
+    private static List<ObjectInstance> ReadLayers(RuntimeValue value)
     {
         if (value.Type != ValueType.Array)
-            throw new RuntimeException("Sequential() expects an array of Dense layers");
+            throw new RuntimeException("Sequential() expects an array of layer instances");
         var items = value.AsArray();
         if (items.Count == 0)
-            throw new RuntimeException("Sequential() expects at least one Dense layer");
+            throw new RuntimeException("Sequential() expects at least one layer");
 
-        var layers = new List<DenseInstance>(items.Count);
+        var layers = new List<ObjectInstance>(items.Count);
         foreach (var item in items)
         {
-            if (item.Type != ValueType.Object || item.AsObject() is not DenseInstance dense)
-                throw new RuntimeException("Sequential() expects an array of Dense layers");
-            layers.Add(dense);
+            if (item.Type != ValueType.Object)
+                throw new RuntimeException("Sequential() expects an array of layer instances (Dense, Conv2D, MaxPool2D, etc.)");
+            
+            var layerObj = item.AsObject();
+            if (!HasMethod(layerObj, "forward"))
+                throw new RuntimeException("Sequential() layer must have a forward() method");
+            layers.Add(layerObj);
         }
 
         return layers;
+    }
+    
+    private RuntimeValue CallLayerMethod(ObjectInstance layer, string methodName, List<RuntimeValue> args)
+    {
+        // Handle different layer types
+        if (layer is DenseInstance dense)
+        {
+            return methodName switch
+            {
+                "forward" => dense.Forward(args),
+                "backward" => dense.Backward(args),
+                "sgd" => dense.Sgd(args),
+                _ => throw new RuntimeException($"Unknown method '{methodName}' on Dense")
+            };
+        }
+        else if (layer is Conv2DInstance conv2d)
+        {
+            return conv2d.CallMethod(methodName, args);
+        }
+        else if (layer is MaxPool2DInstance maxPool)
+        {
+            return maxPool.CallMethod(methodName, args);
+        }
+        else if (layer is AvgPool2DInstance avgPool)
+        {
+            return avgPool.CallMethod(methodName, args);
+        }
+        else if (layer is FlattenInstance flatten)
+        {
+            return flatten.CallMethod(methodName, args);
+        }
+        else if (layer is BatchNorm2DInstance batchNorm)
+        {
+            return batchNorm.CallMethod(methodName, args);
+        }
+        else if (layer is Dropout2DInstance dropout)
+        {
+            return dropout.CallMethod(methodName, args);
+        }
+        else if (layer is GlobalAvgPool2DInstance globalAvg)
+        {
+            return globalAvg.CallMethod(methodName, args);
+        }
+        else if (layer is GlobalMaxPool2DInstance globalMax)
+        {
+            return globalMax.CallMethod(methodName, args);
+        }
+        else if (layer is ActivationInstance activation)
+        {
+            return activation.CallMethod(methodName, args);
+        }
+        else if (layer is ConvInstance conv)
+        {
+            return conv.CallMethod(methodName, args);
+        }
+        else if (layer is EmbeddingInstance embedding)
+        {
+            return embedding.CallMethod(methodName, args);
+        }
+        else if (layer is RnnInstance rnn)
+        {
+            return rnn.CallMethod(methodName, args);
+        }
+        else if (layer is LayerNormInstance layerNorm)
+        {
+            return layerNorm.CallMethod(methodName, args);
+        }
+        else if (layer is AttentionInstance attention)
+        {
+            return attention.CallMethod(methodName, args);
+        }
+        else if (layer is SequentialInstance sequential)
+        {
+            // Allow nested Sequential networks!
+            return methodName switch
+            {
+                "forward" => sequential.Forward(args),
+                "backward" => sequential.Backward(args),
+                "sgd" => sequential.Sgd(args),
+                _ => throw new RuntimeException($"Unknown method '{methodName}' on Sequential")
+            };
+        }
+        else
+        {
+            throw new RuntimeException($"Sequential() unsupported layer type: {layer.GetType().Name}");
+        }
     }
 
     private static RuntimeValue AsTargetVector(RuntimeValue target, RuntimeValue output)
@@ -202,5 +311,20 @@ public sealed class SequentialInstance : ObjectInstance
         if (target.Type == ValueType.Array && !DenseInstance.IsMatrix(target))
             return target;
         throw new RuntimeException("Sequential.fit() mse targets must be a number or a numeric vector");
+    }
+
+    private static bool HasMethod(ObjectInstance layer, string name)
+    {
+        RuntimeValue method;
+        try
+        {
+            method = layer.Get(name);
+        }
+        catch (RuntimeException ex) when (ex.Message.StartsWith("Undefined property", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        return method.Type == ValueType.Function;
     }
 }

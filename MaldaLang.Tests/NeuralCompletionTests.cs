@@ -19,6 +19,12 @@ public class NeuralCompletionTests
         Assert.Contains(completions, item => item.Label == "Dense" && item.InsertText == "new Dense()");
         Assert.Contains(completions, item => item.Label == "Sequential");
         Assert.Contains(completions, item => item.Label == "Conv");
+        Assert.Contains(completions, item => item.Label == "Conv2D");
+        Assert.Contains(completions, item => item.Label == "MaxPool2D");
+        Assert.Contains(completions, item => item.Label == "Flatten");
+        Assert.Contains(completions, item => item.Label == "BatchNorm2D");
+        Assert.Contains(completions, item => item.Label == "Dropout2D");
+        Assert.Contains(completions, item => item.Label == "Activation");
         Assert.Contains(completions, item => item.Label == "Embedding");
         Assert.Contains(completions, item => item.Label == "Rnn");
         Assert.Contains(completions, item => item.Label == "LayerNorm");

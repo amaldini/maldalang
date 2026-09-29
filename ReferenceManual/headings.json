@@ -1320,6 +1320,12 @@
     "title": "14.11.5 Attention"
   },
   {
+    "file": "14-neural-nets.html",
+    "level": 3,
+    "id": "conv2d",
+    "title": "14.11.6 Conv2D and the spatial layers"
+  },
+  {
     "file": "15-graphs.html",
     "level": 2,
     "id": "",
