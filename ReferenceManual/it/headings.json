@@ -511,6 +511,12 @@
   },
   {
     "file": "09-functions.html",
+    "level": 3,
+    "id": "nested-functions",
+    "title": "Funzioni annidate"
+  },
+  {
+    "file": "09-functions.html",
     "level": 2,
     "id": "function-call",
     "title": "9.2 Chiamata di funzione"

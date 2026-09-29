@@ -22,7 +22,7 @@ public class NestedFunctionDeclarationTests : TestBase
             }
             """;
 
-        Assert.Equal("8", RunProgram(source));
+        InterpretTranspilePair.AssertSameFromSource(source, "block function closure");
     }
 
     [Fact]
@@ -41,7 +41,7 @@ public class NestedFunctionDeclarationTests : TestBase
             }
             """;
 
-        Assert.Equal("15", RunProgram(source));
+        InterpretTranspilePair.AssertSameFromSource(source, "block function callback");
     }
 
     [Fact]
@@ -73,6 +73,6 @@ public class NestedFunctionDeclarationTests : TestBase
             print(outer(5));
             """;
 
-        Assert.Equal("6", RunProgram(source));
+        InterpretTranspilePair.AssertSameFromSource(source, "function inside function");
     }
 }

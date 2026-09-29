@@ -56,6 +56,11 @@ public class CSharpTranspiler
     private readonly HashSet<string> _moduleConstNames;
     private readonly Dictionary<string, TranspiledClrType> _functionReturnTypes;
     private readonly Dictionary<string, IReadOnlyList<TranspiledClrType>> _functionParameterTypes;
+    /// <summary>
+    /// Block-scoped <c>function</c> declarations, innermost frame first.
+    /// Top-level functions stay in <see cref="_functionNames"/>.
+    /// </summary>
+    private readonly Stack<Dictionary<string, IReadOnlyList<TranspiledClrType>>> _localFunctionStack = new();
     private readonly Stack<TranspiledClrType> _currentFunctionReturnType;
     /// <summary>
     /// Name of the MALDA class whose member body is currently being transpiled, or null
@@ -125,6 +130,7 @@ public class CSharpTranspiler
         _moduleConstNames.Clear();
         _functionReturnTypes.Clear();
         _functionParameterTypes.Clear();
+        _localFunctionStack.Clear();
         _currentFunctionReturnType.Clear();
         _currentClassName = null;
         _currentMemberIsStatic = false;
@@ -413,10 +419,12 @@ public class CSharpTranspiler
             // Transpile top-level statements (assignments, function calls, etc.)
             var previousCanAwaitInInitialize = _canAwait;
             _canAwait = true;
+            PushLocalFunctionScope();
             foreach (var statement in topLevelStatements)
             {
                 TranspileStatement(statement);
             }
+            PopLocalFunctionScope();
             _canAwait = previousCanAwaitInInitialize;
 
             _indentLevel--;
@@ -514,6 +522,7 @@ public class CSharpTranspiler
             var previousCanAwaitInMain = _canAwait;
             _canAwait = true;
             PushConstScope();
+            PushLocalFunctionScope();
             foreach (var statement in topLevelStatements)
             {
                 if (statement is VarDeclStatement topLevelVarDecl)
@@ -525,6 +534,7 @@ public class CSharpTranspiler
                     TranspileStatement(statement);
                 }
             }
+            PopLocalFunctionScope();
             PopConstScope();
             _canAwait = previousCanAwaitInMain;
 
@@ -5979,7 +5989,7 @@ public class CSharpTranspiler
                 TranspileProfiledStructuredStatement(statement, () => TranspileForIn(forInStmt));
                 break;
             case FunctionDeclaration funcDecl:
-                // Functions are handled separately
+                TranspileLocalFunction(funcDecl);
                 break;
             case ReturnStatement returnStmt:
                 if (!ProfilingEnabled)
@@ -6935,6 +6945,100 @@ public class CSharpTranspiler
         _currentFunctionReturnType.Pop();
         PopTypedScope();
         _canAwait = previousCanAwait;
+    }
+
+    /// <summary>
+    /// Emits a block-scoped MALDA function as a C# local function so it closes over
+    /// the surrounding locals. Top-level functions are still static methods.
+    /// </summary>
+    private void TranspileLocalFunction(FunctionDeclaration funcDecl)
+    {
+        if (ShaderFunction.IsMarked(funcDecl))
+            return;
+
+        RegisterLocalFunction(funcDecl);
+        var returnType = ResolveTranspiledTypeHint(funcDecl.ReturnType);
+
+        WriteIndent();
+        _output.Append("async Task<");
+        _output.Append(GetClrTypeName(returnType));
+        _output.Append("> ");
+        _output.Append(EscapeIdentifier(funcDecl.Name));
+        _output.Append("(");
+
+        PushTypedScope();
+        for (int i = 0; i < funcDecl.Parameters.Count; i++)
+        {
+            if (i > 0) _output.Append(", ");
+
+            var parameterType = (funcDecl.ParameterTypeHints != null && i < funcDecl.ParameterTypeHints.Count)
+                ? ResolveTranspiledTypeHint(funcDecl.ParameterTypeHints[i])
+                : TranspiledClrType.Object;
+            RegisterTypedVariable(funcDecl.Parameters[i], parameterType);
+            _output.Append(GetClrTypeName(parameterType));
+            _output.Append(" ");
+            _output.Append(EscapeIdentifier(funcDecl.Parameters[i]));
+        }
+
+        _output.Append(")");
+        AppendComment(nameof(TranspileLocalFunction));
+        _output.AppendLine();
+        var previousCanAwait = _canAwait;
+        _canAwait = true;
+        _currentFunctionReturnType.Push(returnType);
+        TranspileFunctionBlock(funcDecl.Body, funcDecl.Name, funcDecl.Line, appendImplicitNullReturn: true,
+            budget: DeclarationBounds.TryGetResourceBudget(funcDecl));
+        _currentFunctionReturnType.Pop();
+        PopTypedScope();
+        _canAwait = previousCanAwait;
+    }
+
+    private void PushLocalFunctionScope() =>
+        _localFunctionStack.Push(new Dictionary<string, IReadOnlyList<TranspiledClrType>>(StringComparer.Ordinal));
+
+    private void PopLocalFunctionScope()
+    {
+        if (_localFunctionStack.Count > 0)
+            _localFunctionStack.Pop();
+    }
+
+    private void RegisterLocalFunction(FunctionDeclaration funcDecl)
+    {
+        if (_localFunctionStack.Count == 0)
+            PushLocalFunctionScope();
+
+        var parameterTypes = new List<TranspiledClrType>(funcDecl.Parameters.Count);
+        for (int i = 0; i < funcDecl.Parameters.Count; i++)
+        {
+            parameterTypes.Add(
+                funcDecl.ParameterTypeHints != null && i < funcDecl.ParameterTypeHints.Count
+                    ? ResolveTranspiledTypeHint(funcDecl.ParameterTypeHints[i])
+                    : TranspiledClrType.Object);
+        }
+
+        _localFunctionStack.Peek()[funcDecl.Name] = parameterTypes;
+    }
+
+    private bool IsKnownUserFunction(string name)
+    {
+        foreach (var frame in _localFunctionStack)
+        {
+            if (frame.ContainsKey(name))
+                return true;
+        }
+
+        return _functionNames.Contains(name);
+    }
+
+    private bool TryGetKnownFunctionParameterTypes(string name, out IReadOnlyList<TranspiledClrType> types)
+    {
+        foreach (var frame in _localFunctionStack)
+        {
+            if (frame.TryGetValue(name, out types!))
+                return true;
+        }
+
+        return _functionParameterTypes.TryGetValue(name, out types!);
     }
 
     private void GenerateTranspiledPropertyRegistry(List<PropertyDeclaration> properties)
@@ -8480,6 +8584,7 @@ public class CSharpTranspiler
     {
         PushTypedScope();
         PushConstScope();
+        PushLocalFunctionScope();
         var blockReturnType = _currentFunctionReturnType.Count > 0 ? _currentFunctionReturnType.Peek() : TranspiledClrType.Object;
         WriteIndent();
         _output.Append("{");
@@ -8583,6 +8688,7 @@ public class CSharpTranspiler
         _output.Append("}");
         AppendComment(nameof(TranspileFunctionBlock) + " (close)");
         _output.AppendLine();
+        PopLocalFunctionScope();
         PopConstScope();
         PopTypedScope();
     }
@@ -8677,6 +8783,7 @@ public class CSharpTranspiler
     {
         PushTypedScope();
         PushConstScope();
+        PushLocalFunctionScope();
         var blockReturnType = _currentFunctionReturnType.Count > 0 ? _currentFunctionReturnType.Peek() : TranspiledClrType.Object;
         WriteIndent();
         _output.Append("{");
@@ -8719,6 +8826,7 @@ public class CSharpTranspiler
         _output.Append("}");
         AppendComment(nameof(TranspileBlock) + " (close)");
         _output.AppendLine();
+        PopLocalFunctionScope();
         PopConstScope();
         PopTypedScope();
     }
@@ -9461,7 +9569,7 @@ public class CSharpTranspiler
             return;
         }
 
-        if (_functionNames.Contains(name))
+        if (IsKnownUserFunction(name))
         {
             if (_canAwait)
                 _output.Append("await ");
@@ -9947,7 +10055,7 @@ public class CSharpTranspiler
                         if (funcCall.Callee is IdentifierExpression argIdExpr)
                         {
                             // If it's not a known function name, it's likely a function parameter
-                            if (!_functionNames.Contains(argIdExpr.Name) && !IsBuiltInFunction(argIdExpr.Name))
+                            if (!IsKnownUserFunction(argIdExpr.Name) && !IsBuiltInFunction(argIdExpr.Name))
                             {
                                 // Function parameter call - needs to be awaited
                                 isAsyncCall = true;
@@ -9955,7 +10063,7 @@ public class CSharpTranspiler
                                 funcArg = funcCall.Arguments.Count > 0 ? funcCall.Arguments[0] : null;
                             }
                             // If it's a known function, it's already async and returns Task<object>
-                            else if (_functionNames.Contains(argIdExpr.Name))
+                            else if (IsKnownUserFunction(argIdExpr.Name))
                             {
                                 // User-defined function - also returns Task, needs async handling
                                 isAsyncCall = true;
@@ -9998,7 +10106,7 @@ public class CSharpTranspiler
                             _output.Append("(");
                             // Transpile without await - we'll get the Task
                             var funcCallExpr = (FunctionCallExpression)argExpr;
-                            if (funcCallExpr.Callee is IdentifierExpression funcIdExpr && _functionNames.Contains(funcIdExpr.Name))
+                            if (funcCallExpr.Callee is IdentifierExpression funcIdExpr && IsKnownUserFunction(funcIdExpr.Name))
                             {
                                 // User-defined function - call directly to get Task
                                 _output.Append(EscapeIdentifier(funcIdExpr.Name));
@@ -10740,11 +10848,11 @@ public class CSharpTranspiler
                 for (int i = 0; i < call.Arguments.Count; i++)
                 {
                     if (i > 0) _output.Append(", ");
-                    if (call.Arguments[i] is IdentifierExpression argIdExpr && _functionNames.Contains(argIdExpr.Name))
+                    if (call.Arguments[i] is IdentifierExpression argIdExpr && IsKnownUserFunction(argIdExpr.Name))
                     {
                         // Unary user functions → callable delegate (GraphMemory.initialize embedders, etc.).
                         // Multi-arg (e.g. HttpServer middleware) stay as name strings for runtime resolve.
-                        if (_functionParameterTypes.TryGetValue(argIdExpr.Name, out var paramTypes)
+                        if (TryGetKnownFunctionParameterTypes(argIdExpr.Name, out var paramTypes)
                             && paramTypes.Count == 1)
                         {
                             _output.Append("(System.Func<object, System.Threading.Tasks.Task<object>>)");
@@ -10799,9 +10907,9 @@ public class CSharpTranspiler
             }
             
             // If it's a known function name, call it directly
-            if (_functionNames.Contains(funcName))
+            if (IsKnownUserFunction(funcName))
             {
-                _functionParameterTypes.TryGetValue(funcName, out var typedParameters);
+                TryGetKnownFunctionParameterTypes(funcName, out var typedParameters);
                 if (_transpileCallAsTask)
                 {
                     _output.Append("RuntimeHelpers.WrapObjectTaskAsRuntimeValueTask(");
@@ -10813,9 +10921,7 @@ public class CSharpTranspiler
                         var paramType = (typedParameters != null && i < typedParameters.Count)
                             ? typedParameters[i]
                             : TranspiledClrType.Object;
-                        _output.Append(GetCoercionExpressionPrefix(paramType));
-                        TranspileExpression(call.Arguments[i]);
-                        _output.Append(GetCoercionExpressionSuffix(paramType));
+                        EmitCallableArgument(call.Arguments[i], paramType);
                     }
                     _output.Append("))");
                 }
@@ -10839,9 +10945,7 @@ public class CSharpTranspiler
                         var paramType = (typedParameters != null && i < typedParameters.Count)
                             ? typedParameters[i]
                             : TranspiledClrType.Object;
-                        _output.Append(GetCoercionExpressionPrefix(paramType));
-                        TranspileExpression(call.Arguments[i]);
-                        _output.Append(GetCoercionExpressionSuffix(paramType));
+                        EmitCallableArgument(call.Arguments[i], paramType);
                     }
                     _output.Append(")");
                     if (!_canAwait)
@@ -10916,8 +11020,8 @@ public class CSharpTranspiler
     private void EmitToRuntimeValueArgument(Expression argument)
     {
         if (argument is IdentifierExpression id
-            && _functionNames.Contains(id.Name)
-            && _functionParameterTypes.TryGetValue(id.Name, out var paramTypes)
+            && IsKnownUserFunction(id.Name)
+            && TryGetKnownFunctionParameterTypes(id.Name, out var paramTypes)
             && paramTypes.Count == 1)
         {
             _output.Append("RuntimeHelpers.ToRuntimeValue((System.Func<object, System.Threading.Tasks.Task<object>>)");
@@ -12830,9 +12934,39 @@ public class CSharpTranspiler
 
     private bool ShouldEmitTranspiledFunctionDelegate(Expression value)
     {
-        if (value is IdentifierExpression id && _functionNames.Contains(id.Name))
-            return true;
-        return false;
+        if (value is not IdentifierExpression id || !IsKnownUserFunction(id.Name))
+            return false;
+
+        foreach (var frame in _localFunctionStack)
+        {
+            if (!frame.ContainsKey(id.Name))
+                continue;
+            return frame.TryGetValue(id.Name, out var localTypes) && localTypes.Count == 1;
+        }
+
+        return _functionNames.Contains(id.Name);
+    }
+
+    /// <summary>
+    /// A unary user or nested function is a method group. Pass it as a delegate so the
+    /// callee can store it and call it later (interpreter passes the function value).
+    /// </summary>
+    private void EmitCallableArgument(Expression argument, TranspiledClrType paramType)
+    {
+        if (paramType == TranspiledClrType.Object
+            && argument is IdentifierExpression id
+            && IsKnownUserFunction(id.Name)
+            && TryGetKnownFunctionParameterTypes(id.Name, out var paramTypes)
+            && paramTypes.Count == 1)
+        {
+            _output.Append("(System.Func<object, System.Threading.Tasks.Task<object>>)");
+            _output.Append(EscapeIdentifier(id.Name));
+            return;
+        }
+
+        _output.Append(GetCoercionExpressionPrefix(paramType));
+        TranspileExpression(argument);
+        _output.Append(GetCoercionExpressionSuffix(paramType));
     }
 
     private void TranspileArrayAccess(ArrayAccessExpression arrayAccess)
@@ -12927,6 +13061,7 @@ public class CSharpTranspiler
             _output.Append("{");
             _output.AppendLine();
             _indentLevel++;
+            PushLocalFunctionScope();
 
             for (int i = 0; i < lambda.BlockBody.Statements.Count; i++)
             {
@@ -12968,6 +13103,7 @@ public class CSharpTranspiler
                 }
             }
 
+            PopLocalFunctionScope();
             _indentLevel--;
             WriteIndent();
             _output.Append("})");

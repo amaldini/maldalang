@@ -38,6 +38,16 @@ io.print($"10 + 2 = {result2}");</code></pre>
 function double(n) -> int n * 2;</code></pre>
         <p>This is equivalent to <code>function square(x) { return x*x; }</code>. Methods use the same compact body (<code>function total() this.x + this.y;</code> inside a class, <code>class Point function total() this.x + this.y;</code> as a one-line class / augmentation, or <code>class Point(x, y) function total() this.x + this.y;</code> on a first declaration with a primary constructor). Constructors still require a block.</p>
         <p>The only function keyword is <code>function</code>. <code>fn</code> and <code>def</code> are syntax errors (removed aliases).</p>
+        <h3 id="nested-functions">Nested functions</h3>
+        <p>A <code>function</code> declared inside a block, another function, a loop, or a <code>match</code> arm is local to that block. It is not visible after the block ends. The body reads parameters and variables from the enclosing scopes, including values assigned before the call. The interpreter, C# transpile (<code>malda compile --mode transpile</code>), and JavaScript agree. Call the function after its declaration in the same block. You can pass it as a value, the same way as a top-level function.</p>
+        <pre><code data-run="true" data-expect="8">if (true) {
+    var factor = 3;
+    function scale(n) {
+        return n * factor;
+    }
+    factor = 4;
+    io.print(scale(2));
+}</code></pre>
         <p>You may optionally add <strong>informational type hints</strong> to parameters and a return type. These are not enforced at interpret-time unless you pass CLI <code>--strict-types</code>. <code>malda compile --mode transpile</code> / <code>publish</code> refuse emit when analysis reports Errors (<code>--lenient-types</code> skips the gate). Known names include Tier 0 primitives, declared class/schema/sum-type names (including those imported from other modules), and built-in host classes. Mismatches on literals, <code>new ClassName()</code>, identifiers with known hints, call arguments, <code>return</code> vs <code>-&gt; T</code>, and <strong>results of calls</strong> whose callee declares a return hint produce an IDE/LSP <strong>Error</strong> by default. Operators and built-in return types are not inferred. Hints are also used by tools (e.g. <code>getSymbols</code>), IDEs, and documentation.</p>
         <pre><code>function name(param: Type?, ...) -> ReturnType? {
     // param and return type hints are optional and informational only

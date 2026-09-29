@@ -39,6 +39,16 @@ io.print($"10 + 2 = {result2}");</code></pre>
 function double(n) -> int n * 2;</code></pre>
         <p>È equivalente a <code>function square(x) { return x*x; }</code>. I metodi usano lo stesso corpo compatto (<code>function total() this.x + this.y;</code> dentro una classe, <code>class Point function total() this.x + this.y;</code> come classe / aumento su una riga, oppure <code>class Point(x, y) function total() this.x + this.y;</code> su una prima dichiarazione con costruttore primario). I costruttori richiedono ancora un blocco.</p>
         <p>L'unica keyword per le funzioni è <code>function</code>. <code>fn</code> e <code>def</code> sono errori di sintassi (alias rimossi).</p>
+        <h3 id="nested-functions">Funzioni annidate</h3>
+        <p>Una <code>function</code> dichiarata dentro un blocco, un'altra funzione, un ciclo o un ramo <code>match</code> è locale a quel blocco. Non è visibile dopo la fine del blocco. Il corpo legge parametri e variabili degli scope che la racchiudono, compresi i valori assegnati prima della chiamata. Interprete, transpile C# (<code>malda compile --mode transpile</code>) e JavaScript si comportano allo stesso modo. Chiama la funzione dopo la sua dichiarazione, nello stesso blocco. Puoi passarla come valore, come una funzione di primo livello.</p>
+        <pre><code data-run="true" data-expect="8">if (true) {
+    var factor = 3;
+    function scale(n) {
+        return n * factor;
+    }
+    factor = 4;
+    io.print(scale(2));
+}</code></pre>
         <p>Puoi aggiungere in modo opzionale <strong>type hint informativi</strong> ai parametri e un tipo di ritorno. Non sono applicati a tempo di interpretazione, a meno che non si passi il flag CLI <code>--strict-types</code>. <code>malda compile --mode transpile</code> / <code>publish</code> rifiutano l'emit quando l'analisi riporta Error (<code>--lenient-types</code> salta il gate). I nomi noti includono i primitivi Tier 0, i nomi di class/schema/sum-type dichiarati (compresi quelli importati da altri moduli) e le classi host built-in. Le incongruenze su letterali, <code>new ClassName()</code>, identificatori con type hint noti, argomenti delle chiamate, <code>return</code> rispetto a <code>-&gt; T</code> e i <strong>risultati delle chiamate</strong> il cui callee dichiara un type hint di ritorno producono di default un <strong>Error</strong> IDE/LSP. I tipi di ritorno di operatori e built-in non vengono inferiti. I type hint sono usati anche da tool (es. <code>getSymbols</code>), IDE e documentazione.</p>
         <pre><code>function name(param: Type?, ...) -> ReturnType? {
     // param and return type hints are optional and informational only

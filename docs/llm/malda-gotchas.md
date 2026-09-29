@@ -100,7 +100,7 @@ claim a program works.
 
 **`@shader()` is a JavaScript compile-time GLSL kernel, not a host function.** `malda compile --mode js` inlines those functions through `glsl.compile({ ... })` and does not emit JS. Calling `hitSphere(...)` from the MALDA host, or running the file in the interpreter / C# transpile, will not execute GPU code. Keep uniforms and the `three.*` loop in host MALDA; keep rays in `@shader()` functions. Raw triple-quoted GLSL strings still work.
 
-**Top-level `function` in JS mode cannot see top-level `var`.** The JS transpiler emits `function`s beside `main()` and puts script `var`s inside `main()`, so a helper that reads `gameOver` throws `ReferenceError`. Keep the canvas locals and helpers in one block, as in `Examples/Games/game_bounce.malda` / `malda new game`. Nested `function`s close over the block.
+**Top-level `function` in JS mode cannot see top-level `var`.** The JS transpiler emits `function`s beside `main()` and puts script `var`s inside `main()`, so a helper that reads `gameOver` throws `ReferenceError`. Keep the canvas locals and helpers in one block, as in `Examples/Games/game_bounce.malda` / `malda new game`. A `function` inside a block is local on the interpreter, C# transpile, and JavaScript: the name disappears when the block ends, and the body sees that block's variables. Call it after the declaration.
 
 **`malda -e` / `--exec` runs a snippet; `malda eval` runs `suite` / `case`.** `--eval` is rejected on both the top-level CLI and `malda check` so the names cannot collide. Example: `malda -e "io.print(1);"` or `malda eval path.malda`.
 

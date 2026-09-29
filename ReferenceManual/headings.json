@@ -511,6 +511,12 @@
   },
   {
     "file": "09-functions.html",
+    "level": 3,
+    "id": "nested-functions",
+    "title": "Nested functions"
+  },
+  {
+    "file": "09-functions.html",
     "level": 2,
     "id": "function-call",
     "title": "9.2 Function Call"

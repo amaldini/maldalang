@@ -209,6 +209,15 @@ function add(a, b) {
     return a + b;
 }
 
+if (true) {
+    var factor = 3;
+    function scale(n) {
+        return n * factor;
+    }
+    factor = 4;
+    io.print(scale(2));
+}
+
 var double = (n) => n * 2;
 ```
 
