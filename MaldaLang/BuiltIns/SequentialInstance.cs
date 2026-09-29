@@ -3,6 +3,7 @@
 
 namespace MaldaLang.BuiltIns;
 
+using System;
 using System.Collections.Generic;
 using MaldaLang.Interpreter;
 using ValueType = MaldaLang.Interpreter.ValueType;
@@ -128,19 +129,8 @@ public sealed class SequentialInstance : ObjectInstance
         var learningRate = DenseInstance.RequireFinite("Sequential.sgd", args[0], "lr");
         foreach (var layer in _layers)
         {
-            // Only call sgd if the layer has trainable parameters
-            try
-            {
-                var sgdMethod = layer.Get("sgd");
-                if (sgdMethod.Type == ValueType.Function)
-                {
-                    CallLayerMethod(layer, "sgd", new List<RuntimeValue> { RuntimeValue.Float(learningRate) });
-                }
-            }
-            catch (RuntimeException)
-            {
-                // Layer doesn't have sgd (e.g., pooling, flatten) - skip it
-            }
+            if (HasMethod(layer, "sgd"))
+                CallLayerMethod(layer, "sgd", new List<RuntimeValue> { RuntimeValue.Float(learningRate) });
         }
         return RuntimeValue.Null();
     }
@@ -215,19 +205,8 @@ public sealed class SequentialInstance : ObjectInstance
                 throw new RuntimeException("Sequential() expects an array of layer instances (Dense, Conv2D, MaxPool2D, etc.)");
             
             var layerObj = item.AsObject();
-            
-            // Validate that the layer has required methods
-            try
-            {
-                var forwardMethod = layerObj.Get("forward");
-                if (forwardMethod.Type != ValueType.Function)
-                    throw new RuntimeException("Sequential() layer must have a forward() method");
-            }
-            catch
-            {
+            if (!HasMethod(layerObj, "forward"))
                 throw new RuntimeException("Sequential() layer must have a forward() method");
-            }
-            
             layers.Add(layerObj);
         }
 
@@ -279,6 +258,10 @@ public sealed class SequentialInstance : ObjectInstance
         {
             return globalMax.CallMethod(methodName, args);
         }
+        else if (layer is ActivationInstance activation)
+        {
+            return activation.CallMethod(methodName, args);
+        }
         else if (layer is ConvInstance conv)
         {
             return conv.CallMethod(methodName, args);
@@ -328,5 +311,20 @@ public sealed class SequentialInstance : ObjectInstance
         if (target.Type == ValueType.Array && !DenseInstance.IsMatrix(target))
             return target;
         throw new RuntimeException("Sequential.fit() mse targets must be a number or a numeric vector");
+    }
+
+    private static bool HasMethod(ObjectInstance layer, string name)
+    {
+        RuntimeValue method;
+        try
+        {
+            method = layer.Get(name);
+        }
+        catch (RuntimeException ex) when (ex.Message.StartsWith("Undefined property", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        return method.Type == ValueType.Function;
     }
 }

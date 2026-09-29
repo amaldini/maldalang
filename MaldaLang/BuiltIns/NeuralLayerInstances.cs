@@ -163,14 +163,14 @@ internal static class NeuralLayers
         return result;
     }
 
-    internal static double[] Activate(string activation, double[] pre)
+    internal static double[] Activate(string activation, double[] pre, string owner = "Rnn")
     {
         if (activation == "linear")
             return (double[])pre.Clone();
-        return ReadVector("Rnn", NnStdLib.Call(activation, new List<RuntimeValue> { ToVector(pre) }), "activation");
+        return ReadVector(owner, NnStdLib.Call(activation, new List<RuntimeValue> { ToVector(pre) }), "activation");
     }
 
-    internal static double[] ActivateDerivative(string activation, double[] pre)
+    internal static double[] ActivateDerivative(string activation, double[] pre, string owner = "Rnn")
     {
         if (activation == "linear")
         {
@@ -181,7 +181,206 @@ internal static class NeuralLayers
         }
 
         var name = "d" + char.ToUpperInvariant(activation[0]) + activation[1..];
-        return ReadVector("Rnn", NnStdLib.Call(name, new List<RuntimeValue> { ToVector(pre) }), "derivative");
+        return ReadVector(owner, NnStdLib.Call(name, new List<RuntimeValue> { ToVector(pre) }), "derivative");
+    }
+
+    /// <summary>
+    /// NCHW when <c>[0][0][0]</c> is a row, otherwise CHW. A batch of 1 stays batched.
+    /// </summary>
+    internal readonly struct NeuralVolume
+    {
+        public NeuralVolume(double[,,,] data, bool batched)
+        {
+            Data = data;
+            Batched = batched;
+        }
+
+        public double[,,,] Data { get; }
+
+        public bool Batched { get; }
+
+        public int Batch => Data.GetLength(0);
+
+        public int Channels => Data.GetLength(1);
+
+        public int Height => Data.GetLength(2);
+
+        public int Width => Data.GetLength(3);
+    }
+
+    internal static NeuralVolume ReadVolume(string name, RuntimeValue value)
+    {
+        if (value.Type != ValueType.Array)
+            throw new RuntimeException($"{name} tensor must be an array");
+        var top = value.AsArray();
+        if (top.Count == 0)
+            throw new RuntimeException($"{name} tensor must be non-empty");
+        if (top[0].Type != ValueType.Array)
+            throw new RuntimeException($"{name} tensor must be channels×height×width or batch×channels×height×width");
+        var mid = top[0].AsArray();
+        if (mid.Count == 0 || mid[0].Type != ValueType.Array)
+            throw new RuntimeException($"{name} tensor must be channels×height×width or batch×channels×height×width");
+        var third = mid[0].AsArray();
+        if (third.Count == 0)
+            throw new RuntimeException($"{name} tensor must be non-empty");
+        var batched = third[0].Type == ValueType.Array;
+        var nchw = batched ? top : new List<RuntimeValue> { value };
+        return new NeuralVolume(ParseNchw(name, nchw), batched);
+    }
+
+    internal static RuntimeValue WriteVolume(double[,,,] data, bool batched)
+    {
+        var batch = data.GetLength(0);
+        var channels = data.GetLength(1);
+        var height = data.GetLength(2);
+        var width = data.GetLength(3);
+        var batches = new List<RuntimeValue>(batch);
+        for (var b = 0; b < batch; b++)
+        {
+            var channelList = new List<RuntimeValue>(channels);
+            for (var c = 0; c < channels; c++)
+            {
+                var rows = new List<RuntimeValue>(height);
+                for (var h = 0; h < height; h++)
+                {
+                    var row = new List<RuntimeValue>(width);
+                    for (var w = 0; w < width; w++)
+                        row.Add(RuntimeValue.Float(data[b, c, h, w]));
+                    rows.Add(RuntimeValue.Array(row));
+                }
+
+                channelList.Add(RuntimeValue.Array(rows));
+            }
+
+            batches.Add(RuntimeValue.Array(channelList));
+        }
+
+        if (!batched)
+            return batches[0];
+        return RuntimeValue.Array(batches);
+    }
+
+    internal static RuntimeValue CloneNumbers(RuntimeValue value)
+    {
+        if (value.Type != ValueType.Array)
+            return RuntimeValue.Float(DenseInstance.AsNumber(value));
+        var source = value.AsArray();
+        var copy = new List<RuntimeValue>(source.Count);
+        foreach (var item in source)
+            copy.Add(CloneNumbers(item));
+        return RuntimeValue.Array(copy);
+    }
+
+    internal static RuntimeValue ApplyActivation(string owner, string activation, RuntimeValue input, bool derivative)
+    {
+        var flat = new List<double>();
+        CollectNumbers(owner, input, flat);
+        if (flat.Count == 0)
+            throw new RuntimeException($"{owner} tensor must contain a number");
+        var mapped = derivative
+            ? ActivateDerivative(activation, flat.ToArray(), owner)
+            : Activate(activation, flat.ToArray(), owner);
+        var index = 0;
+        return ScatterNumbers(mapped, input, ref index);
+    }
+
+    internal static RuntimeValue ZipMultiply(string name, RuntimeValue left, RuntimeValue right)
+    {
+        if (left.Type == ValueType.Array || right.Type == ValueType.Array)
+        {
+            if (left.Type != ValueType.Array || right.Type != ValueType.Array)
+                throw new RuntimeException($"{name} upstream shape must match the forward input");
+            var a = left.AsArray();
+            var b = right.AsArray();
+            if (a.Count != b.Count)
+                throw new RuntimeException($"{name} upstream shape must match the forward input");
+            var list = new List<RuntimeValue>(a.Count);
+            for (var i = 0; i < a.Count; i++)
+                list.Add(ZipMultiply(name, a[i], b[i]));
+            return RuntimeValue.Array(list);
+        }
+
+        return RuntimeValue.Float(DenseInstance.AsNumber(left) * DenseInstance.AsNumber(right));
+    }
+
+    private static double[,,,] ParseNchw(string name, List<RuntimeValue> batches)
+    {
+        var sample0 = Nested(name, batches[0]);
+        var channels = sample0.Count;
+        if (channels == 0)
+            throw new RuntimeException($"{name} tensor must have at least one channel");
+        var plane0 = Nested(name, sample0[0]);
+        var height = plane0.Count;
+        if (height == 0)
+            throw new RuntimeException($"{name} tensor must have at least one row");
+        var row0 = Nested(name, plane0[0]);
+        var width = row0.Count;
+        if (width == 0)
+            throw new RuntimeException($"{name} tensor must have at least one column");
+        var data = new double[batches.Count, channels, height, width];
+        for (var b = 0; b < batches.Count; b++)
+        {
+            var sample = Nested(name, batches[b]);
+            if (sample.Count != channels)
+                throw new RuntimeException($"{name} tensor channels must match");
+            for (var c = 0; c < channels; c++)
+            {
+                var plane = Nested(name, sample[c]);
+                if (plane.Count != height)
+                    throw new RuntimeException($"{name} tensor rows must match");
+                for (var h = 0; h < height; h++)
+                {
+                    var row = Nested(name, plane[h]);
+                    if (row.Count != width)
+                        throw new RuntimeException($"{name} tensor columns must match");
+                    for (var w = 0; w < width; w++)
+                    {
+                        if (row[w].Type is not (ValueType.Integer or ValueType.Float))
+                            throw new RuntimeException($"{name} tensor must be numeric");
+                        data[b, c, h, w] = DenseInstance.AsNumber(row[w]);
+                    }
+                }
+            }
+        }
+
+        return data;
+    }
+
+    private static List<RuntimeValue> Nested(string name, RuntimeValue value)
+    {
+        if (value.Type != ValueType.Array)
+            throw new RuntimeException($"{name} tensor must be numeric");
+        return value.AsArray();
+    }
+
+    private static void CollectNumbers(string name, RuntimeValue value, List<double> into)
+    {
+        if (value.Type == ValueType.Array)
+        {
+            foreach (var item in value.AsArray())
+                CollectNumbers(name, item, into);
+            return;
+        }
+
+        if (value.Type is not (ValueType.Integer or ValueType.Float))
+            throw new RuntimeException($"{name} tensor must be numeric");
+        into.Add(DenseInstance.AsNumber(value));
+    }
+
+    private static RuntimeValue ScatterNumbers(double[] values, RuntimeValue template, ref int index)
+    {
+        if (template.Type != ValueType.Array)
+        {
+            var number = values[index];
+            index++;
+            return RuntimeValue.Float(number);
+        }
+
+        var source = template.AsArray();
+        var copy = new List<RuntimeValue>(source.Count);
+        foreach (var item in source)
+            copy.Add(ScatterNumbers(values, item, ref index));
+        return RuntimeValue.Array(copy);
     }
 
     internal static string RequireActivation(string owner, RuntimeValue value)

@@ -3833,9 +3833,9 @@ public partial class Interpreter
         {
             return await CreateSequentialAsync(expr.Arguments);
         }
-        else if (expr.ClassName is "Conv" or "Embedding" or "Rnn" or "LayerNorm" or "Attention" 
-                 or "Conv2D" or "MaxPool2D" or "AvgPool2D" or "Flatten" or "BatchNorm2D" or "Dropout2D" 
-                 or "GlobalAvgPool2D" or "GlobalMaxPool2D")
+        else if (expr.ClassName is "Conv" or "Embedding" or "Rnn" or "LayerNorm" or "Attention"
+                 or "Conv2D" or "MaxPool2D" or "AvgPool2D" or "Flatten" or "BatchNorm2D" or "Dropout2D"
+                 or "GlobalAvgPool2D" or "GlobalMaxPool2D" or "Activation")
         {
             return await CreateNeuralLayerAsync(expr.ClassName, expr.Arguments);
         }
@@ -4086,6 +4086,7 @@ public partial class Interpreter
             "Dropout2D" => new BuiltIns.Dropout2DInstance(values),
             "GlobalAvgPool2D" => new BuiltIns.GlobalAvgPool2DInstance(values),
             "GlobalMaxPool2D" => new BuiltIns.GlobalMaxPool2DInstance(values),
+            "Activation" => new BuiltIns.ActivationInstance(values),
             "Embedding" => new BuiltIns.EmbeddingInstance(values),
             "Rnn" => new BuiltIns.RnnInstance(values),
             "LayerNorm" => new BuiltIns.LayerNormInstance(values),
@@ -4340,6 +4341,42 @@ public partial class Interpreter
         else if (instance is BuiltIns.ConvInstance convLayer)
         {
             return convLayer.CallMethod(methodName, arguments, this);
+        }
+        else if (instance is BuiltIns.Conv2DInstance conv2d)
+        {
+            return conv2d.CallMethod(methodName, arguments, this);
+        }
+        else if (instance is BuiltIns.MaxPool2DInstance maxPool)
+        {
+            return maxPool.CallMethod(methodName, arguments, this);
+        }
+        else if (instance is BuiltIns.AvgPool2DInstance avgPool)
+        {
+            return avgPool.CallMethod(methodName, arguments, this);
+        }
+        else if (instance is BuiltIns.FlattenInstance flatten)
+        {
+            return flatten.CallMethod(methodName, arguments, this);
+        }
+        else if (instance is BuiltIns.BatchNorm2DInstance batchNorm)
+        {
+            return batchNorm.CallMethod(methodName, arguments, this);
+        }
+        else if (instance is BuiltIns.Dropout2DInstance dropout2d)
+        {
+            return dropout2d.CallMethod(methodName, arguments, this);
+        }
+        else if (instance is BuiltIns.GlobalAvgPool2DInstance globalAvgPool)
+        {
+            return globalAvgPool.CallMethod(methodName, arguments, this);
+        }
+        else if (instance is BuiltIns.GlobalMaxPool2DInstance globalMaxPool)
+        {
+            return globalMaxPool.CallMethod(methodName, arguments, this);
+        }
+        else if (instance is BuiltIns.ActivationInstance activationLayer)
+        {
+            return activationLayer.CallMethod(methodName, arguments, this);
         }
         else if (instance is BuiltIns.EmbeddingInstance embedding)
         {

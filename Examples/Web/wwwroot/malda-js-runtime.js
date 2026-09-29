@@ -2637,8 +2637,8 @@
       throw new Error("Sequential() expects 1 argument: (layers)");
     }
     for (let i = 0; i < layers.length; i++) {
-      if (!(layers[i] instanceof Dense)) {
-        throw new Error("Sequential() expects an array of Dense layers");
+      if (layers[i] == null || typeof layers[i].forward !== "function") {
+        throw new Error("Sequential() layer must have a forward() method");
       }
     }
     this.layers = layers;
@@ -2660,7 +2660,9 @@
 
   Sequential.prototype.sgd = function (learningRate) {
     if (arguments.length !== 1) throw new Error("Sequential.sgd() expects 1 argument: (lr)");
-    for (let i = 0; i < this.layers.length; i++) this.layers[i].sgd(learningRate);
+    for (let i = 0; i < this.layers.length; i++) {
+      if (typeof this.layers[i].sgd === "function") this.layers[i].sgd(learningRate);
+    }
     return null;
   };
 
@@ -7943,9 +7945,885 @@
     return null;
   };
 
+  function nnVolumeError(name) {
+    throw new Error(name + " tensor must be channels×height×width or batch×channels×height×width");
+  }
+
+  function nnReadVolume(name, value) {
+    if (!Array.isArray(value) || value.length === 0) nnVolumeError(name);
+    if (!Array.isArray(value[0]) || value[0].length === 0 || !Array.isArray(value[0][0]) || value[0][0].length === 0) {
+      nnVolumeError(name);
+    }
+    const batched = Array.isArray(value[0][0][0]);
+    const nchw = batched ? value : [value];
+    const channels = nchw[0].length;
+    const height = nchw[0][0].length;
+    const width = Array.isArray(nchw[0][0][0]) ? nchw[0][0][0].length : 0;
+    if (channels === 0 || height === 0 || width === 0) nnVolumeError(name);
+    const data = [];
+    for (let b = 0; b < nchw.length; b++) {
+      if (!Array.isArray(nchw[b]) || nchw[b].length !== channels) {
+        throw new Error(name + " tensor channels must match");
+      }
+      const sample = [];
+      for (let c = 0; c < channels; c++) {
+        if (!Array.isArray(nchw[b][c]) || nchw[b][c].length !== height) {
+          throw new Error(name + " tensor rows must match");
+        }
+        const plane = [];
+        for (let h = 0; h < height; h++) {
+          if (!Array.isArray(nchw[b][c][h]) || nchw[b][c][h].length !== width) {
+            throw new Error(name + " tensor columns must match");
+          }
+          const row = [];
+          for (let w = 0; w < width; w++) {
+            const cell = nchw[b][c][h][w];
+            if (typeof cell !== "number" || !Number.isFinite(cell)) {
+              throw new Error(name + " tensor must be numeric");
+            }
+            row.push(cell);
+          }
+          plane.push(row);
+        }
+        sample.push(plane);
+      }
+      data.push(sample);
+    }
+    return { data: data, batched: batched, batch: data.length, channels: channels, height: height, width: width };
+  }
+
+  function nnWriteVolume(volume, batched) {
+    return batched ? volume : volume[0];
+  }
+
+  function nnZeros4(batch, channels, height, width) {
+    const data = [];
+    for (let b = 0; b < batch; b++) {
+      const sample = [];
+      for (let c = 0; c < channels; c++) {
+        const plane = [];
+        for (let h = 0; h < height; h++) {
+          const row = [];
+          for (let w = 0; w < width; w++) row.push(0);
+          plane.push(row);
+        }
+        sample.push(plane);
+      }
+      data.push(sample);
+    }
+    return data;
+  }
+
+  function nnConvGeometry(padding, inH, inW, kernel, stride) {
+    if (padding === "same") {
+      const outH = Math.floor((inH + stride - 1) / stride);
+      const outW = Math.floor((inW + stride - 1) / stride);
+      const totalH = Math.max(0, (outH - 1) * stride + kernel - inH);
+      const totalW = Math.max(0, (outW - 1) * stride + kernel - inW);
+      return { outH: outH, outW: outW, padTop: Math.floor(totalH / 2), padLeft: Math.floor(totalW / 2) };
+    }
+    return {
+      outH: Math.floor((inH - kernel) / stride) + 1,
+      outW: Math.floor((inW - kernel) / stride) + 1,
+      padTop: 0,
+      padLeft: 0
+    };
+  }
+
+  function nnPoolOut(length, pool, stride) {
+    return Math.floor((length - pool) / stride) + 1;
+  }
+
+  function nnActivateScalar(name, x) {
+    if (name === "linear") return x;
+    if (name === "relu") return x > 0 ? x : 0;
+    if (name === "leakyRelu") return x > 0 ? x : 0.01 * x;
+    if (name === "elu") return x > 0 ? x : Math.exp(x) - 1;
+    if (name === "gelu") return nnGeluScalar(x);
+    if (name === "silu") return x * mathSigmoidScalar(x);
+    if (name === "softplus") return nnSoftplusScalar(x);
+    if (name === "sigmoid") return mathSigmoidScalar(x);
+    if (name === "tanh") return Math.tanh(x);
+    throw new Error("Activation() unknown activation '" + name + "'");
+  }
+
+  function nnActivateDerivScalar(name, x) {
+    if (name === "linear") return 1;
+    if (name === "relu") return x > 0 ? 1 : 0;
+    if (name === "leakyRelu") return x > 0 ? 1 : 0.01;
+    if (name === "elu") return x > 0 ? 1 : Math.exp(x);
+    if (name === "gelu") return nnDGeluScalar(x);
+    if (name === "silu") return nnDSiluScalar(x);
+    if (name === "softplus") return mathSigmoidScalar(x);
+    if (name === "sigmoid") {
+      const s = mathSigmoidScalar(x);
+      return s * (1 - s);
+    }
+    if (name === "tanh") {
+      const t = Math.tanh(x);
+      return 1 - t * t;
+    }
+    throw new Error("Activation() unknown activation '" + name + "'");
+  }
+
+  function nnMapDeep(value, fn, name) {
+    if (Array.isArray(value)) {
+      const out = [];
+      for (let i = 0; i < value.length; i++) out.push(nnMapDeep(value[i], fn, name));
+      return out;
+    }
+    if (typeof value !== "number" || !Number.isFinite(value)) {
+      throw new Error(name + " tensor must be numeric");
+    }
+    return fn(value);
+  }
+
+  function nnZipMul(left, right, name) {
+    const leftArr = Array.isArray(left);
+    const rightArr = Array.isArray(right);
+    if (leftArr || rightArr) {
+      if (!leftArr || !rightArr || left.length !== right.length) {
+        throw new Error(name + " upstream shape must match the forward input");
+      }
+      const out = [];
+      for (let i = 0; i < left.length; i++) out.push(nnZipMul(left[i], right[i], name));
+      return out;
+    }
+    if (typeof left !== "number" || typeof right !== "number") {
+      throw new Error(name + " upstream shape must match the forward input");
+    }
+    return left * right;
+  }
+
+  function nnReadChannels(name, value) {
+    if (!Array.isArray(value) || value.length === 0) {
+      throw new Error(name + " upstream must be an array");
+    }
+    if (Array.isArray(value[0])) {
+      const channels = value[0].length;
+      const rows = [];
+      for (let b = 0; b < value.length; b++) {
+        const row = neuralRequireVector(name, value[b], "upstream");
+        if (row.length !== channels) throw new Error(name + " upstream rows must have the same length");
+        rows.push(row);
+      }
+      return rows;
+    }
+    return [neuralRequireVector(name, value, "upstream")];
+  }
+
+  function nnWriteChannels(rows, batched) {
+    if (!batched) return rows[0].slice();
+    const out = [];
+    for (let b = 0; b < rows.length; b++) out.push(rows[b].slice());
+    return out;
+  }
+
+  function Conv2D(inChannels, outChannels, kernelSize, stride, padding, scale) {
+    const argc = arguments.length;
+    if (argc < 3 || argc > 6) {
+      throw new Error("Conv2D() expects 3 to 6 arguments: (inChannels, outChannels, kernelSize, stride?, padding?, scale?)");
+    }
+    this.inChannels = nnRequirePositiveInt("Conv2D", inChannels, "inChannels");
+    this.outChannels = nnRequirePositiveInt("Conv2D", outChannels, "outChannels");
+    this.kernelSize = nnRequirePositiveInt("Conv2D", kernelSize, "kernelSize");
+    this.stride = argc >= 4 ? nnRequirePositiveInt("Conv2D", stride, "stride") : 1;
+    this.padding = "valid";
+    if (argc >= 5) {
+      if (typeof padding !== "string" || (padding !== "valid" && padding !== "same")) {
+        throw new Error("Conv2D() padding must be \"valid\" or \"same\"");
+      }
+      this.padding = padding;
+    }
+    let width = 1 / Math.sqrt(this.inChannels * this.kernelSize * this.kernelSize);
+    if (argc === 6) {
+      width = nnRequireFinite("Conv2D", scale, "scale");
+      if (width < 0) throw new Error("Conv2D() scale must be >= 0");
+    }
+    this.weights = [];
+    for (let ic = 0; ic < this.inChannels; ic++) {
+      const outs = [];
+      for (let oc = 0; oc < this.outChannels; oc++) outs.push(nnLayerMatrix(this.kernelSize, this.kernelSize, width));
+      this.weights.push(outs);
+    }
+    const bias = [];
+    for (let oc = 0; oc < this.outChannels; oc++) bias.push(randomFloatBuiltin(-width, width));
+    this.bias = bias;
+    this._input = null;
+    this._inputBatched = false;
+    this._dWeights = null;
+    this._dBias = null;
+  }
+
+  Conv2D.prototype.forward = function (input) {
+    if (arguments.length !== 1) throw new Error("Conv2D.forward() expects 1 argument: (input)");
+    const volume = nnReadVolume("Conv2D.forward", input);
+    if (volume.channels !== this.inChannels) {
+      throw new Error("Conv2D.forward() expected " + this.inChannels + " input channels, got " + volume.channels);
+    }
+    const geo = nnConvGeometry(this.padding, volume.height, volume.width, this.kernelSize, this.stride);
+    if (geo.outH < 1 || geo.outW < 1) throw new Error("Conv2D.forward() input is smaller than the kernel");
+    const output = nnZeros4(volume.batch, this.outChannels, geo.outH, geo.outW);
+    for (let b = 0; b < volume.batch; b++) {
+      for (let oc = 0; oc < this.outChannels; oc++) {
+        for (let oh = 0; oh < geo.outH; oh++) {
+          for (let ow = 0; ow < geo.outW; ow++) {
+            let sum = this.bias[oc];
+            const ihStart = oh * this.stride - geo.padTop;
+            const iwStart = ow * this.stride - geo.padLeft;
+            for (let ic = 0; ic < this.inChannels; ic++) {
+              for (let kh = 0; kh < this.kernelSize; kh++) {
+                for (let kw = 0; kw < this.kernelSize; kw++) {
+                  const ih = ihStart + kh;
+                  const iw = iwStart + kw;
+                  if (ih >= 0 && ih < volume.height && iw >= 0 && iw < volume.width) {
+                    sum += volume.data[b][ic][ih][iw] * this.weights[ic][oc][kh][kw];
+                  }
+                }
+              }
+            }
+            output[b][oc][oh][ow] = sum;
+          }
+        }
+      }
+    }
+    this._input = volume.data;
+    this._inputBatched = volume.batched;
+    this._inH = volume.height;
+    this._inW = volume.width;
+    return nnWriteVolume(output, volume.batched);
+  };
+
+  Conv2D.prototype.backward = function (upstream) {
+    if (arguments.length !== 1) throw new Error("Conv2D.backward() expects 1 argument: (upstream)");
+    if (this._input == null) throw new Error("Conv2D.backward() requires forward() first");
+    const grad = nnReadVolume("Conv2D.backward", upstream);
+    const geo = nnConvGeometry(this.padding, this._inH, this._inW, this.kernelSize, this.stride);
+    if (grad.batch !== this._input.length || grad.channels !== this.outChannels || grad.height !== geo.outH || grad.width !== geo.outW) {
+      throw new Error("Conv2D.backward() upstream must match the forward output");
+    }
+    const dInput = nnZeros4(grad.batch, this.inChannels, this._inH, this._inW);
+    const dWeights = nnZeros4(this.inChannels, this.outChannels, this.kernelSize, this.kernelSize);
+    const dBias = [];
+    for (let oc = 0; oc < this.outChannels; oc++) dBias.push(0);
+    for (let b = 0; b < grad.batch; b++) {
+      for (let oc = 0; oc < this.outChannels; oc++) {
+        for (let oh = 0; oh < geo.outH; oh++) {
+          for (let ow = 0; ow < geo.outW; ow++) {
+            const g = grad.data[b][oc][oh][ow];
+            dBias[oc] += g;
+            const ihStart = oh * this.stride - geo.padTop;
+            const iwStart = ow * this.stride - geo.padLeft;
+            for (let ic = 0; ic < this.inChannels; ic++) {
+              for (let kh = 0; kh < this.kernelSize; kh++) {
+                for (let kw = 0; kw < this.kernelSize; kw++) {
+                  const ih = ihStart + kh;
+                  const iw = iwStart + kw;
+                  if (ih >= 0 && ih < this._inH && iw >= 0 && iw < this._inW) {
+                    dWeights[ic][oc][kh][kw] += g * this._input[b][ic][ih][iw];
+                    dInput[b][ic][ih][iw] += g * this.weights[ic][oc][kh][kw];
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    this._dWeights = dWeights;
+    this._dBias = dBias;
+    return nnWriteVolume(dInput, this._inputBatched);
+  };
+
+  Conv2D.prototype.sgd = function (learningRate) {
+    if (arguments.length !== 1) throw new Error("Conv2D.sgd() expects 1 argument: (lr)");
+    if (this._dWeights == null || this._dBias == null) throw new Error("Conv2D.sgd() requires backward() first");
+    const step = nnRequireFinite("Conv2D.sgd", learningRate, "lr");
+    for (let ic = 0; ic < this.inChannels; ic++) {
+      for (let oc = 0; oc < this.outChannels; oc++) {
+        nnApplyOwnedMatrix(this.weights[ic][oc], this._dWeights[ic][oc], step);
+      }
+    }
+    nnApplyOwnedVector(this.bias, this._dBias, step);
+    return null;
+  };
+
+  function MaxPool2D(poolSize, stride) {
+    const argc = arguments.length;
+    if (argc < 1 || argc > 2) throw new Error("MaxPool2D() expects 1 or 2 arguments: (poolSize, stride?)");
+    this.poolSize = nnRequirePositiveInt("MaxPool2D", poolSize, "poolSize");
+    this.stride = argc === 2 ? nnRequirePositiveInt("MaxPool2D", stride, "stride") : this.poolSize;
+    this._indices = null;
+  }
+
+  MaxPool2D.prototype.forward = function (input) {
+    if (arguments.length !== 1) throw new Error("MaxPool2D.forward() expects 1 argument: (input)");
+    const volume = nnReadVolume("MaxPool2D.forward", input);
+    const outH = nnPoolOut(volume.height, this.poolSize, this.stride);
+    const outW = nnPoolOut(volume.width, this.poolSize, this.stride);
+    if (outH < 1 || outW < 1) throw new Error("MaxPool2D.forward() input is smaller than the pool");
+    const output = nnZeros4(volume.batch, volume.channels, outH, outW);
+    const indices = nnZeros4(volume.batch, volume.channels, outH, outW);
+    for (let b = 0; b < volume.batch; b++) {
+      for (let c = 0; c < volume.channels; c++) {
+        for (let oh = 0; oh < outH; oh++) {
+          for (let ow = 0; ow < outW; ow++) {
+            let maxVal = -Infinity;
+            let maxIdx = 0;
+            const ihStart = oh * this.stride;
+            const iwStart = ow * this.stride;
+            for (let ph = 0; ph < this.poolSize; ph++) {
+              for (let pw = 0; pw < this.poolSize; pw++) {
+                const val = volume.data[b][c][ihStart + ph][iwStart + pw];
+                if (val > maxVal) {
+                  maxVal = val;
+                  maxIdx = ph * this.poolSize + pw;
+                }
+              }
+            }
+            output[b][c][oh][ow] = maxVal;
+            indices[b][c][oh][ow] = maxIdx;
+          }
+        }
+      }
+    }
+    this._indices = indices;
+    this._batch = volume.batch;
+    this._channels = volume.channels;
+    this._inH = volume.height;
+    this._inW = volume.width;
+    this._batched = volume.batched;
+    return nnWriteVolume(output, volume.batched);
+  };
+
+  MaxPool2D.prototype.backward = function (upstream) {
+    if (arguments.length !== 1) throw new Error("MaxPool2D.backward() expects 1 argument: (upstream)");
+    if (this._indices == null) throw new Error("MaxPool2D.backward() requires forward() first");
+    const grad = nnReadVolume("MaxPool2D.backward", upstream);
+    const outH = nnPoolOut(this._inH, this.poolSize, this.stride);
+    const outW = nnPoolOut(this._inW, this.poolSize, this.stride);
+    if (grad.batch !== this._batch || grad.channels !== this._channels || grad.height !== outH || grad.width !== outW) {
+      throw new Error("MaxPool2D.backward() upstream must match the forward output");
+    }
+    const dInput = nnZeros4(this._batch, this._channels, this._inH, this._inW);
+    for (let b = 0; b < this._batch; b++) {
+      for (let c = 0; c < this._channels; c++) {
+        for (let oh = 0; oh < outH; oh++) {
+          for (let ow = 0; ow < outW; ow++) {
+            const maxIdx = this._indices[b][c][oh][ow];
+            const ph = Math.floor(maxIdx / this.poolSize);
+            const pw = maxIdx % this.poolSize;
+            dInput[b][c][oh * this.stride + ph][ow * this.stride + pw] += grad.data[b][c][oh][ow];
+          }
+        }
+      }
+    }
+    return nnWriteVolume(dInput, this._batched);
+  };
+
+  function AvgPool2D(poolSize, stride) {
+    const argc = arguments.length;
+    if (argc < 1 || argc > 2) throw new Error("AvgPool2D() expects 1 or 2 arguments: (poolSize, stride?)");
+    this.poolSize = nnRequirePositiveInt("AvgPool2D", poolSize, "poolSize");
+    this.stride = argc === 2 ? nnRequirePositiveInt("AvgPool2D", stride, "stride") : this.poolSize;
+    this._seen = false;
+  }
+
+  AvgPool2D.prototype.forward = function (input) {
+    if (arguments.length !== 1) throw new Error("AvgPool2D.forward() expects 1 argument: (input)");
+    const volume = nnReadVolume("AvgPool2D.forward", input);
+    const outH = nnPoolOut(volume.height, this.poolSize, this.stride);
+    const outW = nnPoolOut(volume.width, this.poolSize, this.stride);
+    if (outH < 1 || outW < 1) throw new Error("AvgPool2D.forward() input is smaller than the pool");
+    const output = nnZeros4(volume.batch, volume.channels, outH, outW);
+    const area = this.poolSize * this.poolSize;
+    for (let b = 0; b < volume.batch; b++) {
+      for (let c = 0; c < volume.channels; c++) {
+        for (let oh = 0; oh < outH; oh++) {
+          for (let ow = 0; ow < outW; ow++) {
+            let sum = 0;
+            const ihStart = oh * this.stride;
+            const iwStart = ow * this.stride;
+            for (let ph = 0; ph < this.poolSize; ph++) {
+              for (let pw = 0; pw < this.poolSize; pw++) sum += volume.data[b][c][ihStart + ph][iwStart + pw];
+            }
+            output[b][c][oh][ow] = sum / area;
+          }
+        }
+      }
+    }
+    this._batch = volume.batch;
+    this._channels = volume.channels;
+    this._inH = volume.height;
+    this._inW = volume.width;
+    this._batched = volume.batched;
+    this._seen = true;
+    return nnWriteVolume(output, volume.batched);
+  };
+
+  AvgPool2D.prototype.backward = function (upstream) {
+    if (arguments.length !== 1) throw new Error("AvgPool2D.backward() expects 1 argument: (upstream)");
+    if (!this._seen) throw new Error("AvgPool2D.backward() requires forward() first");
+    const grad = nnReadVolume("AvgPool2D.backward", upstream);
+    const outH = nnPoolOut(this._inH, this.poolSize, this.stride);
+    const outW = nnPoolOut(this._inW, this.poolSize, this.stride);
+    if (grad.batch !== this._batch || grad.channels !== this._channels || grad.height !== outH || grad.width !== outW) {
+      throw new Error("AvgPool2D.backward() upstream must match the forward output");
+    }
+    const dInput = nnZeros4(this._batch, this._channels, this._inH, this._inW);
+    const area = this.poolSize * this.poolSize;
+    for (let b = 0; b < this._batch; b++) {
+      for (let c = 0; c < this._channels; c++) {
+        for (let oh = 0; oh < outH; oh++) {
+          for (let ow = 0; ow < outW; ow++) {
+            const g = grad.data[b][c][oh][ow] / area;
+            const ihStart = oh * this.stride;
+            const iwStart = ow * this.stride;
+            for (let ph = 0; ph < this.poolSize; ph++) {
+              for (let pw = 0; pw < this.poolSize; pw++) dInput[b][c][ihStart + ph][iwStart + pw] += g;
+            }
+          }
+        }
+      }
+    }
+    return nnWriteVolume(dInput, this._batched);
+  };
+
+  function nnCollect(value, into, name) {
+    if (Array.isArray(value)) {
+      for (let i = 0; i < value.length; i++) nnCollect(value[i], into, name);
+      return;
+    }
+    if (typeof value !== "number" || !Number.isFinite(value)) throw new Error(name + " input must be numeric");
+    into.push(value);
+  }
+
+  function nnScatter(values, template, index, name) {
+    if (!Array.isArray(template)) {
+      if (index.i >= values.length) throw new Error(name + " upstream length must match the forward output");
+      return values[index.i++];
+    }
+    const copy = [];
+    for (let i = 0; i < template.length; i++) copy.push(nnScatter(values, template[i], index, name));
+    return copy;
+  }
+
+  function Flatten() {
+    if (arguments.length !== 0) throw new Error("Flatten() expects no arguments");
+    this._template = null;
+  }
+
+  Flatten.prototype.forward = function (input) {
+    if (arguments.length !== 1) throw new Error("Flatten.forward() expects 1 argument: (input)");
+    const flat = [];
+    nnCollect(input, flat, "Flatten.forward()");
+    if (flat.length === 0) throw new Error("Flatten.forward() input must contain a number");
+    this._template = nnMapDeep(input, function (n) { return n; }, "Flatten.forward()");
+    return flat;
+  };
+
+  Flatten.prototype.backward = function (upstream) {
+    if (arguments.length !== 1) throw new Error("Flatten.backward() expects 1 argument: (upstream)");
+    if (this._template == null) throw new Error("Flatten.backward() requires forward() first");
+    const grad = neuralRequireVector("Flatten.backward", upstream, "upstream");
+    const index = { i: 0 };
+    const restored = nnScatter(grad, this._template, index, "Flatten.backward()");
+    if (index.i !== grad.length) throw new Error("Flatten.backward() upstream length must match the forward output");
+    return restored;
+  };
+
+  function BatchNorm2D(numFeatures, momentum, eps) {
+    const argc = arguments.length;
+    if (argc < 1 || argc > 3) {
+      throw new Error("BatchNorm2D() expects 1 to 3 arguments: (numFeatures, momentum?, eps?)");
+    }
+    this.numFeatures = nnRequirePositiveInt("BatchNorm2D", numFeatures, "numFeatures");
+    this._momentum = argc >= 2 ? nnRequireFinite("BatchNorm2D", momentum, "momentum") : 0.1;
+    this._eps = argc === 3 ? nnRequireFinite("BatchNorm2D", eps, "eps") : 0.00001;
+    this.gamma = [];
+    this.beta = [];
+    this.runningMean = [];
+    this.runningVar = [];
+    for (let i = 0; i < this.numFeatures; i++) {
+      this.gamma.push(1);
+      this.beta.push(0);
+      this.runningMean.push(0);
+      this.runningVar.push(1);
+    }
+    this.training = true;
+    this._normalized = null;
+    this._std = null;
+    this._dGamma = null;
+    this._dBeta = null;
+  }
+
+  BatchNorm2D.prototype.train = function () {
+    if (arguments.length !== 0) throw new Error("BatchNorm2D.train() expects no arguments");
+    this.training = true;
+    return null;
+  };
+
+  BatchNorm2D.prototype.eval = function () {
+    if (arguments.length !== 0) throw new Error("BatchNorm2D.eval() expects no arguments");
+    this.training = false;
+    return null;
+  };
+
+  BatchNorm2D.prototype.forward = function (input) {
+    if (arguments.length !== 1) throw new Error("BatchNorm2D.forward() expects 1 argument: (input)");
+    const volume = nnReadVolume("BatchNorm2D.forward", input);
+    if (volume.channels !== this.numFeatures) {
+      throw new Error("BatchNorm2D.forward() expected " + this.numFeatures + " channels, got " + volume.channels);
+    }
+    const output = nnZeros4(volume.batch, volume.channels, volume.height, volume.width);
+    this._batched = volume.batched;
+    if (this.training) {
+      const spatial = volume.batch * volume.height * volume.width;
+      const mean = [];
+      const variance = [];
+      for (let c = 0; c < volume.channels; c++) {
+        let sum = 0;
+        for (let b = 0; b < volume.batch; b++) {
+          for (let h = 0; h < volume.height; h++) {
+            for (let w = 0; w < volume.width; w++) sum += volume.data[b][c][h][w];
+          }
+        }
+        mean.push(sum / spatial);
+        variance.push(0);
+      }
+      for (let c = 0; c < volume.channels; c++) {
+        let acc = 0;
+        for (let b = 0; b < volume.batch; b++) {
+          for (let h = 0; h < volume.height; h++) {
+            for (let w = 0; w < volume.width; w++) {
+              const diff = volume.data[b][c][h][w] - mean[c];
+              acc += diff * diff;
+            }
+          }
+        }
+        variance[c] = acc / spatial;
+        this.runningMean[c] = (1 - this._momentum) * this.runningMean[c] + this._momentum * mean[c];
+        this.runningVar[c] = (1 - this._momentum) * this.runningVar[c] + this._momentum * variance[c];
+      }
+      this._std = [];
+      this._normalized = nnZeros4(volume.batch, volume.channels, volume.height, volume.width);
+      for (let c = 0; c < volume.channels; c++) {
+        this._std.push(Math.sqrt(variance[c] + this._eps));
+        for (let b = 0; b < volume.batch; b++) {
+          for (let h = 0; h < volume.height; h++) {
+            for (let w = 0; w < volume.width; w++) {
+              this._normalized[b][c][h][w] = (volume.data[b][c][h][w] - mean[c]) / this._std[c];
+              output[b][c][h][w] = this.gamma[c] * this._normalized[b][c][h][w] + this.beta[c];
+            }
+          }
+        }
+      }
+    } else {
+      for (let c = 0; c < volume.channels; c++) {
+        const std = Math.sqrt(this.runningVar[c] + this._eps);
+        for (let b = 0; b < volume.batch; b++) {
+          for (let h = 0; h < volume.height; h++) {
+            for (let w = 0; w < volume.width; w++) {
+              output[b][c][h][w] = this.gamma[c] * ((volume.data[b][c][h][w] - this.runningMean[c]) / std) + this.beta[c];
+            }
+          }
+        }
+      }
+      this._normalized = null;
+      this._std = null;
+    }
+    return nnWriteVolume(output, volume.batched);
+  };
+
+  BatchNorm2D.prototype.backward = function (upstream) {
+    if (arguments.length !== 1) throw new Error("BatchNorm2D.backward() expects 1 argument: (upstream)");
+    if (this._normalized == null || this._std == null) {
+      throw new Error("BatchNorm2D.backward() requires forward() first in training mode");
+    }
+    const grad = nnReadVolume("BatchNorm2D.backward", upstream);
+    const batch = this._normalized.length;
+    const channels = this._normalized[0].length;
+    const height = this._normalized[0][0].length;
+    const width = this._normalized[0][0][0].length;
+    if (grad.batch !== batch || grad.channels !== channels || grad.height !== height || grad.width !== width) {
+      throw new Error("BatchNorm2D.backward() upstream must match the forward output");
+    }
+    const dGamma = [];
+    const dBeta = [];
+    const dInput = nnZeros4(batch, channels, height, width);
+    const spatial = batch * height * width;
+    for (let c = 0; c < channels; c++) {
+      let meanDnorm = 0;
+      let meanDnormNorm = 0;
+      dGamma.push(0);
+      dBeta.push(0);
+      for (let b = 0; b < batch; b++) {
+        for (let h = 0; h < height; h++) {
+          for (let w = 0; w < width; w++) {
+            const g = grad.data[b][c][h][w];
+            dBeta[c] += g;
+            dGamma[c] += g * this._normalized[b][c][h][w];
+            const dnorm = g * this.gamma[c];
+            meanDnorm += dnorm;
+            meanDnormNorm += dnorm * this._normalized[b][c][h][w];
+          }
+        }
+      }
+      meanDnorm /= spatial;
+      meanDnormNorm /= spatial;
+      for (let b = 0; b < batch; b++) {
+        for (let h = 0; h < height; h++) {
+          for (let w = 0; w < width; w++) {
+            const dnorm = grad.data[b][c][h][w] * this.gamma[c];
+            dInput[b][c][h][w] = (dnorm - meanDnorm - this._normalized[b][c][h][w] * meanDnormNorm) / this._std[c];
+          }
+        }
+      }
+    }
+    this._dGamma = dGamma;
+    this._dBeta = dBeta;
+    return nnWriteVolume(dInput, this._batched);
+  };
+
+  BatchNorm2D.prototype.sgd = function (learningRate) {
+    if (arguments.length !== 1) throw new Error("BatchNorm2D.sgd() expects 1 argument: (lr)");
+    if (this._dGamma == null || this._dBeta == null) throw new Error("BatchNorm2D.sgd() requires backward() first");
+    const step = nnRequireFinite("BatchNorm2D.sgd", learningRate, "lr");
+    nnApplyOwnedVector(this.gamma, this._dGamma, step);
+    nnApplyOwnedVector(this.beta, this._dBeta, step);
+    return null;
+  };
+
+  function Dropout2D(p) {
+    if (arguments.length !== 1) throw new Error("Dropout2D() expects 1 argument: (p)");
+    this.p = nnRequireFinite("Dropout2D", p, "p");
+    if (this.p < 0 || this.p >= 1) throw new Error("Dropout2D() p must be in [0, 1)");
+    this.training = true;
+    this._mask = null;
+    this._seen = false;
+    this._batched = false;
+  }
+
+  Dropout2D.prototype.train = function () {
+    if (arguments.length !== 0) throw new Error("Dropout2D.train() expects no arguments");
+    this.training = true;
+    return null;
+  };
+
+  Dropout2D.prototype.eval = function () {
+    if (arguments.length !== 0) throw new Error("Dropout2D.eval() expects no arguments");
+    this.training = false;
+    return null;
+  };
+
+  Dropout2D.prototype.forward = function (input) {
+    if (arguments.length !== 1) throw new Error("Dropout2D.forward() expects 1 argument: (input)");
+    const volume = nnReadVolume("Dropout2D.forward", input);
+    const output = nnZeros4(volume.batch, volume.channels, volume.height, volume.width);
+    this._batched = volume.batched;
+    this._seen = true;
+    if (this.training && this.p > 0) {
+      this._mask = nnZeros4(volume.batch, volume.channels, volume.height, volume.width);
+      const scale = 1 / (1 - this.p);
+      for (let b = 0; b < volume.batch; b++) {
+        for (let c = 0; c < volume.channels; c++) {
+          for (let h = 0; h < volume.height; h++) {
+            for (let w = 0; w < volume.width; w++) {
+              const keep = randomFloatBuiltin(0, 1) >= this.p;
+              this._mask[b][c][h][w] = keep ? 1 : 0;
+              output[b][c][h][w] = keep ? volume.data[b][c][h][w] * scale : 0;
+            }
+          }
+        }
+      }
+    } else {
+      this._mask = null;
+      for (let b = 0; b < volume.batch; b++) {
+        for (let c = 0; c < volume.channels; c++) {
+          for (let h = 0; h < volume.height; h++) {
+            for (let w = 0; w < volume.width; w++) output[b][c][h][w] = volume.data[b][c][h][w];
+          }
+        }
+      }
+    }
+    return nnWriteVolume(output, volume.batched);
+  };
+
+  Dropout2D.prototype.backward = function (upstream) {
+    if (arguments.length !== 1) throw new Error("Dropout2D.backward() expects 1 argument: (upstream)");
+    if (!this._seen) throw new Error("Dropout2D.backward() requires forward() first");
+    const grad = nnReadVolume("Dropout2D.backward", upstream);
+    const dInput = nnZeros4(grad.batch, grad.channels, grad.height, grad.width);
+    if (this._mask != null) {
+      if (this._mask.length !== grad.batch || this._mask[0].length !== grad.channels
+          || this._mask[0][0].length !== grad.height || this._mask[0][0][0].length !== grad.width) {
+        throw new Error("Dropout2D.backward() upstream must match the forward output");
+      }
+      const scale = 1 / (1 - this.p);
+      for (let b = 0; b < grad.batch; b++) {
+        for (let c = 0; c < grad.channels; c++) {
+          for (let h = 0; h < grad.height; h++) {
+            for (let w = 0; w < grad.width; w++) {
+              dInput[b][c][h][w] = this._mask[b][c][h][w] ? grad.data[b][c][h][w] * scale : 0;
+            }
+          }
+        }
+      }
+    } else {
+      for (let b = 0; b < grad.batch; b++) {
+        for (let c = 0; c < grad.channels; c++) {
+          for (let h = 0; h < grad.height; h++) {
+            for (let w = 0; w < grad.width; w++) dInput[b][c][h][w] = grad.data[b][c][h][w];
+          }
+        }
+      }
+    }
+    return nnWriteVolume(dInput, this._batched);
+  };
+
+  function GlobalAvgPool2D() {
+    if (arguments.length !== 0) throw new Error("GlobalAvgPool2D() expects no arguments");
+    this._seen = false;
+  }
+
+  GlobalAvgPool2D.prototype.forward = function (input) {
+    if (arguments.length !== 1) throw new Error("GlobalAvgPool2D.forward() expects 1 argument: (input)");
+    const volume = nnReadVolume("GlobalAvgPool2D.forward", input);
+    const rows = [];
+    const spatial = volume.height * volume.width;
+    for (let b = 0; b < volume.batch; b++) {
+      const row = [];
+      for (let c = 0; c < volume.channels; c++) {
+        let sum = 0;
+        for (let h = 0; h < volume.height; h++) {
+          for (let w = 0; w < volume.width; w++) sum += volume.data[b][c][h][w];
+        }
+        row.push(sum / spatial);
+      }
+      rows.push(row);
+    }
+    this._batch = volume.batch;
+    this._channels = volume.channels;
+    this._height = volume.height;
+    this._width = volume.width;
+    this._batched = volume.batched;
+    this._seen = true;
+    return nnWriteChannels(rows, volume.batched);
+  };
+
+  GlobalAvgPool2D.prototype.backward = function (upstream) {
+    if (arguments.length !== 1) throw new Error("GlobalAvgPool2D.backward() expects 1 argument: (upstream)");
+    if (!this._seen) throw new Error("GlobalAvgPool2D.backward() requires forward() first");
+    const rows = nnReadChannels("GlobalAvgPool2D.backward", upstream);
+    if (rows.length !== this._batch || rows[0].length !== this._channels) {
+      throw new Error("GlobalAvgPool2D.backward() upstream must match the forward output");
+    }
+    const dInput = nnZeros4(this._batch, this._channels, this._height, this._width);
+    const scale = 1 / (this._height * this._width);
+    for (let b = 0; b < this._batch; b++) {
+      for (let c = 0; c < this._channels; c++) {
+        const value = rows[b][c] * scale;
+        for (let h = 0; h < this._height; h++) {
+          for (let w = 0; w < this._width; w++) dInput[b][c][h][w] = value;
+        }
+      }
+    }
+    return nnWriteVolume(dInput, this._batched);
+  };
+
+  function GlobalMaxPool2D() {
+    if (arguments.length !== 0) throw new Error("GlobalMaxPool2D() expects no arguments");
+    this._indices = null;
+  }
+
+  GlobalMaxPool2D.prototype.forward = function (input) {
+    if (arguments.length !== 1) throw new Error("GlobalMaxPool2D.forward() expects 1 argument: (input)");
+    const volume = nnReadVolume("GlobalMaxPool2D.forward", input);
+    const rows = [];
+    const indices = [];
+    for (let b = 0; b < volume.batch; b++) {
+      const row = [];
+      const idx = [];
+      for (let c = 0; c < volume.channels; c++) {
+        let maxVal = -Infinity;
+        let maxIdx = 0;
+        for (let h = 0; h < volume.height; h++) {
+          for (let w = 0; w < volume.width; w++) {
+            const val = volume.data[b][c][h][w];
+            if (val > maxVal) {
+              maxVal = val;
+              maxIdx = h * volume.width + w;
+            }
+          }
+        }
+        row.push(maxVal);
+        idx.push(maxIdx);
+      }
+      rows.push(row);
+      indices.push(idx);
+    }
+    this._batch = volume.batch;
+    this._channels = volume.channels;
+    this._height = volume.height;
+    this._width = volume.width;
+    this._batched = volume.batched;
+    this._indices = indices;
+    return nnWriteChannels(rows, volume.batched);
+  };
+
+  GlobalMaxPool2D.prototype.backward = function (upstream) {
+    if (arguments.length !== 1) throw new Error("GlobalMaxPool2D.backward() expects 1 argument: (upstream)");
+    if (this._indices == null) throw new Error("GlobalMaxPool2D.backward() requires forward() first");
+    const rows = nnReadChannels("GlobalMaxPool2D.backward", upstream);
+    if (rows.length !== this._batch || rows[0].length !== this._channels) {
+      throw new Error("GlobalMaxPool2D.backward() upstream must match the forward output");
+    }
+    const dInput = nnZeros4(this._batch, this._channels, this._height, this._width);
+    for (let b = 0; b < this._batch; b++) {
+      for (let c = 0; c < this._channels; c++) {
+        const idx = this._indices[b][c];
+        dInput[b][c][Math.floor(idx / this._width)][idx % this._width] = rows[b][c];
+      }
+    }
+    return nnWriteVolume(dInput, this._batched);
+  };
+
+  function Activation(name) {
+    if (arguments.length !== 1) throw new Error("Activation() expects 1 argument: (name)");
+    if (typeof name !== "string" || NN_DENSE_ACTIVATIONS.indexOf(name) < 0) {
+      throw new Error("Activation() unknown activation '" + name + "'");
+    }
+    this.activation = name;
+    this._pre = null;
+  }
+
+  Activation.prototype.forward = function (x) {
+    if (arguments.length !== 1) throw new Error("Activation.forward() expects 1 argument: (x)");
+    this._pre = nnMapDeep(x, function (n) { return n; }, "Activation.forward()");
+    const self = this;
+    return nnMapDeep(this._pre, function (n) { return nnActivateScalar(self.activation, n); }, "Activation.forward()");
+  };
+
+  Activation.prototype.backward = function (upstream) {
+    if (arguments.length !== 1) throw new Error("Activation.backward() expects 1 argument: (upstream)");
+    if (this._pre == null) throw new Error("Activation.backward() requires forward() first");
+    const self = this;
+    const deriv = nnMapDeep(this._pre, function (n) { return nnActivateDerivScalar(self.activation, n); }, "Activation.backward()");
+    return nnZipMul(upstream, deriv, "Activation.backward()");
+  };
+
   global.Dense = Dense;
   global.Sequential = Sequential;
   global.Conv = Conv;
+  global.Conv2D = Conv2D;
+  global.MaxPool2D = MaxPool2D;
+  global.AvgPool2D = AvgPool2D;
+  global.Flatten = Flatten;
+  global.BatchNorm2D = BatchNorm2D;
+  global.Dropout2D = Dropout2D;
+  global.GlobalAvgPool2D = GlobalAvgPool2D;
+  global.GlobalMaxPool2D = GlobalMaxPool2D;
+  global.Activation = Activation;
   global.Embedding = Embedding;
   global.Rnn = Rnn;
   global.LayerNorm = LayerNorm;

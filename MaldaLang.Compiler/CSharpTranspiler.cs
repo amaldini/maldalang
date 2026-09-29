@@ -3283,6 +3283,15 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("}");
         WriteNeuralLayerDispatch("MaldaLang.BuiltIns.ConvInstance", "convLayer");
+        WriteNeuralLayerDispatch("MaldaLang.BuiltIns.Conv2DInstance", "conv2dLayer");
+        WriteNeuralLayerDispatch("MaldaLang.BuiltIns.MaxPool2DInstance", "maxPool2d");
+        WriteNeuralLayerDispatch("MaldaLang.BuiltIns.AvgPool2DInstance", "avgPool2d");
+        WriteNeuralLayerDispatch("MaldaLang.BuiltIns.FlattenInstance", "flattenLayer");
+        WriteNeuralLayerDispatch("MaldaLang.BuiltIns.BatchNorm2DInstance", "batchNorm2d");
+        WriteNeuralLayerDispatch("MaldaLang.BuiltIns.Dropout2DInstance", "dropout2d");
+        WriteNeuralLayerDispatch("MaldaLang.BuiltIns.GlobalAvgPool2DInstance", "globalAvgPool2d");
+        WriteNeuralLayerDispatch("MaldaLang.BuiltIns.GlobalMaxPool2DInstance", "globalMaxPool2d");
+        WriteNeuralLayerDispatch("MaldaLang.BuiltIns.ActivationInstance", "activationLayer");
         WriteNeuralLayerDispatch("MaldaLang.BuiltIns.EmbeddingInstance", "embeddingLayer");
         WriteNeuralLayerDispatch("MaldaLang.BuiltIns.RnnInstance", "rnnLayer");
         WriteNeuralLayerDispatch("MaldaLang.BuiltIns.LayerNormInstance", "layerNorm");
@@ -12653,6 +12662,15 @@ public class CSharpTranspiler
             "Dense" => "MaldaLang.BuiltIns.DenseInstance",
             "Sequential" => "MaldaLang.BuiltIns.SequentialInstance",
             "Conv" => "MaldaLang.BuiltIns.ConvInstance",
+            "Conv2D" => "MaldaLang.BuiltIns.Conv2DInstance",
+            "MaxPool2D" => "MaldaLang.BuiltIns.MaxPool2DInstance",
+            "AvgPool2D" => "MaldaLang.BuiltIns.AvgPool2DInstance",
+            "Flatten" => "MaldaLang.BuiltIns.FlattenInstance",
+            "BatchNorm2D" => "MaldaLang.BuiltIns.BatchNorm2DInstance",
+            "Dropout2D" => "MaldaLang.BuiltIns.Dropout2DInstance",
+            "GlobalAvgPool2D" => "MaldaLang.BuiltIns.GlobalAvgPool2DInstance",
+            "GlobalMaxPool2D" => "MaldaLang.BuiltIns.GlobalMaxPool2DInstance",
+            "Activation" => "MaldaLang.BuiltIns.ActivationInstance",
             "Embedding" => "MaldaLang.BuiltIns.EmbeddingInstance",
             "Rnn" => "MaldaLang.BuiltIns.RnnInstance",
             "LayerNorm" => "MaldaLang.BuiltIns.LayerNormInstance",

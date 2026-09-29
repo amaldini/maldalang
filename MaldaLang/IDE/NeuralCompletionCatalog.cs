@@ -30,6 +30,7 @@ internal static class NeuralCompletionCatalog
         ("Dropout2D", "new Dropout2D(p) — 2D dropout", "new Dropout2D()"),
         ("GlobalAvgPool2D", "new GlobalAvgPool2D() — global average pooling", "new GlobalAvgPool2D()"),
         ("GlobalMaxPool2D", "new GlobalMaxPool2D() — global max pooling", "new GlobalMaxPool2D()"),
+        ("Activation", "new Activation(name) — elementwise activation on a vector or a tensor", "new Activation()"),
         ("Embedding", "new Embedding(rows, dim, scale?) — table lookup", "new Embedding()"),
         ("Rnn", "new Rnn(inputSize, hiddenSize, activation?, scale?) — one recurrent step", "new Rnn()"),
         ("LayerNorm", "new LayerNorm(features) — learned scale and shift", "new LayerNorm()"),
@@ -114,7 +115,7 @@ internal static class NeuralCompletionCatalog
             Prop("poolSize", "int"),
             Prop("stride", "int"),
             Method("forward", "input"),
-            Method("backward", "upstream", "inputShape")),
+            Method("backward", "upstream")),
         ["AvgPool2D"] = Layer(
             Prop("poolSize", "int"),
             Prop("stride", "int"),
@@ -147,6 +148,10 @@ internal static class NeuralCompletionCatalog
             Method("backward", "upstream")),
         ["GlobalMaxPool2D"] = Layer(
             Method("forward", "input"),
+            Method("backward", "upstream")),
+        ["Activation"] = Layer(
+            Prop("activation", "string"),
+            Method("forward", "x"),
             Method("backward", "upstream")),
         ["Embedding"] = Layer(
             Prop("rows", "int"),
@@ -202,6 +207,7 @@ internal static class NeuralCompletionCatalog
         ["Dropout2D"] = ["p"],
         ["GlobalAvgPool2D"] = [],
         ["GlobalMaxPool2D"] = [],
+        ["Activation"] = ["name"],
         ["Embedding"] = ["rows", "dim", "scale?"],
         ["Rnn"] = ["inputSize", "hiddenSize", "activation?", "scale?"],
         ["LayerNorm"] = ["features"],
