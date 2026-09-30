@@ -1,6 +1,6 @@
 # Few-shot snippets
 
-*Applies to: MALDA 1.0.33*
+*Applies to: MALDA 1.0.34*
 
 Tiny programs for LLM context. Larger curated samples live under `Examples/`.
 After generating a snippet, diagnose with `malda check path.malda --json` before running.
