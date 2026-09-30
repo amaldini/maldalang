@@ -1,0 +1,73 @@
+{
+  "width": 1600,
+  "height": 900,
+  "left": 0,
+  "top": 0,
+  "splitBeatMs": 800,
+  "readyTimeoutMs": 90000,
+  "scenes": [
+    {
+      "file": "Examples/Basics/hello_world.malda",
+      "caption": "Hello",
+      "panel": "output",
+      "maximize": false,
+      "holdMs": 1800
+    },
+    {
+      "file": "Examples/Basics/first_look.malda",
+      "caption": "Schemas",
+      "panel": "output",
+      "maximize": false,
+      "holdMs": 2400,
+      "focusLine": 13
+    },
+    {
+      "file": "Examples/Algorithms/towers_of_hanoi.malda",
+      "caption": "Towers of Hanoi",
+      "panel": "output",
+      "maximize": false,
+      "holdMs": 2800,
+      "focusLine": 22
+    },
+    {
+      "file": "Examples/Web/ui_controls_showcase_minimal.malda",
+      "caption": "UI controls",
+      "panel": "server",
+      "maximize": true,
+      "holdMs": 4500,
+      "focusLine": 16
+    },
+    {
+      "file": "Examples/Games/three_shader_mandelbrot.malda",
+      "caption": "Mandelbrot",
+      "panel": "preview",
+      "maximize": true,
+      "holdMs": 5000,
+      "focusLine": 10
+    },
+    {
+      "file": "Examples/Games/three_shader_billiards.malda",
+      "caption": "GPU billiards",
+      "panel": "preview",
+      "maximize": true,
+      "holdMs": 4500,
+      "focusLine": 29
+    },
+    {
+      "file": "Examples/Games/malda_platform.malda",
+      "caption": "Platform",
+      "panel": "preview",
+      "maximize": true,
+      "holdMs": 4000,
+      "focusLine": 111
+    },
+    {
+      "file": "Examples/Games/chess.malda",
+      "caption": "Chess",
+      "panel": "preview",
+      "maximize": false,
+      "holdMs": 3200,
+      "focusLine": 27
+    }
+  ]
+}

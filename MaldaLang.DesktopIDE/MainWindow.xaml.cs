@@ -191,11 +191,20 @@ public partial class MainWindow : Window
     private ToolTip? _hoverToolTip;
     private const string SnippetCaretMarker = SyntaxSnippetCatalog.CaretMarker;
     private bool _starterLauncherShown;
+    private ShowcaseSession? _showcase;
+    private string? _showcaseCaption;
     private ExampleProgram? _currentExample;
     private bool _learningBranchBannerDismissed;
 
     public MainWindow()
     {
+        _showcase = ShowcaseSession.Pending;
+        ShowcaseSession.Pending = null;
+        if (_showcase != null)
+        {
+            _starterLauncherShown = true;
+        }
+
         InitializeComponent();
         _layoutSettings = new LayoutSettingsService();
         _layoutSettings.Load();
@@ -308,7 +317,14 @@ public partial class MainWindow : Window
                 MainMenu.AddHandler(MenuItem.SubmenuOpenedEvent, new RoutedEventHandler(OnSubmenuOpened));
             }
 
-            if (!_starterLauncherShown && string.IsNullOrWhiteSpace(CodeEditor.Text))
+            if (_showcase != null)
+            {
+                _starterLauncherShown = true;
+                ApplyShowcaseWindowBounds();
+                ApplyOutputDock(true, refreshChrome: true);
+                _ = RunShowcaseAsync();
+            }
+            else if (!_starterLauncherShown && string.IsNullOrWhiteSpace(CodeEditor.Text))
             {
                 _starterLauncherShown = true;
                 Dispatcher.BeginInvoke(() => ShowStarterLauncher(initialTrack: "student", fallbackToBlank: false));
@@ -2414,7 +2430,7 @@ public partial class MainWindow : Window
 
     private void TryAutoOpenWebUiFromOutput(string outputText)
     {
-        if (string.IsNullOrWhiteSpace(outputText))
+        if (_showcase != null || string.IsNullOrWhiteSpace(outputText))
         {
             return;
         }

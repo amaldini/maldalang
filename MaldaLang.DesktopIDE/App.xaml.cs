@@ -30,6 +30,25 @@ public partial class App : Application
             return;
         }
 
+        if (ShowcaseSession.TryParseLaunchArgs(e.Args, out var showcase, out var demoError))
+        {
+            if (showcase is null)
+            {
+                IdePromptWindow.Show(
+                    demoError ?? "Could not start the showcase reel.",
+                    "Showcase",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+                Shutdown();
+                return;
+            }
+
+            ShowcaseSession.Pending = showcase;
+            var demoWindow = new MainWindow();
+            demoWindow.Show();
+            return;
+        }
+
         var location = InstallationUpdateService.Locate();
         if (location.Kind == InstallationKind.Distribution)
         {

@@ -417,31 +417,28 @@ public partial class MainWindow
             await PreviewCurrentDocumentAsync();
             return;
         }
-        
-        // Clear any debugger line highlight for a normal run
+
+        StartInterpretRun(source, input, sourceForExecution.SourceFilePath);
+    }
+
+    private void StartInterpretRun(string source, string input, string fileName)
+    {
         ClearCurrentLineHighlight();
-        
-        // Do not clear tool calls log here so Edit mode tool calls persist when user then runs code
         UpdateToolCallsDisplay();
-        
-        // Cancel any previous run
+
         _runCancellation?.Cancel();
         _runCancellation?.Dispose();
-        
-        // Create new cancellation token for this run
         _runCancellation = new CancellationTokenSource();
         var token = _runCancellation.Token;
-        
-        SetOutputText(""); // Clear output at start
-        
-        // Run in a separate task to allow cancellation
+
+        SetOutputText("");
+
         _runTask = Task.Run(async () =>
         {
             try
             {
-                var fileName = sourceForExecution.SourceFilePath;
                 var result = await _executionService.ExecuteAsync(source, input, fileName);
-                
+
                 Dispatcher.Invoke(() =>
                 {
                     if (!string.IsNullOrEmpty(result.Error))
@@ -485,7 +482,7 @@ public partial class MainWindow
                 });
             }
         }, token);
-        
+
         UpdateButtonStates();
     }
 

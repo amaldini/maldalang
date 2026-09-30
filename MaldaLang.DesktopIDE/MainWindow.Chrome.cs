@@ -92,17 +92,21 @@ public partial class MainWindow
     private void UpdateWindowChrome()
     {
         var document = GetActiveDocument();
-        if (document == null)
+        if (_showcaseCaption != null)
+        {
+            Title = _showcaseCaption.Length == 0 ? "MALDA" : $"MALDA — {_showcaseCaption}";
+        }
+        else if (document == null)
         {
             Title = "MALDA";
-            StatusPathText.Text = "";
         }
         else
         {
             var name = GetDocumentDisplayName(document);
             Title = document.IsDirty ? $"{name}* — MALDA" : $"{name} — MALDA";
-            StatusPathText.Text = GetPhysicalPath(document) ?? "Untitled";
         }
+
+        StatusPathText.Text = document == null ? "" : GetPhysicalPath(document) ?? "Untitled";
 
         if (CodeEditor?.Document != null)
         {
