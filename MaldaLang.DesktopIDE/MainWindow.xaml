@@ -360,6 +360,7 @@
                 <MenuItem Header="Show _Search Panel" IsCheckable="True" Click="ViewToggleSearchPanel_Click"/>
                 <MenuItem Header="Show _AI Panel" IsCheckable="True" Click="ViewToggleAIPanel_Click"/>
                 <MenuItem Header="Show _Web UI Panel" IsCheckable="True" Click="ViewToggleWebUIPanel_Click"/>
+                <MenuItem Header="Show _Manual" IsCheckable="True" Click="ViewToggleManualPanel_Click"/>
                 <MenuItem Header="_Maximize AI Panel" IsCheckable="True" Click="ViewToggleMaximizeAiPanel_Click" InputGestureText="Shift+F7"/>
                 <MenuItem Header="_Maximize Web Preview" IsCheckable="True" Click="ViewToggleMaximizeWebPreview_Click" InputGestureText="Shift+F6"/>
                 <MenuItem Header="_Reset Web Preview" Click="ViewResetWebPreview_Click"/>
@@ -914,6 +915,8 @@
                             Style="{StaticResource TabButtonStyle}"/>
                     <Button x:Name="WebUITabButton" Content="Web UI" Click="WebUITabButton_Click"
                             Style="{StaticResource TabButtonStyle}"/>
+                    <Button x:Name="ManualTabButton" Content="Manual" Click="ManualTabButton_Click"
+                            Style="{StaticResource TabButtonStyle}"/>
                 </StackPanel>
                 
                 <!-- Tab Content -->
@@ -1226,6 +1229,31 @@
                         </Border>
 
                         <wv2:WebView2 x:Name="WebUiWebView" Grid.Row="1"/>
+                    </Grid>
+
+                    <Grid x:Name="ManualPanel" Visibility="Collapsed">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <Border Grid.Row="0" Background="{DynamicResource InputBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="8">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <ComboBox x:Name="ManualChapterCombo"
+                                          Grid.Column="0"
+                                          Margin="0,0,8,0"
+                                          DisplayMemberPath="Title"
+                                          SelectionChanged="ManualChapterCombo_SelectionChanged"/>
+                                <Button Grid.Column="1" Content="Open in Browser" Click="ManualOpenExternalButton_Click" Padding="10,4"/>
+                                <Button x:Name="ManualMaximizeButton" Grid.Column="2" Content="Maximize" Click="ManualMaximizeButton_Click" Padding="10,4" Margin="8,0,0,0"
+                                        ToolTip="Show the reference manual across the IDE (Esc restores the editor)"/>
+                            </Grid>
+                        </Border>
+                        <wv2:WebView2 x:Name="ManualWebView" Grid.Row="1"/>
                     </Grid>
                 </Grid>
             </Grid>

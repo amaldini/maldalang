@@ -199,6 +199,20 @@ public partial class MainWindow
             }
         }
 
+        if (ManualMaximizeButton != null)
+        {
+            if (_maximizedSidebarTab == "manual")
+            {
+                ManualMaximizeButton.Content = "Restore";
+                ManualMaximizeButton.ToolTip = "Return the reference manual to the side panel (Esc)";
+            }
+            else
+            {
+                ManualMaximizeButton.Content = "Maximize";
+                ManualMaximizeButton.ToolTip = "Show the reference manual across the IDE (Esc restores the editor)";
+            }
+        }
+
         if (AiPanelMaximizeButton != null)
         {
             if (IsAiPanelMaximized)

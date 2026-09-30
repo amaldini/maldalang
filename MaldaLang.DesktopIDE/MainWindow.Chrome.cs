@@ -29,7 +29,7 @@ public partial class MainWindow
         {
             SidebarTabBar.Children.Insert(0, OutputTabButton);
             SidebarPanelContent.Children.Add(OutputPanel);
-            if (_sideTab is not ("ai" or "webui"))
+            if (_sideTab is not ("ai" or "webui" or "manual"))
             {
                 _sideTab = "output";
             }
@@ -54,6 +54,7 @@ public partial class MainWindow
 
         AIChatPanel.Visibility = _sideTab == "ai" ? Visibility.Visible : Visibility.Collapsed;
         WebUIPanel.Visibility = _sideTab == "webui" ? Visibility.Visible : Visibility.Collapsed;
+        ManualPanel.Visibility = _sideTab == "manual" ? Visibility.Visible : Visibility.Collapsed;
         OutputPanel.Visibility = (_outputOnRight ? _sideTab == "output" : _bottomTab == "output")
             ? Visibility.Visible
             : Visibility.Collapsed;
@@ -87,7 +88,7 @@ public partial class MainWindow
     }
 
     private bool IsSidePanel(string tab) =>
-        tab is "ai" or "webui" || (_outputOnRight && tab == "output");
+        tab is "ai" or "webui" or "manual" || (_outputOnRight && tab == "output");
 
     private void UpdateWindowChrome()
     {
@@ -204,6 +205,7 @@ public partial class MainWindow
             Command("Show Tool Calls", "", () => SwitchToTab("toolcalls")),
             Command("Show AI Panel", "", () => SwitchToTab("ai")),
             Command("Show Web UI", "", () => SwitchToTab("webui")),
+            Command("Show Manual", "", () => ManualTabButton_Click(this, new RoutedEventArgs())),
             Command("Start With MALDA", "", () => StartWithMalda_Click(this, new RoutedEventArgs())),
             Command("Browse Examples", "", () => BrowseExamplesButton_Click(this, new RoutedEventArgs())),
             Command("Keyboard Shortcuts", "", ShowKeyboardShortcuts),

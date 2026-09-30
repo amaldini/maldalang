@@ -5,6 +5,94 @@
   "top": 0,
   "splitBeatMs": 800,
   "readyTimeoutMs": 90000,
+  "browse": [
+    {
+      "file": "Examples/Basics/hello_world.malda",
+      "caption": "Hello",
+      "holdMs": 1200
+    },
+    {
+      "file": "Examples/Basics/first_look.malda",
+      "caption": "Schemas",
+      "holdMs": 1400,
+      "focusLine": 13
+    },
+    {
+      "file": "Examples/OOP/classes_objects.malda",
+      "caption": "Objects",
+      "holdMs": 1400,
+      "focusLine": 12
+    },
+    {
+      "file": "Examples/Algorithms/towers_of_hanoi.malda",
+      "caption": "Hanoi",
+      "holdMs": 1400,
+      "focusLine": 22
+    },
+    {
+      "file": "Examples/AI_Theory/xor_neural_net.malda",
+      "caption": "XOR net",
+      "holdMs": 1500,
+      "focusLine": 20
+    },
+    {
+      "file": "Examples/Web/ui_controls_showcase_minimal.malda",
+      "caption": "UI controls",
+      "holdMs": 1500,
+      "focusLine": 16
+    },
+    {
+      "file": "Examples/Games/three_shader_mandelbrot.malda",
+      "caption": "Mandelbrot",
+      "holdMs": 1400,
+      "focusLine": 10
+    },
+    {
+      "file": "Examples/Games/malda_platform.malda",
+      "caption": "Platform",
+      "holdMs": 1400,
+      "focusLine": 88
+    },
+    {
+      "file": "Examples/Games/grand_prix_neural.malda",
+      "caption": "Grand Prix",
+      "holdMs": 1500,
+      "focusLine": 13
+    },
+    {
+      "file": "Examples/Games/chess.malda",
+      "caption": "Chess",
+      "holdMs": 1500,
+      "focusLine": 27
+    }
+  ],
+  "manual": [
+    {
+      "file": "index.html",
+      "caption": "Manual",
+      "holdMs": 1800
+    },
+    {
+      "file": "04-data-types.html",
+      "caption": "Data types",
+      "holdMs": 2200
+    },
+    {
+      "file": "09-functions.html",
+      "caption": "Functions",
+      "holdMs": 2000
+    },
+    {
+      "file": "14-neural-nets.html",
+      "caption": "Neural nets",
+      "holdMs": 2200
+    },
+    {
+      "file": "28-browser-javascript-backend.html",
+      "caption": "Browser games",
+      "holdMs": 2200
+    }
+  ],
   "scenes": [
     {
       "file": "Examples/Basics/hello_world.malda",

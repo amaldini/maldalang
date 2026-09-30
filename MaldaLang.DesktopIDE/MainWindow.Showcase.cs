@@ -91,6 +91,91 @@ public partial class MainWindow
         }
 
         Activate();
+        _showcaseBrowser?.Activate();
+    }
+
+    private Windows.ExampleBrowserWindow? _showcaseBrowser;
+
+    private async Task PlayBrowseTourAsync(int frameX, int frameY, int frameWidth, int frameHeight)
+    {
+        var picks = _showcase?.Playlist.Browse;
+        if (picks == null || picks.Count == 0)
+        {
+            return;
+        }
+
+        var browser = new Windows.ExampleBrowserWindow(_themeService)
+        {
+            Owner = this,
+            WindowStartupLocation = WindowStartupLocation.Manual,
+            ShowInTaskbar = false,
+            Topmost = true
+        };
+        var margin = 28.0;
+        browser.Width = Math.Max(960, ActualWidth - (margin * 2));
+        browser.Height = Math.Max(620, ActualHeight - (margin * 2) - 24);
+        browser.Left = Left + ((ActualWidth - browser.Width) / 2);
+        browser.Top = Top + ((ActualHeight - browser.Height) / 2) + 8;
+        _showcaseBrowser = browser;
+        browser.Show();
+        try
+        {
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+            foreach (var pick in picks)
+            {
+                _showcaseCaption = string.IsNullOrWhiteSpace(pick.Caption) ? "Examples" : pick.Caption;
+                UpdateWindowChrome();
+                browser.Title = "Browse Examples — " + _showcaseCaption;
+                if (!browser.TrySelectExample(pick.File, pick.FocusLine))
+                {
+                    SetOutputText($"Showcase browse missed {pick.File}.", isError: true);
+                }
+
+                BringShowcaseToFront();
+                WriteShowcaseStatus("playing", frameX, frameY, frameWidth, frameHeight, _showcaseCaption, error: null);
+                await Task.Delay(Math.Max(400, pick.HoldMs));
+            }
+        }
+        finally
+        {
+            _showcaseBrowser = null;
+            if (browser.IsVisible)
+            {
+                browser.Close();
+            }
+        }
+    }
+
+    private async Task PlayManualTourAsync(int frameX, int frameY, int frameWidth, int frameHeight)
+    {
+        var pages = _showcase?.Playlist.Manual;
+        if (pages == null || pages.Count == 0)
+        {
+            return;
+        }
+
+        SetSidebarPanelMaximized("manual", true);
+        try
+        {
+            foreach (var page in pages)
+            {
+                _showcaseCaption = string.IsNullOrWhiteSpace(page.Caption) ? "Manual" : page.Caption;
+                UpdateWindowChrome();
+                BringShowcaseToFront();
+                var ready = await ShowReferenceManualPageAsync(page.File, _showcase!.Playlist.ReadyTimeoutMs);
+                if (!ready)
+                {
+                    SetOutputText($"Showcase manual missed {page.File}.", isError: true);
+                }
+
+                WriteShowcaseStatus("playing", frameX, frameY, frameWidth, frameHeight, _showcaseCaption, error: null);
+                await Task.Delay(Math.Max(600, page.HoldMs));
+            }
+        }
+        finally
+        {
+            RestoreShowcaseLayout();
+        }
     }
 
     private async Task RunShowcaseAsync()
@@ -138,6 +223,9 @@ public partial class MainWindow
             }
 
             BringShowcaseToFront();
+
+            await PlayBrowseTourAsync(x, y, width, height);
+            await PlayManualTourAsync(x, y, width, height);
 
             for (var index = 0; index < _showcase.Playlist.Scenes.Count; index++)
             {

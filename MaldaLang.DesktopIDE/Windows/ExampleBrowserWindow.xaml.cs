@@ -1,8 +1,8 @@
 // Copyright (c) 2026 Andrea Maldini
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-using System;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -436,6 +436,59 @@ public partial class ExampleBrowserWindow : Window
             DescriptionTextBlock.Text = string.Empty;
             LoadButton.IsEnabled = false;
         }
+    }
+
+    /// <summary>
+    /// Selects a catalog example so the category, the list, and the source preview update together.
+    /// <paramref name="relativePath"/> may be <c>Examples/Basics/hello_world.malda</c> or <c>Basics/hello_world.malda</c>.
+    /// </summary>
+    public bool TrySelectExample(string relativePath, int? focusLine)
+    {
+        var key = NormalizeExampleKey(relativePath);
+        var example = _allExamples.FirstOrDefault(candidate =>
+            string.Equals(NormalizeExampleKey(candidate.FilePath), key, StringComparison.OrdinalIgnoreCase));
+        if (example == null)
+        {
+            return false;
+        }
+
+        var category = _categories.FirstOrDefault(item =>
+            string.Equals(item, example.Category, StringComparison.OrdinalIgnoreCase));
+        if (category != null && !string.Equals(_selectedCategory, category, StringComparison.Ordinal))
+        {
+            CategoriesListBox.SelectedItem = category;
+            CategoriesListBox.ScrollIntoView(category);
+        }
+
+        ExamplesListBox.SelectedItem = example;
+        ExamplesListBox.ScrollIntoView(example);
+        ExamplesListBox.UpdateLayout();
+
+        if (focusLine is int line && line > 1 && PreviewEditor.Document != null)
+        {
+            var clamped = Math.Min(line, Math.Max(1, PreviewEditor.Document.LineCount));
+            PreviewEditor.ScrollToLine(clamped);
+            PreviewEditor.TextArea.Caret.Line = clamped;
+            PreviewEditor.TextArea.Caret.Column = 1;
+        }
+        else
+        {
+            PreviewEditor.ScrollToHome();
+        }
+
+        return ExamplesListBox.SelectedItem == example;
+    }
+
+    private static string NormalizeExampleKey(string path)
+    {
+        var normalized = (path ?? "").Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar).Trim();
+        var examplesPrefix = "Examples" + Path.DirectorySeparatorChar;
+        if (normalized.StartsWith(examplesPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            normalized = normalized[examplesPrefix.Length..];
+        }
+
+        return normalized;
     }
 
     private void RefreshButton_Click(object sender, RoutedEventArgs e)

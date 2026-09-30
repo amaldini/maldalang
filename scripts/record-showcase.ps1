@@ -96,6 +96,33 @@ foreach ($scene in $playlistObj.scenes) {
     }
 }
 
+if ($playlistObj.browse) {
+    foreach ($pick in $playlistObj.browse) {
+        $relative = [string]$pick.file
+        if ([string]::IsNullOrWhiteSpace($relative)) {
+            throw "A browse pick is missing its file."
+        }
+        $pickPath = Join-Path $repoRoot ($relative -replace '/', '\')
+        if (-not (Test-Path -LiteralPath $pickPath)) {
+            throw "Showcase browse file was not found: $relative"
+        }
+    }
+}
+
+if ($playlistObj.manual) {
+    foreach ($page in $playlistObj.manual) {
+        $relative = [string]$page.file
+        if ([string]::IsNullOrWhiteSpace($relative)) {
+            throw "A manual page is missing its file."
+        }
+        $pageName = [System.IO.Path]::GetFileName($relative)
+        $pagePath = Join-Path $repoRoot (Join-Path "ReferenceManual" $pageName)
+        if (-not (Test-Path -LiteralPath $pagePath)) {
+            throw "Showcase manual page was not found: $relative"
+        }
+    }
+}
+
 $ideOut = Join-Path $repoRoot "artifacts\showcase-ide"
 if (-not $SkipBuild) {
     & dotnet build (Join-Path $repoRoot "MaldaLang.DesktopIDE\MaldaLang.DesktopIDE.csproj") -c Debug -o $ideOut --nologo
@@ -259,6 +286,16 @@ if ($ff.HasExited) {
 }
 
 $holdMs = 0
+if ($playlistObj.browse) {
+    foreach ($pick in $playlistObj.browse) {
+        $holdMs += [int]$pick.holdMs
+    }
+}
+if ($playlistObj.manual) {
+    foreach ($page in $playlistObj.manual) {
+        $holdMs += [int]$page.holdMs
+    }
+}
 foreach ($scene in $playlistObj.scenes) {
     $holdMs += [int]$scene.holdMs
 }

@@ -1993,6 +1993,15 @@ public partial class MainWindow : Window
     {
         SwitchToTab("webui");
     }
+
+    private void ManualTabButton_Click(object sender, RoutedEventArgs e)
+    {
+        SwitchToTab("manual");
+        if (string.IsNullOrEmpty(_manualCurrentFile))
+        {
+            _ = ShowReferenceManualPageAsync("index.html");
+        }
+    }
     
     private void ClearToolCallsButton_Click(object sender, RoutedEventArgs e)
     {
@@ -2013,6 +2022,7 @@ public partial class MainWindow : Window
             _sideTab = tab;
             AIChatPanel.Visibility = tab == "ai" ? Visibility.Visible : Visibility.Collapsed;
             WebUIPanel.Visibility = tab == "webui" ? Visibility.Visible : Visibility.Collapsed;
+            ManualPanel.Visibility = tab == "manual" ? Visibility.Visible : Visibility.Collapsed;
             if (_outputOnRight)
             {
                 OutputPanel.Visibility = tab == "output" ? Visibility.Visible : Visibility.Collapsed;
@@ -2079,6 +2089,8 @@ public partial class MainWindow : Window
                         childMenuItem.IsChecked = _sideTab == "ai";
                     else if (itemHeader == "Show Web UI Panel")
                         childMenuItem.IsChecked = _sideTab == "webui";
+                    else if (itemHeader == "Show Manual")
+                        childMenuItem.IsChecked = _sideTab == "manual";
                     else if (itemHeader == "Maximize AI Panel")
                         childMenuItem.IsChecked = IsAiPanelMaximized;
                     else if (itemHeader == "Maximize Web Preview")
@@ -2116,6 +2128,7 @@ public partial class MainWindow : Window
         ApplySidebarTabChrome(SearchTabButton, _bottomTab == "search", activeBrush, inactiveBrush, accentBrush, transparent);
         ApplySidebarTabChrome(AITabButton, _sideTab == "ai", activeBrush, inactiveBrush, accentBrush, transparent);
         ApplySidebarTabChrome(WebUITabButton, _sideTab == "webui", activeBrush, inactiveBrush, accentBrush, transparent);
+        ApplySidebarTabChrome(ManualTabButton, _sideTab == "manual", activeBrush, inactiveBrush, accentBrush, transparent);
         UpdateViewMenuStates();
         RefreshDocumentTabs();
     }
@@ -2382,6 +2395,23 @@ public partial class MainWindow : Window
                     SwitchToTab("ai");
                 }
             }
+            UpdateViewMenuStates();
+        }
+    }
+
+    private void ViewToggleManualPanel_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem menuItem)
+        {
+            if (menuItem.IsChecked)
+            {
+                ManualTabButton_Click(sender, e);
+            }
+            else if (_sideTab == "manual")
+            {
+                SwitchToTab(_outputOnRight ? "output" : "ai");
+            }
+
             UpdateViewMenuStates();
         }
     }
@@ -2727,9 +2757,9 @@ public partial class MainWindow : Window
         OpenDocumentationUrl();
     }
 
-    private void HelpReferenceManual_Click(object sender, RoutedEventArgs e)
+    private async void HelpReferenceManual_Click(object sender, RoutedEventArgs e)
     {
-        if (TryOpenReferenceManual())
+        if (await ShowReferenceManualPageAsync("index.html"))
         {
             return;
         }

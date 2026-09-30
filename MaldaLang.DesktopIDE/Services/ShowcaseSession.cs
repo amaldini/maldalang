@@ -94,6 +94,27 @@ public sealed class ShowcaseSession
             throw new InvalidOperationException("Showcase playlist has no scenes.");
         }
 
+        foreach (var browse in playlist.Browse)
+        {
+            PrepareShowcaseFile(repoRoot, browse.File, browse.HoldMs, out var absolutePath);
+            browse.AbsolutePath = absolutePath;
+            if (browse.HoldMs <= 0)
+            {
+                browse.HoldMs = 1300;
+            }
+        }
+
+        foreach (var page in playlist.Manual)
+        {
+            PrepareShowcaseFile(repoRoot, Path.Combine("ReferenceManual", page.File), page.HoldMs, out var absolutePath);
+            page.AbsolutePath = absolutePath;
+            page.File = Path.GetFileName(page.File);
+            if (page.HoldMs <= 0)
+            {
+                page.HoldMs = 1800;
+            }
+        }
+
         if (playlist.Width < 640 || playlist.Height < 480)
         {
             throw new InvalidOperationException("Showcase window width must be at least 640 and height at least 480.");
@@ -118,19 +139,7 @@ public sealed class ShowcaseSession
             }
 
             scene.Panel = panel;
-            if (scene.HoldMs < 0)
-            {
-                throw new InvalidOperationException($"Scene '{scene.File}' has a negative holdMs.");
-            }
-
-            var relative = scene.File.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
-            scene.AbsolutePath = Path.IsPathRooted(relative)
-                ? Path.GetFullPath(relative)
-                : Path.GetFullPath(Path.Combine(repoRoot, relative));
-            if (!File.Exists(scene.AbsolutePath))
-            {
-                throw new FileNotFoundException($"Showcase scene was not found: {scene.File}", scene.AbsolutePath);
-            }
+            scene.AbsolutePath = PrepareShowcaseFile(repoRoot, scene.File, scene.HoldMs, out _);
         }
 
         var handshake = string.IsNullOrWhiteSpace(handshakeDirectory)
@@ -144,6 +153,30 @@ public sealed class ShowcaseSession
             RepoRoot = repoRoot,
             HandshakeDirectory = handshake
         };
+    }
+
+    private static string PrepareShowcaseFile(string repoRoot, string file, int holdMs, out string absolutePath)
+    {
+        if (string.IsNullOrWhiteSpace(file))
+        {
+            throw new InvalidOperationException("Every showcase entry needs a file path.");
+        }
+
+        if (holdMs < 0)
+        {
+            throw new InvalidOperationException($"Showcase entry '{file}' has a negative holdMs.");
+        }
+
+        var relative = file.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
+        absolutePath = Path.IsPathRooted(relative)
+            ? Path.GetFullPath(relative)
+            : Path.GetFullPath(Path.Combine(repoRoot, relative));
+        if (!File.Exists(absolutePath))
+        {
+            throw new FileNotFoundException($"Showcase file was not found: {file}", absolutePath);
+        }
+
+        return absolutePath;
     }
 
     private static string? FindRepoRoot(string startDirectory)
@@ -171,7 +204,30 @@ public sealed class ShowcasePlaylist
     public int Top { get; set; }
     public int SplitBeatMs { get; set; } = 800;
     public int ReadyTimeoutMs { get; set; } = 90000;
+    public List<ShowcaseBrowsePick> Browse { get; set; } = new();
+    public List<ShowcaseManualPage> Manual { get; set; } = new();
     public List<ShowcaseScene> Scenes { get; set; } = new();
+}
+
+public sealed class ShowcaseManualPage
+{
+    public string File { get; set; } = "";
+    public string Caption { get; set; } = "";
+    public int HoldMs { get; set; } = 1800;
+
+    [JsonIgnore]
+    public string AbsolutePath { get; set; } = "";
+}
+
+public sealed class ShowcaseBrowsePick
+{
+    public string File { get; set; } = "";
+    public string Caption { get; set; } = "";
+    public int HoldMs { get; set; } = 1300;
+    public int? FocusLine { get; set; }
+
+    [JsonIgnore]
+    public string AbsolutePath { get; set; } = "";
 }
 
 public sealed class ShowcaseScene
