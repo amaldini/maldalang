@@ -1,0 +1,379 @@
+// RGB 32×32 color image classification with a complex neural network.
+//
+// Classifies colored geometric shapes (red circles, green squares, blue
+// triangles) on RGB 32×32 images. Demonstrates MALDA's neural net composition
+// capabilities: Sequential for layer stacks, Parallel for residual connections.
+//
+// Architecture:
+//   - Input: 3×32×32 RGB (CHW format)
+//   - Conv block 1: Conv2D(3→12, kernel 3×3, same) + ReLU + MaxPool(2×2)
+//     Output: 12×16×16
+//   - Residual block: Parallel([Conv2D(12→12) + ReLU, Identity], add)
+//     Output: 12×16×16
+//   - Conv block 2: Conv2D(12→24, kernel 3×3, same) + ReLU + MaxPool(2×2)
+//     Output: 24×8×8
+//   - Classifier: Flatten + Dense(1536→96, ReLU) + Dense(96→3, linear)
+//   - Loss: Cross-entropy from logits
+//
+// The dataset is synthetic: 36 training images, 9 test images.
+// Each shape has a distinct dominant color to facilitate learning.
+//
+// Concepts demonstrated:
+//   - Multi-channel images (RGB) instead of grayscale
+//   - Realistic resolution (32×32 instead of 8×8 or 16×16)
+//   - Sequential composition: nested blocks within blocks
+//   - Parallel composition: residual connections (skip connections)
+//   - Convolutional layers: Conv2D, MaxPool2D, Flatten
+//   - Per-channel image normalization
+//   - Training loop with separate test set evaluation
+//   - Confusion matrix for detailed analysis
+//
+// Offline — no API key.
+
+function createImage(channels, height, width) -> array {
+    var image = [];
+    for (var c = 0; c < channels; c = c + 1) {
+        var channel = [];
+        for (var r = 0; r < height; r = r + 1) {
+            var row = [];
+            for (var col = 0; col < width; col = col + 1) {
+                row.append(0.0);
+            }
+            channel.append(row);
+        }
+        image.append(channel);
+    }
+    return image;
+}
+
+function copyImage(src) -> array {
+    var copy = [];
+    for (var c = 0; c < src.length; c = c + 1) {
+        var channel = [];
+        for (var r = 0; r < src[c].length; r = r + 1) {
+            var row = [];
+            for (var col = 0; col < src[c][r].length; col = col + 1) {
+                row.append(src[c][r][col]);
+            }
+            channel.append(row);
+        }
+        copy.append(channel);
+    }
+    return copy;
+}
+
+function setPixel(image, c, r, col, red, green, blue) {
+    image[0][r][col] = red;
+    image[1][r][col] = green;
+    image[2][r][col] = blue;
+}
+
+function drawCircle(image, centerX, centerY, radius, red, green, blue) {
+    var size = image[0].length;
+    for (var r = 0; r < size; r = r + 1) {
+        for (var col = 0; col < size; col = col + 1) {
+            var dx = col - centerX;
+            var dy = r - centerY;
+            var dist = math.hypot(dx, dy);
+            if (dist <= radius) {
+                var intensity = 1.0 - (dist / radius) * 0.3;
+                setPixel(image, 0, r, col, red * intensity, green * intensity, blue * intensity);
+            }
+        }
+    }
+}
+
+function drawRectangle(image, x, y, width, height, red, green, blue) {
+    var size = image[0].length;
+    for (var r = y; r < y + height && r < size; r = r + 1) {
+        for (var col = x; col < x + width && col < size; col = col + 1) {
+            if (r >= 0 && col >= 0) {
+                var edgeDist = math.min(
+                    math.min(r - y, y + height - r - 1),
+                    math.min(col - x, x + width - col - 1)
+                );
+                var intensity = 1.0 - edgeDist * 0.02;
+                if (intensity < 0.7) {
+                    intensity = 0.7;
+                }
+                setPixel(image, 0, r, col, red * intensity, green * intensity, blue * intensity);
+            }
+        }
+    }
+}
+
+function drawTriangle(image, x1, y1, x2, y2, x3, y3, red, green, blue) {
+    var size = image[0].length;
+    for (var r = 0; r < size; r = r + 1) {
+        for (var col = 0; col < size; col = col + 1) {
+            var d1 = (col - x1) * (y2 - y1) - (r - y1) * (x2 - x1);
+            var d2 = (col - x2) * (y3 - y2) - (r - y2) * (x3 - x2);
+            var d3 = (col - x3) * (y1 - y3) - (r - y3) * (x1 - x3);
+            var hasNeg = d1 < 0.0 || d2 < 0.0 || d3 < 0.0;
+            var hasPos = d1 > 0.0 || d2 > 0.0 || d3 > 0.0;
+            if (!(hasNeg && hasPos)) {
+                var minDist = math.min(math.abs(d1), math.min(math.abs(d2), math.abs(d3))) / 30.0;
+                var intensity = 1.0 - minDist * 0.5;
+                if (intensity < 0.7) {
+                    intensity = 0.7;
+                }
+                if (intensity > 1.0) {
+                    intensity = 1.0;
+                }
+                setPixel(image, 0, r, col, red * intensity, green * intensity, blue * intensity);
+            }
+        }
+    }
+}
+
+function addNoise(image, amount) {
+    for (var c = 0; c < image.length; c = c + 1) {
+        for (var r = 0; r < image[c].length; r = r + 1) {
+            for (var col = 0; col < image[c][r].length; col = col + 1) {
+                var noise = math.randomFloat(-amount, amount);
+                image[c][r][col] = image[c][r][col] + noise;
+                if (image[c][r][col] < 0.0) {
+                    image[c][r][col] = 0.0;
+                }
+                if (image[c][r][col] > 1.0) {
+                    image[c][r][col] = 1.0;
+                }
+            }
+        }
+    }
+}
+
+function normalizeImage(image) {
+    for (var c = 0; c < image.length; c = c + 1) {
+        var sum = 0.0;
+        var count = 0;
+        for (var r = 0; r < image[c].length; r = r + 1) {
+            for (var col = 0; col < image[c][r].length; col = col + 1) {
+                sum = sum + image[c][r][col];
+                count = count + 1;
+            }
+        }
+        var mean = sum / count;
+        for (var r = 0; r < image[c].length; r = r + 1) {
+            for (var col = 0; col < image[c][r].length; col = col + 1) {
+                image[c][r][col] = image[c][r][col] - mean + 0.5;
+                if (image[c][r][col] < 0.0) {
+                    image[c][r][col] = 0.0;
+                }
+                if (image[c][r][col] > 1.0) {
+                    image[c][r][col] = 1.0;
+                }
+            }
+        }
+    }
+}
+
+function generateCircle() -> array {
+    var image = createImage(3, 32, 32);
+    var centerX = math.randomFloat(14.0, 18.0);
+    var centerY = math.randomFloat(14.0, 18.0);
+    var radius = math.randomFloat(7.0, 9.0);
+    var red = math.randomFloat(0.6, 1.0);
+    var green = math.randomFloat(0.1, 0.4);
+    var blue = math.randomFloat(0.1, 0.4);
+    drawCircle(image, centerX, centerY, radius, red, green, blue);
+    addNoise(image, 0.05);
+    normalizeImage(image);
+    return image;
+}
+
+function generateRectangle() -> array {
+    var image = createImage(3, 32, 32);
+    var x = int(math.randomFloat(8.0, 12.0));
+    var y = int(math.randomFloat(8.0, 12.0));
+    var width = int(math.randomFloat(12.0, 16.0));
+    var height = int(math.randomFloat(12.0, 16.0));
+    var red = math.randomFloat(0.1, 0.4);
+    var green = math.randomFloat(0.6, 1.0);
+    var blue = math.randomFloat(0.1, 0.4);
+    drawRectangle(image, x, y, width, height, red, green, blue);
+    addNoise(image, 0.05);
+    normalizeImage(image);
+    return image;
+}
+
+function generateTriangle() -> array {
+    var image = createImage(3, 32, 32);
+    var centerX = math.randomFloat(14.0, 18.0);
+    var centerY = math.randomFloat(14.0, 18.0);
+    var size = math.randomFloat(9.0, 11.0);
+    var angle = math.randomFloat(0.0, 360.0);
+    var x1 = centerX + size * math.cos(math.degToRad(angle));
+    var y1 = centerY + size * math.sin(math.degToRad(angle));
+    var x2 = centerX + size * math.cos(math.degToRad(angle + 120.0));
+    var y2 = centerY + size * math.sin(math.degToRad(angle + 120.0));
+    var x3 = centerX + size * math.cos(math.degToRad(angle + 240.0));
+    var y3 = centerY + size * math.sin(math.degToRad(angle + 240.0));
+    var red = math.randomFloat(0.1, 0.4);
+    var green = math.randomFloat(0.1, 0.4);
+    var blue = math.randomFloat(0.6, 1.0);
+    drawTriangle(image, x1, y1, x2, y2, x3, y3, red, green, blue);
+    addNoise(image, 0.05);
+    normalizeImage(image);
+    return image;
+}
+
+function createConvBlock(inChannels, outChannels, usePool) -> Sequential {
+    if (usePool) {
+        return new Sequential([
+            new Conv2D(inChannels, outChannels, 3, 1, "same"),
+            new Activation("relu"),
+            new MaxPool2D(2, 2)
+        ]);
+    }
+    return new Sequential([
+        new Conv2D(inChannels, outChannels, 3, 1, "same"),
+        new Activation("relu")
+    ]);
+}
+
+function createResidualBlock(channels) -> Sequential {
+    var convPath = new Sequential([
+        new Conv2D(channels, channels, 3, 1, "same"),
+        new Activation("relu")
+    ]);
+    var skip = new Parallel([convPath, new Identity()], "add");
+    return new Sequential([
+        skip,
+        new Activation("relu")
+    ]);
+}
+
+function buildNetwork() -> Sequential {
+    // Network demonstrating Sequential and Parallel composition
+    var block1 = createConvBlock(3, 12, true);
+    var residual = createResidualBlock(12);
+    var block2 = createConvBlock(12, 24, true);
+    
+    // After Conv+Pool: 32x32 -> 12x16x16 -> 12x8x8 -> 24x8x8 = 1536
+    var classifier = new Sequential([
+        new Flatten(),
+        new Dense(1536, 96, "relu"),
+        new Dense(96, 3, "linear")
+    ]);
+    
+    return new Sequential([block1, residual, block2, classifier]);
+}
+
+function trainNetwork() {
+    math.seed(42);
+    
+    io.print("Building complex neural network for RGB 32x32 images...");
+    var network = buildNetwork();
+    
+    io.print("Generating training dataset...");
+    var trainImages = [];
+    var trainLabels = [];
+    
+    for (var i = 0; i < 12; i = i + 1) {
+        trainImages.append(generateCircle());
+        trainLabels.append(0);
+        trainImages.append(generateRectangle());
+        trainLabels.append(1);
+        trainImages.append(generateTriangle());
+        trainLabels.append(2);
+    }
+    
+    io.print("Generating test dataset...");
+    var testImages = [];
+    var testLabels = [];
+    
+    for (var i = 0; i < 3; i = i + 1) {
+        testImages.append(generateCircle());
+        testLabels.append(0);
+        testImages.append(generateRectangle());
+        testLabels.append(1);
+        testImages.append(generateTriangle());
+        testLabels.append(2);
+    }
+    
+    var learningRate = 0.01;
+    var epochs = 25;
+    
+    io.print("");
+    io.print("Starting training on " + string(trainImages.length) + " RGB 32x32 images...");
+    io.print("Architecture: Conv(3→12) + ResBlock(12) + Conv(12→24) + Dense(1536→96→3)");
+    io.print("Colored shapes: red circles, green squares, blue triangles");
+    io.print("");
+    
+    for (var epoch = 1; epoch <= epochs; epoch = epoch + 1) {
+        var epochLoss = 0.0;
+        var correct = 0;
+        
+        for (var i = 0; i < trainImages.length; i = i + 1) {
+            var logits = network.forward(trainImages[i]);
+            var loss = nn.crossEntropyFromLogits(logits, trainLabels[i]);
+            epochLoss = epochLoss + loss;
+            
+            var predicted = math.argmax(logits);
+            if (predicted == trainLabels[i]) {
+                correct = correct + 1;
+            }
+            
+            var dLogits = nn.softmaxGrad(logits, trainLabels[i]);
+            network.backward(dLogits);
+            network.sgd(learningRate);
+        }
+        
+        var avgLoss = epochLoss / trainImages.length;
+        var accuracy = correct * 100.0 / trainImages.length;
+        
+        if (epoch == 1 || epoch % 5 == 0 || epoch == epochs) {
+            io.print("Epoch " + string(epoch) + "/" + string(epochs) + 
+                     ": loss=" + string(math.round(avgLoss * 1000.0) / 1000.0) +
+                     ", accuracy=" + string(int(accuracy)) + "%");
+        }
+    }
+    
+    io.print("");
+    io.print("Evaluating on test set...");
+    
+    var testCorrect = 0;
+    var confusionMatrix = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+    
+    for (var i = 0; i < testImages.length; i = i + 1) {
+        var logits = network.forward(testImages[i]);
+        var predicted = math.argmax(logits);
+        var actual = testLabels[i];
+        
+        confusionMatrix[actual][predicted] = confusionMatrix[actual][predicted] + 1;
+        
+        if (predicted == actual) {
+            testCorrect = testCorrect + 1;
+        }
+    }
+    
+    var testAccuracy = testCorrect * 100.0 / testImages.length;
+    io.print("Test accuracy: " + string(int(testAccuracy)) + "% (" + 
+             string(testCorrect) + "/" + string(testImages.length) + ")");
+    
+    io.print("");
+    io.print("Confusion matrix (rows=actual, cols=predicted):");
+    io.print("          Circle   Square   Triangle");
+    var labels = ["Circle  ", "Square  ", "Triangle"];
+    for (var i = 0; i < 3; i = i + 1) {
+        var line = labels[i] + ":  ";
+        for (var j = 0; j < 3; j = j + 1) {
+            var count = string(confusionMatrix[i][j]);
+            if (confusionMatrix[i][j] < 10) {
+                line = line + " ";
+            }
+            line = line + count + "       ";
+        }
+        io.print(line);
+    }
+    
+    io.print("");
+    if (testAccuracy >= 80.0) {
+        io.print("color image cnn ok");
+    } else {
+        io.print("Note: accuracy may vary due to the random synthetic dataset");
+    }
+}
+
+trainNetwork();
