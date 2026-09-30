@@ -36,7 +36,10 @@
         <ul>
             <li><code>malda agent</code> — Starts an interactive loop: prompts with <code>You: </code>, reads your message, calls the agent, and prints the response. Type <code>exit</code> or <code>quit</code> (or empty line) to exit.</li>
             <li><code>malda agent -m "message"</code> or <code>malda agent --message "message"</code> — Sends the message once to the assistant, prints the response, and exits.</li>
+            <li><code>malda agent develop</code> — Generic coding agent (<code>DevAgent</code>) in the current directory: file, git, and <code>run_command</code> tools, plus <code>remember_progress</code> / <code>recall_progress</code>. Memory is stored under <code>~/.malda/memory/develop</code> with scope <code>code:&lt;folder&gt;</code>.</li>
+            <li><code>malda agent develop malda</code> — MALDA coding agent (<code>MALDACodingAgent</code>): edit <code>.malda</code> files and call <code>run_malda</code> / <code>compile_malda</code>. Memory is stored under <code>~/.malda/memory/develop-malda</code>. Same <code>-m</code>, <code>-b</code>, and <code>--workdir</code> flags.</li>
         </ul>
+        <p><code>--kind generic</code> and <code>--kind malda</code> select the same split. Develop mode skips <code>~/.malda/assistant.malda</code> unless <code>MALDA_AGENT_SCRIPT</code> points at a script that honors <code>MALDA_AGENT_KIND</code>.</p>
         <p>The assistant script is resolved in this order:</p>
         <ol>
             <li>Path in the <code>MALDA_AGENT_SCRIPT</code> environment variable (if the file exists).</li>

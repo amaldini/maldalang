@@ -363,34 +363,49 @@ class Program
             }
             else if (firstArg == "agent")
             {
-                // Parse optional -m / --message, -c / --channel, and -b / --backend
-                string? message = null;
-                string? channel = null;
-                string? backend = null;
-                for (int i = 1; i < args.Length; i++)
+                var launch = ParseAgentLaunch(args);
+                if (launch.ShowHelp)
                 {
-                    if ((args[i] == "-m" || args[i] == "--message") && i + 1 < args.Length)
+                    ShowAgentHelp();
+                    return;
+                }
+                if (!string.IsNullOrEmpty(launch.Error))
+                {
+                    Console.Error.WriteLine(launch.Error);
+                    ShowAgentHelp();
+                    SystemEnvironment.Exit(1);
+                    return;
+                }
+                if (!string.IsNullOrWhiteSpace(launch.Message))
+                {
+                    System.Environment.SetEnvironmentVariable("MALDA_AGENT_MESSAGE", launch.Message);
+                }
+                if (!string.IsNullOrWhiteSpace(launch.Backend))
+                {
+                    System.Environment.SetEnvironmentVariable("MALDA_AGENT_BACKEND", launch.Backend);
+                }
+                if (!string.IsNullOrEmpty(launch.DevelopKind))
+                {
+                    var workdir = string.IsNullOrWhiteSpace(launch.Workdir)
+                        ? Directory.GetCurrentDirectory()
+                        : Path.GetFullPath(launch.Workdir);
+                    if (!Directory.Exists(workdir))
                     {
-                        message = args[i + 1];
+                        Console.Error.WriteLine($"Working directory not found: {workdir}");
+                        SystemEnvironment.Exit(1);
+                        return;
                     }
-                    else if ((args[i] == "-c" || args[i] == "--channel") && i + 1 < args.Length)
+                    System.Environment.SetEnvironmentVariable("MALDA_AGENT_KIND", launch.DevelopKind);
+                    System.Environment.SetEnvironmentVariable("MALDA_AGENT_WORKDIR", workdir);
+                    if (string.IsNullOrWhiteSpace(System.Environment.GetEnvironmentVariable("MALDA_MEMORY_SCOPE")))
                     {
-                        channel = args[i + 1];
-                    }
-                    else if ((args[i] == "-b" || args[i] == "--backend") && i + 1 < args.Length)
-                    {
-                        backend = args[i + 1];
+                        var leaf = new DirectoryInfo(workdir).Name;
+                        if (string.IsNullOrWhiteSpace(leaf))
+                            leaf = "project";
+                        System.Environment.SetEnvironmentVariable("MALDA_MEMORY_SCOPE", "code:" + leaf);
                     }
                 }
-                if (!string.IsNullOrWhiteSpace(message))
-                {
-                    System.Environment.SetEnvironmentVariable("MALDA_AGENT_MESSAGE", message);
-                }
-                if (!string.IsNullOrWhiteSpace(backend))
-                {
-                    System.Environment.SetEnvironmentVariable("MALDA_AGENT_BACKEND", backend);
-                }
-                RunAssistantWithChannel(channel);
+                RunAssistantWithChannel(launch.Channel, skipUserScript: !string.IsNullOrEmpty(launch.DevelopKind));
                 return;
             }
             else if (firstArg == "gateway")
@@ -1829,20 +1844,24 @@ class Program
         }
     }
     
-    static string? GetAssistantScriptPath()
+    static string? GetAssistantScriptPath(bool skipUserScript = false)
     {
         // 1. MALDA_AGENT_SCRIPT environment variable
         var envPath = System.Environment.GetEnvironmentVariable("MALDA_AGENT_SCRIPT");
         if (!string.IsNullOrEmpty(envPath) && File.Exists(envPath))
             return envPath;
-        
-        // 2. ~/.malda/assistant.malda
-        var userProfile = System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile);
-        if (!string.IsNullOrEmpty(userProfile))
+
+        // 2. ~/.malda/assistant.malda (personal chat). Develop mode skips this so a
+        // customized assistant cannot drop the DevAgent / MALDACodingAgent tools.
+        if (!skipUserScript)
         {
-            var userPath = Path.Combine(userProfile, ".malda", "assistant.malda");
-            if (File.Exists(userPath))
-                return userPath;
+            var userProfile = System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile);
+            if (!string.IsNullOrEmpty(userProfile))
+            {
+                var userPath = Path.Combine(userProfile, ".malda", "assistant.malda");
+                if (File.Exists(userPath))
+                    return userPath;
+            }
         }
         
         // 3. Examples/Assistant/assistant.malda (walk up from CWD, then base dir, then assembly)
@@ -2240,9 +2259,9 @@ class Program
         return "cron:" + name;
     }
 
-    static void RunAssistantWithChannel(string? channel)
+    static void RunAssistantWithChannel(string? channel, bool skipUserScript = false)
     {
-        var scriptPath = GetAssistantScriptPath();
+        var scriptPath = GetAssistantScriptPath(skipUserScript);
         if (string.IsNullOrEmpty(scriptPath))
         {
             Console.Error.WriteLine("Assistant script not found. Set MALDA_AGENT_SCRIPT or create ~/.malda/assistant.malda or run from repo with Examples/Assistant/assistant.malda.");
@@ -4065,6 +4084,8 @@ class Program
         Console.WriteLine("  malda test tests --filter Smoke");
         Console.WriteLine("  malda workflow list");
         Console.WriteLine("  malda agent -m \"Summarize this file\"");
+        Console.WriteLine("  malda agent develop");
+        Console.WriteLine("  malda agent develop malda");
         Console.WriteLine("  malda help deploy");
         Console.WriteLine();
         Console.WriteLine("REPL commands:");
@@ -4242,12 +4263,153 @@ class Program
         Console.WriteLine("  maintenance Run workflow maintenance tasks");
     }
 
+    internal readonly struct AgentLaunchOptions
+    {
+        public bool ShowHelp { get; init; }
+        public string? Error { get; init; }
+        public string? Message { get; init; }
+        public string? Channel { get; init; }
+        public string? Backend { get; init; }
+        public string? Workdir { get; init; }
+        /// <summary>null is the personal assistant. "dev" is DevAgent. "malda" is MALDACodingAgent.</summary>
+        public string? DevelopKind { get; init; }
+    }
+
+    internal static AgentLaunchOptions ParseAgentLaunch(string[] args)
+    {
+        string? message = null;
+        string? channel = null;
+        string? backend = null;
+        string? workdir = null;
+        string? positionalKind = null;
+        string? flagKind = null;
+        var develop = false;
+        string? error = null;
+
+        for (int i = 1; i < args.Length; i++)
+        {
+            var token = args[i];
+            if (token == "--help" || token == "-h")
+                return new AgentLaunchOptions { ShowHelp = true };
+
+            if (token == "-m" || token == "--message")
+            {
+                if (!TryTakeAgentFlagValue(args, ref i, token, out message, ref error))
+                    break;
+                continue;
+            }
+            if (token == "-c" || token == "--channel")
+            {
+                if (!TryTakeAgentFlagValue(args, ref i, token, out channel, ref error))
+                    break;
+                continue;
+            }
+            if (token == "-b" || token == "--backend")
+            {
+                if (!TryTakeAgentFlagValue(args, ref i, token, out backend, ref error))
+                    break;
+                continue;
+            }
+            if (token == "--workdir")
+            {
+                if (!TryTakeAgentFlagValue(args, ref i, token, out workdir, ref error))
+                    break;
+                continue;
+            }
+            if (token == "--kind")
+            {
+                if (!TryTakeAgentFlagValue(args, ref i, token, out var rawKind, ref error))
+                    break;
+                if (!TryNormalizeDevelopKind(rawKind, out flagKind))
+                {
+                    error = "Unknown develop kind '" + rawKind + "'. Use generic or malda.";
+                    break;
+                }
+                continue;
+            }
+            if (token == "develop")
+            {
+                develop = true;
+                if (i + 1 < args.Length && TryNormalizeDevelopKind(args[i + 1], out var nextKind))
+                {
+                    positionalKind = nextKind;
+                    i++;
+                }
+                continue;
+            }
+            if (develop)
+            {
+                error = "Unknown agent develop argument: " + token;
+                break;
+            }
+        }
+
+        if (error == null && positionalKind != null && flagKind != null &&
+            !string.Equals(positionalKind, flagKind, StringComparison.Ordinal))
+        {
+            error = "Conflicting develop kind. Pass either 'malda' or --kind, not both.";
+        }
+
+        var kind = flagKind ?? positionalKind;
+        if (error == null && !string.IsNullOrEmpty(kind))
+            develop = true;
+        if (error == null && !develop && !string.IsNullOrEmpty(workdir))
+            error = "--workdir applies to 'malda agent develop'.";
+
+        return new AgentLaunchOptions
+        {
+            Error = error,
+            Message = message,
+            Channel = channel,
+            Backend = backend,
+            Workdir = workdir,
+            DevelopKind = develop && error == null ? (kind ?? "dev") : null
+        };
+    }
+
+    static bool TryTakeAgentFlagValue(string[] args, ref int index, string flag, out string? value, ref string? error)
+    {
+        if (index + 1 >= args.Length)
+        {
+            value = null;
+            error = flag + " requires a value.";
+            return false;
+        }
+        index++;
+        value = args[index];
+        return true;
+    }
+
+    static bool TryNormalizeDevelopKind(string? token, out string? kind)
+    {
+        if (string.Equals(token, "malda", StringComparison.OrdinalIgnoreCase))
+        {
+            kind = "malda";
+            return true;
+        }
+        if (string.Equals(token, "generic", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(token, "dev", StringComparison.OrdinalIgnoreCase))
+        {
+            kind = "dev";
+            return true;
+        }
+        kind = null;
+        return false;
+    }
+
     static void ShowAgentHelp()
     {
         Console.WriteLine("Usage: malda agent [-m <message>] [-c <channel>] [-b <backend>]");
+        Console.WriteLine("       malda agent develop [generic|malda] [-m <message>] [-b <backend>] [--workdir <dir>]");
         Console.WriteLine("  -m, --message <text>          Send a one-shot message instead of starting chat mode");
         Console.WriteLine("  -c, --channel <name>          Route through a channel such as telegram");
         Console.WriteLine("  -b, --backend <name>          Override the assistant backend (for example local-llama)");
+        Console.WriteLine("  develop                       Coding agent in the working directory (default: generic DevAgent)");
+        Console.WriteLine("  develop malda                 MALDACodingAgent: .malda edit, run_malda, compile_malda");
+        Console.WriteLine("  --kind <generic|malda>        Same split as the positional kind");
+        Console.WriteLine("  --workdir <dir>               Project directory for develop (default: current directory)");
+        Console.WriteLine("  Develop mode stores memory under ~/.malda/memory/develop or develop-malda");
+        Console.WriteLine("  and skips ~/.malda/assistant.malda unless MALDA_AGENT_SCRIPT is set.");
     }
 
     static void ShowMemoryHelp()

@@ -37,7 +37,10 @@
         <ul>
             <li><code>malda agent</code> — Avvia un loop interattivo: chiede con <code>You: </code>, legge il messaggio, chiama l'agente e stampa la risposta. Digita <code>exit</code> o <code>quit</code> (oppure una riga vuota) per uscire.</li>
             <li><code>malda agent -m "message"</code> o <code>malda agent --message "message"</code> — Invia il messaggio una volta all'assistente, stampa la risposta ed esce.</li>
+            <li><code>malda agent develop</code> — Agente di coding generico (<code>DevAgent</code>) nella directory corrente: tool su file, git e <code>run_command</code>, più <code>remember_progress</code> / <code>recall_progress</code>. La memoria sta in <code>~/.malda/memory/develop</code> con scope <code>code:&lt;cartella&gt;</code>.</li>
+            <li><code>malda agent develop malda</code> — Agente di coding MALDA (<code>MALDACodingAgent</code>): modifica i file <code>.malda</code> e chiama <code>run_malda</code> / <code>compile_malda</code>. La memoria sta in <code>~/.malda/memory/develop-malda</code>. Stessi flag <code>-m</code>, <code>-b</code> e <code>--workdir</code>.</li>
         </ul>
+        <p><code>--kind generic</code> e <code>--kind malda</code> scelgono la stessa distinzione. La modalità develop salta <code>~/.malda/assistant.malda</code> a meno che <code>MALDA_AGENT_SCRIPT</code> punti a uno script che rispetta <code>MALDA_AGENT_KIND</code>.</p>
         <p>Lo script dell'assistente viene risolto in questo ordine:</p>
         <ol>
             <li>Path nella variabile d'ambiente <code>MALDA_AGENT_SCRIPT</code> (se il file esiste).</li>

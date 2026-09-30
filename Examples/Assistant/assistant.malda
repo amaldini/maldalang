@@ -3,6 +3,8 @@
 // One-shot if MALDA_AGENT_MESSAGE is set; otherwise interactive.
 // Persistent memory stored under ~/.malda/memory/assistant.*
 // Telegram (-c telegram): MALDA_CHAT_ID is set per message; agent scopes memory to chat:{id}.
+// "malda agent develop" sets MALDA_AGENT_KIND=dev (DevAgent) or malda (MALDACodingAgent),
+// MALDA_AGENT_WORKDIR, and a code:<folder> memory scope. Memory leaves are develop / develop-malda.
 //
 var config = getMaldaConfig();
 
@@ -252,11 +254,41 @@ function startAssistantKbWatch(mem, memoryPath, cfg) {
 if (client == null) {
     // Failed to initialize any backend; nothing more to do
 } else {
-    var agent = new Agent("Assistant", "personal assistant", "You are a helpful personal assistant.", client);
-    if (config != null && config.tools != null && config.tools.web != null && config.tools.web.search != null && config.tools.web.search.apiKey != null && config.tools.web.search.apiKey != "") {
-        agent.addTool(createWebSearchTool());
-    } else if (getEnv("BRAVE_SEARCH_API_KEY") != null && getEnv("BRAVE_SEARCH_API_KEY") != "") {
-        agent.addTool(createWebSearchTool());
+    var agentKind = getEnv("MALDA_AGENT_KIND");
+    if (agentKind == null) {
+        agentKind = "";
+    }
+    var workdir = getEnv("MALDA_AGENT_WORKDIR");
+    if (workdir == null || workdir == "") {
+        workdir = ".";
+    }
+    var agent = null;
+    if (agentKind == "malda") {
+        print("MALDA develop agent (MALDA) — " + workdir);
+        agent = new MALDACodingAgent(
+            "MaldaDev",
+            "MALDA developer",
+            "You develop MALDA programs in the working directory. Use read_file, edit_file, write_file, grep, and glob to inspect and change .malda sources. Use run_malda and compile_malda to execute and publish. Use remember_progress for decisions that should survive this turn, and recall_progress to load them.",
+            client,
+            workdir
+        );
+    } else if (agentKind == "dev") {
+        print("MALDA develop agent (generic) — " + workdir);
+        agent = new DevAgent(
+            "Dev",
+            "software engineer",
+            "You develop software in the working directory. Use the registered file, git, and run_command tools. Diagnose MALDA files with check_malda before running them. Use remember_progress for decisions that should survive this turn, and recall_progress to load them.",
+            client,
+            workdir,
+            true
+        );
+    } else {
+        agent = new Agent("Assistant", "personal assistant", "You are a helpful personal assistant.", client);
+        if (config != null && config.tools != null && config.tools.web != null && config.tools.web.search != null && config.tools.web.search.apiKey != null && config.tools.web.search.apiKey != "") {
+            agent.addTool(createWebSearchTool());
+        } else if (getEnv("BRAVE_SEARCH_API_KEY") != null && getEnv("BRAVE_SEARCH_API_KEY") != "") {
+            agent.addTool(createWebSearchTool());
+        }
     }
     var embedMode = "hash";
     var embedOverride = getEnv("MALDA_MEMORY_EMBED");
@@ -296,13 +328,25 @@ if (client == null) {
     var home = getMaldaHome();
     var memoryDir = home + "/memory";
     ensureDir(memoryDir);
-    var memoryPath = memoryDir + "/assistant";
+    var memoryLeaf = "assistant";
+    if (agentKind == "dev") {
+        memoryLeaf = "develop";
+    } else if (agentKind == "malda") {
+        memoryLeaf = "develop-malda";
+    }
+    var memoryPath = memoryDir + "/" + memoryLeaf;
     memory.initialize(384, "single", memoryEmbed);
     if (hasFile(memoryPath + ".graph.json")) {
         memory.load(memoryPath);
     }
     startAssistantKbWatch(memory, memoryPath, config);
     agent.useMemory(memory);
+    if (agentKind == "dev" || agentKind == "malda") {
+        agent.addMemoryProgressTools();
+    }
+    if (agentKind == "dev") {
+        agent.enableCodeMemory();
+    }
     if (config != null && config.agents != null && config.agents.memory != null) {
         if (config.agents.memory.scopeHierarchy != null && config.agents.memory.scopeHierarchy.length > 0) {
             agent.setMemoryScopeHierarchy(config.agents.memory.scopeHierarchy);
