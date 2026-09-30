@@ -1,11 +1,10 @@
-// Riconoscimento immagini a colori 32x32 RGB con rete neurale complessa.
+// RGB 32×32 color image classification with a complex neural network.
 //
-// Classifica forme geometriche colorate (cerchi rossi, quadrati verdi,
-// triangoli blu) su immagini RGB 32x32. Dimostra le capacità di composizione
-// di reti neurali in MALDA: Sequential per stack di layer, Parallel per
-// connessioni residuali.
+// Classifies colored geometric shapes (red circles, green squares, blue
+// triangles) on RGB 32×32 images. Demonstrates MALDA's neural net composition
+// capabilities: Sequential for layer stacks, Parallel for residual connections.
 //
-// Architettura:
+// Architecture:
 //   - Input: 3×32×32 RGB (CHW format)
 //   - Conv block 1: Conv2D(3→12, kernel 3×3, same) + ReLU + MaxPool(2×2)
 //     Output: 12×16×16
@@ -16,18 +15,18 @@
 //   - Classifier: Flatten + Dense(1536→96, ReLU) + Dense(96→3, linear)
 //   - Loss: Cross-entropy from logits
 //
-// Il dataset è sintetico: 36 immagini di training, 9 di test.
-// Ogni forma ha un colore dominante diverso per facilitare l'apprendimento.
+// The dataset is synthetic: 36 training images, 9 test images.
+// Each shape has a distinct dominant color to facilitate learning.
 //
-// Concetti dimostrati:
-//   - Immagini multi-canale (RGB) invece di scala di grigi
-//   - Risoluzione realistica (32×32 invece di 8×8 o 16×16)
-//   - Composizione con Sequential: blocchi nested dentro blocchi
-//   - Composizione con Parallel: connessioni residuali (skip connections)
-//   - Layer convoluzionali: Conv2D, MaxPool2D, Flatten
-//   - Normalizzazione per canale delle immagini
-//   - Training loop con valutazione separata su test set
-//   - Matrice di confusione per analisi dettagliata
+// Concepts demonstrated:
+//   - Multi-channel images (RGB) instead of grayscale
+//   - Realistic resolution (32×32 instead of 8×8 or 16×16)
+//   - Sequential composition: nested blocks within blocks
+//   - Parallel composition: residual connections (skip connections)
+//   - Convolutional layers: Conv2D, MaxPool2D, Flatten
+//   - Per-channel image normalization
+//   - Training loop with separate test set evaluation
+//   - Confusion matrix for detailed analysis
 //
 // Offline — no API key.
 
@@ -246,7 +245,7 @@ function createResidualBlock(channels) -> Sequential {
 }
 
 function buildNetwork() -> Sequential {
-    // Rete che dimostra Sequential e Parallel con connessioni residuali
+    // Network demonstrating Sequential and Parallel composition
     var block1 = createConvBlock(3, 12, true);
     var residual = createResidualBlock(12);
     var block2 = createConvBlock(12, 24, true);
@@ -264,10 +263,10 @@ function buildNetwork() -> Sequential {
 function trainNetwork() {
     math.seed(42);
     
-    io.print("Costruzione rete neurale complessa per immagini RGB 32x32...");
+    io.print("Building complex neural network for RGB 32x32 images...");
     var network = buildNetwork();
     
-    io.print("Generazione dataset di training...");
+    io.print("Generating training dataset...");
     var trainImages = [];
     var trainLabels = [];
     
@@ -280,7 +279,7 @@ function trainNetwork() {
         trainLabels.append(2);
     }
     
-    io.print("Generazione dataset di test...");
+    io.print("Generating test dataset...");
     var testImages = [];
     var testLabels = [];
     
@@ -297,9 +296,9 @@ function trainNetwork() {
     var epochs = 25;
     
     io.print("");
-    io.print("Inizio training su " + string(trainImages.length) + " immagini RGB 32x32...");
-    io.print("Architettura: Conv(3→12) + ResBlock(12) + Conv(12→24) + Dense(1536→96→3)");
-    io.print("Forme colorate: cerchi rossi, quadrati verdi, triangoli blu");
+    io.print("Starting training on " + string(trainImages.length) + " RGB 32x32 images...");
+    io.print("Architecture: Conv(3→12) + ResBlock(12) + Conv(12→24) + Dense(1536→96→3)");
+    io.print("Colored shapes: red circles, green squares, blue triangles");
     io.print("");
     
     for (var epoch = 1; epoch <= epochs; epoch = epoch + 1) {
@@ -332,7 +331,7 @@ function trainNetwork() {
     }
     
     io.print("");
-    io.print("Valutazione su test set...");
+    io.print("Evaluating on test set...");
     
     var testCorrect = 0;
     var confusionMatrix = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
@@ -354,9 +353,9 @@ function trainNetwork() {
              string(testCorrect) + "/" + string(testImages.length) + ")");
     
     io.print("");
-    io.print("Matrice di confusione (righe=vero, colonne=predetto):");
-    io.print("          Cerchio  Quadrato  Triangolo");
-    var labels = ["Cerchio  ", "Quadrato ", "Triangolo"];
+    io.print("Confusion matrix (rows=actual, cols=predicted):");
+    io.print("          Circle   Square   Triangle");
+    var labels = ["Circle  ", "Square  ", "Triangle"];
     for (var i = 0; i < 3; i = i + 1) {
         var line = labels[i] + ":  ";
         for (var j = 0; j < 3; j = j + 1) {
@@ -373,7 +372,7 @@ function trainNetwork() {
     if (testAccuracy >= 80.0) {
         io.print("color image cnn ok");
     } else {
-        io.print("Nota: l'accuracy potrebbe variare per il dataset sintetico casuale");
+        io.print("Note: accuracy may vary due to the random synthetic dataset");
     }
 }
 
