@@ -3868,7 +3868,7 @@ public partial class Interpreter
         }
         else if (expr.ClassName is "Conv" or "Embedding" or "Rnn" or "LayerNorm" or "Attention"
                  or "Conv2D" or "MaxPool2D" or "AvgPool2D" or "Flatten" or "BatchNorm2D" or "Dropout2D"
-                 or "GlobalAvgPool2D" or "GlobalMaxPool2D" or "Activation")
+                 or "GlobalAvgPool2D" or "GlobalMaxPool2D" or "Activation" or "Parallel" or "Identity")
         {
             return await CreateNeuralLayerAsync(expr.ClassName, expr.Arguments);
         }
@@ -4120,6 +4120,8 @@ public partial class Interpreter
             "GlobalAvgPool2D" => new BuiltIns.GlobalAvgPool2DInstance(values),
             "GlobalMaxPool2D" => new BuiltIns.GlobalMaxPool2DInstance(values),
             "Activation" => new BuiltIns.ActivationInstance(values),
+            "Parallel" => new BuiltIns.ParallelInstance(values),
+            "Identity" => new BuiltIns.IdentityInstance(values),
             "Embedding" => new BuiltIns.EmbeddingInstance(values),
             "Rnn" => new BuiltIns.RnnInstance(values),
             "LayerNorm" => new BuiltIns.LayerNormInstance(values),
@@ -4370,6 +4372,14 @@ public partial class Interpreter
         else if (instance is BuiltIns.SequentialInstance sequential)
         {
             return sequential.CallMethod(methodName, arguments, this);
+        }
+        else if (instance is BuiltIns.ParallelInstance parallel)
+        {
+            return parallel.CallMethod(methodName, arguments, this);
+        }
+        else if (instance is BuiltIns.IdentityInstance identity)
+        {
+            return identity.CallMethod(methodName, arguments, this);
         }
         else if (instance is BuiltIns.ConvInstance convLayer)
         {

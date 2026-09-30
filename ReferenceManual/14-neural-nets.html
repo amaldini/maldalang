@@ -270,7 +270,7 @@ print(int(probs[1] * 100));</code></pre>
         <p>Momentum, a length cap, and Adam are programs. They are not builtins. Each one starts from the subtraction in <a href="#weight-update">14.5.2</a>. <code>momentum_valley.malda</code> keeps a velocity on a quadratic that is steep in one axis. <code>grad_clip.malda</code> uses a steeper quadratic: unclipped, the magnitude grows; a cap on the gradient length walks toward zero. <code>adam_valley.malda</code> keeps <code>m</code>, <code>v</code>, and the step counter. The bias-corrected step finishes near the origin, while plain SGD stays far.</p>
 
         <h3 id="track-shapes">14.7.5 Shapes that are not one dense call</h3>
-        <p>The layout is the lesson. <code>rnn_delay.malda</code> shows a sigmoid recurrence shrinking its gradient, then a small tanh net that recalls the bit from three steps earlier. <code>conv_stroke.malda</code> reuses one 3×3 kernel at every window of a 5×5 dash, and each window adds the upstream times the pixel under that weight (<a href="#conv">14.11.1</a>). <code>conv_classifier.malda</code> trains those same dashes with <code>new Conv(3)</code> and a sigmoid <code>Dense</code>. The 3×3 map is flattened, and <code>Dense.backward</code> is reshaped into <code>Conv.backward</code>. <code>cnn_basic_layers.malda</code> walks one CHW map through <code>Conv2D</code>, <code>Activation</code>, pooling, and <code>Flatten</code> (<a href="#conv2d">14.11.6</a>). <code>cnn_composable.malda</code> stacks two of those blocks inside an outer <code>Sequential</code> and trains the classifier with <code>nn.mseGrad</code> (<a href="#compose">14.10.1</a>, <a href="#conv-net">14.11.7</a>). <code>residual_dropout.malda</code> puts a skip next to a deep sigmoid stack, then a train-time mask that eval does not apply.</p>
+        <p>The layout is the lesson. <code>rnn_delay.malda</code> shows a sigmoid recurrence shrinking its gradient, then a small tanh net that recalls the bit from three steps earlier. <code>conv_stroke.malda</code> reuses one 3×3 kernel at every window of a 5×5 dash, and each window adds the upstream times the pixel under that weight (<a href="#conv">14.11.1</a>). <code>conv_classifier.malda</code> trains those same dashes with <code>new Conv(3)</code> and a sigmoid <code>Dense</code>. The 3×3 map is flattened, and <code>Dense.backward</code> is reshaped into <code>Conv.backward</code>. <code>cnn_basic_layers.malda</code> walks one CHW map through <code>Conv2D</code>, <code>Activation</code>, pooling, and <code>Flatten</code> (<a href="#conv2d">14.11.6</a>). <code>cnn_composable.malda</code> stacks two of those blocks inside an outer <code>Sequential</code> and trains the classifier with <code>nn.mseGrad</code> (<a href="#compose">14.10.1</a>, <a href="#conv-net">14.11.7</a>). <code>parallel_compose.malda</code> adds two branches and joins two vectors, with an <code>Identity</code> skip (<a href="#parallel">14.10.2</a>). <code>residual_dropout.malda</code> puts a skip next to a deep sigmoid stack, then a train-time mask that eval does not apply.</p>
 
         <h3 id="track-attention">14.7.6 From one row to one decoder block</h3>
         <p><code>embed_row.malda</code> writes the gradient into the selected embedding row and leaves the other rows put. <code>next_char.malda</code> is a bigram on a repeated word: the loss is <code>nn.crossEntropyFromLogits</code>, and the dense gradient scatters back into that one row. <code>next_char_mlp.malda</code> is the case a bigram cannot name. Both samples end on <code>a</code>, one successor is <code>b</code>, the other is <code>c</code>, and a ReLU hidden layer on the two embedding rows names both. <code>layer_norm.malda</code> subtracts the mean and divides by the standard deviation so a deep product stays near 1, then checks the scale with a central difference.</p>
@@ -278,7 +278,7 @@ print(int(probs[1] * 100));</code></pre>
         <p><code>attention_is_all_you_need.malda</code> is the step after that block. It stays on <code>math.matmul</code> and adds multi-head attention, the same sinusoids, and the encoder-decoder. <code>microgpt.malda</code> is a tiny character model on that track. <code>embedding_2d.malda</code> projects a hash embedding and lists VectorDB neighbors. <code>onnx_inspect.malda</code> loads <code>new OnnxModel(path)</code> on a small identity model: inspect and one forward, on the host, with no training step. <code>malda play Examples/Games/xor_decision_boundary.malda</code> draws the XOR field. <code>malda play Examples/Games/softmax_decision_boundary.malda</code> draws the three softmax regions. <code>malda play Examples/Games/cartpole_neural.malda</code> fits a canvas policy to a score of the pole and the cart. <code>malda play Examples/Games/grand_prix_neural.malda</code> fits that policy to a driving coach on eight Grand Prix circuits. <code>malda play Examples/Games/spoken_reward.malda</code> fits a 4-12-1 net to a painted or spoken reward, and the creature follows the net rather than the reward. The return itself is <a href="#policy">14.6.2</a>.</p>
 
         <h2 id="backends">14.8 Backends</h2>
-        <p>Interpreter, C# transpile, and JavaScript all run <code>math.dot</code> / <code>matmul</code> / <code>transpose</code>, <code>nn.*</code>, <code>new Dense</code> / <code>new Sequential</code>, and the layer classes in <a href="#other-layers">14.11</a>. <code>OnnxModel</code> is host-only. There is no tensor type, no autograd tape, and no <code>Adam</code> or data loader in core. There is no flat alias for <code>nn</code> names: write <code>nn.relu</code>, not <code>relu</code>.</p>
+        <p>Interpreter, C# transpile, and JavaScript all run <code>math.dot</code> / <code>matmul</code> / <code>transpose</code>, <code>nn.*</code>, <code>new Dense</code> / <code>new Sequential</code> / <code>new Parallel</code> / <code>new Identity</code>, and the layer classes in <a href="#other-layers">14.11</a>. <code>OnnxModel</code> is host-only. There is no tensor type, no autograd tape, and no <code>Adam</code> or data loader in core. There is no flat alias for <code>nn</code> names: write <code>nn.relu</code>, not <code>relu</code>.</p>
 
         <h2 id="signatures">14.9 Signatures</h2>
         <p>Arity and return values. The layer model is the rest of this chapter. Interpreter, C# transpile, and JavaScript all run <code>nn.*</code>. There is no flat alias.</p>
@@ -411,6 +411,59 @@ net.backward([1.0]);
 net.sgd(1.0);
 print(int(outLayer.weights[0][0]));
 print(int(hidden.weights[0][0]));</code></pre>
+
+        <h3 id="parallel">14.10.2 Parallel</h3>
+        <p><code>new Parallel([branch, ...], merge)</code> gives the same input to every branch, then merges the outputs. A branch is any layer with <code>forward</code> and <code>backward</code>, including a <code>Sequential</code>. There are at least two branches. <code>merge</code> is <code>"add"</code> or <code>"concat"</code>. <code>add</code> needs the same shape on every branch. <code>concat</code> joins vectors end to end, or joins CHW maps on the channel axis, or joins NCHW maps on the channel axis inside the batch. The other axes have to match. <code>backward</code> on <code>add</code> sends that same upstream to every branch and sums the gradients those branches return. <code>backward</code> on <code>concat</code> splits the upstream along the joined axis, then sums the gradients into the input. <code>sgd</code> calls <code>sgd</code> on each branch that has it. Call <code>forward</code> before <code>backward</code>.</p>
+        <p><code>new Identity()</code> returns the input from <code>forward</code> and the upstream from <code>backward</code>. It has no weights and no <code>sgd</code>. A residual block is <code>new Parallel([block, new Identity()], "add")</code>. <code>Examples/AI_Theory/parallel_compose.malda</code> checks the sum, the skip, the joined vector, and one channel stack. <code>residual_dropout.malda</code> names that sum in the program itself.</p>
+        <p>The snippet is two linear units on the input <code>4</code>. The left weight is <code>2</code>, so that branch emits <code>8</code>. The right weight is <code>3</code>, so that branch emits <code>12</code>. <code>add</code> prints <code>20</code>. An upstream of <code>1</code> and a learning rate of <code>1</code> subtract <code>4</code> from each weight, because each weight multiplied the input <code>4</code>. The weights print <code>−2</code> and <code>−1</code>. The skip weight is <code>0.5</code>, so the residual prints <code>6</code>: <code>2</code> from the block and <code>4</code> from <code>Identity</code>. A fresh pair of those same weights, joined with <code>concat</code>, prints <code>8</code> then <code>12</code>. An upstream of <code>[1, 10]</code> subtracts <code>4</code> from the left weight and <code>40</code> from the right weight, so those weights print <code>−2</code> and <code>−37</code>.</p>
+        <table class="sigs">
+        <thead>
+        <tr><th>Arguments</th><th>Returns</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>new Parallel(branches, merge)</code></td></tr>
+        <tr><td>2 arguments</td><td><code>Parallel</code></td><td><code>merge</code> is <code>add</code> or <code>concat</code>. At least two branches. Properties <code>branches</code>, <code>merge</code></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>Parallel.forward(x)</code> / <code>backward(upstream)</code> / <code>sgd(lr)</code></td></tr>
+        <tr><td>1 argument</td><td>tensor, tensor, null</td><td><code>backward</code> needs a prior <code>forward</code></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>new Identity()</code></td></tr>
+        <tr><td>no arguments</td><td><code>Identity</code></td><td><code>forward</code> returns the input. <code>backward</code> returns the upstream. No <code>sgd</code></td></tr>
+        </tbody>
+        </table>
+        <pre><code data-run="true" data-expect="20\n-2\n-1\n6\n8\n12\n-2\n-37">var left = new Dense(1, 1, "linear", 0.0);
+left.weights[0][0] = 2.0;
+left.bias[0] = 0.0;
+var right = new Dense(1, 1, "linear", 0.0);
+right.weights[0][0] = 3.0;
+right.bias[0] = 0.0;
+var added = new Parallel([left, right], "add");
+print(int(added.forward([4.0])[0]));
+added.backward([1.0]);
+added.sgd(1.0);
+print(int(left.weights[0][0]));
+print(int(right.weights[0][0]));
+var skip = new Dense(1, 1, "linear", 0.0);
+skip.weights[0][0] = 0.5;
+skip.bias[0] = 0.0;
+var residual = new Parallel([skip, new Identity()], "add");
+print(int(residual.forward([4.0])[0]));
+var catLeft = new Dense(1, 1, "linear", 0.0);
+catLeft.weights[0][0] = 2.0;
+catLeft.bias[0] = 0.0;
+var catRight = new Dense(1, 1, "linear", 0.0);
+catRight.weights[0][0] = 3.0;
+catRight.bias[0] = 0.0;
+var wide = new Parallel([catLeft, catRight], "concat");
+var joined = wide.forward([4.0]);
+print(int(joined[0]));
+print(int(joined[1]));
+wide.backward([1.0, 10.0]);
+wide.sgd(1.0);
+print(int(catLeft.weights[0][0]));
+print(int(catRight.weights[0][0]));</code></pre>
 
         <h2 id="other-layers">14.11 Other layers</h2>
         <p>These classes keep the same contract as <code>Dense</code>. You own the parameters. <code>forward</code> remembers the input it saw. <code>backward</code> stores the gradients. <code>sgd(lr)</code> subtracts them in place. They do not record a tape, and they do not replace the handwritten files in <a href="#examples">14.7</a>.</p>

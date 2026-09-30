@@ -213,7 +213,7 @@ public sealed class SequentialInstance : ObjectInstance
         return layers;
     }
     
-    private RuntimeValue CallLayerMethod(ObjectInstance layer, string methodName, List<RuntimeValue> args)
+    internal static RuntimeValue CallLayerMethod(ObjectInstance layer, string methodName, List<RuntimeValue> args, string owner = "Sequential")
     {
         // Handle different layer types
         if (layer is DenseInstance dense)
@@ -284,7 +284,6 @@ public sealed class SequentialInstance : ObjectInstance
         }
         else if (layer is SequentialInstance sequential)
         {
-            // Allow nested Sequential networks!
             return methodName switch
             {
                 "forward" => sequential.Forward(args),
@@ -293,9 +292,17 @@ public sealed class SequentialInstance : ObjectInstance
                 _ => throw new RuntimeException($"Unknown method '{methodName}' on Sequential")
             };
         }
+        else if (layer is ParallelInstance parallel)
+        {
+            return parallel.CallMethod(methodName, args);
+        }
+        else if (layer is IdentityInstance identity)
+        {
+            return identity.CallMethod(methodName, args);
+        }
         else
         {
-            throw new RuntimeException($"Sequential() unsupported layer type: {layer.GetType().Name}");
+            throw new RuntimeException($"{owner}() unsupported layer type: {layer.GetType().Name}");
         }
     }
 
@@ -313,7 +320,7 @@ public sealed class SequentialInstance : ObjectInstance
         throw new RuntimeException("Sequential.fit() mse targets must be a number or a numeric vector");
     }
 
-    private static bool HasMethod(ObjectInstance layer, string name)
+    internal static bool HasMethod(ObjectInstance layer, string name)
     {
         RuntimeValue method;
         try

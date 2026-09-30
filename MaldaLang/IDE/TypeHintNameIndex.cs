@@ -54,6 +54,8 @@ public sealed class TypeHintNameIndex
         "OnnxModel",
         "Dense",
         "Sequential",
+        "Parallel",
+        "Identity",
         "Conv",
         "Conv2D",
         "MaxPool2D",

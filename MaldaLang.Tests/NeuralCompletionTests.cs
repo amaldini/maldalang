@@ -18,6 +18,8 @@ public class NeuralCompletionTests
 
         Assert.Contains(completions, item => item.Label == "Dense" && item.InsertText == "new Dense()");
         Assert.Contains(completions, item => item.Label == "Sequential");
+        Assert.Contains(completions, item => item.Label == "Parallel");
+        Assert.Contains(completions, item => item.Label == "Identity");
         Assert.Contains(completions, item => item.Label == "Conv");
         Assert.Contains(completions, item => item.Label == "Conv2D");
         Assert.Contains(completions, item => item.Label == "MaxPool2D");

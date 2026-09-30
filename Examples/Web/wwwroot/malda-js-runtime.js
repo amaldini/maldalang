@@ -2706,6 +2706,235 @@
     return mean;
   };
 
+  function nnCloneDeep(value) {
+    if (Array.isArray(value)) {
+      const copy = [];
+      for (let i = 0; i < value.length; i++) copy.push(nnCloneDeep(value[i]));
+      return copy;
+    }
+    return value;
+  }
+
+  function nnShape(name, value) {
+    if (!Array.isArray(value)) throw new Error(name + "() output must be an array");
+    const dims = [];
+    let spine = value;
+    while (Array.isArray(spine)) {
+      if (spine.length === 0) throw new Error(name + "() output must be non-empty");
+      dims.push(spine.length);
+      spine = spine[0];
+    }
+    if (typeof spine !== "number" || !Number.isFinite(spine)) {
+      throw new Error(name + "() output must be numeric");
+    }
+    nnVerifyShape(name, value, dims, 0);
+    return dims;
+  }
+
+  function nnVerifyShape(name, value, dims, depth) {
+    if (depth === dims.length) {
+      if (typeof value !== "number" || !Number.isFinite(value)) {
+        throw new Error(name + "() output must be rectangular");
+      }
+      return;
+    }
+    if (!Array.isArray(value) || value.length !== dims[depth]) {
+      throw new Error(name + "() output must be rectangular");
+    }
+    for (let i = 0; i < value.length; i++) nnVerifyShape(name, value[i], dims, depth + 1);
+  }
+
+  function nnAddTensors(name, left, right) {
+    const leftArr = Array.isArray(left);
+    const rightArr = Array.isArray(right);
+    if (leftArr || rightArr) {
+      if (!leftArr || !rightArr || left.length !== right.length) {
+        throw new Error(name + "() shapes must match");
+      }
+      const sum = [];
+      for (let i = 0; i < left.length; i++) sum.push(nnAddTensors(name, left[i], right[i]));
+      return sum;
+    }
+    if (typeof left !== "number" || typeof right !== "number" || !Number.isFinite(left) || !Number.isFinite(right)) {
+      throw new Error(name + "() shapes must match");
+    }
+    return left + right;
+  }
+
+  function Identity() {
+    if (arguments.length !== 0) throw new Error("Identity() expects no arguments");
+  }
+
+  Identity.prototype.forward = function (x) {
+    if (arguments.length !== 1) throw new Error("Identity.forward() expects 1 argument: (x)");
+    return x;
+  };
+
+  Identity.prototype.backward = function (upstream) {
+    if (arguments.length !== 1) throw new Error("Identity.backward() expects 1 argument: (upstream)");
+    return upstream;
+  };
+
+  function Parallel(branches, merge) {
+    if (arguments.length !== 2) {
+      throw new Error("Parallel() expects 2 arguments: (branches, merge)");
+    }
+    if (!Array.isArray(branches)) {
+      throw new Error("Parallel() expects an array of layer instances");
+    }
+    if (branches.length < 2) {
+      throw new Error("Parallel() expects at least two branches");
+    }
+    for (let i = 0; i < branches.length; i++) {
+      if (branches[i] == null || typeof branches[i].forward !== "function") {
+        throw new Error("Parallel() branch must have a forward() method");
+      }
+    }
+    if (typeof merge !== "string") {
+      throw new Error("Parallel() merge must be a string");
+    }
+    if (merge !== "add" && merge !== "concat") {
+      throw new Error("Parallel() merge must be \"add\" or \"concat\"");
+    }
+    this.branches = branches;
+    this.merge = merge;
+    this._ready = false;
+    this._rank = 0;
+    this._batch = 0;
+    this._sizes = [];
+  }
+
+  Parallel.prototype.forward = function (x) {
+    if (arguments.length !== 1) throw new Error("Parallel.forward() expects 1 argument: (x)");
+    const outputs = [];
+    for (let i = 0; i < this.branches.length; i++) outputs.push(this.branches[i].forward(x));
+    if (this.merge === "add") {
+      let acc = outputs[0];
+      for (let i = 1; i < outputs.length; i++) acc = nnAddTensors("Parallel.forward", acc, outputs[i]);
+      this._ready = true;
+      this._rank = 0;
+      return acc;
+    }
+    const first = nnShape("Parallel.forward", outputs[0]);
+    this._rank = first.length;
+    this._batch = first.length === 4 ? first[0] : 0;
+    this._sizes = [];
+    for (let i = 0; i < outputs.length; i++) {
+      const shape = i === 0 ? first : nnShape("Parallel.forward", outputs[i]);
+      this._sizes.push(parallelConcatSize("Parallel.forward", first, shape));
+    }
+    this._ready = true;
+    return parallelConcat(outputs, first);
+  };
+
+  Parallel.prototype.backward = function (upstream) {
+    if (arguments.length !== 1) throw new Error("Parallel.backward() expects 1 argument: (upstream)");
+    if (!this._ready) throw new Error("Parallel.backward() requires forward() first");
+    const grads = [];
+    if (this.merge === "add") {
+      for (let i = 0; i < this.branches.length; i++) {
+        grads.push(this.branches[i].backward(nnCloneDeep(upstream)));
+      }
+    } else {
+      parallelRequireUpstream(this, upstream);
+      for (let i = 0; i < this.branches.length; i++) {
+        grads.push(this.branches[i].backward(parallelSlice(this, upstream, i)));
+      }
+    }
+    let sum = grads[0];
+    for (let i = 1; i < grads.length; i++) sum = nnAddTensors("Parallel.backward", sum, grads[i]);
+    return sum;
+  };
+
+  Parallel.prototype.sgd = function (learningRate) {
+    if (arguments.length !== 1) throw new Error("Parallel.sgd() expects 1 argument: (lr)");
+    const step = nnRequireFinite("Parallel.sgd", learningRate, "lr");
+    for (let i = 0; i < this.branches.length; i++) {
+      if (typeof this.branches[i].sgd === "function") this.branches[i].sgd(step);
+    }
+    return null;
+  };
+
+  function parallelConcatSize(name, first, shape) {
+    if (shape.length !== first.length) {
+      throw new Error(name + "() concat expects a vector or a CHW or NCHW map");
+    }
+    if (first.length === 1) return shape[0];
+    if (first.length === 3) {
+      if (shape[1] !== first[1] || shape[2] !== first[2]) {
+        throw new Error(name + "() concat maps must share height and width");
+      }
+      return shape[0];
+    }
+    if (first.length === 4) {
+      if (shape[0] !== first[0] || shape[2] !== first[2] || shape[3] !== first[3]) {
+        throw new Error(name + "() concat maps must share batch, height, and width");
+      }
+      return shape[1];
+    }
+    throw new Error(name + "() concat expects a vector or a CHW or NCHW map");
+  }
+
+  function parallelConcat(outputs, first) {
+    if (first.length === 1) {
+      const joined = [];
+      for (let i = 0; i < outputs.length; i++) {
+        for (let j = 0; j < outputs[i].length; j++) joined.push(outputs[i][j]);
+      }
+      return joined;
+    }
+    if (first.length === 3) {
+      const channels = [];
+      for (let i = 0; i < outputs.length; i++) {
+        for (let c = 0; c < outputs[i].length; c++) channels.push(nnCloneDeep(outputs[i][c]));
+      }
+      return channels;
+    }
+    const batches = [];
+    for (let b = 0; b < first[0]; b++) {
+      const channels = [];
+      for (let i = 0; i < outputs.length; i++) {
+        const sample = outputs[i][b];
+        for (let c = 0; c < sample.length; c++) channels.push(nnCloneDeep(sample[c]));
+      }
+      batches.push(channels);
+    }
+    return batches;
+  }
+
+  function parallelRequireUpstream(block, upstream) {
+    let total = 0;
+    for (let i = 0; i < block._sizes.length; i++) total += block._sizes[i];
+    if (block._rank === 1 || block._rank === 3) {
+      if (!Array.isArray(upstream) || upstream.length !== total) {
+        throw new Error("Parallel.backward() upstream length must match the forward output");
+      }
+      return;
+    }
+    if (!Array.isArray(upstream) || upstream.length !== block._batch) {
+      throw new Error("Parallel.backward() upstream length must match the forward output");
+    }
+    for (let b = 0; b < upstream.length; b++) {
+      if (!Array.isArray(upstream[b]) || upstream[b].length !== total) {
+        throw new Error("Parallel.backward() upstream length must match the forward output");
+      }
+    }
+  }
+
+  function parallelSlice(block, upstream, branchIndex) {
+    let start = 0;
+    for (let i = 0; i < branchIndex; i++) start += block._sizes[i];
+    const count = block._sizes[branchIndex];
+    if (block._rank === 1 || block._rank === 3) {
+      return nnCloneDeep(upstream.slice(start, start + count));
+    }
+    const result = [];
+    for (let b = 0; b < upstream.length; b++) {
+      result.push(upstream[b].slice(start, start + count));
+    }
+    return nnCloneDeep(result);
+  }
+
   function nnSequential(layers) {
     nnArity("sequential", arguments.length, 1, 1, "layers");
     if (!Array.isArray(layers) || layers.length === 0) {
@@ -8814,6 +9043,8 @@
 
   global.Dense = Dense;
   global.Sequential = Sequential;
+  global.Parallel = Parallel;
+  global.Identity = Identity;
   global.Conv = Conv;
   global.Conv2D = Conv2D;
   global.MaxPool2D = MaxPool2D;

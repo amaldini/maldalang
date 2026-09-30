@@ -178,8 +178,10 @@ and `nn.crossEntropyFromLogits` are only on `nn`. There is no autograd tape.
 A CHW picture wrapped in one more list is a batch of one: `input[0][0][0]` is a row, and
 `Conv2D.forward` returns NCHW. One picture stays CHW, so that slot is a number.
 `nn.sequential` builds only `Dense` rows. A conv block, and a net made of smaller nets,
-is `new Sequential([...])`, including a nested `Sequential`. See Reference Manual
-14.10.1 and 14.11.6.
+is `new Sequential([...])`, including a nested `Sequential`. `new Parallel([branch, ...], "add")`
+sums same-shaped outputs and sends the same upstream to every branch. `"concat"` joins vectors,
+or joins CHW / NCHW maps on the channel axis, and `backward` splits that axis. `new Identity()`
+is the skip. See Reference Manual 14.10.1, 14.10.2, and 14.11.6.
 
 **Flat built-in names are deprecated aliases.** `sqrt(16)` and `Math.sqrt(16)` both run, but
 the language server reports both as deprecated. Prefer `math.sqrt(16)`. See the namespace

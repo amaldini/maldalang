@@ -3306,6 +3306,8 @@ public class CSharpTranspiler
         WriteNeuralLayerDispatch("MaldaLang.BuiltIns.RnnInstance", "rnnLayer");
         WriteNeuralLayerDispatch("MaldaLang.BuiltIns.LayerNormInstance", "layerNorm");
         WriteNeuralLayerDispatch("MaldaLang.BuiltIns.AttentionInstance", "attentionHead");
+        WriteNeuralLayerDispatch("MaldaLang.BuiltIns.ParallelInstance", "parallelNet");
+        WriteNeuralLayerDispatch("MaldaLang.BuiltIns.IdentityInstance", "identityLayer");
         WriteIndent();
         _output.AppendLine("else if (instance is MaldaLang.BuiltIns.GraphMemoryInstance graphMemory)");
         WriteIndent();
@@ -12379,7 +12381,7 @@ public class CSharpTranspiler
 
         if (className is "Dense" or "Sequential" or "Conv" or "Conv2D" or "MaxPool2D" or "AvgPool2D"
             or "Flatten" or "BatchNorm2D" or "Dropout2D" or "GlobalAvgPool2D" or "GlobalMaxPool2D"
-            or "Activation" or "Embedding" or "Rnn" or "LayerNorm" or "Attention")
+            or "Activation" or "Embedding" or "Rnn" or "LayerNorm" or "Attention" or "Parallel" or "Identity")
         {
             var instanceType = MapBuiltInClassName(className);
             _output.Append("new ");
@@ -12781,6 +12783,8 @@ public class CSharpTranspiler
             "Rnn" => "MaldaLang.BuiltIns.RnnInstance",
             "LayerNorm" => "MaldaLang.BuiltIns.LayerNormInstance",
             "Attention" => "MaldaLang.BuiltIns.AttentionInstance",
+            "Parallel" => "MaldaLang.BuiltIns.ParallelInstance",
+            "Identity" => "MaldaLang.BuiltIns.IdentityInstance",
             "Conversation" => "MaldaLang.BuiltIns.ConversationInstance",
             "Tool" => "MaldaLang.BuiltIns.ToolInstance",
             "Agent" => "MaldaLang.BuiltIns.AgentInstance",

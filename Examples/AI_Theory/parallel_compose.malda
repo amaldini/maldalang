@@ -1,0 +1,51 @@
+// The same input can feed more than one branch.
+//
+// add sums branches of the same shape. A residual is that sum with
+// Identity as the skip. concat joins vectors end to end, and joins a
+// CHW map on the channel axis. Offline — no API key.
+
+math.seed(1);
+
+var left = new Dense(1, 1, "linear", 0.0);
+left.weights[0][0] = 2.0;
+left.bias[0] = 0.0;
+var right = new Dense(1, 1, "linear", 0.0);
+right.weights[0][0] = 3.0;
+right.bias[0] = 0.0;
+var added = new Parallel([left, right], "add");
+io.print(string(int(added.forward([4.0])[0])));
+added.backward([1.0]);
+added.sgd(1.0);
+io.print(string(int(left.weights[0][0])));
+io.print(string(int(right.weights[0][0])));
+
+var skip = new Dense(1, 1, "linear", 0.0);
+skip.weights[0][0] = 0.5;
+skip.bias[0] = 0.0;
+var residual = new Parallel([skip, new Identity()], "add");
+io.print(string(int(residual.forward([4.0])[0])));
+
+var catLeft = new Dense(1, 1, "linear", 0.0);
+catLeft.weights[0][0] = 2.0;
+catLeft.bias[0] = 0.0;
+var catRight = new Dense(1, 1, "linear", 0.0);
+catRight.weights[0][0] = 3.0;
+catRight.bias[0] = 0.0;
+var wide = new Parallel([catLeft, catRight], "concat");
+var joined = wide.forward([4.0]);
+io.print(string(int(joined[0])));
+io.print(string(int(joined[1])));
+wide.backward([1.0, 10.0]);
+wide.sgd(1.0);
+io.print(string(int(catLeft.weights[0][0])));
+io.print(string(int(catRight.weights[0][0])));
+
+var picture = [[[1.0, 2.0], [3.0, 4.0]]];
+var channels = new Parallel([new Identity(), new Identity()], "concat");
+var stacked = channels.forward(picture);
+io.print(string(stacked.length));
+io.print(string(int(stacked[1][1][1])));
+var doubled = new Parallel([new Identity(), new Identity()], "add");
+io.print(string(int(doubled.forward(picture)[0][0][0])));
+
+io.print("parallel compose ok");

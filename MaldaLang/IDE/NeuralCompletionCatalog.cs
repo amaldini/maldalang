@@ -21,6 +21,8 @@ internal static class NeuralCompletionCatalog
     {
         ("Dense", "new Dense(inFeatures, outFeatures, activation?, scale?) — one dense layer", "new Dense()"),
         ("Sequential", "new Sequential(layers) — stack of neural layers; fit is online SGD", "new Sequential()"),
+        ("Parallel", "new Parallel(branches, merge) — add or concat branches that share an input", "new Parallel()"),
+        ("Identity", "new Identity() — return the input; the skip of an add Parallel", "new Identity()"),
         ("Conv", "new Conv(size, scale?) — one square kernel, valid convolution", "new Conv()"),
         ("Conv2D", "new Conv2D(inChannels, outChannels, kernelSize, stride?, padding?, scale?) — 2D convolution with multi-channel support", "new Conv2D()"),
         ("MaxPool2D", "new MaxPool2D(poolSize, stride?) — 2D max pooling", "new MaxPool2D()"),
@@ -94,6 +96,15 @@ internal static class NeuralCompletionCatalog
             Method("backward", "upstream"),
             Method("sgd", "lr"),
             Method("fit", "inputs", "targets", "epochs", "lr", "loss?")),
+        ["Parallel"] = Layer(
+            Prop("branches", "array of layers"),
+            Prop("merge", "string"),
+            Method("forward", "x"),
+            Method("backward", "upstream"),
+            Method("sgd", "lr")),
+        ["Identity"] = Layer(
+            Method("forward", "x"),
+            Method("backward", "upstream")),
         ["Conv"] = Layer(
             Prop("size", "int"),
             Prop("kernel", "array"),
@@ -198,6 +209,8 @@ internal static class NeuralCompletionCatalog
     {
         ["Dense"] = ["inFeatures", "outFeatures", "activation?", "scale?"],
         ["Sequential"] = ["layers"],
+        ["Parallel"] = ["branches", "merge"],
+        ["Identity"] = [],
         ["Conv"] = ["size", "scale?"],
         ["Conv2D"] = ["inChannels", "outChannels", "kernelSize", "stride?", "padding?", "scale?"],
         ["MaxPool2D"] = ["poolSize", "stride?"],

@@ -17,7 +17,7 @@ public class AITheoryTrackTests : TestBase
             .Where(example => example.Category == "AI_Theory")
             .ToList();
 
-        Assert.Equal(33, examples.Count);
+        Assert.Equal(34, examples.Count);
         Assert.All(examples, example =>
         {
             Assert.Equal("student", example.Track);
@@ -66,10 +66,15 @@ public class AITheoryTrackTests : TestBase
         Assert.NotNull(cnn);
         Assert.Contains("AI_Theory/cnn_basic_layers.malda", cnn!.Prerequisites);
         Assert.Equal("student", cnn.Track);
-        Assert.Equal("AI_Theory/residual_dropout.malda", cnn.Next);
+        Assert.Equal("AI_Theory/parallel_compose.malda", cnn.Next);
+
+        var parallel = ExampleProgramsService.GetExampleByRelativePath("AI_Theory/parallel_compose.malda");
+        Assert.NotNull(parallel);
+        Assert.Contains("AI_Theory/cnn_composable.malda", parallel!.Prerequisites);
+        Assert.Equal("AI_Theory/residual_dropout.malda", parallel.Next);
 
         var residual = ExampleProgramsService.GetExampleByRelativePath("AI_Theory/residual_dropout.malda");
-        Assert.Contains("AI_Theory/cnn_composable.malda", residual!.Prerequisites);
+        Assert.Contains("AI_Theory/parallel_compose.malda", residual!.Prerequisites);
     }
 
     [Fact]
@@ -106,6 +111,14 @@ public class AITheoryTrackTests : TestBase
         var path = PlanningPaths.ResolveRepoPath("Examples", "AI_Theory", "softmax_classifier.malda");
         var output = await CaptureInterpretAsync(File.ReadAllText(path), path);
         Assert.Contains("softmax classifier ok", output);
+    }
+
+    [Fact]
+    public async Task ParallelCompose_PrintsOkLine()
+    {
+        var path = PlanningPaths.ResolveRepoPath("Examples", "AI_Theory", "parallel_compose.malda");
+        var output = await CaptureInterpretAsync(File.ReadAllText(path), path);
+        Assert.Contains("parallel compose ok", output);
     }
 
     [Fact]

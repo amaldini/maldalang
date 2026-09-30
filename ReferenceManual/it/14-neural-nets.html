@@ -270,7 +270,7 @@ print(int(probs[1] * 100));</code></pre>
         <p>Momentum, un tetto sulla lunghezza e Adam sono programmi. Non sono built-in. Ognuno parte dalla sottrazione di <a href="#weight-update">14.5.2</a>. <code>momentum_valley.malda</code> tiene una velocità su una quadratica ripida in un asse. <code>grad_clip.malda</code> usa una quadratica più ripida: senza tetto la magnitudine cresce; un tetto sulla lunghezza del gradiente cammina verso zero. <code>adam_valley.malda</code> tiene <code>m</code>, <code>v</code> e il contatore del passo. Il passo corretto per il bias finisce vicino all'origine, mentre l'SGD semplice resta lontano.</p>
 
         <h3 id="track-shapes">14.7.5 Forme che non sono una sola chiamata densa</h3>
-        <p>Il layout è la lezione. <code>rnn_delay.malda</code> mostra una ricorrenza sigmoid che riduce il gradiente, poi una piccola rete tanh che ricorda il bit di tre passi prima. <code>conv_stroke.malda</code> riusa un kernel 3×3 a ogni finestra di un trattino 5×5, e ogni finestra aggiunge l'upstream per il pixel sotto quel peso (<a href="#conv">14.11.1</a>). <code>conv_classifier.malda</code> allena gli stessi trattini con <code>new Conv(3)</code> e un <code>Dense</code> sigmoid. La mappa 3×3 viene appiattita, e <code>Dense.backward</code> viene rimodellata in <code>Conv.backward</code>. <code>cnn_basic_layers.malda</code> percorre una mappa CHW attraverso <code>Conv2D</code>, <code>Activation</code>, il pooling e <code>Flatten</code> (<a href="#conv2d">14.11.6</a>). <code>cnn_composable.malda</code> impila due di quei blocchi dentro un <code>Sequential</code> esterno e allena il classificatore con <code>nn.mseGrad</code> (<a href="#compose">14.10.1</a>, <a href="#conv-net">14.11.7</a>). <code>residual_dropout.malda</code> mette un salto accanto a una pila sigmoid profonda, poi una maschera solo in training che la valutazione non applica.</p>
+        <p>Il layout è la lezione. <code>rnn_delay.malda</code> mostra una ricorrenza sigmoid che riduce il gradiente, poi una piccola rete tanh che ricorda il bit di tre passi prima. <code>conv_stroke.malda</code> riusa un kernel 3×3 a ogni finestra di un trattino 5×5, e ogni finestra aggiunge l'upstream per il pixel sotto quel peso (<a href="#conv">14.11.1</a>). <code>conv_classifier.malda</code> allena gli stessi trattini con <code>new Conv(3)</code> e un <code>Dense</code> sigmoid. La mappa 3×3 viene appiattita, e <code>Dense.backward</code> viene rimodellata in <code>Conv.backward</code>. <code>cnn_basic_layers.malda</code> percorre una mappa CHW attraverso <code>Conv2D</code>, <code>Activation</code>, il pooling e <code>Flatten</code> (<a href="#conv2d">14.11.6</a>). <code>cnn_composable.malda</code> impila due di quei blocchi dentro un <code>Sequential</code> esterno e allena il classificatore con <code>nn.mseGrad</code> (<a href="#compose">14.10.1</a>, <a href="#conv-net">14.11.7</a>). <code>parallel_compose.malda</code> somma due rami e affianca due vettori, con un salto <code>Identity</code> (<a href="#parallel">14.10.2</a>). <code>residual_dropout.malda</code> mette un salto accanto a una pila sigmoid profonda, poi una maschera solo in training che la valutazione non applica.</p>
 
         <h3 id="track-attention">14.7.6 Da una riga a un blocco decoder</h3>
         <p><code>embed_row.malda</code> scrive il gradiente nella riga di embedding scelta e lascia ferme le altre righe. <code>next_char.malda</code> è un bigramma su una parola ripetuta: la loss è <code>nn.crossEntropyFromLogits</code>, e il gradiente del denso torna in quella sola riga. <code>next_char_mlp.malda</code> è il caso che un bigramma non sa nominare. Entrambi i campioni finiscono su <code>a</code>, un successore è <code>b</code>, l'altro è <code>c</code>, e un layer nascosto ReLU sulle due righe di embedding li nomina entrambi. <code>layer_norm.malda</code> toglie la media e divide per la deviazione standard così un prodotto profondo resta vicino a 1, poi controlla la scala con una differenza centrale.</p>
@@ -278,7 +278,7 @@ print(int(probs[1] * 100));</code></pre>
         <p><code>attention_is_all_you_need.malda</code> è il passo dopo quel blocco. Resta su <code>math.matmul</code> e aggiunge l'attenzione multi-testa, le stesse sinusoidi e l'encoder-decoder. <code>microgpt.malda</code> è un modello a caratteri piccolo sullo stesso percorso. <code>embedding_2d.malda</code> proietta un embedding hash ed elenca i vicini di VectorDB. <code>onnx_inspect.malda</code> carica <code>new OnnxModel(path)</code> su un piccolo modello identità: ispezione e un forward, sull'host, senza passo di training. <code>malda play Examples/Games/xor_decision_boundary.malda</code> disegna il campo XOR. <code>malda play Examples/Games/softmax_decision_boundary.malda</code> disegna le tre regioni softmax. <code>malda play Examples/Games/cartpole_neural.malda</code> adatta una policy sul canvas a un punteggio di palo e carrello. <code>malda play Examples/Games/grand_prix_neural.malda</code> adatta quella policy a un coach di guida su otto circuiti di Gran Premio. <code>malda play Examples/Games/spoken_reward.malda</code> adatta una rete 4-12-1 a una ricompensa dipinta o detta, e la creatura segue la rete anziché la ricompensa. Il ritorno in sé è <a href="#policy">14.6.2</a>.</p>
 
         <h2 id="backends">14.8 Backend</h2>
-        <p>Interprete, transpile C# e JavaScript eseguono tutti <code>math.dot</code> / <code>matmul</code> / <code>transpose</code>, <code>nn.*</code>, <code>new Dense</code> / <code>new Sequential</code> e le classi di layer in <a href="#other-layers">14.11</a>. <code>OnnxModel</code> è solo host. Nel core non ci sono un tipo tensore, un nastro di autograd, né <code>Adam</code> o un data loader. I nomi <code>nn</code> non hanno un alias piatto: scrivi <code>nn.relu</code>, non <code>relu</code>.</p>
+        <p>Interprete, transpile C# e JavaScript eseguono tutti <code>math.dot</code> / <code>matmul</code> / <code>transpose</code>, <code>nn.*</code>, <code>new Dense</code> / <code>new Sequential</code> / <code>new Parallel</code> / <code>new Identity</code> e le classi di layer in <a href="#other-layers">14.11</a>. <code>OnnxModel</code> è solo host. Nel core non ci sono un tipo tensore, un nastro di autograd, né <code>Adam</code> o un data loader. I nomi <code>nn</code> non hanno un alias piatto: scrivi <code>nn.relu</code>, non <code>relu</code>.</p>
 
         <h2 id="signatures">14.9 Firme</h2>
         <p>Arietà e valori di ritorno. Il modello del layer è il resto di questo capitolo. Interprete, transpile C# e JavaScript eseguono tutti <code>nn.*</code>. Non c'è un alias piatto.</p>
@@ -411,6 +411,59 @@ net.backward([1.0]);
 net.sgd(1.0);
 print(int(outLayer.weights[0][0]));
 print(int(hidden.weights[0][0]));</code></pre>
+
+        <h3 id="parallel">14.10.2 Parallel</h3>
+        <p><code>new Parallel([branch, ...], merge)</code> dà lo stesso ingresso a ogni ramo, poi unisce le uscite. Un ramo è qualsiasi layer con <code>forward</code> e <code>backward</code>, compreso un <code>Sequential</code>. I rami sono almeno due. <code>merge</code> è <code>"add"</code> o <code>"concat"</code>. <code>add</code> vuole la stessa forma su ogni ramo. <code>concat</code> affianca i vettori, oppure affianca mappe CHW sull'asse dei canali, oppure affianca mappe NCHW sull'asse dei canali dentro il batch. Gli altri assi devono coincidere. <code>backward</code> su <code>add</code> manda quello stesso upstream a ogni ramo e somma i gradienti che quei rami restituiscono. <code>backward</code> su <code>concat</code> spezza l'upstream lungo l'asse unito, poi somma i gradienti nell'ingresso. <code>sgd</code> chiama <code>sgd</code> su ogni ramo che lo ha. Chiama <code>forward</code> prima di <code>backward</code>.</p>
+        <p><code>new Identity()</code> restituisce l'ingresso da <code>forward</code> e l'upstream da <code>backward</code>. Non ha pesi e non ha <code>sgd</code>. Un blocco residuale è <code>new Parallel([block, new Identity()], "add")</code>. <code>Examples/AI_Theory/parallel_compose.malda</code> controlla la somma, il salto, il vettore unito e una pila di canali. <code>residual_dropout.malda</code> nomina quella somma nel programma stesso.</p>
+        <p>Lo snippet sono due unità lineari sull'ingresso <code>4</code>. Il peso sinistro è <code>2</code>, quindi quel ramo emette <code>8</code>. Il peso destro è <code>3</code>, quindi quel ramo emette <code>12</code>. <code>add</code> stampa <code>20</code>. Un upstream di <code>1</code> e un learning rate di <code>1</code> sottraggono <code>4</code> da ogni peso, perché ogni peso ha moltiplicato l'ingresso <code>4</code>. I pesi stampano <code>−2</code> e <code>−1</code>. Il peso del salto è <code>0.5</code>, quindi il residuale stampa <code>6</code>: <code>2</code> dal blocco e <code>4</code> da <code>Identity</code>. Una coppia nuova di quegli stessi pesi, unita con <code>concat</code>, stampa <code>8</code> poi <code>12</code>. Un upstream di <code>[1, 10]</code> sottrae <code>4</code> dal peso sinistro e <code>40</code> dal peso destro, quindi quei pesi stampano <code>−2</code> e <code>−37</code>.</p>
+        <table class="sigs">
+        <thead>
+        <tr><th>Argomenti</th><th>Restituisce</th><th>Note</th></tr>
+        </thead>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>new Parallel(branches, merge)</code></td></tr>
+        <tr><td>2 argomenti</td><td><code>Parallel</code></td><td><code>merge</code> è <code>add</code> o <code>concat</code>. Almeno due rami. Proprietà <code>branches</code>, <code>merge</code></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>Parallel.forward(x)</code> / <code>backward(upstream)</code> / <code>sgd(lr)</code></td></tr>
+        <tr><td>1 argomento</td><td>tensore, tensore, null</td><td><code>backward</code> ha bisogno di un <code>forward</code> precedente</td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>new Identity()</code></td></tr>
+        <tr><td>nessun argomento</td><td><code>Identity</code></td><td><code>forward</code> restituisce l'ingresso. <code>backward</code> restituisce l'upstream. Niente <code>sgd</code></td></tr>
+        </tbody>
+        </table>
+        <pre><code data-run="true" data-expect="20\n-2\n-1\n6\n8\n12\n-2\n-37">var left = new Dense(1, 1, "linear", 0.0);
+left.weights[0][0] = 2.0;
+left.bias[0] = 0.0;
+var right = new Dense(1, 1, "linear", 0.0);
+right.weights[0][0] = 3.0;
+right.bias[0] = 0.0;
+var added = new Parallel([left, right], "add");
+print(int(added.forward([4.0])[0]));
+added.backward([1.0]);
+added.sgd(1.0);
+print(int(left.weights[0][0]));
+print(int(right.weights[0][0]));
+var skip = new Dense(1, 1, "linear", 0.0);
+skip.weights[0][0] = 0.5;
+skip.bias[0] = 0.0;
+var residual = new Parallel([skip, new Identity()], "add");
+print(int(residual.forward([4.0])[0]));
+var catLeft = new Dense(1, 1, "linear", 0.0);
+catLeft.weights[0][0] = 2.0;
+catLeft.bias[0] = 0.0;
+var catRight = new Dense(1, 1, "linear", 0.0);
+catRight.weights[0][0] = 3.0;
+catRight.bias[0] = 0.0;
+var wide = new Parallel([catLeft, catRight], "concat");
+var joined = wide.forward([4.0]);
+print(int(joined[0]));
+print(int(joined[1]));
+wide.backward([1.0, 10.0]);
+wide.sgd(1.0);
+print(int(catLeft.weights[0][0]));
+print(int(catRight.weights[0][0]));</code></pre>
 
         <h2 id="other-layers">14.11 Altri layer</h2>
         <p>Queste classi tengono lo stesso contratto di <code>Dense</code>. I parametri restano tuoi. <code>forward</code> ricorda l'ingresso che ha visto. <code>backward</code> tiene i gradienti. <code>sgd(lr)</code> li sottrae sul posto. Non registrano un nastro, e non sostituiscono i file scritti a mano in <a href="#examples">14.7</a>.</p>

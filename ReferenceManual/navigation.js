@@ -834,12 +834,15 @@ const FALLBACK_GLOSSARY_EN = [
             "composition",
             "smaller networks",
             "nested sequential",
-            "Sequential"
+            "Sequential",
+            "Parallel",
+            "Identity"
         ],
         "href": "14-neural-nets.html#compose",
-        "summary": "A Sequential is a layer. Nest them so one net is built from smaller nets. nn.sequential still builds only Dense rows.",
+        "summary": "A Sequential is a layer. Nest them so one net is built from smaller nets. Parallel adds or concatenates branches that share an input. nn.sequential still builds only Dense rows.",
         "also": [
             "14-neural-nets.html#sequential",
+            "14-neural-nets.html#parallel",
             "14-neural-nets.html#conv-net"
         ]
     },
@@ -1861,12 +1864,15 @@ const FALLBACK_GLOSSARY_IT = [
             "composizione",
             "reti più piccole",
             "sequential annidato",
-            "Sequential"
+            "Sequential",
+            "Parallel",
+            "Identity"
         ],
         "href": "14-neural-nets.html#compose",
-        "summary": "Un Sequential è un layer. Annidali così una rete è fatta di reti più piccole. nn.sequential costruisce ancora solo righe Dense.",
+        "summary": "Un Sequential è un layer. Annidali così una rete è fatta di reti più piccole. Parallel somma o affianca rami che condividono un ingresso. nn.sequential costruisce ancora solo righe Dense.",
         "also": [
             "14-neural-nets.html#sequential",
+            "14-neural-nets.html#parallel",
             "14-neural-nets.html#conv-net"
         ]
     },

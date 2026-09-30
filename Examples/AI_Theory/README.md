@@ -28,6 +28,7 @@ Agents and tools stay in [`Examples/Agents/`](../Agents/).
 | `conv_classifier.malda` | Same dashes through `new Conv(3)` and a sigmoid `Dense` head |
 | `cnn_basic_layers.malda` | One CHW map through `Conv2D`, activation, pooling, and `Flatten` |
 | `cnn_composable.malda` | Two conv blocks and a classifier, nested `Sequential`s trained with `nn.mseGrad` |
+| `parallel_compose.malda` | `Parallel` add (with an `Identity` skip) and concat of vectors or map channels |
 | `residual_dropout.malda` | Residual skip vs a deep sigmoid stack, then a train-time dropout mask |
 | `embed_row.malda` | One embedding row receives the gradient; the other rows stay put |
 | `next_char.malda` | Bigram on a repeated inline word via `nn.dense` and a row scatter |

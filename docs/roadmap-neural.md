@@ -1,6 +1,6 @@
 # MALDA neural-nets kit
 
-**Status:** N0–N4 and N6–N13 landed; N5 partial  
+**Status:** N0–N4 and N6–N14 landed; N5 partial  
 **Created:** 2026-09-20  
 **Audience:** maintainers extending `math.*`, `nn.*`, and the offline AI_Theory track after Final 1.0
 
@@ -24,7 +24,8 @@ builtin / DataLoader, GPU training, a general ONNX trainer, product apps or vert
 packs (`AGENTS.md`). Serious inference runtimes stay an **optional pack out
 of tree** (`MaldaLang.Compiler/OptionalPack/`). `nn.dense` is one layer
 with an explicit activation derivative. `Dense` / `Sequential` stack those
-layers and can apply online SGD. They are not a module zoo and not a tape.
+layers and can apply online SGD. `Parallel` adds or concatenates branches
+that share an input. They are not a module zoo and not a tape.
 
 ---
 
@@ -67,6 +68,7 @@ layers and can apply online SGD. They are not a module zoo and not a tape.
 | 11 | **N11** `Dense` / `Sequential` | Landed | Host classes plus `nn.sequential`. Fixed dense stack, online SGD. No tape, no Adam |
 | 12 | **N12** Local layers | Landed | `Conv`, `Embedding`, `Rnn`, `LayerNorm`, `Attention`. Same `forward` / `backward` / `sgd` contract. No tape |
 | 13 | **N13** Spatial layers | Landed | `Conv2D`, pooling, `Flatten`, `BatchNorm2D`, `Dropout2D`, `Activation`. `Sequential` stacks any of them. No tape, no Adam |
+| 14 | **N14** Parallel composition | Landed | `Parallel` (`add` / `concat`) and `Identity`. Same `forward` / `backward` / `sgd` contract. No tape, no gate |
 
 ```text
 N0  roadmap file                          (landed)
@@ -97,6 +99,7 @@ N11 Dense / Sequential / nn.sequential   (landed)
 N13 Conv2D / pools / Flatten / BatchNorm2D
     Dropout2D / Activation                (landed)
     Sequential stacks those layers
+N14 Parallel add / concat + Identity      (landed)
 ```
 
 ---
@@ -154,7 +157,7 @@ colored by the XOR MLP, four training points overlaid. No new `ui.chart`.
 ## Out of scope (keep out of core)
 
 - Language `tensor` / autograd tape / an Adam builtin / DataLoader
-- A module zoo beyond `Dense` / `Sequential`, the five local layers `Conv`, `Embedding`, `Rnn`, `LayerNorm`, `Attention`, and the spatial layers in N13 (`Conv2D`, `MaxPool2D`, `AvgPool2D`, `Flatten`, `BatchNorm2D`, `Dropout2D`, `GlobalAvgPool2D`, `GlobalMaxPool2D`, `Activation`)
+- A module zoo beyond `Dense` / `Sequential` / `Parallel` / `Identity`, the five local layers `Conv`, `Embedding`, `Rnn`, `LayerNorm`, `Attention`, and the spatial layers in N13 (`Conv2D`, `MaxPool2D`, `AvgPool2D`, `Flatten`, `BatchNorm2D`, `Dropout2D`, `GlobalAvgPool2D`, `GlobalMaxPool2D`, `Activation`)
 - GPU, distributed training, ONNX training loops
 - Downloading MNIST / ImageNet in the OSS repo (`mnist_digits.malda` is ten 5×5 glyphs on the chapter 14 step)
 - A second plotting namespace
@@ -263,6 +266,14 @@ Tensors are CHW when `input[0][0][0]` is a number, and NCHW when that slot is a 
 | `new Activation(name)` | Elementwise. Names match `Dense`. No parameters |
 
 `Examples/AI_Theory/cnn_basic_layers.malda` walks one CHW map. `cnn_composable.malda` trains two conv blocks plus a classifier. `conv_classifier.malda` stays the one-channel `Conv`. The reference manual covers composition in [14.10.1](../ReferenceManual/14-neural-nets.html#compose) and convolution in [14.11.6](../ReferenceManual/14-neural-nets.html#conv2d) and [14.11.7](../ReferenceManual/14-neural-nets.html#conv-net).
+
+---
+
+## N14 — Parallel composition
+
+`new Parallel([branch, ...], merge)` gives the same input to every branch. `merge` is `"add"` or `"concat"`. `add` requires the same shape and sends the same upstream to every branch, then sums the input gradients. `concat` joins vectors, or joins CHW / NCHW maps on the channel axis, and `backward` splits that axis before the same sum. `new Identity()` returns the input. A residual block is `new Parallel([block, new Identity()], "add")`. A `Parallel` is a layer, so an outer `Sequential` can hold it. No tape, no Adam, and no learned gate.
+
+`Examples/AI_Theory/parallel_compose.malda` checks the sum, the skip, the joined vector, and one channel stack. `residual_dropout.malda` keeps the handwritten skip. The reference manual section is [14.10.2](../ReferenceManual/14-neural-nets.html#parallel).
 
 ---
 
