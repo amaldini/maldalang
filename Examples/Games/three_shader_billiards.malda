@@ -821,6 +821,8 @@ if (root == null) {
     var aimAngle = 0.0;
     var shotPower = 0.12;
     var charging = false;
+    var autoplay = dom.query("#malda-autoplay") != null;
+    var demoClock = 0.0;
     var aimMarkX = -1.7;
     var aimMarkZ = 0.0;
     var aimMarkValid = false;
@@ -1401,6 +1403,21 @@ if (root == null) {
         var still = ballsAreStill();
         var mouseMoved = mx != lastMouseX || my != lastMouseY;
         var mouseOnTable = mx >= 0 && mx < width && my >= 0 && my < height;
+        if (autoplay && (mouseMoved || three.isKeyDown(" ") || three.isMouseDown(0) || three.isKeyDown("a") || three.isKeyDown("d"))) {
+            autoplay = false;
+        }
+        var demoHold = false;
+        if (autoplay) {
+            if (!still) {
+                demoClock = 0.0;
+            } else if (ballLive[0] == 1) {
+                demoClock = demoClock + dtSec;
+                if (demoClock > 0.6 && demoClock < 1.45) {
+                    demoHold = true;
+                    aimAngle = 0.08;
+                }
+            }
+        }
         if (still && ballLive[0] == 1) {
             if (mouseMoved && mouseOnTable) {
                 aimFromMouse();
@@ -1411,7 +1428,7 @@ if (root == null) {
             if (three.isKeyDown("d")) {
                 aimAngle = aimAngle + (1.6 * dtSec);
             }
-            var holdShot = three.isKeyDown(" ") || (three.isMouseDown(0) && mouseOnTable);
+            var holdShot = demoHold || three.isKeyDown(" ") || (three.isMouseDown(0) && mouseOnTable);
             if (holdShot) {
                 if (!charging) {
                     charging = true;

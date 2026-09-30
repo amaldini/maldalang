@@ -145,6 +145,8 @@ if (root == null) {
     var gameOverLogged = false;
     var audioBooted = false;
     var hoverSq = NO_SQUARE;
+    var autoplay = dom.query("#malda-autoplay") != null;
+    var autoplayRestartMs = 0;
 
     var saved = game.load("chess_save");
     if (saved != null) {
@@ -283,6 +285,9 @@ if (root == null) {
     }
 
     function persist() {
+        if (autoplay) {
+            return;
+        }
         game.save("chess_save", {
             "board": cloneBoard(),
             "side": side,
@@ -1181,6 +1186,10 @@ if (root == null) {
             bootAudio();
         }
 
+        if (autoplay and (game.wasKeyPressed("r") or game.wasKeyPressed("u") or game.wasKeyPressed("c") or game.wasKeyPressed("p") or game.wasMousePressed(0))) {
+            autoplay = false;
+        }
+
         if (game.wasKeyPressed("r")) {
             newGame();
         }
@@ -1198,9 +1207,23 @@ if (root == null) {
             handleClick(game.getMouseX(), game.getMouseY());
         }
 
-        if (vsCpu and side == BLACK and (status == STATUS_PLAY or status == STATUS_CHECK) and !aiThinking) {
+        if (autoplay and isGameOver()) {
+            autoplayRestartMs = autoplayRestartMs + dtMs;
+            if (autoplayRestartMs > 900) {
+                setupStart();
+                autoplayRestartMs = 0;
+            }
+        } else {
+            autoplayRestartMs = 0;
+        }
+
+        var cpuTurn = vsCpu and side == BLACK;
+        if ((autoplay or cpuTurn) and (status == STATUS_PLAY or status == STATUS_CHECK) and !aiThinking) {
             aiThinking = true;
             aiWaitMs = AI_THINK_MS;
+            if (autoplay) {
+                aiWaitMs = 420;
+            }
         }
 
         if (aiThinking) {
@@ -1282,7 +1305,9 @@ if (root == null) {
         game.drawText(statusText(), PANEL_X, 84, "#fde68a", "18px sans-serif");
 
         var mode = "Human vs computer  ·  ply " + string(aiPly);
-        if (!vsCpu) {
+        if (autoplay) {
+            mode = "Autoplay";
+        } else if (!vsCpu) {
             mode = "Human vs human";
         }
         game.drawText(mode, PANEL_X, 114, "#cbd5e1", "16px sans-serif");
@@ -1305,7 +1330,7 @@ if (root == null) {
         game.drawText("Position and score survive reload.", PANEL_X, 492, "#64748b", "14px sans-serif");
     }
 
-    if (!tryLoadGame()) {
+    if (autoplay or !tryLoadGame()) {
         setupStart();
     } else {
         refreshStatus();

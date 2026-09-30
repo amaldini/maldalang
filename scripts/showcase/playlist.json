@@ -50,7 +50,7 @@
       "caption": "GPU billiards",
       "panel": "preview",
       "maximize": true,
-      "holdMs": 4500,
+      "holdMs": 5200,
       "focusLine": 29
     },
     {
@@ -58,15 +58,23 @@
       "caption": "Platform",
       "panel": "preview",
       "maximize": true,
-      "holdMs": 4000,
+      "holdMs": 5600,
       "focusLine": 111
+    },
+    {
+      "file": "Examples/Games/grand_prix_neural.malda",
+      "caption": "Grand Prix",
+      "panel": "preview",
+      "maximize": true,
+      "holdMs": 7200,
+      "focusLine": 13
     },
     {
       "file": "Examples/Games/chess.malda",
       "caption": "Chess",
       "panel": "preview",
       "maximize": false,
-      "holdMs": 3200,
+      "holdMs": 6400,
       "focusLine": 27
     }
   ]

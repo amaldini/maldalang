@@ -55,6 +55,9 @@ if (root == null) {
     var sparkMs = 0.0;
     var sparkX = 0.0;
     var sparkY = 0.0;
+    var autoplay = dom.query("#malda-autoplay") != null;
+    var demoJumpAt = [115.0, 305.0, 520.0, 820.0, 1080.0, 1320.0];
+    var demoJumpIndex = 0;
 
     var loaded = game.load("platform_high");
     if (loaded != null) {
@@ -70,6 +73,7 @@ if (root == null) {
         coins = 0;
         flashMs = 0.0;
         sparkMs = 0.0;
+        demoJumpIndex = 0;
         var i = 0;
         while (i < coinGot.length) {
             coinGot[i] = false;
@@ -90,6 +94,10 @@ if (root == null) {
             resetRun();
         }
 
+        if (autoplay && (game.isKeyDown("arrowleft") || game.isKeyDown("arrowright") || game.wasKeyPressed(" ") || game.wasKeyPressed("arrowup"))) {
+            autoplay = false;
+        }
+
         if (game.isKeyDown("arrowleft") ||
             game.isKeyDown("arrowright") ||
             game.wasKeyPressed(" ") ||
@@ -98,13 +106,27 @@ if (root == null) {
             tryStartAudio();
         }
 
+        var goLeft = game.isKeyDown("arrowleft");
+        var goRight = game.isKeyDown("arrowright");
+        var jump = game.wasKeyPressed(" ") || game.wasKeyPressed("arrowup");
+        if (autoplay) {
+            goRight = true;
+            if (onGround && demoJumpIndex < demoJumpAt.length && playerX >= demoJumpAt[demoJumpIndex]) {
+                jump = true;
+                demoJumpIndex = demoJumpIndex + 1;
+            }
+            if (playerX > 1500) {
+                resetRun();
+            }
+        }
+
         var dx = 0.0;
         var step = (runSpeed * dtMs) / 1000;
-        if (game.isKeyDown("arrowleft")) {
+        if (goLeft) {
             dx = dx - step;
             facingLeft = true;
         }
-        if (game.isKeyDown("arrowright")) {
+        if (goRight) {
             dx = dx + step;
             facingLeft = false;
         }
@@ -116,7 +138,7 @@ if (root == null) {
             sparkMs = sparkMs - dtMs;
         }
 
-        if (onGround && (game.wasKeyPressed(" ") || game.wasKeyPressed("arrowup"))) {
+        if (onGround && jump) {
             vy = jumpSpeed;
             onGround = false;
             game.audioPlaySample("assets/beep_hi.wav", 0.8);
@@ -161,7 +183,7 @@ if (root == null) {
                     sparkX = coinX[c] + (coinSize / 2);
                     sparkY = coinY[c] + (coinSize / 2);
                     game.audioPlaySample("assets/beep_lo.wav", 0.85);
-                    if (coins > high) {
+                    if (coins > high && !autoplay) {
                         high = coins;
                         game.save("platform_high", high);
                     }
@@ -257,7 +279,11 @@ if (root == null) {
         if (coins >= coinX.length) {
             game.drawText("All coins! Press R to restart.", 12, 46, "#ffee88", "14px monospace");
         } else {
-            game.drawText("Arrows run  Space/Up jump  R restart", 12, 46, "#99ddee", "12px monospace");
+            if (autoplay) {
+                game.drawText("Autoplay", 12, 46, "#99ddee", "12px monospace");
+            } else {
+                game.drawText("Arrows run  Space/Up jump  R restart", 12, 46, "#99ddee", "12px monospace");
+            }
         }
         game.popCamera();
     }

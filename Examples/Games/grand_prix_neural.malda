@@ -369,7 +369,8 @@ function startGrandPrix() {
     var goFlash = 0.0;
     var paused = false;
     var driveMode = false;
-    var chase = false;
+    var autoplay = dom.query("#malda-autoplay") != null;
+    var chase = autoplay;
     var chaseZoom = 2.15;
     var audioOn = false;
     var sessionBest = -1.0;
@@ -738,6 +739,10 @@ function startGrandPrix() {
         smokeR = [];
         camFocusX = px[0];
         camFocusY = py[0];
+        if (chase) {
+            camFocusX = focusX;
+            camFocusY = focusY;
+        }
     }
 
     function poseAt(dist: float, side: float) -> array {

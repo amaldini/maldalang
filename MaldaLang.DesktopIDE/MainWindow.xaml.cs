@@ -192,6 +192,7 @@ public partial class MainWindow : Window
     private const string SnippetCaretMarker = SyntaxSnippetCatalog.CaretMarker;
     private bool _starterLauncherShown;
     private ShowcaseSession? _showcase;
+    private bool _showcasePreviewAutoplay;
     private string? _showcaseCaption;
     private ExampleProgram? _currentExample;
     private bool _learningBranchBannerDismissed;

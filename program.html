@@ -58,6 +58,12 @@
         assetBase += "/";
       }
       window.__maldaAssetBase = assetBase;
+      if (params.get("autoplay") === "1" && !document.getElementById("malda-autoplay")) {
+        var autoplayMarker = document.createElement("div");
+        autoplayMarker.id = "malda-autoplay";
+        autoplayMarker.hidden = true;
+        document.body.appendChild(autoplayMarker);
+      }
 
       function setStatus(message, isError) {
         statusElement.textContent = message;

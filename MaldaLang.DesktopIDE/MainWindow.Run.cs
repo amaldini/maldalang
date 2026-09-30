@@ -1317,6 +1317,12 @@ public partial class MainWindow
             scriptPath,
             Path.GetFileNameWithoutExtension(activePath),
             activePath);
+        if (_showcasePreviewAutoplay)
+        {
+            var joiner = string.IsNullOrEmpty(previewUri.Query) ? "?" : "&";
+            previewUri = new Uri(previewUri.AbsoluteUri + joiner + "autoplay=1");
+        }
+
         await OpenUriInWebUiPanelAsync(previewUri, previewUri.AbsoluteUri, switchToTab: true, ensureUiHost: false);
     }
 
@@ -1445,6 +1451,12 @@ public partial class MainWindow
                 assetBase += "/";
               }
               window.__maldaAssetBase = assetBase;
+              if (params.get("autoplay") === "1" && !document.getElementById("malda-autoplay")) {
+                var autoplayMarker = document.createElement("div");
+                autoplayMarker.id = "malda-autoplay";
+                autoplayMarker.hidden = true;
+                document.body.appendChild(autoplayMarker);
+              }
 
               function setStatus(message, isError) {
                 statusElement.textContent = message;

@@ -202,7 +202,16 @@ public partial class MainWindow
             if (scene.Panel == "preview")
             {
                 navigation = WaitForContentNavigationAsync(timeout, navigationCancel.Token);
-                await PreviewCurrentDocumentAsync();
+                _showcasePreviewAutoplay = true;
+                try
+                {
+                    await PreviewCurrentDocumentAsync();
+                }
+                finally
+                {
+                    _showcasePreviewAutoplay = false;
+                }
+
                 ready = await navigation;
             }
             else if (scene.Panel == "server")
