@@ -225,6 +225,28 @@ public partial class ConversationInstance : ObjectInstance
         return conv.ExecuteToolOperation(tool, arguments);
     }
 
+    /// <summary>
+    /// Re-runs a recorded tool call from its <c>argumentsJson</c> payload.
+    /// Used by <c>malda trace replay-tools</c>.
+    /// </summary>
+    internal static RuntimeValue ExecuteNamedBuiltInJson(ToolInstance tool, string? argumentsJson)
+    {
+        var conv = new ConversationInstance();
+        var args = RuntimeValue.Object(new JsonObject());
+        if (!string.IsNullOrWhiteSpace(argumentsJson))
+        {
+            using var doc = JsonDocument.Parse(argumentsJson);
+            args = conv.JsonToRuntimeValue(doc.RootElement);
+        }
+        return conv.ExecuteToolOperation(tool, args);
+    }
+
+    internal static string FormatToolResultJson(RuntimeValue value)
+    {
+        var conv = new ConversationInstance();
+        return conv.SerializeRuntimeValueToJson(value);
+    }
+
     private static readonly HashSet<string> ShellWrapperToolNames = new(StringComparer.OrdinalIgnoreCase)
     {
         "powershell", "pwsh", "cmd", "bash", "sh", "zsh", "fish", "csh", "tcsh", "ksh"
@@ -460,6 +482,8 @@ public partial class ConversationInstance : ObjectInstance
         return lower is "1" or "true" or "yes" or "on";
     }
     
+    private const int TraceToolResultMaxChars = 65536;
+
     private static string TruncateForLog(string? text, int maxLength)
     {
         if (string.IsNullOrEmpty(text))
@@ -468,6 +492,19 @@ public partial class ConversationInstance : ObjectInstance
         if (text.Length <= maxLength)
             return text;
         return text.Substring(0, maxLength) + "...";
+    }
+
+    /// <summary>
+    /// Keeps tool results in the session trace. Caps only past 64KB and marks that cap
+    /// so a later replay can tell a stored result from a clipped one.
+    /// </summary>
+    private static string TruncateForTrace(string? text)
+    {
+        if (string.IsNullOrEmpty(text))
+            return "";
+        if (text.Length <= TraceToolResultMaxChars)
+            return text;
+        return text.Substring(0, TraceToolResultMaxChars) + $"... [truncated, {text.Length} characters]";
     }
 
     private static string? GetAgentEnv(string primary, string legacyAlias)
@@ -3823,26 +3860,33 @@ public partial class ConversationInstance : ObjectInstance
                         if (string.IsNullOrWhiteSpace(sourcePath))
                             return RuntimeValue.String("Error: sourcePath cannot be empty");
                         
-                        // Build arguments list for BuiltInCompileMALDA
+                        // Build arguments list for BuiltInCompileMALDA.
+                        // outputPath is the second argument, so a mode-only call must pass null
+                        // rather than shifting mode into the output path slot.
                         var compileSplArgs = new List<RuntimeValue> { RuntimeValue.String(sourcePath) };
-                        
-                        // Extract optional outputPath parameter
+
+                        RuntimeValue? outputPathParam = null;
+                        RuntimeValue? modeParam = null;
                         try
                         {
-                            var outputPathParam = argsObj.Get("outputPath", null);
-                            if (outputPathParam != null && outputPathParam.Type == ValueType.String)
-                                compileSplArgs.Add(outputPathParam);
+                            var outputPathValue = argsObj.Get("outputPath", null);
+                            if (outputPathValue != null && outputPathValue.Type == ValueType.String)
+                                outputPathParam = outputPathValue;
                         }
                         catch { }
-                        
-                        // Extract optional mode parameter
+
                         try
                         {
-                            var modeParam = argsObj.Get("mode", null);
-                            if (modeParam != null && modeParam.Type == ValueType.String)
-                                compileSplArgs.Add(modeParam);
+                            var modeValue = argsObj.Get("mode", null);
+                            if (modeValue != null && modeValue.Type == ValueType.String)
+                                modeParam = modeValue;
                         }
                         catch { }
+
+                        if (outputPathParam != null || modeParam != null)
+                            compileSplArgs.Add(outputPathParam ?? RuntimeValue.Null());
+                        if (modeParam != null)
+                            compileSplArgs.Add(modeParam);
                         
                         var result = BuiltInFunctions.CallBuiltIn("compileMALDA", compileSplArgs, null);
                         return result;
@@ -4758,9 +4802,9 @@ public partial class ConversationInstance : ObjectInstance
                         toolResult = ExecuteToolOperation(tool, argsValue ?? RuntimeValue.Null());
                         executedCoreTool = true;
 
-                        var resultDisplay = SerializeRuntimeValueToJson(toolResult ?? RuntimeValue.Null());
-                        if (resultDisplay.Length > 500)
-                            resultDisplay = resultDisplay.Substring(0, 500) + "...";
+                        var resultJsonFull = SerializeRuntimeValueToJson(toolResult ?? RuntimeValue.Null());
+                        var resultDisplay = TruncateForLog(resultJsonFull, 500);
+                        var traceResult = TruncateForTrace(resultJsonFull);
                         var toolFailed = IsToolResultFailure(toolResult, out var failureSummary);
                         if (toolFailed)
                             RecordFailedWriteTool(toolName, fullArguments, failureSummary);
@@ -4785,7 +4829,7 @@ public partial class ConversationInstance : ObjectInstance
                                     toolType = InferToolType(toolName),
                                     correlationId,
                                     durationMs = (int?)null,
-                                    resultJson = resultDisplay,
+                                    resultJson = traceResult,
                                     success = !toolFailed,
                                     error = toolFailed ? failureSummary : (object?)null
                                 },
@@ -4817,9 +4861,9 @@ public partial class ConversationInstance : ObjectInstance
                 catch (Exception ex)
                 {
                     var errorMsg = ex.Message;
-                    if (errorMsg.Length > 500)
-                        errorMsg = errorMsg.Substring(0, 500) + "...";
-                    _toolCallLogger?.Invoke(toolName, argsDisplay, $"Error: {errorMsg}", true, fullArguments);
+                    var logError = TruncateForLog(errorMsg, 500);
+                    var traceError = TruncateForTrace(errorMsg);
+                    _toolCallLogger?.Invoke(toolName, argsDisplay, $"Error: {logError}", true, fullArguments);
                     toolResult = RuntimeValue.String($"Error executing tool: {ex.Message}");
                     toolCallLogged = true;
                     RecordFailedWriteTool(toolName, fullArguments, toolResult.AsString());
@@ -4836,7 +4880,7 @@ public partial class ConversationInstance : ObjectInstance
                                 durationMs = (int?)null,
                                 resultJson = (string?)null,
                                 success = false,
-                                error = errorMsg
+                                error = traceError
                             },
                             AgentName,
                             SessionId);
@@ -4940,7 +4984,7 @@ public partial class ConversationInstance : ObjectInstance
                         toolType = InferToolType(outcome.ToolName ?? "unknown"),
                         correlationId = outcome.CorrelationId,
                         durationMs = (int?)null,
-                        resultJson = toolResultJson,
+                        resultJson = TruncateForTrace(toolResultJson),
                         success = outcome.Succeeded,
                         error = outcome.Succeeded ? null : (object?)"Tool did not execute successfully"
                     },

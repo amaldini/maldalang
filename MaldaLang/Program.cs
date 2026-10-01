@@ -280,6 +280,7 @@ class Program
                     Console.WriteLine("  malda trace summary <traceFile>");
                     Console.WriteLine("  malda trace show <traceFile> [--from N] [--to M] [--type TYPE]");
                     Console.WriteLine("  malda trace replay <traceFile> [--output <directory>]");
+                    Console.WriteLine("  malda trace replay-tools <traceFile> --workdir <directory>");
                     SystemEnvironment.Exit(1);
                     return;
                 }
@@ -347,6 +348,31 @@ class Program
                     }
 
                     var code = TraceCli.Replay(traceFile, outputDir, Console.Out, Console.Error);
+                    SystemEnvironment.Exit(code);
+                    return;
+                }
+
+                if (sub == "replay-tools")
+                {
+                    string? workdir = null;
+                    for (int i = 3; i < args.Length; i++)
+                    {
+                        var a = args[i];
+                        if (a == "--workdir" && i + 1 < args.Length)
+                        {
+                            workdir = args[i + 1];
+                            i++;
+                        }
+                    }
+
+                    if (string.IsNullOrWhiteSpace(workdir))
+                    {
+                        Console.Error.WriteLine("Error: --workdir is required for replay-tools.");
+                        SystemEnvironment.Exit(1);
+                        return;
+                    }
+
+                    var code = TraceCli.ReplayTools(traceFile, workdir, Console.Out, Console.Error);
                     SystemEnvironment.Exit(code);
                     return;
                 }
@@ -4223,6 +4249,8 @@ class Program
         Console.WriteLine("  malda trace summary <traceFile>");
         Console.WriteLine("  malda trace show <traceFile> [--from N] [--to M] [--type TYPE]");
         Console.WriteLine("  malda trace replay <traceFile> [--output <directory>]");
+        Console.WriteLine("  malda trace replay-tools <traceFile> --workdir <directory>");
+        Console.WriteLine("  replay-tools re-runs recorded tool calls in --workdir (no LLM). Skips web_search, ask_user, remember_progress, and recall_progress.");
     }
 
     static void ShowCronHelp()
@@ -4410,6 +4438,8 @@ class Program
         Console.WriteLine("  --workdir <dir>               Project directory for develop (default: current directory)");
         Console.WriteLine("  Develop mode stores memory under ~/.malda/memory/develop or develop-malda");
         Console.WriteLine("  and skips ~/.malda/assistant.malda unless MALDA_AGENT_SCRIPT is set.");
+        Console.WriteLine("  MALDA_AGENT_TRACE=1 records traces/<session>.malda-trace.jsonl (or set it to a directory).");
+        Console.WriteLine("  Replay those tool calls with: malda trace replay-tools <file> --workdir <dir>");
     }
 
     static void ShowMemoryHelp()

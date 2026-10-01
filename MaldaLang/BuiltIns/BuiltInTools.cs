@@ -1106,7 +1106,7 @@ public static class BuiltInTools
         
         tool.Initialize(
             "run_malda",
-            "Executes MALDA code from a file path or source string and returns the output and any errors. Use this to test MALDA code after making edits. Returns an object with 'success' (boolean), 'output' (string), 'error' (string for parse errors), and optional 'runtimeError' (string).",
+            "Executes MALDA code with the interpreter and returns output and errors. Use this to test interpreter programs after edits. game.*, dom.*, and three.* are JavaScript-only and fail here — verify those with compile_malda mode \"js\". Returns an object with 'success' (boolean), 'output' (string), 'error' (string for parse errors), and optional 'runtimeError' (string).",
             RuntimeValue.Object(parameters),
             null,
             workingDirectory
@@ -1134,11 +1134,12 @@ public static class BuiltInTools
         
         var modeProp = new JsonObject();
         modeProp.Set("type", RuntimeValue.String("string"));
-        modeProp.Set("description", RuntimeValue.String("Optional: Compilation mode. Must be 'interpreter' (default) or 'transpile'. 'interpreter' mode embeds the MALDA source and uses the interpreter at runtime. 'transpile' mode transpiles MALDA to C# and compiles the C# code."));
+        modeProp.Set("description", RuntimeValue.String("Optional: Compilation mode. 'interpreter' (default) embeds the MALDA source. 'transpile' emits C# and compiles it. 'js' emits browser JavaScript (required for game.*, dom.*, and three.*). Does not start a browser."));
         modeProp.Set("enum", RuntimeValue.Array(new List<RuntimeValue> 
         { 
             RuntimeValue.String("interpreter"), 
-            RuntimeValue.String("transpile") 
+            RuntimeValue.String("transpile"),
+            RuntimeValue.String("js")
         }));
         properties.Set("mode", RuntimeValue.Object(modeProp));
         
@@ -1150,7 +1151,7 @@ public static class BuiltInTools
         
         tool.Initialize(
             "compile_malda",
-            "Compiles MALDA source code to an executable and returns structured build feedback. Use this to compile MALDA files after making edits and get compiler errors. Returns an object with 'success' (boolean), 'outputPath' (string or null), 'error' (string), and 'errors' (array of error objects with 'message', 'line', 'column'). Supports both 'interpreter' mode (embeds MALDA source) and 'transpile' mode (transpiles to C#).",
+            "Compiles MALDA source and returns structured build feedback. Returns an object with 'success' (boolean), 'outputPath' (string or null), 'error' (string), and 'errors' (array of error objects with 'message', 'line', 'column'). Modes: 'interpreter' (embed source), 'transpile' (C# executable), and 'js' (browser JavaScript for game.*, dom.*, and three.*). 'js' does not launch malda play.",
             RuntimeValue.Object(parameters),
             null,
             workingDirectory

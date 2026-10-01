@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using MaldaLang.BuiltIns;
 using MaldaLang.Runtime.Tracing;
 using MaldaLang.TraceViewer;
 
@@ -231,6 +232,183 @@ public static class TraceCli
         }
 
         return 0;
+    }
+
+    /// <summary>
+    /// Re-executes <see cref="TraceEventType.ToolCallStart"/> events in order inside
+    /// <paramref name="workDirectory"/>, without calling an LLM. Side effects stay in that directory.
+    /// </summary>
+    public static int ReplayTools(string traceFile, string workDirectory, TextWriter output, TextWriter error)
+    {
+        if (string.IsNullOrWhiteSpace(traceFile))
+        {
+            error.WriteLine("Error: Trace file path is required.");
+            return 1;
+        }
+
+        if (string.IsNullOrWhiteSpace(workDirectory))
+        {
+            error.WriteLine("Error: --workdir is required.");
+            return 1;
+        }
+
+        if (!File.Exists(traceFile))
+        {
+            error.WriteLine($"Error: Trace file not found: {traceFile}");
+            return 1;
+        }
+
+        var events = TraceLog.Load(traceFile).OrderBy(e => e.StepIndex).ToList();
+        if (events.Count == 0)
+        {
+            output.WriteLine("No events found in trace. Nothing to replay.");
+            return 0;
+        }
+
+        var recordedEnds = new Dictionary<string, System.Text.Json.JsonElement>(StringComparer.Ordinal);
+        foreach (var evt in events)
+        {
+            if (evt.Type != TraceEventType.ToolCallEnd)
+                continue;
+            if (!TryGetPayload(evt, out var endPayload))
+                continue;
+            if (!TryGetPayloadString(endPayload, "correlationId", out var correlationId) || string.IsNullOrEmpty(correlationId))
+                continue;
+            recordedEnds[correlationId] = endPayload;
+        }
+
+        var fullWork = Path.GetFullPath(workDirectory);
+        Directory.CreateDirectory(fullWork);
+        var previousDir = Directory.GetCurrentDirectory();
+        var executed = 0;
+        var skipped = 0;
+        var differed = 0;
+
+        try
+        {
+            Directory.SetCurrentDirectory(fullWork);
+
+            foreach (var evt in events)
+            {
+                if (evt.Type != TraceEventType.ToolCallStart)
+                    continue;
+                if (!TryGetPayload(evt, out var payload))
+                {
+                    error.WriteLine($"skip step {evt.StepIndex}: tool payload unreadable");
+                    skipped++;
+                    continue;
+                }
+
+                var toolName = TryGetPayloadString(payload, "toolName", out var parsedName) ? parsedName : "";
+                if (string.IsNullOrEmpty(toolName))
+                {
+                    error.WriteLine($"skip step {evt.StepIndex}: missing toolName");
+                    skipped++;
+                    continue;
+                }
+
+                var canonical = ConversationInstance.CanonicalToolName(toolName);
+                if (ReplaySkippedTools.Contains(canonical))
+                {
+                    output.WriteLine($"skipped {canonical}");
+                    skipped++;
+                    continue;
+                }
+
+                var tool = ToolReplayHelper.TryCreateTool(canonical, fullWork);
+                if (tool == null)
+                {
+                    output.WriteLine($"skipped {canonical} (not replayable)");
+                    skipped++;
+                    continue;
+                }
+
+                TryGetPayloadString(payload, "correlationId", out var correlationId);
+                TryGetPayloadString(payload, "argumentsJson", out var argumentsJson);
+                System.Text.Json.JsonElement? recorded = !string.IsNullOrEmpty(correlationId) && recordedEnds.TryGetValue(correlationId!, out var end)
+                    ? end
+                    : null;
+
+                string liveJson;
+                bool liveSuccess;
+                try
+                {
+                    var result = ConversationInstance.ExecuteNamedBuiltInJson(tool, argumentsJson);
+                    liveJson = ConversationInstance.FormatToolResultJson(result);
+                    liveSuccess = !ConversationInstance.IsToolResultFailure(result, out _);
+                }
+                catch (Exception ex)
+                {
+                    liveJson = ex.Message;
+                    liveSuccess = false;
+                }
+
+                executed++;
+                bool? recordedSuccess = recorded.HasValue ? TryGetPayloadBool(recorded.Value, "success") : null;
+                var differs = recordedSuccess.HasValue && recordedSuccess.Value != liveSuccess;
+                if (differs)
+                    differed++;
+
+                var verdict = recordedSuccess.HasValue
+                    ? (differs ? "DIFFERS" : "match")
+                    : "no-record";
+                var idLabel = string.IsNullOrEmpty(correlationId) ? "-" : correlationId;
+                output.WriteLine($"{canonical} {idLabel} success={BoolLabel(liveSuccess)} recorded={BoolLabel(recordedSuccess)} {verdict}");
+
+                var preview = liveJson.Length <= 200 ? liveJson : liveJson.Substring(0, 200) + "...";
+                preview = preview.Replace("\r", " ").Replace("\n", " ");
+                output.WriteLine($"  result: {preview}");
+            }
+        }
+        finally
+        {
+            try
+            {
+                Directory.SetCurrentDirectory(previousDir);
+            }
+            catch
+            {
+                // Restoring the process directory must not hide the replay result.
+            }
+        }
+
+        output.WriteLine($"Replayed {executed} tool call(s) in {fullWork} ({skipped} skipped, {differed} differed).");
+        return 0;
+    }
+
+    private static readonly HashSet<string> ReplaySkippedTools = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "web_search",
+        "ask_user",
+        "remember_progress",
+        "recall_progress"
+    };
+
+    private static string BoolLabel(bool? value) =>
+        value.HasValue ? (value.Value ? "true" : "false") : "n/a";
+
+    private static bool TryGetPayloadString(System.Text.Json.JsonElement payload, string name, out string value)
+    {
+        value = "";
+        if (payload.ValueKind != System.Text.Json.JsonValueKind.Object)
+            return false;
+        if (!payload.TryGetProperty(name, out var prop) || prop.ValueKind != System.Text.Json.JsonValueKind.String)
+            return false;
+        value = prop.GetString() ?? "";
+        return true;
+    }
+
+    private static bool? TryGetPayloadBool(System.Text.Json.JsonElement payload, string name)
+    {
+        if (payload.ValueKind != System.Text.Json.JsonValueKind.Object)
+            return null;
+        if (!payload.TryGetProperty(name, out var prop))
+            return null;
+        if (prop.ValueKind == System.Text.Json.JsonValueKind.True)
+            return true;
+        if (prop.ValueKind == System.Text.Json.JsonValueKind.False)
+            return false;
+        return null;
     }
 
     /// <summary>Returns a short summary string for a trace event, for display in CLI or IDE.</summary>

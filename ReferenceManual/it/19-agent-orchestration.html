@@ -688,6 +688,7 @@ print(result.results);</code></pre>
             <li><strong>Tool sui file:</strong> <code>read_file</code>, <code>write_file</code>, <code>replace_in_file</code>, <code>insert_at_line</code>, <code>edit_file</code>, <code>grep</code>, <code>list_directory</code></li>
             <li><strong>Tool MALDA:</strong> <code>run_malda</code>, <code>compile_malda</code></li>
         </ul>
+        <p><code>run_malda</code> esegue l'interprete. <code>compile_malda</code> accetta <code>interpreter</code>, <code>transpile</code> (C#) e <code>js</code>. I giochi nel browser (<code>game.*</code>, <code>dom.*</code>, <code>three.*</code>) riescono solo con mode <code>js</code>. Quel controllo scrive JavaScript e non avvia <code>malda play</code>.</p>
         <h3>Costruttore</h3>
         <pre><code>// Simplest form - uses default local LLM (auto-download from Hugging Face)
 var agent = new MALDACodingAgent(name, role, instructions);

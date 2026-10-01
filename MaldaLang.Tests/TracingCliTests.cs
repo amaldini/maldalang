@@ -13,6 +13,7 @@ using MaldaLang.Runtime.Tracing;
 
 namespace MaldaLang.Tests;
 
+[Collection("Sequential")]
 public class TracingCliTests : TestBase
 {
     [Fact]
@@ -203,6 +204,72 @@ public class TracingCliTests : TestBase
         {
             SafeDeleteDirectory(tempDir);
         }
+    }
+
+    [Fact]
+    public void TraceCli_ReplayTools_ReexecutesWriteAndRun()
+    {
+        var tempDir = CreateTempDirectory("trace_cli_replay_tools_");
+        try
+        {
+            var tracePath = Path.Combine(tempDir, "session.malda-trace.jsonl");
+            var workdir = Path.Combine(tempDir, "work");
+            var writeArgs = "{\"filePath\":\"hello.malda\",\"content\":\"print(\\\"hi\\\");\\n\"}";
+            var runArgs = "{\"sourceOrFilePath\":\"hello.malda\"}";
+            var lines = new[]
+            {
+                TraceEventLine(0, "ToolCallStart", "write_file", writeArgs, "w1", success: null),
+                TraceEventLine(1, "ToolCallEnd", "write_file", null, "w1", success: true),
+                TraceEventLine(2, "ToolCallStart", "run_malda", runArgs, "r1", success: null),
+                TraceEventLine(3, "ToolCallEnd", "run_malda", null, "r1", success: true),
+                TraceEventLine(4, "ToolCallStart", "web_search", "{}", "s1", success: null)
+            };
+            File.WriteAllLines(tracePath, lines);
+
+            using var output = new StringWriter();
+            using var error = new StringWriter();
+            var code = TraceCli.ReplayTools(tracePath, workdir, output, error);
+            Assert.Equal(0, code);
+
+            var hello = Path.Combine(workdir, "hello.malda");
+            Assert.True(File.Exists(hello));
+            Assert.Contains("print(\"hi\")", File.ReadAllText(hello));
+
+            var text = output.ToString();
+            Assert.Contains("write_file w1 success=true recorded=true match", text);
+            Assert.Contains("run_malda r1 success=true recorded=true match", text);
+            Assert.Contains("hi", text);
+            Assert.Contains("skipped web_search", text);
+        }
+        finally
+        {
+            SafeDeleteDirectory(tempDir);
+        }
+    }
+
+    private static string TraceEventLine(int step, string type, string toolName, string? argumentsJson, string correlationId, bool? success)
+    {
+        var payload = new Dictionary<string, object?>
+        {
+            ["toolName"] = toolName,
+            ["correlationId"] = correlationId
+        };
+        if (argumentsJson != null)
+            payload["argumentsJson"] = argumentsJson;
+        if (success.HasValue)
+            payload["success"] = success.Value;
+
+        var evt = new
+        {
+            sessionId = "s1",
+            stepIndex = step,
+            timestampUtc = "2026-01-27T10:15:30.123Z",
+            type,
+            agentName = "A",
+            conversationId = "c1",
+            payload
+        };
+        return JsonSerializer.Serialize(evt);
     }
 }
 

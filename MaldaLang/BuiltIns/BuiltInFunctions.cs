@@ -2093,7 +2093,7 @@ public static class BuiltInFunctions
 
     private static RuntimeValue BuiltInDomUnavailable(string builtInName)
     {
-        throw new Exception($"{builtInName}() is only available in browser-hosted JavaScript runtime. Use JS mode with mlRuntime.dom.*.");
+        throw new Exception($"{builtInName}() is only available in browser-hosted JavaScript runtime. Verify with compile_malda mode \"js\" (malda compile --mode js).");
     }
     
     private static RuntimeValue BuiltInAbs(List<RuntimeValue> args)
@@ -7999,6 +7999,26 @@ public static class BuiltInFunctions
         }
     }
     
+    /// <summary>
+    /// Rewrites interpreter failures that mean the program needs the JavaScript backend
+    /// so the coding agent switches to compile_malda mode js instead of rewriting the file.
+    /// </summary>
+    internal static string DescribeBrowserOnlyRunFailure(string message)
+    {
+        if (string.IsNullOrEmpty(message) || !IsBrowserOnlyRuntimeFailure(message))
+            return message;
+        return "JavaScript-only API (game.*, dom.*, or three.*). run_malda executes the interpreter and cannot play a browser game. Verify with compile_malda mode \"js\". Interpreter and C# transpile are not proof a game runs. Original: " + message;
+    }
+
+    private static bool IsBrowserOnlyRuntimeFailure(string message)
+    {
+        if (message.Contains("only available in browser-hosted JavaScript runtime", StringComparison.Ordinal))
+            return true;
+        return message.Contains("Undefined variable 'dom'", StringComparison.Ordinal)
+            || message.Contains("Undefined variable 'game'", StringComparison.Ordinal)
+            || message.Contains("Undefined variable 'three'", StringComparison.Ordinal);
+    }
+
     private static RuntimeValue BuiltInRunMALDA(List<RuntimeValue> args)
     {
         if (args.Count == 0 || args[0].Type != ValueType.String)
@@ -8168,7 +8188,8 @@ public static class BuiltInFunctions
             errorObj.Set("success", RuntimeValue.Boolean(false));
             errorObj.Set("output", RuntimeValue.String(output.ToString()));
             errorObj.Set("error", RuntimeValue.String(""));
-            errorObj.Set("runtimeError", RuntimeValue.String(ex.Message));
+            var runtimeError = DescribeBrowserOnlyRunFailure(ex.Message);
+            errorObj.Set("runtimeError", RuntimeValue.String(runtimeError));
             
             try
             {
@@ -8181,7 +8202,7 @@ public static class BuiltInFunctions
                         success = false,
                         output = output.ToString(),
                         error = (string?)null,
-                        runtimeError = ex.Message
+                        runtimeError
                     });
             }
             catch
@@ -8196,7 +8217,11 @@ public static class BuiltInFunctions
             errorObj.Set("success", RuntimeValue.Boolean(false));
             errorObj.Set("output", RuntimeValue.String(output.ToString()));
             errorObj.Set("error", RuntimeValue.String(""));
-            errorObj.Set("runtimeError", RuntimeValue.String($"Error: {ex.Message}"));
+            var described = DescribeBrowserOnlyRunFailure(ex.Message);
+            var runtimeError = string.Equals(described, ex.Message, StringComparison.Ordinal)
+                ? $"Error: {ex.Message}"
+                : described;
+            errorObj.Set("runtimeError", RuntimeValue.String(runtimeError));
             
             try
             {
@@ -8209,7 +8234,7 @@ public static class BuiltInFunctions
                         success = false,
                         output = output.ToString(),
                         error = (string?)null,
-                        runtimeError = $"Error: {ex.Message}"
+                        runtimeError
                     });
             }
             catch
@@ -8260,19 +8285,26 @@ public static class BuiltInFunctions
             throw new Exception("compileMALDA() outputPath must be a string when provided");
         }
         
-        // Extract optional mode parameter
-        // Use reflection to avoid circular dependency with MaldaLang.Compiler
-        int modeValue = 0; // 0 = Interpreter, 1 = TranspileToCSharp
+        // Extract optional mode parameter.
+        // Enum names match MaldaLang.Compiler.CompilationMode (loaded by reflection).
+        string modeEnumName = "Interpreter";
+        string modeLabel = "interpreter";
         if (args.Count > 2 && args[2].Type == ValueType.String)
         {
-            var modeStr = args[2].AsString().ToLower();
+            var modeStr = args[2].AsString().ToLowerInvariant();
             if (modeStr == "transpile" || modeStr == "transpiletocsharp")
             {
-                modeValue = 1; // TranspileToCSharp
+                modeEnumName = "TranspileToCSharp";
+                modeLabel = "transpile";
+            }
+            else if (modeStr == "js" || modeStr == "javascript")
+            {
+                modeEnumName = "JavaScript";
+                modeLabel = "js";
             }
             else if (modeStr != "interpreter")
             {
-                throw new Exception($"compileMALDA() mode must be 'interpreter' or 'transpile', got '{modeStr}'");
+                throw new Exception($"compileMALDA() mode must be 'interpreter', 'transpile', or 'js', got '{modeStr}'");
             }
         }
         else if (args.Count > 2 && args[2].Type != ValueType.Null)
@@ -8330,7 +8362,7 @@ public static class BuiltInFunctions
         string finalOutputPath;
         if (string.IsNullOrWhiteSpace(outputPath))
         {
-            finalOutputPath = Path.ChangeExtension(filePath, ".exe");
+            finalOutputPath = Path.ChangeExtension(filePath, modeEnumName == "JavaScript" ? ".js" : ".exe");
         }
         else
         {
@@ -8365,7 +8397,7 @@ public static class BuiltInFunctions
             }
             
             var compiler = Activator.CreateInstance(compilerType);
-            var modeEnum = Enum.ToObject(compilationModeType, modeValue);
+            var modeEnum = Enum.Parse(compilationModeType, modeEnumName);
 
             // Prefer the overload that accepts --embed-folder args so portable ASK builds
             // can pack a directory without shelling out to the CLI.
@@ -8470,7 +8502,7 @@ public static class BuiltInFunctions
                     {
                         sourcePath,
                         outputPath = outputPathValue,
-                        mode = modeValue == 1 ? "transpile" : "interpreter",
+                        mode = modeLabel,
                         success,
                         error = success ? "" : errorMessage,
                         errors = errorsArray.Select<RuntimeValue, object>(rv =>
@@ -8533,7 +8565,7 @@ public static class BuiltInFunctions
                     {
                         sourcePath,
                         outputPath,
-                        mode = modeValue == 1 ? "transpile" : "interpreter",
+                        mode = modeLabel,
                         success = false,
                         error = $"Syntax error: {ex.Message}",
                         errors = new[]
@@ -8577,7 +8609,7 @@ public static class BuiltInFunctions
                     {
                         sourcePath,
                         outputPath,
-                        mode = modeValue == 1 ? "transpile" : "interpreter",
+                        mode = modeLabel,
                         success = false,
                         error = $"Compilation error: {ex.Message}",
                         errors = new[]

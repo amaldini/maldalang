@@ -268,7 +268,7 @@ if (client == null) {
         agent = new MALDACodingAgent(
             "MaldaDev",
             "MALDA developer",
-            "You develop MALDA programs in the working directory. Use read_file, edit_file, write_file, grep, and glob to inspect and change .malda sources. Use run_malda and compile_malda to execute and publish. Use remember_progress for decisions that should survive this turn, and recall_progress to load them.",
+            "You develop MALDA programs in the working directory. Use read_file, edit_file, write_file, grep, and glob to inspect and change .malda sources. Use run_malda for interpreter programs and compile_malda to publish. game.*, dom.*, and three.* are JavaScript-only: verify them with compile_malda mode \"js\", not run_malda and not C# transpile. Keep canvas state and helpers in one block around the #app element, as in Templates/game/app.malda and Examples/Games/game_bounce.malda. Use remember_progress for decisions that should survive this turn, and recall_progress to load them.",
             client,
             workdir
         );
@@ -400,6 +400,20 @@ if (client == null) {
                 skillDesc = s.description;
             }
             agent.addSubAgent(s.agent, skillDesc);
+        }
+    }
+    if (agentKind == "dev" || agentKind == "malda") {
+        var traceSetting = getEnv("MALDA_AGENT_TRACE");
+        if (traceSetting != null && traceSetting != "" && traceSetting != "0" && traceSetting != "false") {
+            var tracePath = "";
+            if (traceSetting == "1" || traceSetting == "true" || traceSetting == "yes" || traceSetting == "on") {
+                tracePath = agent.enableTracing("develop");
+            } else {
+                tracePath = agent.enableTracing("develop", traceSetting);
+            }
+            if (tracePath != null && tracePath != "") {
+                print("Agent trace: " + tracePath);
+            }
         }
     }
     var oneShot = getEnv("MALDA_AGENT_MESSAGE");

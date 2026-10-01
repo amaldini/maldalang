@@ -687,6 +687,7 @@ print(result.results);</code></pre>
             <li><strong>File tools:</strong> <code>read_file</code>, <code>write_file</code>, <code>replace_in_file</code>, <code>insert_at_line</code>, <code>edit_file</code>, <code>grep</code>, <code>list_directory</code></li>
             <li><strong>MALDA tools:</strong> <code>run_malda</code>, <code>compile_malda</code></li>
         </ul>
+        <p><code>run_malda</code> runs the interpreter. <code>compile_malda</code> accepts <code>interpreter</code>, <code>transpile</code> (C#), and <code>js</code>. Browser games (<code>game.*</code>, <code>dom.*</code>, <code>three.*</code>) only succeed with mode <code>js</code>. That check writes JavaScript; it does not start <code>malda play</code>.</p>
         <h3>Constructor</h3>
         <pre><code>// Simplest form - uses default local LLM (auto-download from Hugging Face)
 var agent = new MALDACodingAgent(name, role, instructions);

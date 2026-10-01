@@ -32,6 +32,11 @@ public class AgentInstance : ObjectInstance
     /// Indicates whether tracing has been enabled for this agent.
     /// </summary>
     public bool TraceEnabled => SessionId != null;
+
+    /// <summary>
+    /// Path of the <c>.malda-trace.jsonl</c> file when <see cref="EnableTracing"/> opened one.
+    /// </summary>
+    public string? TraceFilePath { get; private set; }
     
     private ConversationInstance? _conversation;
     private List<ToolInstance> _tools = new();
@@ -70,7 +75,7 @@ public class AgentInstance : ObjectInstance
             name == "addToolByName" || name == "addAllTools" || name == "getAvailableTools" || name == "addSubAgent" ||
             name == "enableMemory" || name == "useMemory" || name == "getMemory" || name == "saveMemory" || name == "remember" ||
             name == "setAutoRememberOnThink" || name == "setMemoryScope" || name == "setMemoryScopeParent" || name == "setMemoryScopeHierarchy" || name == "setMemoryRerank" || name == "addMemoryProgressTools" ||
-            name == "setContextTrimHandoff" || name == "getEstimatedContextTokens")
+            name == "setContextTrimHandoff" || name == "getEstimatedContextTokens" || name == "enableTracing")
         {
             var wrapper = new FunctionValue(null, null, false, null);
             wrapper.BuiltInInstance = this;
@@ -129,7 +134,8 @@ public class AgentInstance : ObjectInstance
     {
         if (TraceEnabled)
         {
-            // Tracing already enabled for this agent.
+            if (TraceFilePath == null && TraceManager.Current is FileTraceWriter existing)
+                TraceFilePath = existing.FilePath;
             return;
         }
         
@@ -154,6 +160,7 @@ public class AgentInstance : ObjectInstance
             try
             {
                 var writer = new FileTraceWriter(dir, SessionId);
+                TraceFilePath = writer.FilePath;
                 TraceManager.EnableTracing(writer);
             }
             catch
@@ -660,6 +667,18 @@ public class AgentInstance : ObjectInstance
                 if (args.Count != 0)
                     throw new Exception("getEstimatedContextTokens() expects no arguments");
                 return RuntimeValue.Integer(_conversation?.EstimateContextTokens() ?? 0);
+
+            case "enableTracing":
+                if (args.Count > 2)
+                    throw new Exception("enableTracing() expects at most 2 arguments (name?, directory?)");
+                string? traceName = null;
+                string? traceDirectory = null;
+                if (args.Count > 0 && args[0].Type == ValueType.String && !string.IsNullOrWhiteSpace(args[0].AsString()))
+                    traceName = args[0].AsString();
+                if (args.Count > 1 && args[1].Type == ValueType.String && !string.IsNullOrWhiteSpace(args[1].AsString()))
+                    traceDirectory = args[1].AsString();
+                EnableTracing(traceName, traceDirectory);
+                return RuntimeValue.String(TraceFilePath ?? "");
             
             default:
                 throw new Exception($"Unknown method: {methodName}");

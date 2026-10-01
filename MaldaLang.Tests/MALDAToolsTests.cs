@@ -545,4 +545,47 @@ public class MALDAToolsTests : TestBase
         // We verify the tool interface works correctly
         Assert.NotNull(resultObj);
     }
+
+    [Fact]
+    public void TestCompileMALDA_JsMode_CompilesGameBounce()
+    {
+        var source = Planning.PlanningPaths.ResolveRepoPath("Examples", "Games", "game_bounce.malda");
+        Assert.True(File.Exists(source));
+        var dest = Path.Combine(_testDirectory, "game_bounce.malda");
+        File.Copy(source, dest);
+
+        var tool = BuiltInTools.CreateCompileMALDATool(_testDirectory).AsObject() as ToolInstance;
+        Assert.NotNull(tool);
+        var args = CreateToolArguments(new Dictionary<string, RuntimeValue>
+        {
+            { "sourcePath", RuntimeValue.String(dest) },
+            { "mode", RuntimeValue.String("js") }
+        });
+
+        var result = ExecuteTool(tool!, args);
+        Assert.Equal(ValueType.Object, result.Type);
+        var resultObj = result.AsObject();
+        var error = resultObj.Get("error", null)?.AsString() ?? "";
+        Assert.True(resultObj.Get("success", null)?.AsBoolean() ?? false, error);
+        var outputPath = resultObj.Get("outputPath", null)?.AsString() ?? "";
+        Assert.EndsWith(".js", outputPath, StringComparison.OrdinalIgnoreCase);
+        Assert.True(File.Exists(outputPath));
+    }
+
+    [Fact]
+    public void TestRunMALDA_GameBounce_ReturnsJsOnlyError()
+    {
+        var source = Planning.PlanningPaths.ResolveRepoPath("Examples", "Games", "game_bounce.malda");
+        var result = BuiltInFunctions.CallBuiltIn("runMALDA", new List<RuntimeValue>
+        {
+            RuntimeValue.String(source)
+        }, null);
+
+        Assert.Equal(ValueType.Object, result.Type);
+        var resultObj = result.AsObject();
+        Assert.False(resultObj.Get("success", null)?.AsBoolean() ?? true);
+        var runtimeError = resultObj.Get("runtimeError", null)?.AsString() ?? "";
+        Assert.Contains("compile_malda", runtimeError, StringComparison.Ordinal);
+        Assert.Contains("mode \"js\"", runtimeError, StringComparison.Ordinal);
+    }
 }
