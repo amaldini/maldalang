@@ -35,7 +35,6 @@ Add-Type -TypeDefinition @"
 using System;
 using System.Runtime.InteropServices;
 public static class ShowcaseWindow {
-    [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
     [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
     [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint uFlags);
 }
@@ -48,10 +47,10 @@ function Assert-ShowcaseInFront([System.Diagnostics.Process]$proc) {
         return
     }
 
-    # SW_RESTORE, then HWND_TOPMOST without moving or resizing.
-    [ShowcaseWindow]::ShowWindow($hwnd, 9) | Out-Null
-    [ShowcaseWindow]::SetWindowPos($hwnd, [IntPtr](-1), 0, 0, 0, 0, 0x0043) | Out-Null
-    [ShowcaseWindow]::SetForegroundWindow($hwnd) | Out-Null
+    # SW_SHOWNA, then HWND_TOPMOST without activating, moving, or resizing.
+    # Activating the IDE here steals focus from the examples dialog on every pass.
+    [ShowcaseWindow]::ShowWindow($hwnd, 8) | Out-Null
+    [ShowcaseWindow]::SetWindowPos($hwnd, [IntPtr](-1), 0, 0, 0, 0, 0x0013) | Out-Null
 }
 
 $machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")

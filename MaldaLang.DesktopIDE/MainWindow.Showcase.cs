@@ -69,10 +69,21 @@ public partial class MainWindow
     private void BringShowcaseToFront()
     {
         Topmost = true;
-        var hwnd = new WindowInteropHelper(this).Handle;
+        var browser = _showcaseBrowser is { IsVisible: true } ? _showcaseBrowser : null;
+        var target = browser ?? (Window)this;
+        var hwnd = new WindowInteropHelper(target).Handle;
         if (hwnd == IntPtr.Zero)
         {
-            Activate();
+            if (browser == null)
+            {
+                Activate();
+            }
+
+            return;
+        }
+
+        if (GetForegroundWindow() == hwnd)
+        {
             return;
         }
 
@@ -90,8 +101,7 @@ public partial class MainWindow
             SetForegroundWindow(hwnd);
         }
 
-        Activate();
-        _showcaseBrowser?.Activate();
+        target.Activate();
     }
 
     private Windows.ExampleBrowserWindow? _showcaseBrowser;
@@ -104,11 +114,26 @@ public partial class MainWindow
             return;
         }
 
+        // WebBrowser and WebView2 are HWND airspace: they paint over any WPF overlay.
+        var airspace = new (FrameworkElement Element, Visibility Visibility)[]
+        {
+            (OutputWebBrowser, OutputWebBrowser.Visibility),
+            (ToolCallsWebBrowser, ToolCallsWebBrowser.Visibility),
+            (WebUiWebView, WebUiWebView.Visibility),
+            (ManualWebView, ManualWebView.Visibility)
+        };
+
         try
         {
+            foreach (var (element, _) in airspace)
+            {
+                element.Visibility = Visibility.Collapsed;
+            }
+
             _showcaseCaption = "";
             UpdateWindowChrome();
             SplashOverlay.Visibility = Visibility.Visible;
+            UpdateLayout();
             await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
             BringShowcaseToFront();
             WriteShowcaseStatus("playing", frameX, frameY, frameWidth, frameHeight, "MALDA", error: null);
@@ -117,6 +142,10 @@ public partial class MainWindow
         finally
         {
             SplashOverlay.Visibility = Visibility.Collapsed;
+            foreach (var (element, visibility) in airspace)
+            {
+                element.Visibility = visibility;
+            }
         }
     }
 
@@ -178,7 +207,6 @@ public partial class MainWindow
             return;
         }
 
-        SetSidebarPanelMaximized("manual", true);
         try
         {
             foreach (var page in pages)
@@ -352,11 +380,10 @@ public partial class MainWindow
                 await WaitForInterpretFinishedAsync(timeout);
             }
 
-            if (scene.Maximize && ready)
+            if (scene.Maximize && ready && scene.Panel == "output")
             {
                 await Task.Delay(Math.Max(0, _showcase.Playlist.SplitBeatMs));
-                var tab = scene.Panel == "output" ? "output" : "webui";
-                SetSidebarPanelMaximized(tab, true);
+                SetSidebarPanelMaximized("output", true);
             }
 
             await Task.Delay(Math.Max(0, scene.HoldMs));
