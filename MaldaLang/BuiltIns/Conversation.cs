@@ -83,6 +83,9 @@ public partial class ConversationInstance : ObjectInstance
     private static bool? _agentRichCliResolved;
     private static bool _agentRichCli;
     private static string? _statusBanner;
+    private static readonly object ActivityStatusLock = new();
+    private static int _activityLineWidth;
+    private static readonly AsyncLocal<int> ActivitySendDepth = new();
 
     private static readonly HashSet<string> CompactVerboseToolNames = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -498,6 +501,213 @@ public partial class ConversationInstance : ObjectInstance
         return _agentRichCli;
     }
 
+    /// <summary>
+    /// Interactive one-line activity. Off when verbose logging is on, stdout is
+    /// redirected, or <c>MALDA_AGENT_STATUS</c> is off/0/false/no.
+    /// </summary>
+    internal static bool IsAgentActivityStatusEnabled(bool verboseEnabled, bool outputRedirected, string? statusEnv)
+    {
+        if (verboseEnabled || outputRedirected)
+            return false;
+        if (string.IsNullOrWhiteSpace(statusEnv))
+            return true;
+        var lower = statusEnv.Trim().ToLowerInvariant();
+        return lower is not ("0" or "false" or "no" or "off");
+    }
+
+    private static bool IsAgentActivityStatusEnabled()
+    {
+        EnsureVerboseLoggingSetup();
+        return IsAgentActivityStatusEnabled(
+            _verboseLoggingEnabled,
+            System.Console.IsOutputRedirected,
+            GetAgentEnv("MALDA_AGENT_STATUS", "MALDA_RALPH_STATUS"));
+    }
+
+    internal static string FormatThinkingActivity(int round) =>
+        "thinking\u2026 round " + round;
+
+    internal static string FormatToolActivity(string? toolName, string? target, string? resultSuffix = null)
+    {
+        var name = string.IsNullOrWhiteSpace(toolName) ? "tool" : toolName.Trim();
+        var text = string.IsNullOrWhiteSpace(target)
+            ? name
+            : name + " " + CollapseActivityText(target);
+        if (!string.IsNullOrWhiteSpace(resultSuffix))
+            text += " \u00b7 " + CollapseActivityText(resultSuffix);
+        return text;
+    }
+
+    internal static string FormatParallelActivity(IReadOnlyList<string> parts) =>
+        string.Join(", ", parts);
+
+    internal readonly struct ActivityRewrite
+    {
+        public ActivityRewrite(string text, int visibleLength)
+        {
+            Text = text;
+            VisibleLength = visibleLength;
+        }
+
+        public string Text { get; }
+        public int VisibleLength { get; }
+    }
+
+    /// <summary>
+    /// Carriage-return rewrite. <paramref name="consoleWidth"/> of 0 or less falls back to 80.
+    /// The visible length is the dirty span the next rewrite must cover.
+    /// </summary>
+    internal static ActivityRewrite BuildActivityRewrite(string? text, int previousWidth, int consoleWidth)
+    {
+        var width = consoleWidth > 0 ? consoleWidth : 80;
+        var max = Math.Max(1, width - 1);
+        var oneLine = CollapseActivityText(text ?? "");
+        string clipped;
+        if (oneLine.Length <= max)
+            clipped = oneLine;
+        else if (max <= 3)
+            clipped = oneLine.Substring(0, max);
+        else
+            clipped = oneLine.Substring(0, max - 3) + "...";
+
+        var pad = Math.Max(0, previousWidth - clipped.Length);
+        var covered = Math.Max(previousWidth, clipped.Length);
+        return new ActivityRewrite("\r" + clipped + new string(' ', pad), covered);
+    }
+
+    internal static string BuildActivityErase(int previousWidth)
+    {
+        if (previousWidth <= 0)
+            return "";
+        return "\r" + new string(' ', previousWidth) + "\r";
+    }
+
+    private static string CollapseActivityText(string text)
+    {
+        var oneLine = text.Replace("\r\n", " ").Replace('\n', ' ').Replace('\r', ' ').Trim();
+        while (oneLine.Contains("  ", StringComparison.Ordinal))
+            oneLine = oneLine.Replace("  ", " ", StringComparison.Ordinal);
+        return oneLine;
+    }
+
+    private static int ResolveActivityConsoleWidth()
+    {
+        try
+        {
+            var width = System.Console.WindowWidth;
+            if (width > 0)
+                return width;
+        }
+        catch
+        {
+            // WindowWidth throws when stdout is not a console.
+        }
+
+        return 80;
+    }
+
+    private static void WriteActivityStatus(string text)
+    {
+        if (!IsAgentActivityStatusEnabled())
+            return;
+
+        lock (ActivityStatusLock)
+        {
+            var rewrite = BuildActivityRewrite(text, _activityLineWidth, ResolveActivityConsoleWidth());
+            try
+            {
+                System.Console.Write(rewrite.Text);
+                System.Console.Out.Flush();
+                _activityLineWidth = rewrite.VisibleLength;
+            }
+            catch
+            {
+                // Status display must never break the agent loop.
+            }
+        }
+    }
+
+    private static void CommitActivityStatus(string text)
+    {
+        if (!IsAgentActivityStatusEnabled())
+            return;
+
+        lock (ActivityStatusLock)
+        {
+            var rewrite = BuildActivityRewrite(text, _activityLineWidth, ResolveActivityConsoleWidth());
+            try
+            {
+                System.Console.Write(rewrite.Text);
+                System.Console.WriteLine();
+                System.Console.Out.Flush();
+            }
+            catch
+            {
+                // Status display must never break the agent loop.
+            }
+
+            _activityLineWidth = 0;
+        }
+    }
+
+    internal static void ClearActivityStatus()
+    {
+        lock (ActivityStatusLock)
+        {
+            if (_activityLineWidth <= 0)
+                return;
+
+            try
+            {
+                System.Console.Write(BuildActivityErase(_activityLineWidth));
+                System.Console.Out.Flush();
+            }
+            catch
+            {
+                // Status display must never break the agent loop.
+            }
+
+            _activityLineWidth = 0;
+        }
+    }
+
+    private static void FinishToolActivity(string? toolName, string? argumentsJson, RuntimeValue? toolResult, bool succeeded)
+    {
+        var suffix = succeeded
+            ? (GetReadFileToolLineSummary(toolName, argumentsJson, toolResult) ?? "ok")
+            : "failed";
+        var line = FormatToolActivity(toolName, TryExtractToolTarget(argumentsJson), suffix);
+        if (succeeded)
+            WriteActivityStatus(line);
+        else
+            CommitActivityStatus(line);
+    }
+
+    /// <summary>
+    /// Clears the activity line when the outermost <c>Send</c> returns, including
+    /// the recursive tool-round calls inside one turn.
+    /// </summary>
+    private readonly struct ActivityTurnScope : IDisposable
+    {
+        private readonly int _depth;
+
+        private ActivityTurnScope(int depth) => _depth = depth;
+
+        public static ActivityTurnScope Enter()
+        {
+            var depth = ActivitySendDepth.Value;
+            ActivitySendDepth.Value = depth + 1;
+            return new ActivityTurnScope(depth);
+        }
+
+        public void Dispose()
+        {
+            ActivitySendDepth.Value = _depth;
+            if (_depth == 0)
+                ClearActivityStatus();
+        }
+    }
+
     private static bool IsToolDetailFull()
     {
         var env = GetAgentEnv("MALDA_AGENT_TOOL_DETAIL", "MALDA_RALPH_TOOL_DETAIL");
@@ -667,6 +877,7 @@ public partial class ConversationInstance : ObjectInstance
 
         if (!_llmStreamHeaderPrinted)
         {
+            ClearActivityStatus();
             var phasePrefix = !string.IsNullOrEmpty(_verbosePhaseLabel)
                 ? $"[{_verbosePhaseLabel}] "
                 : "";
@@ -1078,6 +1289,7 @@ public partial class ConversationInstance : ObjectInstance
 
     private static void WriteVerboseLine(string message, string? markupLine = null)
     {
+        ClearActivityStatus();
         if (IsAgentRichCli() && !string.IsNullOrEmpty(markupLine))
         {
             try
@@ -1207,6 +1419,7 @@ public partial class ConversationInstance : ObjectInstance
         // even when verbose CLI logging is off.
         _llmRound++;
         EmitAgentProgress("round_start", message: "Calling LLM…");
+        WriteActivityStatus(FormatThinkingActivity(_llmRound));
 
         EnsureVerboseLoggingSetup();
         if (!_verboseLoggingEnabled)
@@ -1452,6 +1665,7 @@ public partial class ConversationInstance : ObjectInstance
     
     public RuntimeValue Send(RuntimeValue? responseFormat = null, LlmRequestOverrides? overrides = null)
     {
+        using var activityTurn = ActivityTurnScope.Enter();
         EnsureWithinThinkDeadline();
         TrimContextIfOverBudget();
         if (_client == null && _llamaClient == null && _bridgeClient == null)
@@ -4266,7 +4480,8 @@ public partial class ConversationInstance : ObjectInstance
             }
 
             LogParallelToolBatch(batch);
-            var tasks = batch.Select(item => Task.Run(() => ExecuteSingleToolCall(item))).ToArray();
+            WriteParallelActivityStart(batch);
+            var tasks = batch.Select(item => Task.Run(() => ExecuteSingleToolCall(item, reportActivity: false))).ToArray();
             try
             {
                 Task.WaitAll(tasks);
@@ -4276,18 +4491,81 @@ public partial class ConversationInstance : ObjectInstance
                 foreach (var inner in agg.Flatten().InnerExceptions)
                 {
                     if (inner is InputRequiredException)
+                    {
+                        ClearActivityStatus();
                         throw inner;
+                    }
                     if (inner is RuntimeException)
                         throw inner;
                 }
                 throw;
             }
 
+            var batchOutcomes = new List<ToolCallOutcome>(tasks.Length);
             foreach (var task in tasks)
-                outcomes.Add(task.Result);
+                batchOutcomes.Add(task.Result);
+            outcomes.AddRange(batchOutcomes);
+            WriteParallelActivityDone(batch, batchOutcomes);
         }
 
         return outcomes;
+    }
+
+    private void WriteParallelActivityStart(List<RuntimeValue> batch)
+    {
+        var parts = new List<string>();
+        foreach (var tc in batch)
+        {
+            if (!TryReadToolCall(tc, out var name, out var args))
+                continue;
+            parts.Add(FormatToolActivity(name, TryExtractToolTarget(args)));
+        }
+
+        if (parts.Count == 0)
+            return;
+        WriteActivityStatus(FormatParallelActivity(parts));
+    }
+
+    private void WriteParallelActivityDone(List<RuntimeValue> batch, List<ToolCallOutcome> outcomes)
+    {
+        var parts = new List<string>();
+        var anyFailed = false;
+        for (var i = 0; i < outcomes.Count; i++)
+        {
+            var outcome = outcomes[i];
+            string? args = null;
+            if (i < batch.Count)
+                TryReadToolCall(batch[i], out _, out args);
+            if (!outcome.Succeeded)
+                anyFailed = true;
+            var suffix = outcome.Succeeded
+                ? (GetReadFileToolLineSummary(outcome.ToolName, args, outcome.ToolResult) ?? "ok")
+                : "failed";
+            parts.Add(FormatToolActivity(outcome.ToolName, TryExtractToolTarget(args), suffix));
+        }
+
+        if (parts.Count == 0)
+            return;
+        var line = FormatParallelActivity(parts);
+        if (anyFailed)
+            CommitActivityStatus(line);
+        else
+            WriteActivityStatus(line);
+    }
+
+    private bool TryReadToolCall(RuntimeValue tc, out string? toolName, out string? argumentsJson)
+    {
+        toolName = null;
+        argumentsJson = null;
+        if (tc.Type != ValueType.Object)
+            return false;
+        var func = GetProperty(tc.AsObject(), "function");
+        if (func == null || func.Type != ValueType.Object)
+            return false;
+        var funcObj = func.AsObject();
+        toolName = GetStringProperty(funcObj, "name");
+        argumentsJson = GetStringProperty(funcObj, "arguments");
+        return true;
     }
 
     private void LogParallelToolBatch(List<RuntimeValue> batch)
@@ -4319,7 +4597,7 @@ public partial class ConversationInstance : ObjectInstance
                 : null);
     }
 
-    private ToolCallOutcome ExecuteSingleToolCall(RuntimeValue tc)
+    private ToolCallOutcome ExecuteSingleToolCall(RuntimeValue tc, bool reportActivity = true)
     {
         ResourceBoundsContext.RecordToolInvocation();
         var tcObj = tc.AsObject();
@@ -4475,6 +4753,8 @@ public partial class ConversationInstance : ObjectInstance
 
                     if (toolResult == null)
                     {
+                        if (reportActivity)
+                            WriteActivityStatus(FormatToolActivity(toolName, TryExtractToolTarget(fullArguments)));
                         toolResult = ExecuteToolOperation(tool, argsValue ?? RuntimeValue.Null());
                         executedCoreTool = true;
 
@@ -4531,6 +4811,7 @@ public partial class ConversationInstance : ObjectInstance
                 }
                 catch (InputRequiredException)
                 {
+                    ClearActivityStatus();
                     throw;
                 }
                 catch (Exception ex)
@@ -4610,6 +4891,8 @@ public partial class ConversationInstance : ObjectInstance
         }
 
         var succeeded = !IsToolResultFailure(toolResult, out _);
+        if (reportActivity)
+            FinishToolActivity(toolName, fullArguments, toolResult, succeeded);
         if (!toolCallLogged && toolResult != null && argsDisplay != null)
         {
             var lateResultDisplay = SerializeRuntimeValueToJson(toolResult);

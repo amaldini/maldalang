@@ -230,12 +230,14 @@ print(response.content);</code></pre>
             <li><code>[think]</code> — model-native reasoning or planning text before tool calls</li>
             <li><code>[tool]</code> — tool executions (compact by default)</li>
         </ul>
+        <p>With verbose logging off, an interactive terminal keeps a single activity line during <code>send()</code>. The line shows <code>thinking… round N</code> while the model runs, then the tool name and target (for example <code>read_file src/App.malda</code>) while a tool runs, then a short result such as <code>· 120 lines</code> or <code>· ok</code>. The same line is rewritten in place so tool chatter does not fill the screen. A failed tool is committed on its own line. The line is erased before the final answer and before <code>ask_user</code>. Set <code>MALDA_AGENT_STATUS=off</code> to disable it. Pipes, cron, and tests that redirect stdout stay quiet. Windows, macOS, and Linux terminals use the same carriage-return rewrite.</p>
         <p><strong>HTTP LLM clients</strong> (<code>LLMClient</code>, <code>OpenRouterClient</code>) use OpenAI-style SSE streaming (<code>stream: true</code>) by default. When verbose logging and thinking output are enabled, <code>[think]</code> text is written <strong>token-by-token</strong> as deltas arrive. Tool-call JSON is accumulated silently during the stream; tool names are logged after the stream completes.</p>
         <p><strong>Not streamed today:</strong> <code>LlamaCppClient</code>, bridge backends, and requests with structured <code>response_format</code> (those fall back to a single blocking response).</p>
         <table>
             <thead><tr><th>Variable</th><th>Default</th><th>Purpose</th></tr></thead>
             <tbody>
                 <tr><td><code>MALDA_AGENT_VERBOSE</code></td><td><code>false</code> (Ralph: <code>true</code>)</td><td>Enable <code>[llm]</code> / <code>[tool]</code> logging</td></tr>
+                <tr><td><code>MALDA_AGENT_STATUS</code></td><td>on for a terminal</td><td>Rewrite one activity line (<code>thinking… round N</code>, then the tool name and target). <code>off</code>, <code>0</code>, <code>false</code>, or <code>no</code> disables it. Stays off when verbose logging is on or stdout is redirected. <code>MALDA_RALPH_STATUS</code> is an alias.</td></tr>
                 <tr><td><code>MALDA_RALPH_VERBOSE</code></td><td>—</td><td>Alias for <code>MALDA_AGENT_VERBOSE</code></td></tr>
                 <tr><td><code>MALDA_AGENT_RICH</code></td><td><code>true</code></td><td>Colored Spectre.Console output (auto-off when redirected)</td></tr>
                 <tr><td><code>MALDA_AGENT_TOOL_DETAIL</code></td><td><code>compact</code></td><td><code>compact</code> or <code>full</code> tool logs</td></tr>
