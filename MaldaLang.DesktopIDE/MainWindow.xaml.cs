@@ -328,7 +328,10 @@ public partial class MainWindow : Window
             else if (!_starterLauncherShown && string.IsNullOrWhiteSpace(CodeEditor.Text))
             {
                 _starterLauncherShown = true;
-                Dispatcher.BeginInvoke(() => ShowStarterLauncher(initialTrack: "student", fallbackToBlank: false));
+                if (!App.HoldStartupLauncher)
+                {
+                    Dispatcher.BeginInvoke(() => ShowStarterLauncher(initialTrack: "student", fallbackToBlank: false));
+                }
             }
         };
     }
@@ -1925,6 +1928,16 @@ public partial class MainWindow : Window
 
     private void StartWithMalda_Click(object sender, RoutedEventArgs e)
     {
+        ShowStarterLauncher(initialTrack: "student", fallbackToBlank: false);
+    }
+
+    internal void ShowStartupLauncher()
+    {
+        if (_showcase != null || !string.IsNullOrWhiteSpace(CodeEditor.Text))
+        {
+            return;
+        }
+
         ShowStarterLauncher(initialTrack: "student", fallbackToBlank: false);
     }
 

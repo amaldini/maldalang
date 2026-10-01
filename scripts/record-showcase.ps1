@@ -6,8 +6,10 @@
 .DESCRIPTION
   Builds the Desktop IDE, launches it with --demo, and records the window with
   ffmpeg Desktop Duplication (ddagrab) so the WebView2 preview is not black.
-  The IDE waits until this script creates a start flag, then plays
-  scripts/showcase/playlist.json. Edit holdMs in that file to sit cuts on a beat.
+  The IDE waits until this script creates a start flag, then holds the splash
+  (titleHoldMs) and plays scripts/showcase/playlist.json. Recording starts once
+  the splash is up, so leave about a second of titleHoldMs for ffmpeg to attach.
+  Edit holdMs in that file to sit cuts on a beat.
 
   No audio is bundled. Pass -Audio with a track you have rights to use.
   The mp4 is written to artifacts/showcase/malda-showcase.mp4.
@@ -286,6 +288,9 @@ if ($ff.HasExited) {
 }
 
 $holdMs = 0
+if ($playlistObj.titleHoldMs) {
+    $holdMs += [int]$playlistObj.titleHoldMs
+}
 if ($playlistObj.browse) {
     foreach ($pick in $playlistObj.browse) {
         $holdMs += [int]$pick.holdMs

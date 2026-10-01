@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
 using System.Windows;
+using System.Windows.Threading;
 using MaldaLang.DesktopIDE.Services;
 using MaldaLang.DesktopIDE.Windows;
 
@@ -9,7 +10,9 @@ namespace MaldaLang.DesktopIDE;
 
 public partial class App : Application
 {
-    private void Application_Startup(object sender, StartupEventArgs e)
+    internal static bool HoldStartupLauncher { get; private set; }
+
+    private async void Application_Startup(object sender, StartupEventArgs e)
     {
         if (InstallationUpdateService.TryParseApplyRequest(e.Args, out var request, out var error))
         {
@@ -55,7 +58,32 @@ public partial class App : Application
             InstallationUpdateService.CleanupStaleCache(location.RootPath);
         }
 
+        const int minimumSplashMs = 1200;
+        HoldStartupLauncher = true;
+        ShutdownMode = ShutdownMode.OnExplicitShutdown;
+        var splash = new SplashWindow();
+        splash.Show();
+        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+        var shownAt = Environment.TickCount64;
+
         var mainWindow = new MainWindow();
+        MainWindow = mainWindow;
         mainWindow.Show();
+        ShutdownMode = ShutdownMode.OnLastWindowClose;
+
+        var remaining = minimumSplashMs - (int)(Environment.TickCount64 - shownAt);
+        if (remaining > 0 && !splash.Dismissed)
+        {
+            await Task.WhenAny(Task.Delay(remaining), splash.ClosedTask);
+        }
+
+        if (!splash.Dismissed)
+        {
+            splash.Dismiss();
+        }
+
+        await splash.ClosedTask;
+        mainWindow.Activate();
+        mainWindow.ShowStartupLauncher();
     }
 }

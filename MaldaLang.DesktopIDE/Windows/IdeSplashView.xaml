@@ -1,0 +1,82 @@
+<UserControl x:Class="MaldaLang.DesktopIDE.Windows.IdeSplashView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="#0B181E"
+             SnapsToDevicePixels="True"
+             UseLayoutRounding="True"
+             FontFamily="Segoe UI, Segoe UI Variable, sans-serif">
+    <Grid>
+        <Grid.Background>
+            <LinearGradientBrush StartPoint="1,0" EndPoint="0.15,1">
+                <GradientStop Color="#164248" Offset="0"/>
+                <GradientStop Color="#0B181E" Offset="0.38"/>
+                <GradientStop Color="#101A22" Offset="1"/>
+            </LinearGradientBrush>
+        </Grid.Background>
+
+        <Rectangle Width="12" HorizontalAlignment="Left" Fill="#0E7C86"/>
+
+        <Canvas Width="320"
+                Height="250"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top"
+                Margin="0,48,48,0"
+                IsHitTestVisible="False"
+                Opacity="0.9">
+            <Line X1="168" Y1="86" X2="268" Y2="28" Stroke="#0E7C86" StrokeThickness="1.25" Opacity="0.55"/>
+            <Line X1="168" Y1="86" X2="300" Y2="112" Stroke="#0E7C86" StrokeThickness="1.25" Opacity="0.55"/>
+            <Line X1="168" Y1="86" X2="236" Y2="176" Stroke="#0E7C86" StrokeThickness="1.25" Opacity="0.55"/>
+            <Line X1="168" Y1="86" X2="78" Y2="48" Stroke="#0E7C86" StrokeThickness="1.25" Opacity="0.55"/>
+            <Line X1="268" Y1="28" X2="300" Y2="112" Stroke="#0E7C86" StrokeThickness="1.25" Opacity="0.45"/>
+            <Line X1="300" Y1="112" X2="236" Y2="176" Stroke="#0E7C86" StrokeThickness="1.25" Opacity="0.45"/>
+            <Line X1="78" Y1="48" X2="36" Y2="118" Stroke="#0E7C86" StrokeThickness="1.25" Opacity="0.4"/>
+            <Line X1="36" Y1="118" X2="168" Y2="86" Stroke="#0E7C86" StrokeThickness="1.25" Opacity="0.4"/>
+            <Line X1="236" Y1="176" X2="140" Y2="220" Stroke="#0E7C86" StrokeThickness="1.25" Opacity="0.4"/>
+            <Line X1="140" Y1="220" X2="168" Y2="86" Stroke="#0E7C86" StrokeThickness="1.25" Opacity="0.4"/>
+
+            <Ellipse Canvas.Left="150" Canvas.Top="50" Width="72" Height="72" Stroke="#0E7C86" StrokeThickness="1" Opacity="0.22"/>
+            <Ellipse Canvas.Left="160" Canvas.Top="68" Width="36" Height="36" Stroke="#2AA0AA" StrokeThickness="1.2" Opacity="0.5"/>
+            <Ellipse Canvas.Left="161" Canvas.Top="79" Width="15" Height="15" Fill="#0E7C86"/>
+            <Ellipse Canvas.Left="264" Canvas.Top="23" Width="9" Height="9" Fill="#0E7C86" Opacity="0.85"/>
+            <Ellipse Canvas.Left="295" Canvas.Top="107" Width="10" Height="10" Fill="#0E7C86" Opacity="0.9"/>
+            <Ellipse Canvas.Left="231" Canvas.Top="171" Width="9" Height="9" Fill="#0E7C86" Opacity="0.8"/>
+            <Ellipse Canvas.Left="74" Canvas.Top="44" Width="8" Height="8" Fill="#0E7C86" Opacity="0.75"/>
+            <Ellipse Canvas.Left="32" Canvas.Top="114" Width="8" Height="8" Fill="#0E7C86" Opacity="0.7"/>
+            <Ellipse Canvas.Left="136" Canvas.Top="216" Width="8" Height="8" Fill="#0E7C86" Opacity="0.7"/>
+        </Canvas>
+
+        <StackPanel VerticalAlignment="Center" Margin="84,0,340,0">
+            <TextBlock FontSize="72" FontWeight="Bold" Foreground="#F4FBFC">
+                <Run Text="MALDA"/><Run Text="™" FontSize="22" BaselineAlignment="Top"/>
+            </TextBlock>
+            <TextBlock Text="Desktop IDE"
+                       FontSize="28"
+                       FontWeight="Medium"
+                       Foreground="#C5D4D8"
+                       Margin="0,4,0,0"/>
+            <Rectangle Width="72" Height="4" Fill="#0E7C86" HorizontalAlignment="Left" Margin="0,18,0,18"/>
+            <TextBlock Text="The AI-First Programming Language"
+                       FontSize="16"
+                       Foreground="#8AA3A8"/>
+            <TextBlock Text="Multi Agent Language with Development Automation"
+                       FontSize="16"
+                       Foreground="#8AA3A8"
+                       Margin="0,6,0,0"
+                       TextWrapping="Wrap"/>
+        </StackPanel>
+
+        <TextBlock x:Name="VersionText"
+                   VerticalAlignment="Bottom"
+                   HorizontalAlignment="Left"
+                   Margin="84,0,0,32"
+                   FontSize="14"
+                   Foreground="#6E868C"/>
+        <TextBlock x:Name="StatusText"
+                   VerticalAlignment="Bottom"
+                   HorizontalAlignment="Right"
+                   Margin="0,0,40,32"
+                   FontSize="14"
+                   Foreground="#8AA3A8"
+                   Visibility="Collapsed"/>
+    </Grid>
+</UserControl>

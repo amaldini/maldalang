@@ -125,6 +125,11 @@ public sealed class ShowcaseSession
             throw new InvalidOperationException("Showcase splitBeatMs and readyTimeoutMs must be non-negative, and readyTimeoutMs at least 1.");
         }
 
+        if (playlist.TitleHoldMs < 0)
+        {
+            throw new InvalidOperationException("Showcase titleHoldMs must be non-negative.");
+        }
+
         foreach (var scene in playlist.Scenes)
         {
             if (string.IsNullOrWhiteSpace(scene.File))
@@ -204,6 +209,7 @@ public sealed class ShowcasePlaylist
     public int Top { get; set; }
     public int SplitBeatMs { get; set; } = 800;
     public int ReadyTimeoutMs { get; set; } = 90000;
+    public int TitleHoldMs { get; set; } = 4500;
     public List<ShowcaseBrowsePick> Browse { get; set; } = new();
     public List<ShowcaseManualPage> Manual { get; set; } = new();
     public List<ShowcaseScene> Scenes { get; set; } = new();

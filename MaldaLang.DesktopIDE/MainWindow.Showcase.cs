@@ -96,6 +96,30 @@ public partial class MainWindow
 
     private Windows.ExampleBrowserWindow? _showcaseBrowser;
 
+    private async Task PlayTitleCardAsync(int frameX, int frameY, int frameWidth, int frameHeight)
+    {
+        var hold = _showcase?.Playlist.TitleHoldMs ?? 0;
+        if (hold <= 0)
+        {
+            return;
+        }
+
+        try
+        {
+            _showcaseCaption = "";
+            UpdateWindowChrome();
+            SplashOverlay.Visibility = Visibility.Visible;
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+            BringShowcaseToFront();
+            WriteShowcaseStatus("playing", frameX, frameY, frameWidth, frameHeight, "MALDA", error: null);
+            await Task.Delay(hold);
+        }
+        finally
+        {
+            SplashOverlay.Visibility = Visibility.Collapsed;
+        }
+    }
+
     private async Task PlayBrowseTourAsync(int frameX, int frameY, int frameWidth, int frameHeight)
     {
         var picks = _showcase?.Playlist.Browse;
@@ -224,6 +248,7 @@ public partial class MainWindow
 
             BringShowcaseToFront();
 
+            await PlayTitleCardAsync(x, y, width, height);
             await PlayBrowseTourAsync(x, y, width, height);
             await PlayManualTourAsync(x, y, width, height);
 
