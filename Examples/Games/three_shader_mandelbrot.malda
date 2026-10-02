@@ -105,6 +105,12 @@ if (root == null) {
     dom.setText(zoomLabel, "depth 10^-0");
     dom.append(root, zoomLabel);
 
+    if (dom.query("#malda-autoplay") != null) {
+        var showcaseFit = dom.create("style");
+        dom.setText(showcaseFit, "#status{display:none!important}html,body{overflow:hidden;margin:0;background:#020617}#app{min-height:0!important;background:#020617}#app>p,#app>div{display:none!important}#app h1{margin:8px 12px 0;font-size:14px;font-weight:600;line-height:1.2}#app canvas{position:fixed!important;left:8px!important;top:32px!important;width:calc(100vw - 16px)!important;height:calc(100vh - 44px)!important;object-fit:contain;object-position:center center;background:#020617}");
+        dom.append(root, showcaseFit);
+    }
+
     var iterRange = dom.query("#iterRange");
     var decadeRange = dom.query("#decadeRange");
 

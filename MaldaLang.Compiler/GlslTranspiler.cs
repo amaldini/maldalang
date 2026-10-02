@@ -64,7 +64,7 @@ public static class GlslTranspiler
             output.AppendLine();
         }
 
-        return output.ToString().TrimEnd() + Environment.NewLine;
+        return output.ToString().Replace("\r\n", "\n").Replace("\r", "\n").TrimEnd() + "\n";
     }
 
     public static string TranspileFunction(FunctionDeclaration function, string? emitName = null)

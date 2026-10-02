@@ -33,6 +33,12 @@ const MaldaApp = (() => {
             let physLine = mlRuntime.dom.create("p");
             mlRuntime.dom.setText(physLine, "Zoom 4.8   Cushion e 0.68   Ball e 0.92   Friction 1.65   Orbit 0.18");
             mlRuntime.dom.append(root, physLine);
+            if (mlRuntime.isTruthy((!mlRuntime.equals(mlRuntime.dom.query("#malda-autoplay"), null))))
+            {
+                let showcaseFit = mlRuntime.dom.create("style");
+                mlRuntime.dom.setText(showcaseFit, "#status{display:none!important}html,body{overflow:hidden;margin:0;background:#0b0a09}#app{min-height:0!important;background:#0b0a09}#app>p,#app>div{display:none!important}#app h1{margin:8px 12px 0;font-size:14px;font-weight:600;line-height:1.2}#app canvas{position:fixed!important;left:8px!important;top:32px!important;width:calc(100vw - 16px)!important;height:calc(100vh - 44px)!important;object-fit:contain;object-position:center center;background:#0b0a09}");
+                mlRuntime.dom.append(root, showcaseFit);
+            }
             let stopOrbitBtn = mlRuntime.dom.query("#stopOrbitBtn");
             let zoomRange = mlRuntime.dom.query("#zoomRange");
             let railRange = mlRuntime.dom.query("#railRange");
@@ -74,6 +80,8 @@ const MaldaApp = (() => {
             let aimAngle = 0;
             let shotPower = 0.12;
             let charging = false;
+            let autoplay = (!mlRuntime.equals(mlRuntime.dom.query("#malda-autoplay"), null));
+            let demoClock = 0;
             let aimMarkX = (-mlRuntime.coerceToFloat(1.7));
             let aimMarkZ = 0;
             let aimMarkValid = false;
@@ -653,6 +661,30 @@ const MaldaApp = (() => {
                 let still = ballsAreStill();
                 let mouseMoved = (mlRuntime.isTruthy((!mlRuntime.equals(mx, lastMouseX))) || mlRuntime.isTruthy((!mlRuntime.equals(my, lastMouseY))));
                 let mouseOnTable = (mlRuntime.isTruthy((mlRuntime.isTruthy((mlRuntime.isTruthy((mlRuntime.coerceToFloat(mx) >= mlRuntime.coerceToFloat(0))) && mlRuntime.isTruthy((mlRuntime.coerceToFloat(mx) < mlRuntime.coerceToFloat(width))))) && mlRuntime.isTruthy((mlRuntime.coerceToFloat(my) >= mlRuntime.coerceToFloat(0))))) && mlRuntime.isTruthy((mlRuntime.coerceToFloat(my) < mlRuntime.coerceToFloat(height))));
+                if (mlRuntime.isTruthy((mlRuntime.isTruthy(autoplay) && mlRuntime.isTruthy((mlRuntime.isTruthy((mlRuntime.isTruthy((mlRuntime.isTruthy((mlRuntime.isTruthy(mouseMoved) || mlRuntime.isTruthy(mlRuntime.three.isKeyDown(" ")))) || mlRuntime.isTruthy(mlRuntime.three.isMouseDown(0)))) || mlRuntime.isTruthy(mlRuntime.three.isKeyDown("a")))) || mlRuntime.isTruthy(mlRuntime.three.isKeyDown("d")))))))
+                {
+                    autoplay = false;
+                }
+                let demoHold = false;
+                if (mlRuntime.isTruthy(autoplay))
+                {
+                    if (mlRuntime.isTruthy((!mlRuntime.isTruthy(still))))
+                    {
+                        demoClock = 0;
+                    }
+                    else
+                    {
+                        if (mlRuntime.isTruthy(mlRuntime.equals(ballLive[0], 1)))
+                        {
+                            demoClock = (demoClock + dtSec);
+                            if (mlRuntime.isTruthy((mlRuntime.isTruthy((mlRuntime.coerceToFloat(demoClock) > mlRuntime.coerceToFloat(0.6))) && mlRuntime.isTruthy((mlRuntime.coerceToFloat(demoClock) < mlRuntime.coerceToFloat(1.45))))))
+                            {
+                                demoHold = true;
+                                aimAngle = 0.08;
+                            }
+                        }
+                    }
+                }
                 if (mlRuntime.isTruthy((mlRuntime.isTruthy(still) && mlRuntime.isTruthy(mlRuntime.equals(ballLive[0], 1)))))
                 {
                     if (mlRuntime.isTruthy((mlRuntime.isTruthy(mouseMoved) && mlRuntime.isTruthy(mouseOnTable))))
@@ -667,7 +699,7 @@ const MaldaApp = (() => {
                     {
                         aimAngle = (aimAngle + (mlRuntime.coerceToFloat(1.6) * mlRuntime.coerceToFloat(dtSec)));
                     }
-                    let holdShot = (mlRuntime.isTruthy(mlRuntime.three.isKeyDown(" ")) || mlRuntime.isTruthy((mlRuntime.isTruthy(mlRuntime.three.isMouseDown(0)) && mlRuntime.isTruthy(mouseOnTable))));
+                    let holdShot = (mlRuntime.isTruthy((mlRuntime.isTruthy(demoHold) || mlRuntime.isTruthy(mlRuntime.three.isKeyDown(" ")))) || mlRuntime.isTruthy((mlRuntime.isTruthy(mlRuntime.three.isMouseDown(0)) && mlRuntime.isTruthy(mouseOnTable))));
                     if (mlRuntime.isTruthy(holdShot))
                     {
                         if (mlRuntime.isTruthy((!mlRuntime.isTruthy(charging))))
