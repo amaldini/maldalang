@@ -100,6 +100,7 @@ if (root == null) {
     const BTN_PLY_Y = 398;
 
     const AI_THINK_MS = 220;
+    const MOVE_ANIM_MS = 200;
     const AI_PLY_MIN = 1;
     const AI_PLY_MAX = 3;
     const AI_PLY_DEFAULT = 1;
@@ -147,6 +148,22 @@ if (root == null) {
     var hoverSq = NO_SQUARE;
     var autoplay = dom.query("#malda-autoplay") != null;
     var autoplayRestartMs = 0;
+
+    // Presentation only. applyMove updates the board immediately; these fields
+    // remember the slide so render can lerp the glyphs. A castled rook and a
+    // captured piece are drawn from here until the slide ends. Clicks and the
+    // CPU wait so the next position does not start underneath the animation.
+    var animOn = false;
+    var animElapsed = 0;
+    var animFrom = NO_SQUARE;
+    var animTo = NO_SQUARE;
+    var animPiece = EMPTY;
+    var animFlag = MOVE_NORMAL;
+    var animCapSq = NO_SQUARE;
+    var animCapPiece = EMPTY;
+    var animRookFrom = NO_SQUARE;
+    var animRookTo = NO_SQUARE;
+    var animRookPiece = EMPTY;
 
     var saved = game.load("chess_save");
     if (saved != null) {
@@ -282,6 +299,42 @@ if (root == null) {
         gameOverLogged = false;
         aiWaitMs = 0;
         aiThinking = false;
+        clearAnim();
+    }
+
+    function clearAnim() {
+        animOn = false;
+        animElapsed = 0;
+        animFrom = NO_SQUARE;
+        animTo = NO_SQUARE;
+        animPiece = EMPTY;
+        animFlag = MOVE_NORMAL;
+        animCapSq = NO_SQUARE;
+        animCapPiece = EMPTY;
+        animRookFrom = NO_SQUARE;
+        animRookTo = NO_SQUARE;
+        animRookPiece = EMPTY;
+    }
+
+    function beginSlide(m, piece, capSq, capPiece, rookFrom, rookTo) {
+        animOn = true;
+        animElapsed = 0;
+        animFrom = m.from;
+        animTo = m.to;
+        animPiece = piece;
+        animFlag = m.flag;
+        animCapSq = capSq;
+        animCapPiece = capPiece;
+        animRookFrom = rookFrom;
+        animRookTo = rookTo;
+        animRookPiece = EMPTY;
+        if (rookFrom != NO_SQUARE) {
+            if (isWhite(piece)) {
+                animRookPiece = coded(ROOK, WHITE);
+            } else {
+                animRookPiece = coded(ROOK, BLACK);
+            }
+        }
     }
 
     function persist() {
@@ -738,7 +791,39 @@ if (root == null) {
     }
 
     function playMove(m) {
-        var captured = !isEmpty(board[m.to]) or m.flag == MOVE_EN_PASSANT;
+        var piece = board[m.from];
+        var capSq = NO_SQUARE;
+        var capPiece = EMPTY;
+        if (m.flag == MOVE_EN_PASSANT) {
+            capSq = m.to + 8;
+            if (!isWhite(piece)) {
+                capSq = m.to - 8;
+            }
+            capPiece = board[capSq];
+        } else if (!isEmpty(board[m.to])) {
+            capSq = m.to;
+            capPiece = board[m.to];
+        }
+        var rookFrom = NO_SQUARE;
+        var rookTo = NO_SQUARE;
+        if (m.flag == MOVE_CASTLE_KING or m.flag == MOVE_CASTLE_QUEEN) {
+            if (isWhite(piece)) {
+                if (m.flag == MOVE_CASTLE_KING) {
+                    rookFrom = H1;
+                    rookTo = F1;
+                } else {
+                    rookFrom = A1;
+                    rookTo = D1;
+                }
+            } else if (m.flag == MOVE_CASTLE_KING) {
+                rookFrom = H8;
+                rookTo = F8;
+            } else {
+                rookFrom = A8;
+                rookTo = D8;
+            }
+        }
+        var captured = capPiece != EMPTY;
         history.append(snapshot());
         applyMove(m);
         lastFrom = m.from;
@@ -748,6 +833,7 @@ if (root == null) {
         refreshStatus();
         playSfx(m, captured);
         persist();
+        beginSlide(m, piece, capSq, capPiece, rookFrom, rookTo);
     }
 
     function cycleAiPly() {
@@ -852,6 +938,7 @@ if (root == null) {
         legalForSel = [];
         aiWaitMs = 0;
         aiThinking = false;
+        clearAnim();
         refreshStatus();
         persist();
     }
@@ -913,7 +1000,7 @@ if (root == null) {
         if (isGameOver()) {
             return;
         }
-        if (aiThinking) {
+        if (aiThinking or animOn) {
             return;
         }
         if (vsCpu and side == BLACK) {
@@ -1116,34 +1203,111 @@ if (root == null) {
         drawPieceGlint(cx - 5, cy - 8, 4, p);
     }
 
-    function drawPiece(cx, cy, p) {
+    function drawPiece(cx, cy, p, lift) {
         var fill = pieceFill(p);
         var shade = pieceShade(p);
         var ink = pieceStroke(p);
         var gold = pieceGold(p);
         drawPieceShadow(cx, cy);
+        var py = cy - lift;
         match pieceKind(p) {
             case PAWN: {
-                drawPawn(cx, cy, fill, shade, ink, p);
+                drawPawn(cx, py, fill, shade, ink, p);
             }
             case KNIGHT: {
-                drawKnight(cx, cy, fill, shade, ink, p);
+                drawKnight(cx, py, fill, shade, ink, p);
             }
             case BISHOP: {
-                drawBishop(cx, cy, fill, shade, ink, gold, p);
+                drawBishop(cx, py, fill, shade, ink, gold, p);
             }
             case ROOK: {
-                drawRook(cx, cy, fill, shade, ink, p);
+                drawRook(cx, py, fill, shade, ink, p);
             }
             case QUEEN: {
-                drawQueen(cx, cy, fill, shade, ink, gold, p);
+                drawQueen(cx, py, fill, shade, ink, gold, p);
             }
             case KING: {
-                drawKing(cx, cy, fill, shade, ink, gold, p);
+                drawKing(cx, py, fill, shade, ink, gold, p);
             }
             default: {
             }
         }
+    }
+
+    function animProgress() {
+        var t = animElapsed / MOVE_ANIM_MS;
+        if (t < 0) {
+            return 0;
+        }
+        if (t > 1) {
+            return 1;
+        }
+        return t;
+    }
+
+    function easeOutCubic(t) {
+        var u = 1 - t;
+        return 1 - u * u * u;
+    }
+
+    function squareCx(sq) {
+        return BOARD_X + colOf(sq) * TILE + TILE / 2;
+    }
+
+    function squareCy(sq) {
+        return BOARD_Y + rowOf(sq) * TILE + TILE / 2 + 4;
+    }
+
+    function moveLift(piece, t) {
+        var amp = 8;
+        if (pieceKind(piece) == KNIGHT) {
+            amp = 30;
+        }
+        return math.sin(t * 3.14159265) * amp;
+    }
+
+    function animHidesSquare(sq) {
+        if (!animOn) {
+            return false;
+        }
+        if (sq == animTo) {
+            return true;
+        }
+        if (animRookFrom != NO_SQUARE and sq == animRookTo) {
+            return true;
+        }
+        return false;
+    }
+
+    function drawFlight(fromSq, toSq, piece, t, eased) {
+        var x = squareCx(fromSq) + (squareCx(toSq) - squareCx(fromSq)) * eased;
+        var y = squareCy(fromSq) + (squareCy(toSq) - squareCy(fromSq)) * eased;
+        drawPiece(x, y, piece, moveLift(piece, t));
+    }
+
+    function drawAnimations() {
+        if (!animOn) {
+            return;
+        }
+        var t = animProgress();
+        var eased = easeOutCubic(t);
+        if (animCapPiece != EMPTY) {
+            var showCap = true;
+            if (animFlag == MOVE_EN_PASSANT and eased > 0.72) {
+                showCap = false;
+            }
+            if (showCap) {
+                drawPiece(squareCx(animCapSq), squareCy(animCapSq), animCapPiece, 0);
+            }
+        }
+        if (animRookFrom != NO_SQUARE) {
+            drawFlight(animRookFrom, animRookTo, animRookPiece, t, eased);
+        }
+        var moving = animPiece;
+        if (animFlag == MOVE_PROMOTE and t > 0.82) {
+            moving = board[animTo];
+        }
+        drawFlight(animFrom, animTo, moving, t, eased);
     }
 
     function statusText() {
@@ -1207,7 +1371,14 @@ if (root == null) {
             handleClick(game.getMouseX(), game.getMouseY());
         }
 
-        if (autoplay and isGameOver()) {
+        if (animOn) {
+            animElapsed = animElapsed + dtMs;
+            if (animElapsed >= MOVE_ANIM_MS) {
+                clearAnim();
+            }
+        }
+
+        if (autoplay and isGameOver() and !animOn) {
             autoplayRestartMs = autoplayRestartMs + dtMs;
             if (autoplayRestartMs > 900) {
                 setupStart();
@@ -1218,7 +1389,7 @@ if (root == null) {
         }
 
         var cpuTurn = vsCpu and side == BLACK;
-        if ((autoplay or cpuTurn) and (status == STATUS_PLAY or status == STATUS_CHECK) and !aiThinking) {
+        if ((autoplay or cpuTurn) and (status == STATUS_PLAY or status == STATUS_CHECK) and !aiThinking and !animOn) {
             aiThinking = true;
             aiWaitMs = AI_THINK_MS;
             if (autoplay) {
@@ -1282,8 +1453,8 @@ if (root == null) {
                     }
                 }
 
-                if (!isEmpty(board[sq])) {
-                    drawPiece(x + TILE / 2, y + TILE / 2 + 4, board[sq]);
+                if (!isEmpty(board[sq]) and !animHidesSquare(sq)) {
+                    drawPiece(x + TILE / 2, y + TILE / 2 + 4, board[sq], 0);
                 }
             }
         }
@@ -1300,6 +1471,8 @@ if (root == null) {
             var hy = BOARD_Y + rowOf(hoverSq) * TILE;
             game.strokeRect(hx, hy, TILE, TILE, "#f8fafc", 1);
         }
+
+        drawAnimations();
 
         game.drawText("Chess", PANEL_X, 48, "#f8fafc", "32px sans-serif");
         game.drawText(statusText(), PANEL_X, 84, "#fde68a", "18px sans-serif");
