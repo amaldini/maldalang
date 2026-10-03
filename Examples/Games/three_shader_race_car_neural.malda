@@ -5,9 +5,10 @@
 // using realtime GPU ray tracing with 3D geometry, lighting, and shadows.
 // Pure-pursuit coach teaches the network via supervised learning.
 //
-// Note: Physics/AI uses curved circuit paths (Monza/Spa/Monaco), but the GPU
-// ray tracer renders a simplified rectangular track. Track geometry properly
-// following spline curves would require complex distance field intersection.
+// Track rendering: Physics/AI use curved circuit splines (Monza/Spa/Monaco).
+// The GPU ray tracer uses 2D signed distance field to show the actual curved
+// track layout on the ground plane. When rays hit the ground, we compute the
+// distance to the nearest track segment and color it as track vs grass.
 //
 // Q/E change circuit. C chase camera. N network only. T coach only. 
 // L blend mode. R reset brain. Space pause. Tab manual drive (WASD/arrows).
@@ -458,6 +459,127 @@ function considerHit(t: float, tHit: float) -> bool {
 }
 
 @shader()
+function trackPoint(index: int) -> vec2 {
+    if (index == 0) {
+        return uTrack0;
+    }
+    if (index == 1) {
+        return uTrack1;
+    }
+    if (index == 2) {
+        return uTrack2;
+    }
+    if (index == 3) {
+        return uTrack3;
+    }
+    if (index == 4) {
+        return uTrack4;
+    }
+    if (index == 5) {
+        return uTrack5;
+    }
+    if (index == 6) {
+        return uTrack6;
+    }
+    if (index == 7) {
+        return uTrack7;
+    }
+    if (index == 8) {
+        return uTrack8;
+    }
+    if (index == 9) {
+        return uTrack9;
+    }
+    if (index == 10) {
+        return uTrack10;
+    }
+    if (index == 11) {
+        return uTrack11;
+    }
+    if (index == 12) {
+        return uTrack12;
+    }
+    if (index == 13) {
+        return uTrack13;
+    }
+    if (index == 14) {
+        return uTrack14;
+    }
+    if (index == 15) {
+        return uTrack15;
+    }
+    if (index == 16) {
+        return uTrack16;
+    }
+    if (index == 17) {
+        return uTrack17;
+    }
+    if (index == 18) {
+        return uTrack18;
+    }
+    if (index == 19) {
+        return uTrack19;
+    }
+    if (index == 20) {
+        return uTrack20;
+    }
+    if (index == 21) {
+        return uTrack21;
+    }
+    if (index == 22) {
+        return uTrack22;
+    }
+    if (index == 23) {
+        return uTrack23;
+    }
+    if (index == 24) {
+        return uTrack24;
+    }
+    if (index == 25) {
+        return uTrack25;
+    }
+    if (index == 26) {
+        return uTrack26;
+    }
+    if (index == 27) {
+        return uTrack27;
+    }
+    if (index == 28) {
+        return uTrack28;
+    }
+    if (index == 29) {
+        return uTrack29;
+    }
+    if (index == 30) {
+        return uTrack30;
+    }
+    return uTrack31;
+}
+
+@shader()
+function distanceToTrack(p: vec2, trackW: float) -> float {
+    var minDist: float = 1000000.0;
+    var i: int = 0;
+    while (i < int(uTrackPts)) {
+        var next: int = i + 1;
+        if (next >= int(uTrackPts)) {
+            next = 0;
+        }
+        var a: vec2 = trackPoint(i);
+        var b: vec2 = trackPoint(next);
+        var pa: vec2 = p - a;
+        var ba: vec2 = b - a;
+        var h: float = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+        var d: float = length(pa - ba * h);
+        if (d < minDist) {
+            minDist = d;
+        }
+        i = i + 1;
+    }
+    return minDist - trackW;
+}
+
+@shader()
 function closestHit(
     origin: vec3,
     dir: vec3,
@@ -585,11 +707,28 @@ function closestHit(
         if (dot(normal, dir) > 0.0) {
             normal = -normal;
         }
-        var check: float = mod(floor(hit.x * 0.25) + floor(hit.z * 0.25), 2.0);
-        if (check < 0.5) {
-            albedo = vec3(0.18, 0.42, 0.18);
+        var distToTrack: float = distanceToTrack(vec2(hit.x, hit.z), uTrackW);
+        if (distToTrack < 0.0) {
+            var check: float = mod(floor(hit.x * 0.5) + floor(hit.z * 0.5), 2.0);
+            if (check < 0.5) {
+                albedo = vec3(0.15, 0.15, 0.16);
+            } else {
+                albedo = vec3(0.92, 0.92, 0.88);
+            }
+            var centerDist: float = abs(distToTrack + uTrackW * 0.5);
+            if (centerDist < 0.15) {
+                var stripe: float = mod(floor(length(vec2(hit.x, hit.z)) * 2.0), 4.0);
+                if (stripe < 2.0) {
+                    albedo = vec3(0.95, 0.85, 0.12);
+                }
+            }
         } else {
-            albedo = vec3(0.12, 0.28, 0.12);
+            var check: float = mod(floor(hit.x * 0.25) + floor(hit.z * 0.25), 2.0);
+            if (check < 0.5) {
+                albedo = vec3(0.18, 0.42, 0.18);
+            } else {
+                albedo = vec3(0.12, 0.28, 0.12);
+            }
         }
     }
     normal = normalize(normal);
@@ -684,6 +823,39 @@ var fragmentShader = glsl.compile({
         "float uAspect",
         "float uTrackW",
         "float uTrackL",
+        "float uTrackPts",
+        "vec2 uTrack0",
+        "vec2 uTrack1",
+        "vec2 uTrack2",
+        "vec2 uTrack3",
+        "vec2 uTrack4",
+        "vec2 uTrack5",
+        "vec2 uTrack6",
+        "vec2 uTrack7",
+        "vec2 uTrack8",
+        "vec2 uTrack9",
+        "vec2 uTrack10",
+        "vec2 uTrack11",
+        "vec2 uTrack12",
+        "vec2 uTrack13",
+        "vec2 uTrack14",
+        "vec2 uTrack15",
+        "vec2 uTrack16",
+        "vec2 uTrack17",
+        "vec2 uTrack18",
+        "vec2 uTrack19",
+        "vec2 uTrack20",
+        "vec2 uTrack21",
+        "vec2 uTrack22",
+        "vec2 uTrack23",
+        "vec2 uTrack24",
+        "vec2 uTrack25",
+        "vec2 uTrack26",
+        "vec2 uTrack27",
+        "vec2 uTrack28",
+        "vec2 uTrack29",
+        "vec2 uTrack30",
+        "vec2 uTrack31",
         "vec3 uCar0",
         "vec3 uCar1",
         "vec3 uCar2",
@@ -701,7 +873,7 @@ var fragmentShader = glsl.compile({
         "float uAngle6",
         "float uAngle7"
     ],
-    consts: ["float EPSILON = 0.0015"],
+    consts: ["float EPSILON = 0.0015", "int MAX_TRACK_PTS = 32"],
     functions: [
         "hitSphere",
         "hitBox",
@@ -717,6 +889,8 @@ var fragmentShader = glsl.compile({
         "hitCar",
         "carNormal",
         "considerHit",
+        "trackPoint",
+        "distanceToTrack",
         "closestHit",
         "inShadow",
         "localShade",
@@ -1295,6 +1469,39 @@ if (root == null) {
             "uAspect": aspect,
             "uTrackW": trackW,
             "uTrackL": trackL,
+            "uTrackPts": 0,
+            "uTrack0": [0, 0],
+            "uTrack1": [0, 0],
+            "uTrack2": [0, 0],
+            "uTrack3": [0, 0],
+            "uTrack4": [0, 0],
+            "uTrack5": [0, 0],
+            "uTrack6": [0, 0],
+            "uTrack7": [0, 0],
+            "uTrack8": [0, 0],
+            "uTrack9": [0, 0],
+            "uTrack10": [0, 0],
+            "uTrack11": [0, 0],
+            "uTrack12": [0, 0],
+            "uTrack13": [0, 0],
+            "uTrack14": [0, 0],
+            "uTrack15": [0, 0],
+            "uTrack16": [0, 0],
+            "uTrack17": [0, 0],
+            "uTrack18": [0, 0],
+            "uTrack19": [0, 0],
+            "uTrack20": [0, 0],
+            "uTrack21": [0, 0],
+            "uTrack22": [0, 0],
+            "uTrack23": [0, 0],
+            "uTrack24": [0, 0],
+            "uTrack25": [0, 0],
+            "uTrack26": [0, 0],
+            "uTrack27": [0, 0],
+            "uTrack28": [0, 0],
+            "uTrack29": [0, 0],
+            "uTrack30": [0, 0],
+            "uTrack31": [0, 0],
             "uCar0": [0, 0, -5],
             "uCar1": [-3, 0, -8],
             "uCar2": [3, 0, -8],
@@ -1402,6 +1609,20 @@ if (root == null) {
         three.setUniform(material, "uLightPos", [lightX, lightY, lightZ]);
         three.setUniform(material, "uTrackW", trackW);
         three.setUniform(material, "uTrackL", trackL);
+        var numPts = nPts;
+        if (numPts > 32) {
+            numPts = 32;
+        }
+        three.setUniform(material, "uTrackPts", numPts);
+        var tp = 0;
+        while (tp < 32) {
+            if (tp < nPts) {
+                three.setUniform(material, "uTrack" + string(tp), [trackPx[tp], trackPz[tp]]);
+            } else {
+                three.setUniform(material, "uTrack" + string(tp), [0, 0]);
+            }
+            tp = tp + 1;
+        }
         three.setUniform(material, "uCar0", [carX[0], 0, carZ[0]]);
         three.setUniform(material, "uCar1", [carX[1], 0, carZ[1]]);
         three.setUniform(material, "uCar2", [carX[2], 0, carZ[2]]);
