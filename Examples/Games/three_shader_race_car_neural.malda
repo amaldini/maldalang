@@ -944,10 +944,10 @@ if (root == null) {
             var target = sample.target;
             var hidden = nn.dense(obs, w1, b1, "tanh");
             var out = nn.dense(hidden.out, w2, b2, "tanh");
-            var loss = nn.mseGrad(out.out, target);
-            totalLoss = totalLoss + loss.loss;
-            var back2 = nn.denseBackward(out, loss.grad, "tanh");
-            var back1 = nn.denseBackward(hidden, back2.dInput, "tanh");
+            var upstream = nn.mseGrad(out.out, target);
+            totalLoss = totalLoss + 0.5 * (upstream[0] * upstream[0] + upstream[1] * upstream[1]);
+            var back2 = nn.denseBackward(hidden.out, w2, upstream, "tanh", out.pre);
+            var back1 = nn.denseBackward(obs, w1, back2.dInput, "tanh", hidden.pre);
             addMatrix(g2w, back2.dWeights);
             addVector(g2b, back2.dBias);
             addMatrix(g1w, back1.dWeights);
