@@ -1,4 +1,4 @@
-// Slider editor for scripts/showcase/playlist.json.
+// Slider editor for scripts/showcase/playlist.json and song-prompt.md.
 //
 // Run:  malda scripts/showcase/timeline_editor.malda
 // Open: http://localhost:8094/
@@ -6,9 +6,11 @@
 // Each cue has a slider. Dragging a cue later pushes the cues after it so
 // start times stay in order. Earlier and Later reorder cues inside the
 // example browser, the manual, and the scenes. Time slots stay put. A scene
-// lyric moves with that scene. Hear plays the soundtrack from that cue for
-// the number of seconds set on the page, starting at 3. Save writes
-// startMs, endMs, cue order, and the related notes in song-prompt.md.
+// lyric moves with that scene. The song prompt stays on screen: section
+// lengths, dream lines, and the order notes follow the page, and the rest
+// can be edited. Hear plays the soundtrack from that cue for the number of
+// seconds set on the page, starting at 3. Save writes the playlist and the
+// prompt.
 
 var playlistPath = io.pathJoin(getProgramDirectory(), "playlist.json");
 var promptPath = io.pathJoin(getProgramDirectory(), "song-prompt.md");
@@ -242,40 +244,182 @@ function cleanLyric(value) {
     return str.trim(line);
 }
 
-function writeSongPrompt(doc, lyrics, manualChanged) {
+function allDigits(value) {
+    if (str.length(value) == 0) {
+        return false;
+    }
+    for (var i = 0; i < str.length(value); i = i + 1) {
+        var ch = str.substring(value, i, 1);
+        if (str.indexOf("0123456789", ch) < 0) {
+            return false;
+        }
+    }
+    return true;
+}
+
+function roundedSeconds(ms) {
+    if (ms < 0) {
+        return 0;
+    }
+    var seconds = ms / 1000.0;
+    var whole = math.floor(seconds);
+    if (seconds - whole >= 0.5) {
+        whole = whole + 1;
+    }
+    return int(whole);
+}
+
+function runtimePhrase(endMs) {
+    var total = roundedSeconds(endMs);
+    var minutes = int(total / 60);
+    var seconds = total - minutes * 60;
+    if (minutes <= 0) {
+        return "About " + string(seconds) + " seconds";
+    }
+    if (seconds == 0) {
+        if (minutes == 1) {
+            return "About 1 minute";
+        }
+        return "About " + string(minutes) + " minutes";
+    }
+    var unit = "minutes";
+    if (minutes == 1) {
+        unit = "minute";
+    }
+    return "About " + string(minutes) + " " + unit + " " + string(seconds) + " seconds";
+}
+
+function looksLikeClock(span) {
+    if (str.length(span) == 0) {
+        return false;
+    }
+    var sawDigit = false;
+    var allowed = "0123456789 minutes";
+    for (var i = 0; i < str.length(span); i = i + 1) {
+        var ch = str.substring(span, i, 1);
+        if (str.indexOf("0123456789", ch) >= 0) {
+            sawDigit = true;
+        } else if (str.indexOf(allowed, ch) < 0) {
+            return false;
+        }
+    }
+    return sawDigit;
+}
+
+function replaceHeadingSeconds(text, label, seconds) {
+    var prefix = "[" + label + " – ";
+    var at = str.indexOf(text, prefix);
+    if (at < 0) {
+        return text;
+    }
+    var numberAt = at + str.length(prefix);
+    var rest = str.substring(text, numberAt, str.length(text) - numberAt);
+    var end = str.indexOf(rest, " seconds");
+    if (end < 0) {
+        return text;
+    }
+    var digits = str.substring(rest, 0, end);
+    if (not allDigits(digits)) {
+        return text;
+    }
+    var tailAt = numberAt + end;
+    return str.substring(text, 0, numberAt) + string(int(seconds)) + str.substring(text, tailAt, str.length(text) - tailAt);
+}
+
+function replaceRuntimeLength(text, endMs) {
+    var marker = "About ";
+    var at = str.indexOf(text, marker);
+    if (at < 0) {
+        return text;
+    }
+    var from = at + str.length(marker);
+    var rest = str.substring(text, from, str.length(text) - from);
+    var endWord = str.indexOf(rest, "seconds");
+    if (endWord < 0) {
+        return text;
+    }
+    var span = str.substring(rest, 0, endWord);
+    if (not looksLikeClock(span)) {
+        return text;
+    }
+    var phrase = runtimePhrase(endMs);
+    var tailAt = from + endWord + str.length("seconds");
+    return str.substring(text, 0, at) + phrase + str.substring(text, tailAt, str.length(text) - tailAt);
+}
+
+function replaceSectionDurations(text, doc) {
+    if (doc.browse.length == 0 or doc.manual.length == 0 or doc.scenes.length == 0) {
+        return text;
+    }
+    var browseStart = int(doc.browse[0].startMs);
+    var manualStart = int(doc.manual[0].startMs);
+    var sceneStart = int(doc.scenes[0].startMs);
+    var endMs = int(doc.endMs);
+    text = replaceHeadingSeconds(text, "Intro", roundedSeconds(browseStart));
+    text = replaceHeadingSeconds(text, "Catalog", roundedSeconds(manualStart - browseStart));
+    text = replaceHeadingSeconds(text, "Manual", roundedSeconds(sceneStart - manualStart));
+    text = replaceHeadingSeconds(text, "Dream", roundedSeconds(endMs - sceneStart));
+    return text;
+}
+
+function refreshSongPrompt(text, doc, lyrics, manualChanged) {
     if (lyrics == null or lyrics.length != doc.scenes.length) {
-        return "Each scene needs one lyric line.";
+        return { "error": "Each scene needs one lyric line.", "text": text };
     }
     var cleaned = [];
     for (var i = 0; i < lyrics.length; i = i + 1) {
         var line = cleanLyric(lyrics[i]);
         if (line == "") {
-            return "Each scene needs one lyric line.";
+            return { "error": "Each scene needs one lyric line.", "text": text };
         }
         cleaned.append(line);
     }
-    var text = io.readFile(promptPath);
     var withLyrics = replaceDreamLyrics(text, cleaned);
     if (withLyrics == "") {
-        return "Could not find the dream lyrics in song-prompt.md.";
+        return { "error": "Could not find the dream lyrics in song-prompt.md.", "text": text };
     }
     var withDream = replaceDreamOrder(withLyrics, doc.scenes);
     if (withDream == "") {
-        return "Could not find the dream order note in song-prompt.md.";
+        return { "error": "Could not find the dream order note in song-prompt.md.", "text": text };
     }
     var withCatalog = replaceOrderNote(withDream, "Catalog, in browse order:", "", captionSentence("Catalog, in browse order", doc.browse));
     if (withCatalog == "") {
-        return "Could not find the catalog order note in song-prompt.md.";
+        return { "error": "Could not find the catalog order note in song-prompt.md.", "text": text };
     }
     var withManual = withCatalog;
     if (manualChanged) {
         withManual = replaceOrderNote(withCatalog, "Manual, in page order:", "Manual:", captionSentence("Manual, in page order", doc.manual));
         if (withManual == "") {
-            return "Could not find the manual order note in song-prompt.md.";
+            return { "error": "Could not find the manual order note in song-prompt.md.", "text": text };
         }
     }
-    io.writeFile(promptPath, withManual);
+    var withTime = replaceRuntimeLength(replaceSectionDurations(withManual, doc), int(doc.endMs));
+    return { "error": "", "text": withTime };
+}
+
+function writeSongPrompt(doc, lyrics, manualChanged, baseText) {
+    var text = io.readFile(promptPath);
+    if (baseText != null and str.trim(string(baseText)) != "") {
+        text = string(baseText);
+    }
+    var refreshed = refreshSongPrompt(text, doc, lyrics, manualChanged);
+    if (refreshed.error != "") {
+        return refreshed.error;
+    }
+    io.writeFile(promptPath, refreshed.text);
     return "";
+}
+
+function previewPrompt(doc, lyrics) {
+    var raw = io.readFile(promptPath);
+    if (lyrics.length != doc.scenes.length) {
+        return replaceRuntimeLength(replaceSectionDurations(raw, doc), int(doc.endMs));
+    }
+    var refreshed = refreshSongPrompt(raw, doc, lyrics, false);
+    if (refreshed.error != "") {
+        return raw;
+    }
+    return refreshed.text;
 }
 
 function applyTimeline(doc, body) {
@@ -439,6 +583,7 @@ function editorScript() {
         "var audioLabel='';" +
         "var stopTimer=null;" +
         "var playToken=0;" +
+        "var applying=false;" +
         "function hearMs(){var n=Number(document.getElementById('hearSeconds').value);if(!isFinite(n)||n<1){n=3;}if(n>30){n=30;}return Math.round(n)*1000;}" +
         "function setAudioStatus(text){document.getElementById('audioName').textContent=text;}" +
         "function markPlaying(button){document.querySelectorAll('button.hear').forEach(function(el){el.classList.remove('playing');});if(button){button.classList.add('playing');}}" +
@@ -473,6 +618,28 @@ function editorScript() {
         "function cueInputs(){return [].slice.call(document.querySelectorAll('input[data-group]'));}" +
         "function rowsInGroup(group){return [].slice.call(document.querySelectorAll('.cue.'+group));}" +
         "function fmt(ms){var s=ms/1000;var m=Math.floor(s/60);var rem=s-m*60;var text=rem.toFixed(1);if(rem<10){text='0'+text;}return m+':'+text;}" +
+        "function splitPrompt(text){var norm=String(text).split(String.fromCharCode(13)).join('');return norm.split(String.fromCharCode(10));}" +
+        "function joinPrompt(lines){return lines.join(String.fromCharCode(10));}" +
+        "function promptBox(){return document.getElementById('songPrompt');}" +
+        "function setPrompt(next){var box=promptBox();if(!box||box.value===next){return;}var start=box.selectionStart;var end=box.selectionEnd;var focused=document.activeElement===box;box.value=next;if(focused){var max=next.length;box.selectionStart=Math.min(start,max);box.selectionEnd=Math.min(end,max);}}" +
+        "function digitsOnly(value){if(!value){return false;}for(var i=0;i<value.length;i++){var ch=value.charAt(i);if(ch<'0'||ch>'9'){return false;}}return true;}" +
+        "function roundedSeconds(ms){if(ms<0){ms=0;}return Math.round(ms/1000);}" +
+        "function runtimePhrase(ms){var total=roundedSeconds(ms);var minutes=Math.floor(total/60);var seconds=total-minutes*60;if(minutes<=0){return 'About '+seconds+' seconds';}if(seconds===0){return minutes===1?'About 1 minute':'About '+minutes+' minutes';}return 'About '+minutes+' '+(minutes===1?'minute':'minutes')+' '+seconds+' seconds';}" +
+        "function replaceHeading(text,label,seconds){var prefix='['+label+' – ';var at=text.indexOf(prefix);if(at<0){return text;}var numberAt=at+prefix.length;var end=text.indexOf(' seconds',numberAt);if(end<0){return text;}if(!digitsOnly(text.slice(numberAt,end))){return text;}return text.slice(0,numberAt)+seconds+text.slice(end);}" +
+        "function looksLikeClock(span){if(!span){return false;}var saw=false;for(var i=0;i<span.length;i++){var ch=span.charAt(i);if(ch>='0'&&ch<='9'){saw=true;continue;}if(' minutes'.indexOf(ch)<0){return false;}}return saw;}" +
+        "function replaceRuntime(text,ms){var marker='About ';var at=text.indexOf(marker);if(at<0){return text;}var from=at+marker.length;var endWord=text.indexOf('seconds',from);if(endWord<0){return text;}if(!looksLikeClock(text.slice(from,endWord))){return text;}return text.slice(0,at)+runtimePhrase(ms)+text.slice(endWord+'seconds'.length);}" +
+        "function groupStart(group){var rows=rowsInGroup(group);if(!rows.length){return 0;}return Number(rows[0].querySelector('input[type=range]').value);}" +
+        "function syncDurations(){var box=promptBox();if(!box){return;}var text=box.value;var browse=groupStart('browse');var manual=groupStart('manual');var scene=groupStart('scenes');var end=Number(endSlider.value);text=replaceHeading(text,'Intro',roundedSeconds(browse));text=replaceHeading(text,'Catalog',roundedSeconds(manual-browse));text=replaceHeading(text,'Manual',roundedSeconds(scene-manual));text=replaceHeading(text,'Dream',roundedSeconds(end-scene));text=replaceRuntime(text,end);setPrompt(text);}" +
+        "function paragraphAt(text,prefixes){var lines=splitPrompt(text);var start=-1;for(var i=0;i<lines.length;i++){for(var p=0;p<prefixes.length;p++){if(lines[i].indexOf(prefixes[p])===0){start=i;break;}}if(start>=0){break;}}if(start<0){return '';}var end=start+1;while(end<lines.length&&lines[end].trim()!==''){end++;}return lines.slice(start,end).join(String.fromCharCode(10));}" +
+        "function replaceParagraph(text,prefixes,sentence){var lines=splitPrompt(text);var start=-1;for(var i=0;i<lines.length;i++){for(var p=0;p<prefixes.length;p++){if(lines[i].indexOf(prefixes[p])===0){start=i;break;}}if(start>=0){break;}}if(start<0){return text;}var end=start+1;while(end<lines.length&&lines[end].trim()!==''){end++;}var next=lines.slice(0,start);splitPrompt(sentence).forEach(function(line){next.push(line);});for(var k=end;k<lines.length;k++){next.push(lines[k]);}return joinPrompt(next);}" +
+        "function extractDream(text){var lines=splitPrompt(text);var inDream=false;var inLines=false;var lyrics=[];for(var i=0;i<lines.length;i++){var line=lines[i];if(line.indexOf('[Dream')===0){inDream=true;inLines=false;}else if(inDream&&line.indexOf('[Outro')===0){break;}else if(inDream&&line.indexOf('[Female voice]')===0){inLines=true;}else if(inLines&&line.trim()!==''){lyrics.push(line.trim());}}return lyrics;}" +
+        "function replaceDream(text,lyrics){var lines=splitPrompt(text);var voice=-1;var inDream=false;for(var i=0;i<lines.length;i++){if(lines[i].indexOf('[Dream')===0){inDream=true;}else if(inDream&&lines[i].indexOf('[Female voice]')===0){voice=i;break;}}if(voice<0){return text;}var start=voice+1;var end=start;while(end<lines.length){if(lines[end].trim()===''||lines[end].indexOf('[')===0){break;}end++;}var next=lines.slice(0,start);for(var j=0;j<lyrics.length;j++){next.push(lyrics[j]);}for(var k=end;k<lines.length;k++){next.push(lines[k]);}return joinPrompt(next);}" +
+        "function oneLine(value){var text=splitPrompt(value).join(' ');var collapsed='';var prev='';for(var i=0;i<text.length;i++){var ch=text.charAt(i);if(ch===' '&&prev===' '){continue;}collapsed=collapsed+ch;prev=ch;}return collapsed.trim();}" +
+        "function sceneLyricLines(){return rowsInGroup('scenes').map(function(row){return oneLine(row.querySelector('.lyric').value);});}" +
+        "function syncLyrics(){if(applying){return;}applying=true;setPrompt(replaceDream(promptBox().value,sceneLyricLines()));applying=false;}" +
+        "function fileOrder(group){return rowsInGroup(group).map(function(row){return row.getAttribute('data-file');}).join('|');}" +
+        "function captions(group){return rowsInGroup(group).map(function(row){return row.querySelector('strong').textContent;});}" +
+        "function syncOrderNotes(){var text=promptBox().value;text=replaceParagraph(text,['Catalog, in browse order:'],'Catalog, in browse order: '+captions('browse').join(', ')+'.');text=replaceParagraph(text,['Dream, in scene order:'],'Dream, in scene order: '+captions('scenes').join(', ')+'.');if(fileOrder('manual')!==initialManual){text=replaceParagraph(text,['Manual, in page order:','Manual:'],'Manual, in page order: '+captions('manual').join(', ')+'.');}else if(originalManualNote){text=replaceParagraph(text,['Manual, in page order:','Manual:'],originalManualNote);}setPrompt(text);}" +
         "function paint(){" +
         "var inputs=cueInputs();" +
         "inputs.forEach(function(el){el.parentNode.querySelector('.readout').textContent=fmt(Number(el.value))+'  '+el.value+' ms';});" +
@@ -480,6 +647,7 @@ function editorScript() {
         "track.innerHTML='';" +
         "inputs.forEach(function(el){var mark=document.createElement('i');mark.className=el.getAttribute('data-group');mark.style.left=(Number(el.value)/max*100)+'%';mark.title=el.parentNode.querySelector('strong').textContent;track.appendChild(mark);});" +
         "var endMark=document.createElement('i');endMark.className='end';endMark.style.left=(Number(endSlider.value)/max*100)+'%';track.appendChild(endMark);" +
+        "syncDurations();" +
         "}" +
         "function ripple(index){" +
         "var inputs=cueInputs();" +
@@ -519,9 +687,18 @@ function editorScript() {
         "if(delta<0){row.parentNode.insertBefore(row, rows[dest]);}else{row.parentNode.insertBefore(row, rows[dest].nextSibling);}" +
         "rowsInGroup(group).forEach(function(item, slot){item.querySelector('input[type=range]').value=times[slot];});" +
         "paint();" +
+        "syncLyrics();" +
+        "syncOrderNotes();" +
+        "});" +
+        "document.body.addEventListener('input', function(event){" +
+        "var target=event.target;if(!target){return;}" +
+        "if(target.classList&&target.classList.contains('lyric')){syncLyrics();return;}" +
+        "if(target.id!=='songPrompt'||applying){return;}" +
+        "var lyrics=extractDream(target.value);var rows=rowsInGroup('scenes');if(lyrics.length!==rows.length){return;}" +
+        "applying=true;rows.forEach(function(row,i){row.querySelector('.lyric').value=lyrics[i];});applying=false;" +
         "});" +
         "document.getElementById('save').addEventListener('click', function(){" +
-        "var body={browse:[],manual:[],scenes:[],browseOrder:[],manualOrder:[],sceneOrder:[],lyrics:[],endMs:Number(endSlider.value)};" +
+        "var body={browse:[],manual:[],scenes:[],browseOrder:[],manualOrder:[],sceneOrder:[],lyrics:[],prompt:promptBox().value,endMs:Number(endSlider.value)};" +
         "cueInputs().forEach(function(el){body[el.getAttribute('data-group')].push(Number(el.value));});" +
         "rowsInGroup('browse').forEach(function(row){body.browseOrder.push(row.getAttribute('data-file'));});" +
         "rowsInGroup('manual').forEach(function(row){body.manualOrder.push(row.getAttribute('data-file'));});" +
@@ -530,14 +707,16 @@ function editorScript() {
         "fetch('/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(res){return res.text();}).then(function(text){" +
         "var data=JSON.parse(text);if(data.ok){location.href='/?saved=1';return;}status.textContent=data.error||'Could not save.';}).catch(function(){status.textContent='Could not reach the editor.';});" +
         "});" +
+        "var initialManual=fileOrder('manual');" +
+        "var originalManualNote=paragraphAt(promptBox().value,['Manual, in page order:','Manual:']);" +
         "paint();" +
         "})();";
 }
 
-function editorPageHtml(doc, lyrics, saved) {
+function editorPageHtml(doc, lyrics, saved, promptText) {
     var banner = "";
     if (saved == "1") {
-        banner = "<p class='ok'>Saved the playlist and the dream lyrics. Play the showcase again to hear the new cuts.</p>";
+        banner = "<p class='ok'>Saved the playlist and the song prompt. Play the showcase again to hear the new cuts.</p>";
     }
     if (lyrics.length != doc.scenes.length) {
         banner = banner + "<p class='warn'>The dream lyric count does not match the scenes. Fill one line per scene before saving.</p>";
@@ -547,8 +726,14 @@ function editorPageHtml(doc, lyrics, saved) {
         sceneRows(doc.scenes, lyrics);
     var endValue = string(int(doc.endMs));
     var css = "body{margin:0;font:15px/1.4 system-ui,sans-serif;background:#12141c;color:#e7e9f2}" +
-        "main{max-width:880px;margin:0 auto;padding:28px 20px 64px}" +
+        "main{max-width:1180px;margin:0 auto;padding:28px 20px 48px}" +
         "h1{font-size:22px;font-weight:600;margin:0 0 8px}" +
+        "h2{font-size:16px;font-weight:600;margin:0 0 6px}" +
+        ".layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,440px);gap:28px;align-items:start}" +
+        ".prompt-panel{position:sticky;top:12px}" +
+        ".prompt-panel p.lead{margin:0 0 8px;font-size:13px}" +
+        "#songPrompt{width:100%;height:calc(100vh - 188px);min-height:280px;box-sizing:border-box;resize:vertical;background:#1c2230;color:#e7e9f2;border:1px solid #2a3144;border-radius:8px;padding:12px;font:12.5px/1.45 ui-monospace,Consolas,monospace}" +
+        "@media (max-width:980px){.layout{grid-template-columns:1fr}.prompt-panel{position:static}#songPrompt{height:420px}}" +
         "p.lead,p.ok{color:#b7bfd4}p.ok{color:#8ddec4}" +
         ".track{position:relative;height:28px;margin:18px 0 28px;border-radius:999px;background:#232838}" +
         ".track i{position:absolute;top:6px;width:3px;height:16px;border-radius:2px;background:#7aa2ff}" +
@@ -559,7 +744,7 @@ function editorPageHtml(doc, lyrics, saved) {
         ".tag{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:#8b93a8}" +
         "input[type=range]{width:100%;accent-color:#8eb0ff}.readout{font-variant-numeric:tabular-nums;color:#d5dbeb;font-size:13px}" +
         ".lyric{flex:1;min-height:34px;resize:vertical;background:#1c2230;color:#e7e9f2;border:1px solid #2a3144;border-radius:6px;padding:6px 8px;font:inherit}" +
-        ".end-row{margin-top:18px}.actions{display:flex;gap:12px;align-items:center;margin-top:22px}" +
+        ".end-row{margin-top:18px}.actions{display:flex;gap:12px;align-items:center;margin-top:12px;flex-wrap:wrap}" +
         "button{background:#e7e9f2;color:#12141c;border:0;border-radius:8px;padding:8px 14px;font:inherit;font-weight:600}" +
         "button.nudge{background:#232838;color:#e7e9f2}" +
         "button.hear{background:#1d3a32;color:#d7f5ea}button.hear.playing{background:#8ddec4;color:#12141c}" +
@@ -569,16 +754,22 @@ function editorPageHtml(doc, lyrics, saved) {
         "#status{color:#f0c3c3}p.warn{color:#e2b15a}";
     return "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Showcase timeline</title><style>" + css + "</style></head><body><main>" +
         "<h1>Showcase timeline</h1>" +
-        "<p class='lead'>Times run from the splash. A cue stays up until the next slider. Earlier and Later reorder the example browser, the manual, and the scenes inside their own tour. A scene lyric moves with that scene. Hear plays the soundtrack from that cue for the number of seconds next to the soundtrack.</p>" +
+        "<p class='lead'>Times run from the splash. A cue stays up until the next slider. Earlier and Later reorder the example browser, the manual, and the scenes inside their own tour. A scene lyric moves with that scene. The song prompt stays aligned with this page. Hear plays the soundtrack from that cue for the number of seconds next to the soundtrack.</p>" +
         banner +
         "<div class='audio'><label for='trackFile'>Soundtrack</label><input id='trackFile' type='file' accept='audio/*'><label for='hearSeconds'>Seconds</label><input id='hearSeconds' type='number' min='1' max='30' step='1' value='3'><span id='audioName'>Choose the song. Hear uses the seconds field.</span></div>" +
         "<audio id='previewAudio'></audio>" +
+        "<div class='layout'><div>" +
         "<div class='track' id='track'></div>" +
         rows +
         "<div class='cue end-row'><div class='meta'><span class='tag'>End</span><strong>Reel ends</strong></div>" +
         "<input id='endMs' type='range' min='0' max='" + string(timelineMaxMs) + "' step='100' value='" + endValue + "'>" +
         "<span class='readout' id='endReadout'></span></div>" +
+        "</div><aside class='prompt-panel'>" +
+        "<h2>Song prompt</h2>" +
+        "<p class='lead'>Section lengths, dream lines, and the order notes follow this page. Edit the style and the sung lines here. Save writes song-prompt.md.</p>" +
+        "<textarea id='songPrompt' spellcheck='false'>" + htmlText(promptText) + "</textarea>" +
         "<div class='actions'><button id='save' type='button'>Save</button><span id='status'></span></div>" +
+        "</aside></div>" +
         "</main><script>" + editorScript() + "</script></body></html>";
 }
 
@@ -586,7 +777,7 @@ function editorPageHtml(doc, lyrics, saved) {
 function timelinePage(saved) {
     var doc = loadPlaylist();
     var lyrics = extractDreamLyrics(io.readFile(promptPath));
-    return editorPageHtml(doc, lyrics, saved);
+    return editorPageHtml(doc, lyrics, saved, previewPrompt(doc, lyrics));
 }
 
 @POST("/save")
@@ -600,8 +791,15 @@ function saveTimeline(body) {
     if (problem != "") {
         return "{\"ok\":false,\"error\":" + toJSON(problem) + "}";
     }
+    if (body.prompt != null and str.trim(string(body.prompt)) == "") {
+        return "{\"ok\":false,\"error\":" + toJSON("The song prompt is empty.") + "}";
+    }
     if (body.lyrics != null) {
-        var lyricProblem = writeSongPrompt(doc, body.lyrics, not sameOrder(manualBefore, fileList(doc.manual)));
+        var promptBase = null;
+        if (body.prompt != null) {
+            promptBase = string(body.prompt);
+        }
+        var lyricProblem = writeSongPrompt(doc, body.lyrics, not sameOrder(manualBefore, fileList(doc.manual)), promptBase);
         if (lyricProblem != "") {
             return "{\"ok\":false,\"error\":" + toJSON(lyricProblem) + "}";
         }
@@ -722,9 +920,54 @@ if (io.getEnvOr("MALDA_TIMELINE_SELFTEST") == "1") {
         io.print("manual order note was not rewritten");
         exit(1);
     }
-    var page = editorPageHtml(original, dream, "");
+    if (roundedSeconds(59700) != 60 or roundedSeconds(4500) != 5 or roundedSeconds(95600) != 96) {
+        io.print("rounded seconds are off");
+        exit(1);
+    }
+    var refreshed = refreshSongPrompt(promptText, original, dream, false);
+    if (refreshed.error != "") {
+        io.print(refreshed.error);
+        exit(1);
+    }
+    if (str.indexOf(refreshed.text, "60 seconds, same tempo") < 0) {
+        io.print("dream duration was not updated");
+        exit(1);
+    }
+    if (str.indexOf(refreshed.text, "5 seconds, pads only") < 0 or str.indexOf(refreshed.text, "19 seconds, one continuous") < 0) {
+        io.print("intro or catalog duration was not kept");
+        exit(1);
+    }
+    if (str.indexOf(refreshed.text, "About 1 minute 36 seconds") < 0) {
+        io.print("runtime length was not updated");
+        exit(1);
+    }
+    if (str.indexOf(refreshed.text, "Many agents, one objective") < 0) {
+        io.print("manual note was rewritten without a reorder");
+        exit(1);
+    }
+    if (str.indexOf(refreshed.text, "[Outro") < 0 or str.indexOf(refreshed.text, "soft dream-pop") < 0) {
+        io.print("prompt body was dropped");
+        exit(1);
+    }
+    var custom = str.replace(promptText, "airy and melodic", "airy and melodic, edited");
+    var kept = refreshSongPrompt(custom, original, dream, false);
+    if (kept.error != "" or str.indexOf(kept.text, "airy and melodic, edited") < 0) {
+        io.print("prompt edits were dropped");
+        exit(1);
+    }
+    var manualRefreshed = refreshSongPrompt(promptText, manualMoved, dream, true);
+    if (manualRefreshed.error != "" or str.indexOf(manualRefreshed.text, "Manual, in page order: ") < 0 or str.indexOf(manualRefreshed.text, "Multi-agent") < 0) {
+        io.print("manual reorder did not refresh the song prompt");
+        exit(1);
+    }
+    var preview = previewPrompt(original, dream);
+    var page = editorPageHtml(original, dream, "", preview);
     if (str.indexOf(page, "class='hear'") < 0 or str.indexOf(page, "id='trackFile'") < 0 or str.indexOf(page, "id='hearSeconds'") < 0 or str.indexOf(page, "value='3'") < 0) {
         io.print("soundtrack preview controls are missing");
+        exit(1);
+    }
+    if (str.indexOf(page, "id='songPrompt'") < 0 or str.indexOf(page, "About 1 minute 36 seconds") < 0 or str.indexOf(page, "Printed clean.") < 0 or str.indexOf(page, "prompt:promptBox().value") < 0) {
+        io.print("song prompt preview is missing");
         exit(1);
     }
     io.print("timeline editor self-test ok");
