@@ -16,8 +16,10 @@ The recorder trims its lead-in so the video file starts on that same
 clock, then muxes `-Audio` from the start of the file. Put a lyric on a
 section by setting that cue's `startMs` to the lyric's time in the song.
 `malda scripts/showcase/timeline_editor.malda` opens sliders for those
-times at http://localhost:8094/. Earlier and Later reorder scenes, and
-each scene has its dream lyric. Save writes the playlist and this prompt.
+times at http://localhost:8094/. Earlier and Later reorder the example
+browser, the manual pages, and the scenes inside their own tour. Each
+scene has its dream lyric. Hear plays from that cue for the number of
+seconds set on the page, starting at 3. Save writes the playlist and this prompt.
 A scene still compiles at the beginning of its slot; the slot ends on
 the next `startMs`, and a later cue waits for its own `startMs` when the
 reel is ahead of the clock.

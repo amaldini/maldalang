@@ -4,9 +4,11 @@
 // Open: http://localhost:8094/
 //
 // Each cue has a slider. Dragging a cue later pushes the cues after it so
-// start times stay in order. Scene rows can move earlier or later; the lyric
-// line moves with the scene and the time slots stay put. Save writes startMs,
-// endMs, scene order, and the dream lyrics in song-prompt.md.
+// start times stay in order. Earlier and Later reorder cues inside the
+// example browser, the manual, and the scenes. Time slots stay put. A scene
+// lyric moves with that scene. Hear plays the soundtrack from that cue for
+// the number of seconds set on the page, starting at 3. Save writes
+// startMs, endMs, cue order, and the related notes in song-prompt.md.
 
 var playlistPath = io.pathJoin(getProgramDirectory(), "playlist.json");
 var promptPath = io.pathJoin(getProgramDirectory(), "song-prompt.md");
@@ -52,16 +54,16 @@ function assignStarts(group, values) {
     return "";
 }
 
-function reorderScenes(doc, order) {
-    if (order == null or order.length != doc.scenes.length) {
-        return "Scene order does not match the playlist.";
+function takeOrder(items, order, label) {
+    if (order == null or order.length != items.length) {
+        return { "error": label + " order does not match the playlist.", "items": items };
     }
     var used = [];
     var next = [];
     for (var i = 0; i < order.length; i = i + 1) {
         var found = -1;
-        for (var j = 0; j < doc.scenes.length; j = j + 1) {
-            if (doc.scenes[j].file == order[i]) {
+        for (var j = 0; j < items.length; j = j + 1) {
+            if (items[j].file == order[i]) {
                 var already = false;
                 for (var u = 0; u < used.length; u = u + 1) {
                     if (used[u] == j) {
@@ -75,13 +77,54 @@ function reorderScenes(doc, order) {
             }
         }
         if (found < 0) {
-            return "Unknown scene in the new order.";
+            return { "error": "Unknown " + label + " in the new order.", "items": items };
         }
         used.append(found);
-        next.append(doc.scenes[found]);
+        next.append(items[found]);
     }
-    doc.scenes = next;
+    return { "error": "", "items": next };
+}
+
+function applyListedOrder(doc, items, order, label) {
+    if (order == null) {
+        return "";
+    }
+    var taken = takeOrder(items, order, label);
+    if (taken.error != "") {
+        return taken.error;
+    }
+    if (label == "browse cue") {
+        doc.browse = taken.items;
+    } else if (label == "manual page") {
+        doc.manual = taken.items;
+    } else {
+        doc.scenes = taken.items;
+    }
     return "";
+}
+
+function reorderScenes(doc, order) {
+    return applyListedOrder(doc, doc.scenes, order, "scene");
+}
+
+function fileList(items) {
+    var files = [];
+    for (var i = 0; i < items.length; i = i + 1) {
+        files.append(items[i].file);
+    }
+    return files;
+}
+
+function sameOrder(before, after) {
+    if (before.length != after.length) {
+        return false;
+    }
+    for (var i = 0; i < before.length; i = i + 1) {
+        if (before[i] != after[i]) {
+            return false;
+        }
+    }
+    return true;
 }
 
 function splitLines(text) {
@@ -149,19 +192,28 @@ function replaceDreamLyrics(text, lyrics) {
     return spliceLines(lines, start, end, lyrics);
 }
 
-function replaceDreamOrder(text, scenes) {
+function captionSentence(label, items) {
     var names = [];
-    for (var i = 0; i < scenes.length; i = i + 1) {
-        names.append(scenes[i].caption);
+    for (var i = 0; i < items.length; i = i + 1) {
+        names.append(items[i].caption);
     }
-    var sentence = "Dream, in scene order: " + str.join(names, ", ") + ".";
-    var lines = splitLines(text);
-    var start = -1;
-    for (var n = 0; n < lines.length; n = n + 1) {
-        if (str.startsWith(lines[n], "Dream, in scene order:")) {
-            start = n;
-            break;
+    return label + ": " + str.join(names, ", ") + ".";
+}
+
+function lineIndex(lines, prefix) {
+    for (var i = 0; i < lines.length; i = i + 1) {
+        if (str.startsWith(lines[i], prefix)) {
+            return i;
         }
+    }
+    return -1;
+}
+
+function replaceOrderNote(text, prefix, altPrefix, sentence) {
+    var lines = splitLines(text);
+    var start = lineIndex(lines, prefix);
+    if (start < 0 and altPrefix != "") {
+        start = lineIndex(lines, altPrefix);
     }
     if (start < 0) {
         return "";
@@ -178,6 +230,10 @@ function replaceDreamOrder(text, scenes) {
     return spliceLines(lines, start, end, replacement);
 }
 
+function replaceDreamOrder(text, scenes) {
+    return replaceOrderNote(text, "Dream, in scene order:", "", captionSentence("Dream, in scene order", scenes));
+}
+
 function cleanLyric(value) {
     var line = str.trim(string(value));
     while (str.indexOf(line, "\n") >= 0) {
@@ -186,8 +242,8 @@ function cleanLyric(value) {
     return str.trim(line);
 }
 
-function writeSongPrompt(scenes, lyrics) {
-    if (lyrics == null or lyrics.length != scenes.length) {
+function writeSongPrompt(doc, lyrics, manualChanged) {
+    if (lyrics == null or lyrics.length != doc.scenes.length) {
         return "Each scene needs one lyric line.";
     }
     var cleaned = [];
@@ -203,20 +259,37 @@ function writeSongPrompt(scenes, lyrics) {
     if (withLyrics == "") {
         return "Could not find the dream lyrics in song-prompt.md.";
     }
-    var withOrder = replaceDreamOrder(withLyrics, scenes);
-    if (withOrder == "") {
+    var withDream = replaceDreamOrder(withLyrics, doc.scenes);
+    if (withDream == "") {
         return "Could not find the dream order note in song-prompt.md.";
     }
-    io.writeFile(promptPath, withOrder);
+    var withCatalog = replaceOrderNote(withDream, "Catalog, in browse order:", "", captionSentence("Catalog, in browse order", doc.browse));
+    if (withCatalog == "") {
+        return "Could not find the catalog order note in song-prompt.md.";
+    }
+    var withManual = withCatalog;
+    if (manualChanged) {
+        withManual = replaceOrderNote(withCatalog, "Manual, in page order:", "Manual:", captionSentence("Manual, in page order", doc.manual));
+        if (withManual == "") {
+            return "Could not find the manual order note in song-prompt.md.";
+        }
+    }
+    io.writeFile(promptPath, withManual);
     return "";
 }
 
 function applyTimeline(doc, body) {
-    if (body.sceneOrder != null) {
-        var moved = reorderScenes(doc, body.sceneOrder);
-        if (moved != "") {
-            return moved;
-        }
+    var moved = applyListedOrder(doc, doc.browse, body.browseOrder, "browse cue");
+    if (moved != "") {
+        return moved;
+    }
+    moved = applyListedOrder(doc, doc.manual, body.manualOrder, "manual page");
+    if (moved != "") {
+        return moved;
+    }
+    moved = applyListedOrder(doc, doc.scenes, body.sceneOrder, "scene");
+    if (moved != "") {
+        return moved;
     }
     var problem = assignStarts(doc.browse, body.browse);
     if (problem != "") {
@@ -320,14 +393,14 @@ function cueRow(kind, label, index, cue, lyric) {
     var caption = htmlText(cue.caption);
     var start = string(int(cue.startMs));
     var indexText = string(index);
-    var extra = "";
+    var extra = "<div class='cue-bar'>" +
+        "<button type='button' class='hear'>Hear</button>" +
+        "<button type='button' class='nudge' data-delta='-1'>Earlier</button>" +
+        "<button type='button' class='nudge' data-delta='1'>Later</button>";
     if (kind == "scenes") {
-        extra = "<div class='scene-bar'>" +
-            "<button type='button' class='nudge' data-delta='-1'>Earlier</button>" +
-            "<button type='button' class='nudge' data-delta='1'>Later</button>" +
-            "<textarea class='lyric' rows='1'>" + htmlText(lyric) + "</textarea>" +
-            "</div>";
+        extra = extra + "<textarea class='lyric' rows='1'>" + htmlText(lyric) + "</textarea>";
     }
+    extra = extra + "</div>";
     return "<div class='cue " + kind + "' data-file='" + htmlText(cue.file) + "'>" +
         "<div class='meta'><span class='tag'>" + label + "</span><strong>" + caption + "</strong><span class='file'>" + file + "</span></div>" +
         "<input type='range' min='0' max='" + string(timelineMaxMs) + "' step='100' value='" + start + "' data-group='" + kind + "' data-index='" + indexText + "'>" +
@@ -362,8 +435,43 @@ function editorScript() {
         "var endSlider=document.getElementById('endMs');" +
         "var track=document.getElementById('track');" +
         "var max=Number(endSlider.max);" +
+        "var audio=document.getElementById('previewAudio');" +
+        "var audioLabel='';" +
+        "var stopTimer=null;" +
+        "var playToken=0;" +
+        "function hearMs(){var n=Number(document.getElementById('hearSeconds').value);if(!isFinite(n)||n<1){n=3;}if(n>30){n=30;}return Math.round(n)*1000;}" +
+        "function setAudioStatus(text){document.getElementById('audioName').textContent=text;}" +
+        "function markPlaying(button){document.querySelectorAll('button.hear').forEach(function(el){el.classList.remove('playing');});if(button){button.classList.add('playing');}}" +
+        "function stopPreview(){playToken=playToken+1;if(stopTimer){clearTimeout(stopTimer);stopTimer=null;}audio.pause();markPlaying(null);if(audioLabel){setAudioStatus(audioLabel);}}" +
+        "function preview(row, button){" +
+        "if(!audio.src){setAudioStatus('Choose a soundtrack first.');return;}" +
+        "var ms=Number(row.querySelector('input[type=range]').value);" +
+        "var start=ms/1000;" +
+        "var token=playToken+1;playToken=token;" +
+        "if(stopTimer){clearTimeout(stopTimer);stopTimer=null;}" +
+        "audio.pause();" +
+        "function begin(){" +
+        "if(token!==playToken){return;}" +
+        "if(isFinite(audio.duration)&&start>=audio.duration){markPlaying(null);setAudioStatus('That time is past the end of the track.');return;}" +
+        "var started=false;" +
+        "function arm(){" +
+        "if(started||token!==playToken){return;}" +
+        "started=true;" +
+        "audio.removeEventListener('seeked', arm);" +
+        "markPlaying(button);" +
+        "var hold=hearMs();" +
+        "setAudioStatus('Playing '+fmt(ms)+' for '+(hold/1000)+'s');" +
+        "audio.play().catch(function(){markPlaying(null);setAudioStatus('Could not play that moment.');});" +
+        "stopTimer=setTimeout(function(){if(token!==playToken){return;}audio.pause();markPlaying(null);setAudioStatus(audioLabel);}, hold);" +
+        "}" +
+        "audio.addEventListener('seeked', arm);" +
+        "try{audio.currentTime=start;}catch(err){setAudioStatus('Could not play that moment.');return;}" +
+        "if(Math.abs(audio.currentTime-start)<0.2){arm();}" +
+        "}" +
+        "if(audio.readyState>=1){begin();}else{audio.addEventListener('loadedmetadata', function onMeta(){audio.removeEventListener('loadedmetadata', onMeta);begin();});}" +
+        "}" +
         "function cueInputs(){return [].slice.call(document.querySelectorAll('input[data-group]'));}" +
-        "function sceneRows(){return [].slice.call(document.querySelectorAll('.cue.scenes'));}" +
+        "function rowsInGroup(group){return [].slice.call(document.querySelectorAll('.cue.'+group));}" +
         "function fmt(ms){var s=ms/1000;var m=Math.floor(s/60);var rem=s-m*60;var text=rem.toFixed(1);if(rem<10){text='0'+text;}return m+':'+text;}" +
         "function paint(){" +
         "var inputs=cueInputs();" +
@@ -385,24 +493,39 @@ function editorScript() {
         "}" +
         "cueInputs().forEach(function(el){el.addEventListener('input', function(){ripple(cueInputs().indexOf(el));});});" +
         "endSlider.addEventListener('input', function(){var inputs=cueInputs();var last=Number(inputs[inputs.length-1].value);if(Number(endSlider.value)<last+gap){endSlider.value=String(last+gap);}paint();});" +
+        "document.getElementById('trackFile').addEventListener('change', function(){" +
+        "var file=this.files&&this.files[0];" +
+        "stopPreview();" +
+        "if(!file){audioLabel='';audio.removeAttribute('src');setAudioStatus('Choose the song to hear 3 seconds from each cue.');return;}" +
+        "if(audio.src){URL.revokeObjectURL(audio.src);}" +
+        "audio.src=URL.createObjectURL(file);" +
+        "audioLabel=file.name;" +
+        "setAudioStatus(file.name);" +
+        "});" +
+        "audio.addEventListener('ended', function(){if(stopTimer){clearTimeout(stopTimer);stopTimer=null;}markPlaying(null);if(audioLabel){setAudioStatus(audioLabel);}});" +
         "document.body.addEventListener('click', function(event){" +
+        "var hear=event.target.closest('button.hear');" +
+        "if(hear){preview(hear.closest('.cue'), hear);return;}" +
         "var button=event.target.closest('button.nudge');" +
         "if(!button){return;}" +
-        "var row=button.closest('.cue.scenes');" +
-        "var rows=sceneRows();" +
+        "var row=button.closest('.cue');" +
+        "var group=row.querySelector('input[data-group]').getAttribute('data-group');" +
+        "var rows=rowsInGroup(group);" +
         "var index=rows.indexOf(row);" +
         "var delta=Number(button.getAttribute('data-delta'));" +
         "var dest=index+delta;" +
         "if(dest<0||dest>=rows.length){return;}" +
         "var times=rows.map(function(item){return item.querySelector('input[type=range]').value;});" +
         "if(delta<0){row.parentNode.insertBefore(row, rows[dest]);}else{row.parentNode.insertBefore(row, rows[dest].nextSibling);}" +
-        "sceneRows().forEach(function(item, slot){item.querySelector('input[type=range]').value=times[slot];});" +
+        "rowsInGroup(group).forEach(function(item, slot){item.querySelector('input[type=range]').value=times[slot];});" +
         "paint();" +
         "});" +
         "document.getElementById('save').addEventListener('click', function(){" +
-        "var body={browse:[],manual:[],scenes:[],sceneOrder:[],lyrics:[],endMs:Number(endSlider.value)};" +
+        "var body={browse:[],manual:[],scenes:[],browseOrder:[],manualOrder:[],sceneOrder:[],lyrics:[],endMs:Number(endSlider.value)};" +
         "cueInputs().forEach(function(el){body[el.getAttribute('data-group')].push(Number(el.value));});" +
-        "sceneRows().forEach(function(row){body.sceneOrder.push(row.getAttribute('data-file'));body.lyrics.push(row.querySelector('.lyric').value);});" +
+        "rowsInGroup('browse').forEach(function(row){body.browseOrder.push(row.getAttribute('data-file'));});" +
+        "rowsInGroup('manual').forEach(function(row){body.manualOrder.push(row.getAttribute('data-file'));});" +
+        "rowsInGroup('scenes').forEach(function(row){body.sceneOrder.push(row.getAttribute('data-file'));body.lyrics.push(row.querySelector('.lyric').value);});" +
         "var status=document.getElementById('status');status.textContent='Saving…';" +
         "fetch('/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(res){return res.text();}).then(function(text){" +
         "var data=JSON.parse(text);if(data.ok){location.href='/?saved=1';return;}status.textContent=data.error||'Could not save.';}).catch(function(){status.textContent='Could not reach the editor.';});" +
@@ -431,7 +554,7 @@ function editorPageHtml(doc, lyrics, saved) {
         ".track i{position:absolute;top:6px;width:3px;height:16px;border-radius:2px;background:#7aa2ff}" +
         ".track i.manual{background:#e2b15a}.track i.scenes{background:#7dcea0}.track i.end{background:#f2f4fb;height:22px;top:3px}" +
         ".cue{display:grid;grid-template-columns:220px 1fr 108px;gap:12px;align-items:center;padding:8px 0;border-top:1px solid #2a3144}" +
-        ".scene-bar{grid-column:1 / -1;display:flex;gap:8px;align-items:center}" +
+        ".cue-bar{grid-column:1 / -1;display:flex;gap:8px;align-items:center}" +
         ".meta{display:flex;flex-direction:column;min-width:0}.meta strong{font-weight:600}.file{color:#8b93a8;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}" +
         ".tag{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:#8b93a8}" +
         "input[type=range]{width:100%;accent-color:#8eb0ff}.readout{font-variant-numeric:tabular-nums;color:#d5dbeb;font-size:13px}" +
@@ -439,11 +562,17 @@ function editorPageHtml(doc, lyrics, saved) {
         ".end-row{margin-top:18px}.actions{display:flex;gap:12px;align-items:center;margin-top:22px}" +
         "button{background:#e7e9f2;color:#12141c;border:0;border-radius:8px;padding:8px 14px;font:inherit;font-weight:600}" +
         "button.nudge{background:#232838;color:#e7e9f2}" +
+        "button.hear{background:#1d3a32;color:#d7f5ea}button.hear.playing{background:#8ddec4;color:#12141c}" +
+        ".audio{display:flex;gap:12px;align-items:center;margin:8px 0 4px;color:#b7bfd4}" +
+        "#hearSeconds{width:72px;background:#1c2230;color:#e7e9f2;border:1px solid #2a3144;border-radius:6px;padding:6px 8px;font:inherit}" +
+        "#audioName{color:#8b93a8;font-size:13px}input[type=file]{color:#b7bfd4}" +
         "#status{color:#f0c3c3}p.warn{color:#e2b15a}";
     return "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Showcase timeline</title><style>" + css + "</style></head><body><main>" +
         "<h1>Showcase timeline</h1>" +
-        "<p class='lead'>Times run from the splash. A cue stays up until the next slider. Earlier and Later move a scene into another time slot and take its lyric with it.</p>" +
+        "<p class='lead'>Times run from the splash. A cue stays up until the next slider. Earlier and Later reorder the example browser, the manual, and the scenes inside their own tour. A scene lyric moves with that scene. Hear plays the soundtrack from that cue for the number of seconds next to the soundtrack.</p>" +
         banner +
+        "<div class='audio'><label for='trackFile'>Soundtrack</label><input id='trackFile' type='file' accept='audio/*'><label for='hearSeconds'>Seconds</label><input id='hearSeconds' type='number' min='1' max='30' step='1' value='3'><span id='audioName'>Choose the song. Hear uses the seconds field.</span></div>" +
+        "<audio id='previewAudio'></audio>" +
         "<div class='track' id='track'></div>" +
         rows +
         "<div class='cue end-row'><div class='meta'><span class='tag'>End</span><strong>Reel ends</strong></div>" +
@@ -466,12 +595,13 @@ function saveTimeline(body) {
         return "{\"ok\":false,\"error\":" + toJSON("Missing timeline.") + "}";
     }
     var doc = loadPlaylist();
+    var manualBefore = fileList(doc.manual);
     var problem = applyTimeline(doc, body);
     if (problem != "") {
         return "{\"ok\":false,\"error\":" + toJSON(problem) + "}";
     }
     if (body.lyrics != null) {
-        var lyricProblem = writeSongPrompt(doc.scenes, body.lyrics);
+        var lyricProblem = writeSongPrompt(doc, body.lyrics, not sameOrder(manualBefore, fileList(doc.manual)));
         if (lyricProblem != "") {
             return "{\"ok\":false,\"error\":" + toJSON(lyricProblem) + "}";
         }
@@ -549,6 +679,52 @@ if (io.getEnvOr("MALDA_TIMELINE_SELFTEST") == "1") {
     var orderNote = replaceDreamOrder(promptText, moved.scenes);
     if (orderNote == "" or str.indexOf(orderNote, "Dream, in scene order: " + moved.scenes[0].caption) < 0) {
         io.print("dream order note was not rewritten");
+        exit(1);
+    }
+    var browseMoved = loadPlaylist();
+    var browseOrder = [];
+    browseOrder.append(browseMoved.browse[1].file);
+    browseOrder.append(browseMoved.browse[0].file);
+    for (var browseIndex = 2; browseIndex < browseMoved.browse.length; browseIndex = browseIndex + 1) {
+        browseOrder.append(browseMoved.browse[browseIndex].file);
+    }
+    if (applyListedOrder(browseMoved, browseMoved.browse, browseOrder, "browse cue") != "") {
+        io.print("browse reorder failed");
+        exit(1);
+    }
+    if (int(browseMoved.browse[0].focusLine) != 13) {
+        io.print("browse focus line did not move with the example");
+        exit(1);
+    }
+    var catalogNote = replaceOrderNote(promptText, "Catalog, in browse order:", "", captionSentence("Catalog, in browse order", browseMoved.browse));
+    if (catalogNote == "" or str.indexOf(catalogNote, "Catalog, in browse order: Schemas") < 0) {
+        io.print("catalog order note was not rewritten");
+        exit(1);
+    }
+    var manualMoved = loadPlaylist();
+    var manualOrder = [];
+    for (var manualIndex = 0; manualIndex < 3; manualIndex = manualIndex + 1) {
+        manualOrder.append(manualMoved.manual[manualIndex].file);
+    }
+    manualOrder.append(manualMoved.manual[4].file);
+    manualOrder.append(manualMoved.manual[3].file);
+    manualOrder.append(manualMoved.manual[5].file);
+    if (applyListedOrder(manualMoved, manualMoved.manual, manualOrder, "manual page") != "") {
+        io.print("manual reorder failed");
+        exit(1);
+    }
+    if (manualMoved.manual[3].anchor != "declarative-agent-teams") {
+        io.print("manual anchor did not move with the page");
+        exit(1);
+    }
+    var manualNote = replaceOrderNote(promptText, "Manual, in page order:", "Manual:", captionSentence("Manual, in page order", manualMoved.manual));
+    if (manualNote == "" or str.indexOf(manualNote, "Manual, in page order:") < 0 or str.indexOf(manualNote, "Multi-agent") < 0) {
+        io.print("manual order note was not rewritten");
+        exit(1);
+    }
+    var page = editorPageHtml(original, dream, "");
+    if (str.indexOf(page, "class='hear'") < 0 or str.indexOf(page, "id='trackFile'") < 0 or str.indexOf(page, "id='hearSeconds'") < 0 or str.indexOf(page, "value='3'") < 0) {
+        io.print("soundtrack preview controls are missing");
         exit(1);
     }
     io.print("timeline editor self-test ok");
