@@ -5,6 +5,10 @@
 // using realtime GPU ray tracing with 3D geometry, lighting, and shadows.
 // Pure-pursuit coach teaches the network via supervised learning.
 //
+// Note: Physics/AI uses curved circuit paths (Monza/Spa/Monaco), but the GPU
+// ray tracer renders a simplified rectangular track. Track geometry properly
+// following spline curves would require complex distance field intersection.
+//
 // Q/E change circuit. C chase camera. N network only. T coach only. 
 // L blend mode. R reset brain. Space pause. Tab manual drive (WASD/arrows).
 
@@ -824,8 +828,8 @@ if (root == null) {
             trackBend.append(wrapAngle(trackTang[ahead] - trackTang[b]));
             b = b + 1;
         }
-        trackW = 4.0;
-        trackL = totalLen * 0.6;
+        trackW = 2.5;
+        trackL = totalLen * 0.5;
     }
 
     function loadCircuit(index: int) {
