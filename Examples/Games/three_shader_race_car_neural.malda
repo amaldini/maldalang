@@ -5,10 +5,9 @@
 // using realtime GPU ray tracing with 3D geometry, lighting, and shadows.
 // Pure-pursuit coach teaches the network via supervised learning.
 //
-// Track rendering: Physics/AI use curved circuit splines (Monza/Spa/Monaco).
-// The GPU ray tracer uses 2D signed distance field to show the actual curved
-// track layout on the ground plane. When rays hit the ground, we compute the
-// distance to the nearest track segment and color it as track vs grass.
+// Track rendering: Physics/AI and the ground shader share one curved centerline
+// (Monza/Spa/Monaco). Each polyline is scaled so the lap is 2400 units, the same
+// length the coach speeds were written for. Road half-width stays 2.5.
 //
 // Q/E change circuit. C chase camera. N network only. T coach only. 
 // L blend mode. R reset brain. Space pause. Tab manual drive (WASD/arrows).
@@ -33,7 +32,6 @@ function circuitCatalog() -> array {
     var circuits = [];
     circuits.append({
         "name": "Monza",
-        "scale": 0.12,
         "pts": [
             0.0, 80.0, 50.0, 78.0, 95.0, 70.0, 125.0, 50.0, 
             135.0, 20.0, 128.0, -15.0, 105.0, -35.0, 75.0, -40.0,
@@ -43,7 +41,6 @@ function circuitCatalog() -> array {
     });
     circuits.append({
         "name": "Spa",
-        "scale": 0.11,
         "pts": [
             0.0, 70.0, 40.0, 65.0, 75.0, 50.0, 105.0, 25.0,
             125.0, -5.0, 130.0, -35.0, 115.0, -55.0, 85.0, -65.0,
@@ -53,7 +50,6 @@ function circuitCatalog() -> array {
     });
     circuits.append({
         "name": "Monaco",
-        "scale": 0.15,
         "pts": [
             0.0, 55.0, 30.0, 52.0, 55.0, 42.0, 72.0, 25.0,
             78.0, 0.0, 70.0, -22.0, 50.0, -35.0, 22.0, -38.0,
@@ -613,46 +609,6 @@ function closestHit(
         i = i + 1;
     }
 
-    var trackW: float = uTrackW;
-    var trackL: float = uTrackL;
-    var wallH: float = 1.2;
-    var tTrack: float = hitBox(vec3(-trackW, 0.0, -trackL), vec3(trackW, 0.02, trackL), origin, dir);
-    if (considerHit(tTrack, tHit)) {
-        tHit = tTrack;
-        kind = 2;
-        index = 0;
-        material = 0;
-    }
-    var wallT: float = 0.25;
-    var tWall1: float = hitBox(vec3(-trackW - wallT, 0.0, -trackL), vec3(-trackW, wallH, trackL), origin, dir);
-    if (considerHit(tWall1, tHit)) {
-        tHit = tWall1;
-        kind = 3;
-        index = 0;
-        material = 0;
-    }
-    var tWall2: float = hitBox(vec3(trackW, 0.0, -trackL), vec3(trackW + wallT, wallH, trackL), origin, dir);
-    if (considerHit(tWall2, tHit)) {
-        tHit = tWall2;
-        kind = 3;
-        index = 1;
-        material = 0;
-    }
-    var tWall3: float = hitBox(vec3(-trackW, 0.0, -trackL - wallT), vec3(trackW, wallH, -trackL), origin, dir);
-    if (considerHit(tWall3, tHit)) {
-        tHit = tWall3;
-        kind = 3;
-        index = 2;
-        material = 0;
-    }
-    var tWall4: float = hitBox(vec3(-trackW, 0.0, trackL), vec3(trackW, wallH, trackL + wallT), origin, dir);
-    if (considerHit(tWall4, tHit)) {
-        tHit = tWall4;
-        kind = 3;
-        index = 3;
-        material = 0;
-    }
-
     if (abs(dir.y) > EPSILON) {
         var tGround: float = (-0.02 - origin.y) / dir.y;
         if (tGround > EPSILON && tGround < tHit) {
@@ -677,31 +633,6 @@ function closestHit(
         } else {
             albedo = vec3(0.08, 0.08, 0.09);
         }
-    } else if (kind == 2) {
-        normal = boxNormal(vec3(-trackW, 0.0, -trackL), vec3(trackW, 0.02, trackL), hit);
-        var check: float = mod(floor(hit.x * 0.5) + floor(hit.z * 0.5), 2.0);
-        if (check < 0.5) {
-            albedo = vec3(0.15, 0.15, 0.16);
-        } else {
-            albedo = vec3(0.92, 0.92, 0.88);
-        }
-        if (abs(hit.x) < 0.08) {
-            var stripe: float = mod(floor(hit.z * 2.0), 4.0);
-            if (stripe < 2.0) {
-                albedo = vec3(0.95, 0.85, 0.12);
-            }
-        }
-    } else if (kind == 3) {
-        if (index == 0) {
-            normal = boxNormal(vec3(-trackW - wallT, 0.0, -trackL), vec3(-trackW, wallH, trackL), hit);
-        } else if (index == 1) {
-            normal = boxNormal(vec3(trackW, 0.0, -trackL), vec3(trackW + wallT, wallH, trackL), hit);
-        } else if (index == 2) {
-            normal = boxNormal(vec3(-trackW, 0.0, -trackL - wallT), vec3(trackW, wallH, -trackL), hit);
-        } else {
-            normal = boxNormal(vec3(-trackW, 0.0, trackL), vec3(trackW, wallH, trackL + wallT), hit);
-        }
-        albedo = vec3(0.72, 0.18, 0.22);
     } else {
         normal = vec3(0.0, 1.0, 0.0);
         if (dot(normal, dir) > 0.0) {
@@ -822,7 +753,6 @@ var fragmentShader = glsl.compile({
         "float uTanHalf",
         "float uAspect",
         "float uTrackW",
-        "float uTrackL",
         "float uTrackPts",
         "vec2 uTrack0",
         "vec2 uTrack1",
@@ -948,15 +878,31 @@ if (root == null) {
     var trackBend = [];
     var totalLen = 1.0;
     var nPts = 0;
-    var trackScale = 0.12;
-    var trackW = 4.0;
-    var trackL = 25.0;
+    var trackScale = 1.0;
+    var trackW = 2.5;
+    var lapLen = 2400.0;
 
     function buildTrack(spec: map) {
         var pts = spec.pts;
+        var nRaw = int(pts.length / 2);
+        var rawLen = 0.0;
+        var r = 0;
+        while (r < nRaw) {
+            var rn = r + 1;
+            if (rn >= nRaw) {
+                rn = 0;
+            }
+            var rdx = pts[rn * 2] - pts[r * 2];
+            var rdz = pts[rn * 2 + 1] - pts[r * 2 + 1];
+            rawLen = rawLen + math.sqrt(rdx * rdx + rdz * rdz);
+            r = r + 1;
+        }
+        if (rawLen < 1.0) {
+            rawLen = 1.0;
+        }
         trackPx = [];
         trackPz = [];
-        trackScale = spec.scale;
+        trackScale = lapLen / rawLen;
         var i = 0;
         while (i < pts.length) {
             trackPx.append(pts[i] * trackScale);
@@ -1002,8 +948,6 @@ if (root == null) {
             trackBend.append(wrapAngle(trackTang[ahead] - trackTang[b]));
             b = b + 1;
         }
-        trackW = 2.5;
-        trackL = totalLen * 0.5;
     }
 
     function loadCircuit(index: int) {
@@ -1468,7 +1412,6 @@ if (root == null) {
             "uTanHalf": tanHalf,
             "uAspect": aspect,
             "uTrackW": trackW,
-            "uTrackL": trackL,
             "uTrackPts": 0,
             "uTrack0": [0, 0],
             "uTrack1": [0, 0],
@@ -1606,9 +1549,11 @@ if (root == null) {
         three.setUniform(material, "uCamForward", [cam.forwardX, cam.forwardY, cam.forwardZ]);
         three.setUniform(material, "uCamRight", [cam.rightX, cam.rightY, cam.rightZ]);
         three.setUniform(material, "uCamUp", [cam.upX, cam.upY, cam.upZ]);
+        lightX = focusX + 36.0;
+        lightY = 90.0;
+        lightZ = focusZ + 24.0;
         three.setUniform(material, "uLightPos", [lightX, lightY, lightZ]);
         three.setUniform(material, "uTrackW", trackW);
-        three.setUniform(material, "uTrackL", trackL);
         var numPts = nPts;
         if (numPts > 32) {
             numPts = 32;
