@@ -67,6 +67,12 @@
       "focusLine": 147
     },
     {
+      "file": "Examples/Games/cartpole_neural.malda",
+      "caption": "CartPole",
+      "holdMs": 1500,
+      "focusLine": 4
+    },
+    {
       "file": "Examples/Games/grand_prix_neural.malda",
       "caption": "Grand Prix",
       "holdMs": 1500,
@@ -183,6 +189,14 @@
       "maximize": false,
       "holdMs": 6400,
       "focusLine": 147
+    },
+    {
+      "file": "Examples/Games/cartpole_neural.malda",
+      "caption": "CartPole",
+      "panel": "preview",
+      "maximize": false,
+      "holdMs": 7200,
+      "focusLine": 4
     },
     {
       "file": "Examples/Games/grand_prix_neural.malda",

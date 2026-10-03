@@ -10,6 +10,7 @@
 // position and speed — that keeps the pole up and walks the cart back to the
 // center mark. nn.denseBackward fits the net to those labels.
 // Hold the mouse to drag the pole; the net tries to recover toward the mark.
+// Showcase autoplay letterboxes the canvas into the preview pane.
 
 function randomMatrix(rows: int, cols: int, scale: float) -> array {
     var matrix = [];
@@ -480,6 +481,15 @@ function startCartpole() {
         game.drawText("taller stays centered   line = 200", chartLeft, chartBottom + 22, "#9aa3b5", "13px sans-serif");
         if (avgReturn >= 160.0 && training) {
             game.drawText("balancing — press P to play", chartLeft, 110, "#b6f0c2", "14px sans-serif");
+        }
+    }
+
+    if (dom.query("#malda-autoplay") != null) {
+        var showcaseFit = dom.create("style");
+        dom.setText(showcaseFit, "#status{display:none!important}html,body{overflow:hidden;margin:0;background:#12141c}#app{min-height:0!important;background:#12141c}#app canvas{position:fixed!important;left:8px!important;top:8px!important;width:calc(100vw - 16px)!important;height:calc(100vh - 16px)!important;object-fit:contain;object-position:center center;background:#12141c}");
+        var head = dom.query("head");
+        if (head != null) {
+            dom.append(head, showcaseFit);
         }
     }
 
