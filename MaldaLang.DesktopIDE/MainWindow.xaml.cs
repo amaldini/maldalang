@@ -194,6 +194,9 @@ public partial class MainWindow : Window
     private ShowcaseSession? _showcase;
     private bool _showcasePreviewAutoplay;
     private string? _showcaseCaption;
+    private Stopwatch? _showcaseClock;
+    private bool _showcaseSplashVisible;
+    private (FrameworkElement Element, Visibility Visibility)[]? _showcaseAirspace;
     private ExampleProgram? _currentExample;
     private bool _learningBranchBannerDismissed;
 

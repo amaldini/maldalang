@@ -97,24 +97,16 @@ public sealed class ShowcaseSession
 
         foreach (var browse in playlist.Browse)
         {
-            PrepareShowcaseFile(repoRoot, browse.File, browse.HoldMs, out var absolutePath);
+            PrepareShowcaseFile(repoRoot, browse.File, out var absolutePath);
             browse.AbsolutePath = absolutePath;
-            if (browse.HoldMs <= 0)
-            {
-                browse.HoldMs = 1300;
-            }
         }
 
         foreach (var page in playlist.Manual)
         {
-            PrepareShowcaseFile(repoRoot, Path.Combine("ReferenceManual", page.File), page.HoldMs, out var absolutePath);
+            PrepareShowcaseFile(repoRoot, Path.Combine("ReferenceManual", page.File), out var absolutePath);
             page.AbsolutePath = absolutePath;
             page.File = Path.GetFileName(page.File);
             page.Anchor = NormalizeManualAnchor(page.File, absolutePath, page.Anchor);
-            if (page.HoldMs <= 0)
-            {
-                page.HoldMs = 1800;
-            }
         }
 
         if (playlist.Width < 640 || playlist.Height < 480)
@@ -125,11 +117,6 @@ public sealed class ShowcaseSession
         if (playlist.SplitBeatMs < 0 || playlist.ReadyTimeoutMs < 1)
         {
             throw new InvalidOperationException("Showcase splitBeatMs and readyTimeoutMs must be non-negative, and readyTimeoutMs at least 1.");
-        }
-
-        if (playlist.TitleHoldMs < 0)
-        {
-            throw new InvalidOperationException("Showcase titleHoldMs must be non-negative.");
         }
 
         foreach (var scene in playlist.Scenes)
@@ -146,8 +133,10 @@ public sealed class ShowcaseSession
             }
 
             scene.Panel = panel;
-            scene.AbsolutePath = PrepareShowcaseFile(repoRoot, scene.File, scene.HoldMs, out _);
+            scene.AbsolutePath = PrepareShowcaseFile(repoRoot, scene.File, out _);
         }
+
+        playlist.BindTimeline();
 
         var handshake = string.IsNullOrWhiteSpace(handshakeDirectory)
             ? Path.Combine(repoRoot, "artifacts", "showcase")
@@ -162,16 +151,11 @@ public sealed class ShowcaseSession
         };
     }
 
-    private static string PrepareShowcaseFile(string repoRoot, string file, int holdMs, out string absolutePath)
+    private static string PrepareShowcaseFile(string repoRoot, string file, out string absolutePath)
     {
         if (string.IsNullOrWhiteSpace(file))
         {
             throw new InvalidOperationException("Every showcase entry needs a file path.");
-        }
-
-        if (holdMs < 0)
-        {
-            throw new InvalidOperationException($"Showcase entry '{file}' has a negative holdMs.");
         }
 
         var relative = file.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
@@ -235,10 +219,101 @@ public sealed class ShowcasePlaylist
     public int Top { get; set; }
     public int SplitBeatMs { get; set; } = 800;
     public int ReadyTimeoutMs { get; set; } = 90000;
-    public int TitleHoldMs { get; set; } = 4500;
+
+    /// <summary>Milliseconds from the splash when the last scene ends.</summary>
+    public int EndMs { get; set; }
+
     public List<ShowcaseBrowsePick> Browse { get; set; } = new();
     public List<ShowcaseManualPage> Manual { get; set; } = new();
     public List<ShowcaseScene> Scenes { get; set; } = new();
+
+    /// <summary>Milliseconds from the splash when the first cue replaces the title.</summary>
+    public int OpeningMs
+    {
+        get
+        {
+            if (Browse.Count > 0)
+            {
+                return Browse[0].StartMs;
+            }
+
+            if (Manual.Count > 0)
+            {
+                return Manual[0].StartMs;
+            }
+
+            return Scenes.Count > 0 ? Scenes[0].StartMs : 0;
+        }
+    }
+
+    public void BindTimeline()
+    {
+        var cues = new List<(string Label, int StartMs, Action<int> SetEnd)>();
+        foreach (var browse in Browse)
+        {
+            cues.Add((CueLabel(browse.Caption, browse.File), browse.StartMs, end => browse.EndMs = end));
+        }
+
+        foreach (var page in Manual)
+        {
+            cues.Add((CueLabel(page.Caption, page.File), page.StartMs, end => page.EndMs = end));
+        }
+
+        foreach (var scene in Scenes)
+        {
+            cues.Add((CueLabel(scene.Caption, scene.File), scene.StartMs, end => scene.EndMs = end));
+        }
+
+        if (cues.Count == 0)
+        {
+            throw new InvalidOperationException("Showcase playlist has no cues.");
+        }
+
+        var previous = -1;
+        string? previousLabel = null;
+        foreach (var cue in cues)
+        {
+            if (cue.StartMs < 0)
+            {
+                throw new InvalidOperationException($"Showcase cue '{cue.Label}' has a negative startMs.");
+            }
+
+            if (cue.StartMs <= previous)
+            {
+                throw new InvalidOperationException(
+                    $"Showcase cue '{cue.Label}' startMs is {cue.StartMs}, which is not after '{previousLabel}' at {previous} ms.");
+            }
+
+            previous = cue.StartMs;
+            previousLabel = cue.Label;
+        }
+
+        if (EndMs <= previous)
+        {
+            throw new InvalidOperationException($"Showcase endMs must be later than '{previousLabel}' at {previous} ms.");
+        }
+
+        for (var i = 0; i < cues.Count; i++)
+        {
+            var end = i + 1 < cues.Count ? cues[i + 1].StartMs : EndMs;
+            cues[i].SetEnd(end);
+        }
+    }
+
+    private static string CueLabel(string caption, string file)
+    {
+        if (!string.IsNullOrWhiteSpace(caption))
+        {
+            return caption.Trim();
+        }
+
+        if (!string.IsNullOrWhiteSpace(file))
+        {
+            return file.Trim();
+        }
+
+        return "cue";
+    }
 }
 
 public sealed class ShowcaseManualPage
@@ -246,7 +321,10 @@ public sealed class ShowcaseManualPage
     public string File { get; set; } = "";
     public string Caption { get; set; } = "";
     public string Anchor { get; set; } = "";
-    public int HoldMs { get; set; } = 1800;
+    public int StartMs { get; set; }
+
+    [JsonIgnore]
+    public int EndMs { get; set; }
 
     [JsonIgnore]
     public string AbsolutePath { get; set; } = "";
@@ -256,8 +334,11 @@ public sealed class ShowcaseBrowsePick
 {
     public string File { get; set; } = "";
     public string Caption { get; set; } = "";
-    public int HoldMs { get; set; } = 1300;
+    public int StartMs { get; set; }
     public int? FocusLine { get; set; }
+
+    [JsonIgnore]
+    public int EndMs { get; set; }
 
     [JsonIgnore]
     public string AbsolutePath { get; set; } = "";
@@ -269,8 +350,11 @@ public sealed class ShowcaseScene
     public string Caption { get; set; } = "";
     public string Panel { get; set; } = "output";
     public bool Maximize { get; set; }
-    public int HoldMs { get; set; } = 2000;
+    public int StartMs { get; set; }
     public int? FocusLine { get; set; }
+
+    [JsonIgnore]
+    public int EndMs { get; set; }
 
     [JsonIgnore]
     public string AbsolutePath { get; set; } = "";

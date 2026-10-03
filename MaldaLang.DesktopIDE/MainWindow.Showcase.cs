@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Andrea Maldini
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text.Json;
@@ -106,16 +107,38 @@ public partial class MainWindow
 
     private Windows.ExampleBrowserWindow? _showcaseBrowser;
 
-    private async Task PlayTitleCardAsync(int frameX, int frameY, int frameWidth, int frameHeight)
+    private long ShowcaseNowMs => _showcaseClock?.ElapsedMilliseconds ?? 0;
+
+    private async Task WaitUntilShowcaseMs(int targetMs)
     {
-        var hold = _showcase?.Playlist.TitleHoldMs ?? 0;
-        if (hold <= 0)
+        while (ShowcaseNowMs < targetMs)
         {
-            return;
+            var remaining = targetMs - ShowcaseNowMs;
+            var slice = (int)Math.Min(Math.Max(remaining, 1), 200);
+            await Task.Delay(slice);
+        }
+    }
+
+    private int ShowcaseSlotMs(int cueEndMs, int readyTimeoutMs)
+    {
+        var remaining = cueEndMs - ShowcaseNowMs;
+        if (remaining < 1)
+        {
+            return 1;
         }
 
+        if (remaining > readyTimeoutMs)
+        {
+            return readyTimeoutMs;
+        }
+
+        return (int)remaining;
+    }
+
+    private async Task BeginShowcaseSplashAsync()
+    {
         // WebBrowser and WebView2 are HWND airspace: they paint over any WPF overlay.
-        var airspace = new (FrameworkElement Element, Visibility Visibility)[]
+        _showcaseAirspace = new (FrameworkElement Element, Visibility Visibility)[]
         {
             (OutputWebBrowser, OutputWebBrowser.Visibility),
             (ToolCallsWebBrowser, ToolCallsWebBrowser.Visibility),
@@ -123,29 +146,37 @@ public partial class MainWindow
             (ManualWebView, ManualWebView.Visibility)
         };
 
-        try
+        foreach (var (element, _) in _showcaseAirspace)
         {
-            foreach (var (element, _) in airspace)
-            {
-                element.Visibility = Visibility.Collapsed;
-            }
-
-            _showcaseCaption = "";
-            UpdateWindowChrome();
-            SplashOverlay.Visibility = Visibility.Visible;
-            UpdateLayout();
-            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
-            BringShowcaseToFront();
-            WriteShowcaseStatus("playing", frameX, frameY, frameWidth, frameHeight, "MALDA", error: null);
-            await Task.Delay(hold);
+            element.Visibility = Visibility.Collapsed;
         }
-        finally
+
+        _showcaseCaption = "";
+        UpdateWindowChrome();
+        SplashOverlay.Visibility = Visibility.Visible;
+        _showcaseSplashVisible = true;
+        UpdateLayout();
+        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+        BringShowcaseToFront();
+    }
+
+    private void EndShowcaseSplash()
+    {
+        if (!_showcaseSplashVisible && _showcaseAirspace == null)
         {
-            SplashOverlay.Visibility = Visibility.Collapsed;
-            foreach (var (element, visibility) in airspace)
+            return;
+        }
+
+        SplashOverlay.Visibility = Visibility.Collapsed;
+        _showcaseSplashVisible = false;
+        if (_showcaseAirspace != null)
+        {
+            foreach (var (element, visibility) in _showcaseAirspace)
             {
                 element.Visibility = visibility;
             }
+
+            _showcaseAirspace = null;
         }
     }
 
@@ -176,6 +207,12 @@ public partial class MainWindow
             await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
             foreach (var pick in picks)
             {
+                await WaitUntilShowcaseMs(pick.StartMs);
+                if (ShowcaseNowMs >= pick.EndMs)
+                {
+                    continue;
+                }
+
                 _showcaseCaption = string.IsNullOrWhiteSpace(pick.Caption) ? "Examples" : pick.Caption;
                 UpdateWindowChrome();
                 browser.Title = "Browse Examples — " + _showcaseCaption;
@@ -186,7 +223,7 @@ public partial class MainWindow
 
                 BringShowcaseToFront();
                 WriteShowcaseStatus("playing", frameX, frameY, frameWidth, frameHeight, _showcaseCaption, error: null);
-                await Task.Delay(Math.Max(400, pick.HoldMs));
+                await WaitUntilShowcaseMs(pick.EndMs);
             }
         }
         finally
@@ -211,17 +248,26 @@ public partial class MainWindow
         {
             foreach (var page in pages)
             {
+                await WaitUntilShowcaseMs(page.StartMs);
+                if (ShowcaseNowMs >= page.EndMs)
+                {
+                    continue;
+                }
+
                 _showcaseCaption = string.IsNullOrWhiteSpace(page.Caption) ? "Manual" : page.Caption;
                 UpdateWindowChrome();
                 BringShowcaseToFront();
-                var ready = await ShowReferenceManualPageAsync(page.File, _showcase!.Playlist.ReadyTimeoutMs, page.Anchor);
+                var ready = await ShowReferenceManualPageAsync(
+                    page.File,
+                    ShowcaseSlotMs(page.EndMs, _showcase!.Playlist.ReadyTimeoutMs),
+                    page.Anchor);
                 if (!ready)
                 {
                     SetOutputText($"Showcase manual missed {page.File}.", isError: true);
                 }
 
                 WriteShowcaseStatus("playing", frameX, frameY, frameWidth, frameHeight, _showcaseCaption, error: null);
-                await Task.Delay(Math.Max(600, page.HoldMs));
+                await WaitUntilShowcaseMs(page.EndMs);
             }
         }
         finally
@@ -258,37 +304,48 @@ public partial class MainWindow
             }
 
             TryDeleteFile(_showcase.StartPath);
-            WriteShowcaseStatus("armed", x, y, width, height, scene: null, error: null);
-            var keepInFront = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(350) };
-            keepInFront.Tick += (_, _) => BringShowcaseToFront();
-            keepInFront.Start();
-
-            var startDeadline = Environment.TickCount64 + 180_000;
-            while (!File.Exists(_showcase.StartPath))
+            await BeginShowcaseSplashAsync();
+            try
             {
-                if (Environment.TickCount64 > startDeadline)
+                WriteShowcaseStatus("armed", x, y, width, height, scene: null, error: null);
+                var keepInFront = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(350) };
+                keepInFront.Tick += (_, _) => BringShowcaseToFront();
+                keepInFront.Start();
+
+                var startDeadline = Environment.TickCount64 + 180_000;
+                while (!File.Exists(_showcase.StartPath))
                 {
-                    throw new TimeoutException("Showcase start file was not created within 3 minutes.");
+                    if (Environment.TickCount64 > startDeadline)
+                    {
+                        throw new TimeoutException("Showcase start file was not created within 3 minutes.");
+                    }
+
+                    await Task.Delay(30);
                 }
 
-                await Task.Delay(100);
+                _showcaseClock = Stopwatch.StartNew();
+                BringShowcaseToFront();
+                WriteShowcaseStatus("playing", x, y, width, height, "MALDA", error: null);
+                await WaitUntilShowcaseMs(_showcase.Playlist.OpeningMs);
+                EndShowcaseSplash();
+
+                await PlayBrowseTourAsync(x, y, width, height);
+                await PlayManualTourAsync(x, y, width, height);
+
+                for (var index = 0; index < _showcase.Playlist.Scenes.Count; index++)
+                {
+                    var scene = _showcase.Playlist.Scenes[index];
+                    await PlayShowcaseSceneAsync(scene, x, y, width, height);
+                }
+
+                WriteShowcaseStatus("done", x, y, width, height, scene: null, error: null);
+                keepInFront.Stop();
+                Application.Current.Shutdown(0);
             }
-
-            BringShowcaseToFront();
-
-            await PlayTitleCardAsync(x, y, width, height);
-            await PlayBrowseTourAsync(x, y, width, height);
-            await PlayManualTourAsync(x, y, width, height);
-
-            for (var index = 0; index < _showcase.Playlist.Scenes.Count; index++)
+            finally
             {
-                var scene = _showcase.Playlist.Scenes[index];
-                await PlayShowcaseSceneAsync(scene, x, y, width, height);
+                EndShowcaseSplash();
             }
-
-            WriteShowcaseStatus("done", x, y, width, height, scene: null, error: null);
-            keepInFront.Stop();
-            Application.Current.Shutdown(0);
         }
         catch (Exception ex)
         {
@@ -318,6 +375,12 @@ public partial class MainWindow
 
     private async Task PlayShowcaseSceneAsync(ShowcaseScene scene, int frameX, int frameY, int frameWidth, int frameHeight)
     {
+        await WaitUntilShowcaseMs(scene.StartMs);
+        if (ShowcaseNowMs >= scene.EndMs)
+        {
+            return;
+        }
+
         using var navigationCancel = new CancellationTokenSource();
         Task<bool>? navigation = null;
         try
@@ -325,7 +388,6 @@ public partial class MainWindow
             RestoreShowcaseLayout();
             StopActiveExecution();
             _lastDetectedWebUiUrl = null;
-            await Task.Delay(80);
 
             _showcaseCaption = scene.Caption ?? "";
             OpenFileAndIncludedDocuments(scene.AbsolutePath);
@@ -334,15 +396,14 @@ public partial class MainWindow
             FocusShowcaseLine(scene.FocusLine);
             UpdateWindowChrome();
             await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
-            await Task.Delay(200);
             BringShowcaseToFront();
             WriteShowcaseStatus("playing", frameX, frameY, frameWidth, frameHeight, scene.Caption, error: null);
 
-            var timeout = _showcase!.Playlist.ReadyTimeoutMs;
+            var timeout = ShowcaseSlotMs(scene.EndMs, _showcase!.Playlist.ReadyTimeoutMs);
             var ready = true;
             if (scene.Panel == "preview")
             {
-                navigation = WaitForContentNavigationAsync(timeout, navigationCancel.Token);
+                navigation = WaitForContentNavigationAsync(timeout, navigationCancel.Token, scene.EndMs);
                 _showcasePreviewAutoplay = true;
                 try
                 {
@@ -358,7 +419,7 @@ public partial class MainWindow
             else if (scene.Panel == "server")
             {
                 StartInterpretRunForActiveDocument();
-                var url = await WaitForOpenUrlAsync(timeout);
+                var url = await WaitForOpenUrlAsync(timeout, scene.EndMs);
                 var uri = url == null ? null : TryResolveWebViewUri(url);
                 if (uri == null)
                 {
@@ -366,7 +427,7 @@ public partial class MainWindow
                 }
                 else
                 {
-                    navigation = WaitForContentNavigationAsync(timeout, navigationCancel.Token);
+                    navigation = WaitForContentNavigationAsync(timeout, navigationCancel.Token, scene.EndMs);
                     var pageUrl = url ?? "";
                     _lastDetectedWebUiUrl = pageUrl;
                     await OpenUriInWebUiPanelAsync(uri, pageUrl, switchToTab: true, ensureUiHost: false);
@@ -377,23 +438,27 @@ public partial class MainWindow
             {
                 SwitchToTab("output");
                 StartInterpretRunForActiveDocument();
-                await WaitForInterpretFinishedAsync(timeout);
+                await WaitForInterpretFinishedAsync(timeout, scene.EndMs);
             }
 
-            if (scene.Maximize && ready && scene.Panel == "output")
+            if (scene.Maximize && ready && scene.Panel == "output" && ShowcaseNowMs < scene.EndMs)
             {
-                await Task.Delay(Math.Max(0, _showcase.Playlist.SplitBeatMs));
-                SetSidebarPanelMaximized("output", true);
+                var beatAt = (int)Math.Min(scene.EndMs, ShowcaseNowMs + Math.Max(0, _showcase.Playlist.SplitBeatMs));
+                await WaitUntilShowcaseMs(beatAt);
+                if (ShowcaseNowMs < scene.EndMs)
+                {
+                    SetSidebarPanelMaximized("output", true);
+                }
             }
 
-            await Task.Delay(Math.Max(0, scene.HoldMs));
+            await WaitUntilShowcaseMs(scene.EndMs);
         }
         catch (Exception ex)
         {
             navigationCancel.Cancel();
             SetOutputText($"Showcase scene failed ({scene.File}): {ex.Message}", isError: true);
             SwitchToTab("output");
-            await Task.Delay(Math.Max(800, scene.HoldMs));
+            await WaitUntilShowcaseMs(scene.EndMs);
         }
     }
 
@@ -437,10 +502,10 @@ public partial class MainWindow
         }
     }
 
-    private async Task WaitForInterpretFinishedAsync(int timeoutMs)
+    private async Task WaitForInterpretFinishedAsync(int timeoutMs, int cueEndMs)
     {
         var deadline = Environment.TickCount64 + timeoutMs;
-        while (_runTask != null && !_runTask.IsCompleted && Environment.TickCount64 < deadline)
+        while (_runTask != null && !_runTask.IsCompleted && Environment.TickCount64 < deadline && ShowcaseNowMs < cueEndMs)
         {
             await Task.Delay(50);
         }
@@ -448,10 +513,10 @@ public partial class MainWindow
         await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Background);
     }
 
-    private async Task<string?> WaitForOpenUrlAsync(int timeoutMs)
+    private async Task<string?> WaitForOpenUrlAsync(int timeoutMs, int cueEndMs)
     {
         var deadline = Environment.TickCount64 + timeoutMs;
-        while (Environment.TickCount64 < deadline)
+        while (Environment.TickCount64 < deadline && ShowcaseNowMs < cueEndMs)
         {
             string output;
             try
@@ -480,7 +545,7 @@ public partial class MainWindow
         return null;
     }
 
-    private async Task<bool> WaitForContentNavigationAsync(int timeoutMs, CancellationToken cancellation)
+    private async Task<bool> WaitForContentNavigationAsync(int timeoutMs, CancellationToken cancellation, int cueEndMs)
     {
         var done = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         void Handler(object? sender, CoreWebView2NavigationCompletedEventArgs e)
@@ -498,7 +563,8 @@ public partial class MainWindow
         WebUiWebView.NavigationCompleted += Handler;
         try
         {
-            var delay = Task.Delay(timeoutMs, cancellation);
+            var slot = ShowcaseSlotMs(cueEndMs, timeoutMs);
+            var delay = Task.Delay(slot, cancellation);
             var finished = await Task.WhenAny(done.Task, delay);
             return finished == done.Task && done.Task.Result;
         }

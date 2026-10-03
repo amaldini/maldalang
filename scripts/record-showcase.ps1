@@ -6,12 +6,16 @@
 .DESCRIPTION
   Builds the Desktop IDE, launches it with --demo, and records the window with
   ffmpeg Desktop Duplication (ddagrab) so the WebView2 preview is not black.
-  The IDE waits until this script creates a start flag, then holds the splash
-  (titleHoldMs) and plays scripts/showcase/playlist.json. Recording starts once
-  the splash is up, so leave about a second of titleHoldMs for ffmpeg to attach.
-  Edit holdMs in that file to sit cuts on a beat.
+  The IDE shows the splash, waits until this script creates a start flag, then
+  starts the reel clock. Each cue in scripts/showcase/playlist.json has startMs,
+  milliseconds from that splash. The cue stays up until the next startMs.
+  endMs is when the reel ends. Edit those values to put each section on a beat.
+  A paste-ready generator prompt is in scripts/showcase/song-prompt.md.
 
-  No audio is bundled. Pass -Audio with a track you have rights to use.
+  Recording starts while the splash is already up, before the clock. The script
+  trims that lead so the mp4 starts at reel time 0. No audio is bundled. Pass
+  -Audio with a track you have rights to use. The video is trimmed to whichever
+  of the picture and the track is shorter.
   The mp4 is written to artifacts/showcase/malda-showcase.mp4.
 
 .PARAMETER Audio
@@ -53,6 +57,36 @@ function Assert-ShowcaseInFront([System.Diagnostics.Process]$proc) {
     [ShowcaseWindow]::SetWindowPos($hwnd, [IntPtr](-1), 0, 0, 0, 0, 0x0013) | Out-Null
 }
 
+function Get-ShowcaseCapturedSeconds([string]$path) {
+    if (-not (Test-Path -LiteralPath $path)) {
+        return 0.0
+    }
+
+    $text = ""
+    try {
+        $stream = [System.IO.File]::Open($path, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+        $reader = New-Object System.IO.StreamReader($stream)
+        try {
+            $text = $reader.ReadToEnd()
+        }
+        finally {
+            $reader.Dispose()
+        }
+    }
+    catch {
+        return 0.0
+    }
+
+    $frame = 0
+    foreach ($line in ($text -split "`n")) {
+        if ($line -match 'frame=\s*(\d+)') {
+            $frame = [int]$Matches[1]
+        }
+    }
+
+    return $frame / 60.0
+}
+
 $machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
 $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
 if (-not [string]::IsNullOrWhiteSpace($machinePath) -or -not [string]::IsNullOrWhiteSpace($userPath)) {
@@ -84,6 +118,9 @@ if ($LASTEXITCODE -ne 0) {
 $playlistObj = Get-Content -Raw -Path $Playlist | ConvertFrom-Json
 if (-not $playlistObj.scenes -or $playlistObj.scenes.Count -lt 1) {
     throw "Playlist has no scenes: $Playlist"
+}
+if ($null -eq $playlistObj.endMs -or [int]$playlistObj.endMs -le 0) {
+    throw "Playlist needs endMs, the millisecond when the reel ends: $Playlist"
 }
 
 foreach ($scene in $playlistObj.scenes) {
@@ -144,11 +181,13 @@ $statusPath = Join-Path $handshake "status.json"
 $rawVideo = Join-Path $handshake "malda-showcase.raw.mp4"
 $output = Join-Path $handshake "malda-showcase.mp4"
 $ffmpegLog = Join-Path $handshake "ffmpeg.log"
+$progressPath = Join-Path $handshake "ffmpeg-progress.txt"
 
 Remove-Item -LiteralPath $startFlag -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath $statusPath -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath ($statusPath + ".tmp") -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath $rawVideo -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $progressPath -ErrorAction SilentlyContinue
 
 $ideProc = $null
 $ideInfo = New-Object System.Diagnostics.ProcessStartInfo
@@ -212,10 +251,39 @@ if ($width -lt 2 -or $height -lt 2) {
 $width = $width - ($width % 2)
 $height = $height - ($height % 2)
 
+$grab = "ddagrab=output_idx=0:draw_mouse=0:framerate=60:video_size=${width}x${height}:offset_x=${x}:offset_y=${y}"
+$psi = New-Object System.Diagnostics.ProcessStartInfo
+$psi.FileName = $ffmpeg.Source
+$psi.Arguments = "-y -hide_banner -loglevel warning -stats_period 0.1 -f lavfi -i $grab -vf hwdownload,format=bgra -c:v libx264 -pix_fmt yuv420p -preset veryfast -movflags +faststart -progress `"$progressPath`" `"$rawVideo`""
+$psi.UseShellExecute = $false
+$psi.RedirectStandardInput = $true
+$psi.RedirectStandardError = $true
+$psi.CreateNoWindow = $true
+$ff = [System.Diagnostics.Process]::Start($psi)
+if (-not $ff) {
+    if (-not $ideProc.HasExited) {
+        $ideProc.Kill()
+    }
+    throw "Could not start ffmpeg."
+}
+$ffmpegErrors = $ff.StandardError.ReadToEndAsync()
+Assert-ShowcaseInFront $ideProc
+Start-Sleep -Milliseconds 200
+Assert-ShowcaseInFront $ideProc
+if ($ff.HasExited) {
+    $early = ""
+    try { $early = $ffmpegErrors.Result } catch { }
+    if (-not $ideProc.HasExited) {
+        try { $ideProc.Kill() } catch { }
+    }
+    throw "ffmpeg exited before the reel started. $early"
+}
+
 New-Item -ItemType File -Path $startFlag -Force | Out-Null
 
 $playDeadline = (Get-Date).AddSeconds(45)
 $playing = $false
+$videoLeadSeconds = 0.0
 while ((Get-Date) -lt $playDeadline) {
     if ($ideProc.HasExited) {
         $detail = ""
@@ -242,6 +310,7 @@ while ((Get-Date) -lt $playDeadline) {
         }
         if ($live.phase -eq "playing") {
             $playing = $true
+            $videoLeadSeconds = Get-ShowcaseCapturedSeconds $progressPath
             break
         }
     }
@@ -258,52 +327,7 @@ if (-not $playing) {
 
 Assert-ShowcaseInFront $ideProc
 
-$grab = "ddagrab=output_idx=0:draw_mouse=0:framerate=60:video_size=${width}x${height}:offset_x=${x}:offset_y=${y}"
-$psi = New-Object System.Diagnostics.ProcessStartInfo
-$psi.FileName = $ffmpeg.Source
-$psi.Arguments = "-y -hide_banner -loglevel warning -f lavfi -i $grab -vf hwdownload,format=bgra -c:v libx264 -pix_fmt yuv420p -preset veryfast -movflags +faststart `"$rawVideo`""
-$psi.UseShellExecute = $false
-$psi.RedirectStandardInput = $true
-$psi.RedirectStandardError = $true
-$psi.CreateNoWindow = $true
-$ff = [System.Diagnostics.Process]::Start($psi)
-if (-not $ff) {
-    if (-not $ideProc.HasExited) {
-        $ideProc.Kill()
-    }
-    throw "Could not start ffmpeg."
-}
-$ffmpegErrors = $ff.StandardError.ReadToEndAsync()
-Assert-ShowcaseInFront $ideProc
-Start-Sleep -Milliseconds 200
-Assert-ShowcaseInFront $ideProc
-if ($ff.HasExited) {
-    $early = ""
-    try { $early = $ffmpegErrors.Result } catch { }
-    if (-not $ideProc.HasExited) {
-        try { $ideProc.Kill() } catch { }
-    }
-    throw "ffmpeg exited before the reel started. $early"
-}
-
-$holdMs = 0
-if ($playlistObj.titleHoldMs) {
-    $holdMs += [int]$playlistObj.titleHoldMs
-}
-if ($playlistObj.browse) {
-    foreach ($pick in $playlistObj.browse) {
-        $holdMs += [int]$pick.holdMs
-    }
-}
-if ($playlistObj.manual) {
-    foreach ($page in $playlistObj.manual) {
-        $holdMs += [int]$page.holdMs
-    }
-}
-foreach ($scene in $playlistObj.scenes) {
-    $holdMs += [int]$scene.holdMs
-}
-$timeoutMs = $holdMs + (($playlistObj.scenes.Count * 90) * 1000) + 60000
+$timeoutMs = [int]$playlistObj.endMs + (($playlistObj.scenes.Count * 90) * 1000) + 60000
 $exitDeadline = (Get-Date).AddMilliseconds($timeoutMs)
 while (-not $ideProc.HasExited -and (Get-Date) -lt $exitDeadline) {
     Assert-ShowcaseInFront $ideProc
@@ -355,15 +379,31 @@ if (-not (Test-Path -LiteralPath $rawVideo)) {
     throw "ffmpeg did not write $rawVideo. $ffmpegText"
 }
 
-if (-not [string]::IsNullOrWhiteSpace($Audio)) {
-    & ffmpeg -y -hide_banner -loglevel warning -i $rawVideo -i $Audio -map 0:v:0 -map 1:a:0 -c:v copy -c:a aac -b:a 192k -shortest $output
-    if ($LASTEXITCODE -ne 0) {
-        throw "Could not mux audio onto the showcase reel."
-    }
-    Remove-Item -LiteralPath $rawVideo -ErrorAction SilentlyContinue
+$leadSeconds = [double]$videoLeadSeconds
+if ([string]::IsNullOrWhiteSpace($Audio) -and $leadSeconds -le 0.03) {
+    Move-Item -LiteralPath $rawVideo -Destination $output -Force
 }
 else {
-    Move-Item -LiteralPath $rawVideo -Destination $output -Force
+    $publishArgs = @("-y", "-hide_banner", "-loglevel", "warning", "-i", $rawVideo)
+    if (-not [string]::IsNullOrWhiteSpace($Audio)) {
+        $publishArgs += @("-i", $Audio)
+    }
+    if ($leadSeconds -gt 0.03) {
+        $leadText = $leadSeconds.ToString("0.###", [System.Globalization.CultureInfo]::InvariantCulture)
+        $publishArgs += @("-ss", $leadText, "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "veryfast", "-movflags", "+faststart")
+    }
+    else {
+        $publishArgs += @("-c:v", "copy")
+    }
+    if (-not [string]::IsNullOrWhiteSpace($Audio)) {
+        $publishArgs += @("-map", "0:v:0", "-map", "1:a:0", "-c:a", "aac", "-b:a", "192k", "-shortest")
+    }
+    $publishArgs += $output
+    & ffmpeg @publishArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "Could not write the showcase reel."
+    }
+    Remove-Item -LiteralPath $rawVideo -ErrorAction SilentlyContinue
 }
 
 Write-Output $output

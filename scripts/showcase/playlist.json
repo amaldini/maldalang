@@ -5,83 +5,83 @@
   "top": 0,
   "splitBeatMs": 800,
   "readyTimeoutMs": 90000,
-  "titleHoldMs": 4500,
+  "endMs": 95600,
   "browse": [
     {
       "file": "Examples/Basics/hello_world.malda",
       "caption": "Hello",
-      "holdMs": 1200
+      "startMs": 4500
     },
     {
       "file": "Examples/Basics/first_look.malda",
       "caption": "Schemas",
-      "holdMs": 1400,
+      "startMs": 5700,
       "focusLine": 13
     },
     {
       "file": "Examples/OOP/classes_objects.malda",
       "caption": "Objects",
-      "holdMs": 1400,
+      "startMs": 7100,
       "focusLine": 12
     },
     {
       "file": "Examples/Algorithms/towers_of_hanoi.malda",
       "caption": "Hanoi",
-      "holdMs": 1400,
+      "startMs": 8500,
       "focusLine": 22
     },
     {
       "file": "Examples/AI_Theory/xor_neural_net.malda",
       "caption": "XOR net",
-      "holdMs": 1500,
+      "startMs": 9900,
       "focusLine": 20
     },
     {
       "file": "Examples/Web/ui_controls_showcase_minimal.malda",
       "caption": "UI controls",
-      "holdMs": 1500,
+      "startMs": 11400,
       "focusLine": 16
     },
     {
       "file": "Examples/Games/three_shader_mandelbrot.malda",
       "caption": "Mandelbrot",
-      "holdMs": 1400,
+      "startMs": 12900,
       "focusLine": 10
     },
     {
       "file": "Examples/Games/three_shader_raytracer.malda",
       "caption": "Raytracer",
-      "holdMs": 1400,
+      "startMs": 14300,
       "focusLine": 8
     },
     {
       "file": "Examples/Games/malda_platform.malda",
       "caption": "Platform",
-      "holdMs": 1400,
+      "startMs": 15700,
       "focusLine": 88
     },
     {
       "file": "Examples/Games/maldanoid.malda",
       "caption": "Maldanoid",
-      "holdMs": 1500,
+      "startMs": 17100,
       "focusLine": 147
     },
     {
       "file": "Examples/Games/cartpole_neural.malda",
       "caption": "CartPole",
-      "holdMs": 1500,
+      "startMs": 18600,
       "focusLine": 4
     },
     {
       "file": "Examples/Games/grand_prix_neural.malda",
       "caption": "Grand Prix",
-      "holdMs": 1500,
+      "startMs": 20100,
       "focusLine": 13
     },
     {
       "file": "Examples/Games/chess.malda",
       "caption": "Chess",
-      "holdMs": 1500,
+      "startMs": 21600,
       "focusLine": 27
     }
   ],
@@ -89,33 +89,33 @@
     {
       "file": "index.html",
       "caption": "Manual",
-      "holdMs": 1800
+      "startMs": 23100
     },
     {
       "file": "04-data-types.html",
       "caption": "Data types",
-      "holdMs": 2200
+      "startMs": 24900
     },
     {
       "file": "09-functions.html",
       "caption": "Functions",
-      "holdMs": 2000
+      "startMs": 27100
     },
     {
       "file": "14-neural-nets.html",
       "caption": "Neural nets",
-      "holdMs": 2200
+      "startMs": 29100
     },
     {
       "file": "19-agent-orchestration.html",
       "anchor": "declarative-agent-teams",
       "caption": "Multi-agent",
-      "holdMs": 2400
+      "startMs": 31300
     },
     {
       "file": "28-browser-javascript-backend.html",
       "caption": "Browser games",
-      "holdMs": 2200
+      "startMs": 33700
     }
   ],
   "scenes": [
@@ -124,14 +124,14 @@
       "caption": "Hello",
       "panel": "output",
       "maximize": false,
-      "holdMs": 1800
+      "startMs": 35900
     },
     {
       "file": "Examples/Basics/first_look.malda",
       "caption": "Schemas",
       "panel": "output",
       "maximize": false,
-      "holdMs": 2400,
+      "startMs": 37700,
       "focusLine": 13
     },
     {
@@ -139,7 +139,7 @@
       "caption": "Towers of Hanoi",
       "panel": "output",
       "maximize": false,
-      "holdMs": 2800,
+      "startMs": 40100,
       "focusLine": 22
     },
     {
@@ -147,7 +147,7 @@
       "caption": "UI controls",
       "panel": "server",
       "maximize": false,
-      "holdMs": 4500,
+      "startMs": 42900,
       "focusLine": 16
     },
     {
@@ -155,7 +155,7 @@
       "caption": "Mandelbrot",
       "panel": "preview",
       "maximize": false,
-      "holdMs": 5000,
+      "startMs": 47400,
       "focusLine": 10
     },
     {
@@ -163,7 +163,7 @@
       "caption": "GPU raytracer",
       "panel": "preview",
       "maximize": false,
-      "holdMs": 5200,
+      "startMs": 52400,
       "focusLine": 570
     },
     {
@@ -171,7 +171,7 @@
       "caption": "GPU billiards",
       "panel": "preview",
       "maximize": false,
-      "holdMs": 5200,
+      "startMs": 57600,
       "focusLine": 29
     },
     {
@@ -179,7 +179,7 @@
       "caption": "Platform",
       "panel": "preview",
       "maximize": false,
-      "holdMs": 5600,
+      "startMs": 62800,
       "focusLine": 111
     },
     {
@@ -187,7 +187,7 @@
       "caption": "Maldanoid",
       "panel": "preview",
       "maximize": false,
-      "holdMs": 6400,
+      "startMs": 68400,
       "focusLine": 147
     },
     {
@@ -195,7 +195,7 @@
       "caption": "CartPole",
       "panel": "preview",
       "maximize": false,
-      "holdMs": 7200,
+      "startMs": 74800,
       "focusLine": 4
     },
     {
@@ -203,7 +203,7 @@
       "caption": "Grand Prix",
       "panel": "preview",
       "maximize": false,
-      "holdMs": 7200,
+      "startMs": 82000,
       "focusLine": 13
     },
     {
@@ -211,7 +211,7 @@
       "caption": "Chess",
       "panel": "preview",
       "maximize": false,
-      "holdMs": 6400,
+      "startMs": 89200,
       "focusLine": 27
     }
   ]
