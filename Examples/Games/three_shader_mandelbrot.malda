@@ -159,8 +159,10 @@ if (root == null) {
     var decades = 0.0;
     var speedMul = 1.0;
     var zoomPerSecond = 0.55;
+    // The preview slot is about five seconds. 6 decades/second reaches ~10^-30
+    // without wrapping, and the iterate ramp below stays inside the 2048 orbit.
     if (autoplay) {
-        zoomPerSecond = 2.2;
+        zoomPerSecond = 6.0;
     }
     var startScale = 2.55;
 
@@ -186,7 +188,7 @@ if (root == null) {
             wrapDecades = 32;
         }
         if (autoplay) {
-            wrapDecades = 16.0;
+            wrapDecades = 32.0;
         }
 
         if (three.isKeyDown("]")) {
@@ -208,6 +210,12 @@ if (root == null) {
 
         var wrapped = decades - math.floor(decades / wrapDecades) * wrapDecades;
         var scale = startScale * math.pow(10.0, -wrapped);
+        if (autoplay) {
+            maxIter = int(400.0 + (wrapped * 70.0));
+            if (maxIter > orbitIters) {
+                maxIter = orbitIters;
+            }
+        }
         three.setUniform(material, "uScale", scale);
         three.setUniform(material, "uMaxIter", maxIter);
 
