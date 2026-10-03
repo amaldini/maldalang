@@ -156,24 +156,6 @@ if (root == null) {
         new Dense(12, 1, "tanh")
     ]);
 
-    function abs(v) {
-        if (v < 0) {
-            return 0 - v;
-        }
-        return v;
-    }
-
-    function clamp(v, mn, mx) {
-        var out = v;
-        if (out < mn) {
-            out = mn;
-        }
-        if (out > mx) {
-            out = mx;
-        }
-        return out;
-    }
-
     function formatMsWithTenths(ms) {
         if (ms < 0) {
             ms = 0;
@@ -417,8 +399,8 @@ if (root == null) {
         if (hue < 0) {
             hue = hue + 360;
         }
-        var sat = clamp(s, 0, 100);
-        var light = clamp(l, 0, 100);
+        var sat = math.clamp(s, 0, 100);
+        var light = math.clamp(l, 0, 100);
         return "hsl(" + string(hue) + "," + string(sat) + "%," + string(light) + "%)";
     }
 
@@ -697,7 +679,7 @@ if (root == null) {
                 var sourceVx = ballsVx[0];
                 var sourceVy = ballsVy[0];
 
-                var speed = abs(sourceVx) + abs(sourceVy);
+                var speed = math.abs(sourceVx) + math.abs(sourceVy);
                 if (speed < 420) {
                     speed = 420;
                 }
@@ -712,7 +694,7 @@ if (root == null) {
 
                 while (ballsX.length < maxBalls) {
                     var spawnedVx = nextDir * ((speed * 48) / 100);
-                    var spawnedVy = 0 - (speed - abs(spawnedVx));
+                    var spawnedVy = 0 - (speed - math.abs(spawnedVx));
                     if (spawnedVy > -185) {
                         spawnedVy = -185;
                     }
@@ -735,8 +717,8 @@ if (root == null) {
     }
 
     function circleHitsRect(cx, cy, r, rx, ry, rw, rh) {
-        var closestX = clamp(cx, rx, rx + rw);
-        var closestY = clamp(cy, ry, ry + rh);
+        var closestX = math.clamp(cx, rx, rx + rw);
+        var closestY = math.clamp(cy, ry, ry + rh);
         var dx = cx - closestX;
         var dy = cy - closestY;
         return ((dx * dx) + (dy * dy)) <= (r * r);
@@ -820,7 +802,7 @@ if (root == null) {
         if (halfWidth < 1) {
             halfWidth = 1;
         }
-        var speed = abs(ballVx) + abs(ballVy) + 26;
+        var speed = math.abs(ballVx) + math.abs(ballVy) + 26;
         if (speed < 360) {
             speed = 360;
         }
@@ -831,14 +813,14 @@ if (root == null) {
         // Use integer-safe math so transpiled JS keeps left/right sign.
         ballVx = ((speed * deltaFromCenter) / halfWidth) + ((paddleMotionX * 24) / 100);
         var maxHorizontal = (speed * 80) / 100;
-        if (abs(ballVx) > maxHorizontal) {
+        if (math.abs(ballVx) > maxHorizontal) {
             if (ballVx < 0) {
                 ballVx = 0 - maxHorizontal;
             } else {
                 ballVx = maxHorizontal;
             }
         }
-        if (abs(ballVx) < 70) {
+        if (math.abs(ballVx) < 70) {
             if (deltaFromCenter < 0) {
                 ballVx = -70;
             } else if (deltaFromCenter > 0) {
@@ -851,7 +833,7 @@ if (root == null) {
                 }
             }
         }
-        ballVy = 0 - (speed - abs(ballVx));
+        ballVy = 0 - (speed - math.abs(ballVx));
         if (ballVy > -160) {
             ballVy = -160;
         }
@@ -1082,13 +1064,13 @@ if (root == null) {
                 destY = playfieldTop + ballRadius;
             }
             if (!goingDown && simY <= destY) {
-                simVy = abs(simVy);
+                simVy = math.abs(simVy);
                 if (simVy < 40) {
                     simVy = 220;
                 }
             } else {
                 var dt = 0;
-                if (abs(simVy) > 1) {
+                if (math.abs(simVy) > 1) {
                     dt = (destY - simY) / simVy;
                 }
                 if (dt < 0) {
@@ -1101,7 +1083,7 @@ if (root == null) {
                 if (goingDown) {
                     return simX;
                 }
-                simVy = abs(simVy);
+                simVy = math.abs(simVy);
                 if (simVy < 40) {
                     simVy = 220;
                 }
@@ -1118,11 +1100,11 @@ if (root == null) {
             return 0;
         }
         var n = (((center - minC) / span) * 2) - 1;
-        return clamp(n, -1, 1);
+        return math.clamp(n, -1, 1);
     }
 
     function normToLeft(n) {
-        var c = clamp(n, -1, 1);
+        var c = math.clamp(n, -1, 1);
         var minC = paddleWidth / 2;
         var maxC = canvasWidth - (paddleWidth / 2);
         var center = minC + (((c + 1) * 0.5) * (maxC - minC));
@@ -1234,7 +1216,7 @@ if (root == null) {
         if (state == "serve") {
             mid = mid + (math.sin(brickAnimClockMs * 0.003) * 90);
         }
-        return clamp(mid, 0, canvasWidth - paddleWidth);
+        return math.clamp(mid, 0, canvasWidth - paddleWidth);
     }
 
     function movePaddleToward(left, step) {
@@ -1258,7 +1240,7 @@ if (root == null) {
         if (game.wasMousePressed(0)) {
             return true;
         }
-        if (length(game.getTouches()) > 0) {
+        if (str.length(game.getTouches()) > 0) {
             return true;
         }
         if (game.isGamepadConnected(0)) {
@@ -1268,7 +1250,7 @@ if (root == null) {
             if (game.isGamepadButtonDown(0, 14) || game.isGamepadButtonDown(0, 15)) {
                 return true;
             }
-            if (abs(game.getGamepadAxis(0, 0)) > 0.2) {
+            if (math.abs(game.getGamepadAxis(0, 0)) > 0.2) {
                 return true;
             }
         }
@@ -1303,7 +1285,7 @@ if (root == null) {
             return true;
         }
         var touches = game.getTouches();
-        if (length(touches) > 0 && pointInNeuralButton(touches[0].x, touches[0].y)) {
+        if (str.length(touches) > 0 && pointInNeuralButton(touches[0].x, touches[0].y)) {
             return true;
         }
         return false;
@@ -1368,7 +1350,7 @@ if (root == null) {
         var mouseClick = mouseDown && !prevMouseDown;
 
         var touches = game.getTouches();
-        var usingTouch = length(touches) > 0;
+        var usingTouch = str.length(touches) > 0;
 
         var moveLeft = game.isKeyDown("arrowleft") || game.isKeyDown("a");
         var moveRight = game.isKeyDown("arrowright") || game.isKeyDown("d");
@@ -1401,7 +1383,7 @@ if (root == null) {
         var padAxis = 0;
         if (game.isGamepadConnected(0)) {
             padAxis = game.getGamepadAxis(0, 0);
-            if (abs(padAxis) < 0.2) {
+            if (math.abs(padAxis) < 0.2) {
                 padAxis = 0;
             }
         }
@@ -1441,7 +1423,7 @@ if (root == null) {
         }
 
         lastMouseX = mouseX;
-        paddleX = clamp(paddleX, 0, canvasWidth - paddleWidth);
+        paddleX = math.clamp(paddleX, 0, canvasWidth - paddleWidth);
         if (dt > 0) {
             paddleVx = ((paddleX - prevPaddleX) * 1000) / dt;
         } else {
@@ -1481,10 +1463,10 @@ if (root == null) {
                 resetBallOnPaddle(1);
             }
 
-            serveAim = clamp(paddleVx / paddleSpeed, -1, 1);
+            serveAim = math.clamp(paddleVx / paddleSpeed, -1, 1);
             if (usingTouch) {
                 var touchAim = ((touches[0].x - (paddleX + (paddleWidth / 2))) / 120);
-                serveAim = clamp(touchAim, -1, 1);
+                serveAim = math.clamp(touchAim, -1, 1);
             } else if (moveLeft && !moveRight) {
                 serveAim = -0.8;
             } else if (moveRight && !moveLeft) {
@@ -1492,12 +1474,12 @@ if (root == null) {
             } else if (padAxis != 0) {
                 serveAim = padAxis;
             }
-            if (abs(serveAim) < 0.12) {
+            if (math.abs(serveAim) < 0.12) {
                 serveAim = 0;
             }
 
             var aimVx = serveAim * 240;
-            if (abs(aimVx) < 28) {
+            if (math.abs(aimVx) < 28) {
                 aimVx = 28;
                 if (paddleVx < 0) {
                     aimVx = -28;
@@ -1542,7 +1524,7 @@ if (root == null) {
             expandTimerMs = expandTimerMs - dt;
             if (expandTimerMs <= 0) {
                 paddleWidth = paddleBaseWidth;
-                paddleX = clamp(paddleX, 0, canvasWidth - paddleWidth);
+                paddleX = math.clamp(paddleX, 0, canvasWidth - paddleWidth);
             }
         }
         if (slowTimerMs > 0) {
@@ -1828,7 +1810,7 @@ if (root == null) {
             var act = 0.12;
             if (n < lastHidden.length) {
                 act = (lastHidden[n] + 1) * 0.5;
-                act = clamp(act, 0, 1);
+                act = math.clamp(act, 0, 1);
             }
             game.fillCircle(424 + (n * 13), 50, 2 + (act * 3.2), "#34d399");
             n = n + 1;
@@ -1839,7 +1821,7 @@ if (root == null) {
         game.fillRect(trackX, 48, trackW, 4, "#1e293b");
         if (learnSeen) {
             var coachPx = trackX + (((lastCoachNorm + 1) * 0.5) * trackW);
-            var netPx = trackX + (((clamp(lastNetNorm, -1, 1) + 1) * 0.5) * trackW);
+            var netPx = trackX + (((math.clamp(lastNetNorm, -1, 1) + 1) * 0.5) * trackW);
             game.fillRect(coachPx - 1, 42, 3, 16, "#facc15");
             game.fillRect(netPx - 1, 42, 3, 16, "#34d399");
         }

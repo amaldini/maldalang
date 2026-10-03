@@ -65,14 +65,14 @@ var root = ui.column({"componentId": "MinimalShowcase"}, [
     ui.errorBoundary({}, [ui.text({"value": "fallback"})])
 ]);
 
-print(ui.mount(root, sid));
+io.print(ui.mount(root, sid));
 ui.dispatchEvent({"type": "click", "targetPath": "/0/", "payload": {"action": "noop"}}, sid, 1);
-print(ui.pullEvent(sid));
+io.print(ui.pullEvent(sid));
 ui.setState("MinimalShowcase", "count", 1, sid);
-print(ui.state("MinimalShowcase", "count", 0, sid));
-print(ui.render(root, sid));
-print(ui.snapshot(sid));
-print(ui.resync(sid));
+io.print(ui.state("MinimalShowcase", "count", 0, sid));
+io.print(ui.render(root, sid));
+io.print(ui.snapshot(sid));
+io.print(ui.resync(sid));
 
 var server = new HttpServer(8081);
 
@@ -106,4 +106,4 @@ function uiControlsShowcaseMinimalApi() {
 }
 
 server.start();
-print("Open: http://localhost:8081/web/ui-controls-showcase-minimal");
+io.print("Open: http://localhost:8081/web/ui-controls-showcase-minimal");

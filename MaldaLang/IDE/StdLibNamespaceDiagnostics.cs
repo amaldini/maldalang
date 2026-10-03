@@ -22,12 +22,15 @@ internal static class StdLibNamespaceDiagnostics
         switch (statement)
         {
             case FunctionDeclaration func:
-                VisitBlock(func.Body, diagnostics);
+                // @shader() bodies are GLSL. Bare cos/dot/length are GPU intrinsics, not host aliases.
+                if (!ShaderFunction.IsMarked(func))
+                    VisitBlock(func.Body, diagnostics);
                 break;
             case ClassDeclaration cls:
                 foreach (var member in cls.Members)
                 {
-                    if (member.Type == MemberType.Method && member.Value is FunctionDeclaration method)
+                    if (member.Type == MemberType.Method && member.Value is FunctionDeclaration method &&
+                        !ShaderFunction.IsMarked(method))
                         VisitBlock(method.Body, diagnostics);
                 }
                 break;

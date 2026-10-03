@@ -104,4 +104,28 @@ public class StdLibNamespaceTests : TestBase
         Assert.Contains(warnings, d => d.Message.Contains("deprecated module alias", StringComparison.Ordinal));
         Assert.Contains(warnings, d => d.Message.Contains("math.sqrt", StringComparison.Ordinal));
     }
+
+    [Fact]
+    public void LanguageService_ShaderKernelsDoNotWarnOnGlslIntrinsics()
+    {
+        var languageService = new LanguageService();
+        var source = """
+            @shader()
+            function palette(t: float) -> vec3 {
+                var n: vec3 = vec3(1.0, 0.0, 0.0);
+                return cos(t) * dot(n, n) + vec3(length(n));
+            }
+            abs(-1);
+            """;
+
+        var warnings = languageService
+            .GetDiagnostics(source, "shader-stdlib.malda")
+            .Where(d => d.Source == "malda-style" && d.Severity == DiagnosticSeverity.Warning)
+            .ToList();
+
+        Assert.DoesNotContain(warnings, d => d.Message.Contains("cos(", StringComparison.Ordinal));
+        Assert.DoesNotContain(warnings, d => d.Message.Contains("'dot(", StringComparison.Ordinal) || d.Message.Contains("dot(...)", StringComparison.Ordinal));
+        Assert.DoesNotContain(warnings, d => d.Message.Contains("length", StringComparison.Ordinal));
+        Assert.Contains(warnings, d => d.Message.Contains("math.abs", StringComparison.Ordinal));
+    }
 }

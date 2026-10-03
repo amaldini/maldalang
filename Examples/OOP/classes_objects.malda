@@ -9,7 +9,7 @@ class Person {
     
     function introduce() {
         // Implicit member access - no 'this.' needed
-        print($"Hi, I'm {name} and I'm {age} years old");
+        io.print($"Hi, I'm {name} and I'm {age} years old");
     }
     
     function getAge() {
@@ -26,6 +26,6 @@ var person2 = new Person("Bob", 25);
 
 person1.introduce();
 person2.introduce();
-print($"Alice's age: {person1.getAge()}");
+io.print($"Alice's age: {person1.getAge()}");
 person1.setAge(31);
-print($"Alice's new age: {person1.getAge()}");
+io.print($"Alice's new age: {person1.getAge()}");
