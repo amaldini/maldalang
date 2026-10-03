@@ -107,7 +107,19 @@ public partial class MainWindow
             Title = document.IsDirty ? $"{name}* — MALDA" : $"{name} — MALDA";
         }
 
-        StatusPathText.Text = document == null ? "" : GetPhysicalPath(document) ?? "Untitled";
+        if (!string.IsNullOrWhiteSpace(_showcaseLyric))
+        {
+            StatusLyricText.Text = _showcaseLyric;
+            StatusLyricText.Visibility = Visibility.Visible;
+            StatusPathText.Visibility = Visibility.Collapsed;
+        }
+        else
+        {
+            StatusLyricText.Text = "";
+            StatusLyricText.Visibility = Visibility.Collapsed;
+            StatusPathText.Visibility = Visibility.Visible;
+            StatusPathText.Text = document == null ? "" : GetPhysicalPath(document) ?? "Untitled";
+        }
 
         if (CodeEditor?.Document != null)
         {

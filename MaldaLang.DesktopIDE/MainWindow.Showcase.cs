@@ -152,6 +152,7 @@ public partial class MainWindow
         }
 
         _showcaseCaption = "";
+        SetShowcaseLyric(_showcase?.Lyrics.Intro);
         UpdateWindowChrome();
         SplashOverlay.Visibility = Visibility.Visible;
         _showcaseSplashVisible = true;
@@ -197,7 +198,7 @@ public partial class MainWindow
         };
         var margin = 28.0;
         browser.Width = Math.Max(960, ActualWidth - (margin * 2));
-        browser.Height = Math.Max(620, ActualHeight - (margin * 2) - 24);
+        browser.Height = Math.Max(620, ActualHeight - (margin * 2) - 44);
         browser.Left = Left + ((ActualWidth - browser.Width) / 2);
         browser.Top = Top + ((ActualHeight - browser.Height) / 2) + 8;
         _showcaseBrowser = browser;
@@ -205,8 +206,9 @@ public partial class MainWindow
         try
         {
             await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
-            foreach (var pick in picks)
+            for (var index = 0; index < picks.Count; index++)
             {
+                var pick = picks[index];
                 await WaitUntilShowcaseMs(pick.StartMs);
                 if (ShowcaseNowMs >= pick.EndMs)
                 {
@@ -214,6 +216,7 @@ public partial class MainWindow
                 }
 
                 _showcaseCaption = string.IsNullOrWhiteSpace(pick.Caption) ? "Examples" : pick.Caption;
+                SetShowcaseLyric(_showcase?.Lyrics.BrowseLyric(index, picks.Count));
                 UpdateWindowChrome();
                 browser.Title = "Browse Examples — " + _showcaseCaption;
                 if (!browser.TrySelectExample(pick.File, pick.FocusLine))
@@ -244,10 +247,17 @@ public partial class MainWindow
             return;
         }
 
+        var captions = new List<string>(pages.Count);
+        foreach (var page in pages)
+        {
+            captions.Add(page.Caption);
+        }
+
         try
         {
-            foreach (var page in pages)
+            for (var index = 0; index < pages.Count; index++)
             {
+                var page = pages[index];
                 await WaitUntilShowcaseMs(page.StartMs);
                 if (ShowcaseNowMs >= page.EndMs)
                 {
@@ -255,6 +265,7 @@ public partial class MainWindow
                 }
 
                 _showcaseCaption = string.IsNullOrWhiteSpace(page.Caption) ? "Manual" : page.Caption;
+                SetShowcaseLyric(_showcase?.Lyrics.ManualLyric(index, captions));
                 UpdateWindowChrome();
                 BringShowcaseToFront();
                 var ready = await ShowReferenceManualPageAsync(
@@ -393,6 +404,8 @@ public partial class MainWindow
             _lastDetectedWebUiUrl = null;
 
             _showcaseCaption = scene.Caption ?? "";
+            var sceneIndex = _showcase?.Playlist.Scenes.IndexOf(scene) ?? -1;
+            SetShowcaseLyric(sceneIndex < 0 ? null : _showcase?.Lyrics.SceneLyric(sceneIndex));
             OpenFileAndIncludedDocuments(scene.AbsolutePath);
             DropUntitledShowcaseDocument();
             BringShowcaseToFront();
@@ -598,6 +611,11 @@ public partial class MainWindow
         width = rect.Right - rect.Left;
         height = rect.Bottom - rect.Top;
         return width > 0 && height > 0;
+    }
+
+    private void SetShowcaseLyric(string? lyric)
+    {
+        _showcaseLyric = string.IsNullOrWhiteSpace(lyric) ? null : lyric.Trim();
     }
 
     private void WriteShowcaseStatus(string phase, int x, int y, int width, int height, string? scene, string? error)

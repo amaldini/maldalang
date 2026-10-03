@@ -20,6 +20,7 @@ public sealed class ShowcaseSession
     public required ShowcasePlaylist Playlist { get; init; }
     public required string RepoRoot { get; init; }
     public required string HandshakeDirectory { get; init; }
+    public ShowcaseLyrics Lyrics { get; init; } = ShowcaseLyrics.Empty;
 
     /// <summary>Start the reel clock when the splash is up, without waiting for the recorder.</summary>
     public bool AutoStart { get; init; }
@@ -153,7 +154,8 @@ public sealed class ShowcaseSession
             Playlist = playlist,
             RepoRoot = repoRoot,
             HandshakeDirectory = handshake,
-            AutoStart = autoStart
+            AutoStart = autoStart,
+            Lyrics = ShowcaseLyrics.Load(Path.GetDirectoryName(fullPlaylist) ?? repoRoot)
         };
     }
 

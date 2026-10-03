@@ -120,6 +120,44 @@ public class ShowcaseTimelineTests
         Assert.Contains("endMs", error.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void SongPrompt_AssignsOneLyricToEachCue()
+    {
+        var root = RepoRoot();
+        var handshake = Path.Combine(Path.GetTempPath(), "malda-showcase-lyrics-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var session = ShowcaseSession.Load(Path.Combine(root, "scripts", "showcase", "playlist.json"), handshake);
+            var lyrics = session.Lyrics;
+            Assert.Equal("Malda, come closer.", lyrics.Intro);
+            Assert.Equal(session.Playlist.Browse.Count, lyrics.CatalogSentences.Count);
+            Assert.Equal("Hello, confirm.", lyrics.BrowseLyric(0, session.Playlist.Browse.Count));
+            Assert.Equal("The king is watched.", lyrics.BrowseLyric(session.Playlist.Browse.Count - 1, session.Playlist.Browse.Count));
+
+            var captions = new List<string>();
+            foreach (var page in session.Playlist.Manual)
+            {
+                captions.Add(page.Caption);
+            }
+
+            Assert.Equal("Open the book.", lyrics.ManualLyric(0, captions));
+            Assert.Equal("", lyrics.ManualLyric(captions.FindIndex(caption => caption.Contains("Neural", StringComparison.OrdinalIgnoreCase)), captions));
+            Assert.Equal("Many agents, one objective.", lyrics.ManualLyric(captions.FindIndex(caption => caption.Contains("Multi-agent", StringComparison.OrdinalIgnoreCase)), captions));
+            Assert.Equal("Play it in the browser.", lyrics.ManualLyric(captions.FindIndex(caption => caption.Contains("Browser", StringComparison.OrdinalIgnoreCase)), captions));
+
+            Assert.Equal(session.Playlist.Scenes.Count, lyrics.DreamLines.Count);
+            Assert.Equal("Printed clean.", lyrics.SceneLyric(0));
+            Assert.Equal("Last move. Objective done.", lyrics.SceneLyric(session.Playlist.Scenes.Count - 1));
+        }
+        finally
+        {
+            if (Directory.Exists(handshake))
+            {
+                Directory.Delete(handshake, recursive: true);
+            }
+        }
+    }
+
     private static string RepoRoot()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
