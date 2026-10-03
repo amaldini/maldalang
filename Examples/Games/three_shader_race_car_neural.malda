@@ -9,6 +9,7 @@
 //
 // Q/E change circuit. C chase camera. N network only. T coach only.
 // L blend mode. R reset brain. Space pause. Tab manual drive (WASD/arrows).
+// A side panel matches the 2D grand prix HUD: speed, laps, neural share, and order.
 
 function wrapAngle(a: float) -> float {
     var turns = math.floor((a + 3.14159265) / 6.2831853);
@@ -26,10 +27,29 @@ function wrapIndex(i: int, n: int) -> int {
     return k;
 }
 
+function formatTime(seconds: float) -> string {
+    if (seconds < 0.0) {
+        return "--:--.---";
+    }
+    var mins = int(seconds / 60.0);
+    var rem = seconds - mins * 60.0;
+    var whole = int(rem);
+    var ms = int((rem - whole) * 1000.0);
+    if (ms < 0) {
+        ms = 0;
+    }
+    if (ms > 999) {
+        ms = 999;
+    }
+    return string(mins) + ":" + str.padStart(string(whole), 2, "0") + "." + str.padStart(string(ms), 3, "0");
+}
+
 function circuitCatalog() -> array {
     var circuits = [];
     circuits.append({
         "name": "Monza",
+        "place": "Italy",
+        "km": 5.793,
         "width": 34.0,
         "pts": [
             260.0, 508.0, 400.0, 514.0, 540.0, 510.0, 660.0, 496.0,
@@ -44,6 +64,8 @@ function circuitCatalog() -> array {
     });
     circuits.append({
         "name": "Spa-Francorchamps",
+        "place": "Belgium",
+        "km": 7.004,
         "width": 30.0,
         "pts": [
             180.0, 560.0, 340.0, 575.0, 500.0, 568.0, 640.0, 545.0,
@@ -59,6 +81,8 @@ function circuitCatalog() -> array {
     });
     circuits.append({
         "name": "Silverstone",
+        "place": "United Kingdom",
+        "km": 5.891,
         "width": 32.0,
         "pts": [
             250.0, 522.0, 420.0, 542.0, 590.0, 532.0, 730.0, 492.0,
@@ -72,6 +96,8 @@ function circuitCatalog() -> array {
     });
     circuits.append({
         "name": "Monaco",
+        "place": "Monaco",
+        "km": 3.337,
         "width": 18.0,
         "pts": [
             180.0, 540.0, 360.0, 555.0, 540.0, 545.0, 680.0, 500.0,
@@ -82,6 +108,8 @@ function circuitCatalog() -> array {
     });
     circuits.append({
         "name": "Suzuka",
+        "place": "Japan",
+        "km": 5.807,
         "width": 28.0,
         "pts": [
             300.0, 478.0, 338.0, 392.0, 392.0, 318.0, 520.0, 246.0,
@@ -94,6 +122,8 @@ function circuitCatalog() -> array {
     });
     circuits.append({
         "name": "Interlagos",
+        "place": "Brazil",
+        "km": 4.309,
         "width": 30.0,
         "pts": [
             520.0, 400.0, 430.0, 440.0, 360.0, 450.0,
@@ -108,6 +138,8 @@ function circuitCatalog() -> array {
     });
     circuits.append({
         "name": "Austin",
+        "place": "United States",
+        "km": 5.513,
         "width": 32.0,
         "pts": [
             150.0, 508.0, 320.0, 528.0, 510.0, 518.0, 690.0, 492.0,
@@ -120,6 +152,8 @@ function circuitCatalog() -> array {
     });
     circuits.append({
         "name": "Sakhir",
+        "place": "Bahrain",
+        "km": 5.412,
         "width": 34.0,
         "pts": [
             140.0, 468.0, 320.0, 496.0, 520.0, 488.0, 700.0, 462.0,
@@ -800,20 +834,50 @@ if (root == null) {
     dom.append(root, heading);
 
     var hint = dom.create("p");
-    dom.setText(hint, "GPU ray-traced 3D racing with neural network learning. Q/E change circuit. C chase camera. N network. T coach. L blend. R reset brain. Space pause. Tab manual drive (WASD/arrows).");
+    dom.setText(hint, "GPU ray-traced 3D racing with neural network learning. Keys are listed on the timing panel.");
     dom.append(root, hint);
 
-    var statusLine = dom.create("p");
-    dom.setText(statusLine, "Loading...");
-    dom.append(root, statusLine);
+    var hudStyle = dom.create("style");
+    var hudCss = "#app{display:flex;flex-wrap:wrap;align-items:flex-start;background:#0a1628}";
+    hudCss = hudCss + "#app h1,#app>p{flex:1 0 100%;color:#f6f3ec}";
+    hudCss = hudCss + "#app canvas{display:block;flex:0 0 auto;background:#0a1628}";
+    hudCss = hudCss + "#gp-hud{width:320px;min-height:540px;box-sizing:border-box;background:#0c1018;color:#f6f3ec;font-family:Segoe UI,sans-serif;border-left:4px solid #e10600;padding:16px 16px 12px 18px;overflow:auto}";
+    hudCss = hudCss + "#gp-hud .top{display:flex;justify-content:space-between;align-items:center}";
+    hudCss = hudCss + "#gp-hud .kicker{color:#e10600;font-size:12px;letter-spacing:.14em;font-weight:700}";
+    hudCss = hudCss + "#gp-hud .status{font-size:13px;font-weight:700}";
+    hudCss = hudCss + "#gp-hud h2{margin:4px 0 0;font-size:26px;font-weight:600;color:#f6f3ec}";
+    hudCss = hudCss + "#gp-hud .sub{color:#a7b0c0;font-size:13px;margin-top:2px}";
+    hudCss = hudCss + "#gp-hud .speed{font-size:40px;line-height:1;margin-top:14px;color:#f7f4ee}";
+    hudCss = hudCss + "#gp-hud .unit{font-size:13px;color:#8b93a7;margin-left:8px}";
+    hudCss = hudCss + "#gp-hud .row{display:flex;justify-content:space-between;gap:8px;margin-top:6px;font-size:14px}";
+    hudCss = hudCss + "#gp-hud .best{color:#f0d78c}#gp-hud .muted{color:#8b93a7}#gp-hud .dim{color:#c5cad6}";
+    hudCss = hudCss + "#gp-hud .label{color:#9aa3b5;font-size:12px;margin-top:14px;display:flex;justify-content:space-between;align-items:center}";
+    hudCss = hudCss + "#gp-hud .share{height:10px;background:#c6a15a;margin-top:4px}";
+    hudCss = hudCss + "#gp-hud .share i{display:block;height:10px;background:#1f8f72}";
+    hudCss = hudCss + "#gp-hud .bars{display:grid;grid-template-columns:58px 1fr 1fr;gap:6px 8px;align-items:center;margin-top:8px;font-size:11px;color:#8b93a7}";
+    hudCss = hudCss + "#gp-hud .coach{color:#e6c56a}#gp-hud .netc{color:#7dface}";
+    hudCss = hudCss + "#gp-hud .track{position:relative;height:8px;background:#1a2030}";
+    hudCss = hudCss + "#gp-hud .track i{position:absolute;top:0;height:8px;display:block}";
+    hudCss = hudCss + "#gp-hud .netrow{display:flex;justify-content:flex-end;margin-top:8px}";
+    hudCss = hudCss + "#gp-hud .lossbox{height:44px;background:#121722;margin-top:4px}";
+    hudCss = hudCss + "#gp-hud .lossbox svg{width:100%;height:44px;display:block}";
+    hudCss = hudCss + "#gp-hud .order div{display:flex;align-items:center;gap:8px;height:16px;font-size:13px;margin-top:2px}";
+    hudCss = hudCss + "#gp-hud .dot{width:9px;height:9px;border-radius:50%;flex:0 0 9px}";
+    hudCss = hudCss + "#gp-hud .gap{margin-left:auto;color:#a7b0c0;font-size:12px}";
+    hudCss = hudCss + "#gp-hud .chips{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:12px}";
+    hudCss = hudCss + "#gp-hud .chips span{background:#171d2a;color:#c5cad6;font-size:11px;padding:3px 8px}";
+    hudCss = hudCss + "#gp-hud .chips span.on{background:#e10600;color:#fff7f4}";
+    hudCss = hudCss + "#gp-hud .keys{margin-top:12px;color:#d5dbe8;font-size:11px;line-height:1.45}";
+    dom.setText(hudStyle, hudCss);
+    dom.append(root, hudStyle);
 
-    var lossLine = dom.create("p");
-    dom.setText(lossLine, "");
-    dom.append(root, lossLine);
+    var hud = dom.create("div");
+    hud.id = "gp-hud";
+    dom.setText(hud, "Loading...");
 
     if (dom.query("#malda-autoplay") != null) {
         var showcaseFit = dom.create("style");
-        dom.setText(showcaseFit, "#status{display:none!important}html,body{overflow:hidden;margin:0;background:#0a1628}#app{min-height:0!important;background:#0a1628}#app>p,#app>div{display:none!important}#app h1{margin:8px 12px 0;font-size:14px;font-weight:600;line-height:1.2}#app canvas{position:fixed!important;left:8px!important;top:32px!important;width:calc(100vw - 16px)!important;height:calc(100vh - 44px)!important;object-fit:contain;object-position:center center;background:#0a1628}");
+        dom.setText(showcaseFit, "#status{display:none!important}html,body{overflow:hidden;margin:0;background:#0a1628}#app{min-height:0!important;background:#0a1628}#app>p,#app>div:not(#gp-hud){display:none!important}#gp-hud{display:block!important;position:fixed!important;right:0;top:0;bottom:0;z-index:4;min-height:0}#app h1{margin:8px 12px 0;font-size:14px;font-weight:600;line-height:1.2}#app canvas{position:fixed!important;left:8px!important;top:32px!important;width:calc(100vw - 336px)!important;height:calc(100vh - 44px)!important;object-fit:contain;object-position:center center;background:#0a1628}");
         dom.append(root, showcaseFit);
     }
 
@@ -1108,6 +1172,7 @@ if (root == null) {
         var spec = circuits[circuitIndex];
         buildTrack(spec);
         resetCars();
+        sessionBest = -1.0;
         uploadTrackTexture();
     }
 
@@ -1151,10 +1216,15 @@ if (root == null) {
     var carIdx = [];
     var carS = [];
     var carLap = [];
+    var carLapTime = [];
+    var carLast = [];
+    var carBest = [];
     var carAge = [];
     var carStyle = [];
     var manualDrive = false;
     var leadCar = 0;
+    var order = [];
+    var hudCar = 0;
 
     function resetCars() {
         carX = [];
@@ -1164,8 +1234,12 @@ if (root == null) {
         carIdx = [];
         carS = [];
         carLap = [];
+        carLapTime = [];
+        carLast = [];
+        carBest = [];
         carAge = [];
         carStyle = [];
+        order = [];
         leadCar = 0;
         var i = 0;
         while (i < carCount) {
@@ -1181,8 +1255,12 @@ if (root == null) {
             carIdx.append(int(pose[3]));
             carS.append(pose[4]);
             carLap.append(0);
+            carLapTime.append(0.0);
+            carLast.append(-1.0);
+            carBest.append(-1.0);
             carAge.append(0.0);
             carStyle.append((i - 3.5) * 0.045);
+            order.append(i);
             i = i + 1;
         }
     }
@@ -1197,9 +1275,17 @@ if (root == null) {
     var bufY = [];
     var shownLoss = 0.46;
     var lastLoss = 0.46;
+    var sessionBest = -1.0;
     var brainMode = "blend";
     var paused = false;
     var trainTick = 0;
+    var lossHist = [];
+    var lastSteerNet = 0.0;
+    var lastThrNet = 0.0;
+    var lastSteerCoach = 0.0;
+    var lastThrCoach = 0.0;
+    var lastHidden = [];
+    var carColors = ["#eb262e", "#1f85f2", "#26d147", "#f2b81f", "#d96b26", "#942eb8", "#2eadb8", "#b8b8b8"];
 
     function resetBrain() {
         math.seed(11);
@@ -1214,6 +1300,13 @@ if (root == null) {
         lastLoss = 0.46;
         shownLoss = 0.46;
         trainTick = 0;
+        lossHist = [];
+        lastHidden = [];
+        var z = 0;
+        while (z < hidN) {
+            lastHidden.append(0.0);
+            z = z + 1;
+        }
     }
 
     resetBrain();
@@ -1259,6 +1352,10 @@ if (root == null) {
         applyMatrix(w2, g2w, step);
         applyVector(b2, g2b, step);
         lastLoss = lossSum / n;
+        lossHist.append(lastLoss);
+        if (lossHist.length > 48) {
+            lossHist.shift();
+        }
     }
 
     function query(x: float, z: float, hint: int) -> array {
@@ -1474,6 +1571,18 @@ if (root == null) {
         if (netThr > 1.0) {
             netThr = 1.0;
         }
+        if (i == hudCar) {
+            lastSteerNet = netSteer;
+            lastThrNet = netThr;
+            lastSteerCoach = teach[0];
+            lastThrCoach = teach[1];
+            lastHidden = [];
+            var hCopy = 0;
+            while (hCopy < hidN) {
+                lastHidden.append(hidden.out[hCopy]);
+                hCopy = hCopy + 1;
+            }
+        }
         var share = shareNow();
         var steer = teach[0] * (1.0 - share) + netSteer * share;
         var thr = teach[1] * (1.0 - share) + netThr * share;
@@ -1537,8 +1646,19 @@ if (root == null) {
         carIdx[i] = int(after[0]);
         carS[i] = after[3];
         carAge[i] = carAge[i] + dt;
+        carLapTime[i] = carLapTime[i] + dt;
         if (prevS > totalLen * 0.70 && carS[i] < totalLen * 0.30) {
+            if (carLap[i] >= 1 && carLapTime[i] > 6.0) {
+                carLast[i] = carLapTime[i];
+                if (carBest[i] < 0.0 || carLapTime[i] < carBest[i]) {
+                    carBest[i] = carLapTime[i];
+                }
+                if (sessionBest < 0.0 || carLapTime[i] < sessionBest) {
+                    sessionBest = carLapTime[i];
+                }
+            }
             carLap[i] = carLap[i] + 1;
+            carLapTime[i] = 0.0;
         }
         if (math.abs(after[1]) > trackW * 2.6 || (onGrass && carV[i] < 18.0 * worldScale && carAge[i] > 1.2)) {
             var back = poseAt(prevS, 0.0);
@@ -1584,15 +1704,30 @@ if (root == null) {
     }
 
     function updateLead() {
-        var best = -1.0;
+        order = [];
         var i = 0;
         while (i < carCount) {
-            var prog = carLap[i] * totalLen + carS[i];
-            if (prog > best) {
-                best = prog;
-                leadCar = i;
-            }
+            order.append(i);
             i = i + 1;
+        }
+        var a = 0;
+        while (a < carCount) {
+            var b = 0;
+            while (b < carCount - 1) {
+                var ia = order[b];
+                var ib = order[b + 1];
+                var pa = carLap[ia] * totalLen + carS[ia];
+                var pb = carLap[ib] * totalLen + carS[ib];
+                if (pb > pa) {
+                    order[b] = ib;
+                    order[b + 1] = ia;
+                }
+                b = b + 1;
+            }
+            a = a + 1;
+        }
+        if (order.length > 0) {
+            leadCar = order[0];
         }
     }
 
@@ -1689,6 +1824,7 @@ if (root == null) {
     var renderer = three.createRenderer(width, height, "#app");
     three.setClearColor(renderer, "#0a1628");
     three.setRendererSize(renderer, width, height);
+    dom.append(root, hud);
 
     var scene = three.createScene();
     var camera = three.createOrthographicCamera(-1, 1, 1, -1, 0, 1);
@@ -1769,6 +1905,196 @@ if (root == null) {
 
     loadCircuit(0);
 
+    function steerFill(value: float, color: string) -> string {
+        var w = value * 50.0;
+        if (w < -50.0) {
+            w = -50.0;
+        }
+        if (w > 50.0) {
+            w = 50.0;
+        }
+        if (w < 0.0) {
+            return "<i style='left:" + string(50.0 + w) + "%;width:" + string(-w) + "%;background:" + color + "'></i>";
+        }
+        return "<i style='left:50%;width:" + string(w) + "%;background:" + color + "'></i>";
+    }
+
+    function thrFill(value: float, color: string) -> string {
+        var w = value * 100.0;
+        if (w < 0.0) {
+            w = 0.0;
+        }
+        if (w > 100.0) {
+            w = 100.0;
+        }
+        return "<i style='left:0;width:" + string(w) + "%;background:" + color + "'></i>";
+    }
+
+    function sparkline() -> string {
+        if (lossHist.length < 2) {
+            return "<svg viewBox='0 0 280 44'></svg>";
+        }
+        var maxL = 0.08;
+        var hi = 0;
+        while (hi < lossHist.length) {
+            if (lossHist[hi] > maxL) {
+                maxL = lossHist[hi];
+            }
+            hi = hi + 1;
+        }
+        var slot = 280.0 / lossHist.length;
+        var pts = "";
+        var p = 0;
+        while (p < lossHist.length) {
+            var x = p * slot;
+            var y = 40.0 - (lossHist[p] / maxL) * 36.0;
+            if (p > 0) {
+                pts = pts + " ";
+            }
+            pts = pts + string(int(x * 10.0) / 10.0) + "," + string(int(y * 10.0) / 10.0);
+            p = p + 1;
+        }
+        return "<svg viewBox='0 0 280 44' preserveAspectRatio='none'><polyline points='" + pts + "' fill='none' stroke='#7dface' stroke-width='1.6'/></svg>";
+    }
+
+    function miniNet() -> string {
+        var svg = "<svg viewBox='0 0 96 72' width='96' height='72'>";
+        var h = 0;
+        while (h < 5) {
+            var act = 0.5;
+            if (lastHidden.length > h * 4) {
+                act = (lastHidden[h * 4] + 1.0) * 0.5;
+            }
+            if (act < 0.0) {
+                act = 0.0;
+            }
+            if (act > 1.0) {
+                act = 1.0;
+            }
+            var y = 8.0 + h * 14.0;
+            var r = 3.5 + act * 2.2;
+            var fade = string(int((0.35 + act * 0.5) * 100.0) / 100.0);
+            svg = svg + "<line x1='8' y1='36' x2='48' y2='" + string(y) + "' stroke='#7dface' stroke-opacity='" + fade + "'/>";
+            svg = svg + "<line x1='48' y1='" + string(y) + "' x2='88' y2='22' stroke='#7dface' stroke-opacity='" + fade + "'/>";
+            svg = svg + "<line x1='48' y1='" + string(y) + "' x2='88' y2='50' stroke='#7dface' stroke-opacity='" + fade + "'/>";
+            svg = svg + "<circle cx='48' cy='" + string(y) + "' r='" + string(int(r * 10.0) / 10.0) + "' fill='#1f8f72'/>";
+            h = h + 1;
+        }
+        svg = svg + "<circle cx='8' cy='36' r='4' fill='#e6c56a'/>";
+        svg = svg + "<circle cx='88' cy='22' r='4' fill='#f4f1ea'/>";
+        svg = svg + "<circle cx='88' cy='50' r='4' fill='#9ad7ff'/>";
+        svg = svg + "</svg>";
+        return svg;
+    }
+
+    function refreshHud() {
+        var spec = circuits[circuitIndex];
+        var kmText = string(math.round(spec.km * 1000.0) / 1000.0);
+        var status = "LEARNING";
+        var statusColor = "#f0d78c";
+        var share = shareNow();
+        if (paused) {
+            status = "PAUSED";
+            statusColor = "#f0d78c";
+        } else if (manualDrive) {
+            status = "YOU DRIVE";
+            statusColor = "#9ad7ff";
+        } else if (brainMode == "net") {
+            status = "NETWORK";
+            statusColor = "#7dface";
+        } else if (brainMode == "coach") {
+            status = "COACH";
+            statusColor = "#f0d78c";
+        } else if (share > 0.85) {
+            status = "NET IN CONTROL";
+            statusColor = "#7dface";
+        }
+        var leader = leadCar;
+        if (order.length > 0) {
+            leader = order[0];
+        }
+        var show = leader;
+        if (manualDrive) {
+            show = 0;
+        }
+        var speedDiv = 150.0 * worldScale;
+        if (speedDiv < 0.001) {
+            speedDiv = 1.0;
+        }
+        var kmh = int((carV[show] / speedDiv) * 325.0);
+        var lapNo = carLap[show];
+        if (lapNo < 1) {
+            lapNo = 1;
+        }
+        var lastText = "--:--.---";
+        if (carLast[show] >= 0.0) {
+            lastText = formatTime(carLast[show]);
+        }
+        var sharePct = int(share * 100.0);
+        var html = "<div class='top'><span class='kicker'>GRAND PRIX</span><span class='status' style='color:" + statusColor + "'>" + status + "</span></div>";
+        html = html + "<h2>" + spec.name + "</h2>";
+        html = html + "<div class='sub'>" + spec.place + "   " + kmText + " km</div>";
+        html = html + "<div class='speed'>" + string(kmh) + "<span class='unit'>KM/H</span></div>";
+        html = html + "<div class='row'><span>LAP  " + formatTime(carLapTime[show]) + "</span><span class='muted'>LAP " + string(lapNo) + "</span></div>";
+        html = html + "<div class='row'><span class='best'>BEST  " + formatTime(sessionBest) + "</span><span class='dim'>LAST  " + lastText + "</span></div>";
+        html = html + "<div class='label'><span>NEURAL SHARE</span><span class='netc'>" + string(sharePct) + "%</span></div>";
+        html = html + "<div class='share'><i style='width:" + string(sharePct) + "%'></i></div>";
+        html = html + "<div class='bars'><span></span><span class='coach'>coach</span><span class='netc'>net</span>";
+        html = html + "<span>steer</span><span class='track'>" + steerFill(lastSteerCoach, "#e6c56a") + "</span><span class='track'>" + steerFill(lastSteerNet, "#7dface") + "</span>";
+        html = html + "<span>throttle</span><span class='track'>" + thrFill(lastThrCoach, "#e6c56a") + "</span><span class='track'>" + thrFill(lastThrNet, "#7dface") + "</span></div>";
+        html = html + "<div class='netrow'>" + miniNet() + "</div>";
+        html = html + "<div class='label'><span>LOSS</span><span>" + string(int(shownLoss * 1000.0) / 1000.0) + "</span></div>";
+        html = html + "<div class='lossbox'>" + sparkline() + "</div>";
+        html = html + "<div class='label'><span>ORDER</span><span></span></div><div class='order'>";
+        var leaderProg = carLap[leader] * totalLen + carS[leader];
+        var rank = 0;
+        while (rank < order.length) {
+            var ci = order[rank];
+            var gap = "leader";
+            if (rank > 0) {
+                var prog = carLap[ci] * totalLen + carS[ci];
+                var behind = leaderProg - prog;
+                var gapDiv = 120.0 * worldScale;
+                if (gapDiv < 0.001) {
+                    gapDiv = 1.0;
+                }
+                var gapSec = behind / gapDiv;
+                if (carLap[leader] > carLap[ci] && behind > totalLen * 0.5) {
+                    gap = "+" + string(carLap[leader] - carLap[ci]) + " LAP";
+                } else {
+                    gap = "+" + string(int(gapSec * 100.0) / 100.0);
+                }
+            }
+            var tag = string(rank + 1);
+            if (manualDrive && ci == 0) {
+                tag = tag + "  YOU";
+            }
+            var ink = "#b8b8b8";
+            if (ci >= 0 && ci < carColors.length) {
+                ink = carColors[ci];
+            }
+            html = html + "<div><i class='dot' style='background:" + ink + "'></i><span>" + tag + "</span><span class='gap'>" + gap + "</span></div>";
+            rank = rank + 1;
+        }
+        html = html + "</div><div class='chips'>";
+        var bi = 0;
+        while (bi < circuits.length) {
+            var shortName = circuits[bi].name;
+            if (shortName == "Spa-Francorchamps") {
+                shortName = "Spa";
+            }
+            if (bi == circuitIndex) {
+                html = html + "<span class='on'>" + shortName + "</span>";
+            } else {
+                html = html + "<span>" + shortName + "</span>";
+            }
+            bi = bi + 1;
+        }
+        html = html + "</div>";
+        html = html + "<div class='keys'>Q E circuit &nbsp; C camera &nbsp; Tab drive<br>N net &nbsp; T coach &nbsp; L blend &nbsp; R reset &nbsp; Space pause</div>";
+        dom.html(hud, html);
+    }
+
     function update(dtMs) {
         var dt = dtMs;
         if (dt > 50) {
@@ -1831,6 +2157,10 @@ if (root == null) {
         tabWasDown = tabDown;
 
         if (!paused) {
+            hudCar = leadCar;
+            if (manualDrive) {
+                hudCar = 0;
+            }
             var i = 0;
             while (i < carCount) {
                 updateCar(i, dtSec);
@@ -1872,26 +2202,7 @@ if (root == null) {
         three.setUniform(material, "uAngle5", carH[5]);
         three.setUniform(material, "uAngle6", carH[6]);
         three.setUniform(material, "uAngle7", carH[7]);
-
-        var circuitName = circuits[circuitIndex].name;
-        var share = shareNow();
-        var modeStr = "Blend " + string(int(share * 100)) + "%";
-        if (brainMode == "net") {
-            modeStr = "Network 100%";
-        }
-        if (brainMode == "coach") {
-            modeStr = "Coach 100%";
-        }
-        var driveStr = "AI";
-        if (manualDrive) {
-            driveStr = "Manual";
-        }
-        var pausedLabel = "";
-        if (paused) {
-            pausedLabel = " | PAUSED";
-        }
-        dom.setText(statusLine, circuitName + " | " + modeStr + " | " + driveStr + " | " + string(carCount) + " cars" + pausedLabel);
-        dom.setText(lossLine, "Loss: " + string(int(shownLoss * 1000) / 1000.0) + " | Samples: " + string(bufX.length));
+        refreshHud();
     }
 
     function render() {
