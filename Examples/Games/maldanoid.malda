@@ -1,3 +1,8 @@
+// Maldanoid.
+// Showcase autoplay (#malda-autoplay) starts the learning paddle.
+// N, or the Neural button, starts the same mode from any launch.
+// Once the loss falls to 0.03 the network plays alone. The gold tick stays as the coach aim.
+
 var root = dom.query("#app");
 
 if (root == null) {
@@ -131,6 +136,26 @@ if (root == null) {
     var prevMouseDown = false;
     var mouseDown = false;
 
+    var autoplay = dom.query("#malda-autoplay") != null;
+    var autoplayServeMs = 0;
+    var autoplayRestartMs = 0;
+    var neuralShare = 0;
+    var shownLoss = 0.45;
+    var lossHist = [];
+    var learnTick = 0;
+    var lastCoachNorm = 0;
+    var lastNetNorm = 0;
+    var lastHidden = [];
+    var learnSeen = false;
+    var netAlone = false;
+    var brainX = [];
+    var brainY = [];
+    math.seed(7);
+    var brain = new Sequential([
+        new Dense(4, 12, "tanh"),
+        new Dense(12, 1, "tanh")
+    ]);
+
     function abs(v) {
         if (v < 0) {
             return 0 - v;
@@ -168,6 +193,9 @@ if (root == null) {
     }
 
     function persistStats() {
+        if (autoplay) {
+            return;
+        }
         var changed = false;
         if (score > highScore) {
             highScore = score;
@@ -1021,6 +1049,281 @@ if (root == null) {
         resetBallOnPaddle(1);
     }
 
+    function foldBallX(rawX, vx) {
+        var left = ballRadius;
+        var right = canvasWidth - ballRadius;
+        var span = right - left;
+        if (span < 1) {
+            return { "x": left, "vx": vx };
+        }
+        var period = span * 2;
+        var m = (rawX - left) % period;
+        if (m < 0) {
+            m = m + period;
+        }
+        if (m > span) {
+            m = period - m;
+            vx = 0 - vx;
+        }
+        return { "x": left + m, "vx": vx };
+    }
+
+    function predictCatchX(x, y, vx, vy) {
+        var simX = x;
+        var simY = y;
+        var simVx = vx;
+        var simVy = vy;
+        var guard = 0;
+        while (guard < 6) {
+            guard = guard + 1;
+            var goingDown = simVy > 1;
+            var destY = paddleY - ballRadius;
+            if (!goingDown) {
+                destY = playfieldTop + ballRadius;
+            }
+            if (!goingDown && simY <= destY) {
+                simVy = abs(simVy);
+                if (simVy < 40) {
+                    simVy = 220;
+                }
+            } else {
+                var dt = 0;
+                if (abs(simVy) > 1) {
+                    dt = (destY - simY) / simVy;
+                }
+                if (dt < 0) {
+                    dt = 0;
+                }
+                var folded = foldBallX(simX + (simVx * dt), simVx);
+                simX = folded.x;
+                simVx = folded.vx;
+                simY = destY;
+                if (goingDown) {
+                    return simX;
+                }
+                simVy = abs(simVy);
+                if (simVy < 40) {
+                    simVy = 220;
+                }
+            }
+        }
+        return simX;
+    }
+
+    function centerToNorm(center) {
+        var minC = paddleWidth / 2;
+        var maxC = canvasWidth - (paddleWidth / 2);
+        var span = maxC - minC;
+        if (span < 1) {
+            return 0;
+        }
+        var n = (((center - minC) / span) * 2) - 1;
+        return clamp(n, -1, 1);
+    }
+
+    function normToLeft(n) {
+        var c = clamp(n, -1, 1);
+        var minC = paddleWidth / 2;
+        var maxC = canvasWidth - (paddleWidth / 2);
+        var center = minC + (((c + 1) * 0.5) * (maxC - minC));
+        return center - (paddleWidth / 2);
+    }
+
+    function threatBallIndex() {
+        var best = 0;
+        var bestScore = -1000000;
+        var i = 0;
+        while (i < ballsX.length) {
+            var score = ballsY[i];
+            if (ballsVy[i] > 0) {
+                score = score + 2000;
+            }
+            if (score > bestScore) {
+                bestScore = score;
+                best = i;
+            }
+            i = i + 1;
+        }
+        return best;
+    }
+
+    function trainBrain() {
+        var n = brainX.length;
+        if (n < 6) {
+            return;
+        }
+        var lossSum = 0;
+        var step = 0.06 / n;
+        var i = 0;
+        while (i < n) {
+            var pred = brain.forward(brainX[i]);
+            var target = [brainY[i]];
+            brain.backward(nn.mseGrad(pred, target));
+            brain.sgd(step);
+            lossSum = lossSum + nn.mse(pred, target);
+            i = i + 1;
+        }
+        var batchLoss = lossSum / n;
+        shownLoss = (shownLoss * 0.9) + (batchLoss * 0.1);
+        learnTick = learnTick + 1;
+        if (learnTick % 3 == 0) {
+            lossHist.append(shownLoss);
+            if (lossHist.length > 56) {
+                lossHist.shift();
+            }
+        }
+        var share = 1 - (shownLoss / 0.22);
+        if (share < 0) {
+            share = 0;
+        }
+        if (share > 1) {
+            share = 1;
+        }
+        if (shownLoss <= 0.03) {
+            netAlone = true;
+        }
+        if (netAlone) {
+            share = 1;
+        }
+        neuralShare = share;
+    }
+
+    function neuralPaddleLeft() {
+        var i = threatBallIndex();
+        var catchX = predictCatchX(ballsX[i], ballsY[i], ballsVx[i], ballsVy[i]);
+        var coachNorm = centerToNorm(catchX);
+        var ySpan = paddleY - playfieldTop;
+        if (ySpan < 1) {
+            ySpan = 1;
+        }
+        var obs = [
+            ((ballsX[i] / canvasWidth) * 2) - 1,
+            (((ballsY[i] - playfieldTop) / ySpan) * 2) - 1,
+            ballsVx[i] / ballSpeedCap,
+            ballsVy[i] / ballSpeedCap
+        ];
+        brainX.append(obs);
+        brainY.append(coachNorm);
+        if (brainX.length > 24) {
+            brainX.shift();
+            brainY.shift();
+        }
+        trainBrain();
+        var pred = brain.forward(obs);
+        var hiddenLayer = brain.layers[0];
+        var hidden = nn.dense(obs, hiddenLayer.weights, hiddenLayer.bias, "tanh");
+        lastHidden = hidden.out;
+        lastCoachNorm = coachNorm;
+        lastNetNorm = pred[0];
+        learnSeen = true;
+        var aimNorm = pred[0];
+        if (!netAlone) {
+            aimNorm = (coachNorm * (1 - neuralShare)) + (pred[0] * neuralShare);
+        }
+        return normToLeft(aimNorm);
+    }
+
+    function autoplayPaddleLeft() {
+        if (state == "paused") {
+            return paddleX;
+        }
+        if (state == "playing" && ballsX.length > 0) {
+            return neuralPaddleLeft();
+        }
+        var mid = (canvasWidth - paddleWidth) / 2;
+        if (state == "serve") {
+            mid = mid + (math.sin(brickAnimClockMs * 0.003) * 90);
+        }
+        return clamp(mid, 0, canvasWidth - paddleWidth);
+    }
+
+    function movePaddleToward(left, step) {
+        var delta = left - paddleX;
+        if (delta > step) {
+            delta = step;
+        }
+        if (delta < 0 - step) {
+            delta = 0 - step;
+        }
+        paddleX = paddleX + delta;
+    }
+
+    function humanTookControl() {
+        if (game.isKeyDown("arrowleft") || game.isKeyDown("arrowright") || game.isKeyDown("a") || game.isKeyDown("d")) {
+            return true;
+        }
+        if (game.wasKeyPressed(" ") || game.wasKeyPressed("p") || game.wasKeyPressed("r") || game.wasKeyPressed("enter")) {
+            return true;
+        }
+        if (game.wasMousePressed(0)) {
+            return true;
+        }
+        if (length(game.getTouches()) > 0) {
+            return true;
+        }
+        if (game.isGamepadConnected(0)) {
+            if (game.wasGamepadButtonPressed(0, 0) || game.wasGamepadButtonPressed(0, 9)) {
+                return true;
+            }
+            if (game.isGamepadButtonDown(0, 14) || game.isGamepadButtonDown(0, 15)) {
+                return true;
+            }
+            if (abs(game.getGamepadAxis(0, 0)) > 0.2) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function neuralButtonRect() {
+        if (autoplay) {
+            return null;
+        }
+        if (state == "serve" && !splashDismissed) {
+            var panelW = 620;
+            var panelX = (canvasWidth - panelW) / 2;
+            return { "x": panelX + 168, "y": 416, "w": 284, "h": 40 };
+        }
+        return { "x": 748, "y": 38, "w": 196, "h": 28 };
+    }
+
+    function pointInNeuralButton(px, py) {
+        var rect = neuralButtonRect();
+        if (rect == null) {
+            return false;
+        }
+        return game.pointInRect(px, py, rect.x, rect.y, rect.w, rect.h);
+    }
+
+    function neuralButtonPressed() {
+        if (!game.wasMousePressed(0)) {
+            return false;
+        }
+        if (pointInNeuralButton(game.getMouseX(), game.getMouseY())) {
+            return true;
+        }
+        var touches = game.getTouches();
+        if (length(touches) > 0 && pointInNeuralButton(touches[0].x, touches[0].y)) {
+            return true;
+        }
+        return false;
+    }
+
+    function restartRun() {
+        game.audioStopAll();
+        bgmBootstrapState = "idle";
+        score = 0;
+        lives = 3;
+        gameOverSfxPlayed = false;
+        winSfxPlayed = false;
+        splashDismissed = false;
+        autoplayServeMs = 0;
+        autoplayRestartMs = 0;
+        beginLevel(1);
+        game.audioPlayTone(560, 65, "square", 0.12);
+        game.audioPlayTone(760, 72, "square", 0.10);
+    }
+
     function updateGame(dtMs) {
         tryBootAudio();
 
@@ -1077,6 +1380,21 @@ if (root == null) {
                 moveRight = true;
             }
         }
+        var neuralClick = neuralButtonPressed();
+        if (game.wasKeyPressed("n") || neuralClick) {
+            autoplay = !autoplay;
+            if (autoplay) {
+                netAlone = false;
+                splashDismissed = true;
+                if (state == "paused") {
+                    state = pauseResumeState;
+                }
+            }
+        }
+        if (autoplay && !neuralClick && humanTookControl()) {
+            autoplay = false;
+        }
+
         var paddleStep = (paddleSpeed * dt) / 1000;
         var prevPaddleX = paddleX;
 
@@ -1088,7 +1406,10 @@ if (root == null) {
             }
         }
 
-        if (usingTouch) {
+        if (autoplay) {
+            var aimStep = (960 * dt) / 1000;
+            movePaddleToward(autoplayPaddleLeft(), aimStep);
+        } else if (usingTouch) {
             var touchTarget = touches[0].x - (paddleWidth / 2);
             paddleX = paddleX + ((touchTarget - paddleX) * 0.28);
             mouseAttached = false;
@@ -1131,22 +1452,22 @@ if (root == null) {
         updateMovingBricks(dt);
 
         if (state == "gameover" || state == "win") {
+            if (autoplay) {
+                autoplayRestartMs = autoplayRestartMs + dt;
+                if (autoplayRestartMs > 900) {
+                    restartRun();
+                    return;
+                }
+            } else {
+                autoplayRestartMs = 0;
+            }
             var restartPressed =
                 game.wasKeyPressed("r") ||
                 game.wasKeyPressed("enter") ||
-                mouseClick ||
+                (mouseClick && !neuralClick) ||
                 game.wasGamepadButtonPressed(0, 0);
             if (restartPressed) {
-                game.audioStopAll();
-                bgmBootstrapState = "idle";
-                score = 0;
-                lives = 3;
-                gameOverSfxPlayed = false;
-                winSfxPlayed = false;
-                splashDismissed = false;
-                beginLevel(1);
-                game.audioPlayTone(560, 65, "square", 0.12);
-                game.audioPlayTone(760, 72, "square", 0.10);
+                restartRun();
             }
             return;
         }
@@ -1188,7 +1509,7 @@ if (root == null) {
             ballsVy[0] = -250;
 
             var tapLaunch = false;
-            if (usingTouch && mouseClick) {
+            if (usingTouch && mouseClick && !neuralClick) {
                 if (touches[0].y < paddleY - 60) {
                     tapLaunch = true;
                 }
@@ -1197,12 +1518,21 @@ if (root == null) {
                 game.wasKeyPressed(" ") ||
                 game.wasGamepadButtonPressed(0, 0) ||
                 tapLaunch;
-            if (mouseClick && !usingTouch) {
+            if (mouseClick && !usingTouch && !neuralClick) {
                 launchPressed = true;
+            }
+            if (autoplay) {
+                autoplayServeMs = autoplayServeMs + dt;
+                if (autoplayServeMs > 420) {
+                    launchPressed = true;
+                }
+            } else {
+                autoplayServeMs = 0;
             }
             if (launchPressed) {
                 state = "playing";
                 splashDismissed = true;
+                autoplayServeMs = 0;
                 game.audioPlayTone(700, 44, "square", 0.12);
             }
             return;
@@ -1453,6 +1783,94 @@ if (root == null) {
         game.drawText(line3, panelX + 48, panelY + 190, "#94a3b8", "18px sans-serif");
     }
 
+    function drawAimMarks() {
+        if (!autoplay || !learnSeen) {
+            return;
+        }
+        var coachCx = normToLeft(lastCoachNorm) + (paddleWidth / 2);
+        var netCx = normToLeft(lastNetNorm) + (paddleWidth / 2);
+        game.drawLine(coachCx, paddleY - 26, coachCx, paddleY - 14, "#facc15", 3);
+        game.drawLine(netCx, paddleY - 14, netCx, paddleY - 4, "#34d399", 3);
+    }
+
+    function drawLossTrace(chartX, chartY, chartW, chartH) {
+        game.fillRect(chartX, chartY, chartW, chartH, "#0f172a");
+        if (lossHist.length < 2) {
+            return;
+        }
+        var maxL = 0.05;
+        var hi = 0;
+        while (hi < lossHist.length) {
+            if (lossHist[hi] > maxL) {
+                maxL = lossHist[hi];
+            }
+            hi = hi + 1;
+        }
+        var slot = chartW / lossHist.length;
+        var p = 1;
+        while (p < lossHist.length) {
+            var x1 = chartX + ((p - 1) * slot);
+            var x2 = chartX + (p * slot);
+            var y1 = chartY + chartH - 2 - ((lossHist[p - 1] / maxL) * (chartH - 4));
+            var y2 = chartY + chartH - 2 - ((lossHist[p] / maxL) * (chartH - 4));
+            game.drawLine(x1, y1, x2, y2, "#34d399", 2);
+            p = p + 1;
+        }
+    }
+
+    function drawLearningHud() {
+        var lossText = string(int(shownLoss * 1000) / 1000);
+        game.drawText("loss " + lossText, 188, 52, "#94a3b8", "13px sans-serif");
+        drawLossTrace(278, 40, 130, 22);
+
+        var n = 0;
+        while (n < 12) {
+            var act = 0.12;
+            if (n < lastHidden.length) {
+                act = (lastHidden[n] + 1) * 0.5;
+                act = clamp(act, 0, 1);
+            }
+            game.fillCircle(424 + (n * 13), 50, 2 + (act * 3.2), "#34d399");
+            n = n + 1;
+        }
+
+        var trackX = 590;
+        var trackW = 210;
+        game.fillRect(trackX, 48, trackW, 4, "#1e293b");
+        if (learnSeen) {
+            var coachPx = trackX + (((lastCoachNorm + 1) * 0.5) * trackW);
+            var netPx = trackX + (((clamp(lastNetNorm, -1, 1) + 1) * 0.5) * trackW);
+            game.fillRect(coachPx - 1, 42, 3, 16, "#facc15");
+            game.fillRect(netPx - 1, 42, 3, 16, "#34d399");
+        }
+        var netLabel = "net " + string(int(neuralShare * 100)) + "%";
+        if (netAlone) {
+            netLabel = "net alone";
+        }
+        game.drawText("coach", trackX, 68, "#facc15", "11px sans-serif");
+        game.drawText(netLabel, trackX + 52, 68, "#34d399", "11px sans-serif");
+        game.drawText("N to play", 860, 64, "#64748b", "12px sans-serif");
+    }
+
+    function drawNeuralButton(x, y, w, h) {
+        var hot = pointInNeuralButton(game.getMouseX(), game.getMouseY());
+        var bg = "#14532d";
+        if (hot) {
+            bg = "#166534";
+        }
+        game.fillRect(x, y, w, h, bg);
+        game.strokeRect(x, y, w, h, "#4ade80", 1);
+        var labelY = y + 19;
+        var labelX = x + 48;
+        var font = "14px sans-serif";
+        if (h > 32) {
+            labelY = y + 26;
+            labelX = x + 78;
+            font = "18px sans-serif";
+        }
+        game.drawText("Neural (N)", labelX, labelY, "#dcfce7", font);
+    }
+
     function renderGame() {
         game.clear();
 
@@ -1483,6 +1901,7 @@ if (root == null) {
 
         game.fillRect(paddleX, paddleY, paddleWidth, paddleHeight, "#22d3ee");
         game.fillRect(paddleX + 4, paddleY + 4, paddleWidth - 8, 5, "#a5f3fc");
+        drawAimMarks();
         var i = 0;
         while (i < ballsX.length) {
             game.fillCircle(ballsX[i], ballsY[i], ballRadius, "#f8fafc");
@@ -1519,6 +1938,13 @@ if (root == null) {
         game.drawText("Level " + string(level) + "/" + string(maxLevel), 660, 26, "#cbd5e1", "18px sans-serif");
         game.drawText("Bricks " + string(bricksLeft), 810, 26, "#cbd5e1", "18px sans-serif");
 
+        if (autoplay) {
+            drawLearningHud();
+        } else if (splashDismissed || state != "serve") {
+            var chip = neuralButtonRect();
+            drawNeuralButton(chip.x, chip.y, chip.w, chip.h);
+        }
+
         if (combo > 0) {
             game.drawText("Combo x" + string(combo), 18, 54, "#facc15", "bold 16px sans-serif");
             game.fillRect(18, 60, 160, 6, "#1e293b");
@@ -1536,9 +1962,9 @@ if (root == null) {
             game.drawText("SLOW " + formatMsWithTenths(slowTimerMs) + "s", 190, canvasHeight - 14, "#38bdf8", "15px monospace");
         }
 
-        if (state == "serve" && !splashDismissed) {
+        if (state == "serve" && !splashDismissed && !autoplay) {
             var panelW = 620;
-            var panelH = 260;
+            var panelH = 304;
             var panelX = (canvasWidth - panelW) / 2;
             var panelY = 170;
 
@@ -1550,9 +1976,15 @@ if (root == null) {
             game.drawText("Touch follows the paddle. Tap above it to launch", panelX + 60, panelY + 138, "#cbd5e1", "18px sans-serif");
             game.drawText("Pause with P or Start (works on the serve too)", panelX + 60, panelY + 166, "#cbd5e1", "18px sans-serif");
             game.drawText("Catch power-ups for upgrades", panelX + 60, panelY + 194, "#facc15", "18px sans-serif");
-            game.drawText("Press SPACE, click, or A to launch", panelX + 60, panelY + 228, "#e2e8f0", "20px sans-serif");
+            game.drawText("SPACE, click, or A to launch", panelX + 60, panelY + 228, "#e2e8f0", "20px sans-serif");
+            var neuralBtn = neuralButtonRect();
+            drawNeuralButton(neuralBtn.x, neuralBtn.y, neuralBtn.w, neuralBtn.h);
         } else if (state == "serve") {
-            game.drawText("Move to aim  ·  SPACE / click / A to launch", 248, 312, "#e2e8f0", "20px sans-serif");
+            if (autoplay) {
+                game.drawText("Neural serve", 400, 312, "#7dd3fc", "20px sans-serif");
+            } else {
+                game.drawText("Move to aim  ·  SPACE / click / A to launch", 248, 312, "#e2e8f0", "20px sans-serif");
+            }
         } else if (state == "paused") {
             drawOverlayPanel(
                 "Paused",
@@ -1562,20 +1994,28 @@ if (root == null) {
                 "Press P or Start to continue"
             );
         } else if (state == "gameover") {
+            var overHint = "Press R, Enter, or A to restart";
+            if (autoplay) {
+                overHint = "Neural autoplay restarts";
+            }
             drawOverlayPanel(
                 "Game Over",
                 "#fb7185",
                 "Score " + string(score) + "   High " + string(highScore),
                 "Level " + string(level) + "/" + string(maxLevel) + "   Best combo x" + string(bestCombo),
-                "Press R, Enter, or A to restart"
+                overHint
             );
         } else if (state == "win") {
+            var winHint = "Press R, Enter, or A to play again";
+            if (autoplay) {
+                winHint = "Neural autoplay plays again";
+            }
             drawOverlayPanel(
                 "You cleared Maldanoid!",
                 "#4ade80",
                 "Score " + string(score) + "   High " + string(highScore),
                 "Best combo x" + string(bestCombo) + "   All " + string(maxLevel) + " levels",
-                "Press R, Enter, or A to play again"
+                winHint
             );
         }
         game.popCamera();

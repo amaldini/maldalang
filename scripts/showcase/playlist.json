@@ -49,10 +49,22 @@
       "focusLine": 10
     },
     {
+      "file": "Examples/Games/three_shader_raytracer.malda",
+      "caption": "Raytracer",
+      "holdMs": 1400,
+      "focusLine": 8
+    },
+    {
       "file": "Examples/Games/malda_platform.malda",
       "caption": "Platform",
       "holdMs": 1400,
       "focusLine": 88
+    },
+    {
+      "file": "Examples/Games/maldanoid.malda",
+      "caption": "Maldanoid",
+      "holdMs": 1500,
+      "focusLine": 147
     },
     {
       "file": "Examples/Games/grand_prix_neural.malda",
@@ -135,6 +147,14 @@
       "focusLine": 10
     },
     {
+      "file": "Examples/Games/three_shader_raytracer.malda",
+      "caption": "GPU raytracer",
+      "panel": "preview",
+      "maximize": false,
+      "holdMs": 5200,
+      "focusLine": 570
+    },
+    {
       "file": "Examples/Games/three_shader_billiards.malda",
       "caption": "GPU billiards",
       "panel": "preview",
@@ -149,6 +169,14 @@
       "maximize": false,
       "holdMs": 5600,
       "focusLine": 111
+    },
+    {
+      "file": "Examples/Games/maldanoid.malda",
+      "caption": "Maldanoid",
+      "panel": "preview",
+      "maximize": false,
+      "holdMs": 6400,
+      "focusLine": 147
     },
     {
       "file": "Examples/Games/grand_prix_neural.malda",

@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Clarified (PATCH — showcase examples)
+
+- **Maldanoid showcase autoplay:** `Examples/Games/maldanoid.malda` plays itself when the preview injects `#malda-autoplay`, when the player presses N, or when they click the Neural button on the title screen or HUD (including a normal `malda play` launch). A 4-12-1 net imitates a wall-bounce intercept coach (`Sequential`, `nn.mseGrad`) and the blend hands the paddle to the net as the loss falls. At a loss of 0.03 the network plays alone. The HUD draws the loss trace, hidden-unit activity, and coach versus net aim. A key, click, touch, or stick returns control. Autoplay does not write the high-score save. Playlist: `scripts/showcase/playlist.json`. No Tier 0 semantic change.
+
 #### Clarified (PATCH — REPL class augmentation)
 
 - **REPL later `class Name`:** a second (or later) REPL entry that declares a class already bound in the session **augments** it with the same rules as a later declaration in one file (no primary constructor, no adding/changing `extends`, no repeated member names). Previously the interpreter replaced the class. Instances created before the later entry see the new methods. Spec §20; narrative: [`11-classes-objects.html`](../../ReferenceManual/11-classes-objects.html) §11.7, [`02-tools.html`](../../ReferenceManual/02-tools.html) §2.1.1.

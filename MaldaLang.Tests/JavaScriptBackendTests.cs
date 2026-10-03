@@ -680,6 +680,9 @@ public class JavaScriptBackendTests : TestBase
         Assert.Contains("maldanoid_save", js, StringComparison.Ordinal);
         Assert.Contains("bestCombo", js, StringComparison.Ordinal);
         Assert.Contains("maldanoid_high", js, StringComparison.Ordinal);
+        Assert.Contains("new Sequential(", js, StringComparison.Ordinal);
+        Assert.Contains("\"#malda-autoplay\"", js, StringComparison.Ordinal);
+        Assert.Contains("nn.mseGrad", js, StringComparison.Ordinal);
         Assert.DoesNotContain("mlRuntime.game.start(updateGame, renderGame)", js, StringComparison.Ordinal);
         Assert.DoesNotContain("mlRuntime.game.loadImage(", js, StringComparison.Ordinal);
         Assert.DoesNotContain("mlRuntime.three.", js, StringComparison.Ordinal);
