@@ -214,7 +214,7 @@ public partial class MainWindow
                 _showcaseCaption = string.IsNullOrWhiteSpace(page.Caption) ? "Manual" : page.Caption;
                 UpdateWindowChrome();
                 BringShowcaseToFront();
-                var ready = await ShowReferenceManualPageAsync(page.File, _showcase!.Playlist.ReadyTimeoutMs);
+                var ready = await ShowReferenceManualPageAsync(page.File, _showcase!.Playlist.ReadyTimeoutMs, page.Anchor);
                 if (!ready)
                 {
                     SetOutputText($"Showcase manual missed {page.File}.", isError: true);

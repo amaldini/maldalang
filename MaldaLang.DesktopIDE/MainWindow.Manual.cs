@@ -4,6 +4,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using MaldaLang.DesktopIDE.Services;
@@ -16,6 +17,7 @@ public partial class MainWindow
     private readonly List<ManualChapter> _manualChapters = new();
     private bool _manualSelecting;
     private string? _manualCurrentFile;
+    private static readonly Regex ManualAnchorPattern = new("^[A-Za-z][A-Za-z0-9_-]*$", RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
     private void ManualChapterCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
@@ -37,7 +39,7 @@ public partial class MainWindow
         SetSidebarPanelMaximized("manual", _maximizedSidebarTab != "manual");
     }
 
-    internal async Task<bool> ShowReferenceManualPageAsync(string fileName, int timeoutMs = 20000)
+    internal async Task<bool> ShowReferenceManualPageAsync(string fileName, int timeoutMs = 20000, string? anchor = null)
     {
         var safeName = Path.GetFileName(fileName ?? "");
         if (string.IsNullOrWhiteSpace(safeName) ||
@@ -68,6 +70,7 @@ public partial class MainWindow
             string.Equals(ManualWebView.Source.AbsoluteUri, target.AbsoluteUri, StringComparison.OrdinalIgnoreCase))
         {
             _manualCurrentFile = safeName;
+            await ScrollManualToAnchorAsync(core, anchor);
             return true;
         }
 
@@ -93,6 +96,7 @@ public partial class MainWindow
             if (ok)
             {
                 _manualCurrentFile = safeName;
+                await ScrollManualToAnchorAsync(core, anchor);
             }
 
             return ok;
@@ -100,6 +104,28 @@ public partial class MainWindow
         finally
         {
             ManualWebView.NavigationCompleted -= Handler;
+        }
+    }
+
+    private static async Task ScrollManualToAnchorAsync(CoreWebView2 core, string? anchor)
+    {
+        if (string.IsNullOrWhiteSpace(anchor) || !ManualAnchorPattern.IsMatch(anchor))
+        {
+            return;
+        }
+
+        var id = JsonSerializer.Serialize(anchor);
+        var script = "(() => { const el = document.getElementById(" + id + "); if (!el) return;" +
+            " const root = document.documentElement; const previous = root.style.scrollBehavior;" +
+            " root.style.scrollBehavior = 'auto'; el.scrollIntoView({block:'start',inline:'nearest'});" +
+            " root.style.scrollBehavior = previous; })()";
+        try
+        {
+            await core.ExecuteScriptAsync(script);
+        }
+        catch
+        {
+            // The chapter is already on screen. A missed anchor leaves the top in frame.
         }
     }
 

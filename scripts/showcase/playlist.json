@@ -101,6 +101,12 @@
       "holdMs": 2200
     },
     {
+      "file": "19-agent-orchestration.html",
+      "anchor": "declarative-agent-teams",
+      "caption": "Multi-agent",
+      "holdMs": 2400
+    },
+    {
       "file": "28-browser-javascript-backend.html",
       "caption": "Browser games",
       "holdMs": 2200

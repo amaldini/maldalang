@@ -4,6 +4,7 @@
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 
 namespace MaldaLang.DesktopIDE.Services;
 
@@ -109,6 +110,7 @@ public sealed class ShowcaseSession
             PrepareShowcaseFile(repoRoot, Path.Combine("ReferenceManual", page.File), page.HoldMs, out var absolutePath);
             page.AbsolutePath = absolutePath;
             page.File = Path.GetFileName(page.File);
+            page.Anchor = NormalizeManualAnchor(page.File, absolutePath, page.Anchor);
             if (page.HoldMs <= 0)
             {
                 page.HoldMs = 1800;
@@ -184,6 +186,30 @@ public sealed class ShowcaseSession
         return absolutePath;
     }
 
+    private static readonly Regex ManualAnchorPattern = new("^[A-Za-z][A-Za-z0-9_-]*$", RegexOptions.CultureInvariant | RegexOptions.Compiled);
+
+    private static string NormalizeManualAnchor(string file, string absolutePath, string? anchor)
+    {
+        if (string.IsNullOrWhiteSpace(anchor))
+        {
+            return "";
+        }
+
+        var id = anchor.Trim().TrimStart('#');
+        if (!ManualAnchorPattern.IsMatch(id))
+        {
+            throw new InvalidOperationException($"Showcase manual page '{file}' has an invalid anchor '{anchor}'.");
+        }
+
+        var html = File.ReadAllText(absolutePath);
+        if (!html.Contains($"id=\"{id}\"", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException($"Showcase manual page '{file}' has no anchor '{id}'.");
+        }
+
+        return id;
+    }
+
     private static string? FindRepoRoot(string startDirectory)
     {
         var current = new DirectoryInfo(startDirectory);
@@ -219,6 +245,7 @@ public sealed class ShowcaseManualPage
 {
     public string File { get; set; } = "";
     public string Caption { get; set; } = "";
+    public string Anchor { get; set; } = "";
     public int HoldMs { get; set; } = 1800;
 
     [JsonIgnore]
