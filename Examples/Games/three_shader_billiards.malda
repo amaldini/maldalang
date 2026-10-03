@@ -770,7 +770,7 @@ if (root == null) {
     dom.append(root, powerLine);
 
     var controls = dom.create("div");
-    dom.html(controls, "<p><button type='button' id='stopOrbitBtn'>Stop camera</button> Zoom <input id='zoomRange' type='range' min='24' max='80' step='1' value='48'> Cushion e <input id='railRange' type='range' min='5' max='100' step='1' value='68'> Ball e <input id='ballRange' type='range' min='5' max='100' step='1' value='92'> Felt friction <input id='frictionRange' type='range' min='5' max='400' step='5' value='165'></p>");
+    dom.html(controls, "<p><button type='button' id='stopOrbitBtn'>Stop camera</button> Zoom <input id='zoomRange' type='range' min='24' max='80' step='1' value='48'> Cushion e <input id='railRange' type='range' min='5' max='100' step='1' value='88'> Ball e <input id='ballRange' type='range' min='5' max='100' step='1' value='98'> Felt friction <input id='frictionRange' type='range' min='5' max='400' step='5' value='70'></p>");
     dom.append(root, controls);
 
     var physLine = dom.create("p");
@@ -835,9 +835,9 @@ if (root == null) {
     var rWasDown = false;
     var cWasDown = false;
     var pottedCount = 0;
-    var railRest = 0.68;
-    var ballRest = 0.92;
-    var feltFriction = 1.65;
+    var railRest = 0.88;
+    var ballRest = 0.98;
+    var feltFriction = 0.70;
     var zoomAcc = 0.0;
 
     function rangeInt(el, fallback) {
@@ -872,9 +872,9 @@ if (root == null) {
         if (camRadius > 8.0) {
             camRadius = 8.0;
         }
-        railRest = rangeInt(railRange, 68) / 100.0;
-        ballRest = rangeInt(ballRange, 92) / 100.0;
-        feltFriction = rangeInt(frictionRange, 165) / 100.0;
+        railRest = rangeInt(railRange, 88) / 100.0;
+        ballRest = rangeInt(ballRange, 98) / 100.0;
+        feltFriction = rangeInt(frictionRange, 70) / 100.0;
         if (railRest < 0.05) {
             railRest = 0.05;
         }
@@ -1087,9 +1087,9 @@ if (root == null) {
                     ballVx[i] = 0.0;
                     ballVz[i] = 0.0;
                 }
-                if (speed > 5.4) {
-                    ballVx[i] = ballVx[i] * (5.4 / speed);
-                    ballVz[i] = ballVz[i] * (5.4 / speed);
+                if (speed > 9.6) {
+                    ballVx[i] = ballVx[i] * (9.6 / speed);
+                    ballVz[i] = ballVz[i] * (9.6 / speed);
                 }
                 if (pocketHit(ballX[i], ballZ[i])) {
                     var spots = [
@@ -1152,7 +1152,7 @@ if (root == null) {
         if (ballLive[0] == 0) {
             respawnCueIfNeeded();
         }
-        var speed = 0.9 + (shotPower * 4.4);
+        var speed = 1.6 + (shotPower * 7.6);
         ballVx[0] = math.cos(aimAngle) * speed;
         ballVz[0] = math.sin(aimAngle) * speed;
         charging = false;
@@ -1409,44 +1409,53 @@ if (root == null) {
         var still = ballsAreStill();
         var mouseMoved = mx != lastMouseX || my != lastMouseY;
         var mouseOnTable = mx >= 0 && mx < width && my >= 0 && my < height;
-        if (autoplay && (mouseMoved || three.isKeyDown(" ") || three.isMouseDown(0) || three.isKeyDown("a") || three.isKeyDown("d"))) {
+        if (autoplay && (three.isKeyDown(" ") || three.isMouseDown(0) || three.isKeyDown("a") || three.isKeyDown("d"))) {
             autoplay = false;
         }
-        var demoHold = false;
+        var demoShot = false;
         if (autoplay) {
             if (!still) {
                 demoClock = 0.0;
             } else if (ballLive[0] == 1) {
                 demoClock = demoClock + dtSec;
-                if (demoClock > 0.6 && demoClock < 1.45) {
-                    demoHold = true;
-                    aimAngle = 0.08;
+                aimAngle = 0.0;
+                if (demoClock > 0.25 && demoClock < 0.7) {
+                    charging = true;
+                    shotPower = 1.0;
+                } else if (demoClock >= 0.7) {
+                    demoShot = true;
                 }
             }
         }
         if (still && ballLive[0] == 1) {
-            if (mouseMoved && mouseOnTable) {
+            if (!autoplay && mouseMoved && mouseOnTable) {
                 aimFromMouse();
             }
-            if (three.isKeyDown("a")) {
+            if (!autoplay && three.isKeyDown("a")) {
                 aimAngle = aimAngle - (1.6 * dtSec);
             }
-            if (three.isKeyDown("d")) {
+            if (!autoplay && three.isKeyDown("d")) {
                 aimAngle = aimAngle + (1.6 * dtSec);
             }
-            var holdShot = demoHold || three.isKeyDown(" ") || (three.isMouseDown(0) && mouseOnTable);
-            if (holdShot) {
-                if (!charging) {
-                    charging = true;
-                    shotPower = 0.12;
-                } else {
-                    shotPower = shotPower + (0.85 * dtSec);
-                    if (shotPower > 1.0) {
-                        shotPower = 1.0;
-                    }
-                }
-            } else if (charging) {
+            if (demoShot) {
+                aimAngle = 0.0;
+                shotPower = 1.0;
                 shootCue();
+            } else {
+                var holdShot = three.isKeyDown(" ") || (three.isMouseDown(0) && mouseOnTable);
+                if (holdShot) {
+                    if (!charging) {
+                        charging = true;
+                        shotPower = 0.12;
+                    } else {
+                        shotPower = shotPower + (0.85 * dtSec);
+                        if (shotPower > 1.0) {
+                            shotPower = 1.0;
+                        }
+                    }
+                } else if (charging && !autoplay) {
+                    shootCue();
+                }
             }
         } else {
             charging = false;
