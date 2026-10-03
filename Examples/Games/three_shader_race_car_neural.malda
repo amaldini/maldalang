@@ -909,9 +909,9 @@ if (root == null) {
         }
     }
 
-    var w1 = randomMatrix(20, 12, 0.35);
+    var w1 = randomMatrix(12, 20, 0.35);
     var b1 = randomVector(20, 0.15);
-    var w2 = randomMatrix(2, 20, 0.35);
+    var w2 = randomMatrix(20, 2, 0.35);
     var b2 = randomVector(2, 0.15);
     var samples = [];
     var maxSamples = 512;
@@ -931,9 +931,9 @@ if (root == null) {
         if (samples.length < batchSize) {
             return;
         }
-        var g1w = zeroMatrix(20, 12);
+        var g1w = zeroMatrix(12, 20);
         var g1b = zeroVector(20);
-        var g2w = zeroMatrix(2, 20);
+        var g2w = zeroMatrix(20, 2);
         var g2b = zeroVector(2);
         var totalLoss = 0.0;
         var b = 0;
@@ -1360,9 +1360,9 @@ if (root == null) {
 
         var rDown = three.isKeyDown("r");
         if (rDown && !rWasDown) {
-            w1 = randomMatrix(20, 12, 0.35);
+            w1 = randomMatrix(12, 20, 0.35);
             b1 = randomVector(20, 0.15);
-            w2 = randomMatrix(2, 20, 0.35);
+            w2 = randomMatrix(20, 2, 0.35);
             b2 = randomVector(2, 0.15);
             samples = [];
             shownLoss = 0.5;
