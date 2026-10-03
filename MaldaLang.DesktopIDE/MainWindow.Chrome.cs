@@ -207,6 +207,7 @@ public partial class MainWindow
             Command("Show Web UI", "", () => SwitchToTab("webui")),
             Command("Show Manual", "", () => ManualTabButton_Click(this, new RoutedEventArgs())),
             Command("Start With MALDA", "", () => StartWithMalda_Click(this, new RoutedEventArgs())),
+            Command("Play Showcase", "", () => HelpShowcase_Click(this, new RoutedEventArgs())),
             Command("Browse Examples", "", () => BrowseExamplesButton_Click(this, new RoutedEventArgs())),
             Command("Keyboard Shortcuts", "", ShowKeyboardShortcuts),
             Command("Reference Manual", "", () => HelpReferenceManual_Click(this, new RoutedEventArgs())),

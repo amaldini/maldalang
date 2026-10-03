@@ -312,15 +312,18 @@ public partial class MainWindow
                 keepInFront.Tick += (_, _) => BringShowcaseToFront();
                 keepInFront.Start();
 
-                var startDeadline = Environment.TickCount64 + 180_000;
-                while (!File.Exists(_showcase.StartPath))
+                if (!_showcase.AutoStart)
                 {
-                    if (Environment.TickCount64 > startDeadline)
+                    var startDeadline = Environment.TickCount64 + 180_000;
+                    while (!File.Exists(_showcase.StartPath))
                     {
-                        throw new TimeoutException("Showcase start file was not created within 3 minutes.");
-                    }
+                        if (Environment.TickCount64 > startDeadline)
+                        {
+                            throw new TimeoutException("Showcase start file was not created within 3 minutes.");
+                        }
 
-                    await Task.Delay(30);
+                        await Task.Delay(30);
+                    }
                 }
 
                 _showcaseClock = Stopwatch.StartNew();

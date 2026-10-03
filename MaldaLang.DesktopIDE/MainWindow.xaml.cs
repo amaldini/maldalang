@@ -2734,6 +2734,62 @@ public partial class MainWindow : Window
     }
     
     // Help Menu
+    private void HelpShowcase_Click(object sender, RoutedEventArgs e)
+    {
+        var repoRoot = FindRepoRoot();
+        var playlist = string.IsNullOrWhiteSpace(repoRoot)
+            ? null
+            : Path.Combine(repoRoot, "scripts", "showcase", "playlist.json");
+        if (playlist == null || !File.Exists(playlist))
+        {
+            IdePromptWindow.Show(
+                this,
+                "The showcase playlist was not found next to this installation.",
+                "Showcase",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            return;
+        }
+
+        var exe = System.Environment.ProcessPath;
+        if (string.IsNullOrWhiteSpace(exe))
+        {
+            IdePromptWindow.Show(
+                this,
+                "Could not find this IDE executable to launch the showcase.",
+                "Showcase",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        try
+        {
+            var handshake = Path.Combine(Path.GetTempPath(), "malda-showcase-" + Guid.NewGuid().ToString("N"));
+            var start = new ProcessStartInfo
+            {
+                FileName = exe,
+                UseShellExecute = false,
+                WorkingDirectory = repoRoot
+            };
+            start.ArgumentList.Add("--demo");
+            start.ArgumentList.Add(playlist);
+            start.ArgumentList.Add("--handshake");
+            start.ArgumentList.Add(handshake);
+            start.ArgumentList.Add("--autostart");
+            Process.Start(start);
+        }
+        catch (Exception ex)
+        {
+            IdePromptWindow.Show(
+                this,
+                "Could not launch the showcase. " + ex.Message,
+                "Showcase",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
+    }
+
     private void HelpUpdateInstallation_Click(object sender, RoutedEventArgs e)
     {
         var unsaved = _openDocuments.Values

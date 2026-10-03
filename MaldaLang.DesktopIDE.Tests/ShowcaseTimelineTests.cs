@@ -55,6 +55,38 @@ public class ShowcaseTimelineTests
     }
 
     [Fact]
+    public void Autostart_StartsWithoutTheRecorderFlag()
+    {
+        var playlist = Path.Combine(RepoRoot(), "scripts", "showcase", "playlist.json");
+        var handshake = Path.Combine(Path.GetTempPath(), "malda-showcase-timeline-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            Assert.True(ShowcaseSession.TryParseLaunchArgs(
+                new[] { "--demo", playlist, "--handshake", handshake, "--autostart" },
+                out var started,
+                out var error));
+            Assert.Null(error);
+            Assert.NotNull(started);
+            Assert.True(started!.AutoStart);
+
+            Assert.True(ShowcaseSession.TryParseLaunchArgs(
+                new[] { "--demo", playlist, "--handshake", handshake },
+                out var recorded,
+                out var recordedError));
+            Assert.Null(recordedError);
+            Assert.NotNull(recorded);
+            Assert.False(recorded!.AutoStart);
+        }
+        finally
+        {
+            if (Directory.Exists(handshake))
+            {
+                Directory.Delete(handshake, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public void Timeline_RejectsACueThatDoesNotStartLater()
     {
         var playlist = new ShowcasePlaylist

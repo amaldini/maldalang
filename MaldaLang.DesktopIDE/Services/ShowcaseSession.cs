@@ -21,6 +21,9 @@ public sealed class ShowcaseSession
     public required string RepoRoot { get; init; }
     public required string HandshakeDirectory { get; init; }
 
+    /// <summary>Start the reel clock when the splash is up, without waiting for the recorder.</summary>
+    public bool AutoStart { get; init; }
+
     public string StatusPath => Path.Combine(HandshakeDirectory, "status.json");
     public string StartPath => Path.Combine(HandshakeDirectory, "start");
 
@@ -55,9 +58,11 @@ public sealed class ShowcaseSession
             handshake = args[handshakeFlag + 1];
         }
 
+        var autoStart = Array.Exists(args, arg => string.Equals(arg, "--autostart", StringComparison.OrdinalIgnoreCase));
+
         try
         {
-            session = Load(args[demo + 1], handshake);
+            session = Load(args[demo + 1], handshake, autoStart);
         }
         catch (Exception ex)
         {
@@ -67,7 +72,7 @@ public sealed class ShowcaseSession
         return true;
     }
 
-    public static ShowcaseSession Load(string playlistPath, string? handshakeDirectory)
+    public static ShowcaseSession Load(string playlistPath, string? handshakeDirectory, bool autoStart = false)
     {
         var fullPlaylist = Path.GetFullPath(playlistPath);
         if (!File.Exists(fullPlaylist))
@@ -147,7 +152,8 @@ public sealed class ShowcaseSession
         {
             Playlist = playlist,
             RepoRoot = repoRoot,
-            HandshakeDirectory = handshake
+            HandshakeDirectory = handshake,
+            AutoStart = autoStart
         };
     }
 

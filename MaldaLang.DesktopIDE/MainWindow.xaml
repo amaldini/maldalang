@@ -491,6 +491,11 @@
                         <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconLearn}"/>
                     </MenuItem.Icon>
                 </MenuItem>
+                <MenuItem Header="Play _Showcase" Click="HelpShowcase_Click">
+                    <MenuItem.Icon>
+                        <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconPlay}"/>
+                    </MenuItem.Icon>
+                </MenuItem>
                 <MenuItem Header="_About..." Click="HelpAbout_Click">
                     <MenuItem.Icon>
                         <Path Style="{StaticResource IdeMenuIcon}" Data="{StaticResource IconAbout}"/>
