@@ -540,6 +540,33 @@
       ],
       "learningGoal": "Watch a small policy take over from a coach on a closed racing line, and drive one of the cars yourself.",
       "expectedOutput": "Renders a circuit and a grid. The neural-share bar rises as the loss falls.",
+      "next": "Games/three_shader_race_car_neural.malda",
+      "documentationPath": "/docs/roadmap-neural.md",
+      "documentationTitle": "Neural-nets kit"
+    },
+    {
+      "name": "3D GPU neural race",
+      "description": "Eight cars share a 12-20-2 net and learn curved Grand Prix circuits drawn by a GPU ray tracer",
+      "file": "three_shader_race_car_neural.malda",
+      "track": "student",
+      "difficulty": "advanced",
+      "minutes": 15,
+      "requires": ["offline"],
+      "concepts": [
+        "neural network",
+        "imitation",
+        "nn.dense",
+        "three.*",
+        "GLSL",
+        "ray tracing",
+        "JavaScript target"
+      ],
+      "prerequisites": [
+        "Games/three_shader_raytracer.malda",
+        "Games/grand_prix_neural.malda"
+      ],
+      "learningGoal": "Watch a small policy take over from a pure-pursuit coach while the circuit is ray-traced, and drive one car yourself.",
+      "expectedOutput": "Renders Monza, Spa, or Monaco as a lit 3D scene. The net blends in as the loss falls.",
       "documentationPath": "/docs/roadmap-neural.md",
       "documentationTitle": "Neural-nets kit"
     },
