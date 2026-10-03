@@ -1,15 +1,13 @@
 // Grand Prix 3D Neural Race with GPU Ray Tracing
 // Run: malda play Examples/Games/three_shader_race_car_neural.malda
 //
-// Eight cars share a 12-20-2 neural network (tanh activations). Scene rendered
-// using realtime GPU ray tracing with 3D geometry, lighting, and shadows.
-// Pure-pursuit coach teaches the network via supervised learning.
+// Eight cars share a 12-20-2 net (tanh, tanh), the same coach as
+// grand_prix_neural.malda. The centerline is smoothed and resampled the same
+// way, then scaled so the road half-width is 3.2. Speeds and turn rate scale
+// with that road, so the coach's steering still points back to the racing line.
+// The ground shader reads the same polyline from a float texture.
 //
-// Track rendering: Physics/AI and the ground shader share one curved centerline
-// (Monza/Spa/Monaco). Each polyline is scaled so the lap is 2400 units, the same
-// length the coach speeds were written for. Road half-width stays 2.5.
-//
-// Q/E change circuit. C chase camera. N network only. T coach only. 
+// Q/E change circuit. C chase camera. N network only. T coach only.
 // L blend mode. R reset brain. Space pause. Tab manual drive (WASD/arrows).
 
 function wrapAngle(a: float) -> float {
@@ -32,29 +30,104 @@ function circuitCatalog() -> array {
     var circuits = [];
     circuits.append({
         "name": "Monza",
+        "width": 34.0,
         "pts": [
-            0.0, 80.0, 50.0, 78.0, 95.0, 70.0, 125.0, 50.0, 
-            135.0, 20.0, 128.0, -15.0, 105.0, -35.0, 75.0, -40.0,
-            40.0, -35.0, 10.0, -20.0, -15.0, 0.0, -20.0, 30.0,
-            -10.0, 55.0, 10.0, 70.0, -20.0, 75.0
+            260.0, 508.0, 400.0, 514.0, 540.0, 510.0, 660.0, 496.0,
+            724.0, 468.0, 752.0, 424.0, 708.0, 388.0, 752.0, 346.0,
+            814.0, 300.0, 860.0, 246.0, 868.0, 186.0, 836.0, 136.0,
+            782.0, 104.0, 726.0, 126.0, 748.0, 78.0,
+            672.0, 48.0, 586.0, 34.0, 506.0, 52.0,
+            424.0, 84.0, 324.0, 114.0, 224.0, 136.0, 150.0, 160.0,
+            102.0, 206.0, 74.0, 262.0, 114.0, 308.0, 72.0, 358.0,
+            60.0, 418.0, 82.0, 476.0, 138.0, 516.0, 198.0, 522.0
         ]
     });
     circuits.append({
-        "name": "Spa",
+        "name": "Spa-Francorchamps",
+        "width": 30.0,
         "pts": [
-            0.0, 70.0, 40.0, 65.0, 75.0, 50.0, 105.0, 25.0,
-            125.0, -5.0, 130.0, -35.0, 115.0, -55.0, 85.0, -65.0,
-            50.0, -60.0, 15.0, -45.0, -15.0, -20.0, -25.0, 10.0,
-            -20.0, 40.0, 0.0, 60.0
+            180.0, 560.0, 340.0, 575.0, 500.0, 568.0, 640.0, 545.0,
+            700.0, 490.0, 735.0, 430.0, 690.0, 385.0,
+            760.0, 300.0, 840.0, 210.0, 920.0, 140.0,
+            960.0, 70.0, 900.0, 30.0, 820.0, 40.0,
+            760.0, 110.0, 680.0, 180.0, 600.0, 250.0,
+            520.0, 310.0, 470.0, 370.0, 520.0, 420.0,
+            440.0, 455.0, 350.0, 470.0, 270.0, 430.0,
+            200.0, 370.0, 140.0, 400.0, 110.0, 470.0,
+            100.0, 530.0, 140.0, 575.0
+        ]
+    });
+    circuits.append({
+        "name": "Silverstone",
+        "width": 32.0,
+        "pts": [
+            250.0, 522.0, 420.0, 542.0, 590.0, 532.0, 730.0, 492.0,
+            812.0, 432.0, 852.0, 356.0, 832.0, 278.0,
+            752.0, 214.0, 662.0, 164.0,
+            592.0, 196.0, 664.0, 138.0, 724.0, 96.0, 642.0, 74.0, 542.0, 98.0,
+            420.0, 88.0, 288.0, 122.0,
+            208.0, 182.0, 162.0, 264.0,
+            142.0, 354.0, 154.0, 444.0, 198.0, 508.0
         ]
     });
     circuits.append({
         "name": "Monaco",
+        "width": 18.0,
         "pts": [
-            0.0, 55.0, 30.0, 52.0, 55.0, 42.0, 72.0, 25.0,
-            78.0, 0.0, 70.0, -22.0, 50.0, -35.0, 22.0, -38.0,
-            -5.0, -32.0, -25.0, -18.0, -35.0, 5.0, -30.0, 28.0,
-            -15.0, 45.0, 5.0, 52.0
+            180.0, 540.0, 360.0, 555.0, 540.0, 545.0, 680.0, 500.0,
+            740.0, 440.0, 810.0, 390.0, 760.0, 330.0, 840.0, 280.0, 780.0, 220.0, 850.0, 170.0, 760.0, 130.0,
+            660.0, 90.0, 560.0, 55.0, 480.0, 90.0, 430.0, 40.0, 360.0, 85.0, 280.0, 70.0, 220.0, 120.0,
+            180.0, 190.0, 160.0, 280.0, 170.0, 380.0, 190.0, 470.0
+        ]
+    });
+    circuits.append({
+        "name": "Suzuka",
+        "width": 28.0,
+        "pts": [
+            300.0, 478.0, 338.0, 392.0, 392.0, 318.0, 520.0, 246.0,
+            640.0, 188.0, 752.0, 172.0, 834.0, 236.0,
+            862.0, 334.0, 824.0, 424.0, 724.0, 482.0, 604.0, 468.0,
+            524.0, 392.0, 430.0, 332.0, 340.0, 268.0,
+            236.0, 188.0, 146.0, 172.0, 86.0, 246.0,
+            68.0, 346.0, 108.0, 438.0, 188.0, 490.0, 262.0, 486.0
+        ]
+    });
+    circuits.append({
+        "name": "Interlagos",
+        "width": 30.0,
+        "pts": [
+            520.0, 400.0, 430.0, 440.0, 360.0, 450.0,
+            300.0, 390.0, 350.0, 330.0, 290.0, 270.0,
+            248.0, 242.0, 286.0, 186.0, 368.0, 156.0, 430.0, 182.0,
+            488.0, 146.0, 424.0, 104.0, 318.0, 96.0,
+            216.0, 138.0, 146.0, 208.0, 104.0, 298.0,
+            86.0, 392.0, 118.0, 472.0, 198.0, 522.0,
+            320.0, 546.0, 470.0, 542.0, 560.0, 530.0,
+            630.0, 490.0, 660.0, 430.0, 630.0, 380.0, 570.0, 360.0
+        ]
+    });
+    circuits.append({
+        "name": "Austin",
+        "width": 32.0,
+        "pts": [
+            150.0, 508.0, 320.0, 528.0, 510.0, 518.0, 690.0, 492.0,
+            768.0, 448.0, 808.0, 386.0, 764.0, 328.0, 698.0, 308.0,
+            636.0, 266.0, 694.0, 214.0, 628.0, 174.0, 556.0, 198.0, 604.0, 146.0,
+            500.0, 116.0, 376.0, 108.0,
+            276.0, 150.0, 206.0, 222.0,
+            156.0, 314.0, 126.0, 404.0, 136.0, 476.0
+        ]
+    });
+    circuits.append({
+        "name": "Sakhir",
+        "width": 34.0,
+        "pts": [
+            140.0, 468.0, 320.0, 496.0, 520.0, 488.0, 700.0, 462.0,
+            782.0, 410.0, 760.0, 338.0, 678.0, 298.0,
+            598.0, 256.0, 526.0, 206.0, 582.0, 150.0, 674.0, 142.0,
+            744.0, 176.0, 702.0, 108.0, 578.0, 88.0,
+            448.0, 104.0, 336.0, 152.0,
+            246.0, 214.0, 176.0, 296.0, 136.0, 378.0
         ]
     });
     return circuits;
@@ -386,25 +459,25 @@ function carColor(index: int) -> vec3 {
 @shader()
 function wheelOffset(w: int) -> vec3 {
     if (w == 0) {
-        return vec3(0.35, 0.0, 0.22);
+        return vec3(0.78, 0.0, 0.52);
     }
     if (w == 1) {
-        return vec3(0.35, 0.0, -0.22);
+        return vec3(0.78, 0.0, -0.52);
     }
     if (w == 2) {
-        return vec3(-0.35, 0.0, 0.22);
+        return vec3(-0.78, 0.0, 0.52);
     }
-    return vec3(-0.35, 0.0, -0.22);
+    return vec3(-0.78, 0.0, -0.52);
 }
 
 @shader()
 function hitCar(index: int, origin: vec3, dir: vec3, tHit: out float, kind: out int) -> bool {
     var pos: vec3 = carPosition(index);
     var angle: float = carAngle(index);
-    var bodyHalf: vec3 = vec3(0.48, 0.18, 0.22);
-    var bodyCenter: vec3 = vec3(pos.x, pos.y + 0.18, pos.z);
+    var bodyHalf: vec3 = vec3(1.15, 0.26, 0.48);
+    var bodyCenter: vec3 = vec3(pos.x, pos.y + 0.32, pos.z);
     var tBody: float = hitBoxRotated(bodyCenter, bodyHalf, angle, origin, dir);
-    var wheelR: float = 0.12;
+    var wheelR: float = 0.2;
     var ca: float = cos(angle);
     var sa: float = sin(angle);
     tHit = 1000000.0;
@@ -434,11 +507,11 @@ function carNormal(index: int, kind: int, p: vec3) -> vec3 {
     var pos: vec3 = carPosition(index);
     var angle: float = carAngle(index);
     if (kind == 0) {
-        var bodyHalf: vec3 = vec3(0.48, 0.18, 0.22);
-        var bodyCenter: vec3 = vec3(pos.x, pos.y + 0.18, pos.z);
+        var bodyHalf: vec3 = vec3(1.15, 0.26, 0.48);
+        var bodyCenter: vec3 = vec3(pos.x, pos.y + 0.32, pos.z);
         return boxNormalRotated(bodyCenter, bodyHalf, angle, p);
     }
-    var wheelR: float = 0.12;
+    var wheelR: float = 0.2;
     var ca: float = cos(angle);
     var sa: float = sin(angle);
     var w: int = kind - 1;
@@ -456,100 +529,8 @@ function considerHit(t: float, tHit: float) -> bool {
 
 @shader()
 function trackPoint(index: int) -> vec2 {
-    if (index == 0) {
-        return uTrack0;
-    }
-    if (index == 1) {
-        return uTrack1;
-    }
-    if (index == 2) {
-        return uTrack2;
-    }
-    if (index == 3) {
-        return uTrack3;
-    }
-    if (index == 4) {
-        return uTrack4;
-    }
-    if (index == 5) {
-        return uTrack5;
-    }
-    if (index == 6) {
-        return uTrack6;
-    }
-    if (index == 7) {
-        return uTrack7;
-    }
-    if (index == 8) {
-        return uTrack8;
-    }
-    if (index == 9) {
-        return uTrack9;
-    }
-    if (index == 10) {
-        return uTrack10;
-    }
-    if (index == 11) {
-        return uTrack11;
-    }
-    if (index == 12) {
-        return uTrack12;
-    }
-    if (index == 13) {
-        return uTrack13;
-    }
-    if (index == 14) {
-        return uTrack14;
-    }
-    if (index == 15) {
-        return uTrack15;
-    }
-    if (index == 16) {
-        return uTrack16;
-    }
-    if (index == 17) {
-        return uTrack17;
-    }
-    if (index == 18) {
-        return uTrack18;
-    }
-    if (index == 19) {
-        return uTrack19;
-    }
-    if (index == 20) {
-        return uTrack20;
-    }
-    if (index == 21) {
-        return uTrack21;
-    }
-    if (index == 22) {
-        return uTrack22;
-    }
-    if (index == 23) {
-        return uTrack23;
-    }
-    if (index == 24) {
-        return uTrack24;
-    }
-    if (index == 25) {
-        return uTrack25;
-    }
-    if (index == 26) {
-        return uTrack26;
-    }
-    if (index == 27) {
-        return uTrack27;
-    }
-    if (index == 28) {
-        return uTrack28;
-    }
-    if (index == 29) {
-        return uTrack29;
-    }
-    if (index == 30) {
-        return uTrack30;
-    }
-    return uTrack31;
+    var u: float = (float(index) + 0.5) / uTrackTexW;
+    return texture2D(uTrack, vec2(u, 0.5)).xy;
 }
 
 @shader()
@@ -565,7 +546,11 @@ function distanceToTrack(p: vec2, trackW: float) -> float {
         var b: vec2 = trackPoint(next);
         var pa: vec2 = p - a;
         var ba: vec2 = b - a;
-        var h: float = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+        var baLen: float = dot(ba, ba);
+        if (baLen < 0.0001) {
+            baLen = 0.0001;
+        }
+        var h: float = clamp(dot(pa, ba) / baLen, 0.0, 1.0);
         var d: float = length(pa - ba * h);
         if (d < minDist) {
             minDist = d;
@@ -640,21 +625,23 @@ function closestHit(
         }
         var distToTrack: float = distanceToTrack(vec2(hit.x, hit.z), uTrackW);
         if (distToTrack < 0.0) {
-            var check: float = mod(floor(hit.x * 0.5) + floor(hit.z * 0.5), 2.0);
+            var cell: float = max(uTrackW * 0.7, 0.4);
+            var check: float = mod(floor(hit.x / cell) + floor(hit.z / cell), 2.0);
             if (check < 0.5) {
-                albedo = vec3(0.15, 0.15, 0.16);
+                albedo = vec3(0.16, 0.16, 0.17);
             } else {
-                albedo = vec3(0.92, 0.92, 0.88);
+                albedo = vec3(0.22, 0.22, 0.24);
             }
-            var centerDist: float = abs(distToTrack + uTrackW * 0.5);
-            if (centerDist < 0.15) {
-                var stripe: float = mod(floor(length(vec2(hit.x, hit.z)) * 2.0), 4.0);
-                if (stripe < 2.0) {
-                    albedo = vec3(0.95, 0.85, 0.12);
-                }
+            var fromCenter: float = abs(distToTrack + uTrackW);
+            if (fromCenter < uTrackW * 0.045) {
+                albedo = vec3(0.95, 0.82, 0.12);
+            }
+            if (distToTrack > -uTrackW * 0.09) {
+                albedo = vec3(0.92, 0.92, 0.9);
             }
         } else {
-            var check: float = mod(floor(hit.x * 0.25) + floor(hit.z * 0.25), 2.0);
+            var cell: float = max(uTrackW * 1.6, 0.8);
+            var check: float = mod(floor(hit.x / cell) + floor(hit.z / cell), 2.0);
             if (check < 0.5) {
                 albedo = vec3(0.18, 0.42, 0.18);
             } else {
@@ -754,38 +741,8 @@ var fragmentShader = glsl.compile({
         "float uAspect",
         "float uTrackW",
         "float uTrackPts",
-        "vec2 uTrack0",
-        "vec2 uTrack1",
-        "vec2 uTrack2",
-        "vec2 uTrack3",
-        "vec2 uTrack4",
-        "vec2 uTrack5",
-        "vec2 uTrack6",
-        "vec2 uTrack7",
-        "vec2 uTrack8",
-        "vec2 uTrack9",
-        "vec2 uTrack10",
-        "vec2 uTrack11",
-        "vec2 uTrack12",
-        "vec2 uTrack13",
-        "vec2 uTrack14",
-        "vec2 uTrack15",
-        "vec2 uTrack16",
-        "vec2 uTrack17",
-        "vec2 uTrack18",
-        "vec2 uTrack19",
-        "vec2 uTrack20",
-        "vec2 uTrack21",
-        "vec2 uTrack22",
-        "vec2 uTrack23",
-        "vec2 uTrack24",
-        "vec2 uTrack25",
-        "vec2 uTrack26",
-        "vec2 uTrack27",
-        "vec2 uTrack28",
-        "vec2 uTrack29",
-        "vec2 uTrack30",
-        "vec2 uTrack31",
+        "float uTrackTexW",
+        "sampler2D uTrack",
         "vec3 uCar0",
         "vec3 uCar1",
         "vec3 uCar2",
@@ -803,7 +760,7 @@ var fragmentShader = glsl.compile({
         "float uAngle6",
         "float uAngle7"
     ],
-    consts: ["float EPSILON = 0.0015", "int MAX_TRACK_PTS = 32"],
+    consts: ["float EPSILON = 0.0015"],
     functions: [
         "hitSphere",
         "hitBox",
@@ -878,38 +835,193 @@ if (root == null) {
     var trackBend = [];
     var totalLen = 1.0;
     var nPts = 0;
-    var trackScale = 1.0;
-    var trackW = 2.5;
-    var lapLen = 2400.0;
+    var trackW = 3.2;
+    var worldScale = 0.2;
+    var targetHalf = 3.2;
+    var cenX = 0.0;
+    var cenZ = 0.0;
+    var trackSpan = 40.0;
 
     function buildTrack(spec: map) {
-        var pts = spec.pts;
-        var nRaw = int(pts.length / 2);
-        var rawLen = 0.0;
-        var r = 0;
-        while (r < nRaw) {
-            var rn = r + 1;
-            if (rn >= nRaw) {
-                rn = 0;
+        var keys = spec.pts;
+        var nK = int(keys.length / 2);
+        var minX = 1000000.0;
+        var maxX = -1000000.0;
+        var minZ = 1000000.0;
+        var maxZ = -1000000.0;
+        var i = 0;
+        while (i < nK) {
+            var kx = keys[i * 2];
+            var kz = keys[i * 2 + 1];
+            if (kx < minX) {
+                minX = kx;
             }
-            var rdx = pts[rn * 2] - pts[r * 2];
-            var rdz = pts[rn * 2 + 1] - pts[r * 2 + 1];
-            rawLen = rawLen + math.sqrt(rdx * rdx + rdz * rdz);
-            r = r + 1;
+            if (kx > maxX) {
+                maxX = kx;
+            }
+            if (kz < minZ) {
+                minZ = kz;
+            }
+            if (kz > maxZ) {
+                maxZ = kz;
+            }
+            i = i + 1;
         }
-        if (rawLen < 1.0) {
-            rawLen = 1.0;
+        var spanX = maxX - minX;
+        var spanZ = maxZ - minZ;
+        if (spanX < 1.0) {
+            spanX = 1.0;
         }
+        if (spanZ < 1.0) {
+            spanZ = 1.0;
+        }
+        var viewL = 40.0;
+        var viewT = 36.0;
+        var viewR = 918.0;
+        var viewB = 688.0;
+        var scale = (viewR - viewL) / spanX;
+        var scaleZ = (viewB - viewT) / spanZ;
+        if (scaleZ < scale) {
+            scale = scaleZ;
+        }
+        var usedW = spanX * scale;
+        var usedH = spanZ * scale;
+        var offX = viewL + ((viewR - viewL) - usedW) / 2.0;
+        var offZ = viewT + ((viewB - viewT) - usedH) / 2.0;
+        var fitX = [];
+        var fitZ = [];
+        var p = 0;
+        while (p < nK) {
+            fitX.append(offX + (keys[p * 2] - minX) * scale);
+            fitZ.append(offZ + (keys[p * 2 + 1] - minZ) * scale);
+            p = p + 1;
+        }
+        var pixelHalf = spec.width * scale * 0.34;
+        if (pixelHalf < 8.0) {
+            pixelHalf = 8.0;
+        }
+        if (pixelHalf > 16.0) {
+            pixelHalf = 16.0;
+        }
+
+        var rawX = fitX;
+        var rawZ = fitZ;
+        var pass = 0;
+        while (pass < 4) {
+            var nextX = [];
+            var nextZ = [];
+            var nSmooth = rawX.length;
+            var s = 0;
+            while (s < nSmooth) {
+                var j = wrapIndex(s + 1, nSmooth);
+                nextX.append(rawX[s] * 0.75 + rawX[j] * 0.25);
+                nextZ.append(rawZ[s] * 0.75 + rawZ[j] * 0.25);
+                nextX.append(rawX[s] * 0.25 + rawX[j] * 0.75);
+                nextZ.append(rawZ[s] * 0.25 + rawZ[j] * 0.75);
+                s = s + 1;
+            }
+            rawX = nextX;
+            rawZ = nextZ;
+            pass = pass + 1;
+        }
+
         trackPx = [];
         trackPz = [];
-        trackScale = lapLen / rawLen;
-        var i = 0;
-        while (i < pts.length) {
-            trackPx.append(pts[i] * trackScale);
-            trackPz.append(pts[i + 1] * trackScale);
-            i = i + 2;
+        var spacing = 9.0;
+        var count = rawX.length;
+        var cursor = 0.0;
+        trackPx.append(rawX[0]);
+        trackPz.append(rawZ[0]);
+        var r = 1;
+        while (r <= count) {
+            var j = r;
+            if (j == count) {
+                j = 0;
+            }
+            var x1 = rawX[r - 1];
+            var z1 = rawZ[r - 1];
+            if (r == count) {
+                x1 = rawX[count - 1];
+                z1 = rawZ[count - 1];
+            }
+            var x2 = rawX[j];
+            var z2 = rawZ[j];
+            var dx = x2 - x1;
+            var dz = z2 - z1;
+            var segLen = math.sqrt(dx * dx + dz * dz);
+            var pos = 0.0;
+            if (segLen > 0.001) {
+                while (pos + (spacing - cursor) <= segLen) {
+                    var need = spacing - cursor;
+                    pos = pos + need;
+                    cursor = 0.0;
+                    var u = pos / segLen;
+                    trackPx.append(x1 + dx * u);
+                    trackPz.append(z1 + dz * u);
+                }
+                cursor = cursor + (segLen - pos);
+            }
+            r = r + 1;
         }
+        if (trackPx.length > 3) {
+            var cdx = trackPx[trackPx.length - 1] - trackPx[0];
+            var cdz = trackPz[trackPz.length - 1] - trackPz[0];
+            if (cdx * cdx + cdz * cdz < spacing * spacing * 0.36) {
+                trackPx.pop();
+                trackPz.pop();
+            }
+        }
+        var openPass = 0;
+        while (openPass < 2) {
+            var openedX = [];
+            var openedZ = [];
+            var nOpen = trackPx.length;
+            var oi = 0;
+            while (oi < nOpen) {
+                var op = wrapIndex(oi - 1, nOpen);
+                var on = wrapIndex(oi + 1, nOpen);
+                var inAng = math.atan2(trackPz[oi] - trackPz[op], trackPx[oi] - trackPx[op]);
+                var outAng = math.atan2(trackPz[on] - trackPz[oi], trackPx[on] - trackPx[oi]);
+                var turn = math.abs(wrapAngle(outAng - inAng));
+                if (turn > 0.55) {
+                    openedX.append(trackPx[oi] * 0.45 + (trackPx[op] + trackPx[on]) * 0.275);
+                    openedZ.append(trackPz[oi] * 0.45 + (trackPz[op] + trackPz[on]) * 0.275);
+                } else {
+                    openedX.append(trackPx[oi]);
+                    openedZ.append(trackPz[oi]);
+                }
+                oi = oi + 1;
+            }
+            trackPx = openedX;
+            trackPz = openedZ;
+            openPass = openPass + 1;
+        }
+        while (trackPx.length > 480) {
+            var thinX = [];
+            var thinZ = [];
+            var t = 0;
+            while (t < trackPx.length) {
+                thinX.append(trackPx[t]);
+                thinZ.append(trackPz[t]);
+                t = t + 2;
+            }
+            if (thinX.length < 8) {
+                break;
+            }
+            trackPx = thinX;
+            trackPz = thinZ;
+        }
+
+        worldScale = targetHalf / pixelHalf;
         nPts = trackPx.length;
+        var sc = 0;
+        while (sc < nPts) {
+            trackPx[sc] = trackPx[sc] * worldScale;
+            trackPz[sc] = trackPz[sc] * worldScale;
+            sc = sc + 1;
+        }
+        trackW = targetHalf;
+
         trackTx = [];
         trackTz = [];
         trackNx = [];
@@ -931,8 +1043,8 @@ if (root == null) {
             var uz = sdz / sl;
             trackTx.append(ux);
             trackTz.append(uz);
-            trackNx.append(-uz);
-            trackNz.append(ux);
+            trackNx.append(uz);
+            trackNz.append(-ux);
             trackTang.append(math.atan2(uz, ux));
             trackCum.append(acc);
             acc = acc + sl;
@@ -944,9 +1056,44 @@ if (root == null) {
         }
         var b = 0;
         while (b < nPts) {
-            var ahead = wrapIndex(b + 8, nPts);
+            var ahead = wrapIndex(b + 16, nPts);
             trackBend.append(wrapAngle(trackTang[ahead] - trackTang[b]));
             b = b + 1;
+        }
+        cenX = 0.0;
+        cenZ = 0.0;
+        var c = 0;
+        var boxMinX = trackPx[0];
+        var boxMaxX = trackPx[0];
+        var boxMinZ = trackPz[0];
+        var boxMaxZ = trackPz[0];
+        while (c < nPts) {
+            cenX = cenX + trackPx[c];
+            cenZ = cenZ + trackPz[c];
+            if (trackPx[c] < boxMinX) {
+                boxMinX = trackPx[c];
+            }
+            if (trackPx[c] > boxMaxX) {
+                boxMaxX = trackPx[c];
+            }
+            if (trackPz[c] < boxMinZ) {
+                boxMinZ = trackPz[c];
+            }
+            if (trackPz[c] > boxMaxZ) {
+                boxMaxZ = trackPz[c];
+            }
+            c = c + 1;
+        }
+        if (nPts > 0) {
+            cenX = cenX / nPts;
+            cenZ = cenZ / nPts;
+        }
+        trackSpan = boxMaxX - boxMinX;
+        if (boxMaxZ - boxMinZ > trackSpan) {
+            trackSpan = boxMaxZ - boxMinZ;
+        }
+        if (trackSpan < 8.0) {
+            trackSpan = 8.0;
         }
     }
 
@@ -961,6 +1108,7 @@ if (root == null) {
         var spec = circuits[circuitIndex];
         buildTrack(spec);
         resetCars();
+        uploadTrackTexture();
     }
 
     function poseAt(dist: float, side: float) -> array {
@@ -1002,8 +1150,11 @@ if (root == null) {
     var carV = [];
     var carIdx = [];
     var carS = [];
+    var carLap = [];
+    var carAge = [];
     var carStyle = [];
     var manualDrive = false;
+    var leadCar = 0;
 
     function resetCars() {
         carX = [];
@@ -1012,147 +1163,211 @@ if (root == null) {
         carV = [];
         carIdx = [];
         carS = [];
+        carLap = [];
+        carAge = [];
         carStyle = [];
+        leadCar = 0;
         var i = 0;
         while (i < carCount) {
             var side = trackW * 0.26;
             if (i % 2 == 0) {
                 side = -side;
             }
-            var pose = poseAt(totalLen - 3.0 - i * 3.5, side);
+            var pose = poseAt(totalLen - 26.0 * worldScale - i * 28.0 * worldScale, side);
             carX.append(pose[0]);
             carZ.append(pose[1]);
             carH.append(pose[2]);
             carV.append(0.0);
             carIdx.append(int(pose[3]));
             carS.append(pose[4]);
-            carStyle.append(math.randomFloat(-0.12, 0.12));
+            carLap.append(0);
+            carAge.append(0.0);
+            carStyle.append((i - 3.5) * 0.045);
             i = i + 1;
         }
     }
 
-    var w1 = randomMatrix(12, 20, 0.35);
-    var b1 = randomVector(20, 0.15);
-    var w2 = randomMatrix(20, 2, 0.35);
-    var b2 = randomVector(2, 0.15);
-    var samples = [];
-    var maxSamples = 512;
-    var batchSize = 32;
-    var shownLoss = 0.5;
+    var inN = 12;
+    var hidN = 20;
+    var w1 = [];
+    var b1 = [];
+    var w2 = [];
+    var b2 = [];
+    var bufX = [];
+    var bufY = [];
+    var shownLoss = 0.46;
+    var lastLoss = 0.46;
     var brainMode = "blend";
     var paused = false;
+    var trainTick = 0;
+
+    function resetBrain() {
+        math.seed(11);
+        var s1 = math.sqrt(6.0 / (inN + hidN));
+        var s2 = math.sqrt(6.0 / (hidN + 2));
+        w1 = randomMatrix(inN, hidN, s1);
+        b1 = randomVector(hidN, 0.04);
+        w2 = randomMatrix(hidN, 2, s2);
+        b2 = randomVector(2, 0.04);
+        bufX = [];
+        bufY = [];
+        lastLoss = 0.46;
+        shownLoss = 0.46;
+        trainTick = 0;
+    }
+
+    resetBrain();
 
     function pushSample(obs: array, target: array) {
-        samples.append({"obs": obs, "target": target});
-        if (samples.length > maxSamples) {
-            samples.shift();
+        bufX.append(obs);
+        bufY.append(target);
+        if (bufX.length > 72) {
+            bufX.shift();
+            bufY.shift();
         }
     }
 
-    function trainStep() {
-        if (samples.length < batchSize) {
+    function imitate() {
+        var n = bufX.length;
+        if (n < 12) {
             return;
         }
-        var g1w = zeroMatrix(12, 20);
-        var g1b = zeroVector(20);
-        var g2w = zeroMatrix(20, 2);
+        var g1w = zeroMatrix(inN, hidN);
+        var g1b = zeroVector(hidN);
+        var g2w = zeroMatrix(hidN, 2);
         var g2b = zeroVector(2);
-        var totalLoss = 0.0;
-        var b = 0;
-        while (b < batchSize) {
-            var idx = int(math.random() * samples.length);
-            var sample = samples[idx];
-            var obs = sample.obs;
-            var target = sample.target;
-            var hidden = nn.dense(obs, w1, b1, "tanh");
+        var lossSum = 0.0;
+        var i = 0;
+        while (i < n) {
+            var x = bufX[i];
+            var target = bufY[i];
+            var hidden = nn.dense(x, w1, b1, "tanh");
             var out = nn.dense(hidden.out, w2, b2, "tanh");
             var upstream = nn.mseGrad(out.out, target);
-            totalLoss = totalLoss + 0.5 * (upstream[0] * upstream[0] + upstream[1] * upstream[1]);
+            lossSum = lossSum + 0.5 * (upstream[0] * upstream[0] + upstream[1] * upstream[1]);
             var back2 = nn.denseBackward(hidden.out, w2, upstream, "tanh", out.pre);
-            var back1 = nn.denseBackward(obs, w1, back2.dInput, "tanh", hidden.pre);
-            addMatrix(g2w, back2.dWeights);
-            addVector(g2b, back2.dBias);
+            var back1 = nn.denseBackward(x, w1, back2.dInput, "tanh", hidden.pre);
             addMatrix(g1w, back1.dWeights);
             addVector(g1b, back1.dBias);
-            b = b + 1;
+            addMatrix(g2w, back2.dWeights);
+            addVector(g2b, back2.dBias);
+            i = i + 1;
         }
-        var lr = 0.0012;
-        applyMatrix(w1, g1w, lr / batchSize);
-        applyVector(b1, g1b, lr / batchSize);
-        applyMatrix(w2, g2w, lr / batchSize);
-        applyVector(b2, g2b, lr / batchSize);
-        shownLoss = shownLoss * 0.96 + (totalLoss / batchSize) * 0.04;
+        var step = 0.16 / n;
+        applyMatrix(w1, g1w, step);
+        applyVector(b1, g1b, step);
+        applyMatrix(w2, g2w, step);
+        applyVector(b2, g2b, step);
+        lastLoss = lossSum / n;
     }
 
     function query(x: float, z: float, hint: int) -> array {
-        var best = 1000000.0;
-        var bestIdx = hint;
-        var range = 16;
-        var check = hint - range;
-        while (check <= hint + range) {
-            var ci = wrapIndex(check, nPts);
-            var dx = x - trackPx[ci];
-            var dz = z - trackPz[ci];
-            var d2 = dx * dx + dz * dz;
-            if (d2 < best) {
-                best = d2;
-                bestIdx = ci;
+        var bestI = wrapIndex(hint, nPts);
+        var bestD = 1000000000.0;
+        var bestT = 0.0;
+        var pass = 0;
+        while (pass < 2) {
+            var from = hint - 10;
+            var to = hint + 42;
+            if (pass == 1) {
+                if (bestD <= trackW * trackW * 16.0) {
+                    break;
+                }
+                from = 0;
+                to = nPts - 1;
             }
-            check = check + 1;
+            var k = from;
+            while (k <= to) {
+                var i = k;
+                if (pass == 0) {
+                    i = wrapIndex(k, nPts);
+                }
+                var j = wrapIndex(i + 1, nPts);
+                var ax = trackPx[i];
+                var az = trackPz[i];
+                var bx = trackPx[j];
+                var bz = trackPz[j];
+                var dx = bx - ax;
+                var dz = bz - az;
+                var len2 = dx * dx + dz * dz;
+                var t = 0.0;
+                if (len2 > 0.0001) {
+                    t = ((x - ax) * dx + (z - az) * dz) / len2;
+                    if (t < 0.0) {
+                        t = 0.0;
+                    }
+                    if (t > 1.0) {
+                        t = 1.0;
+                    }
+                }
+                var qx = ax + dx * t;
+                var qz = az + dz * t;
+                var ex = x - qx;
+                var ez = z - qz;
+                var d2 = ex * ex + ez * ez;
+                if (d2 < bestD) {
+                    bestD = d2;
+                    bestI = i;
+                    bestT = t;
+                }
+                k = k + 1;
+            }
+            pass = pass + 1;
         }
-        var dx = x - trackPx[bestIdx];
-        var dz = z - trackPz[bestIdx];
-        var lat = dx * trackNx[bestIdx] + dz * trackNz[bestIdx];
-        var along = dx * trackTx[bestIdx] + dz * trackTz[bestIdx];
-        var s = trackCum[bestIdx] + along;
-        if (s < 0.0) {
-            s = s + totalLen;
+        var jn = wrapIndex(bestI + 1, nPts);
+        var sx = trackPx[jn] - trackPx[bestI];
+        var sz = trackPz[jn] - trackPz[bestI];
+        var seg = math.sqrt(sx * sx + sz * sz);
+        var qx2 = trackPx[bestI] + sx * bestT;
+        var qz2 = trackPz[bestI] + sz * bestT;
+        var lat = (x - qx2) * trackNx[bestI] + (z - qz2) * trackNz[bestI];
+        var along = trackCum[bestI] + bestT * seg;
+        if (along < 0.0) {
+            along = along + totalLen;
         }
-        if (s >= totalLen) {
-            s = s - totalLen;
+        if (along >= totalLen) {
+            along = along - totalLen;
         }
-        return [bestIdx, lat, along, s];
+        return [bestI, lat, bestT, along];
     }
 
     function castRay(x: float, z: float, angle: float, hint: int) -> float {
-        var step = 0.5;
-        var maxD = 12.0;
-        var rx = math.cos(angle);
-        var rz = math.sin(angle);
-        var d = 0.0;
-        while (d < maxD) {
-            var testX = x + rx * d;
-            var testZ = z + rz * d;
-            var hit = query(testX, testZ, hint);
+        var dirx = math.cos(angle);
+        var dirz = math.sin(angle);
+        var maxD = 128.0 * worldScale;
+        var dist = 8.0 * worldScale;
+        var step = 10.0 * worldScale;
+        var h = hint;
+        while (dist <= maxD) {
+            var hit = query(x + dirx * dist, z + dirz * dist, h);
+            h = int(hit[0]);
             if (math.abs(hit[1]) > trackW) {
-                return d / maxD;
+                return dist / maxD;
             }
-            d = d + step;
+            dist = dist + step;
         }
         return 1.0;
     }
 
     function observe(hit: array, heading: float, speed: float, rays: array) -> array {
-        var lat = hit[1];
-        var latN = lat / trackW;
-        if (latN > 1.4) {
-            latN = 1.4;
+        var latN = hit[1] / trackW;
+        if (latN > 1.7) {
+            latN = 1.7;
         }
-        if (latN < -1.4) {
-            latN = -1.4;
+        if (latN < -1.7) {
+            latN = -1.7;
         }
         var idx = int(hit[0]);
-        var headErr = wrapAngle(heading - trackTang[idx]);
-        var headN = headErr / 1.57079632;
-        if (headN > 1.4) {
-            headN = 1.4;
+        var headN = wrapAngle(trackTang[idx] - heading) / 3.14159265;
+        if (headN > 1.0) {
+            headN = 1.0;
         }
-        if (headN < -1.4) {
-            headN = -1.4;
+        if (headN < -1.0) {
+            headN = -1.0;
         }
-        var near = trackBend[idx];
-        var mid = trackBend[wrapIndex(idx + 4, nPts)];
-        var far = trackBend[wrapIndex(idx + 8, nPts)];
+        var near = trackBend[idx] / 1.15;
+        var mid = trackBend[wrapIndex(idx + 10, nPts)] / 1.25;
+        var far = trackBend[wrapIndex(idx + 24, nPts)] / 1.35;
         if (near > 1.4) {
             near = 1.4;
         }
@@ -1171,7 +1386,11 @@ if (root == null) {
         if (far < -1.4) {
             far = -1.4;
         }
-        var speedN = speed / 150.0;
+        var speedScale = 150.0 * worldScale;
+        if (speedScale < 1.0) {
+            speedScale = 1.0;
+        }
+        var speedN = speed / speedScale;
         return [latN, headN, speedN, near, mid, far, rays[0], rays[1], rays[2], rays[3], rays[4], 1.0];
     }
 
@@ -1284,49 +1503,101 @@ if (root == null) {
                 thr = 0.0;
             }
         }
-        if (i == 0 || brainMode != "net" || !manualDrive) {
+        if (i != 0 || !manualDrive || brainMode != "net") {
             var targetThr = teach[1] * 2.0 - 1.0;
             pushSample(obs, [teach[0], targetThr]);
         }
         var onGrass = math.abs(hit[1]) > trackW * 1.02;
         var sharp = math.abs(obs[4]);
-        var vTarget = 46.0 + thr * (108.0 - 70.0 * sharp);
+        var vTarget = (46.0 + thr * (108.0 - 70.0 * sharp)) * worldScale;
         if (onGrass) {
-            vTarget = 34.0;
+            vTarget = 34.0 * worldScale;
         }
-        if (vTarget < 28.0) {
-            vTarget = 28.0;
+        if (vTarget < 28.0 * worldScale) {
+            vTarget = 28.0 * worldScale;
         }
         carV[i] = carV[i] + (vTarget - carV[i]) * 3.1 * dt;
         if (brake) {
-            carV[i] = carV[i] - 90.0 * dt;
+            carV[i] = carV[i] - 90.0 * worldScale * dt;
         }
         if (carV[i] < 0.0) {
             carV[i] = 0.0;
         }
-        if (carV[i] > 158.0) {
-            carV[i] = 158.0;
+        var vMax = 158.0 * worldScale;
+        if (carV[i] > vMax) {
+            carV[i] = vMax;
         }
-        var yaw = steer * (2.25 - carV[i] * 0.0065);
+        var yawK = 0.0065 / worldScale;
+        var yaw = steer * (2.25 - carV[i] * yawK);
         carH[i] = wrapAngle(carH[i] + yaw * dt);
         carX[i] = carX[i] + math.cos(carH[i]) * carV[i] * dt;
         carZ[i] = carZ[i] + math.sin(carH[i]) * carV[i] * dt;
         var after = query(carX[i], carZ[i], int(hit[0]));
+        var prevS = carS[i];
         carIdx[i] = int(after[0]);
         carS[i] = after[3];
-        if (math.abs(after[1]) > trackW * 2.6 || (onGrass && carV[i] < 18.0)) {
-            var back = poseAt(hit[3], 0.0);
+        carAge[i] = carAge[i] + dt;
+        if (prevS > totalLen * 0.70 && carS[i] < totalLen * 0.30) {
+            carLap[i] = carLap[i] + 1;
+        }
+        if (math.abs(after[1]) > trackW * 2.6 || (onGrass && carV[i] < 18.0 * worldScale && carAge[i] > 1.2)) {
+            var back = poseAt(prevS, 0.0);
             carX[i] = back[0];
             carZ[i] = back[1];
             carH[i] = back[2];
-            carV[i] = 42.0;
+            carV[i] = 42.0 * worldScale;
             carIdx[i] = int(back[3]);
             carS[i] = back[4];
         }
     }
 
-    var camRadius = 8.5;
-    var camHeight = 3.2;
+    function separateCars() {
+        var i = 0;
+        while (i < carCount) {
+            var j = i + 1;
+            while (j < carCount) {
+                var dx = carX[j] - carX[i];
+                var dz = carZ[j] - carZ[i];
+                var d2 = dx * dx + dz * dz;
+                var minD = trackW * 0.55;
+                if (d2 < minD * minD && d2 > 0.01) {
+                    var d = math.sqrt(d2);
+                    var push = (minD - d) * 0.5;
+                    var ux = dx / d;
+                    var uz = dz / d;
+                    carX[i] = carX[i] - ux * push;
+                    carZ[i] = carZ[i] - uz * push;
+                    carX[j] = carX[j] + ux * push;
+                    carZ[j] = carZ[j] + uz * push;
+                    var progI = carLap[i] * totalLen + carS[i];
+                    var progJ = carLap[j] * totalLen + carS[j];
+                    if (progI < progJ) {
+                        carV[i] = carV[i] * 0.9;
+                    } else {
+                        carV[j] = carV[j] * 0.9;
+                    }
+                }
+                j = j + 1;
+            }
+            i = i + 1;
+        }
+    }
+
+    function updateLead() {
+        var best = -1.0;
+        var i = 0;
+        while (i < carCount) {
+            var prog = carLap[i] * totalLen + carS[i];
+            if (prog > best) {
+                best = prog;
+                leadCar = i;
+            }
+            i = i + 1;
+        }
+    }
+
+    var camRadius = 14.0;
+    var camHeight = 5.4;
     var chaseMode = true;
     var focusX = 0.0;
     var focusZ = 0.0;
@@ -1346,19 +1617,40 @@ if (root == null) {
     var lightZ = 8.0;
 
     function updateCamera() {
+        var camX = cenX;
+        var camY = trackSpan * 1.15;
+        var camZ = cenZ + trackSpan * 0.08;
+        var lookX = cenX;
+        var lookY = 0.0;
+        var lookZ = cenZ;
         if (chaseMode) {
-            focusX = carX[0];
-            focusZ = carZ[0];
+            var focusI = leadCar;
+            if (manualDrive) {
+                focusI = 0;
+            }
+            focusX = carX[focusI];
+            focusZ = carZ[focusI];
+            var heading = carH[focusI];
+            var aheadX = math.cos(heading);
+            var aheadZ = math.sin(heading);
+            camX = focusX - aheadX * camRadius;
+            camY = camHeight;
+            camZ = focusZ - aheadZ * camRadius;
+            lookX = focusX + aheadX * 4.2;
+            lookY = 0.9;
+            lookZ = focusZ + aheadZ * 4.2;
+        } else {
+            focusX = cenX;
+            focusZ = cenZ;
         }
-        var targetAngle = carH[0] + 3.14159265;
-        var camX = focusX + math.sin(targetAngle) * camRadius;
-        var camY = camHeight;
-        var camZ = focusZ + math.cos(targetAngle) * camRadius;
 
-        var fx = focusX - camX;
-        var fy = 0.5 - camY;
-        var fz = focusZ - camZ;
+        var fx = lookX - camX;
+        var fy = lookY - camY;
+        var fz = lookZ - camZ;
         var fl = math.sqrt(fx * fx + fy * fy + fz * fz);
+        if (fl < 0.001) {
+            fl = 1.0;
+        }
         fx = fx / fl;
         fy = fy / fl;
         fz = fz / fl;
@@ -1367,6 +1659,9 @@ if (root == null) {
         var ry = 0.0;
         var rz = fx;
         var rl = math.sqrt(rx * rx + ry * ry + rz * rz);
+        if (rl < 0.001) {
+            rl = 1.0;
+        }
         rx = rx / rl;
         ry = ry / rl;
         rz = rz / rl;
@@ -1398,6 +1693,15 @@ if (root == null) {
     var scene = three.createScene();
     var camera = three.createOrthographicCamera(-1, 1, 1, -1, 0, 1);
 
+    var trackTexW = 512;
+    var trackPixels = [];
+    var pix = 0;
+    while (pix < trackTexW * 4) {
+        trackPixels.append(0.0);
+        pix = pix + 1;
+    }
+    var trackTex = three.createDataTexture(trackTexW, 1, trackPixels, {"type": "float"});
+
     var material = three.createShaderMaterial({
         "vertexShader": vertexShader,
         "fragmentShader": fragmentShader,
@@ -1413,38 +1717,8 @@ if (root == null) {
             "uAspect": aspect,
             "uTrackW": trackW,
             "uTrackPts": 0,
-            "uTrack0": [0, 0],
-            "uTrack1": [0, 0],
-            "uTrack2": [0, 0],
-            "uTrack3": [0, 0],
-            "uTrack4": [0, 0],
-            "uTrack5": [0, 0],
-            "uTrack6": [0, 0],
-            "uTrack7": [0, 0],
-            "uTrack8": [0, 0],
-            "uTrack9": [0, 0],
-            "uTrack10": [0, 0],
-            "uTrack11": [0, 0],
-            "uTrack12": [0, 0],
-            "uTrack13": [0, 0],
-            "uTrack14": [0, 0],
-            "uTrack15": [0, 0],
-            "uTrack16": [0, 0],
-            "uTrack17": [0, 0],
-            "uTrack18": [0, 0],
-            "uTrack19": [0, 0],
-            "uTrack20": [0, 0],
-            "uTrack21": [0, 0],
-            "uTrack22": [0, 0],
-            "uTrack23": [0, 0],
-            "uTrack24": [0, 0],
-            "uTrack25": [0, 0],
-            "uTrack26": [0, 0],
-            "uTrack27": [0, 0],
-            "uTrack28": [0, 0],
-            "uTrack29": [0, 0],
-            "uTrack30": [0, 0],
-            "uTrack31": [0, 0],
+            "uTrackTexW": trackTexW,
+            "uTrack": trackTex,
             "uCar0": [0, 0, -5],
             "uCar1": [-3, 0, -8],
             "uCar2": [3, 0, -8],
@@ -1466,6 +1740,32 @@ if (root == null) {
 
     var quad = three.createMesh(three.createPlaneGeometry(2, 2), material);
     three.add(scene, quad);
+
+    function uploadTrackTexture() {
+        var count = nPts;
+        if (count > trackTexW) {
+            count = trackTexW;
+        }
+        var i = 0;
+        while (i < trackTexW) {
+            var o = i * 4;
+            if (i < count) {
+                trackPixels[o] = trackPx[i];
+                trackPixels[o + 1] = trackPz[i];
+                trackPixels[o + 2] = 0.0;
+                trackPixels[o + 3] = 1.0;
+            } else {
+                trackPixels[o] = 0.0;
+                trackPixels[o + 1] = 0.0;
+                trackPixels[o + 2] = 0.0;
+                trackPixels[o + 3] = 0.0;
+            }
+            i = i + 1;
+        }
+        three.updateDataTexture(trackTex, trackPixels);
+        three.setUniform(material, "uTrackPts", count);
+        three.setUniform(material, "uTrackW", trackW);
+    }
 
     loadCircuit(0);
 
@@ -1514,12 +1814,7 @@ if (root == null) {
 
         var rDown = three.isKeyDown("r");
         if (rDown && !rWasDown) {
-            w1 = randomMatrix(12, 20, 0.35);
-            b1 = randomVector(20, 0.15);
-            w2 = randomMatrix(20, 2, 0.35);
-            b2 = randomVector(2, 0.15);
-            samples = [];
-            shownLoss = 0.5;
+            resetBrain();
         }
         rWasDown = rDown;
 
@@ -1541,7 +1836,14 @@ if (root == null) {
                 updateCar(i, dtSec);
                 i = i + 1;
             }
-            trainStep();
+            separateCars();
+            updateLead();
+            shownLoss = shownLoss * 0.97 + lastLoss * 0.03;
+            trainTick = trainTick + 1;
+            if (trainTick >= 4) {
+                trainTick = 0;
+                imitate();
+            }
         }
 
         var cam = updateCamera();
@@ -1549,25 +1851,11 @@ if (root == null) {
         three.setUniform(material, "uCamForward", [cam.forwardX, cam.forwardY, cam.forwardZ]);
         three.setUniform(material, "uCamRight", [cam.rightX, cam.rightY, cam.rightZ]);
         three.setUniform(material, "uCamUp", [cam.upX, cam.upY, cam.upZ]);
-        lightX = focusX + 36.0;
-        lightY = 90.0;
-        lightZ = focusZ + 24.0;
+        lightX = focusX + trackSpan * 0.45;
+        lightY = trackSpan * 0.9;
+        lightZ = focusZ + trackSpan * 0.22;
         three.setUniform(material, "uLightPos", [lightX, lightY, lightZ]);
         three.setUniform(material, "uTrackW", trackW);
-        var numPts = nPts;
-        if (numPts > 32) {
-            numPts = 32;
-        }
-        three.setUniform(material, "uTrackPts", numPts);
-        var tp = 0;
-        while (tp < 32) {
-            if (tp < nPts) {
-                three.setUniform(material, "uTrack" + string(tp), [trackPx[tp], trackPz[tp]]);
-            } else {
-                three.setUniform(material, "uTrack" + string(tp), [0, 0]);
-            }
-            tp = tp + 1;
-        }
         three.setUniform(material, "uCar0", [carX[0], 0, carZ[0]]);
         three.setUniform(material, "uCar1", [carX[1], 0, carZ[1]]);
         three.setUniform(material, "uCar2", [carX[2], 0, carZ[2]]);
@@ -1598,8 +1886,12 @@ if (root == null) {
         if (manualDrive) {
             driveStr = "Manual";
         }
-        dom.setText(statusLine, circuitName + " | " + modeStr + " | " + driveStr + " | " + string(carCount) + " cars" + (paused && " | PAUSED" || ""));
-        dom.setText(lossLine, "Loss: " + string(int(shownLoss * 1000) / 1000.0) + " | Samples: " + string(samples.length) + "/" + string(maxSamples));
+        var pausedLabel = "";
+        if (paused) {
+            pausedLabel = " | PAUSED";
+        }
+        dom.setText(statusLine, circuitName + " | " + modeStr + " | " + driveStr + " | " + string(carCount) + " cars" + pausedLabel);
+        dom.setText(lossLine, "Loss: " + string(int(shownLoss * 1000) / 1000.0) + " | Samples: " + string(bufX.length));
     }
 
     function render() {
