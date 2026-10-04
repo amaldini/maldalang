@@ -41,6 +41,8 @@ if (root == null) {
     var falling = [];
     var facing = [];
     var moved = [];
+    var originX = [];
+    var originY = [];
 
     var playerX = 1;
     var playerY = 1;
@@ -185,12 +187,104 @@ if (root == null) {
         return 0;
     }
 
+    function slideT() {
+        var t = 0.0;
+        if (physicsIntervalMs > 0) {
+            t = physicsAccMs / physicsIntervalMs;
+        }
+        if (t < 0.0) {
+            t = 0.0;
+        }
+        if (t > 1.0) {
+            t = 1.0;
+        }
+        return t;
+    }
+
+    function isSliding(x, y) {
+        var i = idx(x, y);
+        if (i < 0 || i >= originX.length) {
+            return false;
+        }
+        return originX[i] != x || originY[i] != y;
+    }
+
+    function visualX(x, y) {
+        var fromX = x;
+        var i = idx(x, y);
+        if (i >= 0 && i < originX.length) {
+            fromX = originX[i];
+        }
+        return int((fromX + ((x - fromX) * slideT())) * tileSize);
+    }
+
+    function visualY(x, y) {
+        var fromY = y;
+        var i = idx(x, y);
+        if (i >= 0 && i < originY.length) {
+            fromY = originY[i];
+        }
+        return int((fromY + ((y - fromY) * slideT())) * tileSize);
+    }
+
+    function settleSlide(dtMs) {
+        if (physicsAccMs < physicsIntervalMs) {
+            physicsAccMs = physicsAccMs + dtMs;
+            if (physicsAccMs > physicsIntervalMs) {
+                physicsAccMs = physicsIntervalMs;
+            }
+        }
+    }
+
+    function beginSlides() {
+        var y = 0;
+        while (y < rows) {
+            var x = 0;
+            while (x < cols) {
+                var i = idx(x, y);
+                if (i < originX.length) {
+                    originX[i] = x;
+                    originY[i] = y;
+                }
+                x = x + 1;
+            }
+            y = y + 1;
+        }
+    }
+
+    function noteMove(x, y, nx, ny) {
+        if (!inBounds(x, y) || !inBounds(nx, ny)) {
+            return;
+        }
+        var src = idx(x, y);
+        var dst = idx(nx, ny);
+        if (src >= originX.length || dst >= originX.length) {
+            return;
+        }
+        originX[dst] = originX[src];
+        originY[dst] = originY[src];
+        originX[src] = x;
+        originY[src] = y;
+    }
+
+    function snapCell(x, y) {
+        if (!inBounds(x, y)) {
+            return;
+        }
+        var i = idx(x, y);
+        if (i >= originX.length) {
+            return;
+        }
+        originX[i] = x;
+        originY[i] = y;
+    }
+
     function playerWorldX() {
-        return (playerX + 0.5) * tileSize;
+        return visualX(playerX, playerY) + (tileSize / 2);
     }
 
     function playerWorldY() {
-        return (playerY + 0.5) * tileSize;
+        return visualY(playerX, playerY) + (tileSize / 2);
     }
 
     function samplePan() {
@@ -264,6 +358,8 @@ if (root == null) {
         falling = [];
         facing = [];
         moved = [];
+        originX = [];
+        originY = [];
         boomX = [];
         boomY = [];
         boomFill = [];
@@ -306,6 +402,8 @@ if (root == null) {
                 }
                 facing.append(dir);
                 moved.append(0);
+                originX.append(x);
+                originY.append(y);
                 if (tile == PLAYER) {
                     playerX = x;
                     playerY = y;
@@ -483,6 +581,7 @@ if (root == null) {
                     }
                     setTile(x, y, fillTile);
                     setFalling(x, y, 0);
+                    snapCell(x, y);
                 }
                 dx = dx + 1;
             }
@@ -511,6 +610,7 @@ if (root == null) {
         setFalling(x, y, 0);
         setTile(nx, ny, tile);
         setFalling(nx, ny, 1);
+        noteMove(x, y, nx, ny);
     }
 
     function physicsRocks() {
@@ -572,6 +672,7 @@ if (root == null) {
             var destIndex = idx(nx, ny);
             facing[destIndex] = d;
             moved[destIndex] = 1;
+            noteMove(x, y, nx, ny);
             return true;
         }
         return false;
@@ -649,6 +750,7 @@ if (root == null) {
             setTile(nx, ny, EMPTY);
             setTile(bx, by, BOULDER);
             setFalling(bx, by, 0);
+            noteMove(nx, ny, bx, by);
             dest = EMPTY;
             game.audioPlayTone(160, 30, "triangle", 0.07);
             game.audioPlaySample("assets/beep_lo.wav", 0.45, { "pan": samplePan(), "playbackRate": 0.85 });
@@ -682,6 +784,7 @@ if (root == null) {
         }
 
         setTile(playerX, playerY, EMPTY);
+        noteMove(playerX, playerY, nx, ny);
         playerX = nx;
         playerY = ny;
         setTile(playerX, playerY, PLAYER);
@@ -864,6 +967,7 @@ if (root == null) {
             return;
         }
 
+        beginSlides();
         var dy = readMoveDy();
         var dx = 0;
         if (dy == 0) {
@@ -993,6 +1097,7 @@ if (root == null) {
         }
 
         if (state == "dead") {
+            settleSlide(dtMs);
             deadTimerMs = deadTimerMs - dtMs;
             if (deadTimerMs <= 0) {
                 afterDeath();
@@ -1001,6 +1106,7 @@ if (root == null) {
         }
 
         if (state == "cleared") {
+            settleSlide(dtMs);
             winTimerMs = winTimerMs - dtMs;
             if (winTimerMs <= 0) {
                 afterClear();
@@ -1068,8 +1174,8 @@ if (root == null) {
 
     function drawFallbackTile(x, y) {
         var tile = getTile(x, y);
-        var px = x * tileSize;
-        var py = y * tileSize;
+        var px = visualX(x, y);
+        var py = visualY(x, y);
         if (tile == STEEL) {
             game.fillRect(px, py, tileSize, tileSize, "#4b5563");
         } else if (tile == BRICK) {
@@ -1104,14 +1210,27 @@ if (root == null) {
             var x = 0;
             while (x < cols) {
                 var tile = getTile(x, y);
-                var px = x * tileSize;
-                var py = y * tileSize;
-                var cx = px + (tileSize / 2);
-                var cy = py + (tileSize / 2);
-                if (tile == DIAMOND || tile == PLAYER || tile == FIREFLY || tile == BUTTERFLY) {
-                    game.fillRect(px, py, tileSize, tileSize, "#1c1917");
+                if (tile == DIAMOND || tile == PLAYER || tile == FIREFLY || tile == BUTTERFLY || (tile == BOULDER && isSliding(x, y))) {
+                    game.fillRect(x * tileSize, y * tileSize, tileSize, tileSize, "#1c1917");
                 }
-                if (tile == DIAMOND) {
+                x = x + 1;
+            }
+            y = y + 1;
+        }
+
+        y = 0;
+        while (y < rows) {
+            var x = 0;
+            while (x < cols) {
+                var tile = getTile(x, y);
+                var cx = visualX(x, y) + (tileSize / 2);
+                var cy = visualY(x, y) + (tileSize / 2);
+                if (tile == BOULDER && isSliding(x, y)) {
+                    blitId(BOULDER, cx, cy, {
+                        "ox": tileSize / 2,
+                        "oy": tileSize / 2
+                    });
+                } else if (tile == DIAMOND) {
                     var gemId = DIAMOND;
                     if ((int(animMs / 180) % 2) == 1) {
                         gemId = 12;
@@ -1226,16 +1345,22 @@ if (root == null) {
         var viewW = canvasW / z;
         var viewH = canvasH / z;
         game.setBlend("multiply");
-        game.fillRect(game.getCameraX(), game.getCameraY(), viewW, viewH, "#e4d5c0");
+        game.fillRect(game.getCameraX(), game.getCameraY(), viewW, viewH, "#f4eee6");
         game.setBlend("add");
-        game.setAlpha(0.42);
-        game.fillCircle(playerWorldX(), playerWorldY(), 150, "#ffb15a");
-        game.setAlpha(0.2);
-        game.fillCircle(playerWorldX(), playerWorldY(), 220, "#ffe0a8");
+        var px = playerWorldX();
+        var py = playerWorldY();
+        game.setAlpha(0.07);
+        game.fillCircle(px, py, 280, "#fff1d6");
+        game.setAlpha(0.09);
+        game.fillCircle(px, py, 210, "#ffe4b8");
+        game.setAlpha(0.11);
+        game.fillCircle(px, py, 150, "#ffd08a");
+        game.setAlpha(0.08);
+        game.fillCircle(px, py, 90, "#ffc06a");
         game.setAlpha(1);
         if (exitOpen) {
-            game.setAlpha(0.4);
-            game.fillCircle((exitX + 0.5) * tileSize, (exitY + 0.5) * tileSize, 40, "#86efac");
+            game.setAlpha(0.22);
+            game.fillCircle((exitX + 0.5) * tileSize, (exitY + 0.5) * tileSize, 56, "#bbf7d0");
             game.setAlpha(1);
             game.setBlend("alpha");
             game.strokeCircle((exitX + 0.5) * tileSize, (exitY + 0.5) * tileSize, 18 + ((int(animMs / 160) % 4)), "#86efac", 2);
