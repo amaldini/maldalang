@@ -1297,6 +1297,12 @@
   },
   {
     "file": "14-neural-nets.html",
+    "level": 3,
+    "id": "parallel",
+    "title": "14.10.2 Parallel"
+  },
+  {
+    "file": "14-neural-nets.html",
     "level": 2,
     "id": "other-layers",
     "title": "14.11 Altri layer"

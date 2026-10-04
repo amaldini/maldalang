@@ -319,13 +319,14 @@
     {
       "id": "network-composition",
       "term": "Network composition",
-      "aliases": ["composition", "smaller networks", "nested sequential", "Sequential"],
+      "aliases": ["composition", "smaller networks", "nested sequential", "Sequential", "Parallel", "Identity"],
       "href": "14-neural-nets.html#compose",
       "also": [
         "14-neural-nets.html#sequential",
+        "14-neural-nets.html#parallel",
         "14-neural-nets.html#conv-net"
       ],
-      "summary": "A Sequential is a layer. Nest them so one net is built from smaller nets. nn.sequential still builds only Dense rows."
+      "summary": "A Sequential is a layer. Nest them so one net is built from smaller nets. Parallel adds or concatenates branches that share an input. nn.sequential still builds only Dense rows."
     },
     {
       "id": "convolution",

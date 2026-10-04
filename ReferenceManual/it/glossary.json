@@ -321,13 +321,14 @@
     {
       "id": "network-composition",
       "term": "Composizione di reti",
-      "aliases": ["composizione", "reti più piccole", "sequential annidato", "Sequential"],
+      "aliases": ["composizione", "reti più piccole", "sequential annidato", "Sequential", "Parallel", "Identity"],
       "href": "14-neural-nets.html#compose",
       "also": [
         "14-neural-nets.html#sequential",
+        "14-neural-nets.html#parallel",
         "14-neural-nets.html#conv-net"
       ],
-      "summary": "Un Sequential è un layer. Annidali così una rete è fatta di reti più piccole. nn.sequential costruisce ancora solo righe Dense."
+      "summary": "Un Sequential è un layer. Annidali così una rete è fatta di reti più piccole. Parallel somma o affianca rami che condividono un ingresso. nn.sequential costruisce ancora solo righe Dense."
     },
     {
       "id": "convolution",
