@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Towers of Hanoi - Interactive Game</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 16px;
+      background: #0f141c;
+      color: #e7eef7;
+    }
+
+    #app canvas {
+      width: min(900px, 100%);
+      height: auto;
+      touch-action: none;
+      border: 1px solid #334155;
+      border-radius: 8px;
+    }
+
+    code {
+      background: #1c2533;
+      padding: 2px 4px;
+    }
+  </style>
+</head>
+<body>
+  <p>Interactive Towers of Hanoi game. Compile first:</p>
+  <p><code>malda compile Examples/Games/towers_of_hanoi.malda --mode js -o Examples/Games/towers_of_hanoi.js</code></p>
+  <div id="app"></div>
+
+  <script src="../Web/wwwroot/malda-js-runtime.js"></script>
+  <script src="./towers_of_hanoi.js"></script>
+  <script>
+    if (window.MaldaApp && typeof window.MaldaApp.main === "function") {
+      window.MaldaApp.main();
+    }
+  </script>
+</body>
+</html>
