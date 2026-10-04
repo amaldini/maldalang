@@ -7,11 +7,14 @@
 // with that road, so the coach's steering still points back to the racing line.
 // The ground shader reads the same polyline from a float texture.
 //
-// Q/E change circuit. C chase camera. N network only. T coach only.
+// Q/E change circuit. C cycles the camera (chase, bumper, side, nose, orbit,
+// aerial). Each shot keeps moving. N network only. T coach only.
 // L blend mode. R reset brain. Space pause. Tab manual drive (WASD/arrows).
+// Showcase autoplay (#malda-autoplay) advances the shot on its own.
 // A side panel matches the 2D grand prix HUD: speed, laps, neural share, and order.
-// Car contact uses the billiards equal-mass impulse (restitution 0.5). Speed
-// stays on the nose; a glancing hit adds a small yaw.
+// Car contact uses the billiards equal-mass impulse (restitution 0.5) against
+// the car's oriented box, so the meshes stay apart. Speed stays on the nose;
+// a glancing hit adds a small yaw.
 
 function wrapAngle(a: float) -> float {
     var turns = math.floor((a + 3.14159265) / 6.2831853);
@@ -527,32 +530,176 @@ function wheelOffset(w: int) -> vec3 {
 }
 
 @shader()
+function carBodyPart(slot: int) -> int {
+    if (slot == 0) {
+        return 0;
+    }
+    if (slot == 1) {
+        return 5;
+    }
+    if (slot == 2) {
+        return 6;
+    }
+    if (slot == 3) {
+        return 7;
+    }
+    if (slot == 4) {
+        return 8;
+    }
+    if (slot == 5) {
+        return 11;
+    }
+    if (slot == 6) {
+        return 12;
+    }
+    if (slot == 7) {
+        return 13;
+    }
+    return 14;
+}
+
+@shader()
+function carBoxCenter(part: int) -> vec3 {
+    if (part == 5) {
+        return vec3(0.86, 0.20, 0.0);
+    }
+    if (part == 6) {
+        return vec3(-0.06, 0.40, 0.0);
+    }
+    if (part == 7) {
+        return vec3(-0.46, 0.33, 0.0);
+    }
+    if (part == 8) {
+        return vec3(-1.00, 0.62, 0.0);
+    }
+    if (part == 11) {
+        return vec3(1.06, 0.11, 0.0);
+    }
+    if (part == 12) {
+        return vec3(0.10, 0.26, 0.30);
+    }
+    if (part == 13) {
+        return vec3(0.10, 0.26, -0.30);
+    }
+    if (part == 14) {
+        return vec3(-0.20, 0.54, 0.0);
+    }
+    return vec3(0.0, 0.22, 0.0);
+}
+
+@shader()
+function carBoxHalf(part: int) -> vec3 {
+    if (part == 5) {
+        return vec3(0.26, 0.065, 0.10);
+    }
+    if (part == 6) {
+        return vec3(0.24, 0.11, 0.15);
+    }
+    if (part == 7) {
+        return vec3(0.24, 0.08, 0.17);
+    }
+    if (part == 8) {
+        return vec3(0.06, 0.03, 0.46);
+    }
+    if (part == 11) {
+        return vec3(0.07, 0.022, 0.52);
+    }
+    if (part == 12 || part == 13) {
+        return vec3(0.36, 0.09, 0.08);
+    }
+    if (part == 14) {
+        return vec3(0.07, 0.07, 0.09);
+    }
+    return vec3(0.70, 0.10, 0.22);
+}
+
+@shader()
+function hitLocalBox(pos: vec3, angle: float, localCenter: vec3, halfSize: vec3, origin: vec3, dir: vec3) -> float {
+    var ca: float = cos(angle);
+    var sa: float = sin(angle);
+    var center: vec3 = pos + vec3(ca * localCenter.x - sa * localCenter.z, localCenter.y, sa * localCenter.x + ca * localCenter.z);
+    return hitBoxRotated(center, halfSize, angle, origin, dir);
+}
+
+@shader()
+function localBoxNormal(pos: vec3, angle: float, localCenter: vec3, halfSize: vec3, p: vec3) -> vec3 {
+    var ca: float = cos(angle);
+    var sa: float = sin(angle);
+    var center: vec3 = pos + vec3(ca * localCenter.x - sa * localCenter.z, localCenter.y, sa * localCenter.x + ca * localCenter.z);
+    return boxNormalRotated(center, halfSize, angle, p);
+}
+
+@shader()
+function wheelCenterOf(pos: vec3, angle: float, w: int) -> vec3 {
+    var ca: float = cos(angle);
+    var sa: float = sin(angle);
+    var offset: vec3 = wheelOffset(w);
+    var wx: float = ca * offset.x - sa * offset.z;
+    var wz: float = sa * offset.x + ca * offset.z;
+    return vec3(pos.x + wx, pos.y + 0.2, pos.z + wz);
+}
+
+@shader()
+function carPartAlbedo(index: int, part: int) -> vec3 {
+    var paint: vec3 = carColor(index);
+    if (part >= 1 && part <= 4) {
+        return vec3(0.05, 0.05, 0.055);
+    }
+    if (part >= 15 && part <= 18) {
+        return vec3(0.82, 0.83, 0.86);
+    }
+    if (part == 6) {
+        return vec3(0.02, 0.04, 0.07);
+    }
+    if (part == 19) {
+        return paint * 0.35 + vec3(0.12, 0.12, 0.13);
+    }
+    if (part == 8 || part == 11) {
+        return vec3(0.06, 0.06, 0.065);
+    }
+    if (part == 7 || part == 14) {
+        return paint * 0.55;
+    }
+    return paint;
+}
+
+@shader()
 function hitCar(index: int, origin: vec3, dir: vec3, tHit: out float, kind: out int) -> bool {
     var pos: vec3 = carPosition(index);
     var angle: float = carAngle(index);
-    var bodyHalf: vec3 = vec3(1.15, 0.26, 0.48);
-    var bodyCenter: vec3 = vec3(pos.x, pos.y + 0.32, pos.z);
-    var tBody: float = hitBoxRotated(bodyCenter, bodyHalf, angle, origin, dir);
-    var wheelR: float = 0.2;
-    var wheelHalf: float = 0.11;
-    var ca: float = cos(angle);
-    var sa: float = sin(angle);
     tHit = 1000000.0;
     kind = -1;
-    if (tBody > 0.0 && tBody < tHit) {
-        tHit = tBody;
-        kind = 0;
+    var slot: int = 0;
+    while (slot < 9) {
+        var part: int = carBodyPart(slot);
+        var tBox: float = hitLocalBox(pos, angle, carBoxCenter(part), carBoxHalf(part), origin, dir);
+        if (tBox > 0.0 && tBox < tHit) {
+            tHit = tBox;
+            kind = part;
+        }
+        slot = slot + 1;
+    }
+    var ca: float = cos(angle);
+    var sa: float = sin(angle);
+    var helmetLocal: vec3 = vec3(-0.02, 0.48, 0.0);
+    var helmetCenter: vec3 = pos + vec3(ca * helmetLocal.x - sa * helmetLocal.z, helmetLocal.y, sa * helmetLocal.x + ca * helmetLocal.z);
+    var tHelmet: float = hitSphere(helmetCenter, 0.10, origin, dir);
+    if (tHelmet > 0.0 && tHelmet < tHit) {
+        tHit = tHelmet;
+        kind = 19;
     }
     var w: int = 0;
     while (w < 4) {
-        var offset: vec3 = wheelOffset(w);
-        var wx: float = ca * offset.x - sa * offset.z;
-        var wz: float = sa * offset.x + ca * offset.z;
-        var wheelCenter: vec3 = vec3(pos.x + wx, pos.y + wheelR, pos.z + wz);
-        var tWheel: float = hitWheel(wheelCenter, wheelR, wheelHalf, angle, origin, dir);
+        var wheelCenter: vec3 = wheelCenterOf(pos, angle, w);
+        var tWheel: float = hitWheel(wheelCenter, 0.2, 0.11, angle, origin, dir);
         if (tWheel > 0.0 && tWheel < tHit) {
             tHit = tWheel;
             kind = 1 + w;
+        }
+        var tHub: float = hitWheel(wheelCenter, 0.085, 0.125, angle, origin, dir);
+        if (tHub > 0.0 && tHub < tHit) {
+            tHit = tHub;
+            kind = 15 + w;
         }
         w = w + 1;
     }
@@ -563,21 +710,20 @@ function hitCar(index: int, origin: vec3, dir: vec3, tHit: out float, kind: out 
 function carNormal(index: int, kind: int, p: vec3) -> vec3 {
     var pos: vec3 = carPosition(index);
     var angle: float = carAngle(index);
-    if (kind == 0) {
-        var bodyHalf: vec3 = vec3(1.15, 0.26, 0.48);
-        var bodyCenter: vec3 = vec3(pos.x, pos.y + 0.32, pos.z);
-        return boxNormalRotated(bodyCenter, bodyHalf, angle, p);
+    if (kind >= 1 && kind <= 4) {
+        return wheelNormal(wheelCenterOf(pos, angle, kind - 1), 0.2, 0.11, angle, p);
     }
-    var wheelR: float = 0.2;
-    var wheelHalf: float = 0.11;
-    var ca: float = cos(angle);
-    var sa: float = sin(angle);
-    var w: int = kind - 1;
-    var offset: vec3 = wheelOffset(w);
-    var wx: float = ca * offset.x - sa * offset.z;
-    var wz: float = sa * offset.x + ca * offset.z;
-    var wheelCenter: vec3 = vec3(pos.x + wx, pos.y + wheelR, pos.z + wz);
-    return wheelNormal(wheelCenter, wheelR, wheelHalf, angle, p);
+    if (kind >= 15 && kind <= 18) {
+        return wheelNormal(wheelCenterOf(pos, angle, kind - 15), 0.085, 0.125, angle, p);
+    }
+    if (kind == 19) {
+        var ca: float = cos(angle);
+        var sa: float = sin(angle);
+        var helmetLocal: vec3 = vec3(-0.02, 0.48, 0.0);
+        var helmetCenter: vec3 = pos + vec3(ca * helmetLocal.x - sa * helmetLocal.z, helmetLocal.y, sa * helmetLocal.x + ca * helmetLocal.z);
+        return normalize(p - helmetCenter);
+    }
+    return localBoxNormal(pos, angle, carBoxCenter(kind), carBoxHalf(kind), p);
 }
 
 @shader()
@@ -645,8 +791,12 @@ function closestHit(
             if (considerHit(tCar, tHit)) {
                 tHit = tCar;
                 kind = 1;
-                index = i * 10 + carKind;
-                material = 1;
+                index = i * 20 + carKind;
+                if (carKind >= 1 && carKind <= 4) {
+                    material = 0;
+                } else {
+                    material = 1;
+                }
             }
         }
         i = i + 1;
@@ -668,14 +818,10 @@ function closestHit(
 
     var hit: vec3 = origin + dir * tHit;
     if (kind == 1) {
-        var carIdx: int = index / 10;
-        var carPart: int = index - carIdx * 10;
+        var carIdx: int = index / 20;
+        var carPart: int = index - carIdx * 20;
         normal = carNormal(carIdx, carPart, hit);
-        if (carPart == 0) {
-            albedo = carColor(carIdx);
-        } else {
-            albedo = vec3(0.08, 0.08, 0.09);
-        }
+        albedo = carPartAlbedo(carIdx, carPart);
     } else {
         normal = vec3(0.0, 1.0, 0.0);
         if (dot(normal, dir) > 0.0) {
@@ -833,6 +979,13 @@ var fragmentShader = glsl.compile({
         "carAngle",
         "carColor",
         "wheelOffset",
+        "carBodyPart",
+        "carBoxCenter",
+        "carBoxHalf",
+        "hitLocalBox",
+        "localBoxNormal",
+        "wheelCenterOf",
+        "carPartAlbedo",
         "hitCar",
         "carNormal",
         "considerHit",
@@ -1722,39 +1875,86 @@ if (root == null) {
         carV[i] = along;
     }
 
+    function carBoxHit(i: int, j: int) -> array {
+        var halfL = 1.18;
+        var halfW = 0.66;
+        var dx = carX[j] - carX[i];
+        var dz = carZ[j] - carZ[i];
+        var fix = math.cos(carH[i]);
+        var fiz = math.sin(carH[i]);
+        var rix = 0.0 - fiz;
+        var riz = fix;
+        var fjx = math.cos(carH[j]);
+        var fjz = math.sin(carH[j]);
+        var rjx = 0.0 - fjz;
+        var rjz = fjx;
+        var ax = [fix, rix, fjx, rjx];
+        var az = [fiz, riz, fjz, rjz];
+        var best = 1000000.0;
+        var nx = fix;
+        var nz = fiz;
+        var a = 0;
+        while (a < 4) {
+            var axisX = ax[a];
+            var axisZ = az[a];
+            var spanI = halfL * math.abs(fix * axisX + fiz * axisZ) + halfW * math.abs(rix * axisX + riz * axisZ);
+            var spanJ = halfL * math.abs(fjx * axisX + fjz * axisZ) + halfW * math.abs(rjx * axisX + rjz * axisZ);
+            var dist = dx * axisX + dz * axisZ;
+            var overlap = spanI + spanJ - math.abs(dist);
+            if (overlap <= 0.0) {
+                return [0.0, 0.0, 0.0];
+            }
+            if (overlap < best) {
+                best = overlap;
+                if (dist < 0.0) {
+                    nx = 0.0 - axisX;
+                    nz = 0.0 - axisZ;
+                } else {
+                    nx = axisX;
+                    nz = axisZ;
+                }
+            }
+            a = a + 1;
+        }
+        return [best, nx, nz];
+    }
+
     function separateCars() {
         var carRest = 0.5;
-        var i = 0;
-        while (i < carCount) {
-            var j = i + 1;
-            while (j < carCount) {
-                var dx = carX[j] - carX[i];
-                var dz = carZ[j] - carZ[i];
-                var d2 = dx * dx + dz * dz;
-                var minD = trackW * 0.55;
-                if (d2 < minD * minD && d2 > 0.0001) {
-                    var d = math.sqrt(d2);
-                    var nx = dx / d;
-                    var nz = dz / d;
-                    var overlap = minD - d;
-                    carX[i] = carX[i] - nx * overlap * 0.5;
-                    carZ[i] = carZ[i] - nz * overlap * 0.5;
-                    carX[j] = carX[j] + nx * overlap * 0.5;
-                    carZ[j] = carZ[j] + nz * overlap * 0.5;
-                    var vix = math.cos(carH[i]) * carV[i];
-                    var viz = math.sin(carH[i]) * carV[i];
-                    var vjx = math.cos(carH[j]) * carV[j];
-                    var vjz = math.sin(carH[j]) * carV[j];
-                    var rel = ((vix - vjx) * nx) + ((viz - vjz) * nz);
-                    if (rel > 0.0) {
-                        var impulse = -(1.0 + carRest) * rel * 0.5;
-                        bumpCar(i, vix + nx * impulse, viz + nz * impulse);
-                        bumpCar(j, vjx - nx * impulse, vjz - nz * impulse);
+        var pass = 0;
+        while (pass < 4) {
+            var i = 0;
+            while (i < carCount) {
+                var j = i + 1;
+                while (j < carCount) {
+                    var hit = carBoxHit(i, j);
+                    var overlap = hit[0];
+                    if (overlap > 0.0) {
+                        var nx = hit[1];
+                        var nz = hit[2];
+                        var push = overlap * 0.5;
+                        carX[i] = carX[i] - nx * push;
+                        carZ[i] = carZ[i] - nz * push;
+                        carX[j] = carX[j] + nx * push;
+                        carZ[j] = carZ[j] + nz * push;
+                        if (pass == 0) {
+                            var vix = math.cos(carH[i]) * carV[i];
+                            var viz = math.sin(carH[i]) * carV[i];
+                            var vjx = math.cos(carH[j]) * carV[j];
+                            var vjz = math.sin(carH[j]) * carV[j];
+                            var rel = ((vix - vjx) * nx) + ((viz - vjz) * nz);
+                            if (rel > 0.0) {
+                                var impulse = -(1.0 + carRest) * rel * 0.5;
+                                bumpCar(i, vix + nx * impulse, viz + nz * impulse);
+                                bumpCar(j, vjx - nx * impulse, vjz - nz * impulse);
+                            }
+                        }
                     }
+                    j = j + 1;
                 }
-                j = j + 1;
+                i = i + 1;
             }
-            i = i + 1;
+            pass = pass + 1;
         }
     }
 
@@ -1786,9 +1986,18 @@ if (root == null) {
         }
     }
 
-    var camRadius = 14.0;
-    var camHeight = 5.4;
-    var chaseMode = true;
+    var autoplay = dom.query("#malda-autoplay") != null;
+    var camShot = 0;
+    var smoothShot = 0;
+    var camClock = 0.0;
+    var shotHold = 0.0;
+    var camReady = false;
+    var smoothX = 0.0;
+    var smoothY = 6.0;
+    var smoothZ = 12.0;
+    var lookSX = 0.0;
+    var lookSY = 0.8;
+    var lookSZ = 0.0;
     var focusX = 0.0;
     var focusZ = 0.0;
 
@@ -1806,33 +2015,144 @@ if (root == null) {
     var lightY = 12.0;
     var lightZ = 8.0;
 
-    function updateCamera() {
-        var camX = cenX;
-        var camY = trackSpan * 1.15;
-        var camZ = cenZ + trackSpan * 0.08;
-        var lookX = cenX;
-        var lookY = 0.0;
-        var lookZ = cenZ;
-        if (chaseMode) {
-            var focusI = leadCar;
-            if (manualDrive) {
-                focusI = 0;
-            }
-            focusX = carX[focusI];
-            focusZ = carZ[focusI];
-            var heading = carH[focusI];
-            var aheadX = math.cos(heading);
-            var aheadZ = math.sin(heading);
-            camX = focusX - aheadX * camRadius;
-            camY = camHeight;
-            camZ = focusZ - aheadZ * camRadius;
-            lookX = focusX + aheadX * 4.2;
-            lookY = 0.9;
-            lookZ = focusZ + aheadZ * 4.2;
-        } else {
-            focusX = cenX;
-            focusZ = cenZ;
+    function shotLabel() -> string {
+        if (camShot == 1) {
+            return "bumper";
         }
+        if (camShot == 2) {
+            return "side";
+        }
+        if (camShot == 3) {
+            return "nose";
+        }
+        if (camShot == 4) {
+            return "orbit";
+        }
+        if (camShot == 5) {
+            return "aerial";
+        }
+        return "chase";
+    }
+
+    function updateCamera(dt: float) {
+        camClock = camClock + dt;
+        if (autoplay) {
+            shotHold = shotHold + dt;
+            if (shotHold >= 4.2) {
+                shotHold = 0.0;
+                camShot = camShot + 1;
+                if (camShot >= 6) {
+                    camShot = 0;
+                }
+            }
+        }
+        var focusI = leadCar;
+        if (manualDrive) {
+            focusI = 0;
+        }
+        focusX = carX[focusI];
+        focusZ = carZ[focusI];
+        var heading = carH[focusI];
+        var aheadX = math.cos(heading);
+        var aheadZ = math.sin(heading);
+        var sideX = 0.0 - aheadZ;
+        var sideZ = aheadX;
+        var camX = focusX;
+        var camY = 4.0;
+        var camZ = focusZ;
+        var lookX = focusX;
+        var lookY = 0.8;
+        var lookZ = focusZ;
+        if (camShot == 0) {
+            var sway = math.sin(camClock * 0.55) * 1.15;
+            camX = focusX - aheadX * 12.0 + sideX * sway;
+            camY = 3.4 + math.sin(camClock * 0.7) * 0.45;
+            camZ = focusZ - aheadZ * 12.0 + sideZ * sway;
+            lookX = focusX + aheadX * 6.5;
+            lookY = 0.85;
+            lookZ = focusZ + aheadZ * 6.5;
+        } else if (camShot == 1) {
+            var swayB = math.sin(camClock * 1.4) * 0.22;
+            camX = focusX - aheadX * 4.8 + sideX * swayB;
+            camY = 1.25 + math.sin(camClock * 1.1) * 0.12;
+            camZ = focusZ - aheadZ * 4.8 + sideZ * swayB;
+            lookX = focusX + aheadX * 8.0;
+            lookY = 0.55;
+            lookZ = focusZ + aheadZ * 8.0;
+        } else if (camShot == 2) {
+            camX = focusX + sideX * 7.4 + aheadX * 1.6;
+            camY = 2.05 + math.sin(camClock * 0.65) * 0.35;
+            camZ = focusZ + sideZ * 7.4 + aheadZ * 1.6;
+            lookX = focusX + aheadX * 4.2;
+            lookY = 0.65;
+            lookZ = focusZ + aheadZ * 4.2;
+        } else if (camShot == 3) {
+            var weave = math.sin(camClock * 0.42) * 1.6;
+            camX = focusX + aheadX * 8.2 + sideX * (2.4 + weave);
+            camY = 1.85;
+            camZ = focusZ + aheadZ * 8.2 + sideZ * (2.4 + weave);
+            lookX = focusX - aheadX * 1.5;
+            lookY = 0.7;
+            lookZ = focusZ - aheadZ * 1.5;
+        } else if (camShot == 4) {
+            var ang = camClock * 0.42;
+            var orbitR = 10.0 + math.sin(camClock * 0.23) * 1.4;
+            camX = focusX + math.cos(ang) * orbitR;
+            camZ = focusZ + math.sin(ang) * orbitR;
+            camY = 4.6 + math.sin(camClock * 0.31) * 1.1;
+            lookX = focusX + aheadX * 1.5;
+            lookY = 0.55;
+            lookZ = focusZ + aheadZ * 1.5;
+        } else {
+            var span = trackSpan;
+            if (span < 16.0) {
+                span = 16.0;
+            }
+            var aang = camClock * 0.16;
+            var ar = span * 0.62;
+            camX = cenX + math.cos(aang) * ar;
+            camZ = cenZ + math.sin(aang) * ar * 0.78;
+            camY = span * 0.92;
+            lookX = cenX + math.cos(aang + 0.6) * span * 0.08;
+            lookY = 0.0;
+            lookZ = cenZ + math.sin(aang + 0.6) * span * 0.08;
+        }
+        if (!camReady) {
+            smoothX = camX;
+            smoothY = camY;
+            smoothZ = camZ;
+            lookSX = lookX;
+            lookSY = lookY;
+            lookSZ = lookZ;
+            smoothShot = camShot;
+            camReady = true;
+        } else if (dt > 0.0) {
+            var follow = 7.0;
+            if (smoothShot != camShot) {
+                follow = 1.65;
+            }
+            var blend = 1.0 - math.exp(-follow * dt);
+            smoothX = smoothX + (camX - smoothX) * blend;
+            smoothY = smoothY + (camY - smoothY) * blend;
+            smoothZ = smoothZ + (camZ - smoothZ) * blend;
+            lookSX = lookSX + (lookX - lookSX) * blend;
+            lookSY = lookSY + (lookY - lookSY) * blend;
+            lookSZ = lookSZ + (lookZ - lookSZ) * blend;
+            if (smoothShot != camShot) {
+                var leftX = camX - smoothX;
+                var leftY = camY - smoothY;
+                var leftZ = camZ - smoothZ;
+                if (leftX * leftX + leftY * leftY + leftZ * leftZ < 2.0) {
+                    smoothShot = camShot;
+                }
+            }
+        }
+        camX = smoothX;
+        camY = smoothY;
+        camZ = smoothZ;
+        lookX = lookSX;
+        lookY = lookSY;
+        lookZ = lookSZ;
 
         var fx = lookX - camX;
         var fy = lookY - camY;
@@ -2146,7 +2466,7 @@ if (root == null) {
             bi = bi + 1;
         }
         html = html + "</div>";
-        html = html + "<div class='keys'>Q E circuit &nbsp; C camera &nbsp; Tab drive<br>N net &nbsp; T coach &nbsp; L blend &nbsp; R reset &nbsp; Space pause</div>";
+        html = html + "<div class='keys'>Q E circuit &nbsp; C " + shotLabel() + " &nbsp; Tab drive<br>N net &nbsp; T coach &nbsp; L blend &nbsp; R reset &nbsp; Space pause</div>";
         dom.html(hud, html);
     }
 
@@ -2171,7 +2491,12 @@ if (root == null) {
 
         var cDown = three.isKeyDown("c");
         if (cDown && !cWasDown) {
-            chaseMode = !chaseMode;
+            camShot = camShot + 1;
+            if (camShot >= 6) {
+                camShot = 0;
+            }
+            shotHold = 0.0;
+            autoplay = false;
         }
         cWasDown = cDown;
 
@@ -2231,7 +2556,11 @@ if (root == null) {
             }
         }
 
-        var cam = updateCamera();
+        var camDt = dtSec;
+        if (paused) {
+            camDt = 0.0;
+        }
+        var cam = updateCamera(camDt);
         three.setUniform(material, "uCamPos", [cam.camX, cam.camY, cam.camZ]);
         three.setUniform(material, "uCamForward", [cam.forwardX, cam.forwardY, cam.forwardZ]);
         three.setUniform(material, "uCamRight", [cam.rightX, cam.rightY, cam.rightZ]);
