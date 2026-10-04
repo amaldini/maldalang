@@ -5,7 +5,7 @@
   "top": 0,
   "splitBeatMs": 800,
   "readyTimeoutMs": 90000,
-  "endMs": 140200,
+  "endMs": 138000,
   "closingMs": 5100,
   "browse": [
     {
@@ -196,7 +196,7 @@
       "caption": "CartPole",
       "panel": "preview",
       "maximize": false,
-      "startMs": 103000,
+      "startMs": 102000,
       "focusLine": 4
     },
     {
@@ -204,7 +204,7 @@
       "caption": "3D Grand Prix",
       "panel": "preview",
       "maximize": false,
-      "startMs": 106000,
+      "startMs": 105000,
       "focusLine": 10
     },
     {
@@ -212,7 +212,7 @@
       "caption": "Chess",
       "panel": "preview",
       "maximize": false,
-      "startMs": 111100,
+      "startMs": 110500,
       "focusLine": 27
     }
   ]
