@@ -23,6 +23,9 @@ public sealed class ShowcaseLyrics
     public IReadOnlyList<string> ManualLines { get; private init; } = Array.Empty<string>();
     public IReadOnlyList<string> DreamLines { get; private init; } = Array.Empty<string>();
 
+    /// <summary>The fading line sung while the reel returns to the splash.</summary>
+    public string Outro { get; private init; } = "";
+
     public IReadOnlyList<string> CatalogSentences => Sentences(CatalogLines);
     public IReadOnlyList<string> ManualSentences => Sentences(ManualLines);
 
@@ -52,7 +55,8 @@ public sealed class ShowcaseLyrics
             Intro = First(SungLines(lines, "[Intro")),
             CatalogLines = SungLines(lines, "[Catalog"),
             ManualLines = SungLines(lines, "[Manual"),
-            DreamLines = SungLines(lines, "[Dream")
+            DreamLines = SungLines(lines, "[Dream"),
+            Outro = First(SungLines(lines, "[Outro"))
         };
     }
 

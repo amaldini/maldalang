@@ -38,7 +38,8 @@ public class ShowcaseTimelineTests
             }
 
             Assert.Equal(session.Playlist.OpeningMs, starts[0]);
-            Assert.Equal(session.Playlist.EndMs, ends[^1]);
+            Assert.Equal(4500, session.Playlist.ClosingMs);
+            Assert.Equal(session.Playlist.EndMs - session.Playlist.ClosingMs, ends[^1]);
             for (var i = 0; i < starts.Count - 1; i++)
             {
                 Assert.True(starts[i] < starts[i + 1]);
@@ -148,6 +149,7 @@ public class ShowcaseTimelineTests
             Assert.Equal(session.Playlist.Scenes.Count, lyrics.DreamLines.Count);
             Assert.Equal("Printed clean.", lyrics.SceneLyric(0));
             Assert.Equal("Last move. Objective done.", lyrics.SceneLyric(session.Playlist.Scenes.Count - 1));
+            Assert.Equal("Malda.", lyrics.Outro);
         }
         finally
         {

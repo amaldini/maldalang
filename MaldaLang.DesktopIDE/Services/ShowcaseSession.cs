@@ -228,8 +228,11 @@ public sealed class ShowcasePlaylist
     public int SplitBeatMs { get; set; } = 800;
     public int ReadyTimeoutMs { get; set; } = 90000;
 
-    /// <summary>Milliseconds from the splash when the last scene ends.</summary>
+    /// <summary>Milliseconds from the splash when the reel ends, on the closing splash.</summary>
     public int EndMs { get; set; }
+
+    /// <summary>Milliseconds at the end of the reel spent back on the splash.</summary>
+    public int ClosingMs { get; set; }
 
     public List<ShowcaseBrowsePick> Browse { get; set; } = new();
     public List<ShowcaseManualPage> Manual { get; set; } = new();
@@ -296,14 +299,27 @@ public sealed class ShowcasePlaylist
             previousLabel = cue.Label;
         }
 
-        if (EndMs <= previous)
+        if (ClosingMs < 0)
         {
-            throw new InvalidOperationException($"Showcase endMs must be later than '{previousLabel}' at {previous} ms.");
+            throw new InvalidOperationException("Showcase closingMs cannot be negative.");
+        }
+
+        if (ClosingMs == 0)
+        {
+            if (EndMs <= previous)
+            {
+                throw new InvalidOperationException($"Showcase endMs must be later than '{previousLabel}' at {previous} ms.");
+            }
+        }
+        else if (EndMs <= previous + ClosingMs)
+        {
+            throw new InvalidOperationException(
+                $"Showcase endMs must leave {ClosingMs} ms for the closing splash after '{previousLabel}' at {previous} ms.");
         }
 
         for (var i = 0; i < cues.Count; i++)
         {
-            var end = i + 1 < cues.Count ? cues[i + 1].StartMs : EndMs;
+            var end = i + 1 < cues.Count ? cues[i + 1].StartMs : EndMs - ClosingMs;
             cues[i].SetEnd(end);
         }
     }

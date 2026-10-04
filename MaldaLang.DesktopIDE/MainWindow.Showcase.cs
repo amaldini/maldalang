@@ -135,7 +135,7 @@ public partial class MainWindow
         return (int)remaining;
     }
 
-    private async Task BeginShowcaseSplashAsync()
+    private async Task BeginShowcaseSplashAsync(string? lyric = null)
     {
         // WebBrowser and WebView2 are HWND airspace: they paint over any WPF overlay.
         _showcaseAirspace = new (FrameworkElement Element, Visibility Visibility)[]
@@ -152,7 +152,8 @@ public partial class MainWindow
         }
 
         _showcaseCaption = "";
-        SetShowcaseLyric(_showcase?.Lyrics.Intro);
+        var sung = string.IsNullOrWhiteSpace(lyric) ? _showcase?.Lyrics.Intro : lyric;
+        SetShowcaseLyric(sung);
         UpdateWindowChrome();
         SplashOverlay.Visibility = Visibility.Visible;
         _showcaseSplashVisible = true;
@@ -316,6 +317,7 @@ public partial class MainWindow
 
             TryDeleteFile(_showcase.StartPath);
             await BeginShowcaseSplashAsync();
+            var holdClosingSplash = false;
             try
             {
                 WriteShowcaseStatus("armed", x, y, width, height, scene: null, error: null);
@@ -352,13 +354,32 @@ public partial class MainWindow
                     await PlayShowcaseSceneAsync(scene, x, y, width, height);
                 }
 
+                if (_showcase.Playlist.ClosingMs > 0)
+                {
+                    StopActiveExecution();
+                    QuietShowcasePreview();
+                    holdClosingSplash = true;
+                    var outro = _showcase.Lyrics.Outro;
+                    if (string.IsNullOrWhiteSpace(outro))
+                    {
+                        outro = "Malda.";
+                    }
+
+                    await BeginShowcaseSplashAsync(outro);
+                    WriteShowcaseStatus("playing", x, y, width, height, "MALDA", error: null);
+                    await WaitUntilShowcaseMs(_showcase.Playlist.EndMs);
+                }
+
                 WriteShowcaseStatus("done", x, y, width, height, scene: null, error: null);
                 keepInFront.Stop();
                 Application.Current.Shutdown(0);
             }
             finally
             {
-                EndShowcaseSplash();
+                if (!holdClosingSplash)
+                {
+                    EndShowcaseSplash();
+                }
             }
         }
         catch (Exception ex)
@@ -475,6 +496,24 @@ public partial class MainWindow
             SetOutputText($"Showcase scene failed ({scene.File}): {ex.Message}", isError: true);
             SwitchToTab("output");
             await WaitUntilShowcaseMs(scene.EndMs);
+        }
+    }
+
+    private void QuietShowcasePreview()
+    {
+        try
+        {
+            if (WebUiWebView.CoreWebView2 == null)
+            {
+                return;
+            }
+
+            WebUiWebView.CoreWebView2.Stop();
+            WebUiWebView.CoreWebView2.Navigate("about:blank");
+        }
+        catch (Exception)
+        {
+            // The preview was never created, or WebView2 refused the stop. The splash still covers the window.
         }
     }
 

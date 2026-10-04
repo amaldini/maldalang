@@ -12,6 +12,7 @@ sensual delivery were rejected, as were vocoder and robotic delivery.
 
 Each cue has `startMs`, milliseconds from the splash. That cue stays on
 screen until the next cue's `startMs`. `endMs` is the end of the reel.
+The last `closingMs` milliseconds return to the splash for the outro line.
 The recorder trims its lead-in so the video file starts on that same
 clock, then muxes `-Audio` from the start of the file. Put a lyric on a
 section by setting that cue's `startMs` to the lyric's time in the song.
@@ -33,7 +34,7 @@ directions and should not be sung.
 ## Style
 
 ```
-80 BPM, soft dream-pop, airy and melodic. Natural female voice, clear, medium distance, even tone, light vibrato, long legato phrases, a quiet harmony in the distance. Calm atmosphere: wide pads, soft piano, felt electric piano, quiet synth pulse, light reverb and delay. Neutral, steady, hopeful, moderate volume, even dynamics. No whisper, no breathy close-mic, no sensual or intimate delivery, no ASMR, no vocoder, no robotic voice, no spoken checklist, no rap, no belting, no drums beyond a soft pulse, no drop, no distortion. About 1 minute 45 seconds. End by letting the last note fade into a resolved pad.
+80 BPM, soft dream-pop, airy and melodic. Natural female voice, clear, medium distance, even tone, light vibrato, long legato phrases, a quiet harmony in the distance. Calm atmosphere: wide pads, soft piano, felt electric piano, quiet synth pulse, light reverb and delay. Neutral, steady, hopeful, moderate volume, even dynamics. No whisper, no breathy close-mic, no sensual or intimate delivery, no ASMR, no vocoder, no robotic voice, no spoken checklist, no rap, no belting, no drums beyond a soft pulse, no drop, no distortion. About 1 minute 40 seconds. End by letting the last note fade into a resolved pad.
 ```
 
 ## Lyrics
@@ -71,7 +72,7 @@ The cart learns. The pole stands.
 Apex. The corner. Through.
 Last move. Objective done.
 
-[Outro – pads, one fading line]
+[Outro – 5 seconds, the splash returns, pads, one fading line]
 [Female voice, clear, fading]
 Malda.
 ```

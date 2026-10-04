@@ -9,7 +9,8 @@
   The IDE shows the splash, waits until this script creates a start flag, then
   starts the reel clock. Each cue in scripts/showcase/playlist.json has startMs,
   milliseconds from that splash. The cue stays up until the next startMs.
-  endMs is when the reel ends. Edit those values to put each section on a beat.
+  endMs is when the reel ends. The last closingMs milliseconds return to the
+  splash, on the outro line. Edit those values to put each section on a beat.
   A paste-ready generator prompt is in scripts/showcase/song-prompt.md.
   If the generator only plays in the browser, that file also has the
   Stereo Mix ffmpeg commands that save an mp3 for -Audio.

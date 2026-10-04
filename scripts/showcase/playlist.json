@@ -5,7 +5,8 @@
   "top": 0,
   "splitBeatMs": 800,
   "readyTimeoutMs": 90000,
-  "endMs": 95600,
+  "endMs": 100100,
+  "closingMs": 4500,
   "browse": [
     {
       "file": "Examples/Basics/hello_world.malda",
