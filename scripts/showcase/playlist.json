@@ -74,10 +74,10 @@
       "focusLine": 4
     },
     {
-      "file": "Examples/Games/grand_prix_neural.malda",
-      "caption": "Grand Prix",
+      "file": "Examples/Games/three_shader_race_car_neural.malda",
+      "caption": "3D Grand Prix",
       "startMs": 36900,
-      "focusLine": 13
+      "focusLine": 10
     },
     {
       "file": "Examples/Games/chess.malda",
@@ -200,12 +200,12 @@
       "focusLine": 4
     },
     {
-      "file": "Examples/Games/grand_prix_neural.malda",
-      "caption": "Grand Prix",
+      "file": "Examples/Games/three_shader_race_car_neural.malda",
+      "caption": "3D Grand Prix",
       "panel": "preview",
       "maximize": false,
       "startMs": 106000,
-      "focusLine": 13
+      "focusLine": 10
     },
     {
       "file": "Examples/Games/chess.malda",

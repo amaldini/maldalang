@@ -80,12 +80,12 @@ Malda.
 
 ## What each line follows
 
-Catalog, in browse order: Hello, Schemas, Objects, Hanoi, XOR net, UI controls, Mandelbrot, Raytracer, Platform, Maldanoid, CartPole, Grand Prix, Chess.
+Catalog, in browse order: Hello, Schemas, Objects, Hanoi, XOR net, UI controls, Mandelbrot, Raytracer, Platform, Maldanoid, CartPole, 3D Grand Prix, Chess.
 
 Manual: the manual home page, data types, functions, neural nets
 (“Many agents, one objective” is the multi-agent page), browser games.
 
-Dream, in scene order: Hello, Schemas, Towers of Hanoi, UI controls, Mandelbrot, GPU raytracer, GPU billiards, Platform, Maldanoid, CartPole, Grand Prix, Chess.
+Dream, in scene order: Hello, Schemas, Towers of Hanoi, UI controls, Mandelbrot, GPU raytracer, GPU billiards, Platform, Maldanoid, CartPole, 3D Grand Prix, Chess.
 
 ## Saving a track the browser only plays
 
