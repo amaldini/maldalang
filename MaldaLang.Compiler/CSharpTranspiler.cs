@@ -12174,6 +12174,8 @@ public class CSharpTranspiler
             case "copyFile":
             case "writeFileBase64":
             case "readFileBase64":
+            case "writePng":
+            case "readPng":
             case "hasFile":
             case "deleteFile":
             case "hasDirectory":

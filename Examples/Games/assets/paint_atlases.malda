@@ -1,0 +1,611 @@
+// Regenerates the Maldadash and platform atlases.
+//   malda Examples/Games/assets/paint_atlases.malda
+
+function saveAtlas(path, img, w, h) {
+    var ok = io.writePng(path, w, h, img);
+    if (ok) {
+        io.print("wrote " + path);
+    } else {
+        io.print("failed to write " + path);
+    }
+    return ok;
+}
+
+function blank(w, h) {
+    var img = [];
+    var n = w * h * 4;
+    var i = 0;
+    while (i < n) {
+        img.append(0);
+        i = i + 1;
+    }
+    return img;
+}
+
+function put(img, w, x, y, c) {
+    var i = ((y * w) + x) * 4;
+    img[i] = c[0];
+    img[i + 1] = c[1];
+    img[i + 2] = c[2];
+    img[i + 3] = c[3];
+}
+
+function stamp(img, w, rows, ox, oy, pal) {
+    var y = 0;
+    while (y < rows.length) {
+        var row = rows[y];
+        var x = 0;
+        while (x < 16) {
+            var ch = str.substring(row, x, 1);
+            if (ch != ".") {
+                var c = pal[ch];
+                if (c == null) {
+                    io.print("missing color " + ch);
+                } else {
+                    put(img, w, ox + x, oy + y, c);
+                }
+            }
+            x = x + 1;
+        }
+        y = y + 1;
+    }
+}
+
+function paintDirt(img, w, ox, oy) {
+    var dark = [74, 46, 24, 255];
+    var mid = [126, 80, 44, 255];
+    var lite = [168, 116, 68, 255];
+    var deep = [48, 30, 16, 255];
+    var pebble = [90, 78, 64, 255];
+    var y = 0;
+    while (y < 16) {
+        var x = 0;
+        while (x < 16) {
+            var n = (x * 17 + y * 13 + ((x * y) % 5) * 3) % 19;
+            var color = mid;
+            if (n < 3) {
+                color = dark;
+            } else if (n > 15) {
+                color = lite;
+            } else if (n == 8) {
+                color = deep;
+            }
+            if (((x + y * 3) % 23) == 0) {
+                color = pebble;
+            }
+            put(img, w, ox + x, oy + y, color);
+            x = x + 1;
+        }
+        y = y + 1;
+    }
+}
+
+function paintBrick(img, w, ox, oy) {
+    var mortar = [58, 36, 26, 255];
+    var brick = [176, 78, 48, 255];
+    var light = [214, 118, 78, 255];
+    var dark = [122, 48, 32, 255];
+    var y = 0;
+    while (y < 16) {
+        var x = 0;
+        while (x < 16) {
+            put(img, w, ox + x, oy + y, mortar);
+            x = x + 1;
+        }
+        y = y + 1;
+    }
+    var row = 0;
+    while (row < 4) {
+        var y0 = row * 4;
+        var offset = 0;
+        if ((row % 2) == 1) {
+            offset = 8;
+        }
+        var bx0 = 0 - offset;
+        while (bx0 < 16) {
+            var by = 0;
+            while (by < 3) {
+                var bx = 0;
+                while (bx < 7) {
+                    var px = bx0 + bx;
+                    var py = y0 + by;
+                    if (px >= 0 && py >= 0 && px < 16 && py < 16) {
+                        var color = brick;
+                        if (by == 0) {
+                            color = light;
+                        } else if (by == 2) {
+                            color = dark;
+                        }
+                        if (((px * 5 + py * 3) % 17) == 0) {
+                            color = dark;
+                        }
+                        put(img, w, ox + px, oy + py, color);
+                    }
+                    bx = bx + 1;
+                }
+                by = by + 1;
+            }
+            bx0 = bx0 + 8;
+        }
+        row = row + 1;
+    }
+}
+
+function paintSteel(img, w, ox, oy) {
+    var hi = [206, 214, 224, 255];
+    var mid = [104, 116, 134, 255];
+    var mid2 = [88, 98, 116, 255];
+    var shade = [58, 66, 80, 255];
+    var edge = [24, 28, 36, 255];
+    var bevel = [168, 176, 190, 255];
+    var y = 0;
+    while (y < 16) {
+        var x = 0;
+        while (x < 16) {
+            var color = mid2;
+            if (x == 0 || y == 0) {
+                color = hi;
+            } else if (x == 15 || y == 15) {
+                color = edge;
+            } else if (x == 1 || y == 1) {
+                color = bevel;
+            } else if (x == 14 || y == 14) {
+                color = shade;
+            } else if ((y % 2) == 0) {
+                color = mid;
+            }
+            put(img, w, ox + x, oy + y, color);
+            x = x + 1;
+        }
+        y = y + 1;
+    }
+    var rivet = [32, 36, 46, 255];
+    var rivetHi = [186, 194, 206, 255];
+    var spots = [4, 4, 11, 4, 4, 11, 11, 11];
+    var s = 0;
+    while (s < 8) {
+        var rx = spots[s];
+        var ry = spots[s + 1];
+        put(img, w, ox + rx, oy + ry, rivet);
+        put(img, w, ox + rx - 1, oy + ry - 1, rivetHi);
+        s = s + 2;
+    }
+}
+
+function paintBoulder(img, w, ox, oy) {
+    var outline = [28, 24, 22, 255];
+    var body = [116, 110, 102, 255];
+    var light = [196, 190, 178, 255];
+    var shade = [62, 58, 54, 255];
+    var y = 0;
+    while (y < 16) {
+        var x = 0;
+        while (x < 16) {
+            var dx = x - 7.5;
+            var dy = (y - 8.0) * 0.92;
+            var d2 = (dx * dx) + (dy * dy);
+            if (d2 <= 46.0) {
+                var color = body;
+                if (d2 > 36.0) {
+                    color = outline;
+                } else if (dx < -2.0 && dy < -1.0) {
+                    color = light;
+                } else if (dx > 2.0 && dy > 2.0) {
+                    color = shade;
+                }
+                put(img, w, ox + x, oy + y, color);
+            }
+            x = x + 1;
+        }
+        y = y + 1;
+    }
+    var crack = [42, 38, 36, 255];
+    var cracks = [6, 6, 7, 7, 8, 8, 9, 9, 8, 10, 10, 5, 11, 6];
+    var c = 0;
+    while (c < 14) {
+        put(img, w, ox + cracks[c], oy + cracks[c + 1], crack);
+        c = c + 2;
+    }
+}
+
+function blob(img, w, ox, oy, cx, cy, rx, ry, color) {
+    var y = 0;
+    while (y < 16) {
+        var x = 0;
+        while (x < 16) {
+            var dx = (x + 0.5 - cx) / rx;
+            var dy = (y + 0.5 - cy) / ry;
+            if ((dx * dx) + (dy * dy) <= 1.0) {
+                put(img, w, ox + x, oy + y, color);
+            }
+            x = x + 1;
+        }
+        y = y + 1;
+    }
+}
+
+function paintFirefly(img, w, ox, oy, wingsUp) {
+    var outline = [6, 24, 14, 255];
+    var wing = [134, 239, 172, 255];
+    var wingHi = [236, 253, 245, 255];
+    var body = [22, 163, 74, 255];
+    var belly = [187, 247, 208, 255];
+    var eye = [248, 250, 252, 255];
+    var pupil = [15, 23, 42, 255];
+    if (wingsUp) {
+        blob(img, w, ox, oy, 3.0, 5.0, 2.6, 3.4, outline);
+        blob(img, w, ox, oy, 12.8, 5.0, 2.6, 3.4, outline);
+        blob(img, w, ox, oy, 3.0, 4.8, 1.8, 2.5, wing);
+        blob(img, w, ox, oy, 12.8, 4.8, 1.8, 2.5, wing);
+    } else {
+        blob(img, w, ox, oy, 2.6, 8.6, 3.4, 2.2, outline);
+        blob(img, w, ox, oy, 13.2, 8.6, 3.4, 2.2, outline);
+        blob(img, w, ox, oy, 2.8, 8.4, 2.5, 1.4, wing);
+        blob(img, w, ox, oy, 13.0, 8.4, 2.5, 1.4, wing);
+        blob(img, w, ox, oy, 2.4, 7.8, 1.1, 0.6, wingHi);
+        blob(img, w, ox, oy, 13.4, 7.8, 1.1, 0.6, wingHi);
+    }
+    blob(img, w, ox, oy, 7.8, 8.6, 4.6, 4.8, outline);
+    blob(img, w, ox, oy, 7.8, 8.8, 3.7, 3.9, body);
+    blob(img, w, ox, oy, 7.8, 10.6, 2.2, 1.8, belly);
+    blob(img, w, ox, oy, 6.2, 7.6, 1.35, 1.45, eye);
+    blob(img, w, ox, oy, 9.6, 7.6, 1.35, 1.45, eye);
+    put(img, w, ox + 6, oy + 8, pupil);
+    put(img, w, ox + 10, oy + 8, pupil);
+    put(img, w, ox + 7, oy + 5, wingHi);
+}
+
+function paintButterfly(img, w, ox, oy) {
+    var outline = [88, 12, 110, 255];
+    var wing = [232, 121, 249, 255];
+    var wingHi = [253, 224, 255, 255];
+    var body = [59, 7, 74, 255];
+    var lobes = [
+        3.4, 4.6, 3.4, 3.0,
+        12.4, 4.6, 3.4, 3.0,
+        3.6, 11.2, 3.1, 2.6,
+        12.2, 11.2, 3.1, 2.6
+    ];
+    var i = 0;
+    while (i < 16) {
+        blob(img, w, ox, oy, lobes[i], lobes[i + 1], lobes[i + 2], lobes[i + 3], outline);
+        blob(img, w, ox, oy, lobes[i], lobes[i + 1], lobes[i + 2] - 0.9, lobes[i + 3] - 0.8, wing);
+        i = i + 4;
+    }
+    blob(img, w, ox, oy, 4.2, 4.2, 1.2, 0.8, wingHi);
+    blob(img, w, ox, oy, 11.6, 4.2, 1.2, 0.8, wingHi);
+    blob(img, w, ox, oy, 7.8, 8.0, 1.15, 5.2, body);
+}
+
+function paintExit(img, w, ox, oy, opened) {
+    var stone = [100, 108, 122, 255];
+    var stoneHi = [186, 196, 210, 255];
+    var stoneDk = [48, 54, 66, 255];
+    var hole = [12, 14, 20, 255];
+    var glow = [110, 231, 160, 255];
+    var glowHi = [236, 253, 245, 255];
+    var bar = [203, 213, 225, 255];
+    var y = 0;
+    while (y < 16) {
+        var x = 0;
+        while (x < 16) {
+            put(img, w, ox + x, oy + y, stoneDk);
+            x = x + 1;
+        }
+        y = y + 1;
+    }
+    y = 1;
+    while (y < 15) {
+        var x = 1;
+        while (x < 15) {
+            put(img, w, ox + x, oy + y, stone);
+            x = x + 1;
+        }
+        y = y + 1;
+    }
+    var hx = 2;
+    while (hx < 14) {
+        put(img, w, ox + hx, oy + 1, stoneHi);
+        hx = hx + 1;
+    }
+    var inner = hole;
+    if (opened) {
+        inner = glow;
+    }
+    y = 4;
+    while (y < 14) {
+        var x = 4;
+        while (x < 12) {
+            var dx = x - 7.5;
+            var dy = y - 13.0;
+            var arch = ((dx * dx) / 16.0) + ((dy * dy) / 90.0);
+            if (y >= 7 || arch <= 1.0) {
+                put(img, w, ox + x, oy + y, inner);
+            }
+            x = x + 1;
+        }
+        y = y + 1;
+    }
+    if (opened) {
+        y = 6;
+        while (y < 12) {
+            var x = 6;
+            while (x < 10) {
+                put(img, w, ox + x, oy + y, glowHi);
+                x = x + 1;
+            }
+            y = y + 1;
+        }
+    } else {
+        y = 5;
+        while (y < 14) {
+            put(img, w, ox + 6, oy + y, bar);
+            put(img, w, ox + 9, oy + y, bar);
+            y = y + 1;
+        }
+        var x = 5;
+        while (x < 11) {
+            put(img, w, ox + x, oy + 8, bar);
+            x = x + 1;
+        }
+    }
+}
+
+function paintGrass(img, w, ox, oy, flower) {
+    paintDirt(img, w, ox, oy);
+    var grass = [74, 168, 72, 255];
+    var dark = [28, 100, 42, 255];
+    var lite = [190, 230, 120, 255];
+    var y = 0;
+    while (y < 6) {
+        var x = 0;
+        while (x < 16) {
+            var color = grass;
+            if (y == 0 && (x % 3) == 0) {
+                color = lite;
+            } else if (y == 0 || y == 5) {
+                color = dark;
+            } else if (((x + y) % 5) == 0) {
+                color = lite;
+            }
+            put(img, w, ox + x, oy + y, color);
+            x = x + 1;
+        }
+        y = y + 1;
+    }
+    if (flower) {
+        put(img, w, ox + 10, oy, [248, 113, 113, 255]);
+        put(img, w, ox + 10, oy + 1, [250, 204, 21, 255]);
+        put(img, w, ox + 4, oy, [253, 224, 71, 255]);
+    }
+}
+
+function cavePalette() {
+    var pal = {};
+    pal["o"] = [22, 16, 12, 255];
+    pal["Q"] = [122, 116, 108, 255];
+    pal["q"] = [62, 58, 54, 255];
+    pal["W"] = [196, 190, 180, 255];
+    pal["C"] = [94, 234, 212, 255];
+    pal["c"] = [14, 116, 144, 255];
+    pal["w"] = [236, 254, 255, 255];
+    pal["A"] = [245, 158, 11, 255];
+    pal["a"] = [180, 83, 9, 255];
+    pal["Y"] = [253, 224, 71, 255];
+    pal["P"] = [246, 208, 176, 255];
+    pal["E"] = [30, 41, 59, 255];
+    pal["U"] = [37, 99, 235, 255];
+    pal["u"] = [29, 78, 216, 255];
+    pal["N"] = [51, 65, 85, 255];
+    pal["X"] = [100, 116, 139, 255];
+    pal["x"] = [15, 23, 42, 255];
+    pal["G"] = [74, 222, 128, 255];
+    pal["g"] = [22, 101, 52, 255];
+    pal["F"] = [134, 239, 172, 255];
+    pal["f"] = [220, 252, 231, 255];
+    pal["K"] = [232, 121, 249, 255];
+    pal["k"] = [162, 28, 175, 255];
+    pal["T"] = [88, 28, 135, 255];
+    pal["Z"] = [253, 230, 138, 255];
+    pal["z"] = [255, 251, 235, 255];
+    pal["R"] = [248, 113, 113, 255];
+    return pal;
+}
+
+function platformPalette() {
+    var pal = {};
+    pal["o"] = [26, 20, 16, 255];
+    pal["G"] = [74, 168, 72, 255];
+    pal["g"] = [34, 110, 48, 255];
+    pal["L"] = [186, 230, 120, 255];
+    pal["D"] = [138, 92, 52, 255];
+    pal["d"] = [92, 58, 32, 255];
+    pal["Y"] = [250, 204, 21, 255];
+    pal["y"] = [180, 83, 9, 255];
+    pal["w"] = [255, 247, 214, 255];
+    pal["P"] = [246, 208, 176, 255];
+    pal["H"] = [92, 52, 36, 255];
+    pal["E"] = [30, 41, 59, 255];
+    pal["U"] = [37, 99, 235, 255];
+    pal["u"] = [29, 78, 216, 255];
+    pal["N"] = [30, 41, 59, 255];
+    pal["S"] = [226, 70, 78, 255];
+    pal["R"] = [248, 113, 113, 255];
+    return pal;
+}
+
+function paintCave() {
+    var w = 128;
+    var img = blank(w, 32);
+    var pal = cavePalette();
+    paintDirt(img, w, 0, 0);
+    paintSteel(img, w, 16, 0);
+    paintBrick(img, w, 32, 0);
+    paintBoulder(img, w, 48, 0);
+    stamp(img, w, [
+        "................",
+        ".......oo.......",
+        "......oWWo......",
+        ".....oWCCWo.....",
+        "....oWCCCCWo....",
+        "...oWCCWWCCWo...",
+        "...oCCCCCCCWo...",
+        "....oWCCCCWo....",
+        ".....oCCCWo.....",
+        "......oCWo......",
+        ".......oo.......",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................"
+    ], 64, 0, pal);
+    stamp(img, w, [
+        "................",
+        "....oooooo......",
+        "...oAAAAAAo.....",
+        "...oAAAAAAoYYo..",
+        "...oAAEEEAoYo...",
+        "...oAAAAAAo.....",
+        "....oPPPPo......",
+        ".....ouuo.......",
+        "....oUUUUUo.....",
+        "...oUUUUUUUo....",
+        "...oUUUUUUUoo...",
+        "....oNNNNo......",
+        "....oNNoNNo.....",
+        "....oNNo.No.....",
+        ".....oo..oo.....",
+        "................"
+    ], 80, 0, pal);
+    paintExit(img, w, 96, 0, false);
+    paintExit(img, w, 112, 0, true);
+    paintFirefly(img, w, 0, 16, false);
+    paintButterfly(img, w, 16, 16);
+    paintFirefly(img, w, 96, 16, true);
+    stamp(img, w, [
+        "................",
+        ".......oo.......",
+        "......owwo......",
+        ".....owCCWo.....",
+        "....oWCCCCWo....",
+        "...oCCCWWCCWo...",
+        "...oWCCCCCCwo...",
+        "....oCCCCWWo....",
+        ".....oCCWoo.....",
+        "......oWo.......",
+        ".......o........",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................"
+    ], 48, 16, pal);
+    stamp(img, w, [
+        "................",
+        ".....oooooo.....",
+        "....oAAAAAAo....",
+        "....oAAAAAAoYY..",
+        "....oAAEEEAoYo..",
+        "....oAAAAAAo....",
+        ".....oPPPPo.....",
+        "......ouuo......",
+        ".....oUUUUUo....",
+        "....oUUUUUUUo...",
+        "....oUUUUUUoo...",
+        "...oNNNo........",
+        "..oNNNo.oNNo....",
+        "..oNo...oNNo....",
+        "..oo.....oo.....",
+        ".o.............."
+    ], 64, 16, pal);
+    stamp(img, w, [
+        "................",
+        ".......oo.......",
+        "......ozzo......",
+        ".......oo.......",
+        "....o..oo..o....",
+        "...ozoozzoozo...",
+        "....oozzzzoo....",
+        ".....ozzzzo.....",
+        "......ozzo......",
+        ".......oo.......",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................"
+    ], 80, 16, pal);
+    return saveAtlas(io.pathJoin(getProgramDirectory(), "cave_tiles.png"), img, w, 32);
+}
+
+function paintPlatform() {
+    var w = 96;
+    var img = blank(w, 16);
+    var pal = platformPalette();
+    paintDirt(img, w, 0, 0);
+    paintGrass(img, w, 16, 0, false);
+    paintGrass(img, w, 32, 0, true);
+    stamp(img, w, [
+        "................",
+        "......oooo......",
+        "....ooyyyyoo....",
+        "...oyyYYYYyoo...",
+        "..oyYwwYYYYyo...",
+        "..oyYYwYYYYyo...",
+        "..oyYYYYyYYyo...",
+        "..oyYYYYyYYyo...",
+        "...oyyYYYYyo....",
+        "....ooyyyyo.....",
+        "......oooo......",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................"
+    ], 48, 0, pal);
+    stamp(img, w, [
+        "................",
+        "....oooooo......",
+        "...oHHHHHHo.....",
+        "...oHEEEHHo.....",
+        "...oHHHHHHo.....",
+        "....oPPPPo......",
+        ".....oSSo.......",
+        "....oUUUUUo.....",
+        "...oUUUUUUUo....",
+        "...oUUUuUUUo....",
+        "....oNNNNo......",
+        "....oNNoNNo.....",
+        "....oNNo.No.....",
+        ".....oo..oo.....",
+        "................",
+        "................"
+    ], 64, 0, pal);
+    stamp(img, w, [
+        "................",
+        ".....oooooo.....",
+        "....oHHHHHHo....",
+        "....oHEEEHHo....",
+        "....oHHHHHHo....",
+        ".....oPPPPo.....",
+        "......oSSo......",
+        ".....oUUUUUo....",
+        "....oUUUUUUUo...",
+        "....oUUuUUUo....",
+        "...oNNNo........",
+        "..oNNNo..oNo....",
+        "..oNo....oNo....",
+        "..oo......oo....",
+        ".o..............",
+        "................"
+    ], 80, 0, pal);
+    return saveAtlas(io.pathJoin(getProgramDirectory(), "platform_tiles.png"), img, w, 16);
+}
+
+var caveOk = paintCave();
+var platformOk = paintPlatform();
+if (caveOk && platformOk) {
+    io.print("atlases ready");
+}

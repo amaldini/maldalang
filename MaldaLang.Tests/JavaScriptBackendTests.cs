@@ -649,7 +649,7 @@ public class JavaScriptBackendTests : TestBase
         Assert.Contains("mlRuntime.game.save(", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.load(", js, StringComparison.Ordinal);
         Assert.Contains("platform_high", js, StringComparison.Ordinal);
-        Assert.Contains("assets/sprite_tiles.png", js, StringComparison.Ordinal);
+        Assert.Contains("assets/platform_tiles.png", js, StringComparison.Ordinal);
         Assert.Contains("assets/beep_hi.wav", js, StringComparison.Ordinal);
         Assert.DoesNotContain("mlRuntime.three.", js, StringComparison.Ordinal);
     }

@@ -36,7 +36,7 @@ using UglyToad.PdfPig;
 using UglyToad.PdfPig.DocumentLayoutAnalysis.TextExtractor;
 using DocumentFormat.OpenXml.Packaging;
 
-public static class BuiltInFunctions
+public static partial class BuiltInFunctions
 {
     /// <summary>Windows treats env var names as case-insensitive; other platforms are case-sensitive.</summary>
     private static readonly StringComparer EnvVarNameComparer =
@@ -1045,6 +1045,8 @@ public static class BuiltInFunctions
             "copyFile" => BuiltInCopyFile(args),
             "writeFileBase64" => BuiltInWriteFileBase64(args),
             "readFileBase64" => BuiltInReadFileBase64(args),
+            "writePng" => BuiltInWritePng(args),
+            "readPng" => BuiltInReadPng(args),
             "hasFile" => BuiltInHasFile(args),
             "deleteFile" => BuiltInDeleteFile(args),
             "hasDirectory" => BuiltInHasDirectory(args),
@@ -1453,6 +1455,8 @@ public static class BuiltInFunctions
             "copyFile" => BuiltInCopyFile(args),
             "writeFileBase64" => BuiltInWriteFileBase64(args),
             "readFileBase64" => BuiltInReadFileBase64(args),
+            "writePng" => BuiltInWritePng(args),
+            "readPng" => BuiltInReadPng(args),
             "hasFile" => BuiltInHasFile(args),
             "deleteFile" => BuiltInDeleteFile(args),
             "hasDirectory" => BuiltInHasDirectory(args),

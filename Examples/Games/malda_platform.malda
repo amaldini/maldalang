@@ -10,14 +10,14 @@ if (root == null) {
     dom.append(root, title);
 
     var hint = dom.create("p");
-    dom.setText(hint, "Arrows run. Space or Up jumps. Camera follows. Green tiles are ground; magenta tiles are coins. R restarts. Click or a key unlocks jump/coin SFX.");
+    dom.setText(hint, "Arrows run. Space or Up jumps. Camera follows. R restarts. Click or a key unlocks jump/coin SFX.");
     dom.append(root, hint);
 
     var canvasW = 640;
     var canvasH = 360;
     var worldW = 1600;
 
-    var tiles = game.loadImage("assets/sprite_tiles.png");
+    var tiles = game.loadImage("assets/platform_tiles.png");
     var tileSize = 32;
 
     var playerW = 18.0;
@@ -51,6 +51,8 @@ if (root == null) {
     var high = 0;
     var audioBooted = false;
     var coinSpin = 0.0;
+    var moving = false;
+    var walkMs = 0.0;
     var flashMs = 0.0;
     var sparkMs = 0.0;
     var sparkX = 0.0;
@@ -130,6 +132,12 @@ if (root == null) {
             dx = dx + step;
             facingLeft = false;
         }
+        moving = goLeft || goRight;
+        if (moving) {
+            walkMs = walkMs + dtMs;
+        } else {
+            walkMs = 0.0;
+        }
         coinSpin = coinSpin + ((dtMs / 1000) * 2.4);
         if (flashMs > 0) {
             flashMs = flashMs - dtMs;
@@ -193,19 +201,100 @@ if (root == null) {
         }
     }
 
-    function drawPlatform(x, y, w, h) {
-        if (game.imageIsReady(tiles)) {
-            var t = 0;
-            while (t < w) {
-                var tw = tileSize;
-                if (t + tw > w) {
-                    tw = w - t;
-                }
-                game.drawImageRect(tiles, 0, 0, 16, 16, x + t, y, tw, h);
-                t = t + tileSize;
+    function drawBackdrop() {
+        var scroll = game.getCameraX();
+        game.pushCamera();
+        game.setCamera(0, 0);
+        game.setCameraZoom(1);
+        game.fillRect(0, 0, canvasW, 150, "#16324d");
+        game.fillRect(0, 150, canvasW, 90, "#1e4468");
+        game.fillRect(0, 240, canvasW, 120, "#2a5d86");
+        game.fillCircle(520, 58, 26, "#f6d98a");
+        game.fillCircle(512, 52, 10, "#fff6c8");
+        var i = 0;
+        while (i < 4) {
+            var cloud = (i * 210) - (scroll * 0.12);
+            while (cloud < -80) {
+                cloud = cloud + 840;
             }
-        } else {
-            game.fillRect(x, y, w, h, "#33aa55");
+            while (cloud > canvasW) {
+                cloud = cloud - 840;
+            }
+            var cy = 34 + ((i % 2) * 26);
+            game.fillCircle(cloud, cy, 16, "#e7eef6");
+            game.fillCircle(cloud + 18, cy + 4, 12, "#e7eef6");
+            game.fillCircle(cloud - 16, cy + 6, 10, "#e7eef6");
+            i = i + 1;
+        }
+        var h = 0;
+        while (h < 6) {
+            var hx = (h * 180) - (scroll * 0.35);
+            while (hx < -140) {
+                hx = hx + 1080;
+            }
+            game.fillCircle(hx, 292, 86, "#1b4034");
+            game.fillCircle(hx + 64, 310, 64, "#143028");
+            h = h + 1;
+        }
+        game.popCamera();
+    }
+
+    function drawPlatform(x, y, w, h) {
+        if (!game.imageIsReady(tiles)) {
+            game.fillRect(x, y, w, h, "#6b4428");
+            game.fillRect(x, y, w, 8, "#4ade80");
+            return;
+        }
+        var col = 0;
+        while (col < w) {
+            var dw = tileSize;
+            if (col + dw > w) {
+                dw = w - col;
+            }
+            var sw = 16;
+            if (dw < tileSize) {
+                sw = int((dw * 16) / tileSize);
+                if (sw < 1) {
+                    sw = 1;
+                }
+            }
+            var row = 0;
+            while (row < h) {
+                var dh = tileSize;
+                if (row + dh > h) {
+                    dh = h - row;
+                }
+                var sh = 16;
+                if (dh < tileSize) {
+                    sh = int((dh * 16) / tileSize);
+                    if (sh < 1) {
+                        sh = 1;
+                    }
+                }
+                game.drawImageRect(tiles, 0, 0, sw, sh, x + col, y + row, dw, dh);
+                row = row + tileSize;
+            }
+            var cap = 14;
+            if (cap > h) {
+                cap = h;
+            }
+            var capSrc = int((cap * 16) / tileSize);
+            if (capSrc < 1) {
+                capSrc = 1;
+            }
+            if (capSrc > 8) {
+                capSrc = 8;
+            }
+            var grassSx = 16;
+            var colIndex = int((x + col) / tileSize);
+            if ((colIndex % 2) == 1) {
+                grassSx = 32;
+            }
+            game.drawImageRect(tiles, grassSx, 0, sw, capSrc, x + col, y, dw, cap);
+            col = col + tileSize;
+        }
+        if (h > 4) {
+            game.fillRect(x, y + h - 3, w, 3, "#3a2416");
         }
     }
 
@@ -216,6 +305,7 @@ if (root == null) {
             "screenX": 280,
             "snap": true
         });
+        drawBackdrop();
 
         var p = 0;
         while (p < plats.length) {
@@ -228,40 +318,44 @@ if (root == null) {
             if (!coinGot[c]) {
                 if (game.imageIsReady(tiles)) {
                     game.drawImageEx(tiles, coinX[c] + (coinSize / 2), coinY[c] + (coinSize / 2), {
-                        "sx": 16,
+                        "sx": 48,
                         "sy": 0,
                         "sw": 16,
                         "sh": 16,
-                        "w": coinSize,
-                        "h": coinSize,
-                        "ox": coinSize / 2,
-                        "oy": coinSize / 2,
+                        "w": 22,
+                        "h": 22,
+                        "ox": 11,
+                        "oy": 11,
                         "angle": coinSpin
                     });
                 } else {
-                    game.fillRect(coinX[c], coinY[c], coinSize, coinSize, "#ee66cc");
+                    game.fillCircle(coinX[c] + 8, coinY[c] + 8, 8, "#fbbf24");
                 }
             }
             c = c + 1;
         }
 
         if (game.imageIsReady(tiles)) {
+            var playerSx = 64;
+            if (!onGround || (moving && (int(walkMs / 90) % 2) == 1)) {
+                playerSx = 80;
+            }
             var playerDraw = {
-                "sx": 0,
+                "sx": playerSx,
                 "sy": 0,
                 "sw": 16,
                 "sh": 16,
-                "w": playerW,
-                "h": playerH,
-                "ox": playerW / 2,
-                "oy": playerH / 2,
+                "w": 32,
+                "h": 32,
+                "ox": 16,
+                "oy": 28,
                 "flipX": facingLeft
             };
             if (flashMs > 0) {
                 playerDraw["tint"] = "#ffffff";
                 playerDraw["tintFill"] = true;
             }
-            game.drawImageEx(tiles, playerX + (playerW / 2), playerY + (playerH / 2), playerDraw);
+            game.drawImageEx(tiles, playerX + (playerW / 2), playerY + playerH, playerDraw);
         } else {
             game.fillRect(playerX, playerY, playerW, playerH, "#66ccff");
         }
@@ -275,7 +369,10 @@ if (root == null) {
         game.pushCamera();
         game.setCamera(0, 0);
         game.setCameraZoom(1);
-        game.drawText("Coins: " + string(coins) + "/" + string(coinX.length) + "  High: " + string(high), 12, 24, "#ffffff", "14px monospace");
+        game.setAlpha(0.78);
+        game.fillRect(0, 0, canvasW, 58, "#0b1c2e");
+        game.setAlpha(1);
+        game.drawText("Coins: " + string(coins) + "/" + string(coinX.length) + "  High: " + string(high), 16, 26, "#ffffff", "14px monospace");
         if (coins >= coinX.length) {
             game.drawText("All coins! Press R to restart.", 12, 46, "#ffee88", "14px monospace");
         } else {
@@ -289,6 +386,7 @@ if (root == null) {
     }
 
     game.createCanvas(canvasW, canvasH, "#app");
-    game.setBackground("#151b24");
+    game.setPixelated(true);
+    game.setBackground("#16324d");
     game.startFixed(updateGame, renderGame);
 }

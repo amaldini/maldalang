@@ -4,7 +4,7 @@
 # Format: symbol -> tier | note
 # Optional-pack / vertical symbols must NOT appear here (enforced by OptionalPackRegistryGuardTests)
 
-# count: 369
+# count: 371
 
 abs -> tier1-core | BuiltInRegistry
 acos -> stdlib-general | BuiltInRegistry
@@ -228,6 +228,7 @@ randomInt -> tier1-core | BuiltInRegistry
 range -> stdlib-general | BuiltInRegistry
 readFile -> stdlib-io | BuiltInRegistry
 readFileBase64 -> stdlib-io | BuiltInRegistry
+readPng -> stdlib-io | BuiltInRegistry
 readSecureCookie -> stdlib-general | BuiltInRegistry
 readTextFileLines -> stdlib-general | BuiltInRegistry
 redirect -> platform-web | BuiltInRegistry
@@ -374,4 +375,5 @@ webSearch -> platform-web | BuiltInRegistry
 withExamples -> stdlib-general | BuiltInRegistry
 writeFile -> stdlib-io | BuiltInRegistry
 writeFileBase64 -> stdlib-io | BuiltInRegistry
+writePng -> stdlib-io | BuiltInRegistry
 zeros -> stdlib-general | BuiltInRegistry

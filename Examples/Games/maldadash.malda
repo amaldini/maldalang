@@ -1108,6 +1108,9 @@ if (root == null) {
                 var py = y * tileSize;
                 var cx = px + (tileSize / 2);
                 var cy = py + (tileSize / 2);
+                if (tile == DIAMOND || tile == PLAYER || tile == FIREFLY || tile == BUTTERFLY) {
+                    game.fillRect(px, py, tileSize, tileSize, "#1c1917");
+                }
                 if (tile == DIAMOND) {
                     var gemId = DIAMOND;
                     if ((int(animMs / 180) % 2) == 1) {
@@ -1223,10 +1226,18 @@ if (root == null) {
         var viewW = canvasW / z;
         var viewH = canvasH / z;
         game.setBlend("multiply");
-        game.fillRect(game.getCameraX(), game.getCameraY(), viewW, viewH, "#8b9aab");
+        game.fillRect(game.getCameraX(), game.getCameraY(), viewW, viewH, "#e4d5c0");
         game.setBlend("add");
-        game.fillCircle(playerWorldX(), playerWorldY(), 92, "#2a2214");
+        game.setAlpha(0.42);
+        game.fillCircle(playerWorldX(), playerWorldY(), 150, "#ffb15a");
+        game.setAlpha(0.2);
+        game.fillCircle(playerWorldX(), playerWorldY(), 220, "#ffe0a8");
+        game.setAlpha(1);
         if (exitOpen) {
+            game.setAlpha(0.4);
+            game.fillCircle((exitX + 0.5) * tileSize, (exitY + 0.5) * tileSize, 40, "#86efac");
+            game.setAlpha(1);
+            game.setBlend("alpha");
             game.strokeCircle((exitX + 0.5) * tileSize, (exitY + 0.5) * tileSize, 18 + ((int(animMs / 160) % 4)), "#86efac", 2);
         }
         game.setBlend("alpha");

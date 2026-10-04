@@ -86,7 +86,7 @@ print(io.readFile("config.json"));</code></pre>
         <ul>
             <li><strong>math:</strong> <code>abs</code>, <code>sum</code>, <code>average</code>, <code>max</code>, <code>min</code>, <code>pow</code>, <code>sqrt</code>, <code>floor</code>, <code>ceil</code>, <code>round</code>, <code>trunc</code>, <code>sign</code>, <code>exp</code>, <code>log</code>, <code>log10</code>, <code>log2</code>, <code>sin</code>, <code>cos</code>, <code>tan</code>, <code>asin</code>, <code>acos</code>, <code>atan</code>, <code>atan2</code>, <code>hypot</code>, <code>clamp</code>, <code>degToRad</code>, <code>radToDeg</code>, <code>zeros</code>, <code>rsqrt</code>, <code>randn</code>, <code>argmax</code>, <code>argmin</code>, <code>logSumExp</code>, <code>softmax</code>, <code>dot</code>, <code>matmul</code>, <code>transpose</code>, <code>sigmoid</code>, <code>tanh</code>, <code>randomChoiceWeighted</code>, <code>seed</code>, <code>random</code>, <code>randomInt</code>, <code>randomFloat</code>, <code>anneal</code></li>
             <li><strong>str:</strong> <code>length</code>, <code>upper</code>, <code>lower</code>, <code>trim</code>, <code>text</code>, <code>trimText</code>, <code>substring</code>, <code>indexOf</code>, <code>replace</code>, <code>split</code>, <code>normalizeText</code>, <code>tokenize</code>, <code>tokenOverlap</code>, <code>similarity</code>, <code>extractNumbers</code>, <code>regexMatch</code>, <code>regexReplace</code>, <code>regexFind</code>, <code>startsWith</code>, <code>endsWith</code>, <code>padStart</code>, <code>padEnd</code>, <code>includes</code>, <code>join</code>, <code>repeat</code>, <code>base64Encode</code>, <code>base64Decode</code>, <code>md5</code>, <code>sha256</code></li>
-            <li><strong>io:</strong> <code>print</code>, <code>input</code>, <code>readFile</code>, <code>writeFile</code>, <code>copyFile</code>, <code>readFileBase64</code>, <code>writeFileBase64</code>, <code>readTextFileLines</code>, <code>deleteFile</code>, <code>hasFile</code>, <code>hasDirectory</code>, <code>ensureDir</code>, <code>listDirectory</code>, <code>hasEmbeddedFolder</code>, <code>embeddedFolderRoot</code>, <code>glob</code>, <code>grep</code>, <code>replaceInFile</code>, <code>pathExists</code>, <code>pathJoin</code>, <code>pathNormalize</code>, <code>pathGetExtension</code>, <code>isPathUnder</code>, <code>getEnv</code>, <code>getEnvOr</code>, <code>hasEnv</code>, <code>getFileName</code>, <code>getDirectoryName</code>, <code>gitStatus</code>, <code>gitAdd</code>, <code>gitCommit</code>, <code>gitDiff</code>, <code>gitLog</code>, <code>gitBranch</code>, <code>gitCheckout</code>, <code>gitPull</code>, <code>gitPush</code></li>
+            <li><strong>io:</strong> <code>print</code>, <code>input</code>, <code>readFile</code>, <code>writeFile</code>, <code>copyFile</code>, <code>readFileBase64</code>, <code>writeFileBase64</code>, <code>readPng</code>, <code>writePng</code>, <code>readTextFileLines</code>, <code>deleteFile</code>, <code>hasFile</code>, <code>hasDirectory</code>, <code>ensureDir</code>, <code>listDirectory</code>, <code>hasEmbeddedFolder</code>, <code>embeddedFolderRoot</code>, <code>glob</code>, <code>grep</code>, <code>replaceInFile</code>, <code>pathExists</code>, <code>pathJoin</code>, <code>pathNormalize</code>, <code>pathGetExtension</code>, <code>isPathUnder</code>, <code>getEnv</code>, <code>getEnvOr</code>, <code>hasEnv</code>, <code>getFileName</code>, <code>getDirectoryName</code>, <code>gitStatus</code>, <code>gitAdd</code>, <code>gitCommit</code>, <code>gitDiff</code>, <code>gitLog</code>, <code>gitBranch</code>, <code>gitCheckout</code>, <code>gitPull</code>, <code>gitPush</code></li>
         </ul>
         <p>Ogni altro built-in in questo capitolo &mdash; <code>sleep</code>, <code>runCommand</code>, <code>parseJson</code>, gli helper di agenti e workflow, e così via &mdash; non ha una controparte di modulo e non ha deprecazione associata.</p>
 
@@ -864,6 +864,14 @@ print(label);</code></pre>
         <tr class="sig"><td colspan="3"><code>io.writeFileBase64(path, base64Content)</code></td></tr>
         <tr><td>(path, base64Content)</td><td>—</td><td></td></tr>
         </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>io.writePng(path, width, height, pixels)</code></td></tr>
+        <tr><td>(path, width, height, pixels)</td><td>—</td><td></td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>io.readPng(path)</code></td></tr>
+        <tr><td>1 argument</td><td>—</td><td></td></tr>
+        </tbody>
         </table>
         <h3>13.8.0 Cartelle embedded (<code>embed:</code>)</h3>
         <p>Compila con <code>malda compile … --embed-folder &lt;dir[=alias]&gt;</code> per impacchettare una directory nell'eseguibile come risorse dell'assembly. A runtime, leggi quei file con lo scheme virtuale <code>embed:&lt;alias&gt;/&lt;relative&gt;</code> — nulla viene estratto su disco. Le scritture (<code>writeFile</code>, <code>ensureDir</code>, …) rifiutano i path <code>embed:</code>.</p>
@@ -914,6 +922,14 @@ var result = editFile("file.txt", edits);                 // Apply multiple edit
                 <tr class="sig"><td colspan="2"><code>writeFileBase64(path, base64Content)</code></td></tr>
                 <tr><td>boolean</td><td>Decodifica il base64 e scrive i byte. Restituisce <code>false</code> quando l'input non è base64 valido o la scrittura fallisce.</td></tr>
                 </tbody>
+                <tbody>
+                <tr class="sig"><td colspan="2"><code>io.writePng(path, width, height, pixels)</code></td></tr>
+                <tr><td>boolean</td><td>Scrive un PNG RGBA a 8 bit. <code>pixels</code> è un array piatto di lunghezza <code>width * height * 4</code> (R, G, B, A). I canali sono arrotondati all'intero più vicino e bloccati tra 0 e 255. Restituisce <code>false</code> su fallimento I/O. Rifiuta i path <code>embed:</code>. Lancia se la dimensione non è positiva, se l'immagine supera i 16 megapixel, se la lunghezza dell'array non coincide, o se un canale non è un numero.</td></tr>
+                </tbody>
+                <tbody>
+                <tr class="sig"><td colspan="2"><code>io.readPng(path)</code></td></tr>
+                <tr><td>oggetto, oppure <code>null</code></td><td>Legge un PNG a 8 bit non interlacciato (scala di grigi, grigio+alfa, RGB o RGBA) e restituisce <code>{ width, height, pixels }</code> con un array RGBA piatto. Restituisce <code>null</code> se il file manca o non è un PNG decodificabile di quel tipo. Le immagini indicizzate, a 16 bit e interlacciate restituiscono <code>null</code>.</td></tr>
+                </tbody>
         </table>
         <pre><code>var lines = readTextFileLines("notes.txt");
 if (lines != null) {
@@ -926,6 +942,10 @@ insertAtLine("notes.txt", 3, "appended", true);  // Insert after line 3
 var encoded = readFileBase64("logo.png");
 writeFileBase64("logo-copy.png", encoded);
 
+var px = [255, 0, 0, 255];
+io.writePng("pixel.png", 1, 1, px);
+var image = io.readPng("pixel.png");
+
 deleteFile("scratch.txt");
 
 var pdfText = pdf.extractText("manual.pdf");
@@ -933,9 +953,9 @@ var pdfText = pdf.extractText("manual.pdf");
 var docText = doc.extractText("brief.docx");</code></pre>
         <p>Per <code>insertAtLine</code>, un <code>lineNumber</code> di <code>0</code> o inferiore inserisce all'inizio del file, e un valore oltre l'ultima riga accoda in fondo. <code>insertAfter</code> ha default <code>false</code>, cioè il contenuto viene inserito <em>prima</em> della riga data.</p>
         <div class="warning-box">
-            <strong>Stile di fallimento:</strong> <code>readTextFileLines</code>, <code>deleteFile</code>, <code>insertAtLine</code> e gli helper base64 segnalano i fallimenti ordinari tramite il valore di ritorno (<code>false</code> o <code>null</code>) anziché sollevando un'eccezione. Sollevano un errore solo se chiamati con il numero sbagliato di argomenti o con tipi di argomenti sbagliati. Controlla il risultato invece di affidarti a <code>try</code>/<code>catch</code>. <code>pdf.extractText</code> e <code>doc.extractText</code> sollevano un'eccezione su file mancanti e fallimenti di analisi.
+            <strong>Stile di fallimento:</strong> <code>readTextFileLines</code>, <code>deleteFile</code>, <code>insertAtLine</code>, gli helper base64 e <code>io.readPng</code> / <code>io.writePng</code> segnalano i fallimenti ordinari tramite il valore di ritorno (<code>false</code> o <code>null</code>) anziché sollevando un'eccezione. Sollevano un errore solo se chiamati con il numero sbagliato di argomenti o con tipi di argomenti sbagliati (<code>io.writePng</code> lancia anche quando il buffer di pixel non coincide con <code>width</code> e <code>height</code>). Controlla il risultato invece di affidarti a <code>try</code>/<code>catch</code>. <code>pdf.extractText</code> e <code>doc.extractText</code> sollevano un'eccezione su file mancanti e fallimenti di analisi.
         </div>
-        <p><code>insertAtLine</code> è solo interprete: non è disponibile negli eseguibili transpile. Gli altri helper sui file, <code>pdf.extractText</code> / <code>extractPdfText</code> e <code>doc.extractText</code> / <code>extractDocxText</code> sono supportati dal transpiler C#.</p>
+        <p><code>insertAtLine</code> è solo interprete: non è disponibile negli eseguibili transpile. Gli altri helper sui file, <code>io.writePng</code> / <code>io.readPng</code>, <code>pdf.extractText</code> / <code>extractPdfText</code> e <code>doc.extractText</code> / <code>extractDocxText</code> sono supportati dal transpiler C#. Il backend JavaScript non implementa <code>io.writePng</code> né <code>io.readPng</code>.</p>
 
         <h3>13.8.2 Ricerca nei file: glob e grep</h3>
         <p><code>glob</code> trova i path per pattern e <code>grep</code> cerca nel contenuto dei file. Entrambi prendono prima un argomento obbligatorio e poi una serie di argomenti opzionali posizionali.</p>

@@ -250,6 +250,7 @@ randomInt	math.randomInt	2 arguments: (min, max)	min and max are BOTH included, 
 range	range	1-3 arguments: (end) or (start, end) or (start, end, step)		
 readFile	io.readFile	(string, int?, int?)		
 readFileBase64	io.readFileBase64	1 argument		
+readPng	io.readPng	1 argument: (path)	8-bit non-interlaced gray, gray+alpha, RGB, or RGBA; indexed, 16-bit, and interlaced files are null; interpreter and C# transpile only	{ width, height, pixels } flat RGBA 0-255, or null if missing or not decodable
 readSecureCookie	readSecureCookie	(string, string)		
 readTextFileLines	io.readTextFileLines	1 argument		
 redirect	redirect	location string and optional status integer		
@@ -408,4 +409,5 @@ webSearch	webSearch	at least 1 string argument: (query, apiKey?)
 withExamples	withExamples	(prompt, examples, options?)		
 writeFile	io.writeFile	2 arguments		
 writeFileBase64	io.writeFileBase64	(path, base64Content)		
+writePng	io.writePng	4 arguments: (path, width, height, rgba)	rgba length is width*height*4; channels are rounded and clamped to 0-255; throws when the buffer does not match or the image exceeds 16 megapixels; rejects embed: paths; interpreter and C# transpile only	bool; false on I/O failure
 zeros	math.zeros	1-2 arguments: (n, cols?)	1D math.zeros(n) or 2D math.zeros(rows, cols); each 2D row is a new array; cells are 0.0	array

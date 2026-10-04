@@ -147,6 +147,8 @@ public static class BuiltInRegistry
             "copyFile" or
             "writeFileBase64" or
             "readFileBase64" or
+            "writePng" or
+            "readPng" or
             "hasFile" or
             "deleteFile" or
             "hasDirectory" or
@@ -450,6 +452,7 @@ public static class BuiltInRegistry
     [
         "runCommand",
         "writeFile",
+        "writePng",
         "copyFile",
         "replaceInFile",
         "editFile",
