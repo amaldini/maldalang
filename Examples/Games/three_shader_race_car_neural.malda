@@ -10,6 +10,8 @@
 // Q/E change circuit. C chase camera. N network only. T coach only.
 // L blend mode. R reset brain. Space pause. Tab manual drive (WASD/arrows).
 // A side panel matches the 2D grand prix HUD: speed, laps, neural share, and order.
+// Car contact uses the billiards equal-mass impulse (restitution 0.5). Speed
+// stays on the nose; a glancing hit adds a small yaw.
 
 function wrapAngle(a: float) -> float {
     var turns = math.floor((a + 3.14159265) / 6.2831853);
@@ -413,6 +415,26 @@ function cylinderNormal(center: vec3, radius: float, y0: float, y1: float, p: ve
 }
 
 @shader()
+function hitWheel(center: vec3, radius: float, halfWidth: float, angle: float, origin: vec3, dir: vec3) -> float {
+    var ca: float = cos(angle);
+    var sa: float = sin(angle);
+    var o: vec3 = origin - center;
+    var oLocal: vec3 = vec3(ca * o.x + sa * o.z, -sa * o.x + ca * o.z, o.y);
+    var dLocal: vec3 = vec3(ca * dir.x + sa * dir.z, -sa * dir.x + ca * dir.z, dir.y);
+    return hitCylinder(vec3(0.0, 0.0, 0.0), radius, -halfWidth, halfWidth, oLocal, dLocal);
+}
+
+@shader()
+function wheelNormal(center: vec3, radius: float, halfWidth: float, angle: float, p: vec3) -> vec3 {
+    var ca: float = cos(angle);
+    var sa: float = sin(angle);
+    var o: vec3 = p - center;
+    var pLocal: vec3 = vec3(ca * o.x + sa * o.z, -sa * o.x + ca * o.z, o.y);
+    var nLocal: vec3 = cylinderNormal(vec3(0.0, 0.0, 0.0), radius, -halfWidth, halfWidth, pLocal);
+    return vec3(ca * nLocal.x - sa * nLocal.y, nLocal.z, sa * nLocal.x + ca * nLocal.y);
+}
+
+@shader()
 function carPosition(index: int) -> vec3 {
     if (index == 0) {
         return uCar0;
@@ -512,6 +534,7 @@ function hitCar(index: int, origin: vec3, dir: vec3, tHit: out float, kind: out 
     var bodyCenter: vec3 = vec3(pos.x, pos.y + 0.32, pos.z);
     var tBody: float = hitBoxRotated(bodyCenter, bodyHalf, angle, origin, dir);
     var wheelR: float = 0.2;
+    var wheelHalf: float = 0.11;
     var ca: float = cos(angle);
     var sa: float = sin(angle);
     tHit = 1000000.0;
@@ -526,7 +549,7 @@ function hitCar(index: int, origin: vec3, dir: vec3, tHit: out float, kind: out 
         var wx: float = ca * offset.x - sa * offset.z;
         var wz: float = sa * offset.x + ca * offset.z;
         var wheelCenter: vec3 = vec3(pos.x + wx, pos.y + wheelR, pos.z + wz);
-        var tWheel: float = hitCylinder(wheelCenter, wheelR, pos.y, pos.y + wheelR * 2.0, origin, dir);
+        var tWheel: float = hitWheel(wheelCenter, wheelR, wheelHalf, angle, origin, dir);
         if (tWheel > 0.0 && tWheel < tHit) {
             tHit = tWheel;
             kind = 1 + w;
@@ -546,6 +569,7 @@ function carNormal(index: int, kind: int, p: vec3) -> vec3 {
         return boxNormalRotated(bodyCenter, bodyHalf, angle, p);
     }
     var wheelR: float = 0.2;
+    var wheelHalf: float = 0.11;
     var ca: float = cos(angle);
     var sa: float = sin(angle);
     var w: int = kind - 1;
@@ -553,7 +577,7 @@ function carNormal(index: int, kind: int, p: vec3) -> vec3 {
     var wx: float = ca * offset.x - sa * offset.z;
     var wz: float = sa * offset.x + ca * offset.z;
     var wheelCenter: vec3 = vec3(pos.x + wx, pos.y + wheelR, pos.z + wz);
-    return cylinderNormal(wheelCenter, wheelR, pos.y, pos.y + wheelR * 2.0, p);
+    return wheelNormal(wheelCenter, wheelR, wheelHalf, angle, p);
 }
 
 @shader()
@@ -803,6 +827,8 @@ var fragmentShader = glsl.compile({
         "boxNormalRotated",
         "hitCylinder",
         "cylinderNormal",
+        "hitWheel",
+        "wheelNormal",
         "carPosition",
         "carAngle",
         "carColor",
@@ -1671,7 +1697,33 @@ if (root == null) {
         }
     }
 
+    function bumpCar(i: int, vx: float, vz: float) {
+        var fwdX = math.cos(carH[i]);
+        var fwdZ = math.sin(carH[i]);
+        var along = vx * fwdX + vz * fwdZ;
+        var speed = math.sqrt(vx * vx + vz * vz);
+        if (speed > 1.0) {
+            var kick = wrapAngle(math.atan2(vz, vx) - carH[i]) * 0.35;
+            if (kick > 0.18) {
+                kick = 0.18;
+            }
+            if (kick < -0.18) {
+                kick = -0.18;
+            }
+            carH[i] = wrapAngle(carH[i] + kick);
+        }
+        if (along < 0.0) {
+            along = 0.0;
+        }
+        var vMax = 158.0 * worldScale;
+        if (along > vMax) {
+            along = vMax;
+        }
+        carV[i] = along;
+    }
+
     function separateCars() {
+        var carRest = 0.5;
         var i = 0;
         while (i < carCount) {
             var j = i + 1;
@@ -1680,21 +1732,24 @@ if (root == null) {
                 var dz = carZ[j] - carZ[i];
                 var d2 = dx * dx + dz * dz;
                 var minD = trackW * 0.55;
-                if (d2 < minD * minD && d2 > 0.01) {
+                if (d2 < minD * minD && d2 > 0.0001) {
                     var d = math.sqrt(d2);
-                    var push = (minD - d) * 0.5;
-                    var ux = dx / d;
-                    var uz = dz / d;
-                    carX[i] = carX[i] - ux * push;
-                    carZ[i] = carZ[i] - uz * push;
-                    carX[j] = carX[j] + ux * push;
-                    carZ[j] = carZ[j] + uz * push;
-                    var progI = carLap[i] * totalLen + carS[i];
-                    var progJ = carLap[j] * totalLen + carS[j];
-                    if (progI < progJ) {
-                        carV[i] = carV[i] * 0.9;
-                    } else {
-                        carV[j] = carV[j] * 0.9;
+                    var nx = dx / d;
+                    var nz = dz / d;
+                    var overlap = minD - d;
+                    carX[i] = carX[i] - nx * overlap * 0.5;
+                    carZ[i] = carZ[i] - nz * overlap * 0.5;
+                    carX[j] = carX[j] + nx * overlap * 0.5;
+                    carZ[j] = carZ[j] + nz * overlap * 0.5;
+                    var vix = math.cos(carH[i]) * carV[i];
+                    var viz = math.sin(carH[i]) * carV[i];
+                    var vjx = math.cos(carH[j]) * carV[j];
+                    var vjz = math.sin(carH[j]) * carV[j];
+                    var rel = ((vix - vjx) * nx) + ((viz - vjz) * nz);
+                    if (rel > 0.0) {
+                        var impulse = -(1.0 + carRest) * rel * 0.5;
+                        bumpCar(i, vix + nx * impulse, viz + nz * impulse);
+                        bumpCar(j, vjx - nx * impulse, vjz - nz * impulse);
                     }
                 }
                 j = j + 1;
