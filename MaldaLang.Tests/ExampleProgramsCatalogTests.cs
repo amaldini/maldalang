@@ -17,6 +17,11 @@ public class ExampleProgramsCatalogTests
 
         var bounce = ExampleProgramsService.GetExampleByRelativePath("Games/game_bounce.malda");
         Assert.NotNull(bounce);
+
+        var hanoi = ExampleProgramsService.GetExampleByRelativePath("Games/towers_of_hanoi.malda");
+        Assert.NotNull(hanoi);
+        Assert.Equal("Games", hanoi!.Category);
+        Assert.Contains("towers_of_hanoi.malda", hanoi.FilePath.Replace('\\', '/'), StringComparison.Ordinal);
         Assert.Equal("Games", bounce!.Category);
         Assert.Contains("game_bounce.malda", bounce.FilePath.Replace('\\', '/'), StringComparison.Ordinal);
 

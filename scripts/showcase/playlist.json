@@ -136,12 +136,12 @@
       "focusLine": 13
     },
     {
-      "file": "Examples/Algorithms/towers_of_hanoi.malda",
+      "file": "Examples/Games/towers_of_hanoi.malda",
       "caption": "Towers of Hanoi",
-      "panel": "output",
+      "panel": "preview",
       "maximize": false,
       "startMs": 74700,
-      "focusLine": 22
+      "focusLine": 215
     },
     {
       "file": "Examples/Web/ui_controls_showcase_minimal.malda",

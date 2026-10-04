@@ -335,6 +335,30 @@
       "documentationTitle": "Browser Track"
     },
     {
+      "name": "JS Canvas Game Towers of Hanoi",
+      "description": "Click-to-move Towers of Hanoi on the primitive-draw track: select a disk, place it on a legal tower, auto-solve, and cycle the disk count",
+      "file": "towers_of_hanoi.malda",
+      "track": "student",
+      "difficulty": "intermediate",
+      "minutes": 12,
+      "concepts": [
+        "game.*",
+        "recursion",
+        "mouse",
+        "puzzle",
+        "JavaScript target"
+      ],
+      "prerequisites": [
+        "Algorithms/towers_of_hanoi.malda",
+        "Games/game_bounce.malda"
+      ],
+      "learningGoal": "Play the console recursion puzzle on a canvas, with click moves and an auto-solve that replays the recursive solution.",
+      "expectedOutput": "Runs a playable four-disk Hanoi board. Click a disk then a tower; the disk lifts, slides, and drops. A auto-solves, R resets, H cycles 3–5 disks.",
+      "next": "Games/chess.malda",
+      "documentationPath": "/?lesson=browser-track#lesson-browser-track",
+      "documentationTitle": "Browser Track"
+    },
+    {
       "name": "JS Canvas Game Maldanoid",
       "description": "Arkanoid-style breakout on the primitive-draw track: calmer aimed serves, velocity-axis brick bounces, combo bar, shaped power-ups, a saved high/combo blob, and showcase autoplay from a 4-12-1 intercept net",
       "file": "maldanoid.malda",

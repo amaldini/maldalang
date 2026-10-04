@@ -13,6 +13,20 @@
         else
         {
             mlRuntime.dom.clear(root);
+            let head = mlRuntime.dom.query("head");
+            if (mlRuntime.isTruthy((!mlRuntime.equals(head, null))))
+            {
+                let styleNode = mlRuntime.dom.create("style");
+                let styleText = "body { margin: 0; background: #1a1a2e; color: #e7eef7; font-family: sans-serif; }\n";
+                styleText = (styleText + "h1, p { max-width: 900px; margin: 12px auto; padding: 0 12px; }\n");
+                styleText = (styleText + "#app canvas { width: 100%; max-width: 900px; height: auto; display: block; margin: 0 auto; touch-action: none; }\n");
+                if (mlRuntime.isTruthy((!mlRuntime.equals(mlRuntime.dom.query("#malda-autoplay"), null))))
+                {
+                    styleText = (styleText + "#status{display:none!important}html,body{overflow:hidden;margin:0;background:#1a1a2e}#app{min-height:0!important;background:#1a1a2e}#app>p{display:none!important}#app h1{margin:8px 12px 0;font-size:14px;font-weight:600;line-height:1.2}#app canvas{position:fixed!important;left:8px!important;top:32px!important;width:calc(100vw - 16px)!important;height:calc(100vh - 44px)!important;object-fit:contain;object-position:center center;background:#1a1a2e}");
+                }
+                mlRuntime.dom.setText(styleNode, styleText);
+                mlRuntime.dom.append(head, styleNode);
+            }
             let title = mlRuntime.dom.create("h1");
             mlRuntime.dom.setText(title, "Towers of Hanoi");
             mlRuntime.dom.append(root, title);
@@ -29,8 +43,16 @@
             let gameWon = false;
             let autoSolving = false;
             let autoMoves = [];
-            let autoMoveDelay = 600;
-            let autoMoveTimer = 0;
+            let animOn = false;
+            let animDisk = 0;
+            let animToTower = 0;
+            let animElapsed = 0;
+            let animDuration = 480;
+            let animStartX = 0;
+            let animStartY = 0;
+            let animEndX = 0;
+            let animEndY = 0;
+            let animHoverY = 64;
             let towerX = [150, 450, 750];
             let towerWidth = 20;
             let towerHeight = 300;
@@ -56,7 +78,8 @@
                 gameWon = false;
                 autoSolving = false;
                 autoMoves = [];
-                autoMoveTimer = 0;
+                animOn = false;
+                animElapsed = 0;
             }
             function getDiskWidth(diskSize) {
                 return (diskMinWidth + (mlRuntime.coerceToFloat(diskSize) * mlRuntime.coerceToFloat(diskWidthStep)));
@@ -106,24 +129,78 @@
                 let topDisk = destTower[(mlRuntime.coerceToFloat(destTower.length) - mlRuntime.coerceToFloat(1))];
                 return (mlRuntime.coerceToFloat(movingDisk) < mlRuntime.coerceToFloat(topDisk));
             }
-            function moveDisk(fromTower, toTower) {
-                if (mlRuntime.isTruthy((!mlRuntime.isTruthy(canMoveDisk(fromTower, toTower)))))
+            function lerp(a, b, t) {
+                return (a + (mlRuntime.coerceToFloat((mlRuntime.coerceToFloat(b) - mlRuntime.coerceToFloat(a))) * mlRuntime.coerceToFloat(t)));
+            }
+            function smooth(t) {
+                if (mlRuntime.isTruthy((mlRuntime.coerceToFloat(t) < mlRuntime.coerceToFloat(0))))
+                {
+                    t = 0;
+                }
+                if (mlRuntime.isTruthy((mlRuntime.coerceToFloat(t) > mlRuntime.coerceToFloat(1))))
+                {
+                    t = 1;
+                }
+                return (mlRuntime.coerceToFloat((mlRuntime.coerceToFloat(t) * mlRuntime.coerceToFloat(t))) * mlRuntime.coerceToFloat((mlRuntime.coerceToFloat(3) - mlRuntime.coerceToFloat((mlRuntime.coerceToFloat(2) * mlRuntime.coerceToFloat(t))))));
+            }
+            function animDiskPos() {
+                let t = (mlRuntime.coerceToFloat(animElapsed) / mlRuntime.coerceToFloat(animDuration));
+                if (mlRuntime.isTruthy((mlRuntime.coerceToFloat(t) < mlRuntime.coerceToFloat(0))))
+                {
+                    t = 0;
+                }
+                if (mlRuntime.isTruthy((mlRuntime.coerceToFloat(t) > mlRuntime.coerceToFloat(1))))
+                {
+                    t = 1;
+                }
+                let liftEnd = 0.32;
+                let slideEnd = 0.68;
+                if (mlRuntime.isTruthy((mlRuntime.coerceToFloat(t) < mlRuntime.coerceToFloat(liftEnd))))
+                {
+                    return { ["x"]: animStartX, ["y"]: lerp(animStartY, animHoverY, smooth((mlRuntime.coerceToFloat(t) / mlRuntime.coerceToFloat(liftEnd)))) };
+                }
+                if (mlRuntime.isTruthy((mlRuntime.coerceToFloat(t) < mlRuntime.coerceToFloat(slideEnd))))
+                {
+                    let slide = smooth((mlRuntime.coerceToFloat((mlRuntime.coerceToFloat(t) - mlRuntime.coerceToFloat(liftEnd))) / mlRuntime.coerceToFloat((mlRuntime.coerceToFloat(slideEnd) - mlRuntime.coerceToFloat(liftEnd)))));
+                    return { ["x"]: lerp(animStartX, animEndX, slide), ["y"]: animHoverY };
+                }
+                let drop = smooth((mlRuntime.coerceToFloat((mlRuntime.coerceToFloat(t) - mlRuntime.coerceToFloat(slideEnd))) / mlRuntime.coerceToFloat((mlRuntime.coerceToFloat(1) - mlRuntime.coerceToFloat(slideEnd)))));
+                return { ["x"]: animEndX, ["y"]: lerp(animHoverY, animEndY, drop) };
+            }
+            function beginMove(fromTower, toTower) {
+                if (mlRuntime.isTruthy((mlRuntime.isTruthy(animOn) || mlRuntime.isTruthy((!mlRuntime.isTruthy(canMoveDisk(fromTower, toTower)))))))
                 {
                     return false;
                 }
                 let sourceTower = towers[fromTower];
-                let disk = mlRuntime.callArrayMethod(sourceTower, "pop");
-                let destTower = towers[toTower];
-                mlRuntime.arrayAppend(destTower, disk);
+                let disk = sourceTower[(mlRuntime.coerceToFloat(sourceTower.length) - mlRuntime.coerceToFloat(1))];
+                let startRect = getDiskRect(fromTower, (mlRuntime.coerceToFloat(sourceTower.length) - mlRuntime.coerceToFloat(1)), disk);
+                let endRect = getDiskRect(toTower, towers[toTower].length, disk);
+                mlRuntime.callArrayMethod(sourceTower, "pop");
                 towers[fromTower] = sourceTower;
-                towers[toTower] = destTower;
+                animOn = true;
+                animDisk = disk;
+                animToTower = toTower;
+                animElapsed = 0;
+                animStartX = startRect.x;
+                animStartY = startRect.y;
+                animEndX = endRect.x;
+                animEndY = endRect.y;
+                selectedTower = (-mlRuntime.coerceToFloat(1));
+                return true;
+            }
+            function landDisk() {
+                let destTower = towers[animToTower];
+                mlRuntime.arrayAppend(destTower, animDisk);
+                towers[animToTower] = destTower;
                 moveCount = (moveCount + 1);
-                let goalTower = towers[2];
-                if (mlRuntime.isTruthy(mlRuntime.equals(goalTower.length, numDisks)))
+                animOn = false;
+                if (mlRuntime.isTruthy(mlRuntime.equals(towers[2].length, numDisks)))
                 {
                     gameWon = true;
+                    autoSolving = false;
+                    autoMoves = [];
                 }
-                return true;
             }
             function generateSolution(n, from, to, aux) {
                 if (mlRuntime.isTruthy((mlRuntime.coerceToFloat(n) <= mlRuntime.coerceToFloat(0))))
@@ -142,14 +219,13 @@
             function startAutoSolve() {
                 autoSolving = true;
                 autoMoves = generateSolution(numDisks, 0, 2, 1);
-                autoMoveTimer = 0;
             }
             function updateGame(dtMs) {
                 if (mlRuntime.isTruthy(mlRuntime.game.wasKeyPressed("r")))
                 {
                     resetGame();
                 }
-                if (mlRuntime.isTruthy((mlRuntime.isTruthy((mlRuntime.isTruthy(mlRuntime.game.wasKeyPressed("a")) && mlRuntime.isTruthy((!mlRuntime.isTruthy(autoSolving))))) && mlRuntime.isTruthy((!mlRuntime.isTruthy(gameWon))))))
+                if (mlRuntime.isTruthy((mlRuntime.isTruthy((mlRuntime.isTruthy((mlRuntime.isTruthy(mlRuntime.game.wasKeyPressed("a")) && mlRuntime.isTruthy((!mlRuntime.isTruthy(autoSolving))))) && mlRuntime.isTruthy((!mlRuntime.isTruthy(gameWon))))) && mlRuntime.isTruthy((!mlRuntime.isTruthy(animOn))))))
                 {
                     startAutoSolve();
                 }
@@ -172,22 +248,33 @@
                     }
                     resetGame();
                 }
-                if (mlRuntime.isTruthy((mlRuntime.isTruthy(autoSolving) && mlRuntime.isTruthy((mlRuntime.coerceToFloat(mlRuntime.str.length(autoMoves)) > mlRuntime.coerceToFloat(0))))))
+                if (mlRuntime.isTruthy(animOn))
                 {
-                    autoMoveTimer = (autoMoveTimer + dtMs);
-                    if (mlRuntime.isTruthy((mlRuntime.coerceToFloat(autoMoveTimer) >= mlRuntime.coerceToFloat(autoMoveDelay))))
+                    let step = dtMs;
+                    if (mlRuntime.isTruthy((mlRuntime.coerceToFloat(step) > mlRuntime.coerceToFloat(48))))
                     {
-                        let nextMove = autoMoves[0];
-                        moveDisk(nextMove.from, nextMove.to);
-                        autoMoves = mlRuntime.callArrayMethod(autoMoves, "slice", [1, mlRuntime.str.length(autoMoves)]);
-                        autoMoveTimer = 0;
-                        if (mlRuntime.isTruthy(mlRuntime.equals(mlRuntime.str.length(autoMoves), 0)))
-                        {
-                            autoSolving = false;
-                        }
+                        step = 48;
+                    }
+                    animElapsed = (animElapsed + step);
+                    if (mlRuntime.isTruthy((mlRuntime.coerceToFloat(animElapsed) >= mlRuntime.coerceToFloat(animDuration))))
+                    {
+                        landDisk();
                     }
                 }
-                if (mlRuntime.isTruthy((mlRuntime.isTruthy((!mlRuntime.isTruthy(autoSolving))) && mlRuntime.isTruthy(mlRuntime.game.wasMousePressed(0)))))
+                if (mlRuntime.isTruthy((mlRuntime.isTruthy((mlRuntime.isTruthy((mlRuntime.isTruthy(autoSolving) && mlRuntime.isTruthy((!mlRuntime.isTruthy(animOn))))) && mlRuntime.isTruthy((!mlRuntime.isTruthy(gameWon))))) && mlRuntime.isTruthy((mlRuntime.coerceToFloat(mlRuntime.str.length(autoMoves)) > mlRuntime.coerceToFloat(0))))))
+                {
+                    let nextMove = autoMoves[0];
+                    if (mlRuntime.isTruthy(beginMove(nextMove.from, nextMove.to)))
+                    {
+                        autoMoves = mlRuntime.callArrayMethod(autoMoves, "slice", [1, mlRuntime.str.length(autoMoves)]);
+                    }
+                    else
+                    {
+                        autoMoves = [];
+                        autoSolving = false;
+                    }
+                }
+                if (mlRuntime.isTruthy((mlRuntime.isTruthy((mlRuntime.isTruthy((!mlRuntime.isTruthy(autoSolving))) && mlRuntime.isTruthy((!mlRuntime.isTruthy(animOn))))) && mlRuntime.isTruthy(mlRuntime.game.wasMousePressed(0)))))
                 {
                     let mx = mlRuntime.game.getMouseX();
                     let my = mlRuntime.game.getMouseY();
@@ -209,7 +296,7 @@
                             }
                             else
                             {
-                                let success = moveDisk(selectedTower, clickedTower);
+                                beginMove(selectedTower, clickedTower);
                                 selectedTower = (-mlRuntime.coerceToFloat(1));
                             }
                         }
@@ -249,6 +336,14 @@
                     }
                     t = (t + 1);
                 }
+                if (mlRuntime.isTruthy(animOn))
+                {
+                    let flying = animDiskPos();
+                    let flyW = getDiskWidth(animDisk);
+                    let flyColor = diskColors[(mlRuntime.coerceToFloat((mlRuntime.coerceToFloat(animDisk) - mlRuntime.coerceToFloat(1))) % mlRuntime.coerceToFloat(mlRuntime.str.length(diskColors)))];
+                    mlRuntime.game.fillRect(flying.x, flying.y, flyW, diskHeight, flyColor);
+                    mlRuntime.game.drawText(mlRuntime.coerceToString(animDisk), (mlRuntime.coerceToFloat((flying.x + (mlRuntime.coerceToFloat(flyW) / mlRuntime.coerceToFloat(2)))) - mlRuntime.coerceToFloat(6)), (flying.y + 18), "#000000", "14px bold sans-serif");
+                }
                 let statusY = 30;
                 mlRuntime.game.drawText(("Moves: " + mlRuntime.coerceToString(moveCount)), 20, statusY, "#ffffff", "18px sans-serif");
                 let minMoves = expectedMoves(numDisks);
@@ -277,6 +372,13 @@
                     i = (i + 1);
                 }
                 return (mlRuntime.coerceToFloat(total) - mlRuntime.coerceToFloat(1));
+            }
+            if (mlRuntime.isTruthy((!mlRuntime.equals(mlRuntime.dom.query("#malda-autoplay"), null))))
+            {
+                numDisks = 3;
+                animDuration = 300;
+                resetGame();
+                startAutoSolve();
             }
             mlRuntime.game.createCanvas(canvasWidth, canvasHeight, "#app");
             mlRuntime.game.setBackground("#1a1a2e");
