@@ -10,16 +10,38 @@
 // lyric moves with that scene. The song prompt stays on screen: section
 // lengths, dream lines, and the order notes follow the page, and the rest
 // can be edited. Hear plays the soundtrack from that cue for the number of
-// seconds set on the page, starting at 3. Save writes the playlist and the
-// prompt.
+// seconds set on the page, starting at 3. The chosen soundtrack is kept
+// beside this file and loaded again on the next launch. Save writes the
+// playlist and the prompt.
 
 var playlistPath = io.pathJoin(getProgramDirectory(), "playlist.json");
 var promptPath = io.pathJoin(getProgramDirectory(), "song-prompt.md");
+var soundtrackPath = io.pathJoin(getProgramDirectory(), ".timeline-audio");
+var soundtrackMetaPath = io.pathJoin(getProgramDirectory(), ".timeline-audio.json");
 var timelineMaxMs = 180000;
 var timelineGapMs = 200;
 
 function loadPlaylist() {
     return parseJSON(io.readFile(playlistPath));
+}
+
+function savedSoundtrackName() {
+    if (not io.pathExists(soundtrackPath) or not io.pathExists(soundtrackMetaPath)) {
+        return "";
+    }
+    var meta = parseJSON(io.readFile(soundtrackMetaPath));
+    if (meta.name == null) {
+        return "";
+    }
+    return str.trim(string(meta.name));
+}
+
+function savedSoundtrackLabel() {
+    var name = savedSoundtrackName();
+    if (name == "") {
+        return "Choose the song. Hear uses the seconds field.";
+    }
+    return name;
 }
 
 function closingOf(doc) {
@@ -558,6 +580,12 @@ function htmlText(value) {
     return text;
 }
 
+function tuneWrap(readout) {
+    return "<span class='tune'><button type='button' class='step' data-ms='-100'>-0.1s</button>" +
+        readout +
+        "<button type='button' class='step' data-ms='100'>+0.1s</button></span>";
+}
+
 function cueRow(kind, label, index, cue, lyric) {
     var file = htmlText(cue.file);
     var caption = htmlText(cue.caption);
@@ -565,6 +593,8 @@ function cueRow(kind, label, index, cue, lyric) {
     var indexText = string(index);
     var extra = "<div class='cue-bar'>" +
         "<button type='button' class='hear'>Hear</button>" +
+        "<button type='button' class='fromhere'>From here</button>" +
+        "<button type='button' class='mark'>Mark</button>" +
         "<button type='button' class='nudge' data-delta='-1'>Earlier</button>" +
         "<button type='button' class='nudge' data-delta='1'>Later</button>";
     if (kind == "scenes") {
@@ -574,7 +604,7 @@ function cueRow(kind, label, index, cue, lyric) {
     return "<div class='cue " + kind + "' data-file='" + htmlText(cue.file) + "'>" +
         "<div class='meta'><span class='tag'>" + label + "</span><strong>" + caption + "</strong><span class='file'>" + file + "</span></div>" +
         "<input type='range' min='0' max='" + string(timelineMaxMs) + "' step='100' value='" + start + "' data-group='" + kind + "' data-index='" + indexText + "'>" +
-        "<span class='readout'></span>" +
+        tuneWrap("<span class='readout'></span>") +
         extra +
         "</div>";
 }
@@ -599,7 +629,7 @@ function sceneRows(items, lyrics) {
     return html;
 }
 
-function editorScript() {
+function editorScript(savedName) {
     return "(function(){" +
         "var gap=" + string(timelineGapMs) + ";" +
         "var endSlider=document.getElementById('endMs');" +
@@ -609,13 +639,71 @@ function editorScript() {
         "var audioLabel='';" +
         "var stopTimer=null;" +
         "var playToken=0;" +
+        "var fullPlay=false;" +
         "var applying=false;" +
+        "function refreshPlayButton(){var button=document.getElementById('playAll');if(!button){return;}var on=fullPlay&&!audio.paused;button.textContent=on?'Pause':'Play';button.classList.toggle('playing', on);}" +
         "function hearMs(){var n=Number(document.getElementById('hearSeconds').value);if(!isFinite(n)||n<1){n=3;}if(n>30){n=30;}return Math.round(n)*1000;}" +
         "function setAudioStatus(text){document.getElementById('audioName').textContent=text;}" +
         "function markPlaying(button){document.querySelectorAll('button.hear').forEach(function(el){el.classList.remove('playing');});if(button){button.classList.add('playing');}}" +
-        "function stopPreview(){playToken=playToken+1;if(stopTimer){clearTimeout(stopTimer);stopTimer=null;}audio.pause();markPlaying(null);if(audioLabel){setAudioStatus(audioLabel);}}" +
+        "function stopHear(){playToken=playToken+1;if(stopTimer){clearTimeout(stopTimer);stopTimer=null;}markPlaying(null);}" +
+        "function stopPreview(){stopHear();fullPlay=false;audio.pause();refreshPlayButton();if(audioLabel){setAudioStatus(audioLabel);}}" +
+        "function snapMs(seconds){var ms=Math.round(seconds*10)*100;if(!isFinite(ms)||ms<0){ms=0;}if(ms>max){ms=max;}return ms;}" +
+        "function seekThen(seconds, token, done){" +
+        "if(seconds<0.05){try{audio.currentTime=0;}catch(err){}done();return;}" +
+        "var armed=false;var retry=0;var giveUp=0;" +
+        "function cleanup(){audio.removeEventListener('seeked', onSeek);if(retry){clearTimeout(retry);}if(giveUp){clearTimeout(giveUp);}}" +
+        "function onSeek(){if(armed||token!==playToken){return;}if(Math.abs(audio.currentTime-seconds)>0.35){return;}armed=true;cleanup();done();}" +
+        "audio.addEventListener('seeked', onSeek);" +
+        "function assign(){try{audio.currentTime=seconds;return true;}catch(err){return false;}}" +
+        "if(!assign()){armed=true;cleanup();return false;}" +
+        "retry=setTimeout(function(){if(armed||token!==playToken||audio.seeking){return;}if(Math.abs(audio.currentTime-seconds)>0.35){assign();}}, 400);" +
+        "giveUp=setTimeout(function(){if(armed||token!==playToken){return;}armed=true;cleanup();if(Math.abs(audio.currentTime-seconds)<=0.35){done();return;}fullPlay=false;refreshPlayButton();setAudioStatus('Could not play from there.');}, 2000);" +
+        "return true;" +
+        "}" +
+        "function beginFullPlay(seconds){" +
+        "if(!trackReady||!audio.src){setAudioStatus(audioLabel?'Loading the soundtrack…':'Choose a soundtrack first.');return;}" +
+        "stopHear();" +
+        "fullPlay=true;" +
+        "var token=playToken;" +
+        "if(!isFinite(seconds)||seconds<0){seconds=0;}" +
+        "audio.pause();" +
+        "function go(){" +
+        "if(token!==playToken){return;}" +
+        "if(isFinite(audio.duration)&&seconds>=audio.duration){fullPlay=false;refreshPlayButton();setAudioStatus('That time is past the end of the track.');return;}" +
+        "audio.play().then(function(){if(token!==playToken){return;}if(seconds>=0.05&&Math.abs(audio.currentTime-seconds)>0.35){try{audio.currentTime=seconds;}catch(err){}}refreshPlayButton();setAudioStatus(seconds<0.05?'Playing the track — mark each lyric':'Playing from '+fmt(Math.round(seconds*1000)));}).catch(function(){if(token!==playToken){return;}fullPlay=false;refreshPlayButton();setAudioStatus('Could not play the track.');});" +
+        "}" +
+        "function seek(){" +
+        "if(token!==playToken){return;}" +
+        "if(seekThen(seconds, token, go)===false){fullPlay=false;refreshPlayButton();setAudioStatus('Could not play from there.');}" +
+        "}" +
+        "if(audio.readyState>=1){seek();}else{audio.addEventListener('loadedmetadata', function onMeta(){audio.removeEventListener('loadedmetadata', onMeta);seek();});}" +
+        "}" +
+        "function playAllToggle(){" +
+        "if(!trackReady||!audio.src){setAudioStatus(audioLabel?'Loading the soundtrack…':'Choose a soundtrack first.');return;}" +
+        "if(!audio.paused&&!audio.ended){audio.pause();fullPlay=true;refreshPlayButton();setAudioStatus('Paused at '+fmt(snapMs(audio.currentTime))+' — mark a lyric');return;}" +
+        "if(audio.ended){beginFullPlay(0);return;}" +
+        "stopHear();" +
+        "fullPlay=true;" +
+        "audio.play().then(function(){refreshPlayButton();setAudioStatus('Playing '+fmt(Math.round(audio.currentTime*1000)));}).catch(function(){fullPlay=false;refreshPlayButton();setAudioStatus('Could not play the track.');});" +
+        "}" +
+        "function playFromCue(row){" +
+        "var ms=Number(row.querySelector('input[type=range]').value);" +
+        "beginFullPlay(ms/1000);" +
+        "}" +
+        "function markCue(row){" +
+        "if(!audio.src||(!fullPlay&&audio.paused&&audio.currentTime<=0)){setAudioStatus('Play the track, then mark the lyric.');return;}" +
+        "var slider=row.querySelector('input[data-group]');" +
+        "if(!slider){return;}" +
+        "var inputs=cueInputs();" +
+        "var index=inputs.indexOf(slider);" +
+        "if(index<0){return;}" +
+        "slider.value=String(snapMs(audio.currentTime));" +
+        "for(var i=index-1;i>=0;i--){var after=Number(inputs[i+1].value);if(Number(inputs[i].value)>after-gap){var pulled=after-gap;if(pulled<0){pulled=0;}inputs[i].value=String(pulled);}}" +
+        "ripple(index);" +
+        "setAudioStatus('Marked '+row.querySelector('strong').textContent+' at '+fmt(Number(slider.value)));" +
+        "}" +
         "function preview(row, button){" +
-        "if(!audio.src){setAudioStatus('Choose a soundtrack first.');return;}" +
+        "if(!trackReady||!audio.src){setAudioStatus(audioLabel?'Loading the soundtrack…':'Choose a soundtrack first.');return;}" +
         "var ms=Number(row.querySelector('input[type=range]').value);" +
         "var start=ms/1000;" +
         "var token=playToken+1;playToken=token;" +
@@ -624,20 +712,14 @@ function editorScript() {
         "function begin(){" +
         "if(token!==playToken){return;}" +
         "if(isFinite(audio.duration)&&start>=audio.duration){markPlaying(null);setAudioStatus('That time is past the end of the track.');return;}" +
-        "var started=false;" +
-        "function arm(){" +
-        "if(started||token!==playToken){return;}" +
-        "started=true;" +
-        "audio.removeEventListener('seeked', arm);" +
+        "if(seekThen(start, token, function(){" +
+        "if(token!==playToken){return;}" +
         "markPlaying(button);" +
         "var hold=hearMs();" +
         "setAudioStatus('Playing '+fmt(ms)+' for '+(hold/1000)+'s');" +
-        "audio.play().catch(function(){markPlaying(null);setAudioStatus('Could not play that moment.');});" +
+        "audio.play().then(function(){if(token!==playToken){return;}if(start>=0.05&&Math.abs(audio.currentTime-start)>0.35){try{audio.currentTime=start;}catch(err){}}}).catch(function(){markPlaying(null);setAudioStatus('Could not play that moment.');});" +
         "stopTimer=setTimeout(function(){if(token!==playToken){return;}audio.pause();markPlaying(null);setAudioStatus(audioLabel);}, hold);" +
-        "}" +
-        "audio.addEventListener('seeked', arm);" +
-        "try{audio.currentTime=start;}catch(err){setAudioStatus('Could not play that moment.');return;}" +
-        "if(Math.abs(audio.currentTime-start)<0.2){arm();}" +
+        "})===false){setAudioStatus('Could not play that moment.');}" +
         "}" +
         "if(audio.readyState>=1){begin();}else{audio.addEventListener('loadedmetadata', function onMeta(){audio.removeEventListener('loadedmetadata', onMeta);begin();});}" +
         "}" +
@@ -669,6 +751,24 @@ function editorScript() {
         "function fileOrder(group){return rowsInGroup(group).map(function(row){return row.getAttribute('data-file');}).join('|');}" +
         "function captions(group){return rowsInGroup(group).map(function(row){return row.querySelector('strong').textContent;});}" +
         "function syncOrderNotes(){var text=promptBox().value;text=replaceParagraph(text,['Catalog, in browse order:'],'Catalog, in browse order: '+captions('browse').join(', ')+'.');text=replaceParagraph(text,['Dream, in scene order:'],'Dream, in scene order: '+captions('scenes').join(', ')+'.');if(fileOrder('manual')!==initialManual){text=replaceParagraph(text,['Manual, in page order:','Manual:'],'Manual, in page order: '+captions('manual').join(', ')+'.');}else if(originalManualNote){text=replaceParagraph(text,['Manual, in page order:','Manual:'],originalManualNote);}setPrompt(text);}" +
+        "function followPlayhead(){" +
+        "var ms=audio.currentTime*1000;if(!isFinite(ms)||ms<0){ms=0;}" +
+        "var inputs=cueInputs();" +
+        "var end=Number(endSlider.value);" +
+        "var splashAt=end-splashMs();if(splashAt<0){splashAt=0;}" +
+        "var active=null;" +
+        "if(ms<end&&splashMs()>0&&ms>=splashAt){active=document.getElementById('closingCue');}" +
+        "else if(ms<end){for(var i=0;i<inputs.length;i++){var start=Number(inputs[i].value);var next=i+1<inputs.length?Number(inputs[i+1].value):splashAt;if(ms>=start&&ms<next){active=inputs[i].closest('.cue');break;}}}" +
+        "var rows=document.querySelectorAll('.cue.active');" +
+        "for(var r=0;r<rows.length;r++){if(rows[r]!==active){rows[r].classList.remove('active');}}" +
+        "if(active){var fresh=!active.classList.contains('active');active.classList.add('active');if(fresh&&!audio.paused){active.scrollIntoView({block:'nearest'});}}" +
+        "var head=document.getElementById('playhead');" +
+        "if(!audio.src){if(head&&head.parentNode){head.parentNode.removeChild(head);}return;}" +
+        "if(!head){head=document.createElement('i');head.id='playhead';head.className='playhead';track.appendChild(head);}" +
+        "var left=ms/max*100;if(left<0){left=0;}if(left>100){left=100;}head.style.left=left+'%';" +
+        "}" +
+        "var followFrame=0;" +
+        "function armFollow(){followPlayhead();if(followFrame){cancelAnimationFrame(followFrame);followFrame=0;}if(audio.paused||audio.ended){return;}function step(){followPlayhead();if(audio.paused||audio.ended){followFrame=0;return;}followFrame=requestAnimationFrame(step);}followFrame=requestAnimationFrame(step);}" +
         "function paint(){" +
         "var inputs=cueInputs();" +
         "inputs.forEach(function(el){el.parentNode.querySelector('.readout').textContent=fmt(Number(el.value))+'  '+el.value+' ms';});" +
@@ -680,6 +780,7 @@ function editorScript() {
         "var splashMark=document.createElement('i');splashMark.className='splash';splashMark.style.left=(splashAt/max*100)+'%';splashMark.title='Closing splash';track.appendChild(splashMark);" +
         "var endMark=document.createElement('i');endMark.className='end';endMark.style.left=(Number(endSlider.value)/max*100)+'%';track.appendChild(endMark);" +
         "syncDurations();" +
+        "followPlayhead();" +
         "}" +
         "function ripple(index){" +
         "var inputs=cueInputs();" +
@@ -694,19 +795,58 @@ function editorScript() {
         "cueInputs().forEach(function(el){el.addEventListener('input', function(){ripple(cueInputs().indexOf(el));});});" +
         "endSlider.addEventListener('input', function(){var inputs=cueInputs();var last=Number(inputs[inputs.length-1].value);if(Number(endSlider.value)<endGapAfter(last)){endSlider.value=String(endGapAfter(last));}paint();});" +
         "closingSlider.addEventListener('input', function(){var inputs=cueInputs();var last=Number(inputs[inputs.length-1].value);if(Number(endSlider.value)<endGapAfter(last)){endSlider.value=String(endGapAfter(last));}paint();});" +
+        "var objectUrl='';" +
+        "var trackReady=false;" +
+        "function loadTrack(url){" +
+        "trackReady=false;" +
+        "return fetch(url).then(function(res){if(!res.ok){throw new Error('missing');}return res.blob();}).then(function(blob){" +
+        "if(objectUrl){URL.revokeObjectURL(objectUrl);}" +
+        "objectUrl=URL.createObjectURL(blob);" +
+        "audio.src=objectUrl;" +
+        "trackReady=true;" +
+        "});" +
+        "}" +
+        "var savedTrack=" + toJSON(savedName) + ";" +
+        "if(savedTrack){audioLabel=savedTrack;setAudioStatus(savedTrack);loadTrack('/soundtrack').catch(function(){trackReady=false;setAudioStatus('Could not load the soundtrack.');});}" +
         "document.getElementById('trackFile').addEventListener('change', function(){" +
         "var file=this.files&&this.files[0];" +
         "stopPreview();" +
-        "if(!file){audioLabel='';audio.removeAttribute('src');setAudioStatus('Choose the song to hear 3 seconds from each cue.');return;}" +
-        "if(audio.src){URL.revokeObjectURL(audio.src);}" +
-        "audio.src=URL.createObjectURL(file);" +
-        "audioLabel=file.name;" +
-        "setAudioStatus(file.name);" +
+        "if(!file){return;}" +
+        "setAudioStatus('Saving '+file.name+'…');" +
+        "var data=new FormData();" +
+        "data.append('track', file, file.name);" +
+        "fetch('/soundtrack',{method:'POST',body:data}).then(function(res){return res.text();}).then(function(text){" +
+        "var saved=JSON.parse(text);" +
+        "if(!saved.ok){setAudioStatus(saved.error||'Could not save the soundtrack.');return;}" +
+        "audioLabel=saved.name||file.name;" +
+        "loadTrack('/soundtrack?t='+Date.now()).then(function(){setAudioStatus(audioLabel);}).catch(function(){trackReady=false;setAudioStatus('Could not load the soundtrack.');});" +
+        "}).catch(function(){setAudioStatus('Could not save the soundtrack.');});" +
         "});" +
-        "audio.addEventListener('ended', function(){if(stopTimer){clearTimeout(stopTimer);stopTimer=null;}markPlaying(null);if(audioLabel){setAudioStatus(audioLabel);}});" +
+        "audio.addEventListener('timeupdate', function(){if(fullPlay&&!audio.paused){setAudioStatus('Playing '+fmt(Math.round(audio.currentTime*1000)));}followPlayhead();});" +
+        "audio.addEventListener('play', armFollow);" +
+        "audio.addEventListener('pause', function(){if(followFrame){cancelAnimationFrame(followFrame);followFrame=0;}followPlayhead();});" +
+        "audio.addEventListener('seeked', armFollow);" +
+        "audio.addEventListener('ended', function(){if(followFrame){cancelAnimationFrame(followFrame);followFrame=0;}if(stopTimer){clearTimeout(stopTimer);stopTimer=null;}markPlaying(null);fullPlay=false;refreshPlayButton();followPlayhead();if(audioLabel){setAudioStatus(audioLabel);}});" +
         "document.body.addEventListener('click', function(event){" +
+        "if(event.target.closest('#playAll')){playAllToggle();return;}" +
+        "if(event.target.closest('#playStart')){beginFullPlay(0);return;}" +
+        "var fromHere=event.target.closest('button.fromhere');" +
+        "if(fromHere){playFromCue(fromHere.closest('.cue'));return;}" +
+        "var mark=event.target.closest('button.mark');" +
+        "if(mark){markCue(mark.closest('.cue'));return;}" +
         "var hear=event.target.closest('button.hear');" +
         "if(hear){preview(hear.closest('.cue'), hear);return;}" +
+        "var step=event.target.closest('button.step');" +
+        "if(step){" +
+        "var slider=step.closest('.cue').querySelector('input[type=range]');" +
+        "var next=Number(slider.value)+Number(step.getAttribute('data-ms'));" +
+        "var low=Number(slider.min);if(!isFinite(low)){low=0;}" +
+        "var high=Number(slider.max);if(!isFinite(high)){high=next;}" +
+        "if(next<low){next=low;}if(next>high){next=high;}" +
+        "slider.value=String(next);" +
+        "if(slider.hasAttribute('data-group')){ripple(cueInputs().indexOf(slider));}" +
+        "else{var inputs=cueInputs();var last=Number(inputs[inputs.length-1].value);if(Number(endSlider.value)<endGapAfter(last)){endSlider.value=String(endGapAfter(last));}paint();}" +
+        "return;}" +
         "var button=event.target.closest('button.nudge');" +
         "if(!button){return;}" +
         "var row=button.closest('.cue');" +
@@ -771,42 +911,46 @@ function editorPageHtml(doc, lyrics, saved, promptText) {
         ".track{position:relative;height:28px;margin:18px 0 28px;border-radius:999px;background:#232838}" +
         ".track i{position:absolute;top:6px;width:3px;height:16px;border-radius:2px;background:#7aa2ff}" +
         ".track i.manual{background:#e2b15a}.track i.scenes{background:#7dcea0}.track i.splash{background:#8ddec4;height:22px;top:3px}.track i.end{background:#f2f4fb;height:22px;top:3px}" +
-        ".cue{display:grid;grid-template-columns:220px 1fr 108px;gap:12px;align-items:center;padding:8px 0;border-top:1px solid #2a3144}" +
-        ".cue-bar{grid-column:1 / -1;display:flex;gap:8px;align-items:center}" +
+        ".cue{display:grid;grid-template-columns:220px minmax(0,1fr) auto;gap:12px;align-items:center;padding:8px 0;border-top:1px solid #2a3144}" +
+        ".tune{display:flex;align-items:center;gap:6px;justify-content:flex-end}" +
+        ".cue-bar{grid-column:1 / -1;display:flex;gap:8px;align-items:center;flex-wrap:wrap}" +
         ".meta{display:flex;flex-direction:column;min-width:0}.meta strong{font-weight:600}.file{color:#8b93a8;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}" +
         ".tag{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:#8b93a8}" +
         "input[type=range]{width:100%;accent-color:#8eb0ff}.readout{font-variant-numeric:tabular-nums;color:#d5dbeb;font-size:13px}" +
         ".lyric{flex:1;min-height:34px;resize:vertical;background:#1c2230;color:#e7e9f2;border:1px solid #2a3144;border-radius:6px;padding:6px 8px;font:inherit}" +
         ".end-row{margin-top:18px}.actions{display:flex;gap:12px;align-items:center;margin-top:12px;flex-wrap:wrap}" +
         "button{background:#e7e9f2;color:#12141c;border:0;border-radius:8px;padding:8px 14px;font:inherit;font-weight:600}" +
-        "button.nudge{background:#232838;color:#e7e9f2}" +
-        "button.hear{background:#1d3a32;color:#d7f5ea}button.hear.playing{background:#8ddec4;color:#12141c}" +
+        "button.nudge,button.step{background:#232838;color:#e7e9f2}button.step{padding:4px 8px;font-size:12px}" +
+        "button.hear,button.fromhere,button.mark{background:#1d3a32;color:#d7f5ea}button.hear.playing,#playAll.playing{background:#8ddec4;color:#12141c}" +
+        "button.mark{background:#3a2d1d;color:#f5e6c8}" +
+        ".cue.active{background:#1c2c33;border-radius:8px;box-shadow:inset 3px 0 0 #8ddec4}" +
+        ".track i.playhead{width:2px;height:28px;top:0;background:#f4f7ff;z-index:3}" +
         ".audio{display:flex;gap:12px;align-items:center;margin:8px 0 4px;color:#b7bfd4}" +
         "#hearSeconds{width:72px;background:#1c2230;color:#e7e9f2;border:1px solid #2a3144;border-radius:6px;padding:6px 8px;font:inherit}" +
         "#audioName{color:#8b93a8;font-size:13px}input[type=file]{color:#b7bfd4}" +
         "#status{color:#f0c3c3}p.warn{color:#e2b15a}";
     return "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Showcase timeline</title><style>" + css + "</style></head><body><main>" +
         "<h1>Showcase timeline</h1>" +
-        "<p class='lead'>Times run from the splash. A cue stays up until the next slider. Reel ends matches the song. Closing splash is how long the title card stays up for the outro. Earlier and Later reorder the example browser, the manual, and the scenes inside their own tour. A scene lyric moves with that scene. The song prompt stays aligned with this page. Hear plays the soundtrack from that cue for the number of seconds next to the soundtrack.</p>" +
+        "<p class='lead'>Times run from the splash. A cue stays up until the next slider. -0.1s and +0.1s move that time. Reel ends matches the song. Closing splash is how long the title card stays up for the outro. Earlier and Later reorder the example browser, the manual, and the scenes inside their own tour. A scene lyric moves with that scene. The song prompt stays aligned with this page. Play runs the whole track. From start restarts it. From here plays the rest of the track from that cue. Mark, while that play is going or paused, sets the cue to the playhead. The cue under the playhead is highlighted while the song plays. Hear plays from that cue for the number of seconds next to the soundtrack. The chosen song is kept for the next time this page opens.</p>" +
         banner +
-        "<div class='audio'><label for='trackFile'>Soundtrack</label><input id='trackFile' type='file' accept='audio/*'><label for='hearSeconds'>Seconds</label><input id='hearSeconds' type='number' min='1' max='30' step='1' value='3'><span id='audioName'>Choose the song. Hear uses the seconds field.</span></div>" +
+        "<div class='audio'><label for='trackFile'>Soundtrack</label><input id='trackFile' type='file' accept='audio/*'><button type='button' id='playAll'>Play</button><button type='button' id='playStart'>From start</button><label for='hearSeconds'>Seconds</label><input id='hearSeconds' type='number' min='1' max='30' step='1' value='3'><span id='audioName'>" + htmlText(savedSoundtrackLabel()) + "</span></div>" +
         "<audio id='previewAudio'></audio>" +
         "<div class='layout'><div>" +
         "<div class='track' id='track'></div>" +
         rows +
-        "<div class='cue end-row'><div class='meta'><span class='tag'>Splash</span><strong>Closing splash</strong><span class='file'>Outro on the title card</span></div>" +
+        "<div class='cue end-row' id='closingCue'><div class='meta'><span class='tag'>Splash</span><strong>Closing splash</strong><span class='file'>Outro on the title card</span></div>" +
         "<input id='closingMs' type='range' min='0' max='60000' step='100' value='" + string(closingOf(doc)) + "'>" +
-        "<span class='readout' id='closingReadout'></span></div>" +
+        tuneWrap("<span class='readout' id='closingReadout'></span>") + "</div>" +
         "<div class='cue'><div class='meta'><span class='tag'>End</span><strong>Reel ends</strong></div>" +
         "<input id='endMs' type='range' min='0' max='" + string(timelineMaxMs) + "' step='100' value='" + endValue + "'>" +
-        "<span class='readout' id='endReadout'></span></div>" +
+        tuneWrap("<span class='readout' id='endReadout'></span>") + "</div>" +
         "</div><aside class='prompt-panel'>" +
         "<h2>Song prompt</h2>" +
         "<p class='lead'>Section lengths, dream lines, and the order notes follow this page. Edit the style and the sung lines here. Save writes song-prompt.md.</p>" +
         "<textarea id='songPrompt' spellcheck='false'>" + htmlText(promptText) + "</textarea>" +
         "<div class='actions'><button id='save' type='button'>Save</button><span id='status'></span></div>" +
         "</aside></div>" +
-        "</main><script>" + editorScript() + "</script></body></html>";
+        "</main><script>" + editorScript(savedSoundtrackName()) + "</script></body></html>";
 }
 
 @PAGE("/")
@@ -814,6 +958,43 @@ function timelinePage(saved) {
     var doc = loadPlaylist();
     var lyrics = extractDreamLyrics(io.readFile(promptPath));
     return editorPageHtml(doc, lyrics, saved, previewPrompt(doc, lyrics));
+}
+
+@POST("/soundtrack")
+function saveSoundtrack(body) {
+    if (body == null or body.track == null or body.track.contentBase64 == null) {
+        return "{\"ok\":false,\"error\":" + toJSON("Choose an audio file.") + "}";
+    }
+    var encoded = str.trim(string(body.track.contentBase64));
+    if (encoded == "") {
+        return "{\"ok\":false,\"error\":" + toJSON("The audio file was empty.") + "}";
+    }
+    var name = "soundtrack";
+    if (body.track.fileName != null and str.trim(string(body.track.fileName)) != "") {
+        name = str.trim(string(body.track.fileName));
+    }
+    var contentType = "audio/mpeg";
+    if (body.track.contentType != null and str.trim(string(body.track.contentType)) != "") {
+        contentType = str.trim(string(body.track.contentType));
+    }
+    io.writeFileBase64(soundtrackPath, encoded);
+    io.writeFile(soundtrackMetaPath, "{\"name\":" + toJSON(name) + ",\"contentType\":" + toJSON(contentType) + "}");
+    return "{\"ok\":true,\"name\":" + toJSON(name) + "}";
+}
+
+@GET("/soundtrack")
+function soundtrackFile(res) {
+    if (not io.pathExists(soundtrackPath) or not io.pathExists(soundtrackMetaPath)) {
+        res.status(404);
+        return res.send("missing");
+    }
+    var meta = parseJSON(io.readFile(soundtrackMetaPath));
+    var contentType = "audio/mpeg";
+    if (meta.contentType != null and str.trim(string(meta.contentType)) != "") {
+        contentType = str.trim(string(meta.contentType));
+    }
+    res.setContentType(contentType);
+    return res.sendBase64(io.readFileBase64(soundtrackPath));
 }
 
 @POST("/save")
@@ -851,7 +1032,7 @@ if (io.getEnvOr("MALDA_TIMELINE_SELFTEST") == "1") {
         io.print("browse start was not preserved");
         exit(1);
     }
-    if (int(rendered.closingMs) != 4500) {
+    if (int(rendered.closingMs) != closingOf(original)) {
         io.print("closing splash was not preserved");
         exit(1);
     }
@@ -969,15 +1150,19 @@ if (io.getEnvOr("MALDA_TIMELINE_SELFTEST") == "1") {
         io.print(refreshed.error);
         exit(1);
     }
-    if (str.indexOf(refreshed.text, "60 seconds, same tempo") < 0) {
+    var dreamLabel = string(roundedSeconds((int(original.endMs) - closingOf(original)) - int(original.scenes[0].startMs))) + " seconds, same tempo";
+    if (str.indexOf(refreshed.text, dreamLabel) < 0) {
         io.print("dream duration was not updated");
         exit(1);
     }
-    if (str.indexOf(refreshed.text, "5 seconds, pads only") < 0 or str.indexOf(refreshed.text, "19 seconds, one continuous") < 0) {
+    var introLabel = string(roundedSeconds(int(original.browse[0].startMs))) + " seconds, pads only";
+    var catalogLabel = string(roundedSeconds(int(original.manual[0].startMs) - int(original.browse[0].startMs))) + " seconds, one continuous";
+    if (str.indexOf(refreshed.text, introLabel) < 0 or str.indexOf(refreshed.text, catalogLabel) < 0) {
         io.print("intro or catalog duration was not kept");
         exit(1);
     }
-    if (str.indexOf(refreshed.text, "About 1 minute 40 seconds") < 0) {
+    var runtimeLabel = runtimePhrase(int(original.endMs));
+    if (str.indexOf(refreshed.text, runtimeLabel) < 0) {
         io.print("runtime length was not updated");
         exit(1);
     }
@@ -1002,15 +1187,19 @@ if (io.getEnvOr("MALDA_TIMELINE_SELFTEST") == "1") {
     }
     var preview = previewPrompt(original, dream);
     var page = editorPageHtml(original, dream, "", preview);
-    if (str.indexOf(page, "class='hear'") < 0 or str.indexOf(page, "id='trackFile'") < 0 or str.indexOf(page, "id='hearSeconds'") < 0 or str.indexOf(page, "value='3'") < 0) {
+    if (str.indexOf(page, "class='hear'") < 0 or str.indexOf(page, "id='playAll'") < 0 or str.indexOf(page, "id='playStart'") < 0 or str.indexOf(page, "class='fromhere'") < 0 or str.indexOf(page, "class='mark'") < 0 or str.indexOf(page, "id='trackFile'") < 0 or str.indexOf(page, "id='hearSeconds'") < 0 or str.indexOf(page, "value='3'") < 0 or str.indexOf(page, "data-ms='-100'") < 0 or str.indexOf(page, "data-ms='100'") < 0 or str.indexOf(page, "followPlayhead") < 0 or str.indexOf(page, "id='closingCue'") < 0 or str.indexOf(page, ".cue.active") < 0) {
         io.print("soundtrack preview controls are missing");
         exit(1);
     }
-    if (str.indexOf(page, "id='closingMs'") < 0 or str.indexOf(page, "value='4500'") < 0 or str.indexOf(page, "closingMs:splashMs()") < 0) {
+    if (str.indexOf(page, "fetch('/soundtrack'") < 0 or str.indexOf(page, "savedTrack=") < 0 or str.indexOf(page, "function seekThen") < 0 or str.indexOf(page, "createObjectURL") < 0) {
+        io.print("remembered soundtrack is missing");
+        exit(1);
+    }
+    if (str.indexOf(page, "id='closingMs'") < 0 or str.indexOf(page, "value='" + string(closingOf(original)) + "'") < 0 or str.indexOf(page, "closingMs:splashMs()") < 0) {
         io.print("closing splash slider is missing");
         exit(1);
     }
-    if (str.indexOf(page, "id='songPrompt'") < 0 or str.indexOf(page, "About 1 minute 40 seconds") < 0 or str.indexOf(page, "Printed clean.") < 0 or str.indexOf(page, "prompt:promptBox().value") < 0) {
+    if (str.indexOf(page, "id='songPrompt'") < 0 or str.indexOf(page, runtimeLabel) < 0 or str.indexOf(page, "Printed clean.") < 0 or str.indexOf(page, "prompt:promptBox().value") < 0) {
         io.print("song prompt preview is missing");
         exit(1);
     }

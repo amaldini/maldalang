@@ -82,3 +82,5 @@ Temporary/
 # Local few-line MALDA scratch (not the Examples catalog)
 scratch/
 scripts/showcase/showcaseTrack1.mp3
+scripts/showcase/.timeline-audio
+scripts/showcase/.timeline-audio.json

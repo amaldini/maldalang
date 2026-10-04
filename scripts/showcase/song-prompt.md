@@ -1,8 +1,9 @@
 # Showcase song prompt
 
 Paste-ready prompt for a generated soundtrack to the Desktop IDE reel.
-The reel order is `scripts/showcase/playlist.json`. Record with
-`scripts/record-showcase.ps1` and pass the finished track as `-Audio`.
+The reel order is `scripts/showcase/playlist.json`. Record the reel with
+`scripts/showcase-video.ps1`, which muxes `scripts/showcase/showcaseTrack1.mp3`.
+For a different file, pass it to `scripts/record-showcase.ps1 -Audio`.
 No music is bundled in the repository. Use a track you have rights to use.
 The video is trimmed to whichever of the picture and the track is shorter.
 
@@ -34,30 +35,30 @@ directions and should not be sung.
 ## Style
 
 ```
-80 BPM, soft dream-pop, airy and melodic. Natural female voice, clear, medium distance, even tone, light vibrato, long legato phrases, a quiet harmony in the distance. Calm atmosphere: wide pads, soft piano, felt electric piano, quiet synth pulse, light reverb and delay. Neutral, steady, hopeful, moderate volume, even dynamics. No whisper, no breathy close-mic, no sensual or intimate delivery, no ASMR, no vocoder, no robotic voice, no spoken checklist, no rap, no belting, no drums beyond a soft pulse, no drop, no distortion. About 1 minute 40 seconds. End by letting the last note fade into a resolved pad.
+80 BPM, soft dream-pop, airy and melodic. Natural female voice, clear, medium distance, even tone, light vibrato, long legato phrases, a quiet harmony in the distance. Calm atmosphere: wide pads, soft piano, felt electric piano, quiet synth pulse, light reverb and delay. Neutral, steady, hopeful, moderate volume, even dynamics. No whisper, no breathy close-mic, no sensual or intimate delivery, no ASMR, no vocoder, no robotic voice, no spoken checklist, no rap, no belting, no drums beyond a soft pulse, no drop, no distortion. About 3 minutes. End by letting the last note fade into a resolved pad.
 ```
 
 ## Lyrics
 
 ```
-[Intro – 5 seconds, pads only, then one clear line]
+[Intro – 18 seconds, pads only, then one clear line]
 [Female voice, clear, medium distance, even tone]
 Malda, let's begin.
 
-[Catalog – 19 seconds, one continuous melody, four legato lines, steady and unhurried, do not accent every word]
+[Catalog – 26 seconds, one continuous melody, four legato lines, steady and unhurried, do not accent every word]
 [Female voice, clear and even]
 Hello, confirm. The schema settles. Objects come alive.
 The tower moves. The network answers. A page is built.
 The set opens. Light returns. The ground is solid.
 Bricks will fall. The pole stays up. This lap is ours. The king is watched.
 
-[Manual – 13 seconds, a little wider, still even, the middle line is the refrain]
+[Manual – 24 seconds, a little wider, still even, the middle line is the refrain]
 [Female voice, clear and even]
 Open the book. The types lock in. Call the function.
 Many agents, one objective.
 Play it in the browser.
 
-[Dream – 70 seconds, same tempo, clear even voice, hold each line, leave a short instrumental pause after every line]
+[Dream – 67 seconds, same tempo, clear even voice, hold each line, leave a short instrumental pause after every line]
 [Female voice]
 Printed clean.
 The schema holds.
@@ -79,16 +80,12 @@ Malda.
 
 ## What each line follows
 
-Catalog, in browse order: Hello, Schemas, Objects, Hanoi, XOR net,
-UI controls, Mandelbrot, Raytracer, Platform, Maldanoid, CartPole,
-Grand Prix, Chess.
+Catalog, in browse order: Hello, Schemas, Objects, Hanoi, XOR net, UI controls, Mandelbrot, Raytracer, Platform, Maldanoid, CartPole, Grand Prix, Chess.
 
 Manual: the manual home page, data types, functions, neural nets
 (“Many agents, one objective” is the multi-agent page), browser games.
 
-Dream, in scene order: Hello, Schemas, Towers of Hanoi, UI controls,
-Mandelbrot, GPU raytracer, GPU billiards, Platform, Maldanoid,
-CartPole, Grand Prix, Chess.
+Dream, in scene order: Hello, Schemas, Towers of Hanoi, UI controls, Mandelbrot, GPU raytracer, GPU billiards, Platform, Maldanoid, CartPole, Grand Prix, Chess.
 
 ## Saving a track the browser only plays
 
@@ -117,6 +114,12 @@ ffmpeg -f dshow -i audio="Stereo Mix (Realtek(R) Audio)" -t 120 track.mp3
 `-t 120` records two minutes. Press `q` to stop sooner. The browser must
 be playing through that Realtek output. Bluetooth or another device
 leaves the mix silent.
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\showcase-video.ps1
+```
+
+That writes `artifacts/showcase/malda-showcase.mp4` with `scripts/showcase/showcaseTrack1.mp3`. Add `-SkipBuild` to reuse the last Desktop IDE build. A different file still goes through the recorder directly:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\record-showcase.ps1 -Audio C:\path\to\track.mp3
