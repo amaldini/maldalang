@@ -1,0 +1,296 @@
+// Interactive Towers of Hanoi Game
+// Move all disks from the left tower to the right tower.
+// Rules: Only one disk can be moved at a time.
+//        A disk can only be placed on top of a larger disk or an empty tower.
+// Click a disk to select it, then click a tower to move it there.
+// Press 'A' to auto-solve, 'R' to reset, 'H' for hints.
+
+var root = dom.query("#app");
+
+if (root == null) {
+    println("No #app container found.");
+} else {
+    dom.clear(root);
+
+    var title = dom.create("h1");
+    dom.setText(title, "Towers of Hanoi");
+    dom.append(root, title);
+
+    var hint = dom.create("p");
+    dom.setText(hint, "Click a disk to select it, then click a tower to move it. Press A to auto-solve, R to reset.");
+    dom.append(root, hint);
+
+    var canvasWidth = 900;
+    var canvasHeight = 500;
+    
+    var numDisks = 4;
+    var towers = [[4, 3, 2, 1], [], []];
+    var towerNames = ["A", "B", "C"];
+    var selectedTower = -1;
+    var moveCount = 0;
+    var gameWon = false;
+    
+    var autoSolving = false;
+    var autoMoves = [];
+    var autoMoveDelay = 600;
+    var autoMoveTimer = 0;
+    
+    var towerX = [150, 450, 750];
+    var towerWidth = 20;
+    var towerHeight = 300;
+    var towerBaseY = 400;
+    var towerBaseWidth = 180;
+    var towerBaseHeight = 20;
+    
+    var diskHeight = 25;
+    var diskMinWidth = 40;
+    var diskWidthStep = 30;
+    
+    var diskColors = ["#ff6b6b", "#4ecdc4", "#45b7d1", "#96ceb4", "#ffeaa7", "#dfe6e9"];
+    
+    function resetGame() {
+        towers = [[4, 3, 2, 1], [], []];
+        if (numDisks == 3) {
+            towers = [[3, 2, 1], [], []];
+        }
+        if (numDisks == 5) {
+            towers = [[5, 4, 3, 2, 1], [], []];
+        }
+        selectedTower = -1;
+        moveCount = 0;
+        gameWon = false;
+        autoSolving = false;
+        autoMoves = [];
+        autoMoveTimer = 0;
+    }
+    
+    function getDiskWidth(diskSize) {
+        return diskMinWidth + (diskSize * diskWidthStep);
+    }
+    
+    function getDiskY(towerIndex, positionInTower) {
+        return towerBaseY - towerBaseHeight - (positionInTower * diskHeight);
+    }
+    
+    function getDiskRect(towerIndex, positionInTower, diskSize) {
+        var diskW = getDiskWidth(diskSize);
+        var diskX = towerX[towerIndex] - (diskW / 2);
+        var diskY = getDiskY(towerIndex, positionInTower);
+        return {"x": diskX, "y": diskY, "w": diskW, "h": diskHeight};
+    }
+    
+    function isPointInRect(px, py, rect) {
+        return px >= rect.x && px <= rect.x + rect.w && py >= rect.y && py <= rect.y + rect.h;
+    }
+    
+    function getTowerAtX(x) {
+        var i = 0;
+        while (i < 3) {
+            var towerLeft = towerX[i] - (towerBaseWidth / 2);
+            var towerRight = towerX[i] + (towerBaseWidth / 2);
+            if (x >= towerLeft && x <= towerRight) {
+                return i;
+            }
+            i = i + 1;
+        }
+        return -1;
+    }
+    
+    function canMoveDisk(fromTower, toTower) {
+        if (fromTower < 0 || fromTower >= 3 || toTower < 0 || toTower >= 3) {
+            return false;
+        }
+        
+        var sourceTower = towers[fromTower];
+        if (sourceTower.length == 0) {
+            return false;
+        }
+        
+        var destTower = towers[toTower];
+        var movingDisk = sourceTower[sourceTower.length - 1];
+        
+        if (destTower.length == 0) {
+            return true;
+        }
+        
+        var topDisk = destTower[destTower.length - 1];
+        return movingDisk < topDisk;
+    }
+    
+    function moveDisk(fromTower, toTower) {
+        if (!canMoveDisk(fromTower, toTower)) {
+            return false;
+        }
+        
+        var sourceTower = towers[fromTower];
+        var disk = sourceTower.pop();
+        var destTower = towers[toTower];
+        destTower.append(disk);
+        
+        towers[fromTower] = sourceTower;
+        towers[toTower] = destTower;
+        
+        moveCount = moveCount + 1;
+        
+        var goalTower = towers[2];
+        if (goalTower.length == numDisks) {
+            gameWon = true;
+        }
+        
+        return true;
+    }
+    
+    function generateSolution(n, from, to, aux) {
+        if (n <= 0) {
+            return [];
+        }
+        if (n == 1) {
+            return [{"from": from, "to": to}];
+        }
+        
+        var moves1 = generateSolution(n - 1, from, aux, to);
+        var mainMove = [{"from": from, "to": to}];
+        var moves2 = generateSolution(n - 1, aux, to, from);
+        
+        return moves1.concat(mainMove).concat(moves2);
+    }
+    
+    function startAutoSolve() {
+        autoSolving = true;
+        autoMoves = generateSolution(numDisks, 0, 2, 1);
+        autoMoveTimer = 0;
+    }
+    
+    function updateGame(dtMs) {
+        if (game.wasKeyPressed("r")) {
+            resetGame();
+        }
+        
+        if (game.wasKeyPressed("a") && !autoSolving && !gameWon) {
+            startAutoSolve();
+        }
+        
+        if (game.wasKeyPressed("h")) {
+            if (numDisks == 3) {
+                numDisks = 4;
+            } else {
+                if (numDisks == 4) {
+                    numDisks = 5;
+                } else {
+                    numDisks = 3;
+                }
+            }
+            resetGame();
+        }
+        
+        if (autoSolving && str.length(autoMoves) > 0) {
+            autoMoveTimer = autoMoveTimer + dtMs;
+            if (autoMoveTimer >= autoMoveDelay) {
+                var nextMove = autoMoves[0];
+                moveDisk(nextMove.from, nextMove.to);
+                autoMoves = autoMoves.slice(1, str.length(autoMoves));
+                autoMoveTimer = 0;
+                
+                if (str.length(autoMoves) == 0) {
+                    autoSolving = false;
+                }
+            }
+        }
+        
+        if (!autoSolving && game.wasMousePressed(0)) {
+            var mx = game.getMouseX();
+            var my = game.getMouseY();
+            
+            var clickedTower = getTowerAtX(mx);
+            
+            if (clickedTower >= 0) {
+                if (selectedTower < 0) {
+                    if (towers[clickedTower].length > 0) {
+                        selectedTower = clickedTower;
+                    }
+                } else {
+                    if (clickedTower == selectedTower) {
+                        selectedTower = -1;
+                    } else {
+                        var success = moveDisk(selectedTower, clickedTower);
+                        selectedTower = -1;
+                    }
+                }
+            }
+        }
+    }
+    
+    function renderGame() {
+        game.clear();
+        
+        var i = 0;
+        while (i < 3) {
+            var baseX = towerX[i] - (towerBaseWidth / 2);
+            game.fillRect(baseX, towerBaseY, towerBaseWidth, towerBaseHeight, "#8b7355");
+            
+            var poleX = towerX[i] - (towerWidth / 2);
+            var poleY = towerBaseY - towerHeight;
+            game.fillRect(poleX, poleY, towerWidth, towerHeight, "#654321");
+            
+            game.drawText(towerNames[i], towerX[i] - 8, towerBaseY + towerBaseHeight + 25, "#ffffff", "20px sans-serif");
+            
+            i = i + 1;
+        }
+        
+        var t = 0;
+        while (t < 3) {
+            var tower = towers[t];
+            var pos = 0;
+            while (pos < tower.length) {
+                var diskSize = tower[pos];
+                var rect = getDiskRect(t, pos, diskSize);
+                var color = diskColors[(diskSize - 1) % str.length(diskColors)];
+                
+                if (t == selectedTower && pos == tower.length - 1) {
+                    color = "#ffff00";
+                }
+                
+                game.fillRect(rect.x, rect.y, rect.w, rect.h, color);
+                
+                game.drawText(string(diskSize), rect.x + (rect.w / 2) - 6, rect.y + 18, "#000000", "14px bold sans-serif");
+                
+                pos = pos + 1;
+            }
+            t = t + 1;
+        }
+        
+        var statusY = 30;
+        game.drawText("Moves: " + string(moveCount), 20, statusY, "#ffffff", "18px sans-serif");
+        
+        var minMoves = expectedMoves(numDisks);
+        game.drawText("Minimum: " + string(minMoves), 20, statusY + 25, "#aaaaaa", "14px sans-serif");
+        
+        if (gameWon) {
+            var msg = "You Won in " + string(moveCount) + " moves!";
+            game.drawText(msg, canvasWidth / 2 - 120, 80, "#00ff00", "24px bold sans-serif");
+            if (moveCount == minMoves) {
+                game.drawText("Perfect!", canvasWidth / 2 - 50, 110, "#ffff00", "20px bold sans-serif");
+            }
+        }
+        
+        if (autoSolving) {
+            game.drawText("Auto-solving...", canvasWidth / 2 - 70, 80, "#ffaa00", "20px sans-serif");
+        }
+        
+        game.drawText("Controls: A=Auto-solve, R=Reset, H=Change disks (" + string(numDisks) + ")", 20, canvasHeight - 20, "#888888", "14px monospace");
+    }
+    
+    function expectedMoves(n) {
+        var total = 1;
+        var i = 0;
+        while (i < n) {
+            total = total * 2;
+            i = i + 1;
+        }
+        return total - 1;
+    }
+    
+    game.createCanvas(canvasWidth, canvasHeight, "#app");
+    game.setBackground("#1a1a2e");
+    game.start(updateGame, renderGame);
+}
