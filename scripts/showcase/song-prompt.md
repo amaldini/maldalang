@@ -119,7 +119,7 @@ leaves the mix silent.
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\showcase-video.ps1
 ```
 
-That writes `artifacts/showcase/malda-showcase.mp4` with `scripts/showcase/showcaseTrack1.mp3`. Add `-SkipBuild` to reuse the last Desktop IDE build. A different file still goes through the recorder directly:
+That writes `artifacts/showcase/malda-showcase.mp4` with `scripts/showcase/showcaseTrack1.mp3`. From an unzipped release, put this `scripts` folder in the release root; the script launches `bin\desktop-ide\MaldaLang.DesktopIDE.exe` and does not compile. On a source checkout, add `-SkipBuild` to reuse the last Desktop IDE build. A different file still goes through the recorder directly:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\record-showcase.ps1 -Audio C:\path\to\track.mp3

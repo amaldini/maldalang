@@ -27,12 +27,18 @@
 .PARAMETER Playlist
   Playlist JSON. Defaults to scripts/showcase/playlist.json.
 
+.PARAMETER Ide
+  Full path to MaldaLang.DesktopIDE.exe. When set, the script does not compile.
+  A release package uses bin\desktop-ide\MaldaLang.DesktopIDE.exe.
+
 .PARAMETER SkipBuild
-  Launch the existing Debug build instead of compiling first.
+  Launch artifacts\showcase-ide\MaldaLang.DesktopIDE.exe instead of compiling.
+  Ignored when -Ide is set or the release package executable is present.
 #>
 param(
     [string]$Audio = "",
     [string]$Playlist = "",
+    [string]$Ide = "",
     [switch]$SkipBuild
 )
 
@@ -164,17 +170,33 @@ if ($playlistObj.manual) {
     }
 }
 
-$ideOut = Join-Path $repoRoot "artifacts\showcase-ide"
-if (-not $SkipBuild) {
-    & dotnet build (Join-Path $repoRoot "MaldaLang.DesktopIDE\MaldaLang.DesktopIDE.csproj") -c Debug -o $ideOut --nologo
-    if ($LASTEXITCODE -ne 0) {
-        exit $LASTEXITCODE
+$packagedIde = Join-Path $repoRoot "bin\desktop-ide\MaldaLang.DesktopIDE.exe"
+if (-not [string]::IsNullOrWhiteSpace($Ide)) {
+    if (-not (Test-Path -LiteralPath $Ide)) {
+        throw "Desktop IDE executable was not found: $Ide"
     }
+    $ide = (Resolve-Path -LiteralPath $Ide).Path
 }
+elseif (Test-Path -LiteralPath $packagedIde) {
+    $ide = (Resolve-Path -LiteralPath $packagedIde).Path
+}
+else {
+    $ideOut = Join-Path $repoRoot "artifacts\showcase-ide"
+    $project = Join-Path $repoRoot "MaldaLang.DesktopIDE\MaldaLang.DesktopIDE.csproj"
+    if (-not $SkipBuild) {
+        if (-not (Test-Path -LiteralPath $project)) {
+            throw "Desktop IDE executable was not found: $packagedIde. This folder has no source project to build."
+        }
+        & dotnet build $project -c Debug -o $ideOut --nologo
+        if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+        }
+    }
 
-$ide = Join-Path $ideOut "MaldaLang.DesktopIDE.exe"
-if (-not (Test-Path -LiteralPath $ide)) {
-    throw "Desktop IDE executable was not found: $ide. Run without -SkipBuild."
+    $ide = Join-Path $ideOut "MaldaLang.DesktopIDE.exe"
+    if (-not (Test-Path -LiteralPath $ide)) {
+        throw "Desktop IDE executable was not found: $ide. Run without -SkipBuild, or pass -Ide."
+    }
 }
 
 $handshake = Join-Path $repoRoot "artifacts\showcase"
@@ -191,6 +213,17 @@ Remove-Item -LiteralPath $statusPath -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath ($statusPath + ".tmp") -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath $rawVideo -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath $progressPath -ErrorAction SilentlyContinue
+
+$slnMarker = Join-Path $repoRoot "MaldaLang.sln"
+$plantedSln = $false
+try {
+# The shipped Desktop IDE accepts --demo only when MaldaLang.sln sits above the playlist.
+# A release zip has no solution file. Plant an empty marker for this run, then remove it
+# so the folder stays a distribution install.
+if (-not (Test-Path -LiteralPath $slnMarker)) {
+    New-Item -ItemType File -Path $slnMarker | Out-Null
+    $plantedSln = $true
+}
 
 $ideProc = $null
 $ideInfo = New-Object System.Diagnostics.ProcessStartInfo
@@ -410,3 +443,9 @@ else {
 }
 
 Write-Output $output
+}
+finally {
+    if ($plantedSln) {
+        Remove-Item -LiteralPath $slnMarker -Force -ErrorAction SilentlyContinue
+    }
+}
