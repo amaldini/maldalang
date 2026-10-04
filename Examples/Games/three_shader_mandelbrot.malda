@@ -159,10 +159,12 @@ if (root == null) {
     var decades = 0.0;
     var speedMul = 1.0;
     var zoomPerSecond = 0.55;
-    // The preview slot is about five seconds. 6 decades/second reaches ~10^-30
-    // without wrapping, and the iterate ramp below stays inside the 2048 orbit.
+    // The showcase slot is 3.6s. A fast GPU stays under the 50ms frame cap and
+    // would otherwise spend the whole slot at 6 decades/second (~10^-20).
+    // 2 decades/second lands near 10^-7, and the cap keeps a quicker start there.
+    var autoplayMaxDecades = 7.0;
     if (autoplay) {
-        zoomPerSecond = 6.0;
+        zoomPerSecond = 2.0;
     }
     var startScale = 2.55;
 
@@ -206,6 +208,9 @@ if (root == null) {
 
         if (!three.isKeyDown(" ")) {
             decades = decades + (step * speedMul * zoomPerSecond);
+        }
+        if (autoplay && decades > autoplayMaxDecades) {
+            decades = autoplayMaxDecades;
         }
 
         var wrapped = decades - math.floor(decades / wrapDecades) * wrapDecades;
