@@ -6,6 +6,7 @@
 // way, then scaled so the road half-width is 3.2. Speeds and turn rate scale
 // with that road, so the coach's steering still points back to the racing line.
 // The ground shader reads the same polyline from a float texture.
+// Edge lines are red and white kerb blocks measured along that polyline.
 //
 // Q/E change circuit. C cycles the camera (chase, bumper, side, nose, orbit,
 // aerial). Each shot keeps moving. N network only. T coach only.
@@ -738,8 +739,10 @@ function trackPoint(index: int) -> vec2 {
 }
 
 @shader()
-function distanceToTrack(p: vec2, trackW: float) -> float {
+function distanceToTrack(p: vec2, trackW: float, along: out float) -> float {
     var minDist: float = 1000000.0;
+    var bestAlong: float = 0.0;
+    var traveled: float = 0.0;
     var i: int = 0;
     while (i < int(uTrackPts)) {
         var next: int = i + 1;
@@ -754,13 +757,17 @@ function distanceToTrack(p: vec2, trackW: float) -> float {
         if (baLen < 0.0001) {
             baLen = 0.0001;
         }
+        var segLen: float = sqrt(baLen);
         var h: float = clamp(dot(pa, ba) / baLen, 0.0, 1.0);
         var d: float = length(pa - ba * h);
         if (d < minDist) {
             minDist = d;
+            bestAlong = traveled + segLen * h;
         }
+        traveled = traveled + segLen;
         i = i + 1;
     }
+    along = bestAlong;
     return minDist - trackW;
 }
 
@@ -827,7 +834,8 @@ function closestHit(
         if (dot(normal, dir) > 0.0) {
             normal = -normal;
         }
-        var distToTrack: float = distanceToTrack(vec2(hit.x, hit.z), uTrackW);
+        var along: float = 0.0;
+        var distToTrack: float = distanceToTrack(vec2(hit.x, hit.z), uTrackW, along);
         if (distToTrack < 0.0) {
             var cell: float = max(uTrackW * 0.7, 0.4);
             var check: float = mod(floor(hit.x / cell) + floor(hit.z / cell), 2.0);
@@ -836,12 +844,14 @@ function closestHit(
             } else {
                 albedo = vec3(0.22, 0.22, 0.24);
             }
-            var fromCenter: float = abs(distToTrack + uTrackW);
-            if (fromCenter < uTrackW * 0.045) {
-                albedo = vec3(0.95, 0.82, 0.12);
-            }
             if (distToTrack > -uTrackW * 0.09) {
-                albedo = vec3(0.92, 0.92, 0.9);
+                var stripe: float = max(uTrackW * 0.55, 1.0);
+                var band: float = mod(floor(along / stripe), 2.0);
+                if (band < 0.5) {
+                    albedo = vec3(0.95, 0.95, 0.93);
+                } else {
+                    albedo = vec3(0.86, 0.05, 0.06);
+                }
             }
         } else {
             var cell: float = max(uTrackW * 1.6, 0.8);
