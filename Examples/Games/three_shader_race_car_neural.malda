@@ -7,6 +7,7 @@
 // with that road, so the coach's steering still points back to the racing line.
 // The ground shader reads the same polyline from a float texture.
 // Edge lines are red and white kerb blocks measured along that polyline.
+// A segment grid and a bounding sphere skip tests that cannot change the hit.
 //
 // Q/E change circuit. C cycles the camera (chase, bumper, side, nose, orbit,
 // aerial). Each shot keeps moving. N network only. T coach only.
@@ -733,42 +734,120 @@ function considerHit(t: float, tHit: float) -> bool {
 }
 
 @shader()
-function trackPoint(index: int) -> vec2 {
+function trackSample(index: int) -> vec4 {
     var u: float = (float(index) + 0.5) / uTrackTexW;
-    return texture2D(uTrack, vec2(u, 0.5)).xy;
+    return texture2D(uTrack, vec2(u, 0.5));
+}
+
+@shader()
+function trackPoint(index: int) -> vec2 {
+    return trackSample(index).xy;
+}
+
+@shader()
+function considerSegment(p: vec2, index: int, minDist: float, bestAlong: float) -> vec2 {
+    var next: int = index + 1;
+    if (next >= int(uTrackPts)) {
+        next = 0;
+    }
+    var aTex: vec4 = trackSample(index);
+    var bTex: vec4 = trackSample(next);
+    var a: vec2 = aTex.xy;
+    var b: vec2 = bTex.xy;
+    var pa: vec2 = p - a;
+    var ba: vec2 = b - a;
+    var baLen: float = dot(ba, ba);
+    if (baLen < 0.0001) {
+        baLen = 0.0001;
+    }
+    var segLen: float = sqrt(baLen);
+    var h: float = clamp(dot(pa, ba) / baLen, 0.0, 1.0);
+    var d: float = length(pa - ba * h);
+    if (d < minDist) {
+        return vec2(d, aTex.z + segLen * h);
+    }
+    return vec2(minDist, bestAlong);
+}
+
+@shader()
+function gridSegment(cellX: int, cellZ: int, slot: int) -> float {
+    var texelCol: int = int(floor(float(slot) / 4.0));
+    var channel: int = slot - texelCol * 4;
+    var texelX: int = cellX * 4 + texelCol;
+    var u: float = (float(texelX) + 0.5) / uGridTexW;
+    var v: float = (float(cellZ) + 0.5) / uGridTexH;
+    var texel: vec4 = texture2D(uGrid, vec2(u, v));
+    if (channel == 0) {
+        return texel.x;
+    }
+    if (channel == 1) {
+        return texel.y;
+    }
+    if (channel == 2) {
+        return texel.z;
+    }
+    return texel.w;
 }
 
 @shader()
 function distanceToTrack(p: vec2, trackW: float, along: out float) -> float {
     var minDist: float = 1000000.0;
     var bestAlong: float = 0.0;
-    var traveled: float = 0.0;
-    var i: int = 0;
-    while (i < int(uTrackPts)) {
-        var next: int = i + 1;
-        if (next >= int(uTrackPts)) {
-            next = 0;
+    var best: vec2 = vec2(minDist, bestAlong);
+    if (uGridOn < 0.5) {
+        var i: int = 0;
+        while (i < int(uTrackPts)) {
+            best = considerSegment(p, i, minDist, bestAlong);
+            minDist = best.x;
+            bestAlong = best.y;
+            i = i + 1;
         }
-        var a: vec2 = trackPoint(i);
-        var b: vec2 = trackPoint(next);
-        var pa: vec2 = p - a;
-        var ba: vec2 = b - a;
-        var baLen: float = dot(ba, ba);
-        if (baLen < 0.0001) {
-            baLen = 0.0001;
+    } else {
+        var cellX: int = int(floor((p.x - uGridMin.x) / uGridCell));
+        var cellZ: int = int(floor((p.y - uGridMin.y) / uGridCell));
+        var rad: int = int(uGridRadius);
+        var dz: int = -rad;
+        while (dz <= rad) {
+            var dx: int = -rad;
+            while (dx <= rad) {
+                var cx: int = cellX + dx;
+                var cz: int = cellZ + dz;
+                if (cx >= 0 && cz >= 0 && cx < int(uGridW) && cz < int(uGridH)) {
+                    var slot: int = 0;
+                    while (slot < 16) {
+                        var seg: float = gridSegment(cx, cz, slot);
+                        if (seg < 0.0) {
+                            slot = 16;
+                        } else {
+                            best = considerSegment(p, int(seg + 0.5), minDist, bestAlong);
+                            minDist = best.x;
+                            bestAlong = best.y;
+                            slot = slot + 1;
+                        }
+                    }
+                }
+                dx = dx + 1;
+            }
+            dz = dz + 1;
         }
-        var segLen: float = sqrt(baLen);
-        var h: float = clamp(dot(pa, ba) / baLen, 0.0, 1.0);
-        var d: float = length(pa - ba * h);
-        if (d < minDist) {
-            minDist = d;
-            bestAlong = traveled + segLen * h;
-        }
-        traveled = traveled + segLen;
-        i = i + 1;
     }
     along = bestAlong;
     return minDist - trackW;
+}
+
+@shader()
+function carMayHit(index: int, origin: vec3, dir: vec3, tMax: float) -> bool {
+    var center: vec3 = carPosition(index) + vec3(0.0, 0.32, 0.0);
+    var radius: float = 1.5;
+    var oc: vec3 = origin - center;
+    if (dot(oc, oc) <= radius * radius) {
+        return true;
+    }
+    var t: float = hitSphere(center, radius, origin, dir);
+    if (t < 0.0) {
+        return false;
+    }
+    return t < tMax;
 }
 
 @shader()
@@ -792,17 +871,19 @@ function closestHit(
 
     var i: int = 0;
     while (i < 8) {
-        var tCar: float = 0.0;
-        var carKind: int = -1;
-        if (hitCar(i, origin, dir, tCar, carKind)) {
-            if (considerHit(tCar, tHit)) {
-                tHit = tCar;
-                kind = 1;
-                index = i * 20 + carKind;
-                if (carKind >= 1 && carKind <= 4) {
-                    material = 0;
-                } else {
-                    material = 1;
+        if (carMayHit(i, origin, dir, tHit)) {
+            var tCar: float = 0.0;
+            var carKind: int = -1;
+            if (hitCar(i, origin, dir, tCar, carKind)) {
+                if (considerHit(tCar, tHit)) {
+                    tHit = tCar;
+                    kind = 1;
+                    index = i * 20 + carKind;
+                    if (carKind >= 1 && carKind <= 4) {
+                        material = 0;
+                    } else {
+                        material = 1;
+                    }
                 }
             }
         }
@@ -868,6 +949,24 @@ function closestHit(
 }
 
 @shader()
+function occludedByCar(origin: vec3, dir: vec3, tMax: float) -> bool {
+    var i: int = 0;
+    while (i < 8) {
+        if (carMayHit(i, origin, dir, tMax)) {
+            var tCar: float = 0.0;
+            var carKind: int = -1;
+            if (hitCar(i, origin, dir, tCar, carKind)) {
+                if (tCar > 0.0 && tCar < tMax) {
+                    return true;
+                }
+            }
+        }
+        i = i + 1;
+    }
+    return false;
+}
+
+@shader()
 function inShadow(hit: vec3, normal: vec3) -> bool {
     var origin: vec3 = hit + normal * 0.02;
     var toLight: vec3 = uLightPos - origin;
@@ -876,13 +975,7 @@ function inShadow(hit: vec3, normal: vec3) -> bool {
         return false;
     }
     var dir: vec3 = toLight / lightDist;
-    var tHit: float = 0.0;
-    var kind: int = 0;
-    var index: int = 0;
-    var material: int = 0;
-    var n: vec3 = vec3(0.0);
-    var albedo: vec3 = vec3(0.0);
-    return closestHit(origin, dir, lightDist - 0.05, tHit, kind, index, material, n, albedo);
+    return occludedByCar(origin, dir, lightDist - 0.05);
 }
 
 @shader()
@@ -957,6 +1050,15 @@ var fragmentShader = glsl.compile({
         "float uTrackPts",
         "float uTrackTexW",
         "sampler2D uTrack",
+        "sampler2D uGrid",
+        "vec2 uGridMin",
+        "float uGridCell",
+        "float uGridW",
+        "float uGridH",
+        "float uGridRadius",
+        "float uGridTexW",
+        "float uGridTexH",
+        "float uGridOn",
         "vec3 uCar0",
         "vec3 uCar1",
         "vec3 uCar2",
@@ -999,9 +1101,14 @@ var fragmentShader = glsl.compile({
         "hitCar",
         "carNormal",
         "considerHit",
+        "trackSample",
         "trackPoint",
+        "considerSegment",
+        "gridSegment",
         "distanceToTrack",
+        "carMayHit",
         "closestHit",
+        "occludedByCar",
         "inShadow",
         "localShade",
         "shadeSky",
@@ -1094,6 +1201,20 @@ if (root == null) {
     var cenX = 0.0;
     var cenZ = 0.0;
     var trackSpan = 40.0;
+    var trackMinX = 0.0;
+    var trackMaxX = 1.0;
+    var trackMinZ = 0.0;
+    var trackMaxZ = 1.0;
+    var gridMinX = 0.0;
+    var gridMinZ = 0.0;
+    var gridCell = 4.0;
+    var gridW = 1;
+    var gridH = 1;
+    var gridRadius = 1;
+    var gridOn = 0.0;
+    var gridCellsMax = 96;
+    var gridTexW = gridCellsMax * 4;
+    var gridTexH = gridCellsMax;
 
     function buildTrack(spec: map) {
         var keys = spec.pts;
@@ -1337,6 +1458,10 @@ if (root == null) {
             }
             c = c + 1;
         }
+        trackMinX = boxMinX;
+        trackMaxX = boxMaxX;
+        trackMinZ = boxMinZ;
+        trackMaxZ = boxMaxZ;
         if (nPts > 0) {
             cenX = cenX / nPts;
             cenZ = cenZ / nPts;
@@ -2223,6 +2348,15 @@ if (root == null) {
     }
     var trackTex = three.createDataTexture(trackTexW, 1, trackPixels, {"type": "float"});
 
+    var gridPixels = [];
+    var gridPix = 0;
+    var gridPixelCount = gridTexW * gridTexH * 4;
+    while (gridPix < gridPixelCount) {
+        gridPixels.append(-1.0);
+        gridPix = gridPix + 1;
+    }
+    var gridTex = three.createDataTexture(gridTexW, gridTexH, gridPixels, {"type": "float"});
+
     var material = three.createShaderMaterial({
         "vertexShader": vertexShader,
         "fragmentShader": fragmentShader,
@@ -2240,6 +2374,15 @@ if (root == null) {
             "uTrackPts": 0,
             "uTrackTexW": trackTexW,
             "uTrack": trackTex,
+            "uGrid": gridTex,
+            "uGridMin": [0, 0],
+            "uGridCell": 4,
+            "uGridW": 1,
+            "uGridH": 1,
+            "uGridRadius": 1,
+            "uGridTexW": gridTexW,
+            "uGridTexH": gridTexH,
+            "uGridOn": 0,
             "uCar0": [0, 0, -5],
             "uCar1": [-3, 0, -8],
             "uCar2": [3, 0, -8],
@@ -2262,19 +2405,192 @@ if (root == null) {
     var quad = three.createMesh(three.createPlaneGeometry(2, 2), material);
     three.add(scene, quad);
 
+    function clampGridCell(v: int, limit: int) -> int {
+        if (v < 0) {
+            return 0;
+        }
+        if (v >= limit) {
+            return limit - 1;
+        }
+        return v;
+    }
+
+    function gridSlotOffset(cx: int, cz: int, slot: int) -> int {
+        var texelCol = int(slot / 4);
+        var channel = slot - texelCol * 4;
+        var texelX = cx * 4 + texelCol;
+        var texelY = cz;
+        return (texelY * gridTexW + texelX) * 4 + channel;
+    }
+
+    function addGridSegment(cx: int, cz: int, seg: int) -> int {
+        var slot = 0;
+        while (slot < 16) {
+            var at = gridSlotOffset(cx, cz, slot);
+            var cur = int(gridPixels[at]);
+            if (cur < 0) {
+                gridPixels[at] = seg;
+                return 0;
+            }
+            if (cur == seg) {
+                return 0;
+            }
+            slot = slot + 1;
+        }
+        return 1;
+    }
+
+    function rasterTrackGrid() -> int {
+        var cleared = 0;
+        while (cleared < gridPixelCount) {
+            gridPixels[cleared] = -1.0;
+            cleared = cleared + 1;
+        }
+        var count = nPts;
+        if (count > trackTexW) {
+            count = trackTexW;
+        }
+        if (count < 2) {
+            return 1;
+        }
+        var overflow = 0;
+        var i = 0;
+        while (i < count && overflow == 0) {
+            var next = i + 1;
+            if (next >= count) {
+                next = 0;
+            }
+            var x0 = trackPx[i];
+            var z0 = trackPz[i];
+            var x1 = trackPx[next];
+            var z1 = trackPz[next];
+            var minX = x0;
+            var maxX = x1;
+            if (x1 < x0) {
+                minX = x1;
+                maxX = x0;
+            }
+            var minZ = z0;
+            var maxZ = z1;
+            if (z1 < z0) {
+                minZ = z1;
+                maxZ = z0;
+            }
+            minX = minX - 0.001;
+            maxX = maxX + 0.001;
+            minZ = minZ - 0.001;
+            maxZ = maxZ + 0.001;
+            var cx0 = clampGridCell(int(math.floor((minX - gridMinX) / gridCell)), gridW);
+            var cx1 = clampGridCell(int(math.floor((maxX - gridMinX) / gridCell)), gridW);
+            var cz0 = clampGridCell(int(math.floor((minZ - gridMinZ) / gridCell)), gridH);
+            var cz1 = clampGridCell(int(math.floor((maxZ - gridMinZ) / gridCell)), gridH);
+            var cz = cz0;
+            while (cz <= cz1 && overflow == 0) {
+                var cx = cx0;
+                while (cx <= cx1 && overflow == 0) {
+                    overflow = addGridSegment(cx, cz, i);
+                    cx = cx + 1;
+                }
+                cz = cz + 1;
+            }
+            i = i + 1;
+        }
+        return overflow;
+    }
+
+    function prepareTrackGrid() {
+        var pad = trackW * 2.0;
+        var extX = (trackMaxX - trackMinX) + pad * 2.0;
+        var extZ = (trackMaxZ - trackMinZ) + pad * 2.0;
+        if (extX < 1.0) {
+            extX = 1.0;
+        }
+        if (extZ < 1.0) {
+            extZ = 1.0;
+        }
+        var fit = extX / gridCellsMax;
+        if (extZ / gridCellsMax > fit) {
+            fit = extZ / gridCellsMax;
+        }
+        var cell = trackW * 1.25;
+        if (fit > cell) {
+            cell = fit * 1.0001;
+        }
+        var attempt = 0;
+        var overflow = 1;
+        while (attempt < 4 && overflow == 1) {
+            gridCell = cell;
+            gridMinX = trackMinX - pad;
+            gridMinZ = trackMinZ - pad;
+            gridW = int(extX / cell + 0.9999);
+            gridH = int(extZ / cell + 0.9999);
+            if (gridW < 1) {
+                gridW = 1;
+            }
+            if (gridH < 1) {
+                gridH = 1;
+            }
+            gridRadius = int(trackW * 1.15 / cell);
+            if (gridRadius * cell < trackW * 1.15) {
+                gridRadius = gridRadius + 1;
+            }
+            if (gridW > gridCellsMax || gridH > gridCellsMax || gridRadius > 4) {
+                overflow = 1;
+                attempt = 4;
+            } else {
+                overflow = rasterTrackGrid();
+                if (overflow == 1) {
+                    var nextCell = cell * 0.7;
+                    if (nextCell < fit) {
+                        attempt = 4;
+                    } else {
+                        cell = nextCell;
+                    }
+                }
+            }
+            attempt = attempt + 1;
+        }
+        if (overflow == 1) {
+            gridOn = 0.0;
+        } else {
+            gridOn = 1.0;
+        }
+        three.updateDataTexture(gridTex, gridPixels);
+        three.setUniform(material, "uGridMin", [gridMinX, gridMinZ]);
+        three.setUniform(material, "uGridCell", gridCell);
+        three.setUniform(material, "uGridW", gridW);
+        three.setUniform(material, "uGridH", gridH);
+        three.setUniform(material, "uGridRadius", gridRadius);
+        three.setUniform(material, "uGridTexW", gridTexW);
+        three.setUniform(material, "uGridTexH", gridTexH);
+        three.setUniform(material, "uGridOn", gridOn);
+    }
+
     function uploadTrackTexture() {
         var count = nPts;
         if (count > trackTexW) {
             count = trackTexW;
         }
+        var acc = 0.0;
         var i = 0;
         while (i < trackTexW) {
             var o = i * 4;
             if (i < count) {
                 trackPixels[o] = trackPx[i];
                 trackPixels[o + 1] = trackPz[i];
-                trackPixels[o + 2] = 0.0;
+                trackPixels[o + 2] = acc;
                 trackPixels[o + 3] = 1.0;
+                var next = i + 1;
+                if (next >= count) {
+                    next = 0;
+                }
+                var dx = trackPx[next] - trackPx[i];
+                var dz = trackPz[next] - trackPz[i];
+                var baLen = dx * dx + dz * dz;
+                if (baLen < 0.0001) {
+                    baLen = 0.0001;
+                }
+                acc = acc + math.sqrt(baLen);
             } else {
                 trackPixels[o] = 0.0;
                 trackPixels[o + 1] = 0.0;
@@ -2286,6 +2602,7 @@ if (root == null) {
         three.updateDataTexture(trackTex, trackPixels);
         three.setUniform(material, "uTrackPts", count);
         three.setUniform(material, "uTrackW", trackW);
+        prepareTrackGrid();
     }
 
     loadCircuit(0);
