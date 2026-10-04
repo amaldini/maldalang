@@ -11,6 +11,8 @@
   milliseconds from that splash. The cue stays up until the next startMs.
   endMs is when the reel ends. Edit those values to put each section on a beat.
   A paste-ready generator prompt is in scripts/showcase/song-prompt.md.
+  If the generator only plays in the browser, that file also has the
+  Stereo Mix ffmpeg commands that save an mp3 for -Audio.
 
   Recording starts while the splash is already up, before the clock. The script
   trims that lead so the mp4 starts at reel time 0. No audio is bundled. Pass

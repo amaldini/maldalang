@@ -6,9 +6,9 @@ The reel order is `scripts/showcase/playlist.json`. Record with
 No music is bundled in the repository. Use a track you have rights to use.
 The video is trimmed to whichever of the picture and the track is shorter.
 
-Tests of generated tracks settled on a natural female voice, a dreaming
-atmosphere, and soft melodic music. Vocoder and robotic delivery were
-rejected.
+Tests of generated tracks settled on a natural female voice, a calm
+atmosphere, and soft melodic music. Whisper, breathy close-mic, and
+sensual delivery were rejected, as were vocoder and robotic delivery.
 
 Each cue has `startMs`, milliseconds from the splash. That cue stays on
 screen until the next cue's `startMs`. `endMs` is the end of the reel.
@@ -33,30 +33,30 @@ directions and should not be sung.
 ## Style
 
 ```
-80 BPM, soft dream-pop, airy and melodic. Natural female voice, breathy, close, gentle vibrato, long legato phrases, soft doubles in the distance. Dreaming atmosphere: wide pads, soft piano, felt electric piano, quiet synth pulse, light reverb and delay. Intimate, floating, hopeful, low volume, even dynamics. No vocoder, no robotic voice, no spoken checklist, no rap, no belting, no drums beyond a soft pulse, no drop, no distortion. About 1 minute 45 seconds. End by letting the last note fade into a resolved pad.
+80 BPM, soft dream-pop, airy and melodic. Natural female voice, clear, medium distance, even tone, light vibrato, long legato phrases, a quiet harmony in the distance. Calm atmosphere: wide pads, soft piano, felt electric piano, quiet synth pulse, light reverb and delay. Neutral, steady, hopeful, moderate volume, even dynamics. No whisper, no breathy close-mic, no sensual or intimate delivery, no ASMR, no vocoder, no robotic voice, no spoken checklist, no rap, no belting, no drums beyond a soft pulse, no drop, no distortion. About 1 minute 45 seconds. End by letting the last note fade into a resolved pad.
 ```
 
 ## Lyrics
 
 ```
-[Intro – 5 seconds, pads only, then one soft line]
-[Female voice, almost a whisper]
-Malda, come closer.
+[Intro – 5 seconds, pads only, then one clear line]
+[Female voice, clear, medium distance, even tone]
+Malda, let's begin.
 
-[Catalog – 19 seconds, one continuous melody, four legato lines, soft and unhurried, do not accent every word]
-[Female voice]
+[Catalog – 19 seconds, one continuous melody, four legato lines, steady and unhurried, do not accent every word]
+[Female voice, clear and even]
 Hello, confirm. The schema settles. Objects come alive.
 The tower moves. The network answers. A page is built.
 The set opens. Light returns. The ground is solid.
 Bricks will fall. The pole stays up. This lap is ours. The king is watched.
 
-[Manual – 13 seconds, a little wider, still gentle, the middle line is the refrain]
-[Female voice]
+[Manual – 13 seconds, a little wider, still even, the middle line is the refrain]
+[Female voice, clear and even]
 Open the book. The types lock in. Call the function.
 Many agents, one objective.
 Play it in the browser.
 
-[Dream – 70 seconds, same tempo, hold each line, leave a soft instrumental breath after every line]
+[Dream – 70 seconds, same tempo, clear even voice, hold each line, leave a short instrumental pause after every line]
 [Female voice]
 Printed clean.
 The schema holds.
@@ -72,7 +72,7 @@ Apex. The corner. Through.
 Last move. Objective done.
 
 [Outro – pads, one fading line]
-[Female voice, distant]
+[Female voice, clear, fading]
 Malda.
 ```
 
@@ -88,6 +88,34 @@ Manual: the manual home page, data types, functions, neural nets
 Dream, in scene order: Hello, Schemas, Towers of Hanoi, UI controls,
 Mandelbrot, GPU raytracer, GPU billiards, Platform, Maldanoid,
 CartPole, Grand Prix, Chess.
+
+## Saving a track the browser only plays
+
+Prefer the generator’s own download. When the page only plays the song,
+record the sound card with the same ffmpeg build the reel recorder uses
+(`winget install Gyan.FFmpeg`). That build has no WASAPI loopback, so
+capture goes through Stereo Mix.
+
+Win+R, `mmsys.cpl`, Recording tab. Right-click an empty spot, show
+disabled devices, and enable Stereo Mix. List capture devices:
+
+```bat
+ffmpeg -list_devices true -f dshow -i dummy
+```
+
+`Error opening input file dummy` is normal; the device names are printed
+above it. A microphone entry records the room, not the browser. On this
+machine the mix device is `Stereo Mix (Realtek(R) Audio)`. Leave
+`C:\Windows\System32` so the file is writable, start playback, then:
+
+```bat
+cd /d "%USERPROFILE%\Documents"
+ffmpeg -f dshow -i audio="Stereo Mix (Realtek(R) Audio)" -t 120 track.mp3
+```
+
+`-t 120` records two minutes. Press `q` to stop sooner. The browser must
+be playing through that Realtek output. Bluetooth or another device
+leaves the mix silent.
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\record-showcase.ps1 -Audio C:\path\to\track.mp3

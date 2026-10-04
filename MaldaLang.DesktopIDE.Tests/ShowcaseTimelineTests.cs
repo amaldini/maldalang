@@ -129,7 +129,7 @@ public class ShowcaseTimelineTests
         {
             var session = ShowcaseSession.Load(Path.Combine(root, "scripts", "showcase", "playlist.json"), handshake);
             var lyrics = session.Lyrics;
-            Assert.Equal("Malda, come closer.", lyrics.Intro);
+            Assert.Equal("Malda, let's begin.", lyrics.Intro);
             Assert.Equal(session.Playlist.Browse.Count, lyrics.CatalogSentences.Count);
             Assert.Equal("Hello, confirm.", lyrics.BrowseLyric(0, session.Playlist.Browse.Count));
             Assert.Equal("The king is watched.", lyrics.BrowseLyric(session.Playlist.Browse.Count - 1, session.Playlist.Browse.Count));
