@@ -8,6 +8,10 @@
 // The ground shader reads the same polyline from a float texture.
 // Edge lines are red and white kerb blocks measured along that polyline.
 // A segment grid and a bounding sphere skip tests that cannot change the hit.
+// Signs, trees, and buildings sit off the asphalt in a second, wider grid.
+// A ray reads at most 18 of those cells, far enough to see down a straight,
+// then a sphere skips the real shape.
+// Shadow rays still test cars only, so the roadside set adds no lighting pass.
 //
 // Q/E change circuit. C cycles the camera (chase, bumper, side, nose, orbit,
 // aerial). Each shot keeps moving. N network only. T coach only.
@@ -851,6 +855,393 @@ function carMayHit(index: int, origin: vec3, dir: vec3, tMax: float) -> bool {
 }
 
 @shader()
+function signYaw(x: float, z: float) -> float {
+    var dx: float = uCamPos.x - x;
+    var dz: float = uCamPos.z - z;
+    if (dx * dx + dz * dz < 0.0001) {
+        return 0.0;
+    }
+    return atan(dz, dx);
+}
+
+@shader()
+function signCenter(x: float, z: float) -> vec3 {
+    return vec3(x, SIGN_Y, z);
+}
+
+@shader()
+function signHalf() -> vec3 {
+    return vec3(0.08, SIGN_HALF_H, SIGN_HALF_W);
+}
+
+@shader()
+function faceOut(n: vec3, dir: vec3) -> vec3 {
+    if (dot(n, dir) > 0.0) {
+        return -n;
+    }
+    return n;
+}
+
+@shader()
+function propSample(prop: int, texel: int) -> vec4 {
+    var x: int = prop * 3 + texel;
+    var u: float = (float(x) + 0.5) / uPropTexW;
+    return texture2D(uProps, vec2(u, 0.5));
+}
+
+@shader()
+function propSlot(cellX: int, cellZ: int, slot: int) -> float {
+    var u: float = (float(cellX) + 0.5) / uPropGridW;
+    var v: float = (float(cellZ) + 0.5) / uPropGridH;
+    var texel: vec4 = texture2D(uPropGrid, vec2(u, v));
+    if (slot == 0) {
+        return texel.x;
+    }
+    if (slot == 1) {
+        return texel.y;
+    }
+    if (slot == 2) {
+        return texel.z;
+    }
+    return texel.w;
+}
+
+@shader()
+function propChar(prop: int, n: int) -> int {
+    var texel: int = 1;
+    var channel: int = n;
+    if (n >= 4) {
+        texel = 2;
+        channel = n - 4;
+    }
+    var glyphTex: vec4 = propSample(prop, texel);
+    var code: float = glyphTex.x;
+    if (channel == 1) {
+        code = glyphTex.y;
+    }
+    if (channel == 2) {
+        code = glyphTex.z;
+    }
+    if (channel == 3) {
+        code = glyphTex.w;
+    }
+    return int(code + 0.5);
+}
+
+@shader()
+function propBounds(prop: int) -> vec4 {
+    var a: vec4 = propSample(prop, 0);
+    var kind: float = a.w;
+    if (kind > 2.5) {
+        var b: vec4 = propSample(prop, 1);
+        var h: float = b.x;
+        var rad: float = b.y;
+        if (b.z > rad) {
+            rad = b.z;
+        }
+        if (h * 0.5 > rad) {
+            rad = h * 0.5;
+        }
+        return vec4(a.x, h * 0.5, a.y, rad * 1.45);
+    }
+    if (kind > 1.5) {
+        var scale: float = propSample(prop, 1).x;
+        if (scale < 0.4) {
+            scale = 1.0;
+        }
+        var trunkH: float = 1.45 * scale;
+        var canopyR: float = 1.05 * scale;
+        var canopyY: float = trunkH + canopyR * 0.55;
+        return vec4(a.x, canopyY * 0.62, a.y, canopyR + trunkH * 0.85);
+    }
+    return vec4(a.x, 1.5, a.y, 2.35);
+}
+
+@shader()
+function sceneryMayHit(center: vec3, radius: float, origin: vec3, dir: vec3, tMax: float) -> bool {
+    var oc: vec3 = origin - center;
+    if (dot(oc, oc) <= radius * radius) {
+        return true;
+    }
+    var t: float = hitSphere(center, radius, origin, dir);
+    if (t < 0.0) {
+        return false;
+    }
+    return t < tMax;
+}
+
+@shader()
+function hitProp(prop: int, origin: vec3, dir: vec3) -> vec2 {
+    var a: vec4 = propSample(prop, 0);
+    var kind: float = a.w;
+    if (kind > 2.5) {
+        var b: vec4 = propSample(prop, 1);
+        var center: vec3 = vec3(a.x, b.x * 0.5, a.y);
+        var halfSize: vec3 = vec3(b.y, b.x * 0.5, b.z);
+        return vec2(hitBoxRotated(center, halfSize, a.z, origin, dir), 4.0);
+    }
+    if (kind > 1.5) {
+        var scale: float = propSample(prop, 1).x;
+        if (scale < 0.4) {
+            scale = 1.0;
+        }
+        var trunkH: float = 1.45 * scale;
+        var canopyR: float = 1.05 * scale;
+        var canopy: vec3 = vec3(a.x, trunkH + canopyR * 0.55, a.y);
+        var tCan: float = hitSphere(canopy, canopyR, origin, dir);
+        var tTrunk: float = hitCylinder(vec3(a.x, 0.0, a.y), 0.18 * scale, 0.0, trunkH, origin, dir);
+        if (tCan > 0.0 && (tTrunk < 0.0 || tCan < tTrunk)) {
+            return vec2(tCan, 3.0);
+        }
+        return vec2(tTrunk, 2.0);
+    }
+    if (kind > 0.5) {
+        var yaw: float = signYaw(a.x, a.y);
+        var center: vec3 = signCenter(a.x, a.y);
+        var tBoard: float = hitBoxRotated(center, signHalf(), yaw, origin, dir);
+        var tPost: float = hitCylinder(vec3(a.x, 0.0, a.y), 0.11, 0.0, SIGN_Y - SIGN_HALF_H + 0.04, origin, dir);
+        if (tBoard > 0.0 && (tPost < 0.0 || tBoard < tPost)) {
+            return vec2(tBoard, 0.0);
+        }
+        return vec2(tPost, 1.0);
+    }
+    return vec2(-1.0, 0.0);
+}
+
+@shader()
+function sceneryHit(origin: vec3, dir: vec3, tMax: float) -> vec3 {
+    if (uPropOn < 0.5) {
+        return vec3(-1.0, 0.0, 0.0);
+    }
+    var t0: float = 0.0;
+    if (origin.y > 9.0 && dir.y < -0.0001) {
+        t0 = (9.0 - origin.y) / dir.y;
+    }
+    if (t0 < 0.0) {
+        t0 = 0.0;
+    }
+    if (t0 >= tMax) {
+        return vec3(-1.0, 0.0, 0.0);
+    }
+    var yFar: float = origin.y + dir.y * (t0 + uPropCell * 8.1);
+    if (origin.y + dir.y * t0 > 9.0 && yFar > 9.0) {
+        return vec3(-1.0, 0.0, 0.0);
+    }
+    var bestT: float = tMax;
+    var packed: float = 0.0;
+    var found: float = 0.0;
+    var t: float = t0;
+    var n: int = 0;
+    var prevX: int = -9999;
+    var prevZ: int = -9999;
+    var tStep: float = uPropCell * 0.45;
+    while (n < 18 && t < bestT) {
+        var p: vec3 = origin + dir * t;
+        var cx: int = int(floor((p.x - uPropMin.x) / uPropCell));
+        var cz: int = int(floor((p.z - uPropMin.y) / uPropCell));
+        if (cx != prevX || cz != prevZ) {
+            if (cx >= 0 && cz >= 0 && cx < int(uPropCellsW) && cz < int(uPropCellsH)) {
+                var slot: int = 0;
+                while (slot < 4) {
+                    var idf: float = propSlot(cx, cz, slot);
+                    if (idf < 0.0) {
+                        slot = 4;
+                    } else {
+                        var prop: int = int(idf + 0.5);
+                        if (prop >= 0 && prop < int(uPropCount)) {
+                            var bounds: vec4 = propBounds(prop);
+                            if (sceneryMayHit(vec3(bounds.x, bounds.y, bounds.z), bounds.w, origin, dir, bestT)) {
+                                var hp: vec2 = hitProp(prop, origin, dir);
+                                if (hp.x > 0.0 && hp.x < bestT) {
+                                    bestT = hp.x;
+                                    packed = float(prop * 10) + hp.y;
+                                    found = 1.0;
+                                }
+                            }
+                        }
+                        slot = slot + 1;
+                    }
+                }
+            }
+            prevX = cx;
+            prevZ = cz;
+        }
+        t = t + tStep;
+        n = n + 1;
+    }
+    if (found < 0.5) {
+        return vec3(-1.0, 0.0, 0.0);
+    }
+    return vec3(bestT, packed, 1.0);
+}
+
+@shader()
+function sceneryNormal(prop: int, part: int, hit: vec3, dir: vec3) -> vec3 {
+    var a: vec4 = propSample(prop, 0);
+    if (part == 0) {
+        var yaw: float = signYaw(a.x, a.y);
+        return faceOut(boxNormalRotated(signCenter(a.x, a.y), signHalf(), yaw, hit), dir);
+    }
+    if (part == 1) {
+        return faceOut(cylinderNormal(vec3(a.x, 0.0, a.y), 0.11, 0.0, SIGN_Y - SIGN_HALF_H + 0.04, hit), dir);
+    }
+    if (part == 4) {
+        var b: vec4 = propSample(prop, 1);
+        var center: vec3 = vec3(a.x, b.x * 0.5, a.y);
+        var halfSize: vec3 = vec3(b.y, b.x * 0.5, b.z);
+        return faceOut(boxNormalRotated(center, halfSize, a.z, hit), dir);
+    }
+    var scale: float = propSample(prop, 1).x;
+    if (scale < 0.4) {
+        scale = 1.0;
+    }
+    var trunkH: float = 1.45 * scale;
+    var canopyR: float = 1.05 * scale;
+    if (part == 2) {
+        return faceOut(cylinderNormal(vec3(a.x, 0.0, a.y), 0.18 * scale, 0.0, trunkH, hit), dir);
+    }
+    var canopy: vec3 = vec3(a.x, trunkH + canopyR * 0.55, a.y);
+    return faceOut(normalize(hit - canopy), dir);
+}
+
+@shader()
+function shadeSign(prop: int, hit: vec3, dir: vec3) -> vec3 {
+    var a: vec4 = propSample(prop, 0);
+    var yaw: float = signYaw(a.x, a.y);
+    var ca: float = cos(yaw);
+    var sa: float = sin(yaw);
+    var center: vec3 = signCenter(a.x, a.y);
+    var o: vec3 = hit - center;
+    var lx: float = ca * o.x + sa * o.z;
+    var lz: float = -sa * o.x + ca * o.z;
+    var halfBox: vec3 = signHalf();
+    var pLocal: vec3 = vec3(lx, o.y, lz);
+    var nLocal: vec3 = boxNormal(-halfBox, halfBox, pLocal);
+    if (nLocal.x < 0.0) {
+        return vec3(0.38, 0.07, 0.08);
+    }
+    if (abs(nLocal.x) < 0.5) {
+        return vec3(0.78, 0.08, 0.09);
+    }
+    var u: float = -lz;
+    var v: float = o.y;
+    if (abs(u) > SIGN_HALF_W * 0.9 || abs(v) > SIGN_HALF_H * 0.78) {
+        return vec3(0.78, 0.08, 0.09);
+    }
+    var edgeU: float = SIGN_HALF_W * 0.9;
+    var edgeV: float = SIGN_HALF_H * 0.78;
+    var un: float = (u / edgeU) * 0.5 + 0.5;
+    var vn: float = (v / edgeV) * 0.5 + 0.5;
+    var span: float = (un - 0.06) / 0.88;
+    var vspan: float = (vn - 0.1) / 0.8;
+    var board: vec3 = vec3(0.94, 0.93, 0.88);
+    if (span < 0.0 || span >= 1.0 || vspan < 0.0 || vspan >= 1.0) {
+        return board;
+    }
+    var ci: int = int(floor(span * 6.0));
+    var fx: float = span * 6.0 - float(ci);
+    var col: int = int(floor(fx * 5.0));
+    var rowTop: int = int(floor((1.0 - vspan) * 7.0));
+    if (col < 0) {
+        col = 0;
+    }
+    if (col > 4) {
+        col = 4;
+    }
+    if (rowTop < 0) {
+        rowTop = 0;
+    }
+    if (rowTop > 6) {
+        rowTop = 6;
+    }
+    var code: int = propChar(prop, ci);
+    if (code < 32 || code > 90) {
+        return board;
+    }
+    var glyphX: int = (code - 32) * 5 + col;
+    var glyphY: int = 6 - rowTop;
+    var fu: float = (float(glyphX) + 0.5) / uFontTexW;
+    var fv: float = (float(glyphY) + 0.5) / uFontTexH;
+    if (texture2D(uFont, vec2(fu, fv)).r > 0.5) {
+        return vec3(0.05, 0.05, 0.06);
+    }
+    return board;
+}
+
+@shader()
+function shadeTree(prop: int, part: int, hit: vec3) -> vec3 {
+    if (part == 2) {
+        return vec3(0.32, 0.2, 0.1);
+    }
+    var a: vec4 = propSample(prop, 0);
+    var scale: float = propSample(prop, 1).x;
+    if (scale < 0.4) {
+        scale = 1.0;
+    }
+    var canopyR: float = 1.05 * scale;
+    var dx: float = hit.x - a.x;
+    var dz: float = hit.z - a.y;
+    var ring: float = mod(floor((dx * dx + dz * dz) / (canopyR * canopyR) * 4.0), 2.0);
+    if (ring < 0.5) {
+        return vec3(0.1, 0.38, 0.14);
+    }
+    return vec3(0.16, 0.48, 0.18);
+}
+
+@shader()
+function shadeBuilding(prop: int, hit: vec3) -> vec3 {
+    var a: vec4 = propSample(prop, 0);
+    var b: vec4 = propSample(prop, 1);
+    var yaw: float = a.z;
+    var ca: float = cos(yaw);
+    var sa: float = sin(yaw);
+    var h: float = b.x;
+    var center: vec3 = vec3(a.x, h * 0.5, a.y);
+    var halfSize: vec3 = vec3(b.y, h * 0.5, b.z);
+    var o: vec3 = hit - center;
+    var lx: float = ca * o.x + sa * o.z;
+    var ly: float = o.y;
+    var lz: float = -sa * o.x + ca * o.z;
+    var nLocal: vec3 = boxNormal(-halfSize, halfSize, vec3(lx, ly, lz));
+    if (nLocal.y > 0.5) {
+        return vec3(0.3, 0.32, 0.34);
+    }
+    var wall: vec3 = vec3(0.62, 0.6, 0.55);
+    if (b.w > 1.5) {
+        wall = vec3(0.52, 0.56, 0.6);
+    } else if (b.w > 0.5) {
+        wall = vec3(0.55, 0.28, 0.22);
+    }
+    if (abs(nLocal.y) > 0.5) {
+        return wall * 0.72;
+    }
+    var fu: float = lx;
+    if (abs(nLocal.z) > abs(nLocal.x)) {
+        fu = lz;
+    }
+    var cellX: float = mod(fu + 20.0, 1.2);
+    var cellY: float = mod(ly + h * 0.5, 1.45);
+    if (cellX > 0.22 && cellX < 0.98 && cellY > 0.32 && cellY < 1.18 && ly < h * 0.38) {
+        return vec3(0.16, 0.26, 0.36);
+    }
+    return wall;
+}
+
+@shader()
+function sceneryAlbedo(prop: int, part: int, hit: vec3, dir: vec3) -> vec3 {
+    if (part == 0) {
+        return shadeSign(prop, hit, dir);
+    }
+    if (part == 1) {
+        return vec3(0.22, 0.22, 0.24);
+    }
+    if (part == 4) {
+        return shadeBuilding(prop, hit);
+    }
+    return shadeTree(prop, part, hit);
+}
+
+@shader()
 function closestHit(
     origin: vec3,
     dir: vec3,
@@ -900,6 +1291,14 @@ function closestHit(
         }
     }
 
+    var sc: vec3 = sceneryHit(origin, dir, tHit);
+    if (sc.z > 0.5) {
+        tHit = sc.x;
+        kind = 5;
+        index = int(sc.y + 0.5);
+        material = 0;
+    }
+
     if (kind == 0) {
         return false;
     }
@@ -910,6 +1309,11 @@ function closestHit(
         var carPart: int = index - carIdx * 20;
         normal = carNormal(carIdx, carPart, hit);
         albedo = carPartAlbedo(carIdx, carPart);
+    } else if (kind == 5) {
+        var propPart: int = index % 10;
+        var propIndex: int = index / 10;
+        normal = sceneryNormal(propIndex, propPart, hit, dir);
+        albedo = sceneryAlbedo(propIndex, propPart, hit, dir);
     } else {
         normal = vec3(0.0, 1.0, 0.0);
         if (dot(normal, dir) > 0.0) {
@@ -1059,6 +1463,20 @@ var fragmentShader = glsl.compile({
         "float uGridTexW",
         "float uGridTexH",
         "float uGridOn",
+        "sampler2D uProps",
+        "sampler2D uPropGrid",
+        "sampler2D uFont",
+        "float uPropTexW",
+        "float uPropCount",
+        "float uPropOn",
+        "float uFontTexW",
+        "float uFontTexH",
+        "float uPropGridW",
+        "float uPropGridH",
+        "vec2 uPropMin",
+        "float uPropCell",
+        "float uPropCellsW",
+        "float uPropCellsH",
         "vec3 uCar0",
         "vec3 uCar1",
         "vec3 uCar2",
@@ -1076,7 +1494,12 @@ var fragmentShader = glsl.compile({
         "float uAngle6",
         "float uAngle7"
     ],
-    consts: ["float EPSILON = 0.0015"],
+    consts: [
+        "float EPSILON = 0.0015",
+        "float SIGN_HALF_W = 2.05",
+        "float SIGN_HALF_H = 0.62",
+        "float SIGN_Y = 1.85"
+    ],
     functions: [
         "hitSphere",
         "hitBox",
@@ -1107,6 +1530,22 @@ var fragmentShader = glsl.compile({
         "gridSegment",
         "distanceToTrack",
         "carMayHit",
+        "signYaw",
+        "signCenter",
+        "signHalf",
+        "faceOut",
+        "propSample",
+        "propSlot",
+        "propChar",
+        "propBounds",
+        "sceneryMayHit",
+        "hitProp",
+        "sceneryHit",
+        "sceneryNormal",
+        "shadeSign",
+        "shadeTree",
+        "shadeBuilding",
+        "sceneryAlbedo",
         "closestHit",
         "occludedByCar",
         "inShadow",
@@ -1130,7 +1569,7 @@ if (root == null) {
     dom.append(root, heading);
 
     var hint = dom.create("p");
-    dom.setText(hint, "GPU ray-traced 3D racing with neural network learning. Keys are listed on the timing panel.");
+    dom.setText(hint, "GPU ray-traced 3D racing with neural network learning. Signs, trees, and buildings line the road. Keys are listed on the timing panel.");
     dom.append(root, hint);
 
     var hudStyle = dom.create("style");
@@ -2357,6 +2796,125 @@ if (root == null) {
     }
     var gridTex = three.createDataTexture(gridTexW, gridTexH, gridPixels, {"type": "float"});
 
+    var propMax = 120;
+    var propTexW = propMax * 3;
+    var propGridMax = 96;
+    var propCell = 18.0;
+    var propMinX = 0.0;
+    var propMinZ = 0.0;
+    var propCellsW = 1;
+    var propCellsH = 1;
+    var propCount = 0;
+    var fontTexW = 320;
+    var fontTexH = 7;
+    var propPixels = [];
+    var propFill = 0;
+    while (propFill < propTexW * 4) {
+        propPixels.append(0.0);
+        propFill = propFill + 1;
+    }
+    var propGridPixels = [];
+    var propGridFill = 0;
+    var propGridFloats = propGridMax * propGridMax * 4;
+    while (propGridFill < propGridFloats) {
+        propGridPixels.append(-1.0);
+        propGridFill = propGridFill + 1;
+    }
+
+    function glyphBit(pattern: int, col: int) -> float {
+        var shift = 4 - col;
+        var pow = 1;
+        var s = 0;
+        while (s < shift) {
+            pow = pow * 2;
+            s = s + 1;
+        }
+        if (int(pattern / pow) % 2 == 1) {
+            return 1.0;
+        }
+        return 0.0;
+    }
+
+    function setGlyph(rows: array, code: int, r0: int, r1: int, r2: int, r3: int, r4: int, r5: int, r6: int) {
+        var base = (code - 32) * 7;
+        rows[base] = r0;
+        rows[base + 1] = r1;
+        rows[base + 2] = r2;
+        rows[base + 3] = r3;
+        rows[base + 4] = r4;
+        rows[base + 5] = r5;
+        rows[base + 6] = r6;
+    }
+
+    function buildFontPixels() -> array {
+        var rows = [];
+        var n = 0;
+        while (n < 64 * 7) {
+            rows.append(0);
+            n = n + 1;
+        }
+        setGlyph(rows, 45, 0, 0, 0, 31, 0, 0, 0);
+        setGlyph(rows, 48, 14, 17, 19, 21, 25, 17, 14);
+        setGlyph(rows, 49, 4, 12, 4, 4, 4, 4, 14);
+        setGlyph(rows, 50, 14, 17, 1, 2, 4, 8, 31);
+        setGlyph(rows, 51, 30, 1, 1, 14, 1, 1, 30);
+        setGlyph(rows, 52, 2, 6, 10, 18, 31, 2, 2);
+        setGlyph(rows, 53, 31, 16, 30, 1, 1, 17, 14);
+        setGlyph(rows, 54, 14, 16, 16, 30, 17, 17, 14);
+        setGlyph(rows, 55, 31, 1, 2, 4, 8, 8, 8);
+        setGlyph(rows, 56, 14, 17, 17, 14, 17, 17, 14);
+        setGlyph(rows, 57, 14, 17, 17, 15, 1, 1, 14);
+        setGlyph(rows, 65, 14, 17, 17, 31, 17, 17, 17);
+        setGlyph(rows, 66, 30, 17, 17, 30, 17, 17, 30);
+        setGlyph(rows, 67, 14, 17, 16, 16, 16, 17, 14);
+        setGlyph(rows, 68, 30, 17, 17, 17, 17, 17, 30);
+        setGlyph(rows, 69, 31, 16, 16, 30, 16, 16, 31);
+        setGlyph(rows, 70, 31, 16, 16, 30, 16, 16, 16);
+        setGlyph(rows, 71, 14, 17, 16, 23, 17, 17, 14);
+        setGlyph(rows, 72, 17, 17, 17, 31, 17, 17, 17);
+        setGlyph(rows, 73, 14, 4, 4, 4, 4, 4, 14);
+        setGlyph(rows, 74, 7, 2, 2, 2, 2, 18, 12);
+        setGlyph(rows, 75, 17, 18, 20, 24, 20, 18, 17);
+        setGlyph(rows, 76, 16, 16, 16, 16, 16, 16, 31);
+        setGlyph(rows, 77, 17, 27, 21, 21, 17, 17, 17);
+        setGlyph(rows, 78, 17, 25, 21, 19, 17, 17, 17);
+        setGlyph(rows, 79, 14, 17, 17, 17, 17, 17, 14);
+        setGlyph(rows, 80, 30, 17, 17, 30, 16, 16, 16);
+        setGlyph(rows, 81, 14, 17, 17, 17, 21, 18, 13);
+        setGlyph(rows, 82, 30, 17, 17, 30, 20, 18, 17);
+        setGlyph(rows, 83, 15, 16, 16, 14, 1, 1, 30);
+        setGlyph(rows, 84, 31, 4, 4, 4, 4, 4, 4);
+        setGlyph(rows, 85, 17, 17, 17, 17, 17, 17, 14);
+        setGlyph(rows, 86, 17, 17, 17, 17, 17, 10, 4);
+        setGlyph(rows, 87, 17, 17, 17, 21, 21, 21, 10);
+        setGlyph(rows, 88, 17, 17, 10, 4, 10, 17, 17);
+        setGlyph(rows, 89, 17, 17, 10, 4, 4, 4, 4);
+        setGlyph(rows, 90, 31, 1, 2, 4, 8, 16, 31);
+        var pixels = [];
+        var memRow = 0;
+        while (memRow < fontTexH) {
+            var rowTop = 6 - memRow;
+            var x = 0;
+            while (x < fontTexW) {
+                var codeIndex = int(x / 5);
+                var col = x - codeIndex * 5;
+                var on = glyphBit(rows[codeIndex * 7 + rowTop], col);
+                pixels.append(on);
+                pixels.append(on);
+                pixels.append(on);
+                pixels.append(1.0);
+                x = x + 1;
+            }
+            memRow = memRow + 1;
+        }
+        return pixels;
+    }
+
+    var fontPixels = buildFontPixels();
+    var fontTex = three.createDataTexture(fontTexW, fontTexH, fontPixels, {"type": "float"});
+    var propTex = three.createDataTexture(propTexW, 1, propPixels, {"type": "float"});
+    var propGridTex = three.createDataTexture(propGridMax, propGridMax, propGridPixels, {"type": "float"});
+
     var material = three.createShaderMaterial({
         "vertexShader": vertexShader,
         "fragmentShader": fragmentShader,
@@ -2383,6 +2941,20 @@ if (root == null) {
             "uGridTexW": gridTexW,
             "uGridTexH": gridTexH,
             "uGridOn": 0,
+            "uProps": propTex,
+            "uPropGrid": propGridTex,
+            "uFont": fontTex,
+            "uPropTexW": propTexW,
+            "uPropCount": 0,
+            "uPropOn": 0,
+            "uFontTexW": fontTexW,
+            "uFontTexH": fontTexH,
+            "uPropGridW": propGridMax,
+            "uPropGridH": propGridMax,
+            "uPropMin": [0, 0],
+            "uPropCell": 18,
+            "uPropCellsW": 1,
+            "uPropCellsH": 1,
             "uCar0": [0, 0, -5],
             "uCar1": [-3, 0, -8],
             "uCar2": [3, 0, -8],
@@ -2603,6 +3175,357 @@ if (root == null) {
         three.setUniform(material, "uTrackPts", count);
         three.setUniform(material, "uTrackW", trackW);
         prepareTrackGrid();
+        buildScenery();
+    }
+
+    function letterCode(ch: string) -> int {
+        if (ch == " " || ch == "-") {
+            if (ch == "-") {
+                return 45;
+            }
+            return 32;
+        }
+        var digits = "0123456789";
+        var di = str.indexOf(digits, ch);
+        if (di >= 0) {
+            return 48 + di;
+        }
+        var letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        var li = str.indexOf(letters, ch);
+        if (li >= 0) {
+            return 65 + li;
+        }
+        return 32;
+    }
+
+    function codesOf(text: string) -> array {
+        var upper = str.upper(text);
+        var n = str.length(upper);
+        var codes = [];
+        var i = 0;
+        while (i < 6) {
+            if (i < n) {
+                codes.append(letterCode(str.substring(upper, i, 1)));
+            } else {
+                codes.append(32);
+            }
+            i = i + 1;
+        }
+        return codes;
+    }
+
+    function circuitSign(name: string) -> string {
+        if (name == "Spa-Francorchamps") {
+            return "SPA";
+        }
+        if (name == "Silverstone") {
+            return "SILVER";
+        }
+        if (name == "Interlagos") {
+            return "LAGOS";
+        }
+        return name;
+    }
+
+    function alongDelta(a: float, b: float) -> float {
+        var d = a - b;
+        if (d < 0.0) {
+            d = -d;
+        }
+        var wrap = totalLen - d;
+        if (wrap < d) {
+            return wrap;
+        }
+        return d;
+    }
+
+    function clearPropBuffers() {
+        var i = 0;
+        while (i < propTexW * 4) {
+            propPixels[i] = 0.0;
+            i = i + 1;
+        }
+        i = 0;
+        while (i < propGridFloats) {
+            propGridPixels[i] = -1.0;
+            i = i + 1;
+        }
+        propCount = 0;
+    }
+
+    function crowded(x: float, z: float, minD: float) -> bool {
+        var min2 = minD * minD;
+        var i = 0;
+        while (i < propCount) {
+            var o = i * 12;
+            var dx = propPixels[o] - x;
+            var dz = propPixels[o + 1] - z;
+            if (dx * dx + dz * dz < min2) {
+                return true;
+            }
+            i = i + 1;
+        }
+        return false;
+    }
+
+    function roadClear(x: float, z: float, hint: int, need: float) -> bool {
+        var hit = query(x, z, hint);
+        var lat = hit[1];
+        if (lat < 0.0) {
+            lat = -lat;
+        }
+        return lat >= need;
+    }
+
+    function seekSpot(dist: float, extra: float, need: float, minD: float, outsideFirst: bool) -> array {
+        var attempt = 0;
+        var pad = extra;
+        while (attempt < 3) {
+            var side = trackW + pad;
+            var pos = poseAt(dist, side);
+            var neg = poseAt(dist, -side);
+            var dPos = (pos[0] - cenX) * (pos[0] - cenX) + (pos[1] - cenZ) * (pos[1] - cenZ);
+            var dNeg = (neg[0] - cenX) * (neg[0] - cenX) + (neg[1] - cenZ) * (neg[1] - cenZ);
+            var order = 0;
+            while (order < 2) {
+                var usePos = dPos >= dNeg;
+                if (!outsideFirst) {
+                    usePos = dPos < dNeg;
+                }
+                if (order == 1) {
+                    usePos = !usePos;
+                }
+                var spot = neg;
+                if (usePos) {
+                    spot = pos;
+                }
+                var hint = int(spot[3]);
+                if (roadClear(spot[0], spot[1], hint, need) && !crowded(spot[0], spot[1], minD)) {
+                    return [spot[0], spot[1], hint, 1, spot[2]];
+                }
+                order = order + 1;
+            }
+            pad = pad + 3.4;
+            attempt = attempt + 1;
+        }
+        return [0.0, 0.0, 0, 0, 0.0];
+    }
+
+    function fitPropGrid() {
+        var pad = 40.0;
+        var spanX = (trackMaxX - trackMinX) + pad * 2.0;
+        var spanZ = (trackMaxZ - trackMinZ) + pad * 2.0;
+        if (spanX < 8.0) {
+            spanX = 8.0;
+        }
+        if (spanZ < 8.0) {
+            spanZ = 8.0;
+        }
+        propCell = 18.0;
+        var guard = 0;
+        while (guard < 8) {
+            propCellsW = int(spanX / propCell + 0.999);
+            propCellsH = int(spanZ / propCell + 0.999);
+            if (propCellsW < 1) {
+                propCellsW = 1;
+            }
+            if (propCellsH < 1) {
+                propCellsH = 1;
+            }
+            if (propCellsW <= propGridMax && propCellsH <= propGridMax) {
+                guard = 8;
+            } else {
+                propCell = propCell * 1.4;
+                guard = guard + 1;
+            }
+        }
+        propMinX = trackMinX - pad;
+        propMinZ = trackMinZ - pad;
+    }
+
+    function stampPropDisk(x: float, z: float, rad: float, prop: int) {
+        var cx0 = int(math.floor((x - rad - propMinX) / propCell));
+        var cx1 = int(math.floor((x + rad - propMinX) / propCell));
+        var cz0 = int(math.floor((z - rad - propMinZ) / propCell));
+        var cz1 = int(math.floor((z + rad - propMinZ) / propCell));
+        var cz = cz0;
+        while (cz <= cz1) {
+            var cx = cx0;
+            while (cx <= cx1) {
+                if (cx >= 0 && cz >= 0 && cx < propCellsW && cz < propCellsH && cx < propGridMax && cz < propGridMax) {
+                    var base = (cz * propGridMax + cx) * 4;
+                    var s = 0;
+                    while (s < 4) {
+                        var cur = propGridPixels[base + s];
+                        if (cur < 0.0) {
+                            propGridPixels[base + s] = prop;
+                            s = 4;
+                        } else if (int(cur + 0.5) == prop) {
+                            s = 4;
+                        } else {
+                            s = s + 1;
+                        }
+                    }
+                }
+                cx = cx + 1;
+            }
+            cz = cz + 1;
+        }
+    }
+
+    function pushProp(x: float, z: float, yaw: float, kind: float, p0: float, p1: float, p2: float, p3: float, e0: float, e1: float) -> int {
+        if (propCount >= propMax) {
+            return -1;
+        }
+        var p = propCount;
+        var o = p * 12;
+        propPixels[o] = x;
+        propPixels[o + 1] = z;
+        propPixels[o + 2] = yaw;
+        propPixels[o + 3] = kind;
+        propPixels[o + 4] = p0;
+        propPixels[o + 5] = p1;
+        propPixels[o + 6] = p2;
+        propPixels[o + 7] = p3;
+        propPixels[o + 8] = e0;
+        propPixels[o + 9] = e1;
+        propPixels[o + 10] = 0.0;
+        propPixels[o + 11] = 0.0;
+        propCount = propCount + 1;
+        return p;
+    }
+
+    function buildScenery() {
+        clearPropBuffers();
+        var propOn = 0.0;
+        if (gridOn >= 0.5 && nPts > 8 && totalLen > 8.0) {
+            fitPropGrid();
+            var spec = circuits[circuitIndex];
+            var phrases = [];
+            phrases.append(circuitSign(spec.name));
+            phrases.append("MALDA");
+            phrases.append("BRAKE");
+            phrases.append("PIT");
+            phrases.append("TURN");
+            phrases.append("GRID");
+            phrases.append("FAST");
+            phrases.append("BOOST");
+            var packCenter = totalLen - (26.0 + 28.0 * 3.5) * worldScale;
+            var packHalf = 28.0 * 4.0 * worldScale + 18.0;
+            var signGap = 30.0;
+            var signN = int(totalLen / signGap);
+            if (signN < 5) {
+                signN = 5;
+            }
+            if (signN > 36) {
+                signN = 36;
+            }
+            signGap = totalLen / signN;
+            var si = 0;
+            while (si < signN && propCount < propMax) {
+                var dist = signGap * (si + 0.5);
+                var phrase = phrases[si % phrases.length];
+                if (alongDelta(dist, packCenter) < signGap * 0.65) {
+                    phrase = "START";
+                }
+                var spot = seekSpot(dist, 2.35, trackW + 0.85, 6.2, si % 2 == 0);
+                if (spot[3] > 0) {
+                    var codes = codesOf(phrase);
+                    var prop = pushProp(spot[0], spot[1], spot[4], 1.0, codes[0], codes[1], codes[2], codes[3], codes[4], codes[5]);
+                    if (prop >= 0) {
+                        stampPropDisk(spot[0], spot[1], 2.35, prop);
+                    }
+                }
+                si = si + 1;
+            }
+            var bldGap = 84.0;
+            var bldN = int(totalLen / bldGap);
+            if (bldN < 3) {
+                bldN = 3;
+            }
+            if (bldN > 10) {
+                bldN = 10;
+            }
+            bldGap = totalLen / bldN;
+            var bi = 0;
+            while (bi < bldN && propCount < propMax) {
+                var distB = bldGap * (bi + 0.35);
+                if (alongDelta(distB, packCenter) > packHalf) {
+                    var style = bi % 3;
+                    var bh = 4.4;
+                    var hw = 2.3;
+                    var hd = 1.8;
+                    if (style == 0) {
+                        bh = 2.8;
+                        hw = 3.4;
+                        hd = 1.6;
+                    } else if (style == 2) {
+                        bh = 6.2;
+                        hw = 1.7;
+                        hd = 1.7;
+                    }
+                    var bendPose = poseAt(distB, 0.0);
+                    var bend = trackBend[int(bendPose[3])];
+                    if (bend < 0.0) {
+                        bend = -bend;
+                    }
+                    if (bend < 0.48) {
+                        var spotB = seekSpot(distB, hd + 2.6, trackW + hd + 0.9, 8.5, true);
+                        if (spotB[3] > 0) {
+                            var propB = pushProp(spotB[0], spotB[1], spotB[4], 3.0, bh, hw, hd, style, 0.0, 0.0);
+                            if (propB >= 0) {
+                                var reach = hw;
+                                if (hd > reach) {
+                                    reach = hd;
+                                }
+                                stampPropDisk(spotB[0], spotB[1], reach + 0.8, propB);
+                            }
+                        }
+                    }
+                }
+                bi = bi + 1;
+            }
+            var treeGap = 24.0;
+            var treeN = int(totalLen / treeGap);
+            if (treeN < 6) {
+                treeN = 6;
+            }
+            if (treeN > 40) {
+                treeN = 40;
+            }
+            treeGap = totalLen / treeN;
+            var ti = 0;
+            while (ti < treeN && propCount < propMax) {
+                var distT = treeGap * (ti + 0.2);
+                if (alongDelta(distT, packCenter) > packHalf * 0.85) {
+                    var scale = 1.05;
+                    if (ti % 3 == 1) {
+                        scale = 1.35;
+                    } else if (ti % 3 == 2) {
+                        scale = 1.6;
+                    }
+                    var spotT = seekSpot(distT, 4.6 + scale, trackW + 1.05 * scale + 0.45, 5.4, ti % 2 == 1);
+                    if (spotT[3] > 0) {
+                        var propT = pushProp(spotT[0], spotT[1], 0.0, 2.0, scale, 0.0, 0.0, 0.0, 0.0, 0.0);
+                        if (propT >= 0) {
+                            stampPropDisk(spotT[0], spotT[1], 1.15 * scale + 0.4, propT);
+                        }
+                    }
+                }
+                ti = ti + 1;
+            }
+            if (propCount > 0) {
+                propOn = 1.0;
+            }
+        }
+        three.updateDataTexture(propTex, propPixels);
+        three.updateDataTexture(propGridTex, propGridPixels);
+        three.setUniform(material, "uPropCount", propCount);
+        three.setUniform(material, "uPropOn", propOn);
+        three.setUniform(material, "uPropMin", [propMinX, propMinZ]);
+        three.setUniform(material, "uPropCell", propCell);
+        three.setUniform(material, "uPropCellsW", propCellsW);
+        three.setUniform(material, "uPropCellsH", propCellsH);
     }
 
     loadCircuit(0);
