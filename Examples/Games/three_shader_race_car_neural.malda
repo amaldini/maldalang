@@ -12,6 +12,8 @@
 // A ray reads at most 18 of those cells, far enough to see down a straight,
 // then a sphere skips the real shape.
 // Shadow rays still test cars only, so the roadside set adds no lighting pass.
+// 1, 2, and 3 toggle signs, trees, and buildings. A hidden kind is skipped
+// before its shape test, and hiding all three skips the roadside march.
 //
 // Q/E change circuit. C cycles the camera (chase, bumper, side, nose, orbit,
 // aerial). Each shot keeps moving. N network only. T coach only.
@@ -1009,8 +1011,25 @@ function hitProp(prop: int, origin: vec3, dir: vec3) -> vec2 {
 }
 
 @shader()
+function propKindOn(kind: float) -> bool {
+    if (kind > 2.5) {
+        return uShowBuildings > 0.5;
+    }
+    if (kind > 1.5) {
+        return uShowTrees > 0.5;
+    }
+    if (kind > 0.5) {
+        return uShowSigns > 0.5;
+    }
+    return false;
+}
+
+@shader()
 function sceneryHit(origin: vec3, dir: vec3, tMax: float) -> vec3 {
     if (uPropOn < 0.5) {
+        return vec3(-1.0, 0.0, 0.0);
+    }
+    if (uShowSigns < 0.5 && uShowTrees < 0.5 && uShowBuildings < 0.5) {
         return vec3(-1.0, 0.0, 0.0);
     }
     var t0: float = 0.0;
@@ -1048,7 +1067,7 @@ function sceneryHit(origin: vec3, dir: vec3, tMax: float) -> vec3 {
                         slot = 4;
                     } else {
                         var prop: int = int(idf + 0.5);
-                        if (prop >= 0 && prop < int(uPropCount)) {
+                        if (prop >= 0 && prop < int(uPropCount) && propKindOn(propSample(prop, 0).w)) {
                             var bounds: vec4 = propBounds(prop);
                             if (sceneryMayHit(vec3(bounds.x, bounds.y, bounds.z), bounds.w, origin, dir, bestT)) {
                                 var hp: vec2 = hitProp(prop, origin, dir);
@@ -1469,6 +1488,9 @@ var fragmentShader = glsl.compile({
         "float uPropTexW",
         "float uPropCount",
         "float uPropOn",
+        "float uShowSigns",
+        "float uShowTrees",
+        "float uShowBuildings",
         "float uFontTexW",
         "float uFontTexH",
         "float uPropGridW",
@@ -1540,6 +1562,7 @@ var fragmentShader = glsl.compile({
         "propBounds",
         "sceneryMayHit",
         "hitProp",
+        "propKindOn",
         "sceneryHit",
         "sceneryNormal",
         "shadeSign",
@@ -1569,7 +1592,7 @@ if (root == null) {
     dom.append(root, heading);
 
     var hint = dom.create("p");
-    dom.setText(hint, "GPU ray-traced 3D racing with neural network learning. Signs, trees, and buildings line the road. Keys are listed on the timing panel.");
+    dom.setText(hint, "GPU ray-traced 3D racing with neural network learning. Signs, trees, and buildings line the road. Keys 1, 2, and 3 toggle them. The rest are listed on the timing panel.");
     dom.append(root, hint);
 
     var hudStyle = dom.create("style");
@@ -2584,6 +2607,12 @@ if (root == null) {
     var rWasDown = false;
     var spaceWasDown = false;
     var tabWasDown = false;
+    var oneWasDown = false;
+    var twoWasDown = false;
+    var threeWasDown = false;
+    var showSigns = 1.0;
+    var showTrees = 1.0;
+    var showBuildings = 1.0;
 
     var lightX = 5.0;
     var lightY = 12.0;
@@ -2606,6 +2635,13 @@ if (root == null) {
             return "aerial";
         }
         return "chase";
+    }
+
+    function mark(on: float) -> string {
+        if (on > 0.5) {
+            return "on";
+        }
+        return "off";
     }
 
     function updateCamera(dt: float) {
@@ -2947,6 +2983,9 @@ if (root == null) {
             "uPropTexW": propTexW,
             "uPropCount": 0,
             "uPropOn": 0,
+            "uShowSigns": 1,
+            "uShowTrees": 1,
+            "uShowBuildings": 1,
             "uFontTexW": fontTexW,
             "uFontTexH": fontTexH,
             "uPropGridW": propGridMax,
@@ -3716,7 +3755,7 @@ if (root == null) {
             bi = bi + 1;
         }
         html = html + "</div>";
-        html = html + "<div class='keys'>Q E circuit &nbsp; C " + shotLabel() + " &nbsp; Tab drive<br>N net &nbsp; T coach &nbsp; L blend &nbsp; R reset &nbsp; Space pause</div>";
+        html = html + "<div class='keys'>Q E circuit &nbsp; C " + shotLabel() + " &nbsp; Tab drive<br>N net &nbsp; T coach &nbsp; L blend &nbsp; R reset &nbsp; Space pause<br>1 signs " + mark(showSigns) + " &nbsp; 2 trees " + mark(showTrees) + " &nbsp; 3 buildings " + mark(showBuildings) + "</div>";
         dom.html(hud, html);
     }
 
@@ -3785,6 +3824,39 @@ if (root == null) {
             manualDrive = !manualDrive;
         }
         tabWasDown = tabDown;
+
+        var oneDown = three.isKeyDown("1");
+        if (oneDown && !oneWasDown) {
+            if (showSigns > 0.5) {
+                showSigns = 0.0;
+            } else {
+                showSigns = 1.0;
+            }
+            three.setUniform(material, "uShowSigns", showSigns);
+        }
+        oneWasDown = oneDown;
+
+        var twoDown = three.isKeyDown("2");
+        if (twoDown && !twoWasDown) {
+            if (showTrees > 0.5) {
+                showTrees = 0.0;
+            } else {
+                showTrees = 1.0;
+            }
+            three.setUniform(material, "uShowTrees", showTrees);
+        }
+        twoWasDown = twoDown;
+
+        var threeDown = three.isKeyDown("3");
+        if (threeDown && !threeWasDown) {
+            if (showBuildings > 0.5) {
+                showBuildings = 0.0;
+            } else {
+                showBuildings = 1.0;
+            }
+            three.setUniform(material, "uShowBuildings", showBuildings);
+        }
+        threeWasDown = threeDown;
 
         if (!paused) {
             hudCar = leadCar;
