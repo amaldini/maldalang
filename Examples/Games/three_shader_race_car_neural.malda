@@ -1,8 +1,9 @@
 // Grand Prix 3D Neural Race with GPU Ray Tracing
 // Run: malda play Examples/Games/three_shader_race_car_neural.malda
 //
-// Eight cars share a 12-20-2 net (tanh, tanh), the same coach as
-// grand_prix_neural.malda. The centerline is smoothed and resampled the same
+// Eight cars share a 15-20-2 net (tanh, tanh). The first eleven inputs match
+// grand_prix_neural.malda. Three more report sideways speed, yaw rate, and
+// how close the tires are to the grip limit, then the bias. The centerline is smoothed and resampled the same
 // way, then scaled so the road half-width is 3.2. Speeds and turn rate scale
 // with that road, so the coach's steering still points back to the racing line.
 // The ground shader reads the same polyline from a float texture.
@@ -16,13 +17,18 @@
 // before its shape test, and hiding all three skips the roadside march.
 //
 // Q/E change circuit. C cycles the camera (chase, bumper, side, nose, orbit,
-// aerial). Each shot keeps moving. N network only. T coach only.
-// L blend mode. R reset brain. Space pause. Tab manual drive (WASD/arrows).
+// aerial, cockpit). Each shot keeps moving. N network only. T coach only.
+// L blend mode. R reset brain. Space pause. Tab drives the selected car from
+// the cockpit (WASD or arrows: steer, throttle, brake). Z and X change car.
 // Showcase autoplay (#malda-autoplay) advances the shot on its own.
 // A side panel matches the 2D grand prix HUD: speed, laps, neural share, and order.
+// Tires have a grip limit. Steering past that limit, or a shove from another
+// car, leaves sideways speed that the tires scrub off. Grass grips less.
+// The coach holds a corner pace and only lifts when the tires are at the limit.
+// The net is trained on that gas, so a slow car is pulled back up to the pace.
+// Speed then falls by drag and by a closed throttle, for every car.
 // Car contact uses the billiards equal-mass impulse (restitution 0.5) against
-// the car's oriented box, so the meshes stay apart. Speed stays on the nose;
-// a glancing hit adds a small yaw.
+// the car's oriented box, and the hit keeps its sideways component.
 
 function wrapAngle(a: float) -> float {
     var turns = math.floor((a + 3.14159265) / 6.2831853);
@@ -668,7 +674,122 @@ function carPartAlbedo(index: int, part: int) -> vec3 {
     if (part == 7 || part == 14) {
         return paint * 0.55;
     }
+    if (part == 32) {
+        var hot: float = uGrip;
+        if (hot < 0.0) {
+            hot = 0.0;
+        }
+        if (hot > 1.0) {
+            hot = 1.0;
+        }
+        return vec3(0.15 + hot * 0.8, 0.72 - hot * 0.62, 0.12);
+    }
+    if (part >= 24) {
+        return vec3(0.03, 0.03, 0.034);
+    }
+    if (part == 20) {
+        return vec3(0.012, 0.012, 0.014);
+    }
+    if (part == 21) {
+        return vec3(0.16, 0.16, 0.17);
+    }
+    if (part == 22 || part == 23) {
+        return paint * 0.62;
+    }
     return paint;
+}
+
+@shader()
+function carSteer(index: int) -> float {
+    if (index == 0) {
+        return uSteer0;
+    }
+    if (index == 1) {
+        return uSteer1;
+    }
+    if (index == 2) {
+        return uSteer2;
+    }
+    if (index == 3) {
+        return uSteer3;
+    }
+    if (index == 4) {
+        return uSteer4;
+    }
+    if (index == 5) {
+        return uSteer5;
+    }
+    if (index == 6) {
+        return uSteer6;
+    }
+    return uSteer7;
+}
+
+@shader()
+function wheelYaw(index: int, w: int) -> float {
+    var yaw: float = carAngle(index);
+    if (w < 2) {
+        yaw = yaw + carSteer(index) * 0.46;
+    }
+    return yaw;
+}
+
+@shader()
+function inCockpit(index: int) -> bool {
+    return uCockpitCar > -0.5 && abs(float(index) - uCockpitCar) < 0.5;
+}
+
+@shader()
+function cockpitCenter(index: int, part: int) -> vec3 {
+    if (part == 20) {
+        return vec3(0.32, 0.34, 0.0);
+    }
+    if (part == 21) {
+        return vec3(0.20, 0.64, 0.0);
+    }
+    if (part == 22) {
+        return vec3(0.22, 0.54, -0.18);
+    }
+    if (part == 23) {
+        return vec3(0.22, 0.54, 0.18);
+    }
+    if (part == 32) {
+        var g: float = uGrip;
+        if (g < 0.0) {
+            g = 0.0;
+        }
+        if (g > 1.0) {
+            g = 1.0;
+        }
+        return vec3(0.34, 0.40, -0.05 + g * 0.05);
+    }
+    var bead: int = part - 24;
+    var a: float = carSteer(index) * 1.15 + float(bead) * 0.785398;
+    return vec3(0.22, 0.36 + cos(a) * 0.05, sin(a) * 0.05);
+}
+
+@shader()
+function cockpitHalf(part: int) -> vec3 {
+    if (part == 32) {
+        var g: float = uGrip;
+        if (g < 0.0) {
+            g = 0.0;
+        }
+        if (g > 1.0) {
+            g = 1.0;
+        }
+        return vec3(0.01, 0.007, 0.012 + g * 0.042);
+    }
+    if (part >= 24) {
+        return vec3(0.012, 0.014, 0.014);
+    }
+    if (part == 20) {
+        return vec3(0.055, 0.028, 0.11);
+    }
+    if (part == 21) {
+        return vec3(0.02, 0.012, 0.07);
+    }
+    return vec3(0.015, 0.05, 0.012);
 }
 
 @shader()
@@ -680,37 +801,55 @@ function hitCar(index: int, origin: vec3, dir: vec3, tHit: out float, kind: out 
     var slot: int = 0;
     while (slot < 9) {
         var part: int = carBodyPart(slot);
-        var tBox: float = hitLocalBox(pos, angle, carBoxCenter(part), carBoxHalf(part), origin, dir);
-        if (tBox > 0.0 && tBox < tHit) {
-            tHit = tBox;
-            kind = part;
+        if (!(inCockpit(index) && part == 6)) {
+            var tBox: float = hitLocalBox(pos, angle, carBoxCenter(part), carBoxHalf(part), origin, dir);
+            if (tBox > 0.0 && tBox < tHit) {
+                tHit = tBox;
+                kind = part;
+            }
         }
         slot = slot + 1;
     }
-    var ca: float = cos(angle);
-    var sa: float = sin(angle);
-    var helmetLocal: vec3 = vec3(-0.02, 0.48, 0.0);
-    var helmetCenter: vec3 = pos + vec3(ca * helmetLocal.x - sa * helmetLocal.z, helmetLocal.y, sa * helmetLocal.x + ca * helmetLocal.z);
-    var tHelmet: float = hitSphere(helmetCenter, 0.10, origin, dir);
-    if (tHelmet > 0.0 && tHelmet < tHit) {
-        tHit = tHelmet;
-        kind = 19;
+    if (!inCockpit(index)) {
+        var ca: float = cos(angle);
+        var sa: float = sin(angle);
+        var helmetLocal: vec3 = vec3(-0.02, 0.48, 0.0);
+        var helmetCenter: vec3 = pos + vec3(ca * helmetLocal.x - sa * helmetLocal.z, helmetLocal.y, sa * helmetLocal.x + ca * helmetLocal.z);
+        var tHelmet: float = hitSphere(helmetCenter, 0.10, origin, dir);
+        if (tHelmet > 0.0 && tHelmet < tHit) {
+            tHit = tHelmet;
+            kind = 19;
+        }
     }
     var w: int = 0;
     while (w < 4) {
         var wheelCenter: vec3 = wheelCenterOf(pos, angle, w);
-        var tWheel: float = hitWheel(wheelCenter, 0.2, 0.11, angle, origin, dir);
+        var axle: float = wheelYaw(index, w);
+        var tWheel: float = hitWheel(wheelCenter, 0.2, 0.11, axle, origin, dir);
         if (tWheel > 0.0 && tWheel < tHit) {
             tHit = tWheel;
             kind = 1 + w;
         }
-        var tHub: float = hitWheel(wheelCenter, 0.085, 0.125, angle, origin, dir);
+        var tHub: float = hitWheel(wheelCenter, 0.085, 0.125, axle, origin, dir);
         if (tHub > 0.0 && tHub < tHit) {
             tHit = tHub;
             kind = 15 + w;
         }
         w = w + 1;
     }
+        if (inCockpit(index)) {
+            var ip: int = 20;
+            while (ip <= 32) {
+                if (ip < 21 || ip > 23) {
+                    var tIn: float = hitLocalBox(pos, angle, cockpitCenter(index, ip), cockpitHalf(ip), origin, dir);
+                    if (tIn > 0.0 && tIn < tHit) {
+                        tHit = tIn;
+                        kind = ip;
+                    }
+                }
+                ip = ip + 1;
+            }
+        }
     return kind >= 0;
 }
 
@@ -719,10 +858,13 @@ function carNormal(index: int, kind: int, p: vec3) -> vec3 {
     var pos: vec3 = carPosition(index);
     var angle: float = carAngle(index);
     if (kind >= 1 && kind <= 4) {
-        return wheelNormal(wheelCenterOf(pos, angle, kind - 1), 0.2, 0.11, angle, p);
+        return wheelNormal(wheelCenterOf(pos, angle, kind - 1), 0.2, 0.11, wheelYaw(index, kind - 1), p);
     }
     if (kind >= 15 && kind <= 18) {
-        return wheelNormal(wheelCenterOf(pos, angle, kind - 15), 0.085, 0.125, angle, p);
+        return wheelNormal(wheelCenterOf(pos, angle, kind - 15), 0.085, 0.125, wheelYaw(index, kind - 15), p);
+    }
+    if (kind >= 20) {
+        return localBoxNormal(pos, angle, cockpitCenter(index, kind), cockpitHalf(kind), p);
     }
     if (kind == 19) {
         var ca: float = cos(angle);
@@ -1288,7 +1430,7 @@ function closestHit(
                 if (considerHit(tCar, tHit)) {
                     tHit = tCar;
                     kind = 1;
-                    index = i * 20 + carKind;
+                    index = i * 40 + carKind;
                     if (carKind >= 1 && carKind <= 4) {
                         material = 0;
                     } else {
@@ -1324,8 +1466,8 @@ function closestHit(
 
     var hit: vec3 = origin + dir * tHit;
     if (kind == 1) {
-        var carIdx: int = index / 20;
-        var carPart: int = index - carIdx * 20;
+        var carIdx: int = index / 40;
+        var carPart: int = index - carIdx * 40;
         normal = carNormal(carIdx, carPart, hit);
         albedo = carPartAlbedo(carIdx, carPart);
     } else if (kind == 5) {
@@ -1514,7 +1656,17 @@ var fragmentShader = glsl.compile({
         "float uAngle4",
         "float uAngle5",
         "float uAngle6",
-        "float uAngle7"
+        "float uAngle7",
+        "float uSteer0",
+        "float uSteer1",
+        "float uSteer2",
+        "float uSteer3",
+        "float uSteer4",
+        "float uSteer5",
+        "float uSteer6",
+        "float uSteer7",
+        "float uCockpitCar",
+        "float uGrip"
     ],
     consts: [
         "float EPSILON = 0.0015",
@@ -1534,6 +1686,11 @@ var fragmentShader = glsl.compile({
         "wheelNormal",
         "carPosition",
         "carAngle",
+        "carSteer",
+        "wheelYaw",
+        "inCockpit",
+        "cockpitCenter",
+        "cockpitHalf",
         "carColor",
         "wheelOffset",
         "carBodyPart",
@@ -1592,7 +1749,7 @@ if (root == null) {
     dom.append(root, heading);
 
     var hint = dom.create("p");
-    dom.setText(hint, "GPU ray-traced 3D racing with neural network learning. Signs, trees, and buildings line the road. Keys 1, 2, and 3 toggle them. The rest are listed on the timing panel.");
+    dom.setText(hint, "GPU ray-traced 3D racing with neural network learning. Tab drives the selected car from the cockpit. Z and X change car. The net sees slip and grip. Keys 1, 2, and 3 toggle signs, trees, and buildings.");
     dom.append(root, hint);
 
     var hudStyle = dom.create("style");
@@ -1997,7 +2154,16 @@ if (root == null) {
     var carBest = [];
     var carAge = [];
     var carStyle = [];
+    var carVx = [];
+    var carVz = [];
+    var carLat = [];
+    var carYaw = [];
+    var carSteerCmd = [];
+    var carGrip = [];
     var manualDrive = false;
+    var driveCar = 0;
+    var driveLoad = 0.0;
+    var shownGrip = 0.0;
     var leadCar = 0;
     var order = [];
     var hudCar = 0;
@@ -2015,6 +2181,12 @@ if (root == null) {
         carBest = [];
         carAge = [];
         carStyle = [];
+        carVx = [];
+        carVz = [];
+        carLat = [];
+        carYaw = [];
+        carSteerCmd = [];
+        carGrip = [];
         order = [];
         leadCar = 0;
         var i = 0;
@@ -2036,12 +2208,18 @@ if (root == null) {
             carBest.append(-1.0);
             carAge.append(0.0);
             carStyle.append((i - 3.5) * 0.045);
+            carVx.append(0.0);
+            carVz.append(0.0);
+            carLat.append(0.0);
+            carYaw.append(0.0);
+            carSteerCmd.append(0.0);
+            carGrip.append(0.0);
             order.append(i);
             i = i + 1;
         }
     }
 
-    var inN = 12;
+    var inN = 15;
     var hidN = 20;
     var w1 = [];
     var b1 = [];
@@ -2222,7 +2400,7 @@ if (root == null) {
         return 1.0;
     }
 
-    function observe(hit: array, heading: float, speed: float, rays: array) -> array {
+    function observe(hit: array, heading: float, speed: float, rays: array, slip: float, yaw: float, grip: float) -> array {
         var latN = hit[1] / trackW;
         if (latN > 1.7) {
             latN = 1.7;
@@ -2264,7 +2442,32 @@ if (root == null) {
             speedScale = 1.0;
         }
         var speedN = speed / speedScale;
-        return [latN, headN, speedN, near, mid, far, rays[0], rays[1], rays[2], rays[3], rays[4], 1.0];
+        var slipScale = 22.0 * worldScale;
+        if (slipScale < 1.0) {
+            slipScale = 1.0;
+        }
+        var slipN = slip / slipScale;
+        if (slipN > 1.4) {
+            slipN = 1.4;
+        }
+        if (slipN < -1.4) {
+            slipN = -1.4;
+        }
+        var yawN = yaw / 2.2;
+        if (yawN > 1.4) {
+            yawN = 1.4;
+        }
+        if (yawN < -1.4) {
+            yawN = -1.4;
+        }
+        var gripN = grip;
+        if (gripN < 0.0) {
+            gripN = 0.0;
+        }
+        if (gripN > 1.4) {
+            gripN = 1.4;
+        }
+        return [latN, headN, speedN, near, mid, far, rays[0], rays[1], rays[2], rays[3], rays[4], slipN, yawN, gripN, 1.0];
     }
 
     function teacherOf(obs: array) -> array {
@@ -2286,12 +2489,26 @@ if (root == null) {
         if (math.abs(obs[5]) > sharp) {
             sharp = math.abs(obs[5]);
         }
-        var thr = 1.0 - 0.78 * sharp - 0.22 * math.abs(steer);
+        var thr = 1.0 - 0.34 * sharp - 0.08 * math.abs(steer);
         if (obs[8] < 0.38) {
-            thr = thr * 0.4;
+            thr = thr * 0.72;
+        }
+        var pace = 1.0 - 0.42 * sharp;
+        if (pace < 0.55) {
+            pace = 0.55;
+        }
+        var speedN = obs[2];
+        if (speedN < pace) {
+            var hunger = (pace - speedN) / pace;
+            if (hunger > 1.0) {
+                hunger = 1.0;
+            }
+            thr = thr + (1.0 - thr) * hunger;
         }
         if (math.abs(obs[0]) > 1.05) {
-            thr = 0.26;
+            if (thr > 0.5) {
+                thr = 0.5;
+            }
             steer = obs[0] * 1.35;
             if (steer > 1.0) {
                 steer = 1.0;
@@ -2300,11 +2517,42 @@ if (root == null) {
                 steer = -1.0;
             }
         }
-        if (thr < 0.16) {
-            thr = 0.16;
-        }
         if (thr > 1.0) {
             thr = 1.0;
+        }
+        var slipN = obs[11];
+        var gripN = obs[13];
+        if (gripN > 0.92) {
+            var cut = (gripN - 0.92) / 0.28;
+            if (cut > 1.0) {
+                cut = 1.0;
+            }
+            thr = thr * (1.0 - 0.45 * cut);
+        }
+        if (math.abs(slipN) > 0.22) {
+            var catchSteer = slipN;
+            if (catchSteer > 1.0) {
+                catchSteer = 1.0;
+            }
+            if (catchSteer < -1.0) {
+                catchSteer = -1.0;
+            }
+            steer = steer * 0.55 + catchSteer * 0.85;
+            if (steer > 1.0) {
+                steer = 1.0;
+            }
+            if (steer < -1.0) {
+                steer = -1.0;
+            }
+        }
+        if (thr < 0.0) {
+            thr = 0.0;
+        }
+        if (thr < 0.28) {
+            thr = 0.28;
+        }
+        if (gripN < 0.92 && math.abs(obs[0]) < 1.05 && thr < 0.42) {
+            thr = 0.42;
         }
         return [steer, thr];
     }
@@ -2335,7 +2583,7 @@ if (root == null) {
             castRay(carX[i], carZ[i], carH[i] + 0.42, int(hit[0])),
             castRay(carX[i], carZ[i], carH[i] + 0.95, int(hit[0]))
         ];
-        var obs = observe(hit, carH[i], carV[i], rays);
+        var obs = observe(hit, carH[i], carV[i], rays, carLat[i], carYaw[i], carGrip[i]);
         var teach = teacherOf(obs);
         var hidden = nn.dense(obs, w1, b1, "tanh");
         var out = nn.dense(hidden.out, w2, b2, "tanh");
@@ -2370,7 +2618,7 @@ if (root == null) {
             steer = -1.0;
         }
         var brake = false;
-        if (i == 0 && manualDrive) {
+        if (i == driveCar && manualDrive) {
             var keySteer = 0.0;
             if (three.isKeyDown("arrowleft") || three.isKeyDown("a")) {
                 keySteer = keySteer - 1.0;
@@ -2379,7 +2627,7 @@ if (root == null) {
                 keySteer = keySteer + 1.0;
             }
             steer = keySteer;
-            thr = 0.18;
+            thr = 0.0;
             if (three.isKeyDown("arrowup") || three.isKeyDown("w")) {
                 thr = 1.0;
             }
@@ -2388,35 +2636,132 @@ if (root == null) {
                 thr = 0.0;
             }
         }
-        if (i != 0 || !manualDrive || brainMode != "net") {
+        if (i != driveCar || !manualDrive || brainMode != "net") {
             var targetThr = teach[1] * 2.0 - 1.0;
             pushSample(obs, [teach[0], targetThr]);
         }
         var onGrass = math.abs(hit[1]) > trackW * 1.02;
-        var sharp = math.abs(obs[4]);
-        var vTarget = (46.0 + thr * (108.0 - 70.0 * sharp)) * worldScale;
-        if (onGrass) {
-            vTarget = 34.0 * worldScale;
-        }
-        if (vTarget < 28.0 * worldScale) {
-            vTarget = 28.0 * worldScale;
-        }
-        carV[i] = carV[i] + (vTarget - carV[i]) * 3.1 * dt;
-        if (brake) {
-            carV[i] = carV[i] - 90.0 * worldScale * dt;
-        }
-        if (carV[i] < 0.0) {
-            carV[i] = 0.0;
-        }
-        var vMax = 158.0 * worldScale;
-        if (carV[i] > vMax) {
-            carV[i] = vMax;
-        }
+        var fwdX = math.cos(carH[i]);
+        var fwdZ = math.sin(carH[i]);
+        var rightX = 0.0 - fwdZ;
+        var rightZ = fwdX;
+        var vLong = carVx[i] * fwdX + carVz[i] * fwdZ;
+        var vLat = carVx[i] * rightX + carVz[i] * rightZ;
+        var steerBlend = 1.0 - math.exp(-12.0 * dt);
+        carSteerCmd[i] = carSteerCmd[i] + (steer - carSteerCmd[i]) * steerBlend;
         var yawK = 0.0065 / worldScale;
-        var yaw = steer * (2.25 - carV[i] * yawK);
-        carH[i] = wrapAngle(carH[i] + yaw * dt);
-        carX[i] = carX[i] + math.cos(carH[i]) * carV[i] * dt;
-        carZ[i] = carZ[i] + math.sin(carH[i]) * carV[i] * dt;
+        var yawCmd = 2.25 - vLong * yawK;
+        if (yawCmd < 0.45) {
+            yawCmd = 0.45;
+        }
+        if (yawCmd > 2.4) {
+            yawCmd = 2.4;
+        }
+        var requestedYaw = carSteerCmd[i] * yawCmd;
+        if (i == driveCar && manualDrive) {
+            var creep = 6.0 * worldScale;
+            var turnIn = vLong;
+            if (turnIn < 0.0) {
+                turnIn = 0.0;
+            }
+            if (turnIn < creep) {
+                requestedYaw = requestedYaw * (turnIn / creep);
+            }
+        }
+        var mu = 1.12;
+        if (onGrass) {
+            mu = 0.38;
+        }
+        if (math.abs(hit[1]) > trackW * 1.65) {
+            mu = 0.24;
+        }
+        var gripScale = worldScale / 0.25;
+        if (gripScale < 0.55) {
+            gripScale = 0.55;
+        }
+        var maxLat = mu * 28.0 * gripScale;
+        var useLat = math.abs(vLong * requestedYaw);
+        var actualYaw = requestedYaw;
+        if (useLat > maxLat && useLat > 0.001) {
+            actualYaw = requestedYaw * (maxLat / useLat);
+        }
+        if (i == driveCar) {
+            driveLoad = 0.0;
+            if (maxLat > 0.001) {
+                driveLoad = useLat / maxLat;
+            }
+            if (driveLoad > 1.0) {
+                driveLoad = 1.0;
+            }
+        }
+        carGrip[i] = 0.0;
+        if (maxLat > 0.001) {
+            carGrip[i] = useLat / maxLat;
+        }
+        if (carGrip[i] > 1.4) {
+            carGrip[i] = 1.4;
+        }
+        var slipRate = (requestedYaw - actualYaw) * vLong * 0.45;
+        vLat = vLat + slipRate * dt;
+        actualYaw = actualYaw - vLat * (0.018 / worldScale);
+        if (actualYaw > 3.1) {
+            actualYaw = 3.1;
+        }
+        if (actualYaw < -3.1) {
+            actualYaw = -3.1;
+        }
+        var spare = maxLat - math.abs(actualYaw * vLong);
+        if (spare < 0.0) {
+            spare = 0.0;
+        }
+        var scrub = vLat * 3.4;
+        if (scrub > spare) {
+            scrub = spare;
+        }
+        if (scrub < 0.0 - spare) {
+            scrub = 0.0 - spare;
+        }
+        vLat = vLat - scrub * dt;
+        var latCap = 32.0 * worldScale;
+        if (vLat > latCap) {
+            vLat = latCap;
+        }
+        if (vLat < 0.0 - latCap) {
+            vLat = 0.0 - latCap;
+        }
+        var drive = thr * 72.0 * worldScale;
+        if (onGrass) {
+            drive = drive * 0.42;
+        }
+        var dragK = 0.0032 / worldScale;
+        var lonAccel = drive - dragK * vLong * math.abs(vLong) - 1.5 * worldScale * vLong;
+        if (brake) {
+            if (vLong > 0.5 * worldScale) {
+                lonAccel = lonAccel - 110.0 * worldScale;
+            } else {
+                lonAccel = -16.0 * worldScale;
+            }
+        }
+        vLong = vLong + lonAccel * dt;
+        var vMax = 165.0 * worldScale;
+        if (vLong > vMax) {
+            vLong = vMax;
+        }
+        if (vLong < -14.0 * worldScale) {
+            vLong = -14.0 * worldScale;
+        }
+        carH[i] = wrapAngle(carH[i] + actualYaw * dt);
+        fwdX = math.cos(carH[i]);
+        fwdZ = math.sin(carH[i]);
+        rightX = 0.0 - fwdZ;
+        rightZ = fwdX;
+        carVx[i] = fwdX * vLong + rightX * vLat;
+        carVz[i] = fwdZ * vLong + rightZ * vLat;
+        carV[i] = vLong;
+        carLat[i] = vLat;
+        carYaw[i] = actualYaw;
+        carX[i] = carX[i] + carVx[i] * dt;
+        carZ[i] = carZ[i] + carVz[i] * dt;
         var after = query(carX[i], carZ[i], int(hit[0]));
         var prevS = carS[i];
         carIdx[i] = int(after[0]);
@@ -2442,6 +2787,11 @@ if (root == null) {
             carZ[i] = back[1];
             carH[i] = back[2];
             carV[i] = 42.0 * worldScale;
+            carVx[i] = math.cos(carH[i]) * carV[i];
+            carVz[i] = math.sin(carH[i]) * carV[i];
+            carLat[i] = 0.0;
+            carYaw[i] = 0.0;
+            carGrip[i] = 0.0;
             carIdx[i] = int(back[3]);
             carS[i] = back[4];
         }
@@ -2450,26 +2800,41 @@ if (root == null) {
     function bumpCar(i: int, vx: float, vz: float) {
         var fwdX = math.cos(carH[i]);
         var fwdZ = math.sin(carH[i]);
+        var rightX = 0.0 - fwdZ;
+        var rightZ = fwdX;
         var along = vx * fwdX + vz * fwdZ;
-        var speed = math.sqrt(vx * vx + vz * vz);
-        if (speed > 1.0) {
-            var kick = wrapAngle(math.atan2(vz, vx) - carH[i]) * 0.35;
-            if (kick > 0.18) {
-                kick = 0.18;
-            }
-            if (kick < -0.18) {
-                kick = -0.18;
-            }
-            carH[i] = wrapAngle(carH[i] + kick);
-        }
-        if (along < 0.0) {
-            along = 0.0;
-        }
-        var vMax = 158.0 * worldScale;
+        var lat = vx * rightX + vz * rightZ;
+        var vMax = 165.0 * worldScale;
         if (along > vMax) {
             along = vMax;
         }
+        if (along < -14.0 * worldScale) {
+            along = -14.0 * worldScale;
+        }
+        var latCap = 32.0 * worldScale;
+        if (lat > latCap) {
+            lat = latCap;
+        }
+        if (lat < 0.0 - latCap) {
+            lat = 0.0 - latCap;
+        }
+        var kick = lat * 0.012;
+        if (kick > 0.22) {
+            kick = 0.22;
+        }
+        if (kick < -0.22) {
+            kick = -0.22;
+        }
+        carH[i] = wrapAngle(carH[i] + kick);
+        fwdX = math.cos(carH[i]);
+        fwdZ = math.sin(carH[i]);
+        rightX = 0.0 - fwdZ;
+        rightZ = fwdX;
         carV[i] = along;
+        carLat[i] = lat;
+        carVx[i] = fwdX * along + rightX * lat;
+        carVz[i] = fwdZ * along + rightZ * lat;
+        carYaw[i] = carYaw[i] + kick * 8.0;
     }
 
     function carBoxHit(i: int, j: int) -> array {
@@ -2535,10 +2900,10 @@ if (root == null) {
                         carX[j] = carX[j] + nx * push;
                         carZ[j] = carZ[j] + nz * push;
                         if (pass == 0) {
-                            var vix = math.cos(carH[i]) * carV[i];
-                            var viz = math.sin(carH[i]) * carV[i];
-                            var vjx = math.cos(carH[j]) * carV[j];
-                            var vjz = math.sin(carH[j]) * carV[j];
+                            var vix = carVx[i];
+                            var viz = carVz[i];
+                            var vjx = carVx[j];
+                            var vjz = carVz[j];
                             var rel = ((vix - vjx) * nx) + ((viz - vjz) * nz);
                             if (rel > 0.0) {
                                 var impulse = -(1.0 + carRest) * rel * 0.5;
@@ -2586,6 +2951,7 @@ if (root == null) {
     var autoplay = dom.query("#malda-autoplay") != null;
     var camShot = 0;
     var smoothShot = 0;
+    var cockpitCar = -1.0;
     var camClock = 0.0;
     var shotHold = 0.0;
     var camReady = false;
@@ -2607,6 +2973,8 @@ if (root == null) {
     var rWasDown = false;
     var spaceWasDown = false;
     var tabWasDown = false;
+    var zWasDown = false;
+    var xWasDown = false;
     var oneWasDown = false;
     var twoWasDown = false;
     var threeWasDown = false;
@@ -2634,6 +3002,9 @@ if (root == null) {
         if (camShot == 5) {
             return "aerial";
         }
+        if (camShot == 6) {
+            return "cockpit";
+        }
         return "chase";
     }
 
@@ -2651,14 +3022,14 @@ if (root == null) {
             if (shotHold >= 4.2) {
                 shotHold = 0.0;
                 camShot = camShot + 1;
-                if (camShot >= 6) {
+                if (camShot >= 7) {
                     camShot = 0;
                 }
             }
         }
         var focusI = leadCar;
         if (manualDrive) {
-            focusI = 0;
+            focusI = driveCar;
         }
         focusX = carX[focusI];
         focusZ = carZ[focusI];
@@ -2713,7 +3084,7 @@ if (root == null) {
             lookX = focusX + aheadX * 1.5;
             lookY = 0.55;
             lookZ = focusZ + aheadZ * 1.5;
-        } else {
+        } else if (camShot == 5) {
             var span = trackSpan;
             if (span < 16.0) {
                 span = 16.0;
@@ -2726,6 +3097,29 @@ if (root == null) {
             lookX = cenX + math.cos(aang + 0.6) * span * 0.08;
             lookY = 0.0;
             lookZ = cenZ + math.sin(aang + 0.6) * span * 0.08;
+        } else {
+            var steerLook = carSteerCmd[focusI];
+            var lean = steerLook * 0.08 + carLat[focusI] * 0.004;
+            if (lean > 0.18) {
+                lean = 0.18;
+            }
+            if (lean < -0.18) {
+                lean = -0.18;
+            }
+            var bobScale = carV[focusI] / (40.0 * worldScale + 0.001);
+            if (bobScale > 1.2) {
+                bobScale = 1.2;
+            }
+            if (bobScale < 0.0) {
+                bobScale = 0.0;
+            }
+            var bob = math.sin(camClock * 9.0) * 0.008 * bobScale;
+            camX = focusX + aheadX * (-0.04) + sideX * lean;
+            camY = 0.48 + bob;
+            camZ = focusZ + aheadZ * (-0.04) + sideZ * lean;
+            lookX = camX + aheadX * 9.0 + sideX * (steerLook * 0.7);
+            lookY = 0.30;
+            lookZ = camZ + aheadZ * 9.0 + sideZ * (steerLook * 0.7);
         }
         if (!camReady) {
             smoothX = camX;
@@ -2736,6 +3130,14 @@ if (root == null) {
             lookSZ = lookZ;
             smoothShot = camShot;
             camReady = true;
+        } else if (camShot == 6) {
+            smoothX = camX;
+            smoothY = camY;
+            smoothZ = camZ;
+            lookSX = lookX;
+            lookSY = lookY;
+            lookSZ = lookZ;
+            smoothShot = 6;
         } else if (dt > 0.0) {
             var follow = 7.0;
             if (smoothShot != camShot) {
@@ -2789,6 +3191,49 @@ if (root == null) {
         var ux = ry * fz - rz * fy;
         var uy = rz * fx - rx * fz;
         var uz = rx * fy - ry * fx;
+
+        cockpitCar = -1.0;
+        if (camShot == 6) {
+            var relX = camX - focusX;
+            var relZ = camZ - focusZ;
+            var localX = relX * aheadX + relZ * aheadZ;
+            var localZ = relX * sideX + relZ * sideZ;
+            if (localX > -0.36 && localX < 0.22 && camY > 0.30 && camY < 0.64 && localZ > -0.20 && localZ < 0.20) {
+                cockpitCar = 0.0 + focusI;
+                var roll = carYaw[focusI] * 0.11 + carLat[focusI] * (0.01 / worldScale);
+                if (roll > 0.22) {
+                    roll = 0.22;
+                }
+                if (roll < -0.22) {
+                    roll = -0.22;
+                }
+                var cr = math.cos(roll);
+                var sr = math.sin(roll);
+                var nrx = rx * cr + ux * sr;
+                var nry = ry * cr + uy * sr;
+                var nrz = rz * cr + uz * sr;
+                var nux = ux * cr - rx * sr;
+                var nuy = uy * cr - ry * sr;
+                var nuz = uz * cr - rz * sr;
+                rx = nrx;
+                ry = nry;
+                rz = nrz;
+                ux = nux;
+                uy = nuy;
+                uz = nuz;
+            }
+        }
+
+        shownGrip = 0.0;
+        if (focusI >= 0 && focusI < carGrip.length) {
+            shownGrip = carGrip[focusI];
+            if (shownGrip > 1.0) {
+                shownGrip = 1.0;
+            }
+            if (shownGrip < 0.0) {
+                shownGrip = 0.0;
+            }
+        }
 
         return {
             "camX": camX,
@@ -3009,7 +3454,17 @@ if (root == null) {
             "uAngle4": 0,
             "uAngle5": 0,
             "uAngle6": 0,
-            "uAngle7": 0
+            "uAngle7": 0,
+            "uSteer0": 0,
+            "uSteer1": 0,
+            "uSteer2": 0,
+            "uSteer3": 0,
+            "uSteer4": 0,
+            "uSteer5": 0,
+            "uSteer6": 0,
+            "uSteer7": 0,
+            "uCockpitCar": -1,
+            "uGrip": 0
         }
     });
 
@@ -3679,13 +4134,14 @@ if (root == null) {
         }
         var show = leader;
         if (manualDrive) {
-            show = 0;
+            show = driveCar;
         }
         var speedDiv = 150.0 * worldScale;
         if (speedDiv < 0.001) {
             speedDiv = 1.0;
         }
-        var kmh = int((carV[show] / speedDiv) * 325.0);
+        var ground = math.sqrt(carVx[show] * carVx[show] + carVz[show] * carVz[show]);
+        var kmh = int((ground / speedDiv) * 325.0);
         var lapNo = carLap[show];
         if (lapNo < 1) {
             lapNo = 1;
@@ -3699,6 +4155,11 @@ if (root == null) {
         html = html + "<h2>" + spec.name + "</h2>";
         html = html + "<div class='sub'>" + spec.place + "   " + kmText + " km</div>";
         html = html + "<div class='speed'>" + string(kmh) + "<span class='unit'>KM/H</span></div>";
+        if (manualDrive) {
+            var slipPct = int(driveLoad * 100.0);
+            html = html + "<div class='label'><span>GRIP</span><span>" + string(slipPct) + "%</span></div>";
+            html = html + "<div class='share'><i style='width:" + string(slipPct) + "%'></i></div>";
+        }
         html = html + "<div class='row'><span>LAP  " + formatTime(carLapTime[show]) + "</span><span class='muted'>LAP " + string(lapNo) + "</span></div>";
         html = html + "<div class='row'><span class='best'>BEST  " + formatTime(sessionBest) + "</span><span class='dim'>LAST  " + lastText + "</span></div>";
         html = html + "<div class='label'><span>NEURAL SHARE</span><span class='netc'>" + string(sharePct) + "%</span></div>";
@@ -3730,7 +4191,7 @@ if (root == null) {
                 }
             }
             var tag = string(rank + 1);
-            if (manualDrive && ci == 0) {
+            if (manualDrive && ci == driveCar) {
                 tag = tag + "  YOU";
             }
             var ink = "#b8b8b8";
@@ -3755,8 +4216,55 @@ if (root == null) {
             bi = bi + 1;
         }
         html = html + "</div>";
-        html = html + "<div class='keys'>Q E circuit &nbsp; C " + shotLabel() + " &nbsp; Tab drive<br>N net &nbsp; T coach &nbsp; L blend &nbsp; R reset &nbsp; Space pause<br>1 signs " + mark(showSigns) + " &nbsp; 2 trees " + mark(showTrees) + " &nbsp; 3 buildings " + mark(showBuildings) + "</div>";
+        html = html + "<div class='keys'>Q E circuit &nbsp; C " + shotLabel() + " &nbsp; Tab cockpit<br>Z X car " + string(driveCar + 1) + " &nbsp; WASD throttle brake steer<br>N net &nbsp; T coach &nbsp; L blend &nbsp; R reset &nbsp; Space pause<br>1 signs " + mark(showSigns) + " &nbsp; 2 trees " + mark(showTrees) + " &nbsp; 3 buildings " + mark(showBuildings) + "</div>";
         dom.html(hud, html);
+    }
+
+    var audioClock = 0.0;
+    var noiseClock = 0.0;
+
+    function hearRace(dt: float) {
+        game.audioInit();
+        if (paused) {
+            return;
+        }
+        var hear = leadCar;
+        if (manualDrive) {
+            hear = driveCar;
+        }
+        if (hear < 0 || hear >= carV.length) {
+            return;
+        }
+        var speed = carV[hear];
+        if (speed < 0.0) {
+            speed = 0.0;
+        }
+        var speedN = speed / (150.0 * worldScale + 0.001);
+        if (speedN > 1.3) {
+            speedN = 1.3;
+        }
+        audioClock = audioClock + dt;
+        if (audioClock >= 0.085) {
+            audioClock = 0.0;
+            var freq = 62.0 + speedN * 168.0;
+            var vol = 0.035 + speedN * 0.07;
+            game.audioPlayTone(freq, 70, "sawtooth", vol);
+        }
+        var scrub = 0.0;
+        if (hear < carGrip.length) {
+            scrub = carGrip[hear];
+        }
+        if (scrub > 1.0) {
+            scrub = 1.0;
+        }
+        if (scrub > 0.9) {
+            noiseClock = noiseClock + dt;
+            if (noiseClock >= 0.1) {
+                noiseClock = 0.0;
+                var nvol = (scrub - 0.9) * 0.55;
+                game.audioPlayNoise(60, nvol);
+            }
+        }
     }
 
     function update(dtMs) {
@@ -3781,7 +4289,7 @@ if (root == null) {
         var cDown = three.isKeyDown("c");
         if (cDown && !cWasDown) {
             camShot = camShot + 1;
-            if (camShot >= 6) {
+            if (camShot >= 7) {
                 camShot = 0;
             }
             shotHold = 0.0;
@@ -3822,8 +4330,41 @@ if (root == null) {
         var tabDown = three.isKeyDown("tab");
         if (tabDown && !tabWasDown) {
             manualDrive = !manualDrive;
+            autoplay = false;
+            shotHold = 0.0;
+            if (manualDrive) {
+                camShot = 6;
+            } else if (camShot == 6) {
+                camShot = 0;
+            }
         }
         tabWasDown = tabDown;
+
+        var zDown = three.isKeyDown("z");
+        if (zDown && !zWasDown) {
+            driveCar = driveCar - 1;
+            if (driveCar < 0) {
+                driveCar = carCount - 1;
+            }
+            if (manualDrive) {
+                camShot = 6;
+                shotHold = 0.0;
+            }
+        }
+        zWasDown = zDown;
+
+        var xDown = three.isKeyDown("x");
+        if (xDown && !xWasDown) {
+            driveCar = driveCar + 1;
+            if (driveCar >= carCount) {
+                driveCar = 0;
+            }
+            if (manualDrive) {
+                camShot = 6;
+                shotHold = 0.0;
+            }
+        }
+        xWasDown = xDown;
 
         var oneDown = three.isKeyDown("1");
         if (oneDown && !oneWasDown) {
@@ -3861,7 +4402,7 @@ if (root == null) {
         if (!paused) {
             hudCar = leadCar;
             if (manualDrive) {
-                hudCar = 0;
+                hudCar = driveCar;
             }
             var i = 0;
             while (i < carCount) {
@@ -3908,6 +4449,17 @@ if (root == null) {
         three.setUniform(material, "uAngle5", carH[5]);
         three.setUniform(material, "uAngle6", carH[6]);
         three.setUniform(material, "uAngle7", carH[7]);
+        three.setUniform(material, "uSteer0", carSteerCmd[0]);
+        three.setUniform(material, "uSteer1", carSteerCmd[1]);
+        three.setUniform(material, "uSteer2", carSteerCmd[2]);
+        three.setUniform(material, "uSteer3", carSteerCmd[3]);
+        three.setUniform(material, "uSteer4", carSteerCmd[4]);
+        three.setUniform(material, "uSteer5", carSteerCmd[5]);
+        three.setUniform(material, "uSteer6", carSteerCmd[6]);
+        three.setUniform(material, "uSteer7", carSteerCmd[7]);
+        three.setUniform(material, "uCockpitCar", cockpitCar);
+        three.setUniform(material, "uGrip", shownGrip);
+        hearRace(dtSec);
         refreshHud();
     }
 

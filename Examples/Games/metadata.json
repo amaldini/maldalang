@@ -589,7 +589,7 @@
         "Games/three_shader_raytracer.malda",
         "Games/grand_prix_neural.malda"
       ],
-      "learningGoal": "Watch a small policy take over from a pure-pursuit coach while the circuit is ray-traced, and drive one car yourself.",
+      "learningGoal": "Watch a small policy take over from a pure-pursuit coach that also sees slip and grip, then drive any car from the cockpit.",
       "expectedOutput": "Renders Monza, Spa, or Monaco as a lit 3D scene. The net blends in as the loss falls.",
       "documentationPath": "/docs/roadmap-neural.md",
       "documentationTitle": "Neural-nets kit"
