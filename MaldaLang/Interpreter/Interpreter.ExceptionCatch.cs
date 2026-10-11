@@ -34,7 +34,7 @@ public partial class Interpreter
         try
         {
             var result = await EvaluateAsync(clause.Filter);
-            return CoerceToBoolean(result);
+            return result.IsTruthy();
         }
         finally
         {
@@ -64,20 +64,5 @@ public partial class Interpreter
         {
             await ExecuteBlockAsync(catchClause.Body);
         }
-    }
-
-    private static bool CoerceToBoolean(RuntimeValue value)
-    {
-        if (value.Type == ValueType.Boolean)
-            return value.AsBoolean();
-        if (value.Type == ValueType.Null)
-            return false;
-        if (value.Type == ValueType.Integer)
-            return value.AsInteger() != 0;
-        if (value.Type == ValueType.Float)
-            return Math.Abs(value.AsFloat()) > double.Epsilon;
-        if (value.Type == ValueType.String)
-            return !string.IsNullOrEmpty(value.AsString());
-        return true;
     }
 }

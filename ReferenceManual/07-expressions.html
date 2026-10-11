@@ -157,6 +157,7 @@ str *= 5;           // str is now "xxxxx"</code></pre>
         <ul>
             <li>If the condition evaluates to a truthy value, the expression returns <code>valueIfTrue</code></li>
             <li>If the condition evaluates to a falsy value, the expression returns <code>valueIfFalse</code></li>
+            <li>Only <code>null</code> and <code>false</code> are falsy. Numbers (including <code>0</code> and <code>0.0</code>), strings (including <code>""</code>), and empty arrays are truthy. The same rule applies to <code>if</code>, <code>while</code>, <code>&amp;&amp;</code>, <code>||</code>, and <code>not</code></li>
             <li>Only the selected branch is evaluated (short-circuit evaluation)</li>
         </ul>
         <h3>Examples</h3>

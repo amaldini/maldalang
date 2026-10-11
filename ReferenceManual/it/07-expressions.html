@@ -158,6 +158,7 @@ str *= 5;           // str is now "xxxxx"</code></pre>
         <ul>
             <li>Se la condizione si valuta a un valore truthy, l'espressione restituisce <code>valueIfTrue</code></li>
             <li>Se la condizione si valuta a un valore falsy, l'espressione restituisce <code>valueIfFalse</code></li>
+            <li>Solo <code>null</code> e <code>false</code> sono falsy. I numeri (compresi <code>0</code> e <code>0.0</code>), le stringhe (compresa <code>""</code>) e gli array vuoti sono truthy. La stessa regola vale per <code>if</code>, <code>while</code>, <code>&amp;&amp;</code>, <code>||</code> e <code>not</code></li>
             <li>Viene valutato solo il ramo selezionato (valutazione short-circuit)</li>
         </ul>
         <h3>Esempi</h3>

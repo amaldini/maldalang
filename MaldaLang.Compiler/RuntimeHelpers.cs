@@ -480,20 +480,17 @@ public static class RuntimeHelpers
         return "[" + string.Join(", ", elements) + "]";
     }
 
+    /// <summary>
+    /// MALDA truthiness (spec §6, same as <see cref="RuntimeValue.IsTruthy"/>):
+    /// only null and false are falsy. 0, 0.0, NaN, "" and empty arrays are truthy.
+    /// </summary>
     public static bool CoerceToBool(object? value)
     {
-        if (value == null) return false;
-        return value switch
-        {
-            bool b => b,
-            int i => i != 0,
-            long l => l != 0,
-            double d => d != 0.0,
-            float f => f != 0.0f,
-            string s => !string.IsNullOrEmpty(s),
-            List<object> list => list.Count > 0,
-            _ => true
-        };
+        if (value is RuntimeValue rv)
+            return rv.IsTruthy();
+        if (value is bool b)
+            return b;
+        return value != null;
     }
 
     /// <summary>True for C# null or a MALDA <see cref="RuntimeValue"/> tagged Null.</summary>

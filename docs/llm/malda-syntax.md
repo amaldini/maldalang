@@ -221,6 +221,8 @@ if (true) {
 var double = (n) => n * 2;
 ```
 
+`if`, `while`, `&&`, `||`, and `not` treat only `null` and `false` as falsy. `0`, `0.0`, `""`, and `[]` are truthy. Write `n != 0` when zero should fail the condition.
+
 ## Classes
 
 ```malda

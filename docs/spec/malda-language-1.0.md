@@ -261,7 +261,7 @@ match n {
 
 - Syntax: `case Pattern if Expression : body` (the same `if` word as `catch (e if …)`).
 - The pattern is tried first. On a hit, bindings are in scope for the guard.
-- If the guard is missing or truthy (same truthiness as `if` on that backend), the arm runs.
+- If the guard is missing or truthy (same truthiness as `if`, §6), the arm runs.
 - If the guard is falsy, the arm is skipped and the next case is tried. That is not an error.
 - Under `--strict-types`, a guarded arm does **not** count toward exhaustiveness: `case Ok(v) if v > 0` does not cover `Ok`; `case x if …` / `case _ if …` is not a catch-all.
 

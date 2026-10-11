@@ -95,7 +95,7 @@ Validation rules currently enforced:
 - Runtime file: `Examples/Web/wwwroot/malda-js-runtime.js`
 - Required global symbol: `globalThis.mlRuntime`
 - Current helper surface:
-  - Type helpers: `coerceToInt`, `coerceToFloat`, `coerceToString`, `isTruthy`, `equals`, `isObject`, `objectHasKey`
+  - Type helpers: `coerceToInt`, `coerceToFloat`, `coerceToString`, `isTruthy`, `equals`, `isObject`, `objectHasKey`. `isTruthy` matches the interpreter (spec §6): only `null`, `undefined`, and `false` are falsy. `0`, `NaN`, `""`, and empty arrays are truthy.
   - Built-ins: `builtins.print`, `builtins.println`, `builtins.sleep`
   - Stdlib: `math.*`, `str.*`, `io.print`, `io.input`
   - JSON: `parseJSON`, `parseJson`, `toJSON`

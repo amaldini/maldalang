@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Fixed (correctness — one truthiness rule)
+
+- C# transpile (`CoerceToBool`), JavaScript `isTruthy`, UI `{{#if}}`, and `catch (e if …)` filters now follow spec §6, the same rule as the interpreter. Only `null` and `false` are falsy. `0`, `0.0`, `""`, and empty arrays are truthy. Previously those backends treated zero, empty strings, and empty collections as falsy.
+
 #### Clarified (PATCH — showcase examples)
 
 - **Maldanoid showcase autoplay:** `Examples/Games/maldanoid.malda` plays itself when the preview injects `#malda-autoplay`, when the player presses N, or when they click the Neural button on the title screen or HUD (including a normal `malda play` launch). A 4-12-1 net imitates a wall-bounce intercept coach (`Sequential`, `nn.mseGrad`) and the blend hands the paddle to the net as the loss falls. At a loss of 0.03 the network plays alone. The HUD draws the loss trace, hidden-unit activity, and coach versus net aim. A key, click, touch, or stick returns control. Autoplay does not write the high-score save. Playlist: `scripts/showcase/playlist.json`. No Tier 0 semantic change.

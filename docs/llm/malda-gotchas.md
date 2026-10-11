@@ -15,6 +15,7 @@ claim a program works.
 
 | You write | What actually happens | Write this instead |
 |-----------|----------------------|--------------------|
+| `if (n)` / `while (n)` when `n` is `0` | `0`, `0.0`, `""`, and `[]` are **truthy**. Only `null` and `false` are falsy, on the interpreter and on C# / JavaScript transpile. `while (0)` does not stop. | `if (n != 0)` or `while (n > 0)` |
 | `print("n is {n}")` | Prints the literal `n is {n}`. A plain string does **not** interpolate. IDE/LSP **malda-interp** Warning (prompt bodies still use `{name}` templates). | `io.print($"n is {n}")` or `io.print("n is " + string(n))` |
 | `var p2 = parseJSON(toJSON(new Person("Ada", 36)))` expecting a `Person` | `toJSON` dumps **public instance fields** only. `parseJSON` always returns a dict — methods, `private` fields, and identity are gone. | `new Person(data.name, data.age)` after parse. Persist a schema-shaped dict when you can |
 | `var raw = io.input("? ");` in a loop | At end of input this returns `""` — **not** `null`, and it does not exit. Every later call returns `""` too, so a loop that only advances on valid input never terminates. | Treat empty as end/quit: `if (str.trim(raw) == "") { break; }` |

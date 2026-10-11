@@ -47,6 +47,12 @@ public class InterpretJsPairTests
     }
 
     [Fact]
+    public void Truthiness_SameStdout()
+    {
+        InterpretJsPair.AssertSameFromSource(TruthinessTests.CoreSource, "truthiness-js");
+    }
+
+    [Fact]
     public void MathAndStr_SameStdout()
     {
         InterpretJsPair.AssertSameFromSource(
@@ -59,6 +65,25 @@ public class InterpretJsPairTests
             io.print(toJSON(parseJSON("{\"k\":1}")));
             """,
             "math-str-json-js");
+    }
+
+    [Fact]
+    public void MathMinMax_SameStdout()
+    {
+        InterpretJsPair.AssertSameFromSource(
+            """
+            io.print(math.max(10, 20));
+            io.print(math.max(20, 10));
+            io.print(math.min(10, 20));
+            io.print(math.min(3.5, 1.25));
+            io.print(math.max(1, 2.5));
+            var values = [1, 4, 2];
+            io.print(math.max(values));
+            io.print(math.min(values));
+            io.print(values.max());
+            io.print(values.min());
+            """,
+            "math-min-max-js");
     }
 
     [Fact]

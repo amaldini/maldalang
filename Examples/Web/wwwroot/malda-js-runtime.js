@@ -51,10 +51,9 @@
   }
 
   function isTruthy(value) {
+    // Spec §6: only null and false are falsy. 0, NaN, "", and empty arrays are truthy.
     if (value === null || value === undefined) return false;
     if (typeof value === "boolean") return value;
-    if (typeof value === "number") return value !== 0 && !Number.isNaN(value);
-    if (typeof value === "string") return value.length > 0;
     return true;
   }
 
@@ -1568,16 +1567,37 @@
     return mathSum(numbers) / numbers.length;
   }
 
-  function mathMax(value) {
-    const numbers = numericArray("max", value);
-    if (numbers.length === 0) throw new Error("max() expects a non-empty array");
-    return Math.max.apply(null, numbers);
+  function mathBinaryExtreme(name, pick, left, right) {
+    if (typeof left !== "number" || typeof right !== "number") {
+      throw new Error(name + "() expects numbers");
+    }
+    return pick(left, right);
   }
 
-  function mathMin(value) {
-    const numbers = numericArray("min", value);
-    if (numbers.length === 0) throw new Error("min() expects a non-empty array");
-    return Math.min.apply(null, numbers);
+  function mathArrayExtreme(name, pick, value) {
+    const numbers = numericArray(name, value);
+    if (numbers.length === 0) throw new Error(name + "() expects a non-empty array");
+    return numbers.reduce((best, item) => pick(best, item));
+  }
+
+  function mathMax(value, other) {
+    if (arguments.length === 2) {
+      return mathBinaryExtreme("max", Math.max, value, other);
+    }
+    if (arguments.length !== 1) {
+      throw new Error("max() expects 2 arguments or 1 array");
+    }
+    return mathArrayExtreme("max", Math.max, value);
+  }
+
+  function mathMin(value, other) {
+    if (arguments.length === 2) {
+      return mathBinaryExtreme("min", Math.min, value, other);
+    }
+    if (arguments.length !== 1) {
+      throw new Error("min() expects 2 arguments or 1 array");
+    }
+    return mathArrayExtreme("min", Math.min, value);
   }
 
   function mathClamp(value, minValue, maxValue) {

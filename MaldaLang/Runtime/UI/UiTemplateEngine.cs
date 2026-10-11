@@ -103,7 +103,7 @@ public static class UiTemplateEngine
         public void Render(System.Text.StringBuilder sb, EvalContext context, UiTemplateRenderOptions options)
         {
             var value = ResolveExpression(_conditionExpression, context);
-            if (!IsTruthy(value))
+            if (!value.IsTruthy())
             {
                 return;
             }
@@ -442,20 +442,5 @@ public static class UiTemplateEngine
         }
 
         return RuntimeValue.Null();
-    }
-
-    private static bool IsTruthy(RuntimeValue value)
-    {
-        return value.Type switch
-        {
-            ValueType.Null => false,
-            ValueType.Boolean => value.AsBoolean(),
-            ValueType.Integer => value.AsInteger() != 0,
-            ValueType.Float => Math.Abs(value.AsFloat()) > double.Epsilon,
-            ValueType.String => !string.IsNullOrEmpty(value.AsString()),
-            ValueType.Array => value.AsArray().Count > 0,
-            ValueType.Object => true,
-            _ => true
-        };
     }
 }

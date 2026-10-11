@@ -67,6 +67,12 @@ public class InterpretTranspilePairTests
     }
 
     [Fact]
+    public void Truthiness_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(TruthinessTests.Source, "truthiness");
+    }
+
+    [Fact]
     public void MathAnneal_SameStdout()
     {
         InterpretTranspilePair.AssertSameFromSource(
