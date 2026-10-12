@@ -4871,6 +4871,216 @@ process.stdout.write("ok\n");
     }
 
     [Fact]
+    public void ThreeRuntime_InstancingShadowsAndFog_ConfigureThreeObjects()
+    {
+        Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);
+
+        var runtimePath = PlanningPaths.ResolveRepoFile("Examples", "Web", "wwwroot", "malda-js-runtime.js");
+        var root = CreateTempDirectory("malda_js_three_raster_");
+        try
+        {
+            var scriptPath = Path.Combine(root, "three-raster-test.js");
+            File.WriteAllText(scriptPath, """
+const mount = { appendChild(el) { el.parentNode = this; return el; }, removeChild() {} };
+globalThis.document = { body: mount, querySelector() { return mount; }, createElement() { return { style: {} }; } };
+globalThis.window = {
+  addEventListener() {}, removeEventListener() {},
+  requestAnimationFrame() { return 1; }, cancelAnimationFrame() {},
+  devicePixelRatio: 1
+};
+
+function Vec3() {
+  this.x = 0; this.y = 0; this.z = 0;
+  this.set = function (x, y, z) { this.x = x; this.y = y; this.z = z; return this; };
+}
+function Color(text) {
+  this.r = 0; this.g = 0; this.b = 0; this.text = text;
+  this.setRGB = function (r, g, b) { this.r = r; this.g = g; this.b = b; this.text = null; return this; };
+  this.set = function (t) { this.text = t; return this; };
+}
+function Object3D() {
+  this.position = new Vec3();
+  this.rotation = new Vec3();
+  this.scale = new Vec3();
+  this.matrix = null;
+  this.children = [];
+  this.updateMatrix = function () {
+    this.matrix = { p: [this.position.x, this.position.y, this.position.z], r: [this.rotation.x, this.rotation.y, this.rotation.z], s: [this.scale.x, this.scale.y, this.scale.z] };
+  };
+  this.updateMatrixWorld = function () { this.worldUpdated = true; };
+  this.add = function (c) { this.children.push(c); };
+  this.traverse = function (fn) { fn(this); this.children.forEach((c) => c.traverse(fn)); };
+}
+function InstancedMesh(geometry, material, count) {
+  Object3D.call(this);
+  this.isInstancedMesh = true;
+  this.material = material;
+  this.count = count;
+  this.matrices = new Array(count).fill(null);
+  this.instanceMatrix = { needsUpdate: false, setUsage(u) { this.usage = u; } };
+  this.instanceColor = null;
+  this.setMatrixAt = function (i, m) { this.matrices[i] = JSON.parse(JSON.stringify(m)); };
+  this.setColorAt = function (i, c) {
+    if (!this.instanceColor) this.instanceColor = { values: new Array(this.count).fill(null), needsUpdate: false };
+    this.instanceColor.values[i] = { r: c.r, g: c.g, b: c.b, text: c.text };
+  };
+}
+function Mesh(geometry, material) { Object3D.call(this); this.isMesh = true; this.material = material; }
+function Scene() { Object3D.call(this); this.isScene = true; this.fog = null; }
+function Fog(color, near, far) { this.isFog = true; this.color = new Color(color); this.near = near; this.far = far; }
+function FogExp2(color, density) { this.isFogExp2 = true; this.color = new Color(color); this.density = density; }
+function DirectionalLight() {
+  Object3D.call(this);
+  this.isLight = true;
+  this.isDirectionalLight = true;
+  this.castShadow = false;
+  this.target = new Object3D();
+  this.shadow = {
+    camera: { isOrthographicCamera: true, left: -5, right: 5, top: 5, bottom: -5, near: 0.5, far: 500, updateProjectionMatrix() { this.updated = true; } },
+    mapSize: { x: 512, y: 512, set(a, b) { this.x = a; this.y = b; } },
+    map: { disposed: false, dispose() { this.disposed = true; } },
+    bias: 0,
+    normalBias: 0
+  };
+}
+function WebGLRenderer() {
+  this.domElement = { style: {}, width: 1, height: 1, getBoundingClientRect() { return { left: 0, top: 0, width: 1, height: 1 }; } };
+  this.shadowMap = { enabled: false, type: 0 };
+  this.setSize = function () {};
+  this.setPixelRatio = function () {};
+  this.setClearColor = function () {};
+  this.render = function () { this.renders = (this.renders || 0) + 1; };
+}
+globalThis.THREE = {
+  Object3D, InstancedMesh, Mesh, Scene, Fog, FogExp2, DirectionalLight, WebGLRenderer, Color,
+  DynamicDrawUsage: 35048, PCFSoftShadowMap: 2
+};
+
+require(process.argv[2]);
+const three = globalThis.mlRuntime.three;
+const renderer = three.createRenderer(10, 10, "#app");
+const scene = three.createScene();
+const camera = {};
+
+// Instancing
+const material = { needsUpdate: false };
+const trees = three.createInstancedMesh({}, material, 4);
+if (!trees.isInstancedMesh || trees.count !== 4 || trees.frustumCulled !== false) throw new Error("instanced mesh setup");
+if (trees.instanceMatrix.usage !== 35048) throw new Error("instance matrix should be dynamic");
+three.setInstance(trees, 1, 1, 2, 3, { "rotation": 0.5, "scale": 2 });
+const m1 = trees.matrices[1];
+if (m1.p.join() !== "1,2,3" || m1.r.join() !== "0,0.5,0" || m1.s.join() !== "2,2,2") throw new Error("scalar rotation/scale: " + JSON.stringify(m1));
+three.setInstance(trees, 2, 0, 0, 0, { "rotation": [1, 2, 3], "scale": [1, 4, 1] });
+const m2 = trees.matrices[2];
+if (m2.r.join() !== "1,2,3" || m2.s.join() !== "1,4,1") throw new Error("vector rotation/scale: " + JSON.stringify(m2));
+three.setInstance(trees, 3, 5, 0, 5);
+if (trees.matrices[3].r.join() !== "0,0,0" || trees.matrices[3].s.join() !== "1,1,1") throw new Error("defaults should be no turn, scale 1");
+if (trees.instanceColor !== null) throw new Error("no color asked, no color buffer");
+three.setInstance(trees, 0, 0, 0, 0, { "color": [0.2, 0.5, 0.1] });
+const colors = trees.instanceColor.values;
+if (colors[0].g !== 0.5 || colors[3].r !== 1 || colors[3].g !== 1) throw new Error("other instances should start white: " + JSON.stringify(colors));
+three.setInstance(trees, 2, 0, 0, 0, { "color": "#ff0000" });
+if (colors[2].text !== "#ff0000") throw new Error("hex instance color");
+let threw = false;
+try { three.setInstance(trees, 4, 0, 0, 0); } catch (_e) { threw = true; }
+if (!threw) throw new Error("index past count should throw");
+three.setInstanceCount(trees, 2);
+if (trees.count !== 2) throw new Error("setInstanceCount");
+three.setInstanceCount(trees, 99);
+if (trees.count !== 4) throw new Error("setInstanceCount should clamp to the created count");
+threw = false;
+try { three.setInstance({}, 0, 0, 0, 0); } catch (_e) { threw = true; }
+if (!threw) throw new Error("setInstance on a plain object should throw");
+
+// Shadows
+three.add(scene, trees);
+const groundMaterial = { needsUpdate: false };
+const ground = new Mesh({}, groundMaterial);
+three.add(scene, ground);
+three.setShadows(renderer, true);
+if (!renderer.shadowMap.enabled || renderer.shadowMap.type !== 2) throw new Error("shadow map on, soft");
+three.setShadow(trees, true);
+if (!trees.castShadow || !trees.receiveShadow) throw new Error("receive defaults to cast");
+three.setShadow(ground, false, true);
+if (ground.castShadow || !ground.receiveShadow) throw new Error("ground receives only");
+const sun = new DirectionalLight();
+const oldMap = sun.shadow.map;
+three.setLightShadow(sun, { "extent": 20, "mapSize": 2000, "far": 90 });
+if (!sun.castShadow || sun.shadow.camera.right !== 20 || sun.shadow.camera.bottom !== -20 || sun.shadow.camera.far !== 90) throw new Error("shadow camera: " + JSON.stringify(sun.shadow.camera));
+if (sun.shadow.mapSize.x !== 2048 || !oldMap.disposed || sun.shadow.map !== null) throw new Error("map size rounds to a power of two and drops the old map");
+if (!sun.shadow.camera.updated || sun.shadow.bias !== -0.0005) throw new Error("projection refresh and default bias");
+three.lookAt(sun, 3, 0, 4);
+if (sun.target.position.x !== 3 || sun.target.position.z !== 4 || !sun.target.worldUpdated) throw new Error("lookAt on a light should aim its target");
+
+three.render(renderer, scene, camera);
+if (!material.needsUpdate || !groundMaterial.needsUpdate) throw new Error("shadow switches should rebuild scene materials once");
+material.needsUpdate = false;
+three.render(renderer, scene, camera);
+if (material.needsUpdate) throw new Error("materials rebuild only after a switch");
+
+// Fog
+three.setFog(scene, "#9fc4d8", 10, 60);
+if (!scene.fog.isFog || scene.fog.near !== 10 || scene.fog.far !== 60) throw new Error("linear fog");
+three.render(renderer, scene, camera);
+if (!material.needsUpdate) throw new Error("adding fog should rebuild materials");
+material.needsUpdate = false;
+three.setFog(scene, "#ffffff", 5, 50);
+three.render(renderer, scene, camera);
+if (material.needsUpdate || scene.fog.color.text !== "#ffffff" || scene.fog.far !== 50) throw new Error("changing fog values reuses the fog without a rebuild");
+three.setFogExp(scene, "#000000", 0.05);
+if (!scene.fog.isFogExp2 || scene.fog.density !== 0.05) throw new Error("exp fog");
+three.setFog(scene, null);
+if (scene.fog !== null) throw new Error("null color clears fog");
+
+process.stdout.write("ok\n");
+""");
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = Environment.GetEnvironmentVariable("MALDA_NODE_PATH") is { Length: > 0 } nodePath
+                    ? nodePath
+                    : "node",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = root
+            };
+            startInfo.ArgumentList.Add(scriptPath);
+            startInfo.ArgumentList.Add(runtimePath);
+
+            using var process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("Failed to start Node.js for three raster test.");
+            var stdout = process.StandardOutput.ReadToEnd();
+            var stderr = process.StandardError.ReadToEnd();
+            process.WaitForExit(15000);
+            Assert.True(process.ExitCode == 0, $"three raster test failed ({process.ExitCode}). stderr: {stderr}");
+            Assert.Equal("ok", stdout.Trim());
+        }
+        finally
+        {
+            SafeDeleteDirectory(root);
+        }
+    }
+
+    [Fact]
+    public void JsTranspiler_ForestExample_EmitsInstancingShadowAndFogCalls()
+    {
+        var sourcePath = PlanningPaths.ResolveRepoFile("Examples", "Games", "three_forest.malda");
+        var js = new Compiler.Compiler().TranspileToJavaScript(sourcePath);
+
+        Assert.Contains("mlRuntime.three.createInstancedMesh(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.three.setInstance(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.three.setInstanceCount(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.three.setShadows(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.three.setShadow(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.three.setLightShadow(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.three.setFog(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.three.startFixed(", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("mlRuntime.game.", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void JsTranspiler_MapsThreeFixedLoopAndInputEdges()
     {
         var js = new Compiler.Compiler().TranspileToJavaScriptFromSource("""

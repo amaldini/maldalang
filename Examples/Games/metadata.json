@@ -455,6 +455,29 @@
       ],
       "learningGoal": "Show createTexture map, loadGLTF, and lookAt on the curated three.* path without a fourth script tag.",
       "expectedOutput": "Renders a spinning textured box beside a glTF cube; the camera looks at the pair.",
+      "next": "Games/three_forest.malda",
+      "documentationPath": "/?lesson=browser-track#lesson-browser-track",
+      "documentationTitle": "Browser Track"
+    },
+    {
+      "name": "JS three.js Instanced Forest",
+      "description": "2400 instanced trees and 300 rocks in a few draw calls, with sun shadows that follow the camera and fog that matches the sky",
+      "file": "three_forest.malda",
+      "track": "showcase",
+      "difficulty": "intermediate",
+      "minutes": 15,
+      "concepts": [
+        "three.*",
+        "instancing",
+        "shadows",
+        "fog",
+        "startFixed"
+      ],
+      "prerequisites": [
+        "Games/three_textured.malda"
+      ],
+      "learningGoal": "Draw thousands of copies with createInstancedMesh / setInstance, light them with setLightShadow, and fade the distance with setFog.",
+      "expectedOutput": "Flies around a lit forest; F toggles fog, H toggles shadows, + / - change the tree count.",
       "next": "Games/maldanoid3d.malda",
       "documentationPath": "/?lesson=browser-track#lesson-browser-track",
       "documentationTitle": "Browser Track"

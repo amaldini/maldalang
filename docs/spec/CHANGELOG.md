@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — JavaScript `three.*` instancing, shadows, and fog)
+
+- **Instancing:** `three.createInstancedMesh(geometry, material, count)`, `three.setInstance(mesh, index, x, y, z, options?)` (rotation, scale, per-instance color), and `three.setInstanceCount(mesh, count)` draw many copies of a mesh in one call. **Shadows:** `three.setShadows(renderer, enabled)`, `three.setShadow(object, cast, receive?)` (recursive), and `three.setLightShadow(light, options?)` (extent, near / far, map size, bias). `three.lookAt` on a directional or spot light now aims its target. **Fog:** `three.setFog(scene, color, near, far)` and `three.setFogExp(scene, color, density)`. Switching shadows or fog on or off rebuilds the scene's materials on the next render. New example `Examples/Games/three_forest.malda` (2400 trees, 300 rocks, sun shadows, fog). Narrative: [`28-browser-javascript-backend.html`](../../ReferenceManual/28-browser-javascript-backend.html) §28.10. JavaScript backend only; no Tier 0 change.
+
 #### Added (MINOR — JavaScript `three.*` render scale and stats)
 
 - **`three.setRenderScale(renderer, scale)`** draws at a fraction (0.25–2) of the renderer size × devicePixelRatio while the canvas keeps its page size. **`three.setAutoRenderScale(renderer, targetFps?, minScale?, maxScale?)`** lowers the scale when the frame rate stays under 90% of the target and raises it after 3 s at the target. **`three.getRenderScale()`**, **`three.getStats()`** (`fps`, `frameMs`, `renderScale`, `autoScale`, buffer `width` / `height`, `drawCalls`, `triangles`), and **`three.showStats(visible?)`** (also `#malda-stats` in the URL) report it. `three_shader_race_car_neural.malda` uses auto scale 0.5–1 at 60 fps and toggles the overlay with F. Narrative: [`28-browser-javascript-backend.html`](../../ReferenceManual/28-browser-javascript-backend.html) §28.10. JavaScript backend only; no Tier 0 change.

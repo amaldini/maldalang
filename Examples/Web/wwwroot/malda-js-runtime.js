@@ -6561,7 +6561,10 @@
         fps: 0,
         frameMs: 0,
         statsOverlay: null,
-        statsVisible: false
+        statsVisible: false,
+        materialsDirty: false,
+        instanceScratch: null,
+        colorScratch: null
       };
 
       function normalizeKey(key) {
@@ -7255,6 +7258,12 @@
 
       function lookAt(object, x, y, z) {
         ensureThree("lookAt");
+        if (object && object.target && (object.isDirectionalLight || object.isSpotLight)) {
+          // A light shines toward its target, not along its own rotation.
+          object.target.position.set(toFiniteNumber(x, 0), toFiniteNumber(y, 0), toFiniteNumber(z, 0));
+          object.target.updateMatrixWorld();
+          return null;
+        }
         if (!object || typeof object.lookAt !== "function") {
           throw new Error("mlRuntime.three.lookAt expects an object with lookAt(x, y, z).");
         }
@@ -7956,6 +7965,249 @@
         return new THREE.AmbientLight(color || "#ffffff", clampFiniteNumber(intensity, 0, 100, 1));
       }
 
+      // One draw call for many copies of a mesh. Every instance starts at the
+      // origin; place each with setInstance. Culling is off because instances
+      // spread far past the base geometry's bounds.
+      function createInstancedMesh(geometry, material, count) {
+        const THREE = ensureThree("createInstancedMesh");
+        if (typeof THREE.InstancedMesh !== "function") {
+          throw new Error("mlRuntime.three.createInstancedMesh requires THREE.InstancedMesh on the loaded three.js bundle.");
+        }
+        const max = Math.max(1, Math.min(100000, coerceToInt(count)));
+        const mesh = new THREE.InstancedMesh(geometry, material, max);
+        if (mesh.instanceMatrix && typeof mesh.instanceMatrix.setUsage === "function" && THREE.DynamicDrawUsage !== undefined) {
+          mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+        }
+        mesh.frustumCulled = false;
+        mesh.__maldaMaxCount = max;
+        return mesh;
+      }
+
+      function requireInstancedMesh(mesh, apiName) {
+        if (!mesh || !mesh.isInstancedMesh) {
+          throw new Error("mlRuntime.three." + apiName + " expects a mesh from three.createInstancedMesh.");
+        }
+        return mesh.__maldaMaxCount || mesh.count;
+      }
+
+      function vectorOption(value, fallback) {
+        if (Array.isArray(value)) {
+          return [
+            toFiniteNumber(value[0], fallback),
+            toFiniteNumber(value[1], fallback),
+            toFiniteNumber(value[2], fallback)
+          ];
+        }
+        return null;
+      }
+
+      // options: { rotation: [rx, ry, rz] or ry, scale: s or [sx, sy, sz],
+      // color: "#rrggbb" or [r, g, b] in 0..1 }.
+      function setInstance(mesh, index, x, y, z, options) {
+        const THREE = ensureThree("setInstance");
+        const max = requireInstancedMesh(mesh, "setInstance");
+        const i = coerceToInt(index);
+        if (i < 0 || i >= max) {
+          throw new Error("mlRuntime.three.setInstance index " + i + " is outside 0.." + (max - 1) + ".");
+        }
+        const opts = options && typeof options === "object" && !Array.isArray(options) ? options : {};
+        if (!state.instanceScratch) {
+          state.instanceScratch = new THREE.Object3D();
+        }
+        const scratch = state.instanceScratch;
+        scratch.position.set(toFiniteNumber(x, 0), toFiniteNumber(y, 0), toFiniteNumber(z, 0));
+        const rotation = vectorOption(opts.rotation, 0);
+        if (rotation) {
+          scratch.rotation.set(rotation[0], rotation[1], rotation[2]);
+        } else {
+          scratch.rotation.set(0, toFiniteNumber(opts.rotation, 0), 0);
+        }
+        const scale = vectorOption(opts.scale, 1);
+        if (scale) {
+          scratch.scale.set(scale[0], scale[1], scale[2]);
+        } else {
+          const uniform = toFiniteNumber(opts.scale, 1);
+          scratch.scale.set(uniform, uniform, uniform);
+        }
+        scratch.updateMatrix();
+        mesh.setMatrixAt(i, scratch.matrix);
+        mesh.instanceMatrix.needsUpdate = true;
+
+        if (opts.color !== undefined && opts.color !== null) {
+          if (!state.colorScratch) {
+            state.colorScratch = new THREE.Color();
+          }
+          const color = state.colorScratch;
+          if (!mesh.instanceColor) {
+            // three.js starts a new color buffer at black; start it at white so
+            // instances without a color keep the material color.
+            color.setRGB(1, 1, 1);
+            for (let k = 0; k < max; k++) {
+              mesh.setColorAt(k, color);
+            }
+          }
+          if (Array.isArray(opts.color)) {
+            color.setRGB(toFiniteNumber(opts.color[0], 1), toFiniteNumber(opts.color[1], 1), toFiniteNumber(opts.color[2], 1));
+          } else {
+            color.set(coerceToString(opts.color));
+          }
+          mesh.setColorAt(i, color);
+          mesh.instanceColor.needsUpdate = true;
+        }
+        return null;
+      }
+
+      // Draw only the first count instances (0..the count given to createInstancedMesh).
+      function setInstanceCount(mesh, count) {
+        const max = requireInstancedMesh(mesh, "setInstanceCount");
+        mesh.count = Math.max(0, Math.min(max, coerceToInt(count)));
+        return null;
+      }
+
+      function setShadows(renderer, enabled) {
+        const THREE = ensureThree("setShadows");
+        const target = renderer || ensureRenderer("setShadows");
+        const on = !(enabled === false || enabled === null);
+        if (!target.shadowMap) {
+          throw new Error("mlRuntime.three.setShadows expects a renderer from three.createRenderer.");
+        }
+        if (target.shadowMap.enabled !== on) {
+          state.materialsDirty = true;
+        }
+        target.shadowMap.enabled = on;
+        if (on && THREE.PCFSoftShadowMap !== undefined) {
+          target.shadowMap.type = THREE.PCFSoftShadowMap;
+        }
+        return null;
+      }
+
+      // Sets castShadow / receiveShadow on the object and every child (groups
+      // and glTF models included). receive defaults to cast.
+      function setShadow(object, cast, receive) {
+        if (!object || typeof object !== "object") {
+          throw new Error("mlRuntime.three.setShadow expects a mesh, group, or model.");
+        }
+        const castOn = !(cast === false || cast === null || cast === undefined);
+        const receiveOn = receive === undefined ? castOn : !(receive === false || receive === null);
+        const apply = (node) => {
+          if (node.isLight) return;
+          if (node.receiveShadow !== receiveOn) {
+            state.materialsDirty = true;
+          }
+          node.castShadow = castOn;
+          node.receiveShadow = receiveOn;
+        };
+        if (typeof object.traverse === "function") {
+          object.traverse(apply);
+        } else {
+          apply(object);
+        }
+        return null;
+      }
+
+      // Turns on shadows for a directional (or spot) light. options: extent
+      // (half-size of the shadowed square around the target, default 10),
+      // near / far, mapSize (256..4096, default 1024), bias, normalBias.
+      function setLightShadow(light, options) {
+        ensureThree("setLightShadow");
+        if (!light || !light.isLight || !light.shadow) {
+          throw new Error("mlRuntime.three.setLightShadow expects a light from three.createDirectionalLight.");
+        }
+        const opts = options && typeof options === "object" && !Array.isArray(options) ? options : {};
+        const extent = clampFiniteNumber(opts.extent, 0.1, 100000, 10);
+        const camera = light.shadow.camera;
+        if (camera && camera.isOrthographicCamera) {
+          camera.left = -extent;
+          camera.right = extent;
+          camera.top = extent;
+          camera.bottom = -extent;
+        }
+        if (camera) {
+          camera.near = clampFiniteNumber(opts.near, 0.001, 100000, 0.5);
+          camera.far = Math.max(camera.near + 0.001, clampFiniteNumber(opts.far, 0.01, 1000000, extent * 6));
+          if (typeof camera.updateProjectionMatrix === "function") {
+            camera.updateProjectionMatrix();
+          }
+        }
+        const mapSize = Math.pow(2, Math.round(Math.log2(clampFiniteNumber(opts.mapSize, 256, 4096, 1024))));
+        if (light.shadow.mapSize.x !== mapSize) {
+          light.shadow.mapSize.set(mapSize, mapSize);
+          if (light.shadow.map && typeof light.shadow.map.dispose === "function") {
+            light.shadow.map.dispose();
+            light.shadow.map = null;
+          }
+        }
+        light.shadow.bias = clampFiniteNumber(opts.bias, -1, 1, -0.0005);
+        light.shadow.normalBias = clampFiniteNumber(opts.normalBias, 0, 10, 0.02);
+        if (!light.castShadow) {
+          state.materialsDirty = true;
+        }
+        light.castShadow = true;
+        return null;
+      }
+
+      // Linear fog from near to far in world units. Pass null as the color to
+      // clear it. Match the clear color so the horizon blends into the sky.
+      function setFog(scene, color, near, far) {
+        const THREE = ensureThree("setFog");
+        if (!scene || !scene.isScene) {
+          throw new Error("mlRuntime.three.setFog expects a scene from three.createScene.");
+        }
+        if (color === null || color === undefined || color === false) {
+          if (scene.fog) {
+            scene.fog = null;
+            state.materialsDirty = true;
+          }
+          return null;
+        }
+        const fogNear = Math.max(0, toFiniteNumber(near, 10));
+        const fogFar = Math.max(fogNear + 0.001, toFiniteNumber(far, 100));
+        if (scene.fog && scene.fog.isFog) {
+          scene.fog.color.set(coerceToString(color));
+          scene.fog.near = fogNear;
+          scene.fog.far = fogFar;
+        } else {
+          scene.fog = new THREE.Fog(coerceToString(color), fogNear, fogFar);
+          state.materialsDirty = true;
+        }
+        return null;
+      }
+
+      // Exponential fog: visibility falls as exp(-(density * distance)^2).
+      function setFogExp(scene, color, density) {
+        const THREE = ensureThree("setFogExp");
+        if (!scene || !scene.isScene) {
+          throw new Error("mlRuntime.three.setFogExp expects a scene from three.createScene.");
+        }
+        if (color === null || color === undefined || color === false) {
+          return setFog(scene, null);
+        }
+        const fogDensity = clampFiniteNumber(density, 0, 10, 0.02);
+        if (scene.fog && scene.fog.isFogExp2) {
+          scene.fog.color.set(coerceToString(color));
+          scene.fog.density = fogDensity;
+        } else {
+          scene.fog = new THREE.FogExp2(coerceToString(color), fogDensity);
+          state.materialsDirty = true;
+        }
+        return null;
+      }
+
+      // Shadow and fog switches change which shader three.js builds for a
+      // material; flag every material in the scene so the next frame rebuilds.
+      function refreshDirtyMaterials(scene) {
+        if (!state.materialsDirty || typeof scene.traverse !== "function") return;
+        state.materialsDirty = false;
+        scene.traverse((node) => {
+          const material = node.material;
+          if (Array.isArray(material)) {
+            material.forEach((m) => { if (m) m.needsUpdate = true; });
+          } else if (material) {
+            material.needsUpdate = true;
+          }
+        });
+      }
+
       function add(parent, child) {
         if (!parent || typeof parent.add !== "function") {
           throw new Error("mlRuntime.three.add expects a parent object with add(child).");
@@ -7972,6 +8224,7 @@
         if (!camera || typeof camera !== "object") {
           throw new Error("mlRuntime.three.render requires a camera object.");
         }
+        refreshDirtyMaterials(scene);
         targetRenderer.render(scene, camera);
         return null;
       }
@@ -8215,9 +8468,17 @@
         setUniform,
         createOrthographicCamera,
         createMesh,
+        createInstancedMesh,
+        setInstance,
+        setInstanceCount,
         createGroup,
         createDirectionalLight,
         createAmbientLight,
+        setShadows,
+        setShadow,
+        setLightShadow,
+        setFog,
+        setFogExp,
         add,
         render,
         start,

@@ -1,0 +1,207 @@
+// Instanced forest with sun shadows and fog
+// Run: malda play Examples/Games/three_forest.malda
+//
+// Every tree is two instances: a trunk and a crown. 2400 trees and 300 rocks
+// draw in three calls (plus the shadow pass) instead of 5100. setInstance
+// places, turns, stretches, and tints each copy; setInstanceCount draws fewer.
+// The sun follows the camera so its shadow square always covers the trees in
+// view, and lookAt aims the light. Fog matches the sky color, so far trees fade
+// into the horizon instead of popping in.
+//
+// F fog. H shadows. + / - change the tree count. Left / Right steer.
+// I shows the fps / scale overlay.
+
+var root = dom.query("#app");
+
+if (root == null) {
+    println("No #app container found.");
+} else {
+    dom.clear(root);
+
+    var heading = dom.create("h1");
+    dom.setText(heading, "MALDA three.js Instanced forest");
+    dom.append(root, heading);
+
+    var hint = dom.create("p");
+    dom.setText(hint, "F fog, H shadows, + / - trees, Left / Right steer, I stats.");
+    dom.append(root, hint);
+
+    var status = dom.create("p");
+    dom.setText(status, "Planting…");
+    dom.append(root, status);
+
+    var width = 900;
+    var height = 520;
+    var aspect = width / height;
+    var sky = "#9fc4d8";
+
+    var renderer = three.createRenderer(width, height, "#app");
+    three.setClearColor(renderer, sky);
+    three.setRendererSize(renderer, width, height);
+    three.setShadows(renderer, true);
+
+    var scene = three.createScene();
+    three.setFog(scene, sky, 18.0, 75.0);
+
+    var camera = three.createPerspectiveCamera(65, aspect, 0.1, 200.0);
+    three.setCameraAspect(camera, aspect);
+
+    var fieldSize = 160.0;
+    var ground = three.createMesh(
+        three.createPlaneGeometry(fieldSize, fieldSize),
+        three.createStandardMaterial({ "color": "#5f8f4a", "roughness": 0.95 })
+    );
+    three.setRotation(ground, -1.5708, 0.0, 0.0);
+    three.setShadow(ground, false, true);
+    three.add(scene, ground);
+
+    // Small repeatable generator so every run plants the same forest.
+    var seed = 20261013.0;
+    function rand() -> float {
+        seed = (seed * 9301.0 + 49297.0) % 233280.0;
+        return seed / 233280.0;
+    }
+
+    var maxTrees = 2400;
+    var trunks = three.createInstancedMesh(
+        three.createBoxGeometry(0.28, 1.4, 0.28),
+        three.createStandardMaterial({ "color": "#6b4a2f", "roughness": 0.9 }),
+        maxTrees
+    );
+    var crowns = three.createInstancedMesh(
+        three.createSphereGeometry(0.95, 12, 8),
+        three.createStandardMaterial({ "color": "#ffffff", "roughness": 0.8 }),
+        maxTrees
+    );
+
+    var t = 0;
+    while (t < maxTrees) {
+        var x = (rand() - 0.5) * (fieldSize - 6.0);
+        var z = (rand() - 0.5) * (fieldSize - 6.0);
+        // Keep a ring road clear for the camera.
+        var ring = math.sqrt(x * x + z * z);
+        if (ring > 21.0 && ring < 27.0) {
+            x = x * 1.35;
+            z = z * 1.35;
+        }
+        var size = 0.7 + rand() * 0.9;
+        var tall = 1.1 + rand() * 0.9;
+        three.setInstance(trunks, t, x, 0.7 * size, z, { "scale": [size, size, size] });
+        var green = 0.35 + rand() * 0.3;
+        three.setInstance(crowns, t, x, (1.4 + 0.75 * tall) * size, z, {
+            "rotation": rand() * 6.28,
+            "scale": [size, size * tall, size],
+            "color": [0.12 + rand() * 0.15, green, 0.1 + rand() * 0.08]
+        });
+        t = t + 1;
+    }
+    three.setShadow(trunks, true);
+    three.setShadow(crowns, true);
+    three.add(scene, trunks);
+    three.add(scene, crowns);
+
+    var rockCount = 300;
+    var rocks = three.createInstancedMesh(
+        three.createBoxGeometry(1.0, 1.0, 1.0),
+        three.createStandardMaterial({ "color": "#ffffff", "roughness": 1.0 }),
+        rockCount
+    );
+    var r = 0;
+    while (r < rockCount) {
+        var shade = 0.4 + rand() * 0.25;
+        var rs = 0.3 + rand() * 0.7;
+        three.setInstance(rocks, r, (rand() - 0.5) * fieldSize, rs * 0.3, (rand() - 0.5) * fieldSize, {
+            "rotation": [rand() * 3.0, rand() * 3.0, rand() * 3.0],
+            "scale": [rs * 1.4, rs * 0.7, rs],
+            "color": [shade, shade, shade * 1.05]
+        });
+        r = r + 1;
+    }
+    three.setShadow(rocks, true);
+    three.add(scene, rocks);
+
+    var sun = three.createDirectionalLight("#fff4dd", 2.2);
+    three.setLightShadow(sun, { "extent": 28, "mapSize": 2048, "far": 120 });
+    three.add(scene, sun);
+    three.add(scene, three.createAmbientLight("#b8d4ff", 0.55));
+
+    var treeCount = maxTrees;
+    var fogOn = true;
+    var shadowsOn = true;
+    var statsOn = false;
+    var steer = 0.0;
+    var travel = 0.0;
+    var camX = 0.0;
+    var camZ = 0.0;
+    var statusClock = 0.0;
+
+    function update(dtMs) {
+        var dt = dtMs / 1000.0;
+        if (three.wasKeyPressed("f")) {
+            fogOn = !fogOn;
+            if (fogOn) {
+                three.setFog(scene, sky, 18.0, 75.0);
+            } else {
+                three.setFog(scene, null);
+            }
+        }
+        if (three.wasKeyPressed("h")) {
+            shadowsOn = !shadowsOn;
+            three.setShadows(renderer, shadowsOn);
+        }
+        if (three.wasKeyPressed("i")) {
+            statsOn = !statsOn;
+            three.showStats(statsOn);
+        }
+        if (three.wasKeyPressed("+") || three.wasKeyPressed("=")) {
+            treeCount = math.min(maxTrees, treeCount + 400);
+            three.setInstanceCount(trunks, treeCount);
+            three.setInstanceCount(crowns, treeCount);
+        }
+        if (three.wasKeyPressed("-")) {
+            treeCount = math.max(0, treeCount - 400);
+            three.setInstanceCount(trunks, treeCount);
+            three.setInstanceCount(crowns, treeCount);
+        }
+        if (three.isKeyDown("arrowleft")) {
+            steer = steer + 0.9 * dt;
+        }
+        if (three.isKeyDown("arrowright")) {
+            steer = steer - 0.9 * dt;
+        }
+
+        // Drive around the clear ring; steering offsets the view.
+        travel = travel + 0.12 * dt;
+        camX = math.cos(travel) * 24.0;
+        camZ = math.sin(travel) * 24.0;
+        var lookYaw = travel + 1.5708 + steer;
+        three.setPosition(camera, camX, 2.2, camZ);
+        three.lookAt(camera, camX + math.cos(lookYaw) * 10.0, 1.6, camZ + math.sin(lookYaw) * 10.0);
+
+        // The shadow square follows the camera; the light keeps one direction.
+        three.setPosition(sun, camX + 30.0, 45.0, camZ + 18.0);
+        three.lookAt(sun, camX, 0.0, camZ);
+
+        statusClock = statusClock + dt;
+        if (statusClock > 0.5) {
+            statusClock = 0.0;
+            var stats = three.getStats();
+            var fogText = "off";
+            if (fogOn) {
+                fogText = "on";
+            }
+            var shadowText = "off";
+            if (shadowsOn) {
+                shadowText = "on";
+            }
+            dom.setText(status, string(treeCount) + " trees, " + string(rockCount) + " rocks, "
+                + string(stats.drawCalls) + " draw calls, fog " + fogText + ", shadows " + shadowText + ".");
+        }
+    }
+
+    function render() {
+        three.render(renderer, scene, camera);
+    }
+
+    three.startFixed(update, render);
+}
