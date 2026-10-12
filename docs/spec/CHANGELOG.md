@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — JavaScript `three.*` fixed step and input edges)
+
+- **`three.startFixed(update, render?, tickMs?)`** runs the same fixed-tick loop as `game.startFixed` (default 60 Hz, at most 5 catch-up ticks per frame). **`three.getFixedAlpha()`** returns the 0–1 fraction toward the next tick for interpolation in `render`. **Input edges** come to `three.*` with the `game.*` names: `wasKeyPressed` / `wasKeyReleased`, `wasMousePressed` / `wasMouseReleased`, and `isGamepadConnected` / `getGamepadAxis` / `isGamepadButtonDown` / `wasGamepadButtonPressed` / `wasGamepadButtonReleased`. `three.start` now also opens an input frame per update, so edges work under both loops. The gamepad snapshot is one runtime helper shared by `game.*` and `three.*`. `three_shader_race_car_neural.malda` moves to `startFixed`, drops 14 hand-rolled `…WasDown` flags, and pushes uniforms and the side panel from `render`. Narrative: [`28-browser-javascript-backend.html`](../../ReferenceManual/28-browser-javascript-backend.html) §28.10. JavaScript backend only; no Tier 0 change.
+
 #### Added (MINOR — JavaScript `three.*` uniform arrays)
 
 - **Uniform arrays in shader materials:** `glsl.compile` uniforms such as `"vec3 uCars[CAR_COUNT]"` now work from host MALDA. `three.createShaderMaterial` reads `uniform T name[N]` from the shader strings, and `three.setUniform` fills `float` / `int` / `bool` / `vec2-4` / `ivec2-4` arrays from nested or flat lists, in place, instead of turning a list into a `Vector4`. `glsl.compile` now emits `consts` before `uniforms` so a const can size an array. `three_shader_race_car_neural.malda` replaces 24 per-car uniforms and three `if` chains with `uCars` / `uAngles` / `uSteers`. Narrative: [`28-browser-javascript-backend.html`](../../ReferenceManual/28-browser-javascript-backend.html) §28.10.1. JavaScript backend only; no Tier 0 change.

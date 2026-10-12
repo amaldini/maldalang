@@ -1,11 +1,11 @@
 # MALDA games platform plan
 
-**Status:** G0–G17 landed  
+**Status:** G0–G19 landed  
 **Created:** 2026-08-21  
 **Audience:** maintainers extending the JS `game.*` / `three.*` surface after Final 1.0
 
 This is the plan that made MALDA a **good platform for games people finish** —
-Love2D / Pico-8 / Phaser, not Unity. G0–G17 are landed. Prefer
+Love2D / Pico-8 / Phaser, not Unity. G0–G19 are landed. Prefer
 [`docs/javascript-backend.md`](javascript-backend.md),
 [Reference Manual 28](../ReferenceManual/28-browser-javascript-backend.html),
 and the deferred list at the end for engines that stay out of core.
@@ -75,6 +75,8 @@ top-level globals, Web IDE Desktop parity, product apps or vertical packs
 | 15 | **G15** Starter uses `startFixed` | Landed | `malda new game` still emits `game.start`; the kit loop is `startFixed` |
 | 16 | **G16** Tint + blend | Landed | Highest remaining kit gap after G15: hit-flash, additive sparks, night multiply |
 | 17 | **G17** Tile helpers | Landed | Pico-8 `map`/`mget` hole; `maldadash` now uses `drawTiles` / `tileAt` / `sweepTiles` |
+| 18 | **G18** `three.*` uniform arrays | Landed | The 3D race needed 24 per-car uniforms and `if` chains; `setUniform` turned a float list into a `Vector4` |
+| 19 | **G19** `three.startFixed` + input edges | Landed | 3D games had a variable `dt` only and hand-rolled `…WasDown` flags; no gamepad on `three.*` |
 
 ```text
 G0  roadmap file                          (landed)

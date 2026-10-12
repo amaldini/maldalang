@@ -4545,6 +4545,187 @@ process.stdout.write("ok\n");
     }
 
     [Fact]
+    public void ThreeRuntime_StartFixedAndInputEdges_MatchGameLoop()
+    {
+        Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);
+
+        var runtimePath = PlanningPaths.ResolveRepoFile("Examples", "Web", "wwwroot", "malda-js-runtime.js");
+        var root = CreateTempDirectory("malda_js_three_fixed_");
+        try
+        {
+            var scriptPath = Path.Combine(root, "three-fixed-test.js");
+            File.WriteAllText(scriptPath, """
+const mount = { appendChild(el) { el.parentNode = this; return el; }, removeChild() {} };
+const listeners = {};
+let rafQueue = [];
+let pads = [];
+
+globalThis.document = {
+  body: mount,
+  querySelector() { return mount; },
+  createElement() { return { style: {} }; }
+};
+globalThis.window = {
+  addEventListener(type, fn) {
+    listeners[type] = listeners[type] || [];
+    listeners[type].push(fn);
+  },
+  removeEventListener() {},
+  requestAnimationFrame(cb) { rafQueue.push(cb); return rafQueue.length; },
+  cancelAnimationFrame() {},
+  devicePixelRatio: 1
+};
+Object.defineProperty(globalThis, "navigator", {
+  configurable: true,
+  enumerable: true,
+  writable: true,
+  value: { getGamepads() { return pads; } }
+});
+
+function WebGLRenderer() {
+  this.domElement = {
+    style: {},
+    width: 64,
+    height: 32,
+    getBoundingClientRect() { return { left: 0, top: 0, width: 64, height: 32 }; }
+  };
+  this.setSize = function () {};
+  this.setClearColor = function () {};
+  this.setPixelRatio = function () {};
+  this.dispose = function () {};
+}
+globalThis.THREE = { WebGLRenderer };
+
+require(process.argv[2]);
+const three = globalThis.mlRuntime.three;
+
+function fire(type, event) {
+  (listeners[type] || []).forEach((fn) => fn(event));
+}
+function runFrame(ts) {
+  const cb = rafQueue.shift();
+  if (!cb) throw new Error("no rAF callback at " + ts);
+  cb(ts);
+}
+
+three.createRenderer(64, 32, "#app");
+
+// Outside a loop the gamepad reads poll directly.
+pads = [{ axes: [0.05, -0.8], buttons: [{ pressed: true }] }];
+if (!three.isGamepadConnected(0)) throw new Error("pad 0 should be connected");
+if (three.getGamepadAxis(0, 0, 0.1) !== 0) throw new Error("deadzone should zero a small axis");
+if (three.getGamepadAxis(0, 1) !== -0.8) throw new Error("axis 1 should read -0.8");
+if (!three.isGamepadButtonDown(0, 0)) throw new Error("button 0 should be down");
+if (three.wasGamepadButtonPressed(0, 0)) throw new Error("edges are empty outside a loop frame");
+pads = [];
+
+const log = [];
+three.startFixed(function update(dt) {
+  log.push({
+    phase: "update",
+    dt: dt,
+    space: three.wasKeyPressed(" "),
+    spaceUp: three.wasKeyReleased(" "),
+    click: three.wasMousePressed(0),
+    pad: three.wasGamepadButtonPressed(0, 1)
+  });
+}, function render() {
+  log.push({ phase: "render", alpha: three.getFixedAlpha(), space: three.wasKeyPressed(" ") });
+}, 16);
+
+runFrame(0);
+if (log.length !== 1 || log[0].phase !== "render") throw new Error("first frame only renders: " + JSON.stringify(log));
+
+runFrame(24);
+if (log.length !== 3 || log[1].dt !== 16 || log[2].alpha !== 0.5) {
+  throw new Error("24ms should step once and leave alpha 0.5: " + JSON.stringify(log.slice(1)));
+}
+
+fire("keydown", { key: " " });
+fire("keydown", { key: " " });
+fire("mousedown", { button: 0, clientX: 4, clientY: 4 });
+pads = [{ axes: [], buttons: [{ pressed: false }, { pressed: true }] }];
+runFrame(40);
+const pressed = log.slice(3);
+if (pressed.length !== 2 || !pressed[0].space || !pressed[0].click || !pressed[0].pad) {
+  throw new Error("press edges should show in the next update: " + JSON.stringify(pressed));
+}
+if (pressed[1].space) throw new Error("edges must not leak into render");
+if (!three.isKeyDown(" ")) throw new Error("held key should stay down");
+
+runFrame(56);
+const held = log.slice(5);
+if (held[0].space || held[0].pad) throw new Error("a held key or button is not a new press: " + JSON.stringify(held));
+
+fire("keyup", { key: " " });
+runFrame(72);
+if (!log[7].spaceUp) throw new Error("release edge missing: " + JSON.stringify(log.slice(7)));
+
+const before = log.length;
+runFrame(1072);
+const catchUp = log.slice(before).filter((entry) => entry.phase === "update").length;
+if (catchUp !== 5) throw new Error("catch-up should cap at 5 ticks, got " + catchUp);
+if (log[log.length - 1].alpha !== 0) throw new Error("capped frame drops the backlog, alpha should be 0");
+
+three.stop();
+if (three.isKeyDown(" ") || three.isMouseDown(0)) throw new Error("stop should clear input");
+let threw = false;
+try { three.startFixed(null); } catch (_error) { threw = true; }
+if (!threw) throw new Error("startFixed needs an update function");
+
+process.stdout.write("ok\n");
+""");
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = Environment.GetEnvironmentVariable("MALDA_NODE_PATH") is { Length: > 0 } nodePath
+                    ? nodePath
+                    : "node",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = root
+            };
+            startInfo.ArgumentList.Add(scriptPath);
+            startInfo.ArgumentList.Add(runtimePath);
+
+            using var process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("Failed to start Node.js for three fixed loop test.");
+            var stdout = process.StandardOutput.ReadToEnd();
+            var stderr = process.StandardError.ReadToEnd();
+            process.WaitForExit(15000);
+            Assert.True(process.ExitCode == 0, $"three fixed loop test failed ({process.ExitCode}). stderr: {stderr}");
+            Assert.Equal("ok", stdout.Trim());
+        }
+        finally
+        {
+            SafeDeleteDirectory(root);
+        }
+    }
+
+    [Fact]
+    public void JsTranspiler_MapsThreeFixedLoopAndInputEdges()
+    {
+        var js = new Compiler.Compiler().TranspileToJavaScriptFromSource("""
+            function update(dtMs) {
+                if (three.wasKeyPressed("c") || three.wasGamepadButtonPressed(0, 0)) {
+                    print("shot");
+                }
+            }
+            function render() {
+                var alpha = three.getFixedAlpha();
+            }
+            three.startFixed(update, render);
+            """);
+
+        Assert.Contains("mlRuntime.three.startFixed(update, render)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.three.wasKeyPressed(\"c\")", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.three.wasGamepadButtonPressed(0, 0)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.three.getFixedAlpha()", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ThreeRuntime_SetUniform_FillsDeclaredUniformArrays()
     {
         Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);

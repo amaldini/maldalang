@@ -29,6 +29,9 @@
 // Speed then falls by drag and by a closed throttle, for every car.
 // Car contact uses the billiards equal-mass impulse (restitution 0.5) against
 // the car's oriented box, and the hit keeps its sideways component.
+// The race runs on three.startFixed at 60 Hz, so physics and training do not
+// depend on the display rate. Render pushes the uniforms and the side panel once
+// per frame. Keys use three.wasKeyPressed edges.
 
 function wrapAngle(a: float) -> float {
     var turns = math.floor((a + 3.14159265) / 6.2831853);
@@ -2881,20 +2884,6 @@ if (root == null) {
     var focusX = 0.0;
     var focusZ = 0.0;
 
-    var qWasDown = false;
-    var eWasDown = false;
-    var cWasDown = false;
-    var nWasDown = false;
-    var tWasDown = false;
-    var lWasDown = false;
-    var rWasDown = false;
-    var spaceWasDown = false;
-    var tabWasDown = false;
-    var zWasDown = false;
-    var xWasDown = false;
-    var oneWasDown = false;
-    var twoWasDown = false;
-    var threeWasDown = false;
     var showSigns = 1.0;
     var showTrees = 1.0;
     var showBuildings = 1.0;
@@ -4161,27 +4150,20 @@ if (root == null) {
         }
     }
 
-    function update(dtMs) {
-        var dt = dtMs;
-        if (dt > 50) {
-            dt = 50;
-        }
-        var dtSec = dt / 1000.0;
+    var cam = null;
 
-        var qDown = three.isKeyDown("q");
-        if (qDown && !qWasDown) {
+    function update(dtMs) {
+        var dtSec = dtMs / 1000.0;
+
+        if (three.wasKeyPressed("q")) {
             loadCircuit(circuitIndex - 1);
         }
-        qWasDown = qDown;
 
-        var eDown = three.isKeyDown("e");
-        if (eDown && !eWasDown) {
+        if (three.wasKeyPressed("e")) {
             loadCircuit(circuitIndex + 1);
         }
-        eWasDown = eDown;
 
-        var cDown = three.isKeyDown("c");
-        if (cDown && !cWasDown) {
+        if (three.wasKeyPressed("c")) {
             camShot = camShot + 1;
             if (camShot >= 7) {
                 camShot = 0;
@@ -4189,40 +4171,28 @@ if (root == null) {
             shotHold = 0.0;
             autoplay = false;
         }
-        cWasDown = cDown;
 
-        var nDown = three.isKeyDown("n");
-        if (nDown && !nWasDown) {
+        if (three.wasKeyPressed("n")) {
             brainMode = "net";
         }
-        nWasDown = nDown;
 
-        var tDown = three.isKeyDown("t");
-        if (tDown && !tWasDown) {
+        if (three.wasKeyPressed("t")) {
             brainMode = "coach";
         }
-        tWasDown = tDown;
 
-        var lDown = three.isKeyDown("l");
-        if (lDown && !lWasDown) {
+        if (three.wasKeyPressed("l")) {
             brainMode = "blend";
         }
-        lWasDown = lDown;
 
-        var rDown = three.isKeyDown("r");
-        if (rDown && !rWasDown) {
+        if (three.wasKeyPressed("r")) {
             resetBrain();
         }
-        rWasDown = rDown;
 
-        var spaceDown = three.isKeyDown(" ");
-        if (spaceDown && !spaceWasDown) {
+        if (three.wasKeyPressed(" ")) {
             paused = !paused;
         }
-        spaceWasDown = spaceDown;
 
-        var tabDown = three.isKeyDown("tab");
-        if (tabDown && !tabWasDown) {
+        if (three.wasKeyPressed("tab")) {
             manualDrive = !manualDrive;
             autoplay = false;
             shotHold = 0.0;
@@ -4232,10 +4202,8 @@ if (root == null) {
                 camShot = 0;
             }
         }
-        tabWasDown = tabDown;
 
-        var zDown = three.isKeyDown("z");
-        if (zDown && !zWasDown) {
+        if (three.wasKeyPressed("z")) {
             driveCar = driveCar - 1;
             if (driveCar < 0) {
                 driveCar = carCount - 1;
@@ -4245,10 +4213,8 @@ if (root == null) {
                 shotHold = 0.0;
             }
         }
-        zWasDown = zDown;
 
-        var xDown = three.isKeyDown("x");
-        if (xDown && !xWasDown) {
+        if (three.wasKeyPressed("x")) {
             driveCar = driveCar + 1;
             if (driveCar >= carCount) {
                 driveCar = 0;
@@ -4258,10 +4224,8 @@ if (root == null) {
                 shotHold = 0.0;
             }
         }
-        xWasDown = xDown;
 
-        var oneDown = three.isKeyDown("1");
-        if (oneDown && !oneWasDown) {
+        if (three.wasKeyPressed("1")) {
             if (showSigns > 0.5) {
                 showSigns = 0.0;
             } else {
@@ -4269,10 +4233,8 @@ if (root == null) {
             }
             three.setUniform(material, "uShowSigns", showSigns);
         }
-        oneWasDown = oneDown;
 
-        var twoDown = three.isKeyDown("2");
-        if (twoDown && !twoWasDown) {
+        if (three.wasKeyPressed("2")) {
             if (showTrees > 0.5) {
                 showTrees = 0.0;
             } else {
@@ -4280,10 +4242,8 @@ if (root == null) {
             }
             three.setUniform(material, "uShowTrees", showTrees);
         }
-        twoWasDown = twoDown;
 
-        var threeDown = three.isKeyDown("3");
-        if (threeDown && !threeWasDown) {
+        if (three.wasKeyPressed("3")) {
             if (showBuildings > 0.5) {
                 showBuildings = 0.0;
             } else {
@@ -4291,7 +4251,6 @@ if (root == null) {
             }
             three.setUniform(material, "uShowBuildings", showBuildings);
         }
-        threeWasDown = threeDown;
 
         if (!paused) {
             hudCar = leadCar;
@@ -4317,7 +4276,14 @@ if (root == null) {
         if (paused) {
             camDt = 0.0;
         }
-        var cam = updateCamera(camDt);
+        cam = updateCamera(camDt);
+        hearRace(dtSec);
+    }
+
+    function render() {
+        if (cam == null) {
+            return;
+        }
         three.setUniform(material, "uCamPos", [cam.camX, cam.camY, cam.camZ]);
         three.setUniform(material, "uCamForward", [cam.forwardX, cam.forwardY, cam.forwardZ]);
         three.setUniform(material, "uCamRight", [cam.rightX, cam.rightY, cam.rightZ]);
@@ -4338,13 +4304,9 @@ if (root == null) {
         three.setUniform(material, "uSteers", carSteerCmd);
         three.setUniform(material, "uCockpitCar", cockpitCar);
         three.setUniform(material, "uGrip", shownGrip);
-        hearRace(dtSec);
         refreshHud();
-    }
-
-    function render() {
         three.render(renderer, scene, camera);
     }
 
-    three.start(update, render);
+    three.startFixed(update, render);
 }

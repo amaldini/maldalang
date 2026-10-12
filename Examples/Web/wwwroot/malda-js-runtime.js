@@ -1257,6 +1257,124 @@
     return Number.isFinite(numberValue) ? numberValue : fallback;
   }
 
+  // Gamepad snapshot shared by game.* and three.*. Inside a loop frame
+  // (beginFrame/endFrame) reads see one poll and press/release edges; outside
+  // a frame each read polls again and edges stay empty.
+  function createGamepadInput() {
+    const pad = {
+      connected: new Set(),
+      down: new Set(),
+      prev: new Set(),
+      pressed: new Set(),
+      released: new Set(),
+      axes: {},
+      frameActive: false
+    };
+
+    function buttonKey(index, button) {
+      const padIndex = index === null || index === undefined ? 0 : coerceToInt(index);
+      return String(padIndex) + ":" + String(coerceToInt(button));
+    }
+
+    function poll() {
+      pad.connected.clear();
+      pad.down.clear();
+      pad.axes = {};
+      let pads = null;
+      try {
+        if (typeof navigator !== "undefined" && typeof navigator.getGamepads === "function") {
+          pads = navigator.getGamepads();
+        }
+      } catch (_error) {
+        pads = null;
+      }
+      if (!pads) {
+        return;
+      }
+
+      const count = typeof pads.length === "number" ? pads.length : 0;
+      for (let i = 0; i < count; i++) {
+        const gamepad = pads[i];
+        if (!gamepad) {
+          continue;
+        }
+        pad.connected.add(i);
+        const axes = gamepad.axes || [];
+        for (let a = 0; a < axes.length; a++) {
+          pad.axes[buttonKey(i, a)] = Math.min(1, Math.max(-1, toFiniteNumber(axes[a], 0)));
+        }
+        const buttons = gamepad.buttons || [];
+        for (let b = 0; b < buttons.length; b++) {
+          const button = buttons[b];
+          const isPressed = button && typeof button === "object" ? !!button.pressed : !!button;
+          if (isPressed) {
+            pad.down.add(buttonKey(i, b));
+          }
+        }
+      }
+    }
+
+    function ensureSnapshot() {
+      if (!pad.frameActive) {
+        poll();
+      }
+    }
+
+    return {
+      reset() {
+        pad.connected.clear();
+        pad.down.clear();
+        pad.prev.clear();
+        pad.pressed.clear();
+        pad.released.clear();
+        pad.axes = {};
+        pad.frameActive = false;
+      },
+      beginFrame() {
+        poll();
+        pad.pressed.clear();
+        pad.released.clear();
+        for (const key of pad.down) {
+          if (!pad.prev.has(key)) pad.pressed.add(key);
+        }
+        for (const key of pad.prev) {
+          if (!pad.down.has(key)) pad.released.add(key);
+        }
+        pad.prev = new Set(pad.down);
+        pad.frameActive = true;
+      },
+      endFrame() {
+        pad.pressed.clear();
+        pad.released.clear();
+        pad.frameActive = false;
+      },
+      isConnected(index) {
+        ensureSnapshot();
+        return pad.connected.has(index === null || index === undefined ? 0 : coerceToInt(index));
+      },
+      getAxis(index, axis, deadzone) {
+        ensureSnapshot();
+        const value = pad.axes[buttonKey(index, axis)];
+        const raw = typeof value === "number" ? value : 0;
+        if (deadzone === undefined || deadzone === null) {
+          return raw;
+        }
+        const zone = Math.min(1, Math.max(0, toFiniteNumber(deadzone, 0)));
+        return Math.abs(raw) <= zone ? 0 : raw;
+      },
+      isButtonDown(index, button) {
+        ensureSnapshot();
+        return pad.down.has(buttonKey(index, button));
+      },
+      wasButtonPressed(index, button) {
+        return pad.pressed.has(buttonKey(index, button));
+      },
+      wasButtonReleased(index, button) {
+        return pad.released.has(buttonKey(index, button));
+      }
+    };
+  }
+
   const actorsRuntime = (() => {
     const cells = new Map();
     const callbacks = new Map();
@@ -3802,13 +3920,7 @@
         mouseX: 0,
         mouseY: 0,
         touches: new Map(),
-        gamepadConnected: new Set(),
-        gamepadButtonsDown: new Set(),
-        gamepadButtonsPrev: new Set(),
-        gamepadButtonsPressed: new Set(),
-        gamepadButtonsReleased: new Set(),
-        gamepadAxes: {},
-        inputFrameActive: false,
+        gamepad: createGamepadInput(),
         listenersAttached: false,
         listeners: null,
         audioContext: null,
@@ -4285,65 +4397,7 @@
         state.mouseX = 0;
         state.mouseY = 0;
         state.touches.clear();
-        state.gamepadButtonsDown.clear();
-        state.gamepadButtonsPrev.clear();
-        state.gamepadButtonsPressed.clear();
-        state.gamepadButtonsReleased.clear();
-        state.gamepadConnected.clear();
-        state.gamepadAxes = {};
-        state.inputFrameActive = false;
-      }
-
-      function gamepadButtonKey(padIndex, buttonIndex) {
-        return String(padIndex) + ":" + String(buttonIndex);
-      }
-
-      function gamepadAxisKey(padIndex, axisIndex) {
-        return String(padIndex) + ":" + String(axisIndex);
-      }
-
-      function pollGamepads() {
-        state.gamepadConnected.clear();
-        state.gamepadButtonsDown.clear();
-        state.gamepadAxes = {};
-        let pads = null;
-        try {
-          if (typeof navigator !== "undefined" && typeof navigator.getGamepads === "function") {
-            pads = navigator.getGamepads();
-          }
-        } catch (_error) {
-          pads = null;
-        }
-        if (!pads) {
-          return;
-        }
-
-        const count = typeof pads.length === "number" ? pads.length : 0;
-        for (let i = 0; i < count; i++) {
-          const pad = pads[i];
-          if (!pad) {
-            continue;
-          }
-          state.gamepadConnected.add(i);
-          const axes = pad.axes || [];
-          for (let a = 0; a < axes.length; a++) {
-            state.gamepadAxes[gamepadAxisKey(i, a)] = clampFiniteNumber(axes[a], -1, 1, 0);
-          }
-          const buttons = pad.buttons || [];
-          for (let b = 0; b < buttons.length; b++) {
-            const button = buttons[b];
-            const pressed = button && typeof button === "object" ? !!button.pressed : !!button;
-            if (pressed) {
-              state.gamepadButtonsDown.add(gamepadButtonKey(i, b));
-            }
-          }
-        }
-      }
-
-      function ensureGamepadSnapshot() {
-        if (!state.inputFrameActive) {
-          pollGamepads();
-        }
+        state.gamepad.reset();
       }
 
       function beginInputFrame() {
@@ -4357,21 +4411,7 @@
         state.pendingMousePressed = new Set();
         state.pendingMouseReleased = new Set();
 
-        pollGamepads();
-        state.gamepadButtonsPressed.clear();
-        state.gamepadButtonsReleased.clear();
-        for (const key of state.gamepadButtonsDown) {
-          if (!state.gamepadButtonsPrev.has(key)) {
-            state.gamepadButtonsPressed.add(key);
-          }
-        }
-        for (const key of state.gamepadButtonsPrev) {
-          if (!state.gamepadButtonsDown.has(key)) {
-            state.gamepadButtonsReleased.add(key);
-          }
-        }
-        state.gamepadButtonsPrev = new Set(state.gamepadButtonsDown);
-        state.inputFrameActive = true;
+        state.gamepad.beginFrame();
       }
 
       function endInputFrame() {
@@ -4379,9 +4419,7 @@
         state.keysReleased = new Set();
         state.mouseButtonsPressed.clear();
         state.mouseButtonsReleased.clear();
-        state.gamepadButtonsPressed.clear();
-        state.gamepadButtonsReleased.clear();
-        state.inputFrameActive = false;
+        state.gamepad.endFrame();
       }
 
       function attachInputListeners() {
@@ -5780,41 +5818,23 @@
       }
 
       function isGamepadConnected(index) {
-        ensureGamepadSnapshot();
-        const padIndex = index === null || index === undefined ? 0 : coerceToInt(index);
-        return state.gamepadConnected.has(padIndex);
+        return state.gamepad.isConnected(index);
       }
 
       function getGamepadAxis(index, axis, deadzone) {
-        ensureGamepadSnapshot();
-        const padIndex = index === null || index === undefined ? 0 : coerceToInt(index);
-        const axisIndex = coerceToInt(axis);
-        const value = state.gamepadAxes[gamepadAxisKey(padIndex, axisIndex)];
-        const raw = typeof value === "number" ? value : 0;
-        if (deadzone === undefined || deadzone === null) {
-          return raw;
-        }
-        const zone = clampFiniteNumber(deadzone, 0, 1, 0);
-        return Math.abs(raw) <= zone ? 0 : raw;
+        return state.gamepad.getAxis(index, axis, deadzone);
       }
 
       function isGamepadButtonDown(index, button) {
-        ensureGamepadSnapshot();
-        const padIndex = index === null || index === undefined ? 0 : coerceToInt(index);
-        const buttonIndex = coerceToInt(button);
-        return state.gamepadButtonsDown.has(gamepadButtonKey(padIndex, buttonIndex));
+        return state.gamepad.isButtonDown(index, button);
       }
 
       function wasGamepadButtonPressed(index, button) {
-        const padIndex = index === null || index === undefined ? 0 : coerceToInt(index);
-        const buttonIndex = coerceToInt(button);
-        return state.gamepadButtonsPressed.has(gamepadButtonKey(padIndex, buttonIndex));
+        return state.gamepad.wasButtonPressed(index, button);
       }
 
       function wasGamepadButtonReleased(index, button) {
-        const padIndex = index === null || index === undefined ? 0 : coerceToInt(index);
-        const buttonIndex = coerceToInt(button);
-        return state.gamepadButtonsReleased.has(gamepadButtonKey(padIndex, buttonIndex));
+        return state.gamepad.wasButtonReleased(index, button);
       }
 
       function audioInit() {
@@ -6509,9 +6529,21 @@
         running: false,
         rafId: null,
         lastTimestamp: null,
+        fixedAccumulator: 0,
+        fixedTickMs: 1000 / 60,
+        fixedAlpha: 0,
         clearColor: "#000000",
         keysDown: new Set(),
+        pendingKeyPressed: new Set(),
+        pendingKeyReleased: new Set(),
+        keysPressed: new Set(),
+        keysReleased: new Set(),
         mouseButtonsDown: new Set(),
+        pendingMousePressed: new Set(),
+        pendingMouseReleased: new Set(),
+        mouseButtonsPressed: new Set(),
+        mouseButtonsReleased: new Set(),
+        gamepad: createGamepadInput(),
         mouseX: 0,
         mouseY: 0,
         listenersAttached: false,
@@ -6592,35 +6624,101 @@
         state.mouseY = displayY * scaleY;
       }
 
+      function setKeyDown(key, isDown) {
+        if (isDown) {
+          if (!state.keysDown.has(key)) {
+            state.pendingKeyPressed.add(key);
+            state.pendingKeyReleased.delete(key);
+          }
+          state.keysDown.add(key);
+        } else {
+          if (state.keysDown.has(key)) {
+            state.pendingKeyReleased.add(key);
+          }
+          state.keysDown.delete(key);
+        }
+      }
+
+      function setMouseButtonDown(button, isDown) {
+        const mouseButton = coerceToInt(button);
+        if (isDown) {
+          if (!state.mouseButtonsDown.has(mouseButton)) {
+            state.pendingMousePressed.add(mouseButton);
+            state.pendingMouseReleased.delete(mouseButton);
+          }
+          state.mouseButtonsDown.add(mouseButton);
+        } else {
+          if (state.mouseButtonsDown.has(mouseButton)) {
+            state.pendingMouseReleased.add(mouseButton);
+          }
+          state.mouseButtonsDown.delete(mouseButton);
+        }
+      }
+
+      function resetInputState() {
+        state.keysDown.clear();
+        state.pendingKeyPressed.clear();
+        state.pendingKeyReleased.clear();
+        state.keysPressed.clear();
+        state.keysReleased.clear();
+        state.mouseButtonsDown.clear();
+        state.pendingMousePressed.clear();
+        state.pendingMouseReleased.clear();
+        state.mouseButtonsPressed.clear();
+        state.mouseButtonsReleased.clear();
+        state.gamepad.reset();
+      }
+
+      // Same edge contract as game.*: presses and releases seen since the last
+      // update are readable for one update, then cleared.
+      function beginInputFrame() {
+        state.keysPressed = state.pendingKeyPressed;
+        state.keysReleased = state.pendingKeyReleased;
+        state.pendingKeyPressed = new Set();
+        state.pendingKeyReleased = new Set();
+        state.mouseButtonsPressed = state.pendingMousePressed;
+        state.mouseButtonsReleased = state.pendingMouseReleased;
+        state.pendingMousePressed = new Set();
+        state.pendingMouseReleased = new Set();
+        state.gamepad.beginFrame();
+      }
+
+      function endInputFrame() {
+        state.keysPressed = new Set();
+        state.keysReleased = new Set();
+        state.mouseButtonsPressed.clear();
+        state.mouseButtonsReleased.clear();
+        state.gamepad.endFrame();
+      }
+
       function attachInputListeners() {
         if (state.listenersAttached || !state.domElement) return;
 
         const onKeyDown = (event) => {
-          state.keysDown.add(normalizeKey(event.key));
+          setKeyDown(normalizeKey(event.key), true);
         };
         const onKeyUp = (event) => {
-          state.keysDown.delete(normalizeKey(event.key));
+          setKeyDown(normalizeKey(event.key), false);
         };
         const onWindowBlur = () => {
-          state.keysDown.clear();
-          state.mouseButtonsDown.clear();
+          resetInputState();
         };
         const onMouseMove = (event) => {
           updateMousePosition(event);
         };
         const onMouseDown = (event) => {
           updateMousePosition(event);
-          state.mouseButtonsDown.add(coerceToInt(event.button));
+          setMouseButtonDown(event.button, true);
         };
         const onMouseUp = (event) => {
-          state.mouseButtonsDown.delete(coerceToInt(event.button));
+          setMouseButtonDown(event.button, false);
         };
         const onTouchStart = (event) => {
           if (event.cancelable) event.preventDefault();
           const touch = event.touches[0] || event.changedTouches[0];
           if (touch) {
             updateMouseFromTouch(touch);
-            state.mouseButtonsDown.add(0);
+            setMouseButtonDown(0, true);
           }
         };
         const onTouchMove = (event) => {
@@ -6631,10 +6729,10 @@
           }
         };
         const onTouchEnd = () => {
-          state.mouseButtonsDown.delete(0);
+          setMouseButtonDown(0, false);
         };
         const onTouchCancel = () => {
-          state.mouseButtonsDown.delete(0);
+          setMouseButtonDown(0, false);
         };
 
         window.addEventListener("keydown", onKeyDown);
@@ -6711,8 +6809,7 @@
         state.renderer = renderer;
         state.domElement = domElement;
         state.lastTimestamp = null;
-        state.keysDown.clear();
-        state.mouseButtonsDown.clear();
+        resetInputState();
         state.mouseX = 0;
         state.mouseY = 0;
         attachInputListeners();
@@ -7720,25 +7817,38 @@
         return null;
       }
 
-      function start(updateFn, renderFn) {
-        ensureThree("start");
-        ensureRenderer("start");
-        requireBrowserApi("mlRuntime.three.start");
+      function beginLoop(apiName, updateFn, renderFn) {
+        ensureThree(apiName);
+        ensureRenderer(apiName);
+        requireBrowserApi("mlRuntime.three." + apiName);
         if (typeof window.requestAnimationFrame !== "function") {
-          throw new Error("mlRuntime.three.start requires window.requestAnimationFrame.");
+          throw new Error("mlRuntime.three." + apiName + " requires window.requestAnimationFrame.");
         }
         if (state.running) {
-          throw new Error("mlRuntime.three.start cannot be called while a render loop is already running.");
+          throw new Error("mlRuntime.three." + apiName + " cannot be called while a render loop is already running.");
         }
         if (typeof updateFn !== "function") {
-          throw new Error("mlRuntime.three.start requires updateFn(dtMs) to be a function.");
+          throw new Error("mlRuntime.three." + apiName + " requires updateFn(dtMs) to be a function.");
         }
         if (renderFn !== null && renderFn !== undefined && typeof renderFn !== "function") {
-          throw new Error("mlRuntime.three.start expected renderFn to be a function when provided.");
+          throw new Error("mlRuntime.three." + apiName + " expected renderFn to be a function when provided.");
         }
+      }
+
+      function haltLoop() {
+        state.running = false;
+        state.rafId = null;
+        state.lastTimestamp = null;
+        state.fixedAccumulator = 0;
+        state.fixedAlpha = 0;
+      }
+
+      function start(updateFn, renderFn) {
+        beginLoop("start", updateFn, renderFn);
 
         state.running = true;
         state.lastTimestamp = null;
+        state.fixedAlpha = 0;
 
         const frame = (timestamp) => {
           if (!state.running) return;
@@ -7748,14 +7858,15 @@
             const dtMs = state.lastTimestamp === null ? 0 : Math.max(0, currentTimestamp - state.lastTimestamp);
             state.lastTimestamp = currentTimestamp;
 
+            beginInputFrame();
             updateFn(dtMs);
+            endInputFrame();
             if (typeof renderFn === "function") {
               renderFn();
             }
           } catch (error) {
-            state.running = false;
-            state.rafId = null;
-            state.lastTimestamp = null;
+            endInputFrame();
+            haltLoop();
             throw error;
           }
 
@@ -7768,20 +7879,86 @@
         return null;
       }
 
+      // Same loop as game.startFixed: update runs at a fixed tick (default 60 Hz,
+      // at most 5 catch-up ticks per frame), render once per animation frame.
+      // getFixedAlpha() is how far render sits between the last tick and the next.
+      function startFixed(updateFn, renderFn, tickMs) {
+        if (typeof renderFn === "number" && (tickMs === undefined || tickMs === null)) {
+          tickMs = renderFn;
+          renderFn = undefined;
+        }
+
+        beginLoop("startFixed", updateFn, renderFn);
+
+        const resolvedTick = tickMs === undefined || tickMs === null
+          ? 1000 / 60
+          : clampFiniteNumber(tickMs, 1, 1000, 1000 / 60);
+
+        state.running = true;
+        state.lastTimestamp = null;
+        state.fixedAccumulator = 0;
+        state.fixedTickMs = resolvedTick;
+        state.fixedAlpha = 0;
+
+        const maxUpdates = 5;
+        const frame = (timestamp) => {
+          if (!state.running) return;
+
+          try {
+            const currentTimestamp = toFiniteNumber(timestamp, 0);
+            const dtMs = state.lastTimestamp === null ? 0 : Math.max(0, currentTimestamp - state.lastTimestamp);
+            state.lastTimestamp = currentTimestamp;
+            state.fixedAccumulator += dtMs;
+
+            let steps = 0;
+            while (state.fixedAccumulator >= state.fixedTickMs && steps < maxUpdates) {
+              state.fixedAccumulator -= state.fixedTickMs;
+              steps += 1;
+              beginInputFrame();
+              try {
+                updateFn(state.fixedTickMs);
+              } finally {
+                endInputFrame();
+              }
+            }
+            if (steps >= maxUpdates) {
+              state.fixedAccumulator = 0;
+            }
+            state.fixedAlpha = state.fixedAccumulator / state.fixedTickMs;
+
+            if (typeof renderFn === "function") {
+              renderFn();
+            }
+          } catch (error) {
+            endInputFrame();
+            haltLoop();
+            throw error;
+          }
+
+          if (state.running) {
+            state.rafId = window.requestAnimationFrame(frame);
+          }
+        };
+
+        state.rafId = window.requestAnimationFrame(frame);
+        return null;
+      }
+
+      function getFixedAlpha() {
+        return state.fixedAlpha;
+      }
+
       function stop() {
         requireBrowserApi("mlRuntime.three.stop");
         if (!state.running) {
           throw new Error("mlRuntime.three.stop cannot be called when the render loop is not running.");
         }
 
-        state.running = false;
         if (state.rafId !== null && typeof window.cancelAnimationFrame === "function") {
           window.cancelAnimationFrame(state.rafId);
         }
-        state.rafId = null;
-        state.lastTimestamp = null;
-        state.keysDown.clear();
-        state.mouseButtonsDown.clear();
+        haltLoop();
+        resetInputState();
         return null;
       }
 
@@ -7800,6 +7977,24 @@
       function isMouseDown(button) {
         const mouseButton = button === null || button === undefined ? 0 : coerceToInt(button);
         return state.mouseButtonsDown.has(mouseButton);
+      }
+
+      function wasKeyPressed(key) {
+        return state.keysPressed.has(normalizeKey(key));
+      }
+
+      function wasKeyReleased(key) {
+        return state.keysReleased.has(normalizeKey(key));
+      }
+
+      function wasMousePressed(button) {
+        const mouseButton = button === null || button === undefined ? 0 : coerceToInt(button);
+        return state.mouseButtonsPressed.has(mouseButton);
+      }
+
+      function wasMouseReleased(button) {
+        const mouseButton = button === null || button === undefined ? 0 : coerceToInt(button);
+        return state.mouseButtonsReleased.has(mouseButton);
       }
 
       return {
@@ -7833,11 +8028,22 @@
         add,
         render,
         start,
+        startFixed,
+        getFixedAlpha,
         stop,
         isKeyDown,
+        wasKeyPressed,
+        wasKeyReleased,
         getMouseX,
         getMouseY,
-        isMouseDown
+        isMouseDown,
+        wasMousePressed,
+        wasMouseReleased,
+        isGamepadConnected: (index) => state.gamepad.isConnected(index),
+        getGamepadAxis: (index, axis, deadzone) => state.gamepad.getAxis(index, axis, deadzone),
+        isGamepadButtonDown: (index, button) => state.gamepad.isButtonDown(index, button),
+        wasGamepadButtonPressed: (index, button) => state.gamepad.wasButtonPressed(index, button),
+        wasGamepadButtonReleased: (index, button) => state.gamepad.wasButtonReleased(index, button)
       };
     })()
   };

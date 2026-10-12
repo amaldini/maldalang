@@ -119,10 +119,10 @@ Validation rules currently enforced:
     - Input: `game.isKeyDown(key)`, `game.wasKeyPressed(key)`, `game.wasKeyReleased(key)`, `game.getMouseX()`, `game.getMouseY()`, `game.getMouseWorldX()`, `game.getMouseWorldY()`, `game.isMouseDown(button?)`, `game.wasMousePressed(button?)`, `game.wasMouseReleased(button?)`, `game.getTouches()`, `game.isGamepadConnected(index?)`, `game.getGamepadAxis(index, axis, deadzone?)`, `game.isGamepadButtonDown(index, button)`, `game.wasGamepadButtonPressed(index, button)`, `game.wasGamepadButtonReleased(index, button)`
     - Audio: `game.audioInit()`, `game.audioIsReady()`, `game.audioSetMasterVolume(v)`, `game.audioPlayTone(...)`, `game.audioPlayNoise(...)`, `game.audioPlayPattern(pattern)`, `game.audioStopPattern()`, `game.audioPlaySample(url, volume?, options?)`, `game.audioStopSample(url?)`, `game.audioLoadTrack(...)`, `game.audioPlayTrack()`, `game.audioStopTrack()`, `game.audioStopAll()`
   - Three helpers:
-    - Renderer/lifecycle: `three.createRenderer(width, height, mountSelector?)`, `three.setClearColor(renderer, color)`, `three.setRendererSize(renderer, width, height)`, `three.start(updateFn, renderFn?)`, `three.stop()`
+    - Renderer/lifecycle: `three.createRenderer(width, height, mountSelector?)`, `three.setClearColor(renderer, color)`, `three.setRendererSize(renderer, width, height)`, `three.start(updateFn, renderFn?)`, `three.startFixed(updateFn, renderFn?, tickMs?)`, `three.getFixedAlpha()`, `three.stop()`
     - Scene graph: `three.createScene()`, `three.createPerspectiveCamera(fovDeg, aspect, near, far)`, `three.createOrthographicCamera(left, right, top, bottom, near, far)`, `three.setCameraAspect(camera, aspect)`, `three.createGroup()`, `three.createMesh(geometry, material)`, `three.add(parent, child)`, `three.loadGLTF(url)`, `three.modelIsReady(handle)`
     - Geometry/material/light: `three.createBoxGeometry(width, height, depth)`, `three.createPlaneGeometry(width, height)`, `three.createSphereGeometry(radius, widthSegments?, heightSegments?)`, `three.createTexture(url)`, `three.createDataTexture(width, height, pixels, options?)`, `three.updateDataTexture(handle, pixels)`, `three.mandelbrotOrbit(real, imag, maxIter)`, `three.createStandardMaterial(options)`, `three.createShaderMaterial(options)`, `three.setUniform(material, name, value)`, `three.createDirectionalLight(color, intensity)`, `three.createAmbientLight(color?, intensity?)`
-    - Transforms/input: `three.setPosition(object, x, y, z)`, `three.setRotation(object, x, y, z)`, `three.setScale(object, x, y, z)`, `three.lookAt(object, x, y, z)`, `three.render(renderer, scene, camera)`, `three.isKeyDown(key)`, `three.getMouseX()`, `three.getMouseY()`, `three.isMouseDown(button?)`
+    - Transforms/input: `three.setPosition(object, x, y, z)`, `three.setRotation(object, x, y, z)`, `three.setScale(object, x, y, z)`, `three.lookAt(object, x, y, z)`, `three.render(renderer, scene, camera)`, `three.isKeyDown(key)`, `three.wasKeyPressed(key)`, `three.wasKeyReleased(key)`, `three.getMouseX()`, `three.getMouseY()`, `three.isMouseDown(button?)`, `three.wasMousePressed(button?)`, `three.wasMouseReleased(button?)`, `three.isGamepadConnected(index?)`, `three.getGamepadAxis(index, axis, deadzone?)`, `three.isGamepadButtonDown(index, button)`, `three.wasGamepadButtonPressed(index, button)`, `three.wasGamepadButtonReleased(index, button)`
     - Shader kernels: `@shader()` plus `glsl.compile` (JS transpile only). User-facing contract — types, subset, `glsl.compile` keys, IDE rename vs string keys — is [Reference Manual 28.10.1](../ReferenceManual/28-browser-javascript-backend.html#shader-kernels). This is not a fourth execution backend.
 - Browser loading model:
   1. Load `malda-js-runtime.js`
@@ -313,6 +313,7 @@ Use `three.*` when you want a browser-hosted 3D scene in MALDA JavaScript mode w
   - `three.setClearColor(renderer, color)`
   - `three.setRendererSize(renderer, width, height)`
   - `three.start(updateFn, renderFn?)`
+  - `three.startFixed(updateFn, renderFn?, tickMs?)`, `three.getFixedAlpha()`
   - `three.stop()`
 - Scene graph:
   - `three.createScene()`
@@ -343,9 +344,10 @@ Use `three.*` when you want a browser-hosted 3D scene in MALDA JavaScript mode w
   - `three.setScale(object, x, y, z)`
   - `three.lookAt(object, x, y, z)`
   - `three.render(renderer, scene, camera)`
-  - `three.isKeyDown(key)`
+  - `three.isKeyDown(key)`, `three.wasKeyPressed(key)`, `three.wasKeyReleased(key)`
   - `three.getMouseX()`, `three.getMouseY()`
-  - `three.isMouseDown(button?)`
+  - `three.isMouseDown(button?)`, `three.wasMousePressed(button?)`, `three.wasMouseReleased(button?)`
+  - `three.isGamepadConnected(index?)`, `three.getGamepadAxis(index, axis, deadzone?)`, `three.isGamepadButtonDown(index, button)`, `three.wasGamepadButtonPressed(index, button)`, `three.wasGamepadButtonReleased(index, button)`
 
 ### Minimal starter template
 
@@ -429,6 +431,7 @@ See `Examples/Games/three_cube.malda` and `Examples/Games/three_runtime_smoke_te
 - Call `three.createRenderer(...)` before `three.render(...)` or `three.start(...)`.
 - When you change viewport dimensions after setup, call both `three.setRendererSize(renderer, width, height)` and `three.setCameraAspect(camera, width / height)`.
 - Do not call `three.createRenderer(...)` while the loop is running; call `three.stop()` first.
+- `three.startFixed` matches `game.startFixed`: fixed `update(dtMs)` ticks (default 60 Hz, clamp 1–1000 ms, max 5 catch-up ticks, then the backlog is dropped) and one `render()` per frame. `three.getFixedAlpha()` is the 0–1 fraction toward the next tick (0 under `three.start`). Input edges (`wasKeyPressed` / `wasMousePressed` / `wasGamepadButtonPressed` and the `Released` forms) follow the `game.*` contract: visible in one `update`, false in `render`. Both loops share one gamepad snapshot helper with `game.*`. `three.stop()` and window blur clear all input.
 - The curated wrapper still has no orbit controls and no raw `THREE.*` in MALDA source. `three.createTexture(url)` returns a handle immediately (async decode; missing files stay unready). `createStandardMaterial({ "map": handle })` leaves `map` unset until the handle is ready, then assigns it. `three.createDataTexture(width, height, pixels, options?)` is ready immediately (RGBA; default float32, or `"type": "byte"`). `three.updateDataTexture(handle, pixels)` rewrites that buffer. `three.mandelbrotOrbit(real, imag, maxIter)` is JavaScript-only BigInt: pass **decimal strings** for C (MALDA numbers are IEEE double), walk `Z_{n+1} = Z_n² + C` at 256 fraction bits, and pack `(re, im, alive, 1)` into a 1-row float texture. `createShaderMaterial` / `setUniform` unwrap texture handles for `sampler2D`. `three.loadGLTF(url)` returns a group you can `add` immediately; children appear when `three.modelIsReady(handle)` is true (JSON `.gltf` or `.glb`; failures stay unready). `three.lookAt(object, x, y, z)` requires `lookAt` on the three.js object. Custom GLSL stays `three.createShaderMaterial` / `three.setUniform`. See `Examples/Games/three_textured.malda`.
 
 ### Shader materials (`three.createShaderMaterial`)
@@ -602,7 +605,7 @@ Audio Spec v1 adds a browser-hosted game audio API in JavaScript mode. The goal 
 
 - Run DOM-centric cases under `jsdom` to validate runtime behavior (`dom.query`, event wiring, HTML/text updates).
 - Keep C# tests as codegen/contract checks, and add Node/jsdom tests for runtime semantics.
-- Games kit G0–G17 landed (sprites, input edges, overlap, sample SFX, `malda play`, 3D assets, fullstack scores, size queries / pixelated / `strokeCircle`, `sweepRects`, `followCamera`, sample pan/rate, gamepad release + deadzone, `malda new game` on `startFixed`, image tint / `setBlend`, tile helpers). See [`docs/roadmap-games.md`](roadmap-games.md). Post-kit 2D gaps vs Love2D / Pico-8 / Phaser: [`docs/games-2d-gap-analysis.md`](games-2d-gap-analysis.md).
+- Games kit G0–G19 landed (sprites, input edges, overlap, sample SFX, `malda play`, 3D assets, fullstack scores, size queries / pixelated / `strokeCircle`, `sweepRects`, `followCamera`, sample pan/rate, gamepad release + deadzone, `malda new game` on `startFixed`, image tint / `setBlend`, tile helpers, `three.*` uniform arrays, `three.startFixed` + input edges). See [`docs/roadmap-games.md`](roadmap-games.md). Post-kit 2D gaps vs Love2D / Pico-8 / Phaser: [`docs/games-2d-gap-analysis.md`](games-2d-gap-analysis.md).
 
 ### Current limitations
 
