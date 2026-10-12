@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — JavaScript audio voices and 3D sound)
+
+- **`game.audioCreateVoice(options?)`**, **`game.audioSetVoice(voice, options)`**, and **`game.audioStopVoice(voice)`** play a continuous oscillator or noise voice through a low-pass filter. Pitch, volume, cutoff, pan, and position glide, so per-frame engine or wind sounds do not click. Voices stay outside the 32 one-shot cap, and `audioStopAll` stops them. **3D sound:** a `position` option on a voice or on `audioPlaySample` routes it through an HRTF `PannerNode` with distance falloff (`refDistance`, `rolloff`), and **`game.audioSetListener(position, forward?, up?)`** places the listener. `three_shader_race_car_neural.malda` replaces its 85 ms sawtooth blips with one positioned engine voice per car, puts the listener on the camera, turns tire scrub into a noise voice, and mutes with M. Narrative: [`28-browser-javascript-backend.html`](../../ReferenceManual/28-browser-javascript-backend.html) §28.9. JavaScript backend only; no Tier 0 change.
+
 #### Added (MINOR — JavaScript `three.*` instancing, shadows, and fog)
 
 - **Instancing:** `three.createInstancedMesh(geometry, material, count)`, `three.setInstance(mesh, index, x, y, z, options?)` (rotation, scale, per-instance color), and `three.setInstanceCount(mesh, count)` draw many copies of a mesh in one call. **Shadows:** `three.setShadows(renderer, enabled)`, `three.setShadow(object, cast, receive?)` (recursive), and `three.setLightShadow(light, options?)` (extent, near / far, map size, bias). `three.lookAt` on a directional or spot light now aims its target. **Fog:** `three.setFog(scene, color, near, far)` and `three.setFogExp(scene, color, density)`. Switching shadows or fog on or off rebuilds the scene's materials on the next render. New example `Examples/Games/three_forest.malda` (2400 trees, 300 rocks, sun shadows, fog). Narrative: [`28-browser-javascript-backend.html`](../../ReferenceManual/28-browser-javascript-backend.html) §28.10. JavaScript backend only; no Tier 0 change.

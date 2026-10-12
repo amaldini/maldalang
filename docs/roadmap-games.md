@@ -1,11 +1,11 @@
 # MALDA games platform plan
 
-**Status:** G0–G21 landed  
+**Status:** G0–G22 landed  
 **Created:** 2026-08-21  
 **Audience:** maintainers extending the JS `game.*` / `three.*` surface after Final 1.0
 
 This is the plan that made MALDA a **good platform for games people finish** —
-Love2D / Pico-8 / Phaser, not Unity. G0–G21 are landed. Prefer
+Love2D / Pico-8 / Phaser, not Unity. G0–G22 are landed. Prefer
 [`docs/javascript-backend.md`](javascript-backend.md),
 [Reference Manual 28](../ReferenceManual/28-browser-javascript-backend.html),
 and the deferred list at the end for engines that stay out of core.
@@ -79,6 +79,7 @@ top-level globals, Web IDE Desktop parity, product apps or vertical packs
 | 19 | **G19** `three.startFixed` + input edges | Landed | 3D games had a variable `dt` only and hand-rolled `…WasDown` flags; no gamepad on `three.*` |
 | 20 | **G20** Render scale + stats overlay | Landed | Per-pixel ray tracing ran at full devicePixelRatio with no way to trade resolution for fps or see the frame rate |
 | 21 | **G21** Instancing, shadows, fog | Landed | The raster path had one draw call per mesh, no shadows, and no fog, which pushed 3D scenes into one big fragment shader |
+| 22 | **G22** Audio voices + 3D sound | Landed | Continuous sounds were retriggered one-shots (choppy engines), and `pan` was stereo only with no listener |
 
 ```text
 G0  roadmap file                          (landed)

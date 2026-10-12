@@ -3931,6 +3931,7 @@
         audioActiveSources: [],
         maxConcurrentAudioSources: 32,
         audioSampleCache: new Map(),
+        audioVoices: [],
         musicTrackAudio: null,
         musicTrackError: null,
         musicTrackSource: null,
@@ -3989,6 +3990,7 @@
           state.audioMasterGain.connect(state.audioContext.destination);
           state.audioNoiseBuffer = null;
           state.audioSampleCache = new Map();
+          state.audioVoices = [];
         }
 
         return state.audioContext;
@@ -4078,7 +4080,62 @@
         return Math.min(4, Math.max(0.25, numeric));
       }
 
-      function startSamplePlayback(context, buffer, url, volume, loop, pan, playbackRate) {
+      function setAudioParam(param, value, context, glideSec) {
+        if (!param) return;
+        if (glideSec > 0 && typeof param.setTargetAtTime === "function") {
+          param.setTargetAtTime(value, context.currentTime, glideSec);
+        } else if (typeof param.setValueAtTime === "function") {
+          param.setValueAtTime(value, context.currentTime);
+        } else {
+          param.value = value;
+        }
+      }
+
+      function audioVector(value, fallback) {
+        if (!Array.isArray(value)) return fallback;
+        return [
+          toFiniteNumber(value[0], fallback[0]),
+          toFiniteNumber(value[1], fallback[1]),
+          toFiniteNumber(value[2], fallback[2])
+        ];
+      }
+
+      // { position: [x, y, z], refDistance, rolloff } from play/voice options,
+      // or null when the sound is not placed in the world.
+      function resolveSpatial(options) {
+        if (!options || typeof options !== "object" || !Array.isArray(options.position)) return null;
+        return {
+          position: audioVector(options.position, [0, 0, 0]),
+          refDistance: clampFiniteNumber(options.refDistance, 0.01, 10000, 5),
+          rolloff: clampFiniteNumber(options.rolloff, 0, 100, 1)
+        };
+      }
+
+      function setPannerPosition(panner, position, context, glideSec) {
+        if (panner.positionX) {
+          setAudioParam(panner.positionX, position[0], context, glideSec);
+          setAudioParam(panner.positionY, position[1], context, glideSec);
+          setAudioParam(panner.positionZ, position[2], context, glideSec);
+        } else if (typeof panner.setPosition === "function") {
+          panner.setPosition(position[0], position[1], position[2]);
+        }
+      }
+
+      // HRTF panner with inverse distance falloff: full volume inside
+      // refDistance, then volume ~ refDistance / distance (steeper with rolloff).
+      function createSpatialPanner(context, spatial) {
+        if (!spatial || typeof context.createPanner !== "function") return null;
+        const panner = context.createPanner();
+        panner.panningModel = "HRTF";
+        panner.distanceModel = "inverse";
+        panner.refDistance = spatial.refDistance;
+        panner.rolloffFactor = spatial.rolloff;
+        panner.maxDistance = 10000;
+        setPannerPosition(panner, spatial.position, context, 0);
+        return panner;
+      }
+
+      function startSamplePlayback(context, buffer, url, volume, loop, pan, playbackRate, spatial) {
         if (!context || !state.audioMasterGain || !buffer) return;
 
         const source = context.createBufferSource();
@@ -4098,7 +4155,12 @@
         }
         source.connect(gain);
         const cleanupNodes = [gain, source];
-        if (typeof context.createStereoPanner === "function") {
+        const spatialPanner = createSpatialPanner(context, spatial);
+        if (spatialPanner) {
+          gain.connect(spatialPanner);
+          spatialPanner.connect(state.audioMasterGain);
+          cleanupNodes.push(spatialPanner);
+        } else if (typeof context.createStereoPanner === "function") {
           const panner = context.createStereoPanner();
           const panValue = clampFiniteNumber(pan, -1, 1, 0);
           if (panner.pan && typeof panner.pan.setValueAtTime === "function") {
@@ -4123,7 +4185,8 @@
             volume: clampFiniteNumber(safeOptions.volume, 0, 1, 1),
             loop: !!safeOptions.loop,
             pan: clampFiniteNumber(safeOptions.pan, -1, 1, 0),
-            playbackRate: resolvePlaybackRate(safeOptions.playbackRate)
+            playbackRate: resolvePlaybackRate(safeOptions.playbackRate),
+            spatial: resolveSpatial(safeOptions)
           };
         }
 
@@ -4132,15 +4195,16 @@
           volume: clampFiniteNumber(volume, 0, 1, 1),
           loop: !!safeOptions.loop,
           pan: clampFiniteNumber(safeOptions.pan, -1, 1, 0),
-          playbackRate: resolvePlaybackRate(safeOptions.playbackRate)
+          playbackRate: resolvePlaybackRate(safeOptions.playbackRate),
+          spatial: resolveSpatial(safeOptions)
         };
       }
 
-      function enqueueSamplePlay(url, volume, loop, pan, playbackRate) {
+      function enqueueSamplePlay(url, volume, loop, pan, playbackRate, spatial) {
         const entry = state.audioSampleCache.get(url);
         if (!entry || !Array.isArray(entry.pending)) return;
         if (entry.pending.length >= 8) return;
-        entry.pending.push({ volume, loop, pan, playbackRate });
+        entry.pending.push({ volume, loop, pan, playbackRate, spatial });
       }
 
       function flushPendingSamplePlays(context, url) {
@@ -4155,7 +4219,8 @@
             pending[i].volume,
             pending[i].loop,
             pending[i].pan,
-            pending[i].playbackRate
+            pending[i].playbackRate,
+            pending[i].spatial
           );
         }
       }
@@ -5891,6 +5956,157 @@
         return null;
       }
 
+      const VOICE_WAVES = { sine: true, square: true, triangle: true, sawtooth: true, noise: true };
+
+      // A voice is a sound that keeps playing until audioStopVoice: an
+      // oscillator (or looping noise) through a low-pass filter and a gain,
+      // then a stereo or 3D panner. audioSetVoice glides its pitch, volume,
+      // cutoff, pan, and position, so a per-frame engine or wind sound does
+      // not click. Voices do not count toward the one-shot source cap.
+      function audioCreateVoice(options) {
+        const context = ensureAudioContext();
+        if (!context || !state.audioMasterGain) return null;
+        if (context.state === "suspended" && typeof context.resume === "function") {
+          context.resume().catch(() => null);
+        }
+        const opts = options && typeof options === "object" && !Array.isArray(options) ? options : {};
+        const requestedWave = coerceToString(opts.wave || "sawtooth");
+        const wave = VOICE_WAVES[requestedWave] ? requestedWave : "sawtooth";
+        const now = context.currentTime;
+
+        let source;
+        if (wave === "noise") {
+          source = context.createBufferSource();
+          source.buffer = getNoiseBuffer(context);
+          source.loop = true;
+        } else {
+          source = context.createOscillator();
+          source.type = wave;
+          source.frequency.setValueAtTime(clampFiniteNumber(opts.freq, 20, 20000, 110), now);
+        }
+        const filter = context.createBiquadFilter();
+        filter.type = "lowpass";
+        filter.frequency.setValueAtTime(clampFiniteNumber(opts.cutoff, 20, 20000, 20000), now);
+        const gain = context.createGain();
+        gain.gain.setValueAtTime(0, now);
+        source.connect(filter);
+        filter.connect(gain);
+
+        const spatial = resolveSpatial(opts);
+        const panner = createSpatialPanner(context, spatial);
+        let stereo = null;
+        if (panner) {
+          gain.connect(panner);
+          panner.connect(state.audioMasterGain);
+        } else if (typeof context.createStereoPanner === "function") {
+          stereo = context.createStereoPanner();
+          stereo.pan.setValueAtTime(clampFiniteNumber(opts.pan, -1, 1, 0), now);
+          gain.connect(stereo);
+          stereo.connect(state.audioMasterGain);
+        } else {
+          gain.connect(state.audioMasterGain);
+        }
+
+        const voice = {
+          __maldaAudioVoice: true,
+          wave,
+          source,
+          filter,
+          gain,
+          panner,
+          stereo,
+          glide: clampFiniteNumber(opts.glide, 0, 2, 0.03),
+          stopped: false
+        };
+        // Fade in from silence so the first sample does not click.
+        setAudioParam(gain.gain, clampFiniteNumber(opts.volume, 0, 1, 0), context, 0.02);
+        source.start(now);
+        state.audioVoices.push(voice);
+        return voice;
+      }
+
+      function liveVoice(voice) {
+        return !!(voice && voice.__maldaAudioVoice && !voice.stopped && state.audioContext);
+      }
+
+      function audioSetVoice(voice, options) {
+        if (!liveVoice(voice)) return null;
+        const context = state.audioContext;
+        const opts = options && typeof options === "object" && !Array.isArray(options) ? options : {};
+        const glide = opts.glide === undefined || opts.glide === null
+          ? voice.glide
+          : clampFiniteNumber(opts.glide, 0, 2, voice.glide);
+        if (opts.freq !== undefined && opts.freq !== null && voice.source.frequency) {
+          setAudioParam(voice.source.frequency, clampFiniteNumber(opts.freq, 20, 20000, 110), context, glide);
+        }
+        if (opts.volume !== undefined && opts.volume !== null) {
+          setAudioParam(voice.gain.gain, clampFiniteNumber(opts.volume, 0, 1, 0), context, glide);
+        }
+        if (opts.cutoff !== undefined && opts.cutoff !== null) {
+          setAudioParam(voice.filter.frequency, clampFiniteNumber(opts.cutoff, 20, 20000, 20000), context, glide);
+        }
+        if (opts.pan !== undefined && opts.pan !== null && voice.stereo) {
+          setAudioParam(voice.stereo.pan, clampFiniteNumber(opts.pan, -1, 1, 0), context, glide);
+        }
+        if (Array.isArray(opts.position) && voice.panner) {
+          setPannerPosition(voice.panner, audioVector(opts.position, [0, 0, 0]), context, glide);
+        }
+        return null;
+      }
+
+      function audioStopVoice(voice) {
+        if (!liveVoice(voice)) return null;
+        const context = state.audioContext;
+        voice.stopped = true;
+        const index = state.audioVoices.indexOf(voice);
+        if (index >= 0) state.audioVoices.splice(index, 1);
+        setAudioParam(voice.gain.gain, 0, context, 0.03);
+        const nodes = [voice.source, voice.filter, voice.gain, voice.panner, voice.stereo];
+        voice.source.onended = () => {
+          nodes.forEach((node) => {
+            if (node && typeof node.disconnect === "function") {
+              try {
+                node.disconnect();
+              } catch (error) {
+                // Ignore disconnect races during cleanup.
+              }
+            }
+          });
+        };
+        try {
+          voice.source.stop(context.currentTime + 0.2);
+        } catch (error) {
+          // Ignore stop errors from already-finished nodes.
+        }
+        return null;
+      }
+
+      // Where the player hears from: usually the camera. forward and up are
+      // directions (default looking down -Z with +Y up), as for a three.js camera.
+      function audioSetListener(position, forward, up) {
+        const context = ensureAudioContext();
+        if (!context || !context.listener) return null;
+        const listener = context.listener;
+        const p = audioVector(position, [0, 0, 0]);
+        const f = audioVector(forward, [0, 0, -1]);
+        const u = audioVector(up, [0, 1, 0]);
+        if (listener.positionX) {
+          setAudioParam(listener.positionX, p[0], context, 0.02);
+          setAudioParam(listener.positionY, p[1], context, 0.02);
+          setAudioParam(listener.positionZ, p[2], context, 0.02);
+          setAudioParam(listener.forwardX, f[0], context, 0.02);
+          setAudioParam(listener.forwardY, f[1], context, 0.02);
+          setAudioParam(listener.forwardZ, f[2], context, 0.02);
+          setAudioParam(listener.upX, u[0], context, 0.02);
+          setAudioParam(listener.upY, u[1], context, 0.02);
+          setAudioParam(listener.upZ, u[2], context, 0.02);
+        } else {
+          if (typeof listener.setPosition === "function") listener.setPosition(p[0], p[1], p[2]);
+          if (typeof listener.setOrientation === "function") listener.setOrientation(f[0], f[1], f[2], u[0], u[1], u[2]);
+        }
+        return null;
+      }
+
       function audioPlaySample(url, volume, options) {
         const safeUrl = coerceToString(url || "");
         if (!safeUrl) return null;
@@ -5916,13 +6132,14 @@
             playArgs.volume,
             playArgs.loop,
             playArgs.pan,
-            playArgs.playbackRate
+            playArgs.playbackRate,
+            playArgs.spatial
           );
           return null;
         }
 
         if (entry && entry.status === "loading") {
-          enqueueSamplePlay(safeUrl, playArgs.volume, playArgs.loop, playArgs.pan, playArgs.playbackRate);
+          enqueueSamplePlay(safeUrl, playArgs.volume, playArgs.loop, playArgs.pan, playArgs.playbackRate, playArgs.spatial);
           return null;
         }
 
@@ -5933,7 +6150,8 @@
             volume: playArgs.volume,
             loop: playArgs.loop,
             pan: playArgs.pan,
-            playbackRate: playArgs.playbackRate
+            playbackRate: playArgs.playbackRate,
+            spatial: playArgs.spatial
           }]
         });
         beginSampleDecode(context, safeUrl);
@@ -5986,6 +6204,7 @@
       function audioStopAll() {
         audioStopPattern();
         audioStopTrack();
+        state.audioVoices.slice().forEach(audioStopVoice);
         const currentSources = state.audioActiveSources.slice();
         for (let i = 0; i < currentSources.length; i++) {
           const source = currentSources[i].source;
@@ -6503,6 +6722,10 @@
         audioSetMasterVolume,
         audioPlayTone,
         audioPlayNoise,
+        audioCreateVoice,
+        audioSetVoice,
+        audioStopVoice,
+        audioSetListener,
         audioPlaySample,
         audioStopSample,
         audioStopAll,

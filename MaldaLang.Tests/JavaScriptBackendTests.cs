@@ -3462,6 +3462,163 @@ process.stdout.write("ok\n");
     }
 
     [Fact]
+    public void GameRuntime_AudioVoicesAndListener_GlideAndPlaceSounds()
+    {
+        Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);
+
+        var runtimePath = PlanningPaths.ResolveRepoFile("Examples", "Web", "wwwroot", "malda-js-runtime.js");
+        var root = CreateTempDirectory("malda_js_audio_voice_");
+        try
+        {
+            var scriptPath = Path.Combine(root, "audio-voice-test.js");
+            File.WriteAllText(scriptPath, """
+globalThis.document = { body: {}, querySelector() { return null; }, createElement() { return { style: {} }; } };
+
+function Param(value) {
+  this.value = value;
+  this.setValueAtTime = function (v) { this.value = v; this.glided = false; };
+  this.setTargetAtTime = function (v, _t, tc) { this.value = v; this.glided = true; this.timeConstant = tc; };
+  this.cancelScheduledValues = function () {};
+  this.linearRampToValueAtTime = function () {};
+}
+function Node() {
+  this.outputs = [];
+  this.connect = function (n) { this.outputs.push(n); return n; };
+  this.disconnect = function () { this.disconnected = true; };
+}
+function Source(kind) {
+  Node.call(this);
+  this.kind = kind;
+  this.frequency = kind === "osc" ? new Param(440) : undefined;
+  this.start = function () { this.started = true; };
+  this.stop = function (when) { this.stopAt = when === undefined ? 0 : when; this.stopped = true; };
+}
+function Ctx() {
+  this.state = "running";
+  this.currentTime = 0;
+  this.sampleRate = 8000;
+  this.destination = new Node();
+  this.oscillators = [];
+  this.bufferSources = [];
+  this.panners3d = [];
+  this.listener = {
+    positionX: new Param(0), positionY: new Param(0), positionZ: new Param(0),
+    forwardX: new Param(0), forwardY: new Param(0), forwardZ: new Param(-1),
+    upX: new Param(0), upY: new Param(1), upZ: new Param(0)
+  };
+  Ctx.last = this;
+}
+Ctx.prototype.createGain = function () { const n = new Node(); n.gain = new Param(1); return n; };
+Ctx.prototype.createOscillator = function () { const s = new Source("osc"); this.oscillators.push(s); return s; };
+Ctx.prototype.createBufferSource = function () { const s = new Source("buffer"); this.bufferSources.push(s); return s; };
+Ctx.prototype.createBiquadFilter = function () { const n = new Node(); n.frequency = new Param(350); return n; };
+Ctx.prototype.createStereoPanner = function () { const n = new Node(); n.pan = new Param(0); return n; };
+Ctx.prototype.createPanner = function () {
+  const n = new Node();
+  n.positionX = new Param(0); n.positionY = new Param(0); n.positionZ = new Param(0);
+  this.panners3d.push(n);
+  return n;
+};
+Ctx.prototype.createBuffer = function (_c, length, rate) {
+  const data = new Float32Array(length);
+  return { sampleRate: rate, getChannelData() { return data; } };
+};
+Ctx.prototype.decodeAudioData = function () { return Promise.resolve({ duration: 0.1 }); };
+Ctx.prototype.resume = function () { return Promise.resolve(); };
+
+globalThis.window = { AudioContext: Ctx, addEventListener() {}, removeEventListener() {} };
+globalThis.fetch = async () => ({ ok: true, arrayBuffer: async () => new ArrayBuffer(4) });
+
+require(process.argv[2]);
+const game = globalThis.mlRuntime.game;
+
+(async () => {
+  game.audioInit();
+  const ctx = Ctx.last;
+
+  // A stereo engine voice.
+  const engine = game.audioCreateVoice({ "wave": "sawtooth", "freq": 80, "cutoff": 900, "volume": 0.3, "pan": -0.5 });
+  if (!engine || engine.source.type !== "sawtooth" || engine.source.frequency.value !== 80) throw new Error("oscillator voice");
+  if (engine.filter.type !== "lowpass" || engine.filter.frequency.value !== 900) throw new Error("low-pass cutoff");
+  if (engine.gain.gain.value !== 0.3 || !engine.gain.gain.glided) throw new Error("volume should fade in, not jump");
+  if (!engine.stereo || engine.stereo.pan.value !== -0.5 || engine.panner) throw new Error("no position means stereo pan");
+  if (!engine.source.started) throw new Error("voice should start");
+
+  game.audioSetVoice(engine, { "freq": 200, "volume": 0.5, "cutoff": 2000, "pan": 0.25 });
+  if (engine.source.frequency.value !== 200 || !engine.source.frequency.glided) throw new Error("freq should glide");
+  if (engine.gain.gain.value !== 0.5 || engine.filter.frequency.value !== 2000 || engine.stereo.pan.value !== 0.25) throw new Error("setVoice values");
+  game.audioSetVoice(engine, { "freq": 99999, "glide": 0 });
+  if (engine.source.frequency.value !== 20000 || engine.source.frequency.glided) throw new Error("freq clamps; glide 0 sets at once");
+
+  // A 3D noise voice.
+  const wind = game.audioCreateVoice({ "wave": "noise", "volume": 0.2, "position": [1, 2, 3], "refDistance": 6, "rolloff": 2 });
+  if (wind.source.kind !== "buffer" || !wind.source.loop || !wind.source.buffer) throw new Error("noise voice loops a noise buffer");
+  if (!wind.panner || wind.stereo || wind.panner.panningModel !== "HRTF" || wind.panner.distanceModel !== "inverse") throw new Error("position means a 3D panner");
+  if (wind.panner.refDistance !== 6 || wind.panner.rolloffFactor !== 2 || wind.panner.positionZ.value !== 3) throw new Error("panner setup");
+  game.audioSetVoice(wind, { "position": [4, 0, -2], "pan": 1, "freq": 300 });
+  if (wind.panner.positionX.value !== 4 || wind.panner.positionZ.value !== -2) throw new Error("position should move");
+
+  if (game.audioCreateVoice({ "wave": "kazoo" }).source.type !== "sawtooth") throw new Error("unknown wave falls back to sawtooth");
+
+  // One-shot sounds past the 32 cap must not kill voices.
+  for (let i = 0; i < 40; i++) game.audioPlayTone(440, 50, "square", 0.1);
+  if (engine.source.stopped || wind.source.stopped) throw new Error("voices are outside the one-shot cap");
+
+  game.audioSetListener([5, 1.5, -2], [0, 0, 1]);
+  const l = ctx.listener;
+  if (l.positionX.value !== 5 || l.positionY.value !== 1.5 || l.forwardZ.value !== 1 || l.upY.value !== 1) throw new Error("listener: " + JSON.stringify([l.positionX.value, l.forwardZ.value]));
+
+  game.audioStopVoice(engine);
+  if (engine.gain.gain.value !== 0 || !engine.source.stopped || !(engine.source.stopAt > 0)) throw new Error("stop fades then stops a moment later");
+  engine.source.onended();
+  if (!engine.filter.disconnected || !engine.stereo.disconnected) throw new Error("ended voice disconnects its nodes");
+  game.audioSetVoice(engine, { "volume": 1 });
+  if (engine.gain.gain.value !== 0) throw new Error("a stopped voice ignores setVoice");
+  game.audioStopVoice(engine);
+
+  game.audioStopAll();
+  if (!wind.source.stopped) throw new Error("stopAll stops voices");
+  if (game.audioSetVoice(null, {}) !== null) throw new Error("null voice is a no-op");
+
+  // A placed one-shot sample.
+  game.audioPlaySample("assets/crash.wav", 0.8, { "position": [7, 0, 7], "refDistance": 3 });
+  for (let i = 0; i < 10; i++) await Promise.resolve();
+  const crash = ctx.panners3d[ctx.panners3d.length - 1];
+  if (!crash || crash.positionX.value !== 7 || crash.refDistance !== 3) throw new Error("sample position should use a 3D panner");
+
+  process.stdout.write("ok\n");
+})().catch((error) => { console.error(error && error.stack || error); process.exit(1); });
+""");
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = Environment.GetEnvironmentVariable("MALDA_NODE_PATH") is { Length: > 0 } nodePath
+                    ? nodePath
+                    : "node",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = root
+            };
+            startInfo.ArgumentList.Add(scriptPath);
+            startInfo.ArgumentList.Add(runtimePath);
+
+            using var process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("Failed to start Node.js for audio voice test.");
+            var stdout = process.StandardOutput.ReadToEnd();
+            var stderr = process.StandardError.ReadToEnd();
+            process.WaitForExit(15000);
+            Assert.True(process.ExitCode == 0, $"audio voice test failed ({process.ExitCode}). stderr: {stderr}");
+            Assert.Equal("ok", stdout.Trim());
+        }
+        finally
+        {
+            SafeDeleteDirectory(root);
+        }
+    }
+
+    [Fact]
     public void GameRuntime_AudioPlaySample_OverlapsWithoutStoppingTrack()
     {
         Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);

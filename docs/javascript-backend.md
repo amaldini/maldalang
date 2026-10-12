@@ -117,7 +117,7 @@ Validation rules currently enforced:
     - Pixel buffer / blit: `game.createPixelBuffer(width?, height?)`, `game.setPixel(x, y, r, g, b, a?)`, `game.blitPixels(pixels?, destX?, destY?)`
     - Collision: `game.overlapRect(x1, y1, w1, h1, x2, y2, w2, h2)`, `game.overlapCircle(x1, y1, r1, x2, y2, r2)`, `game.pointInRect(px, py, x, y, w, h)`, `game.pointInCircle(px, py, x, y, r)`, `game.sweepRect(x, y, w, h, dx, dy, ox, oy, ow, oh)`, `game.sweepRects(x, y, w, h, dx, dy, obstacles)`, `game.tileAt(cells, col, row, options?)`, `game.sweepTiles(x, y, w, h, dx, dy, cells, tileW, tileH, options?)`
     - Input: `game.isKeyDown(key)`, `game.wasKeyPressed(key)`, `game.wasKeyReleased(key)`, `game.getMouseX()`, `game.getMouseY()`, `game.getMouseWorldX()`, `game.getMouseWorldY()`, `game.isMouseDown(button?)`, `game.wasMousePressed(button?)`, `game.wasMouseReleased(button?)`, `game.getTouches()`, `game.isGamepadConnected(index?)`, `game.getGamepadAxis(index, axis, deadzone?)`, `game.isGamepadButtonDown(index, button)`, `game.wasGamepadButtonPressed(index, button)`, `game.wasGamepadButtonReleased(index, button)`
-    - Audio: `game.audioInit()`, `game.audioIsReady()`, `game.audioSetMasterVolume(v)`, `game.audioPlayTone(...)`, `game.audioPlayNoise(...)`, `game.audioPlayPattern(pattern)`, `game.audioStopPattern()`, `game.audioPlaySample(url, volume?, options?)`, `game.audioStopSample(url?)`, `game.audioLoadTrack(...)`, `game.audioPlayTrack()`, `game.audioStopTrack()`, `game.audioStopAll()`
+    - Audio: `game.audioInit()`, `game.audioIsReady()`, `game.audioSetMasterVolume(v)`, `game.audioPlayTone(...)`, `game.audioPlayNoise(...)`, `game.audioPlayPattern(pattern)`, `game.audioStopPattern()`, `game.audioPlaySample(url, volume?, options?)`, `game.audioStopSample(url?)`, `game.audioLoadTrack(...)`, `game.audioPlayTrack()`, `game.audioStopTrack()`, `game.audioCreateVoice(options?)`, `game.audioSetVoice(voice, options)`, `game.audioStopVoice(voice)`, `game.audioSetListener(position, forward?, up?)`, `game.audioStopAll()`
   - Three helpers:
     - Renderer/lifecycle: `three.createRenderer(width, height, mountSelector?)`, `three.setClearColor(renderer, color)`, `three.setRendererSize(renderer, width, height)`, `three.setRenderScale(renderer, scale)`, `three.setAutoRenderScale(renderer, targetFps?, minScale?, maxScale?)`, `three.getRenderScale()`, `three.getStats()`, `three.showStats(visible?)`, `three.start(updateFn, renderFn?)`, `three.startFixed(updateFn, renderFn?, tickMs?)`, `three.getFixedAlpha()`, `three.stop()`
     - Scene graph: `three.createScene()`, `three.createPerspectiveCamera(fovDeg, aspect, near, far)`, `three.createOrthographicCamera(left, right, top, bottom, near, far)`, `three.setCameraAspect(camera, aspect)`, `three.createGroup()`, `three.createMesh(geometry, material)`, `three.createInstancedMesh(geometry, material, count)`, `three.setInstance(mesh, index, x, y, z, options?)`, `three.setInstanceCount(mesh, count)`, `three.add(parent, child)`, `three.loadGLTF(url)`, `three.modelIsReady(handle)`
@@ -212,6 +212,8 @@ Use `game.*` when you want a browser-hosted interactive canvas loop in MALDA Jav
   - `game.audioPlaySample(url, volume?, options?)` — decode a WAV/OGG once per URL and play a one-shot (or `{ loop: true, pan?, playbackRate? }`). `volume` default `1`, clamp `[0, 1]`. `pan` clamp `[-1, 1]` (default `0`; ignored if `createStereoPanner` is missing). `playbackRate` default `1`; non-positive / non-finite → `1`; clamp `[0.25, 4]`. Returns `null`
   - `game.audioStopSample(url?)` — omit URL to stop every sample. Does **not** stop the v1 track or pattern
   - `game.audioPlayTone` / `game.audioPlayNoise` / `game.audioPlayPattern` / `game.audioLoadTrack` — Audio Spec v1 (unchanged signatures)
+  - `game.audioCreateVoice(options?)` / `game.audioSetVoice(voice, options)` / `game.audioStopVoice(voice)` — continuous voice (oscillator or looping noise → low-pass → gain → stereo or 3D panner). Options `{ wave?, freq?, volume?, cutoff?, pan?, glide?, position?, refDistance?, rolloff? }`
+  - `game.audioSetListener(position, forward?, up?)` — listener for 3D voices and placed samples
 
 ### Minimal starter template
 
@@ -291,6 +293,8 @@ function update(dtMs) {
 - `game.stop()` clears keys, mouse edges, and button edges (no leftover press on the next `start`).
 - `game.audioPlaySample` decodes once per URL and caches the buffer. Missing files / decode failures no-op (no throw). Overlapping plays of the same or different URLs are allowed. Options `{ loop?, pan?, playbackRate? }` are additive (`pan` needs `AudioContext.createStereoPanner`; otherwise pan is ignored and the sample still plays). `game.audioStopSample` never stops `audioPlayTrack` / `audioPlayPattern` / tones. `game.stop()` still does **not** implicit-stop audio. Samples share the existing 32-node cap with tones.
 - Call `game.audioInit()` after a click or key before expecting audible output (browser autoplay).
+- Voices: `wave` ∈ `sine` / `square` / `triangle` / `sawtooth` (default; unknown names fall back to it) / `noise` (looping 2 s white-noise buffer; `freq` ignored). `freq` 20–20000 Hz (default 110), `volume` 0–1 (default 0; fades in over ~20 ms), `cutoff` 20–20000 Hz low-pass (default 20000), `pan` −1..1, `glide` 0–2 s time constant (default 0.03; `setTargetAtTime`, so values settle exponentially). `audioSetVoice` only touches the keys you pass; `pan` is ignored on a 3D voice and `position` on a stereo one. Whether a voice is 3D is fixed when it is created. `audioStopVoice` fades over ~30 ms, stops 0.2 s later, and disconnects the nodes; later calls on that handle are no-ops. Voices stay outside the 32-source cap; `audioStopAll` stops them; a new `AudioContext` drops them.
+- 3D: `position` (on `audioCreateVoice`, `audioSetVoice`, or `audioPlaySample` options) routes through a `PannerNode` with `panningModel: "HRTF"`, `distanceModel: "inverse"`, `refDistance` (default 5), `rolloffFactor` = `rolloff` (default 1), `maxDistance` 10000. `audioSetListener` writes the listener's `positionX`… / `forwardX`… / `upX`… params (or `setPosition` / `setOrientation` on older engines). Use the same world units as the scene; there is no Doppler.
 - Use `game.setPixel` + `game.blitPixels()` for full-frame CPU rendering. Do not call `game.fillRect` once per pixel.
 - `game.blitPixels(pixels)` requires `pixels.length` to be `bufferWidth * bufferHeight * 3` (RGB) or `* 4` (RGBA). The buffer matches the canvas unless `createPixelBuffer(width, height)` requested another size.
 - Do not call `game.createCanvas(...)` while the loop is running; call `game.stop()` first.
@@ -533,7 +537,7 @@ Audio Spec v1 adds a browser-hosted game audio API in JavaScript mode. The goal 
   - `volume` default: `0.2`, clamped to `[0.0, 1.0]`.
   - Returns `null`.
 - `game.audioStopAll()`
-  - Stops currently active one-shot/pattern voices and clears scheduler state.
+  - Stops currently active one-shot/pattern voices, continuous voices from `audioCreateVoice`, and clears scheduler state.
   - Keeps `AudioContext` alive for reuse.
   - Returns `null`.
 - `game.audioPlayPattern(pattern)`
@@ -615,7 +619,7 @@ Audio Spec v1 adds a browser-hosted game audio API in JavaScript mode. The goal 
 
 - Run DOM-centric cases under `jsdom` to validate runtime behavior (`dom.query`, event wiring, HTML/text updates).
 - Keep C# tests as codegen/contract checks, and add Node/jsdom tests for runtime semantics.
-- Games kit G0–G21 landed (sprites, input edges, overlap, sample SFX, `malda play`, 3D assets, fullstack scores, size queries / pixelated / `strokeCircle`, `sweepRects`, `followCamera`, sample pan/rate, gamepad release + deadzone, `malda new game` on `startFixed`, image tint / `setBlend`, tile helpers, `three.*` uniform arrays, `three.startFixed` + input edges, render scale + stats overlay, instancing / shadows / fog). See [`docs/roadmap-games.md`](roadmap-games.md). Post-kit 2D gaps vs Love2D / Pico-8 / Phaser: [`docs/games-2d-gap-analysis.md`](games-2d-gap-analysis.md).
+- Games kit G0–G22 landed (sprites, input edges, overlap, sample SFX, `malda play`, 3D assets, fullstack scores, size queries / pixelated / `strokeCircle`, `sweepRects`, `followCamera`, sample pan/rate, gamepad release + deadzone, `malda new game` on `startFixed`, image tint / `setBlend`, tile helpers, `three.*` uniform arrays, `three.startFixed` + input edges, render scale + stats overlay, instancing / shadows / fog, audio voices + 3D sound). See [`docs/roadmap-games.md`](roadmap-games.md). Post-kit 2D gaps vs Love2D / Pico-8 / Phaser: [`docs/games-2d-gap-analysis.md`](games-2d-gap-analysis.md).
 
 ### Current limitations
 

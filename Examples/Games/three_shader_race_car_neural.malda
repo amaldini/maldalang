@@ -34,6 +34,8 @@
 // per frame. Keys use three.wasKeyPressed edges.
 // Auto render scale keeps 60 fps by trading resolution (0.5 to 1). F shows the
 // fps / scale overlay (or open the page with #malda-stats).
+// Each car has its own engine voice placed on the car, and the audio listener
+// rides the camera, so engines pan and fade as cars pass. M mutes.
 
 function wrapAngle(a: float) -> float {
     var turns = math.floor((a + 3.14159265) / 6.2831853);
@@ -4104,54 +4106,92 @@ if (root == null) {
             bi = bi + 1;
         }
         html = html + "</div>";
-        html = html + "<div class='keys'>Q E circuit &nbsp; C " + shotLabel() + " &nbsp; Tab cockpit<br>Z X car " + string(driveCar + 1) + " &nbsp; WASD throttle brake steer<br>N net &nbsp; T coach &nbsp; L blend &nbsp; R reset &nbsp; Space pause &nbsp; F stats<br>1 signs " + mark(showSigns) + " &nbsp; 2 trees " + mark(showTrees) + " &nbsp; 3 buildings " + mark(showBuildings) + "</div>";
+        html = html + "<div class='keys'>Q E circuit &nbsp; C " + shotLabel() + " &nbsp; Tab cockpit<br>Z X car " + string(driveCar + 1) + " &nbsp; WASD throttle brake steer<br>N net &nbsp; T coach &nbsp; L blend &nbsp; R reset &nbsp; Space pause &nbsp; F stats &nbsp; M mute<br>1 signs " + mark(showSigns) + " &nbsp; 2 trees " + mark(showTrees) + " &nbsp; 3 buildings " + mark(showBuildings) + "</div>";
         dom.html(hud, html);
     }
 
-    var audioClock = 0.0;
-    var noiseClock = 0.0;
+    // One engine voice per car, placed on the car; the listener rides the
+    // camera, so cars pan and fade as they pass. A noise voice on the car
+    // you follow carries the tire scrub.
+    var engineVoices = [];
+    var scrubVoice = null;
+    var muted = false;
 
-    function hearRace(dt: float) {
+    function hearRace() {
         game.audioInit();
-        if (paused) {
-            return;
+        if (engineVoices.length == 0) {
+            var v = 0;
+            while (v < carCount) {
+                engineVoices.append(game.audioCreateVoice({
+                    "wave": "sawtooth",
+                    "freq": 60,
+                    "cutoff": 600,
+                    "volume": 0,
+                    "position": [carX[v], 0.4, carZ[v]],
+                    "refDistance": 6,
+                    "rolloff": 1.3
+                }));
+                v = v + 1;
+            }
+            scrubVoice = game.audioCreateVoice({
+                "wave": "noise",
+                "cutoff": 3200,
+                "volume": 0,
+                "position": [0, 0, 0],
+                "refDistance": 6
+            });
         }
+        if (cam != null) {
+            game.audioSetListener(
+                [cam.camX, cam.camY, cam.camZ],
+                [cam.forwardX, cam.forwardY, cam.forwardZ],
+                [cam.upX, cam.upY, cam.upZ]
+            );
+        }
+
+        var i = 0;
+        while (i < carCount) {
+            var speed = carV[i];
+            if (speed < 0.0) {
+                speed = 0.0;
+            }
+            var speedN = speed / (150.0 * worldScale + 0.001);
+            if (speedN > 1.3) {
+                speedN = 1.3;
+            }
+            var engineVolume = 0.0;
+            if (!paused) {
+                engineVolume = 0.03 + speedN * 0.06;
+            }
+            // A small per-car offset keeps eight engines from beating in unison.
+            game.audioSetVoice(engineVoices[i], {
+                "freq": 55.0 + speedN * 170.0 + float(i) * 1.7,
+                "cutoff": 450.0 + speedN * 2600.0,
+                "volume": engineVolume,
+                "position": [carX[i], 0.4, carZ[i]]
+            });
+            i = i + 1;
+        }
+
         var hear = leadCar;
         if (manualDrive) {
             hear = driveCar;
         }
-        if (hear < 0 || hear >= carV.length) {
-            return;
-        }
-        var speed = carV[hear];
-        if (speed < 0.0) {
-            speed = 0.0;
-        }
-        var speedN = speed / (150.0 * worldScale + 0.001);
-        if (speedN > 1.3) {
-            speedN = 1.3;
-        }
-        audioClock = audioClock + dt;
-        if (audioClock >= 0.085) {
-            audioClock = 0.0;
-            var freq = 62.0 + speedN * 168.0;
-            var vol = 0.035 + speedN * 0.07;
-            game.audioPlayTone(freq, 70, "sawtooth", vol);
-        }
-        var scrub = 0.0;
-        if (hear < carGrip.length) {
-            scrub = carGrip[hear];
-        }
-        if (scrub > 1.0) {
-            scrub = 1.0;
-        }
-        if (scrub > 0.9) {
-            noiseClock = noiseClock + dt;
-            if (noiseClock >= 0.1) {
-                noiseClock = 0.0;
-                var nvol = (scrub - 0.9) * 0.55;
-                game.audioPlayNoise(60, nvol);
+        var scrubVolume = 0.0;
+        if (!paused && hear >= 0 && hear < carGrip.length) {
+            var scrub = carGrip[hear];
+            if (scrub > 1.0) {
+                scrub = 1.0;
             }
+            if (scrub > 0.9) {
+                scrubVolume = (scrub - 0.9) * 0.55;
+            }
+            game.audioSetVoice(scrubVoice, {
+                "volume": scrubVolume,
+                "position": [carX[hear], 0.2, carZ[hear]]
+            });
+        } else {
+            game.audioSetVoice(scrubVoice, { "volume": 0 });
         }
     }
 
@@ -4196,6 +4236,15 @@ if (root == null) {
         if (three.wasKeyPressed("f")) {
             statsOn = !statsOn;
             three.showStats(statsOn);
+        }
+
+        if (three.wasKeyPressed("m")) {
+            muted = !muted;
+            if (muted) {
+                game.audioSetMasterVolume(0.0);
+            } else {
+                game.audioSetMasterVolume(0.8);
+            }
         }
 
         if (three.wasKeyPressed(" ")) {
@@ -4287,7 +4336,7 @@ if (root == null) {
             camDt = 0.0;
         }
         cam = updateCamera(camDt);
-        hearRace(dtSec);
+        hearRace();
     }
 
     function render() {
