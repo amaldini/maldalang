@@ -12,13 +12,17 @@
     return 0;
   }
 
+  // Infinity and NaN are real floats (as in the interpreter/C#): pass them through instead of
+  // zeroing them, since every transpiled arithmetic operator goes through this helper.
   function coerceToFloat(value) {
     if (value === null || value === undefined) return 0;
-    if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+    if (typeof value === "number") return value;
     if (typeof value === "boolean") return value ? 1 : 0;
     if (typeof value === "string") {
-      const parsed = Number(value.trim());
-      return Number.isFinite(parsed) ? parsed : 0;
+      const text = value.trim();
+      if (text === "NaN") return NaN;
+      const parsed = Number(text);
+      return Number.isNaN(parsed) ? 0 : parsed;
     }
     return 0;
   }
@@ -364,6 +368,36 @@
       });
     }
     return array.slice().sort(compareSortValues);
+  }
+
+  // Dictionary methods (`d.keys()`, ...) on the plain objects that dict literals become.
+  // A receiver that defines the method itself (class instance, Map wrapper) keeps it.
+  function callDictMethod(receiver, methodName, args) {
+    const callArgs = Array.isArray(args) ? args : [];
+    if (receiver !== null && receiver !== undefined && typeof receiver[methodName] === "function") {
+      return receiver[methodName](...callArgs);
+    }
+    if (receiver === null || typeof receiver !== "object" || Array.isArray(receiver)) {
+      throw new Error(`${methodName}() expects a dictionary receiver`);
+    }
+    const isEntryKey = (key) => key !== "__maldaDict";
+    switch (methodName) {
+      case "keys":
+        requireCallArity("keys", callArgs, 0, 0);
+        return Object.keys(receiver).filter(isEntryKey);
+      case "values":
+        requireCallArity("values", callArgs, 0, 0);
+        return Object.keys(receiver).filter(isEntryKey).map((key) => receiver[key]);
+      case "containsKey": {
+        requireCallArity("containsKey", callArgs, 1, 1);
+        if (typeof callArgs[0] !== "string") {
+          throw new Error("Dictionary keys must be strings.");
+        }
+        return isEntryKey(callArgs[0]) && Object.prototype.hasOwnProperty.call(receiver, callArgs[0]);
+      }
+      default:
+        throw new Error(`Dictionary has no method '${methodName}'.`);
+    }
   }
 
   function callArrayMethod(arrayValue, methodName, args) {
@@ -3042,6 +3076,16 @@
     return match ? match[0] : null;
   }
 
+  // Null-safe boundary coercion: null -> "" (unlike string(null) -> "null" in the interpreter).
+  function strText(value) {
+    requireCallArity("text", Array.prototype.slice.call(arguments), 1, 1);
+    return value === null || value === undefined ? "" : coerceToString(value);
+  }
+  function strTrimText(value) {
+    requireCallArity("trimText", Array.prototype.slice.call(arguments), 1, 1);
+    return strText(value).trim();
+  }
+
   const strStdLib = {
     length: lengthBuiltin,
     upper: strUpper,
@@ -3060,7 +3104,9 @@
     repeat: strRepeat,
     regexMatch: strRegexMatch,
     regexReplace: strRegexReplace,
-    regexFind: strRegexFind
+    regexFind: strRegexFind,
+    text: strText,
+    trimText: strTrimText
   };
 
   function ioPrint(value) {
@@ -3620,6 +3666,7 @@
     joinBuiltin,
     sortBuiltin,
     callArrayMethod,
+    callDictMethod,
     parseJSON,
     parseJson,
     toJSON,

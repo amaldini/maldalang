@@ -386,4 +386,36 @@ public class InterpretJsPairTests
             """,
             "tojson-class-js");
     }
+
+    [Fact]
+    public void StrTextAndDictMethods_SameStdout()
+    {
+        InterpretJsPair.AssertSameFromSource(
+            """
+            io.print("[" + str.text(null) + "][" + str.text(12) + "]");
+            io.print("[" + str.trimText("  a  ") + "][" + str.trimText(null) + "]");
+            var d = {"a": 1, "b": 2};
+            io.print(str.join(d.keys(), ","));
+            io.print(string(d.values().length));
+            io.print(string(d.containsKey("a")) + " " + string(d.containsKey("z")));
+            class Bag {
+                function keys() { return "own"; }
+            }
+            io.print(new Bag().keys());
+            """,
+            "str-text-dict-methods-js");
+    }
+
+    [Fact]
+    public void InfinitySurvivesArithmetic_SameStdout()
+    {
+        InterpretJsPair.AssertSameFromSource(
+            """
+            var big = 1.0e308 * 10.0;
+            io.print(string(big > 1.0e308));
+            io.print(string((big - 1.0) > 0.0));
+            io.print(string(-big < 0.0));
+            """,
+            "infinity-arithmetic-js");
+    }
 }

@@ -22,7 +22,7 @@ public static class RuntimeHelpers
             long l => (int)l,
             double d => (int)d,
             float f => (int)f,
-            string s => int.TryParse(s, out var result) ? result : 0,
+            string s => int.TryParse(s, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var result) ? result : 0,
             bool b => b ? 1 : 0,
             _ => throw new InvalidOperationException($"Cannot coerce {value.GetType()} to int")
         };
@@ -37,7 +37,7 @@ public static class RuntimeHelpers
             long l => (double)l,
             double d => d,
             float f => (double)f,
-            string s => double.TryParse(s, out var result) ? result : 0.0,
+            string s => double.TryParse(s, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var result) ? result : 0.0,
             bool b => b ? 1.0 : 0.0,
             _ => throw new InvalidOperationException($"Cannot coerce {value.GetType()} to float")
         };
@@ -456,6 +456,10 @@ public static class RuntimeHelpers
         {
             return boolValue.ToString().ToLower();
         }
+
+        // Invariant, so a float never prints as "1,5" on an it-IT machine.
+        if (value is double or float or decimal)
+            return ((IFormattable)value).ToString(null, System.Globalization.CultureInfo.InvariantCulture);
         
         return value.ToString() ?? "null";
     }

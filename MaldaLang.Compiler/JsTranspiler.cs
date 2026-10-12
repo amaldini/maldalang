@@ -850,6 +850,11 @@ public class JsTranspiler
         "sort", "reverse", "slice", "indexOf", "includes", "join", "sum", "average", "min", "max"
     };
 
+    private static readonly HashSet<string> DictionaryMethods = new(StringComparer.Ordinal)
+    {
+        "keys", "values", "containsKey"
+    };
+
     private string TranspilePipeExpression(PipeExpression pipe)
     {
         var left = pipe.Left;
@@ -1512,6 +1517,13 @@ public class JsTranspiler
                 }
 
                 return $"mlRuntime.callArrayMethod({TranspileExpression(memberCall.Object)}, {TranspileLiteral(memberCall.Member)}, [{args}])";
+            }
+
+            // Dict literals are plain JS objects, so `d.keys()` needs the runtime; a receiver
+            // with its own method of that name (class instance) is still called directly.
+            if (DictionaryMethods.Contains(memberCall.Member))
+            {
+                return $"mlRuntime.callDictMethod({TranspileExpression(memberCall.Object)}, {TranspileLiteral(memberCall.Member)}, [{JoinArguments(functionCall.Arguments)}])";
             }
         }
 

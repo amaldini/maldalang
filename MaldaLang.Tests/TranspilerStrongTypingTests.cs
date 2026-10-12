@@ -41,6 +41,17 @@ public class TranspilerStrongTypingTests
     }
 
     [Fact]
+    public void Transpile_NegatedFloat_EmitsDoubleForTypedMath()
+    {
+        // ResolveExpressionType says -2.5 is double, so the emit must be a double too
+        // (OperatorNegate returns object and Math.Round(object) fails CS1503).
+        var generated = TranspileSource("print(math.round(-2.5)); var k = -2; print(k);");
+        Assert.Contains("Math.Round((-2.5))", generated);
+        Assert.DoesNotContain("Math.Round((RuntimeHelpers.OperatorNegate", generated);
+        Assert.Contains("RuntimeHelpers.OperatorNegate(2)", generated);
+    }
+
+    [Fact]
     public void Transpile_Level0Legacy_IgnoresTypeHints()
     {
         var source = """

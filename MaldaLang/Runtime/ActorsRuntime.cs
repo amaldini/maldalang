@@ -160,6 +160,31 @@ public static class ActorsRuntime
 
     private static readonly ConcurrentDictionary<Guid, CallbackRegistration> _callbacks = new();
 
+    /// <summary>Ids reserved by actor constructors so <see cref="Spawn"/> hands out the same ref.</summary>
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<object, System.Runtime.CompilerServices.StrongBox<Guid>> _reservedIds = new();
+
+    /// <summary>
+    /// Called at the top of a transpiled actor constructor: reserves the actor's id and makes
+    /// <c>self</c> resolve to it while the constructor body runs (the interpreter runs the
+    /// constructor inside the actor). Spawn arguments are already evaluated in the caller's
+    /// context, so <c>spawn Child(self)</c> still passes the parent. Returns the previous
+    /// <c>self</c> for <see cref="ExitConstruction"/>.
+    /// </summary>
+    public static ActorRef? EnterConstruction(object actorInstance)
+    {
+        var previous = _currentActor.Value;
+        var id = Guid.NewGuid();
+        _reservedIds.AddOrUpdate(actorInstance, new System.Runtime.CompilerServices.StrongBox<Guid>(id));
+        _currentActor.Value = new ActorRef(id);
+        return previous;
+    }
+
+    /// <summary>Restores the <c>self</c> captured by <see cref="EnterConstruction"/>.</summary>
+    public static void ExitConstruction(ActorRef? previous)
+    {
+        _currentActor.Value = previous;
+    }
+
     /// <summary>
     /// Spawn a new actor instance and start its message-processing loop.
     /// </summary>
@@ -173,6 +198,11 @@ public static class ActorsRuntime
         }
 
         var id = Guid.NewGuid();
+        if (_reservedIds.TryGetValue(actorInstance, out var reserved))
+        {
+            id = reserved.Value;
+            _reservedIds.Remove(actorInstance);
+        }
         var cell = new ActorCell(actorInstance);
 
         if (!_actors.TryAdd(id, cell))

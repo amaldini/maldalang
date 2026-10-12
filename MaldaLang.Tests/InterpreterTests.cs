@@ -643,6 +643,37 @@ public class InterpreterTests : TestBase
     }
     
     [Fact]
+    public void TestRecursion_InnerReturnInsideBlock_DoesNotExitOuterCall()
+    {
+        // The inner call's `return` inside a block used to leave that block's frame on the
+        // execution stack; the outer call then "resumed" it and returned the inner value.
+        var source = @"
+            function f(n) {
+                var r = 0;
+                if (n > 0) {
+                    r = f(n - 1);
+                }
+                if (true) {
+                    return n * 10 + r;
+                }
+            }
+            function g(n) {
+                var i = 0;
+                var visits = 0;
+                while (i < 1) {
+                    if (n > 0) { visits = g(n - 1); }
+                    if (n == 0) { return 1; }
+                    i = i + 1;
+                }
+                return visits + 1;
+            }
+            print(f(2) + "","" + g(3));
+        ";
+        var output = RunProgram(source);
+        Assert.Equal("30,4", output);
+    }
+
+    [Fact]
     public void TestFactorial17_IntegerOverflowThrows()
     {
         var source = @"

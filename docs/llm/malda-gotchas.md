@@ -97,6 +97,21 @@ claim a program works.
 | `stream(...)` on in-process GGUF expecting live tokens | LlamaCpp / LLamaSharp is **buffered** — chunks are carved from the finished text. | Treat `for await` as a materialized array. HTTP clients may stream |
 | `malda check --fix` fixing every gotcha | `--fix` is mechanical only (flat aliases, `$"…"`, `.length()`). Other diagnostics stay. | Re-run `malda check --json` after `--fix`; edit the rest by hand |
 
+## JavaScript transpile differs on numbers
+
+The interpreter and C# transpile agree on all of these; `--mode js` follows JavaScript. Each
+one runs without error on every backend and prints different output.
+
+| You write | Interpreter / C# | JavaScript | Portable form |
+|-----------|------------------|------------|---------------|
+| `1 == 1.0` | `false` — an integer never equals a float | `true` | `float(a) == float(b)`, or compare with a tolerance |
+| `math.round(2.5)` | `2` — banker's rounding (half to even) | `3` — half up | `math.floor(x + 0.5)` for half up everywhere |
+| `x / 0` | Runtime error (int and float) | `Infinity` / `NaN` | Check the divisor first |
+| `NaN == NaN` | `true` | `false` | Avoid producing `NaN`; test the inputs instead |
+
+Not differences: `0`, `""` and `[]` are truthy everywhere (see above), and
+`str.substring(s, start, length)` takes a **count** on every backend, not an end index.
+
 ## Half-truths
 
 **`@shader()` is a JavaScript compile-time GLSL kernel, not a host function.** `malda compile --mode js` inlines those functions through `glsl.compile({ ... })` and does not emit JS. Calling `hitSphere(...)` from the MALDA host, or running the file in the interpreter / C# transpile, will not execute GPU code. Keep uniforms and the `three.*` loop in host MALDA; keep rays in `@shader()` functions. Raw triple-quoted GLSL strings still work.

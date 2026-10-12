@@ -446,6 +446,17 @@ public class CSharpTranspiler
             _output.AppendLine();
             _indentLevel++;
 
+            // Number parsing/formatting must not follow the OS locale: on it-IT, float("0.5")
+            // would read 5 and 1.5 would print as "1,5". Match the interpreter (invariant).
+            WriteIndent();
+            _output.AppendLine("System.Globalization.CultureInfo.DefaultThreadCurrentCulture = System.Globalization.CultureInfo.InvariantCulture;");
+            WriteIndent();
+            _output.AppendLine("System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = System.Globalization.CultureInfo.InvariantCulture;");
+            WriteIndent();
+            _output.AppendLine("System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.InvariantCulture;");
+            WriteIndent();
+            _output.AppendLine("System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.InvariantCulture;");
+
             // Enable ANSI escape codes in Windows console for Spectre.Console support
             WriteIndent();
             _output.AppendLine("// Enable ANSI escape codes in Windows console");
@@ -837,6 +848,7 @@ public class CSharpTranspiler
                                             ResolveTypedBuiltInReturnType(builtInId.Name, call.Arguments) is var builtInReturnType &&
                                             builtInReturnType != TranspiledClrType.Object => builtInReturnType,
             UnaryExpression unary when unary.Operator == TokenType.Minus &&
+                                       unary.Right is not LiteralExpression { Value: int } &&
                                        ResolveExpressionType(unary.Right) == TranspiledClrType.Double => TranspiledClrType.Double,
             BinaryExpression binary when IsNumericBinaryOperator(binary.Operator) &&
                                          ResolveExpressionType(binary.Left) == TranspiledClrType.Double &&
@@ -1368,7 +1380,7 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("MaldaLang.Interpreter.ValueType.Float => (int)rv.AsFloat(),");
         WriteIndent();
-        _output.AppendLine("MaldaLang.Interpreter.ValueType.String => int.TryParse(rv.AsString(), out var result) ? result : 0,");
+        _output.AppendLine("MaldaLang.Interpreter.ValueType.String => int.TryParse(rv.AsString(), System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var result) ? result : 0,");
         WriteIndent();
         _output.AppendLine("MaldaLang.Interpreter.ValueType.Boolean => rv.AsBoolean() ? 1 : 0,");
         WriteIndent();
@@ -1393,7 +1405,7 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("float f => (int)f,");
         WriteIndent();
-        _output.AppendLine("string s => int.TryParse(s, out var result) ? result : 0,");
+        _output.AppendLine("string s => int.TryParse(s, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var result) ? result : 0,");
         WriteIndent();
         _output.AppendLine("bool b => b ? 1 : 0,");
         WriteIndent();
@@ -1428,7 +1440,7 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("MaldaLang.Interpreter.ValueType.Float => rv.AsFloat(),");
         WriteIndent();
-        _output.AppendLine("MaldaLang.Interpreter.ValueType.String => double.TryParse(rv.AsString(), out var result) ? result : 0.0,");
+        _output.AppendLine("MaldaLang.Interpreter.ValueType.String => double.TryParse(rv.AsString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var result) ? result : 0.0,");
         WriteIndent();
         _output.AppendLine("MaldaLang.Interpreter.ValueType.Boolean => rv.AsBoolean() ? 1.0 : 0.0,");
         WriteIndent();
@@ -1453,7 +1465,7 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("float f => (double)f,");
         WriteIndent();
-        _output.AppendLine("string s => double.TryParse(s, out var result) ? result : 0.0,");
+        _output.AppendLine("string s => double.TryParse(s, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var result) ? result : 0.0,");
         WriteIndent();
         _output.AppendLine("bool b => b ? 1.0 : 0.0,");
         WriteIndent();
@@ -1543,6 +1555,8 @@ public class CSharpTranspiler
         _indentLevel--;
         WriteIndent();
         _output.AppendLine("}");
+        WriteIndent();
+        _output.AppendLine("if (value is double or float or decimal) return ((IFormattable)value).ToString(null, System.Globalization.CultureInfo.InvariantCulture);");
         WriteIndent();
         _output.AppendLine("return value.ToString() ?? \"null\";");
         _indentLevel--;
@@ -9789,6 +9803,15 @@ public class CSharpTranspiler
             TranspileExpression(unary.Right);
             _output.Append(")");
         }
+        else if (unary.Operator == TokenType.Minus &&
+                 unary.Right is not LiteralExpression { Value: int } &&
+                 ResolveExpressionType(unary.Right) == TranspiledClrType.Double)
+        {
+            // ResolveExpressionType reports -x as double here, so emit a double (not the
+            // object OperatorNegate returns): math.round(-2.5) otherwise fails CS1503.
+            _output.Append("-");
+            TranspileExpression(unary.Right);
+        }
         else if (unary.Operator == TokenType.Minus)
         {
             _output.Append("RuntimeHelpers.OperatorNegate(");
@@ -13405,9 +13428,23 @@ public class CSharpTranspiler
                         _output.Append(EscapeIdentifier(ctor.Parameters[i]));
                     }
                     _output.AppendLine(")");
+                    // `self` in the constructor (lambdas included) must be the actor being
+                    // built, as in the interpreter, which runs the constructor inside the actor.
+                    WriteIndent();
+                    _output.AppendLine("{");
+                    _indentLevel++;
+                    WriteIndent();
+                    _output.AppendLine("var __previousSelf = ActorsRuntime.EnterConstruction(this);");
+                    WriteIndent();
+                    _output.AppendLine("try");
                     _currentFunctionReturnType.Push(TranspiledClrType.Object);
                     TranspileFunctionBlock(ctor.Body, member.Name + ".ctor", ctor.Line);
                     _currentFunctionReturnType.Pop();
+                    WriteIndent();
+                    _output.AppendLine("finally { ActorsRuntime.ExitConstruction(__previousSelf); }");
+                    _indentLevel--;
+                    WriteIndent();
+                    _output.AppendLine("}");
                     PopTypedScope();
                 }
                 break;

@@ -1968,6 +1968,16 @@ public partial class Interpreter
         return await ExecuteBlockAsync(stmt, new Environment(_environment));
     }
     
+    /// <summary>
+    /// Pops <paramref name="frame"/> when it is on top. Every frame owner pops in a
+    /// <c>finally</c>, so nested frames are already gone by the time the owner unwinds.
+    /// </summary>
+    private void PopExecutionFrame(ExecutionFrame frame)
+    {
+        if (_executionStack.Count > 0 && ReferenceEquals(_executionStack.Peek(), frame))
+            _executionStack.Pop();
+    }
+
     private async Task<RuntimeValue?> ExecuteBlockAsync(BlockStatement stmt, Environment environment)
     {
         // Check if we're resuming a block execution
@@ -2008,15 +2018,13 @@ public partial class Interpreter
                 blockFrame.StatementIndex = i;
                 await ExecuteAsync(stmt.Statements[i]);
             }
-            
-            // Block completed - pop frame
-            if (_executionStack.Count > 0 && _executionStack.Peek() == blockFrame)
-            {
-                _executionStack.Pop();
-            }
         }
         finally
         {
+            // Pop on every exit (return/break/continue/throw included). A frame left behind
+            // would be "resumed" by the next execution of this same block — e.g. the outer
+            // call of a recursive function jumping straight to the inner call's `return`.
+            PopExecutionFrame(blockFrame);
             await RunAndPopDeferFrameAsync();
             _environment = previous;
         }
@@ -2159,25 +2167,15 @@ public partial class Interpreter
                 // Reset statement index for next iteration
                 whileFrame.StatementIndex = 0;
             }
-            
-            // Loop completed - pop frame
-            if (_executionStack.Count > 0 && _executionStack.Peek() == whileFrame)
-            {
-                _executionStack.Pop();
-            }
-        }
-        catch (ContinueException)
-        {
-            // Continue to next iteration - frame state is preserved
-            throw; // Re-throw to be handled by outer loop
         }
         catch (BreakException)
         {
-            // Break out of loop - pop frame
-            if (_executionStack.Count > 0 && _executionStack.Peek() == whileFrame)
-            {
-                _executionStack.Pop();
-            }
+            // Break out of loop
+        }
+        finally
+        {
+            // Pop on every exit, including `return` from inside the loop body.
+            PopExecutionFrame(whileFrame);
         }
         return null;
     }
@@ -3566,6 +3564,7 @@ public partial class Interpreter
         }
         finally
         {
+            PopExecutionFrame(functionFrame);
             await RunAndPopDeferFrameAsync();
 
             if (withinMs is > 0)
