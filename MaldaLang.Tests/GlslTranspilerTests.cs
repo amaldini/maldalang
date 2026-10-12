@@ -73,6 +73,31 @@ public class GlslTranspilerTests : TestBase
     }
 
     [Fact]
+    public void Compile_UniformArray_DeclaresArrayAndIndexes()
+    {
+        var source = """
+            @shader()
+            function carPosition(index: int) -> vec3 {
+                return uCars[index];
+            }
+            """;
+        var func = Assert.IsType<FunctionDeclaration>(Assert.Single(Parse(source)));
+        var glsl = GlslTranspiler.Compile(new GlslCompileRequest
+        {
+            Uniforms = ["vec3 uCars[CAR_COUNT]", "float uAngles[8]"],
+            Consts = ["int CAR_COUNT = 8"],
+            Functions = [func]
+        });
+
+        Assert.Contains("uniform vec3 uCars[CAR_COUNT];", glsl, StringComparison.Ordinal);
+        Assert.Contains("uniform float uAngles[8];", glsl, StringComparison.Ordinal);
+        Assert.Contains("return uCars[index];", glsl, StringComparison.Ordinal);
+        Assert.True(
+            glsl.IndexOf("const int CAR_COUNT", StringComparison.Ordinal) < glsl.IndexOf("uniform vec3 uCars", StringComparison.Ordinal),
+            "a const that sizes a uniform array must be declared first");
+    }
+
+    [Fact]
     public void JsTranspile_InlinesGlslCompile_AndSkipsShaderJsFunctions()
     {
         var source = """

@@ -44,9 +44,10 @@ public static class GlslTranspiler
             output.AppendLine(request.Header.TrimEnd());
         }
 
+        // Consts go before uniforms so `uniform vec3 uCars[CAR_COUNT]` can size from one.
         AppendPrefixedDeclarations(output, "varying", request.Varyings);
-        AppendPrefixedDeclarations(output, "uniform", request.Uniforms);
         AppendPrefixedDeclarations(output, "const", request.Consts);
+        AppendPrefixedDeclarations(output, "uniform", request.Uniforms);
 
         if (output.Length > 0)
             output.AppendLine();

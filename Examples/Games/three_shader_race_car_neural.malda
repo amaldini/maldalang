@@ -453,54 +453,12 @@ function wheelNormal(center: vec3, radius: float, halfWidth: float, angle: float
 
 @shader()
 function carPosition(index: int) -> vec3 {
-    if (index == 0) {
-        return uCar0;
-    }
-    if (index == 1) {
-        return uCar1;
-    }
-    if (index == 2) {
-        return uCar2;
-    }
-    if (index == 3) {
-        return uCar3;
-    }
-    if (index == 4) {
-        return uCar4;
-    }
-    if (index == 5) {
-        return uCar5;
-    }
-    if (index == 6) {
-        return uCar6;
-    }
-    return uCar7;
+    return uCars[index];
 }
 
 @shader()
 function carAngle(index: int) -> float {
-    if (index == 0) {
-        return uAngle0;
-    }
-    if (index == 1) {
-        return uAngle1;
-    }
-    if (index == 2) {
-        return uAngle2;
-    }
-    if (index == 3) {
-        return uAngle3;
-    }
-    if (index == 4) {
-        return uAngle4;
-    }
-    if (index == 5) {
-        return uAngle5;
-    }
-    if (index == 6) {
-        return uAngle6;
-    }
-    return uAngle7;
+    return uAngles[index];
 }
 
 @shader()
@@ -701,28 +659,7 @@ function carPartAlbedo(index: int, part: int) -> vec3 {
 
 @shader()
 function carSteer(index: int) -> float {
-    if (index == 0) {
-        return uSteer0;
-    }
-    if (index == 1) {
-        return uSteer1;
-    }
-    if (index == 2) {
-        return uSteer2;
-    }
-    if (index == 3) {
-        return uSteer3;
-    }
-    if (index == 4) {
-        return uSteer4;
-    }
-    if (index == 5) {
-        return uSteer5;
-    }
-    if (index == 6) {
-        return uSteer6;
-    }
-    return uSteer7;
+    return uSteers[index];
 }
 
 @shader()
@@ -1641,34 +1578,14 @@ var fragmentShader = glsl.compile({
         "float uPropCell",
         "float uPropCellsW",
         "float uPropCellsH",
-        "vec3 uCar0",
-        "vec3 uCar1",
-        "vec3 uCar2",
-        "vec3 uCar3",
-        "vec3 uCar4",
-        "vec3 uCar5",
-        "vec3 uCar6",
-        "vec3 uCar7",
-        "float uAngle0",
-        "float uAngle1",
-        "float uAngle2",
-        "float uAngle3",
-        "float uAngle4",
-        "float uAngle5",
-        "float uAngle6",
-        "float uAngle7",
-        "float uSteer0",
-        "float uSteer1",
-        "float uSteer2",
-        "float uSteer3",
-        "float uSteer4",
-        "float uSteer5",
-        "float uSteer6",
-        "float uSteer7",
+        "vec3 uCars[CAR_COUNT]",
+        "float uAngles[CAR_COUNT]",
+        "float uSteers[CAR_COUNT]",
         "float uCockpitCar",
         "float uGrip"
     ],
     consts: [
+        "int CAR_COUNT = 8",
         "float EPSILON = 0.0015",
         "float SIGN_HALF_W = 2.05",
         "float SIGN_HALF_H = 0.62",
@@ -3439,30 +3356,7 @@ if (root == null) {
             "uPropCell": 18,
             "uPropCellsW": 1,
             "uPropCellsH": 1,
-            "uCar0": [0, 0, -5],
-            "uCar1": [-3, 0, -8],
-            "uCar2": [3, 0, -8],
-            "uCar3": [0, 0, -11],
-            "uCar4": [-3, 0, -14],
-            "uCar5": [3, 0, -14],
-            "uCar6": [0, 0, -17],
-            "uCar7": [0, 0, -20],
-            "uAngle0": 0,
-            "uAngle1": 0,
-            "uAngle2": 0,
-            "uAngle3": 0,
-            "uAngle4": 0,
-            "uAngle5": 0,
-            "uAngle6": 0,
-            "uAngle7": 0,
-            "uSteer0": 0,
-            "uSteer1": 0,
-            "uSteer2": 0,
-            "uSteer3": 0,
-            "uSteer4": 0,
-            "uSteer5": 0,
-            "uSteer6": 0,
-            "uSteer7": 0,
+            "uCars": [[0, 0, -5], [-3, 0, -8], [3, 0, -8], [0, 0, -11], [-3, 0, -14], [3, 0, -14], [0, 0, -17], [0, 0, -20]],
             "uCockpitCar": -1,
             "uGrip": 0
         }
@@ -4433,30 +4327,15 @@ if (root == null) {
         lightZ = focusZ + trackSpan * 0.22;
         three.setUniform(material, "uLightPos", [lightX, lightY, lightZ]);
         three.setUniform(material, "uTrackW", trackW);
-        three.setUniform(material, "uCar0", [carX[0], 0, carZ[0]]);
-        three.setUniform(material, "uCar1", [carX[1], 0, carZ[1]]);
-        three.setUniform(material, "uCar2", [carX[2], 0, carZ[2]]);
-        three.setUniform(material, "uCar3", [carX[3], 0, carZ[3]]);
-        three.setUniform(material, "uCar4", [carX[4], 0, carZ[4]]);
-        three.setUniform(material, "uCar5", [carX[5], 0, carZ[5]]);
-        three.setUniform(material, "uCar6", [carX[6], 0, carZ[6]]);
-        three.setUniform(material, "uCar7", [carX[7], 0, carZ[7]]);
-        three.setUniform(material, "uAngle0", carH[0]);
-        three.setUniform(material, "uAngle1", carH[1]);
-        three.setUniform(material, "uAngle2", carH[2]);
-        three.setUniform(material, "uAngle3", carH[3]);
-        three.setUniform(material, "uAngle4", carH[4]);
-        three.setUniform(material, "uAngle5", carH[5]);
-        three.setUniform(material, "uAngle6", carH[6]);
-        three.setUniform(material, "uAngle7", carH[7]);
-        three.setUniform(material, "uSteer0", carSteerCmd[0]);
-        three.setUniform(material, "uSteer1", carSteerCmd[1]);
-        three.setUniform(material, "uSteer2", carSteerCmd[2]);
-        three.setUniform(material, "uSteer3", carSteerCmd[3]);
-        three.setUniform(material, "uSteer4", carSteerCmd[4]);
-        three.setUniform(material, "uSteer5", carSteerCmd[5]);
-        three.setUniform(material, "uSteer6", carSteerCmd[6]);
-        three.setUniform(material, "uSteer7", carSteerCmd[7]);
+        var carSpots = [];
+        var spot = 0;
+        while (spot < carCount) {
+            carSpots.append([carX[spot], 0, carZ[spot]]);
+            spot = spot + 1;
+        }
+        three.setUniform(material, "uCars", carSpots);
+        three.setUniform(material, "uAngles", carH);
+        three.setUniform(material, "uSteers", carSteerCmd);
         three.setUniform(material, "uCockpitCar", cockpitCar);
         three.setUniform(material, "uGrip", shownGrip);
         hearRace(dtSec);

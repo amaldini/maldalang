@@ -297,6 +297,15 @@ three.setUniform(material, "uTime", t);</code></pre>
         </ul>
         <p>Pass the resulting strings to <code>three.createShaderMaterial</code> as <code>"vertexShader"</code> / <code>"fragmentShader"</code>. Uniform values from host MALDA are wrapped as <code>{ value }</code>. Arrays of length 2/3/4 become <code>Vector2</code> / <code>Vector3</code> / <code>Vector4</code>. <code>#rrggbb</code> strings become <code>Color</code>. Texture handles from <code>createTexture</code> / <code>createDataTexture</code> / <code>mandelbrotOrbit</code> unwrap to <code>THREE.Texture</code> for <code>sampler2D</code>. Optional flags: <code>"depthWrite": false</code>, <code>"depthTest": false</code>, <code>"transparent": true</code>.</p>
         <p>For a fullscreen pass, use <code>three.createOrthographicCamera(-1, 1, 1, -1, 0, 1)</code> and <code>three.createPlaneGeometry(2, 2)</code>.</p>
+        <p><strong>Uniform arrays.</strong> Declare one with a size, for example <code>"vec3 uCars[CAR_COUNT]"</code> beside <code>consts: ["int CAR_COUNT = 8"]</code>, and index it in a kernel: <code>return uCars[index];</code>. <code>glsl.compile</code> writes consts before uniforms so a const can size an array. <code>createShaderMaterial</code> reads the <code>uniform T name[N]</code> declarations from the shader strings, so <code>three.setUniform(material, "uAngles", carH)</code> fills a <code>float[8]</code> instead of turning the list into a <code>Vector4</code>. Supported element types are <code>float</code>, <code>int</code>, <code>bool</code>, <code>vec2</code>/<code>vec3</code>/<code>vec4</code>, and <code>ivec2</code>/<code>ivec3</code>/<code>ivec4</code>. Vector arrays take a nested list (<code>[[x, y, z], ...]</code>) or a flat one (<code>[x, y, z, x, y, z, ...]</code>). Missing entries become zero, extra entries are ignored, and an array that is never set starts at zero. Updates write into the existing values, so calling it every frame does not allocate new vectors.</p>
+<pre><code>var frag = glsl.compile({
+    uniforms: ["vec3 uCars[CAR_COUNT]", "float uAngles[CAR_COUNT]"],
+    consts: ["int CAR_COUNT = 8"],
+    functions: ["carPosition", "fragmentMain"],
+    main: "fragmentMain"
+});
+three.setUniform(material, "uCars", [[0, 0, -5], [-3, 0, -8]]);
+three.setUniform(material, "uAngles", carH);</code></pre>
 
         <h4>Types in kernels</h4>
         <p><code>vec2</code>, <code>vec3</code>, <code>vec4</code>, and other GLSL vector/matrix names are <strong>not MALDA types</strong>. They are GLSL names stored as type hints and copied into the shader. Outside <code>@shader()</code>, <code>var p: vec3 = ...</code> is an unknown-hint Error. Names that already exist in both languages — <code>float</code>, <code>int</code>, <code>bool</code>, <code>void</code> — remain ordinary MALDA hints.</p>

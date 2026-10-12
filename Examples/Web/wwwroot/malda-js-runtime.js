@@ -7343,17 +7343,77 @@
         return value;
       }
 
-      function toShaderUniforms(THREE, uniforms) {
-        const result = {};
-        if (!uniforms || typeof uniforms !== "object" || Array.isArray(uniforms)) {
-          return result;
+      const uniformArrayWidths = { float: 1, int: 1, bool: 1, vec2: 2, vec3: 3, vec4: 4, ivec2: 2, ivec3: 3, ivec4: 4 };
+
+      // Reads `uniform T name[N];` from the shader sources so setUniform knows
+      // that a flat list of 8 numbers is a float[8], not a vec4. N may be a
+      // literal or a `const int` declared in the same sources.
+      function parseUniformArrays(sources) {
+        const text = sources.join("\n");
+        const consts = {};
+        const constPattern = /\bconst\s+int\s+([A-Za-z_]\w*)\s*=\s*(\d+)\s*;/g;
+        let match;
+        while ((match = constPattern.exec(text)) !== null) {
+          consts[match[1]] = parseInt(match[2], 10);
         }
-        Object.keys(uniforms).forEach((key) => {
-          const raw = uniforms[key];
+        const arrays = {};
+        const uniformPattern = /\buniform\s+(?:(?:lowp|mediump|highp)\s+)?([A-Za-z_]\w*)\s+([A-Za-z_]\w*)\s*\[\s*([A-Za-z_]\w*|\d+)\s*\]/g;
+        while ((match = uniformPattern.exec(text)) !== null) {
+          const width = uniformArrayWidths[match[1]];
+          const size = /^\d+$/.test(match[3]) ? parseInt(match[3], 10) : consts[match[3]];
+          if (width === undefined || !(size > 0)) continue;
+          arrays[match[2]] = { type: match[1], width, size };
+        }
+        return arrays;
+      }
+
+      function createUniformArray(THREE, info) {
+        const items = new Array(info.size);
+        for (let i = 0; i < info.size; i++) {
+          if (info.width === 1) items[i] = 0;
+          else if (info.width === 2) items[i] = new THREE.Vector2(0, 0);
+          else if (info.width === 3) items[i] = new THREE.Vector3(0, 0, 0);
+          else items[i] = new THREE.Vector4(0, 0, 0, 0);
+        }
+        return items;
+      }
+
+      // Copies `value` into an existing uniform array in place. Accepts nested
+      // ([[x, y, z], ...]) or flat ([x, y, z, x, y, z, ...]) lists; entries past
+      // the end of `value` are zeroed.
+      function fillUniformArray(items, info, value) {
+        const src = Array.isArray(value) ? value : [value];
+        const nested = src.length > 0 && Array.isArray(src[0]);
+        for (let i = 0; i < info.size; i++) {
+          const parts = [0, 0, 0, 0];
+          for (let c = 0; c < info.width; c++) {
+            const raw = nested
+              ? (Array.isArray(src[i]) ? src[i][c] : undefined)
+              : src[i * info.width + c];
+            parts[c] = toFiniteNumber(raw, 0);
+          }
+          if (info.width === 1) items[i] = info.type === "float" ? parts[0] : Math.trunc(parts[0]);
+          else items[i].set(parts[0], parts[1], parts[2], parts[3]);
+        }
+        return items;
+      }
+
+      function toShaderUniforms(THREE, uniforms, arrays) {
+        const result = {};
+        const safeUniforms = uniforms && typeof uniforms === "object" && !Array.isArray(uniforms) ? uniforms : {};
+        Object.keys(safeUniforms).forEach((key) => {
+          let raw = safeUniforms[key];
           if (raw && typeof raw === "object" && !Array.isArray(raw) && Object.prototype.hasOwnProperty.call(raw, "value")) {
-            result[key] = { value: wrapUniformValue(THREE, raw.value) };
-          } else {
-            result[key] = { value: wrapUniformValue(THREE, raw) };
+            raw = raw.value;
+          }
+          const info = arrays[key];
+          result[key] = info
+            ? { value: fillUniformArray(createUniformArray(THREE, info), info, raw) }
+            : { value: wrapUniformValue(THREE, raw) };
+        });
+        Object.keys(arrays).forEach((key) => {
+          if (!result[key]) {
+            result[key] = { value: createUniformArray(THREE, arrays[key]) };
           }
         });
         return result;
@@ -7374,11 +7434,13 @@
           throw new Error("mlRuntime.three.createShaderMaterial requires THREE.ShaderMaterial on the loaded three.js bundle.");
         }
 
+        const arrays = parseUniformArrays([vertexShader, fragmentShader]);
         const material = new THREE.ShaderMaterial({
           vertexShader,
           fragmentShader,
-          uniforms: toShaderUniforms(THREE, safeOptions.uniforms)
+          uniforms: toShaderUniforms(THREE, safeOptions.uniforms, arrays)
         });
+        material.__maldaUniformArrays = arrays;
         if (safeOptions.depthWrite === false) material.depthWrite = false;
         if (safeOptions.depthTest === false) material.depthTest = false;
         if (safeOptions.transparent === true) material.transparent = true;
@@ -7558,6 +7620,14 @@
         }
 
         const current = material.uniforms[key];
+        const arrayInfo = material.__maldaUniformArrays ? material.__maldaUniformArrays[key] : undefined;
+        if (arrayInfo) {
+          if (!current || !Array.isArray(current.value) || current.value.length !== arrayInfo.size) {
+            material.uniforms[key] = { value: createUniformArray(THREE, arrayInfo) };
+          }
+          fillUniformArray(material.uniforms[key].value, arrayInfo, value);
+          return null;
+        }
         if (current && current.value && typeof current.value.set === "function" && Array.isArray(value)) {
           const args = value.map((item) => toFiniteNumber(item, 0));
           current.value.set.apply(current.value, args);

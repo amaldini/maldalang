@@ -298,6 +298,15 @@ three.setUniform(material, "uTime", t);</code></pre>
         </ul>
         <p>Passa le stringhe risultanti a <code>three.createShaderMaterial</code> come <code>"vertexShader"</code> / <code>"fragmentShader"</code>. I valori uniform dal MALDA host sono wrappati come <code>{ value }</code>. Gli array di lunghezza 2/3/4 diventano <code>Vector2</code> / <code>Vector3</code> / <code>Vector4</code>. Le stringhe <code>#rrggbb</code> diventano <code>Color</code>. Gli handle texture da <code>createTexture</code> / <code>createDataTexture</code> / <code>mandelbrotOrbit</code> si unwrapano a <code>THREE.Texture</code> per <code>sampler2D</code>. Flag opzionali: <code>"depthWrite": false</code>, <code>"depthTest": false</code>, <code>"transparent": true</code>.</p>
         <p>Per un pass a schermo intero usa <code>three.createOrthographicCamera(-1, 1, 1, -1, 0, 1)</code> e <code>three.createPlaneGeometry(2, 2)</code>.</p>
+        <p><strong>Array di uniform.</strong> Dichiarane uno con una dimensione, per esempio <code>"vec3 uCars[CAR_COUNT]"</code> insieme a <code>consts: ["int CAR_COUNT = 8"]</code>, e indicizzalo nel kernel: <code>return uCars[index];</code>. <code>glsl.compile</code> scrive le const prima delle uniform, così una const può dare la dimensione a un array. <code>createShaderMaterial</code> legge le dichiarazioni <code>uniform T nome[N]</code> dalle stringhe shader, quindi <code>three.setUniform(material, "uAngles", carH)</code> riempie un <code>float[8]</code> invece di trasformare la lista in un <code>Vector4</code>. I tipi di elemento supportati sono <code>float</code>, <code>int</code>, <code>bool</code>, <code>vec2</code>/<code>vec3</code>/<code>vec4</code> e <code>ivec2</code>/<code>ivec3</code>/<code>ivec4</code>. Gli array di vettori accettano una lista annidata (<code>[[x, y, z], ...]</code>) o piatta (<code>[x, y, z, x, y, z, ...]</code>). Le voci mancanti diventano zero, quelle in più vengono ignorate, e un array mai impostato parte da zero. Gli aggiornamenti scrivono nei valori esistenti, quindi chiamarlo a ogni frame non alloca nuovi vettori.</p>
+<pre><code>var frag = glsl.compile({
+    uniforms: ["vec3 uCars[CAR_COUNT]", "float uAngles[CAR_COUNT]"],
+    consts: ["int CAR_COUNT = 8"],
+    functions: ["carPosition", "fragmentMain"],
+    main: "fragmentMain"
+});
+three.setUniform(material, "uCars", [[0, 0, -5], [-3, 0, -8]]);
+three.setUniform(material, "uAngles", carH);</code></pre>
 
         <h4>Tipi nei kernel</h4>
         <p><code>vec2</code>, <code>vec3</code>, <code>vec4</code> e gli altri nomi vettore/matrice GLSL <strong>non sono tipi MALDA</strong>. Sono nomi GLSL memorizzati come type hint e copiati nello shader. Fuori da <code>@shader()</code>, <code>var p: vec3 = ...</code> è un Error di hint sconosciuto. I nomi che esistono già in entrambi i linguaggi — <code>float</code>, <code>int</code>, <code>bool</code>, <code>void</code> — restano hint MALDA ordinari.</p>

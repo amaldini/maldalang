@@ -4545,6 +4545,116 @@ process.stdout.write("ok\n");
     }
 
     [Fact]
+    public void ThreeRuntime_SetUniform_FillsDeclaredUniformArrays()
+    {
+        Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);
+
+        var runtimePath = PlanningPaths.ResolveRepoFile("Examples", "Web", "wwwroot", "malda-js-runtime.js");
+        var root = CreateTempDirectory("malda_js_uniform_arrays_");
+        try
+        {
+            var scriptPath = Path.Combine(root, "uniform-arrays-test.js");
+            File.WriteAllText(scriptPath, """
+globalThis.document = {
+  body: {},
+  querySelector() { return { appendChild() {}, removeChild() {} }; },
+  createElement() { return { style: {} }; }
+};
+globalThis.window = {
+  addEventListener() {},
+  removeEventListener() {},
+  requestAnimationFrame() { return 1; },
+  cancelAnimationFrame() {},
+  devicePixelRatio: 1
+};
+
+function Vector2(x, y) {
+  this.x = x; this.y = y;
+  this.set = function (a, b) { this.x = a; this.y = b; return this; };
+}
+function Vector3(x, y, z) {
+  this.x = x; this.y = y; this.z = z;
+  this.set = function (a, b, c) { this.x = a; this.y = b; this.z = c; return this; };
+}
+function Vector4(x, y, z, w) {
+  this.x = x; this.y = y; this.z = z; this.w = w;
+  this.set = function (a, b, c, d) { this.x = a; this.y = b; this.z = c; this.w = d; return this; };
+}
+function ShaderMaterial(options) {
+  this.uniforms = options.uniforms;
+  this.vertexShader = options.vertexShader;
+  this.fragmentShader = options.fragmentShader;
+}
+
+globalThis.THREE = { Vector2, Vector3, Vector4, Color: function () {}, ShaderMaterial };
+
+require(process.argv[2]);
+const three = globalThis.mlRuntime.three;
+const material = three.createShaderMaterial({
+  vertexShader: "void main() {}",
+  fragmentShader: [
+    "const int CAR_COUNT = 3;",
+    "uniform vec3 uCars[CAR_COUNT];",
+    "uniform highp float uAngles[4];",
+    "uniform int uLaps[2];",
+    "uniform vec3 uCamPos;",
+    "void main() {}"
+  ].join("\n"),
+  uniforms: { uCars: [[1, 2, 3], [4, 5, 6]], uCamPos: [7, 8, 9] }
+});
+
+const cars = material.uniforms.uCars.value;
+if (!Array.isArray(cars) || cars.length !== 3) throw new Error("uCars should be a vec3[3]");
+if (cars[1].x !== 4 || cars[1].z !== 6) throw new Error("nested initial value not copied");
+if (cars[2].x !== 0 || cars[2].z !== 0) throw new Error("missing entries should be zero");
+if (material.uniforms.uCamPos.value.z !== 9) throw new Error("plain vec3 uniform changed behavior");
+
+const angles = material.uniforms.uAngles.value;
+if (!Array.isArray(angles) || angles.length !== 4 || angles[3] !== 0) throw new Error("undeclared array not seeded");
+
+three.setUniform(material, "uAngles", [0.5, 1.5, 2.5, 3.5]);
+if (material.uniforms.uAngles.value !== angles) throw new Error("float array should update in place");
+if (angles[0] !== 0.5 || angles[3] !== 3.5) throw new Error("float[4] must not become a vec4");
+
+three.setUniform(material, "uCars", [10, 11, 12, 13, 14, 15, 16, 17, 18]);
+if (material.uniforms.uCars.value[0] !== cars[0]) throw new Error("vec3 array should reuse vectors");
+if (cars[0].x !== 10 || cars[2].z !== 18) throw new Error("flat vec3 list not unpacked");
+
+three.setUniform(material, "uLaps", [2.9, 1]);
+if (material.uniforms.uLaps.value[0] !== 2) throw new Error("int array should truncate");
+
+process.stdout.write("ok\n");
+""");
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = Environment.GetEnvironmentVariable("MALDA_NODE_PATH") is { Length: > 0 } nodePath
+                    ? nodePath
+                    : "node",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = root
+            };
+            startInfo.ArgumentList.Add(scriptPath);
+            startInfo.ArgumentList.Add(runtimePath);
+
+            using var process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("Failed to start Node.js for uniform array runtime test.");
+            var stdout = process.StandardOutput.ReadToEnd();
+            var stderr = process.StandardError.ReadToEnd();
+            process.WaitForExit(15000);
+            Assert.True(process.ExitCode == 0, $"uniform array runtime test failed ({process.ExitCode}). stderr: {stderr}");
+            Assert.Equal("ok", stdout.Trim());
+        }
+        finally
+        {
+            SafeDeleteDirectory(root);
+        }
+    }
+
+    [Fact]
     public void ThreeRuntime_MandelbrotOrbitAndDataTexture_PacksFloatRgba()
     {
         Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);

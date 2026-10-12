@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — JavaScript `three.*` uniform arrays)
+
+- **Uniform arrays in shader materials:** `glsl.compile` uniforms such as `"vec3 uCars[CAR_COUNT]"` now work from host MALDA. `three.createShaderMaterial` reads `uniform T name[N]` from the shader strings, and `three.setUniform` fills `float` / `int` / `bool` / `vec2-4` / `ivec2-4` arrays from nested or flat lists, in place, instead of turning a list into a `Vector4`. `glsl.compile` now emits `consts` before `uniforms` so a const can size an array. `three_shader_race_car_neural.malda` replaces 24 per-car uniforms and three `if` chains with `uCars` / `uAngles` / `uSteers`. Narrative: [`28-browser-javascript-backend.html`](../../ReferenceManual/28-browser-javascript-backend.html) §28.10.1. JavaScript backend only; no Tier 0 change.
+
 #### Fixed (correctness — one truthiness rule)
 
 - C# transpile (`CoerceToBool`), JavaScript `isTruthy`, UI `{{#if}}`, and `catch (e if …)` filters now follow spec §6, the same rule as the interpreter. Only `null` and `false` are falsy. `0`, `0.0`, `""`, and empty arrays are truthy. Previously those backends treated zero, empty strings, and empty collections as falsy.

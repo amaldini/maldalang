@@ -442,6 +442,7 @@ Use a fullscreen quad plus GLSL when CPU `game.setPixel` is too slow. MALDA owns
   - Plain uniform values are wrapped as `{ value }`. Arrays of length 2/3/4 become `Vector2` / `Vector3` / `Vector4`. `#rrggbb` strings become `Color`. Texture handles from `createTexture` / `createDataTexture` / `mandelbrotOrbit` unwrap to `THREE.Texture` for `sampler2D`.
   - Optional flags: `"depthWrite": false`, `"depthTest": false`, `"transparent": true`
 - `three.setUniform(material, name, value)` — update a uniform after creation. Vector uniforms accept arrays.
+  - Uniform arrays: declare `"vec3 uCars[8]"` (or `[CAR_COUNT]` with `consts: ["int CAR_COUNT = 8"]`; consts are emitted before uniforms). `createShaderMaterial` reads `uniform T name[N]` from the shader strings, so `setUniform` fills the array instead of building a `Vector4`. Element types: `float` / `int` / `bool` / `vec2-4` / `ivec2-4`. Vector arrays take nested `[[x, y, z], ...]` or flat lists. Missing entries are zero. Updates are in place.
 
 Fullscreen vertex shader (clip-space quad from `PlaneGeometry(2, 2)`), written in MALDA and compiled to GLSL:
 
