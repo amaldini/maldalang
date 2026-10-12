@@ -4705,6 +4705,172 @@ process.stdout.write("ok\n");
     }
 
     [Fact]
+    public void ThreeRuntime_RenderScaleAutoScaleAndStats_TrackFrameRate()
+    {
+        Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);
+
+        var runtimePath = PlanningPaths.ResolveRepoFile("Examples", "Web", "wwwroot", "malda-js-runtime.js");
+        var root = CreateTempDirectory("malda_js_three_scale_");
+        try
+        {
+            var scriptPath = Path.Combine(root, "three-scale-test.js");
+            File.WriteAllText(scriptPath, """
+const appended = [];
+const mount = { appendChild(el) { appended.push(el); el.parentNode = this; return el; }, removeChild() {} };
+const listeners = {};
+const docListeners = {};
+let rafQueue = [];
+
+globalThis.document = {
+  body: mount,
+  querySelector() { return mount; },
+  createElement() { return { style: {} }; },
+  addEventListener(type, fn) {
+    docListeners[type] = docListeners[type] || [];
+    docListeners[type].push(fn);
+  }
+};
+globalThis.window = {
+  addEventListener(type, fn) {
+    listeners[type] = listeners[type] || [];
+    listeners[type].push(fn);
+  },
+  removeEventListener() {},
+  requestAnimationFrame(cb) { rafQueue.push(cb); return rafQueue.length; },
+  cancelAnimationFrame() {},
+  devicePixelRatio: 2,
+  location: { hash: "" }
+};
+
+function WebGLRenderer() {
+  const self = this;
+  this.pixelRatio = 1;
+  this.cssWidth = 0;
+  this.cssHeight = 0;
+  this.info = { render: { calls: 3, triangles: 2 } };
+  this.domElement = {
+    style: {},
+    width: 0,
+    height: 0,
+    getBoundingClientRect() { return { left: 10, top: 20, width: self.cssWidth, height: self.cssHeight }; }
+  };
+  this.setSize = function (w, h) {
+    this.cssWidth = w; this.cssHeight = h;
+    this.domElement.width = Math.floor(w * this.pixelRatio);
+    this.domElement.height = Math.floor(h * this.pixelRatio);
+  };
+  this.setPixelRatio = function (r) { this.pixelRatio = r; this.setSize(this.cssWidth, this.cssHeight); };
+  this.setClearColor = function () {};
+  this.dispose = function () {};
+}
+globalThis.THREE = { WebGLRenderer };
+
+require(process.argv[2]);
+const three = globalThis.mlRuntime.three;
+
+function fire(type, event) {
+  (listeners[type] || []).forEach((fn) => fn(event));
+}
+
+const renderer = three.createRenderer(200, 100, "#app");
+if (renderer.pixelRatio !== 2 || renderer.domElement.width !== 400) throw new Error("HiDPI backing store should be 2x: " + renderer.domElement.width);
+
+// Mouse reads logical units (the createRenderer size), not backing pixels.
+fire("mousemove", { clientX: 110, clientY: 70 });
+if (three.getMouseX() !== 100 || three.getMouseY() !== 50) {
+  throw new Error("mouse should be logical: " + three.getMouseX() + "," + three.getMouseY());
+}
+
+three.setRenderScale(renderer, 0.5);
+if (three.getRenderScale() !== 0.5 || renderer.pixelRatio !== 1 || renderer.domElement.width !== 200) {
+  throw new Error("scale 0.5 on dpr 2 should be pixel ratio 1: " + renderer.pixelRatio);
+}
+if (renderer.domElement.style.width !== "200px") throw new Error("CSS size must not change with scale");
+fire("mousemove", { clientX: 110, clientY: 70 });
+if (three.getMouseX() !== 100) throw new Error("render scale must not change mouse units");
+three.setRenderScale(renderer, 9);
+if (three.getRenderScale() !== 2) throw new Error("scale should clamp to 2");
+
+// Auto scale: frames at 30 fps against a 60 fps target step the scale down.
+three.setAutoRenderScale(renderer, 60, 0.5, 1);
+if (three.getRenderScale() !== 1) throw new Error("auto should clamp the current scale into [min, max]");
+
+three.start(function () {}, function () {});
+let t = 0;
+function frames(count, stepMs) {
+  for (let i = 0; i < count; i++) {
+    const cb = rafQueue.shift();
+    if (!cb) throw new Error("no rAF callback");
+    cb(t);
+    t += stepMs;
+  }
+}
+frames(40, 33.3);
+let stats = three.getStats();
+if (Math.abs(stats.fps - 30) > 1) throw new Error("fps should read about 30: " + JSON.stringify(stats));
+if (!stats.autoScale || stats.drawCalls !== 3) throw new Error("stats fields wrong: " + JSON.stringify(stats));
+if (!(three.getRenderScale() < 1)) throw new Error("slow frames should lower the scale: " + three.getRenderScale());
+
+frames(80, 33.3);
+if (three.getRenderScale() !== 0.5) throw new Error("scale should bottom out at min 0.5: " + three.getRenderScale());
+
+// A hidden tab is not a slow frame: visibilitychange restarts the sample.
+const before = three.getRenderScale();
+frames(1, 5000);
+(docListeners.visibilitychange || []).forEach((fn) => fn());
+frames(600, 16.6);
+if (!(three.getRenderScale() > before)) throw new Error("steady 60 fps should raise the scale again: " + three.getRenderScale());
+if (three.getRenderScale() > 1) throw new Error("scale must stay under max 1");
+
+three.showStats(true);
+const overlay = appended.find((el) => el.textContent !== undefined && el.style.position === "fixed");
+frames(40, 16.6);
+if (!overlay || overlay.textContent.indexOf("fps") < 0 || overlay.style.left !== "16px") {
+  throw new Error("overlay should show fps at the canvas corner: " + JSON.stringify(overlay && overlay.style));
+}
+three.showStats(false);
+if (overlay.style.display !== "none") throw new Error("showStats(false) should hide the overlay");
+
+// A GPU that needs 1.5 s per frame still reads as slow and lowers the scale.
+three.setAutoRenderScale(renderer, 60, 0.25, 1);
+const slowStart = three.getRenderScale();
+frames(8, 1500);
+stats = three.getStats();
+if (!(stats.fps > 0.5 && stats.fps < 0.8)) throw new Error("1.5 s frames should read about 0.67 fps: " + JSON.stringify(stats));
+if (!(three.getRenderScale() < slowStart)) throw new Error("very slow frames should still lower the scale");
+
+process.stdout.write("ok\n");
+""");
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = Environment.GetEnvironmentVariable("MALDA_NODE_PATH") is { Length: > 0 } nodePath
+                    ? nodePath
+                    : "node",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = root
+            };
+            startInfo.ArgumentList.Add(scriptPath);
+            startInfo.ArgumentList.Add(runtimePath);
+
+            using var process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("Failed to start Node.js for three render scale test.");
+            var stdout = process.StandardOutput.ReadToEnd();
+            var stderr = process.StandardError.ReadToEnd();
+            process.WaitForExit(15000);
+            Assert.True(process.ExitCode == 0, $"three render scale test failed ({process.ExitCode}). stderr: {stderr}");
+            Assert.Equal("ok", stdout.Trim());
+        }
+        finally
+        {
+            SafeDeleteDirectory(root);
+        }
+    }
+
+    [Fact]
     public void JsTranspiler_MapsThreeFixedLoopAndInputEdges()
     {
         var js = new Compiler.Compiler().TranspileToJavaScriptFromSource("""

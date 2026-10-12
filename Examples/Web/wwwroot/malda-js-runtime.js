@@ -6549,7 +6549,19 @@
         listenersAttached: false,
         listeners: null,
         textureCache: new Map(),
-        modelCache: new Map()
+        modelCache: new Map(),
+        logicalWidth: 1,
+        logicalHeight: 1,
+        basePixelRatio: 1,
+        renderScale: 1,
+        autoScale: null,
+        statsWindowStart: null,
+        statsFrames: 0,
+        statsSkipUntil: 0,
+        fps: 0,
+        frameMs: 0,
+        statsOverlay: null,
+        statsVisible: false
       };
 
       function normalizeKey(key) {
@@ -6603,8 +6615,8 @@
         const rect = state.domElement.getBoundingClientRect();
         const displayX = toFiniteNumber(event.clientX, 0) - rect.left;
         const displayY = toFiniteNumber(event.clientY, 0) - rect.top;
-        const renderWidth = toFiniteNumber(state.domElement.width, rect.width);
-        const renderHeight = toFiniteNumber(state.domElement.height, rect.height);
+        const renderWidth = state.logicalWidth;
+        const renderHeight = state.logicalHeight;
         const scaleX = rect.width > 0 ? renderWidth / rect.width : 1;
         const scaleY = rect.height > 0 ? renderHeight / rect.height : 1;
         state.mouseX = displayX * scaleX;
@@ -6616,8 +6628,8 @@
         const rect = state.domElement.getBoundingClientRect();
         const displayX = toFiniteNumber(touch.clientX, 0) - rect.left;
         const displayY = toFiniteNumber(touch.clientY, 0) - rect.top;
-        const renderWidth = toFiniteNumber(state.domElement.width, rect.width);
-        const renderHeight = toFiniteNumber(state.domElement.height, rect.height);
+        const renderWidth = state.logicalWidth;
+        const renderHeight = state.logicalHeight;
         const scaleX = rect.width > 0 ? renderWidth / rect.width : 1;
         const scaleY = rect.height > 0 ? renderHeight / rect.height : 1;
         state.mouseX = displayX * scaleX;
@@ -6792,8 +6804,13 @@
 
         renderer.setSize(renderWidth, renderHeight, false);
         renderer.setClearColor(state.clearColor);
-        if (typeof window.devicePixelRatio === "number" && Number.isFinite(window.devicePixelRatio)) {
-          renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        state.basePixelRatio = typeof window.devicePixelRatio === "number" && Number.isFinite(window.devicePixelRatio)
+          ? Math.min(window.devicePixelRatio, 2)
+          : 1;
+        state.renderScale = 1;
+        state.autoScale = null;
+        if (typeof renderer.setPixelRatio === "function") {
+          renderer.setPixelRatio(state.basePixelRatio);
         }
 
         detachInputListeners();
@@ -6808,12 +6825,175 @@
         mount.appendChild(domElement);
         state.renderer = renderer;
         state.domElement = domElement;
+        state.logicalWidth = renderWidth;
+        state.logicalHeight = renderHeight;
         state.lastTimestamp = null;
         resetInputState();
         state.mouseX = 0;
         state.mouseY = 0;
         attachInputListeners();
+        try {
+          if (window.location && /malda-stats/.test(coerceToString(window.location.hash))) {
+            showStats(true);
+          }
+        } catch (_error) {
+          // No location in a sandboxed host: the overlay stays off.
+        }
         return renderer;
+      }
+
+      function applyPixelRatio() {
+        if (state.renderer && typeof state.renderer.setPixelRatio === "function") {
+          state.renderer.setPixelRatio(state.basePixelRatio * state.renderScale);
+        }
+      }
+
+      // Scale of the drawing buffer against the CSS size (times devicePixelRatio,
+      // capped at 2). The canvas keeps its on-page size; the browser stretches it.
+      function setRenderScale(renderer, scale) {
+        ensureRenderer("setRenderScale");
+        state.autoScale = null;
+        state.renderScale = clampFiniteNumber(scale, 0.25, 2, 1);
+        applyPixelRatio();
+        return null;
+      }
+
+      // Lowers the render scale when the frame rate falls under 90% of targetFps
+      // and raises it in 0.05 steps after 3 s at the target. Each drop holds the
+      // scale for 4 s so it does not bounce. targetFps should not exceed the
+      // display rate, or the scale only goes down.
+      function setAutoRenderScale(renderer, targetFps, minScale, maxScale) {
+        ensureRenderer("setAutoRenderScale");
+        const low = minScale === undefined || minScale === null ? 0.5 : clampFiniteNumber(minScale, 0.25, 2, 0.5);
+        const high = maxScale === undefined || maxScale === null ? 1 : clampFiniteNumber(maxScale, low, 2, 1);
+        state.autoScale = {
+          targetFps: targetFps === undefined || targetFps === null ? 60 : clampFiniteNumber(targetFps, 10, 240, 60),
+          minScale: low,
+          maxScale: high,
+          goodMs: 0,
+          holdUntil: 0
+        };
+        state.renderScale = Math.min(high, Math.max(low, state.renderScale));
+        applyPixelRatio();
+        return null;
+      }
+
+      function getRenderScale() {
+        return state.renderScale;
+      }
+
+      function stepAutoScale(now, elapsed) {
+        const auto = state.autoScale;
+        if (!auto) return;
+        let next = state.renderScale;
+        if (state.fps < auto.targetFps * 0.9) {
+          next = Math.max(auto.minScale, state.renderScale * 0.85);
+          auto.goodMs = 0;
+          auto.holdUntil = now + 4000;
+        } else if (state.fps >= auto.targetFps * 0.97) {
+          auto.goodMs += elapsed;
+          if (auto.goodMs >= 3000 && now >= auto.holdUntil) {
+            next = Math.min(auto.maxScale, state.renderScale + 0.05);
+            auto.goodMs = 0;
+          }
+        } else {
+          auto.goodMs = 0;
+        }
+        if (Math.abs(next - state.renderScale) > 0.001) {
+          state.renderScale = next;
+          applyPixelRatio();
+        }
+      }
+
+      function resetFrameStats() {
+        state.statsWindowStart = null;
+        state.statsFrames = 0;
+        state.statsSkipUntil = 0;
+      }
+
+      // A hidden tab gets no animation frames; the gap is not a slow frame.
+      if (typeof document !== "undefined" && document && typeof document.addEventListener === "function") {
+        document.addEventListener("visibilitychange", resetFrameStats);
+      }
+
+      // Frame rate over 0.5 s windows (a frame slower than that closes its own
+      // window). The first second of a loop (shader compile) and the first
+      // second after the tab comes back do not move the auto scale.
+      function sampleFrame(timestamp) {
+        if (state.statsWindowStart === null) {
+          state.statsWindowStart = timestamp;
+          state.statsFrames = 0;
+          state.statsSkipUntil = timestamp + 1000;
+          return;
+        }
+        state.statsFrames += 1;
+        const elapsed = timestamp - state.statsWindowStart;
+        if (elapsed < 500) return;
+        state.fps = (state.statsFrames * 1000) / elapsed;
+        state.frameMs = elapsed / state.statsFrames;
+        state.statsWindowStart = timestamp;
+        state.statsFrames = 0;
+        if (timestamp >= state.statsSkipUntil) {
+          stepAutoScale(timestamp, elapsed);
+        }
+        refreshStatsOverlay();
+      }
+
+      function getStats() {
+        const info = state.renderer && state.renderer.info && state.renderer.info.render
+          ? state.renderer.info.render
+          : {};
+        return {
+          fps: Math.round(state.fps * 10) / 10,
+          frameMs: Math.round(state.frameMs * 10) / 10,
+          renderScale: Math.round(state.renderScale * 100) / 100,
+          autoScale: state.autoScale !== null,
+          width: state.domElement ? coerceToInt(state.domElement.width) : 0,
+          height: state.domElement ? coerceToInt(state.domElement.height) : 0,
+          drawCalls: coerceToInt(info.calls),
+          triangles: coerceToInt(info.triangles)
+        };
+      }
+
+      function refreshStatsOverlay() {
+        const overlay = state.statsOverlay;
+        if (!overlay || !state.statsVisible || !state.domElement) return;
+        const stats = getStats();
+        if (typeof state.domElement.getBoundingClientRect === "function") {
+          const rect = state.domElement.getBoundingClientRect();
+          overlay.style.left = Math.round(rect.left + 6) + "px";
+          overlay.style.top = Math.round(rect.top + 6) + "px";
+        }
+        overlay.textContent = stats.fps.toFixed(1) + " fps  " + stats.frameMs.toFixed(1) + " ms  scale "
+          + stats.renderScale.toFixed(2) + (stats.autoScale ? " auto" : "") + "  " + stats.width + "x" + stats.height;
+      }
+
+      // Small fixed overlay over the canvas corner: fps, frame time, render
+      // scale, and drawing-buffer size, refreshed twice a second. The page hash
+      // #malda-stats turns it on without code.
+      function showStats(visible) {
+        const on = !(visible === false || visible === null);
+        state.statsVisible = on;
+        if (on && !state.statsOverlay && typeof document !== "undefined" && document.body) {
+          const overlay = document.createElement("div");
+          const style = overlay.style || {};
+          style.position = "fixed";
+          style.zIndex = "1000";
+          style.pointerEvents = "none";
+          style.padding = "3px 6px";
+          style.font = "12px ui-monospace, Consolas, monospace";
+          style.color = "#d8f3dc";
+          style.background = "rgba(0, 0, 0, 0.6)";
+          style.borderRadius = "3px";
+          style.whiteSpace = "pre";
+          document.body.appendChild(overlay);
+          state.statsOverlay = overlay;
+        }
+        if (state.statsOverlay && state.statsOverlay.style) {
+          state.statsOverlay.style.display = on ? "block" : "none";
+        }
+        refreshStatsOverlay();
+        return null;
       }
 
       function setClearColor(renderer, color) {
@@ -7801,6 +7981,10 @@
         const renderWidth = Math.max(1, coerceToInt(width));
         const renderHeight = Math.max(1, coerceToInt(height));
         targetRenderer.setSize(renderWidth, renderHeight, false);
+        if (targetRenderer === state.renderer) {
+          state.logicalWidth = renderWidth;
+          state.logicalHeight = renderHeight;
+        }
         if (targetRenderer.domElement) {
           targetRenderer.domElement.style.width = renderWidth + "px";
           targetRenderer.domElement.style.height = renderHeight + "px";
@@ -7849,6 +8033,7 @@
         state.running = true;
         state.lastTimestamp = null;
         state.fixedAlpha = 0;
+        resetFrameStats();
 
         const frame = (timestamp) => {
           if (!state.running) return;
@@ -7857,6 +8042,7 @@
             const currentTimestamp = toFiniteNumber(timestamp, 0);
             const dtMs = state.lastTimestamp === null ? 0 : Math.max(0, currentTimestamp - state.lastTimestamp);
             state.lastTimestamp = currentTimestamp;
+            sampleFrame(currentTimestamp);
 
             beginInputFrame();
             updateFn(dtMs);
@@ -7899,6 +8085,7 @@
         state.fixedAccumulator = 0;
         state.fixedTickMs = resolvedTick;
         state.fixedAlpha = 0;
+        resetFrameStats();
 
         const maxUpdates = 5;
         const frame = (timestamp) => {
@@ -7908,6 +8095,7 @@
             const currentTimestamp = toFiniteNumber(timestamp, 0);
             const dtMs = state.lastTimestamp === null ? 0 : Math.max(0, currentTimestamp - state.lastTimestamp);
             state.lastTimestamp = currentTimestamp;
+            sampleFrame(currentTimestamp);
             state.fixedAccumulator += dtMs;
 
             let steps = 0;
@@ -8001,6 +8189,11 @@
         createRenderer,
         setClearColor,
         setRendererSize,
+        setRenderScale,
+        setAutoRenderScale,
+        getRenderScale,
+        getStats,
+        showStats,
         createScene,
         createPerspectiveCamera,
         setCameraAspect,

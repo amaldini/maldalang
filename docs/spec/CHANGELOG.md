@@ -107,6 +107,14 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — JavaScript `three.*` render scale and stats)
+
+- **`three.setRenderScale(renderer, scale)`** draws at a fraction (0.25–2) of the renderer size × devicePixelRatio while the canvas keeps its page size. **`three.setAutoRenderScale(renderer, targetFps?, minScale?, maxScale?)`** lowers the scale when the frame rate stays under 90% of the target and raises it after 3 s at the target. **`three.getRenderScale()`**, **`three.getStats()`** (`fps`, `frameMs`, `renderScale`, `autoScale`, buffer `width` / `height`, `drawCalls`, `triangles`), and **`three.showStats(visible?)`** (also `#malda-stats` in the URL) report it. `three_shader_race_car_neural.malda` uses auto scale 0.5–1 at 60 fps and toggles the overlay with F. Narrative: [`28-browser-javascript-backend.html`](../../ReferenceManual/28-browser-javascript-backend.html) §28.10. JavaScript backend only; no Tier 0 change.
+
+#### Fixed (PATCH — `three.getMouseX` on HiDPI)
+
+- `three.getMouseX()` / `getMouseY()` returned drawing-buffer pixels, so on a devicePixelRatio 2 screen they ran to twice the renderer width and `mx / width` aiming in `three_shader_billiards` and `maldanoid3d` was off. They now return renderer units (the `createRenderer` / `setRendererSize` size) on every screen and at every render scale.
+
 #### Added (MINOR — JavaScript `three.*` fixed step and input edges)
 
 - **`three.startFixed(update, render?, tickMs?)`** runs the same fixed-tick loop as `game.startFixed` (default 60 Hz, at most 5 catch-up ticks per frame). **`three.getFixedAlpha()`** returns the 0–1 fraction toward the next tick for interpolation in `render`. **Input edges** come to `three.*` with the `game.*` names: `wasKeyPressed` / `wasKeyReleased`, `wasMousePressed` / `wasMouseReleased`, and `isGamepadConnected` / `getGamepadAxis` / `isGamepadButtonDown` / `wasGamepadButtonPressed` / `wasGamepadButtonReleased`. `three.start` now also opens an input frame per update, so edges work under both loops. The gamepad snapshot is one runtime helper shared by `game.*` and `three.*`. `three_shader_race_car_neural.malda` moves to `startFixed`, drops 14 hand-rolled `…WasDown` flags, and pushes uniforms and the side panel from `render`. Narrative: [`28-browser-javascript-backend.html`](../../ReferenceManual/28-browser-javascript-backend.html) §28.10. JavaScript backend only; no Tier 0 change.

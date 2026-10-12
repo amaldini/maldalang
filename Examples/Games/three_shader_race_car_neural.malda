@@ -32,6 +32,8 @@
 // The race runs on three.startFixed at 60 Hz, so physics and training do not
 // depend on the display rate. Render pushes the uniforms and the side panel once
 // per frame. Keys use three.wasKeyPressed edges.
+// Auto render scale keeps 60 fps by trading resolution (0.5 to 1). F shows the
+// fps / scale overlay (or open the page with #malda-stats).
 
 function wrapAngle(a: float) -> float {
     var turns = math.floor((a + 3.14159265) / 6.2831853);
@@ -2152,6 +2154,7 @@ if (root == null) {
     var sessionBest = -1.0;
     var brainMode = "blend";
     var paused = false;
+    var statsOn = false;
     var trainTick = 0;
     var lossHist = [];
     var lastSteerNet = 0.0;
@@ -3160,6 +3163,8 @@ if (root == null) {
     var renderer = three.createRenderer(width, height, "#app");
     three.setClearColor(renderer, "#0a1628");
     three.setRendererSize(renderer, width, height);
+    // Ray tracing is per pixel: drop to half resolution on slow GPUs, back up when 60 fps holds.
+    three.setAutoRenderScale(renderer, 60, 0.5, 1);
     dom.append(root, hud);
 
     var scene = three.createScene();
@@ -4099,7 +4104,7 @@ if (root == null) {
             bi = bi + 1;
         }
         html = html + "</div>";
-        html = html + "<div class='keys'>Q E circuit &nbsp; C " + shotLabel() + " &nbsp; Tab cockpit<br>Z X car " + string(driveCar + 1) + " &nbsp; WASD throttle brake steer<br>N net &nbsp; T coach &nbsp; L blend &nbsp; R reset &nbsp; Space pause<br>1 signs " + mark(showSigns) + " &nbsp; 2 trees " + mark(showTrees) + " &nbsp; 3 buildings " + mark(showBuildings) + "</div>";
+        html = html + "<div class='keys'>Q E circuit &nbsp; C " + shotLabel() + " &nbsp; Tab cockpit<br>Z X car " + string(driveCar + 1) + " &nbsp; WASD throttle brake steer<br>N net &nbsp; T coach &nbsp; L blend &nbsp; R reset &nbsp; Space pause &nbsp; F stats<br>1 signs " + mark(showSigns) + " &nbsp; 2 trees " + mark(showTrees) + " &nbsp; 3 buildings " + mark(showBuildings) + "</div>";
         dom.html(hud, html);
     }
 
@@ -4186,6 +4191,11 @@ if (root == null) {
 
         if (three.wasKeyPressed("r")) {
             resetBrain();
+        }
+
+        if (three.wasKeyPressed("f")) {
+            statsOn = !statsOn;
+            three.showStats(statsOn);
         }
 
         if (three.wasKeyPressed(" ")) {
