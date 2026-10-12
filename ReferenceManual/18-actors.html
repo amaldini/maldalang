@@ -58,6 +58,7 @@
             <li><strong>Constructor</strong>: Optional initialization function (same name as actor)</li>
             <li><strong>Message Handlers</strong>: Functions declared with <code>on</code> keyword that process incoming messages</li>
             <li><strong>Default Handler</strong>: A handler named <code>handle</code> that receives messages when no specific handler matches</li>
+            <li><strong>Helper functions</strong>: <code>function name(...)</code> members. Handlers call them by name (<code>count = double(count);</code>) and read their return value. Top-level functions and variables are visible inside the actor too; a field or member of the same name shadows them.</li>
         </ul>
 
         <h2>18.2 Spawning Actors</h2>

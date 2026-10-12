@@ -59,6 +59,7 @@
             <li><strong>Costruttore</strong>: Funzione di inizializzazione opzionale (stesso nome dell'actor)</li>
             <li><strong>Message handler</strong>: Funzioni dichiarate con la keyword <code>on</code> che processano i messaggi in arrivo</li>
             <li><strong>Handler di default</strong>: Un handler di nome <code>handle</code> che riceve i messaggi quando nessun handler specifico corrisponde</li>
+            <li><strong>Funzioni helper</strong>: membri <code>function nome(...)</code>. Gli handler le chiamano per nome (<code>count = double(count);</code>) e ne leggono il valore di ritorno. Anche le funzioni e le variabili top-level sono visibili dentro l'actor; un campo o un membro con lo stesso nome le oscura.</li>
         </ul>
 
         <h2>18.2 Spawn degli actor</h2>

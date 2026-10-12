@@ -42,6 +42,8 @@ public class CSharpTranspiler
     private readonly List<ContextDeclaration> _contextDeclarations;
     private bool _isInWorkflowBody;
     private bool _isInActorHandler;
+    /// <summary>Instance methods of the actor being emitted; bare calls to them are direct sync calls.</summary>
+    private HashSet<string>? _currentActorMethodNames;
     private bool _transpileCallAsTask;
     private bool _canAwait;
     private bool _emitLineDirectives;
@@ -605,6 +607,16 @@ public class CSharpTranspiler
         for (int i = 0; i < _indentLevel; i++)
         {
             _output.Append("    ");
+        }
+    }
+
+    /// <summary>Emits each line at the current indent (lines may carry their own extra indent).</summary>
+    private void EmitLines(params string[] lines)
+    {
+        foreach (var line in lines)
+        {
+            WriteIndent();
+            _output.AppendLine(line);
         }
     }
 
@@ -3126,6 +3138,62 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("return list.GetRange(start, end - start);");
         _indentLevel--;
+        // Higher-order methods mirror ArrayInstance in the interpreter. Without these cases
+        // `arr.map(f)` fell through to reflection on List<object> and returned null.
+        EmitLines(
+            "case \"map\":",
+            "{",
+            "    if (args.Count != 1) throw new InvalidOperationException(\"map() expects 1 argument\");",
+            "    var mapped = new List<object>(list.Count);",
+            "    foreach (var item in list.ToList()) mapped.Add(await CallFunction(args[0], item));",
+            "    return mapped;",
+            "}",
+            "case \"filter\":",
+            "{",
+            "    if (args.Count != 1) throw new InvalidOperationException(\"filter() expects 1 argument\");",
+            "    var kept = new List<object>();",
+            "    foreach (var item in list.ToList()) if (CoerceToBool(await CallFunction(args[0], item))) kept.Add(item);",
+            "    return kept;",
+            "}",
+            "case \"reduce\":",
+            "{",
+            "    if (args.Count < 1 || args.Count > 2) throw new InvalidOperationException(\"reduce() expects 1 or 2 arguments\");",
+            "    if (list.Count == 0 && args.Count == 1) throw new InvalidOperationException(\"reduce() on empty array requires initial value\");",
+            "    var acc = args.Count == 2 ? args[1] : list[0];",
+            "    foreach (var item in list.Skip(args.Count == 2 ? 0 : 1).ToList()) acc = await CallFunction2(args[0], acc, item);",
+            "    return acc;",
+            "}",
+            "case \"forEach\":",
+            "{",
+            "    if (args.Count != 1) throw new InvalidOperationException(\"forEach() expects 1 argument\");",
+            "    foreach (var item in list.ToList()) await CallFunction(args[0], item);",
+            "    return null;",
+            "}",
+            "case \"find\":",
+            "{",
+            "    if (args.Count != 1) throw new InvalidOperationException(\"find() expects 1 argument\");",
+            "    foreach (var item in list.ToList()) if (CoerceToBool(await CallFunction(args[0], item))) return item;",
+            "    return null;",
+            "}",
+            "case \"findIndex\":",
+            "{",
+            "    if (args.Count != 1) throw new InvalidOperationException(\"findIndex() expects 1 argument\");",
+            "    var snapshot = list.ToList();",
+            "    for (var fi = 0; fi < snapshot.Count; fi++) if (CoerceToBool(await CallFunction(args[0], snapshot[fi]))) return fi;",
+            "    return -1;",
+            "}",
+            "case \"some\":",
+            "{",
+            "    if (args.Count != 1) throw new InvalidOperationException(\"some() expects 1 argument\");",
+            "    foreach (var item in list.ToList()) if (CoerceToBool(await CallFunction(args[0], item))) return true;",
+            "    return false;",
+            "}",
+            "case \"every\":",
+            "{",
+            "    if (args.Count != 1) throw new InvalidOperationException(\"every() expects 1 argument\");",
+            "    foreach (var item in list.ToList()) if (!CoerceToBool(await CallFunction(args[0], item))) return false;",
+            "    return true;",
+            "}");
         WriteIndent();
         _output.AppendLine("case \"sort\":");
         _indentLevel++;
@@ -4748,6 +4816,21 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("}");
         
+        // Two-argument callbacks (reduce). Transpiled two-parameter lambdas are
+        // Func<object, object, Task<object>>; other delegates go through DynamicInvoke.
+        EmitLines(
+            "public static async System.Threading.Tasks.Task<object> CallFunction2(object? func, object? a, object? b)",
+            "{",
+            "    if (func is System.Func<object, object, System.Threading.Tasks.Task<object>> f2) return await f2(a!, b!);",
+            "    if (func is System.Delegate del)",
+            "    {",
+            "        var invoked = del.DynamicInvoke(a, b);",
+            "        if (invoked is System.Threading.Tasks.Task<object> invokedTask) return await invokedTask;",
+            "        return invoked!;",
+            "    }",
+            "    throw new InvalidOperationException($\"Cannot call function with two arguments: {func?.GetType()}\");",
+            "}");
+
         WriteIndent();
         _output.AppendLine("public static async System.Threading.Tasks.Task<object> CallFunction(object? func, object? arg)");
         WriteIndent();
@@ -10898,7 +10981,26 @@ public class CSharpTranspiler
                 TranspileBuiltInFunction(funcName, call.Arguments);
                 return;
             }
-            
+
+            // A helper/handler of the enclosing actor: actor members are synchronous
+            // instance methods returning object, so call them directly.
+            if (_currentActorMethodNames != null && _currentActorMethodNames.Contains(funcName))
+            {
+                if (_transpileCallAsTask)
+                    _output.Append("System.Threading.Tasks.Task.FromResult(RuntimeHelpers.ToRuntimeValue(");
+                _output.Append(EscapeIdentifier(funcName));
+                _output.Append("(");
+                for (int i = 0; i < call.Arguments.Count; i++)
+                {
+                    if (i > 0) _output.Append(", ");
+                    TranspileExpression(call.Arguments[i]);
+                }
+                _output.Append(")");
+                if (_transpileCallAsTask)
+                    _output.Append("))");
+                return;
+            }
+
             // If it's a known prompt name, call it directly (prompts are synchronous)
             if (_promptNames.Contains(funcName))
             {
@@ -13059,6 +13161,12 @@ public class CSharpTranspiler
             _output.Append(EscapeIdentifier(lambda.Parameters[i]));
         }
 
+        // A zero-parameter lambda still gets the one-argument delegate shape every runtime
+        // helper (CallFunction, ToRuntimeValue, ...) dispatches on; `async () => ...` would not
+        // convert to Func<object, Task<object>> and fails with CS1593. The argument is ignored.
+        if (lambda.Parameters.Count == 0)
+            _output.Append("object __maldaNoArg");
+
         _output.Append(") => ");
 
         // Lambda bodies are emitted as async delegates, so function calls inside them
@@ -13095,7 +13203,15 @@ public class CSharpTranspiler
                 else
                 {
                     var isLast = (i == lambda.BlockBody.Statements.Count - 1);
-                    if (isLast && stmt is ExpressionStatement exprStmt)
+                    if (isLast && stmt is ExpressionStatement voidStmt && ExpressionTranspilesToVoid(voidStmt.Expression))
+                    {
+                        // `x => { io.print(x); }`: a void C# call cannot be the return value.
+                        TranspileExpression(voidStmt.Expression);
+                        _output.AppendLine(";");
+                        WriteIndent();
+                        _output.AppendLine("return null;");
+                    }
+                    else if (isLast && stmt is ExpressionStatement exprStmt)
                     {
                         // Last expression wins: implicit return for lambda block bodies
                         _output.Append("return RuntimeHelpers.ToRuntimeValue(");
@@ -13114,10 +13230,27 @@ public class CSharpTranspiler
                 }
             }
 
+            // The delegate returns Task<object>, so a body that does not end in a return or a
+            // trailing expression (e.g. `x => { print(x); }` in forEach) needs an explicit null
+            // result; without it C# rejects the lambda with CS1643.
+            var lastStmt = lambda.BlockBody.Statements.Count > 0 ? lambda.BlockBody.Statements[^1] : null;
+            if (lastStmt is not ReturnStatement and not ExpressionStatement)
+            {
+                WriteIndent();
+                _output.AppendLine("return null;");
+            }
+
             PopLocalFunctionScope();
             _indentLevel--;
             WriteIndent();
             _output.Append("})");
+        }
+        else if (lambda.ExpressionBody != null && ExpressionTranspilesToVoid(lambda.ExpressionBody))
+        {
+            // `x => io.print(x)`: the body is a void C# call, so it cannot be the result.
+            _output.Append("{ ");
+            TranspileExpression(lambda.ExpressionBody);
+            _output.Append("; return null; })");
         }
         else if (lambda.ExpressionBody != null)
         {
@@ -13276,10 +13409,16 @@ public class CSharpTranspiler
             _output.AppendLine();
         }
 
+        var previousActorMethodNames = _currentActorMethodNames;
+        _currentActorMethodNames = actorDecl.Members
+            .Where(m => m.Type == MemberType.Method && !m.IsStatic)
+            .Select(m => m.Name)
+            .ToHashSet(StringComparer.Ordinal);
         foreach (var member in actorDecl.Members)
         {
             TranspileActorMember(member);
         }
+        _currentActorMethodNames = previousActorMethodNames;
 
         _indentLevel--;
         WriteIndent();
@@ -13334,8 +13473,10 @@ public class CSharpTranspiler
                     }
 
                     WriteIndent();
-                    // Actor message handlers are fire-and-forget; use void
-                    _output.Append("void ");
+                    // Handlers are fire-and-forget (the runtime ignores the result), but the same
+                    // members double as helpers called from other handlers (`count = double(count)`),
+                    // so they return object like the interpreter's FunctionValue does.
+                    _output.Append("object ");
                     _output.Append(EscapeIdentifier(member.Name));
                     _output.Append("(");
                     PushTypedScope();
@@ -13373,6 +13514,8 @@ public class CSharpTranspiler
                     _isInActorHandler = true;
                     _currentFunctionReturnType.Push(TranspiledClrType.Object);
                     TranspileBlock(func.Body);
+                    WriteIndent();
+                    _output.AppendLine("return null;");
                     _currentFunctionReturnType.Pop();
                     PopTypedScope();
                     // Restore flag

@@ -37,7 +37,7 @@ public class ActorRuntime
     public ActorReference SpawnActor(ActorDefinition actorDef, Interpreter parentInterpreter, List<RuntimeValue>? constructorArgs = null)
     {
         var id = $"{actorDef.Name}_{Interlocked.Increment(ref _actorCounter)}";
-        var instance = new ActorInstance(actorDef, id);
+        var instance = new ActorInstance(actorDef, id, parentInterpreter.GlobalsEnvironment);
         _actors[id] = instance;
         
         // v1: spawned actors are not stepped. Sharing the parent hook across
@@ -93,7 +93,17 @@ public class ActorRuntime
                     }
                 }
             }
-            
+
+            // Bind the actor's own functions in its state so handlers can call helpers
+            // (`count = double(count)`) by name. A field of the same name wins; a global of the
+            // same name is shadowed, as members shadow globals in classes.
+            var ownState = instance.State.GetOwnVariables();
+            foreach (var (name, method) in instance.Actor.MessageHandlers)
+            {
+                if (!ownState.ContainsKey(name))
+                    instance.State.Define(name, RuntimeValue.Function(method));
+            }
+
             // Execute constructor if exists
             if (constructor != null && constructorArgs != null)
             {

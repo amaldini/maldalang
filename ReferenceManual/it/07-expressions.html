@@ -341,7 +341,7 @@ await allTask2;</code></pre>
             <li><strong>Coercizione a Task:</strong> ogni elemento/argomento che è già un Task viene atteso; i valori che non sono Task vengono trattati come task già completati.</li>
             <li><strong>Valore di ritorno:</strong> <code>all()</code> restituisce un Task. Quando se ne fa await, produce un array di risultati nello stesso ordine degli input.</li>
             <li><strong>Completamento best-effort:</strong> tutti i task figli possono arrivare a completamento. <code>all()</code> non cancella gli altri task quando uno fallisce.</li>
-            <li><strong>Comportamento sugli errori:</strong> se uno o più figli falliscono, <code>await all(...)</code> solleva il primo errore dopo che tutti i figli sono completati.</li>
+            <li><strong>Comportamento sugli errori:</strong> <code>await all(...)</code> non solleva eccezioni quando un figlio fallisce. Dopo che tutti i figli sono completati, lo slot di ogni figlio fallito contiene una variante <code>AgentError</code> <code>Upstream(0, messaggio)</code>; ispeziona gli slot con <code>match</code> (vedi <a href="24-agentic-runs.html">24.4.2</a>).</li>
         </ul>
         <h4>Esempio: lavoro in parallelo e poi aggregazione</h4>
         <pre><code>function computeA() {

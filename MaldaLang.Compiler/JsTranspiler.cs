@@ -42,6 +42,8 @@ public class JsTranspiler
     private readonly Stack<HashSet<string>> _constScopeStack = new();
     private readonly Dictionary<string, ClassDeclaration> _classDeclarations = new(StringComparer.Ordinal);
     private string? _currentClassName;
+    /// <summary>Actor being emitted: its fields and methods resolve through <c>this</c> like class members.</summary>
+    private ActorDeclaration? _currentActor;
     private bool _currentMemberIsStatic;
     private bool _rewriteImplicitMembers;
 
@@ -89,6 +91,7 @@ public class JsTranspiler
         foreach (var kv in other._classDeclarations)
             _classDeclarations[kv.Key] = kv.Value;
         _currentClassName = other._currentClassName;
+        _currentActor = other._currentActor;
         _currentMemberIsStatic = other._currentMemberIsStatic;
         _rewriteImplicitMembers = other._rewriteImplicitMembers;
     }
@@ -118,6 +121,7 @@ public class JsTranspiler
         ResetConstScopes();
         _classDeclarations.Clear();
         _currentClassName = null;
+        _currentActor = null;
         _currentMemberIsStatic = false;
         _rewriteImplicitMembers = false;
         _generatedLine = 1;
@@ -395,7 +399,7 @@ public class JsTranspiler
                     TranspileDestructuringVarDecl(destVarDecl);
                     break;
                 case AssignmentStatement assignment:
-                    EmitLineWithSource(assignment.Value, $"{TranspileAssignmentTarget(assignment.Target)} {MapAssignmentOperator(assignment.Operator)} {TranspileExpression(assignment.Value)};");
+                    EmitLineWithSource(assignment.Value, $"{TranspileAssignmentTarget(assignment.Target)} {MapAssignmentOperator(assignment.Operator)} {TranspileExpressionAwaited(assignment.Value)};");
                     break;
                 case DestructuringAssignment destAssign:
                     TranspileDestructuringAssignment(destAssign);
@@ -1008,6 +1012,15 @@ public class JsTranspiler
             }
 
             if (_asyncFunctions.Contains(identifier.Name))
+            {
+                return true;
+            }
+
+            // Actor methods are emitted `async`, so a helper call inside the actor is awaited.
+            if (_currentActor != null
+                && !IsLocalName(identifier.Name)
+                && TryFindActorMember(identifier.Name, out var actorMember)
+                && actorMember.Type == MemberType.Method)
             {
                 return true;
             }
@@ -1786,7 +1799,27 @@ public class JsTranspiler
                 return $"this.{EscapeIdentifier(name)}";
         }
 
+        if (_rewriteImplicitMembers
+            && _currentActor != null
+            && !IsLocalName(name)
+            && TryFindActorMember(name, out var actorMember))
+        {
+            if (actorMember.IsStatic)
+                return $"{EscapeIdentifier(_currentActor.Name)}.{EscapeIdentifier(name)}";
+            if (!_currentMemberIsStatic)
+                return $"this.{EscapeIdentifier(name)}";
+        }
+
         return EscapeIdentifier(name);
+    }
+
+    /// <summary>Field or method of the actor being emitted (constructors excluded).</summary>
+    private bool TryFindActorMember(string name, out ClassMember member)
+    {
+        member = _currentActor?.Members.FirstOrDefault(m =>
+            m.Type is MemberType.Field or MemberType.Method &&
+            string.Equals(m.Name, name, StringComparison.Ordinal))!;
+        return member != null;
     }
 
     private bool TryFindClassField(string className, string fieldName, out bool isStatic)
@@ -2252,9 +2285,18 @@ public class JsTranspiler
             EmitLine($"// Messages: {summary}");
         }
 
-        foreach (var member in actor.Members)
+        var previousActor = _currentActor;
+        _currentActor = actor;
+        try
         {
-            TranspileActorMember(member, actor.Name);
+            foreach (var member in actor.Members)
+            {
+                TranspileActorMember(member, actor.Name);
+            }
+        }
+        finally
+        {
+            _currentActor = previousActor;
         }
 
         _indentLevel--;
@@ -2286,15 +2328,27 @@ public class JsTranspiler
                 EmitLine($"{staticPrefix}async {EscapeIdentifier(member.Name)}({parameters}) {{");
                 _indentLevel++;
                 var previousInActorHandler = _isInActorHandler;
+                var previousStatic = _currentMemberIsStatic;
+                var previousRewrite = _rewriteImplicitMembers;
                 _isInActorHandler = true;
-                InLocalScope(method.Parameters, () =>
+                _currentMemberIsStatic = member.IsStatic;
+                _rewriteImplicitMembers = true;
+                try
                 {
-                    foreach (var statement in method.Body.Statements)
+                    InLocalScope(method.Parameters, () =>
                     {
-                        TranspileStatement(statement);
-                    }
-                });
-                _isInActorHandler = previousInActorHandler;
+                        foreach (var statement in method.Body.Statements)
+                        {
+                            TranspileStatement(statement);
+                        }
+                    });
+                }
+                finally
+                {
+                    _isInActorHandler = previousInActorHandler;
+                    _currentMemberIsStatic = previousStatic;
+                    _rewriteImplicitMembers = previousRewrite;
+                }
                 _indentLevel--;
                 EmitLine("}");
                 break;
@@ -2310,13 +2364,25 @@ public class JsTranspiler
                 // JavaScript constructors cannot be async.
                 EmitLine($"constructor({parameters}) {{");
                 _indentLevel++;
-                InLocalScope(constructor.Parameters, () =>
+                var previousStatic = _currentMemberIsStatic;
+                var previousRewrite = _rewriteImplicitMembers;
+                _currentMemberIsStatic = false;
+                _rewriteImplicitMembers = true;
+                try
                 {
-                    foreach (var statement in constructor.Body.Statements)
+                    InLocalScope(constructor.Parameters, () =>
                     {
-                        TranspileStatement(statement);
-                    }
-                });
+                        foreach (var statement in constructor.Body.Statements)
+                        {
+                            TranspileStatement(statement);
+                        }
+                    });
+                }
+                finally
+                {
+                    _currentMemberIsStatic = previousStatic;
+                    _rewriteImplicitMembers = previousRewrite;
+                }
                 _indentLevel--;
                 EmitLine("}");
                 break;

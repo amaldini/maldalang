@@ -13,12 +13,17 @@ public class ActorInstance
     public string Id { get; }
     private bool _isRunning = false;
     
-    public ActorInstance(ActorDefinition actor, string id)
+    /// <param name="globals">
+    /// Program globals (top-level functions, variables, std-lib namespaces). Fields live in
+    /// <see cref="State"/> itself and stay per-instance; only names the actor does not
+    /// declare fall through to globals, as in the C# and JS backends.
+    /// </param>
+    public ActorInstance(ActorDefinition actor, string id, Environment? globals = null)
     {
         Actor = actor;
         Id = id;
         Mailbox = new ActorMailbox();
-        State = new Environment(); // Isolated environment for actor state
+        State = new Environment(globals); // Per-instance actor state
     }
     
     public bool IsRunning

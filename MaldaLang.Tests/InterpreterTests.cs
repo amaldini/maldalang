@@ -4780,8 +4780,10 @@ public class InterpreterTests : TestBase
     }
 
     [Fact]
-    public void AsyncAwait_All_PropagatesFirstError_AfterAllComplete()
+    public void AsyncAwait_All_FailedBranchBecomesUpstreamSlot_AfterAllComplete()
     {
+        // RM §24.4.2: all() waits for every branch and does not rethrow; a failed branch
+        // becomes an AgentError Upstream(0, message) slot in input order.
         var source = @"
             function boom() {
                 error(""boom"");
@@ -4791,9 +4793,16 @@ public class InterpreterTests : TestBase
             var t2 = async 2;
             var allTask = all(t1, t2);
             var results = await allTask;
+            match results[0] {
+                case Upstream(status, body): print($""upstream {status} {body}"");
+                default: print(""not-upstream"");
+            }
+            print(results[1]);
         ";
-        var ex = Assert.Throws<RuntimeException>(() => RunProgram(source));
-        Assert.Contains("boom", ex.Message);
+        var output = RunProgram(source);
+        Assert.Contains("upstream 0", output);
+        Assert.Contains("boom", output);
+        Assert.EndsWith("2", output.TrimEnd());
     }
 
     [Fact]

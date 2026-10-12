@@ -1754,4 +1754,27 @@ print(""run="" + string(ran.success) + "","" + string(ran.output));
             """,
             "tojson-inherited-fields");
     }
+
+    [Fact]
+    public void ZeroArgLambdaAndArrayHigherOrderMethods_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            var f = () => 42;
+            io.print(f());
+            var arr = [1, 2, 3];
+            var doubled = arr.map(x => x * 2);
+            io.print(doubled[1]);
+            io.print(arr.map(x => x * 10)[2]);
+            io.print(arr.filter(x => x > 1));
+            io.print(arr.reduce((a, b) => a + b, 0));
+            io.print(arr.find(x => x > 1));
+            io.print(arr.findIndex(x => x > 5));
+            io.print(arr.some(x => x > 2));
+            io.print(arr.every(x => x > 1));
+            arr.forEach(x => { io.print(x); });
+            arr.forEach(x => io.print(x * 100));
+            """,
+            "zero-arg-lambda-array-hof");
+    }
 }

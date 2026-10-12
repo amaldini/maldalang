@@ -418,4 +418,29 @@ public class InterpretJsPairTests
             """,
             "infinity-arithmetic-js");
     }
+
+    [Fact]
+    public void ActorFieldsAndHelperFunctions_SameStdout()
+    {
+        InterpretJsPair.AssertSameFromSource(
+            """
+            actor Counter {
+                var count = 0;
+                function double(n) {
+                    return n * 2;
+                }
+                on increment() {
+                    count = double(count + 1);
+                    io.print("count " + string(count));
+                }
+            }
+
+            var c = spawn Counter();
+            sleep(100);
+            send c.increment();
+            send c.increment();
+            sleep(300);
+            """,
+            "actor-fields-helpers-js");
+    }
 }

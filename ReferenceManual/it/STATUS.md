@@ -19,7 +19,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | 04-data-types.html | 27f6c310a8a952ca95f8f113d1c78fa07e32a5a3d40be29cef948bad4a2e049c |
 | 05-variables.html | d542e1861f71db518399b344e3d1b4dedc423b4d286600b1d4bc7fa4cc496dba |
 | 06-arrays.html | fd0d8e412fab11df04c07f08ef60068f9aef79de7185ed5d4764b7b8a7c2d746 |
-| 07-expressions.html | d82d976e53bd4b772397090caa6b4bf64fc44bbc256b8502672719238eecb3d4 |
+| 07-expressions.html | 231c95455c1ef47d7e4f23e8cb696c8af35d3608e1f3c5ffb74ac2cc1943b342 |
 | 08-control-structures.html | 97373942a686edb8f7b885cd14c0f70be1f0fd7d1eacfdfafca50991cdee6f4a |
 | 09-functions.html | c66e1a306e59ab46c0bc10f27ee60d5a06599b7806005d3ffafbba58c996ccaf |
 | 10-prompts.html | fc8cd84b48c0bf07a09525b9cafc41ff9eb88efd38c00bea40bba060c839a92c |
@@ -30,7 +30,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | 15-graphs.html | 930ddb199559ee99b2a58c3cd4a3f6b82f744dde5243f78a685c45b7a20360f2 |
 | 16-vectordb.html | 0d65735b3ed152161a72d736a189cfe086c2654ebf5a140ee23a508fdd0d1969 |
 | 17-database.html | d32d75ed19f776f63ea3aa3549b76cd5bc7c1187c9de8ac05868356a30cf09de |
-| 18-actors.html | 497a8ad5a499ea814c3f1c39b28607e8f8a22664448cb6412a261fd01e0b8daa |
+| 18-actors.html | cf79c2b1e319665acc0d07123f46005af95e7289006ead2cf212b77f0b35a44e |
 | 19-agent-orchestration.html | 3806145c1cc8350b1264ea621244a52e5bf386ae26789020b33223210b81faf2 |
 | 20-graph-memory.html | 7ff9f2344fd3407a3f703ca81d8ec2291b124c92e65df5e163e1e59d25f4d130 |
 | 21-mcp-server.html | 2ee62f9df917305b62491aa65c3045aa25355042315c4436bb2fd9d0cc791d79 |
