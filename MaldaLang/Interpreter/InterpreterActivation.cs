@@ -35,6 +35,9 @@ internal sealed class InterpreterActivation
     public WorkflowExecutionContext? WorkflowContext { get; set; }
     public bool InsideWorkflowStep { get; set; }
     public CancellationTokenSource? CancelSource { get; set; }
+    /// <summary>Unwinding <c>return</c>/<c>break</c>/<c>continue</c> (see Interpreter.ControlFlow.cs).</summary>
+    public PendingControl PendingControl { get; set; }
+    public RuntimeValue? PendingReturnValue { get; set; }
     public CancellationToken CancelToken => CancelSource?.Token ?? CancellationToken.None;
 
     /// <summary>

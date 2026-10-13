@@ -1816,7 +1816,8 @@ public partial class Interpreter
         }
     }
     
-    internal async Task<RuntimeValue?> ExecuteAsync(Statement stmt)
+    /// <summary>Signal-aware statement dispatch; see Interpreter.ControlFlow.cs.</summary>
+    private async Task<RuntimeValue?> ExecuteStatementAsync(Statement stmt)
     {
         var previousFile = _currentFile;
         var statementFile = stmt.SourceFile ?? _currentFile;
@@ -1851,14 +1852,14 @@ public partial class Interpreter
                 DestructuringAssignment destAssign => await ExecuteDestructuringAssignmentAsync(destAssign),
                 ExpressionStatement expr => await ExecuteExpressionAsync(expr),
                 PrintStatement print => await ExecutePrintAsync(print),
-                BlockStatement block => await ExecuteBlockAsync(block),
+                BlockStatement block => await ExecuteBlockStatementsAsync(block, new Environment(_environment)),
                 IfStatement ifStmt => await ExecuteIfAsync(ifStmt),
                 WhileStatement whileStmt => await ExecuteWhileAsync(whileStmt),
                 ForStatement forStmt => await ExecuteForAsync(forStmt),
                 ForInStatement forInStmt => await ExecuteForInAsync(forInStmt),
                 ReturnStatement returnStmt => await ExecuteReturnAsync(returnStmt),
-                BreakStatement => throw new BreakException(),
-                ContinueStatement => throw new ContinueException(),
+                BreakStatement => SignalControl(PendingControl.Break),
+                ContinueStatement => SignalControl(PendingControl.Continue),
                 TryStatement tryStmt => await ExecuteTryAsync(tryStmt),
                 ThrowStatement throwStmt => await ExecuteThrowAsync(throwStmt),
                 SendStatement sendStmt => await ExecuteSendAsync(sendStmt),
@@ -1978,7 +1979,7 @@ public partial class Interpreter
             _executionStack.Pop();
     }
 
-    private async Task<RuntimeValue?> ExecuteBlockAsync(BlockStatement stmt, Environment environment)
+    private async Task<RuntimeValue?> ExecuteBlockStatementsAsync(BlockStatement stmt, Environment environment)
     {
         // Check if we're resuming a block execution
         BlockFrame? existingFrame = null;
@@ -2016,7 +2017,9 @@ public partial class Interpreter
             for (int i = blockFrame.StatementIndex; i < stmt.Statements.Count; i++)
             {
                 blockFrame.StatementIndex = i;
-                await ExecuteAsync(stmt.Statements[i]);
+                await ExecuteStatementAsync(stmt.Statements[i]);
+                if (_pendingControl != PendingControl.None)
+                    break;
             }
         }
         finally
@@ -2041,11 +2044,11 @@ public partial class Interpreter
     {
         if ((await EvaluateAsync(stmt.Condition)).IsTruthy())
         {
-            await ExecuteAsync(stmt.ThenBranch);
+            await ExecuteStatementAsync(stmt.ThenBranch);
         }
         else if (stmt.ElseBranch != null)
         {
-            await ExecuteAsync(stmt.ElseBranch);
+            await ExecuteStatementAsync(stmt.ElseBranch);
         }
         return null;
     }
@@ -2099,8 +2102,12 @@ public partial class Interpreter
                     for (int i = whileFrame.StatementIndex; i < whileFrame.BodyBlock.Statements.Count; i++)
                     {
                         whileFrame.StatementIndex = i;
-                        await ExecuteAsync(whileFrame.BodyBlock.Statements[i]);
+                        await ExecuteStatementAsync(whileFrame.BodyBlock.Statements[i]);
+                        if (_pendingControl != PendingControl.None)
+                            break;
                     }
+                    if (await ConsumeWhileBodySignalAsync(whileFrame))
+                        return null;
                     // Iteration completed - reset statement index for next iteration
                     whileFrame.StatementIndex = 0;
                 }
@@ -2132,18 +2139,20 @@ public partial class Interpreter
                         for (int i = whileFrame.StatementIndex; i < whileFrame.BodyBlock.Statements.Count; i++)
                         {
                             whileFrame.StatementIndex = i;
-                            await ExecuteAsync(whileFrame.BodyBlock.Statements[i]);
+                            await ExecuteStatementAsync(whileFrame.BodyBlock.Statements[i]);
+                            if (_pendingControl != PendingControl.None)
+                                break;
                         }
-                        // Iteration completed - reset statement index for next iteration
-                        whileFrame.StatementIndex = 0;
                     }
                     else
                     {
                         // Single statement body
-                        await ExecuteAsync(stmt.Body);
-                        // Iteration completed - reset statement index for next iteration
-                        whileFrame.StatementIndex = 0;
+                        await ExecuteStatementAsync(stmt.Body);
                     }
+                    if (await ConsumeWhileBodySignalAsync(whileFrame))
+                        return null;
+                    // Iteration completed - reset statement index for next iteration
+                    whileFrame.StatementIndex = 0;
                 }
                 catch (ContinueException)
                 {
@@ -2186,7 +2195,7 @@ public partial class Interpreter
         // The desugared structure is: Block { initializer, While { condition, Block { body, increment } } }
         // Since for loops are desugared, the execution stack will handle the nested while loop
         // We just need to execute the desugared body
-        return await ExecuteAsync(stmt.Body);
+        return await ExecuteStatementAsync(stmt.Body);
     }
     
     private async Task<RuntimeValue?> ExecuteForInAsync(ForInStatement stmt)
@@ -2210,7 +2219,16 @@ public partial class Interpreter
                 
                 try
                 {
-                    await ExecuteAsync(stmt.Body);
+                    await ExecuteStatementAsync(stmt.Body);
+                    if (_pendingControl == PendingControl.Return)
+                        break;
+                    if (_pendingControl == PendingControl.Break)
+                    {
+                        ClearPendingControl();
+                        break;
+                    }
+                    if (_pendingControl == PendingControl.Continue)
+                        ClearPendingControl();
                 }
                 catch (BreakException)
                 {
@@ -2238,7 +2256,7 @@ public partial class Interpreter
         {
             value = await EvaluateAsync(stmt.Value);
         }
-        throw new ReturnException(value);
+        return SignalControl(PendingControl.Return, value);
     }
     
     private async Task<RuntimeValue?> ExecuteThrowAsync(ThrowStatement stmt)
@@ -3485,13 +3503,23 @@ public partial class Interpreter
             var body = function.Declaration.Body;
             RuntimeValue? lastExprValue = null;
             var applyLastExprWins = !function.IsConstructor;
+            var returned = false;
+            RuntimeValue? returnedValue = null;
             for (int i = functionFrame.StatementIndex; i < body.Statements.Count; i++)
             {
                 WithinBoundsContext.EnsureWithinBound(function.Declaration.Name);
                 functionFrame.StatementIndex = i;
                 var stmt = body.Statements[i];
                 var isLast = (i == body.Statements.Count - 1);
-                var executed = await ExecuteAsync(stmt);
+                var executed = await ExecuteStatementAsync(stmt);
+                if (_pendingControl != PendingControl.None)
+                {
+                    if (_pendingControl != PendingControl.Return)
+                        ThrowPendingControl(); // break/continue outside a loop keeps the exception path
+                    returned = true;
+                    returnedValue = TakePendingReturnValue();
+                    break;
+                }
                 if (applyLastExprWins && isLast && stmt is ExpressionStatement)
                     lastExprValue = executed;
             }
@@ -3509,7 +3537,12 @@ public partial class Interpreter
             }
             
             RuntimeValue result;
-            if (function.IsConstructor)
+            if (returned)
+            {
+                // Same value as the ReturnException path below (constructors included).
+                result = returnedValue ?? RuntimeValue.Null();
+            }
+            else if (function.IsConstructor)
             {
                 result = RuntimeValue.Object(_currentObject);
             }
