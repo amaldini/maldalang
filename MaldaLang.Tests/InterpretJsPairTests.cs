@@ -443,4 +443,68 @@ public class InterpretJsPairTests
             """,
             "actor-fields-helpers-js");
     }
+
+    [Fact]
+    public void AllFailedBranchIsUpstreamSlot_AndErrorBuiltin_SameStdout()
+    {
+        InterpretJsPair.AssertSameFromSource(
+            """
+            function boom() {
+                error("boom");
+            }
+            var t1 = async boom();
+            var t2 = async 2;
+            var results = await all(t1, t2);
+            match results[0] {
+                case Upstream(status, body): io.print("upstream " + string(status) + " " + body);
+                default: io.print("not-upstream");
+            }
+            io.print(results[1]);
+            try {
+                error("direct");
+            } catch (e) {
+                io.print("caught: " + string(e));
+            }
+            """,
+            "all-upstream-error-js");
+    }
+
+    [Fact]
+    public void ActorConstructorCallsSyncHelper_SameStdout()
+    {
+        InterpretJsPair.AssertSameFromSource(
+            """
+            actor Box {
+                var label = "";
+                function Box(name) {
+                    label = decorate(name);
+                }
+                function decorate(s) {
+                    return "[" + s + "]";
+                }
+                on show() {
+                    io.print(label);
+                    io.print(decorate("again"));
+                }
+            }
+            var b = spawn Box("x");
+            sleep(100);
+            send b.show();
+            sleep(300);
+            """,
+            "actor-ctor-helper-js");
+    }
+
+    [Fact]
+    public void MultiArgLambdasThroughVariables_SameStdout()
+    {
+        InterpretJsPair.AssertSameFromSource(
+            """
+            var add3 = (a, b, c) => a + b + c;
+            io.print(add3(1, 2, 3));
+            function apply2(f, x, y) { return f(x, y); }
+            io.print(apply2((p, q) => p - q, 9, 4));
+            """,
+            "multi-arg-lambdas-js");
+    }
 }

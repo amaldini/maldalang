@@ -1777,4 +1777,22 @@ print(""run="" + string(ran.success) + "","" + string(ran.output));
             """,
             "zero-arg-lambda-array-hof");
     }
+
+    [Fact]
+    public void MultiArgLambdasThroughVariables_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            var add3 = (a, b, c) => a + b + c;
+            io.print(add3(1, 2, 3));
+            var mul = (a, b) => a * b;
+            io.print(mul(4, 5));
+            var z = () => "zero";
+            io.print(z());
+            io.print([1, 2, 3, 4].reduce((acc, x) => acc + x, 10));
+            function apply2(f, x, y) { return f(x, y); }
+            io.print(apply2((p, q) => p - q, 9, 4));
+            """,
+            "multi-arg-lambdas");
+    }
 }

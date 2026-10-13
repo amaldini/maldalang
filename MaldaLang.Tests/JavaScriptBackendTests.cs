@@ -80,6 +80,31 @@ public class JavaScriptBackendTests : TestBase
     }
 
     [Fact]
+    public void Compile_ModeJavaScript_CreatesMissingOutputDirectory()
+    {
+        var root = CreateTempDirectory("malda_js_compile_dir_");
+        try
+        {
+            var sourcePath = Path.Combine(root, "program.malda");
+            File.WriteAllText(sourcePath, "print(\"ok\");");
+
+            var outputDirectory = Path.Combine(root, "dist", "web");
+            var outputPath = Path.Combine(outputDirectory, "app.js");
+            var compiler = new Compiler.Compiler();
+            var result = compiler.Compile(sourcePath, outputPath, CompilationMode.JavaScript, includeLLamaSharp: false);
+
+            Assert.True(result.Success, result.ErrorMessage);
+            Assert.True(File.Exists(outputPath));
+            Assert.True(File.Exists(Path.Combine(outputDirectory, "index.html")));
+            Assert.True(File.Exists(Path.Combine(outputDirectory, "malda-js-runtime.js")));
+        }
+        finally
+        {
+            SafeDeleteDirectory(root);
+        }
+    }
+
+    [Fact]
     public void Compile_ModeJavaScript_RespectsExplicitOutputPathWithExtension()
     {
         var root = CreateTempDirectory("malda_js_compile_explicit_");
@@ -6078,7 +6103,9 @@ const missingModel = three.loadGLTF("missing.gltf");
         var js = compiler.TranspileToJavaScriptFromSource(source);
 
         Assert.Contains("class Worker {", js, StringComparison.Ordinal);
-        Assert.Contains("async work()", js, StringComparison.Ordinal);
+        // Handlers are async only when they await; this one does not (the runtime accepts both).
+        Assert.Contains("work() {", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("async work()", js, StringComparison.Ordinal);
         Assert.Contains("let w = mlRuntime.actors.spawn(new Worker());", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.actors.send(__target, \"work\");", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.actors.callActorOrVoidStop(w);", js, StringComparison.Ordinal);

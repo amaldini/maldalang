@@ -216,14 +216,22 @@
       tasks = args;
     }
 
-    const awaited = tasks.map((task) => {
-      if (task && typeof task.then === "function") {
-        return task;
-      }
-      return Promise.resolve(task);
-    });
+    // Same contract as the interpreter and C# (RM 24.4.2): wait for every branch and
+    // never reject; a failed branch becomes an AgentError Upstream(0, message) slot.
+    const settled = await Promise.allSettled(tasks.map((task) => Promise.resolve(task)));
+    return settled.map((outcome) => outcome.status === "fulfilled"
+      ? outcome.value
+      : variant("Upstream", [0, coerceToString(unwrapMaldaException(outcome.reason))]));
+  }
 
-    return Promise.all(awaited);
+  function errorBuiltin(...args) {
+    if (args.length !== 1) {
+      throw new Error("error() expects 1 argument: (message)");
+    }
+    if (typeof args[0] !== "string") {
+      throw new Error("error() message must be a string");
+    }
+    throw new Error(args[0]);
   }
 
   const deferStacks = [];
@@ -3766,6 +3774,7 @@
     isTag: isTagBuiltin,
     isNumber: isNumberBuiltin,
     all: allBuiltin,
+    errorBuiltin,
     throwMalda,
     unwrapMaldaException,
     arrayAppend,

@@ -3160,7 +3160,7 @@ public class CSharpTranspiler
             "    if (args.Count < 1 || args.Count > 2) throw new InvalidOperationException(\"reduce() expects 1 or 2 arguments\");",
             "    if (list.Count == 0 && args.Count == 1) throw new InvalidOperationException(\"reduce() on empty array requires initial value\");",
             "    var acc = args.Count == 2 ? args[1] : list[0];",
-            "    foreach (var item in list.Skip(args.Count == 2 ? 0 : 1).ToList()) acc = await CallFunction2(args[0], acc, item);",
+            "    foreach (var item in list.Skip(args.Count == 2 ? 0 : 1).ToList()) acc = await CallFunctionN(args[0], new object?[] { acc, item });",
             "    return acc;",
             "}",
             "case \"forEach\":",
@@ -4816,19 +4816,35 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("}");
         
-        // Two-argument callbacks (reduce). Transpiled two-parameter lambdas are
-        // Func<object, object, Task<object>>; other delegates go through DynamicInvoke.
+        // Callbacks invoked with several arguments: `f(a, b, c)` on a function-valued variable,
+        // and reduce. Transpiled lambdas are Func<object, ..., Task<object>> of their own arity;
+        // any other delegate goes through DynamicInvoke with arguments padded/trimmed to fit.
         EmitLines(
-            "public static async System.Threading.Tasks.Task<object> CallFunction2(object? func, object? a, object? b)",
+            "public static async System.Threading.Tasks.Task<object> CallFunctionN(object? func, object?[] args)",
             "{",
-            "    if (func is System.Func<object, object, System.Threading.Tasks.Task<object>> f2) return await f2(a!, b!);",
+            "    if (func == null) throw new InvalidOperationException(\"Cannot call null function\");",
+            "    if (func is MaldaLang.Interpreter.RuntimeValue runtimeValue && runtimeValue.Type == MaldaLang.Interpreter.ValueType.Function)",
+            "        func = runtimeValue.AsFunction();",
+            "    if (func is MaldaLang.Interpreter.FunctionValue functionValue)",
+            "    {",
+            "        if (functionValue.BuiltInInstance != null && !string.IsNullOrEmpty(functionValue.BuiltInMethod))",
+            "            return await CallObjectMethod(functionValue.BuiltInInstance, functionValue.BuiltInMethod!, args.Select(a => a!).ToList());",
+            "        if (functionValue.TranspiledDelegate != null)",
+            "            func = functionValue.TranspiledDelegate;",
+            "        else",
+            "            throw new InvalidOperationException(\"Only built-in function callbacks can be invoked from transpiled CallFunctionN.\");",
+            "    }",
             "    if (func is System.Delegate del)",
             "    {",
-            "        var invoked = del.DynamicInvoke(a, b);",
+            "        var parameterCount = del.GetType().GetMethod(\"Invoke\")!.GetParameters().Length;",
+            "        var invokeArgs = new object?[parameterCount];",
+            "        System.Array.Copy(args, invokeArgs, System.Math.Min(args.Length, parameterCount));",
+            "        var invoked = del.DynamicInvoke(invokeArgs);",
             "        if (invoked is System.Threading.Tasks.Task<object> invokedTask) return await invokedTask;",
+            "        if (invoked is System.Threading.Tasks.Task plainTask) { await plainTask; return null!; }",
             "        return invoked!;",
             "    }",
-            "    throw new InvalidOperationException($\"Cannot call function with two arguments: {func?.GetType()}\");",
+            "    throw new InvalidOperationException($\"Cannot call function: {func.GetType()}\");",
             "}");
 
         WriteIndent();
@@ -11080,18 +11096,29 @@ public class CSharpTranspiler
                 return;
             }
             
-            // For multiple parameters, we'd need a different helper
-            // For now, throw an error or use reflection
+            // Zero or several arguments: f() passes null to the one-argument shape (zero-arg
+            // lambdas ignore it); f(a, b, ...) forwards every argument through CallFunctionN.
+            var helper = call.Arguments.Count == 0 ? "CallFunction" : "CallFunctionN";
             if (_transpileCallAsTask)
-                _output.Append("RuntimeHelpers.WrapObjectTaskAsRuntimeValueTask(RuntimeHelpers.CallFunction(");
+                _output.Append($"RuntimeHelpers.WrapObjectTaskAsRuntimeValueTask(RuntimeHelpers.{helper}(");
             else
-                _output.Append(_canAwait ? "await RuntimeHelpers.CallFunction(" : "RuntimeHelpers.BlockOn(RuntimeHelpers.CallFunction(");
+                _output.Append(_canAwait ? $"await RuntimeHelpers.{helper}(" : $"RuntimeHelpers.BlockOn(RuntimeHelpers.{helper}(");
             _output.Append(EscapeIdentifier(funcName));
             _output.Append(", ");
-            // This fallback path is for non-standard dynamic call shapes.
-            // Avoid indexing into argument lists here; pass null to prevent
-            // transpiler crashes when argument metadata is inconsistent.
-            _output.Append("null");
+            if (call.Arguments.Count == 0)
+            {
+                _output.Append("null");
+            }
+            else
+            {
+                _output.Append("new object?[] { ");
+                for (int i = 0; i < call.Arguments.Count; i++)
+                {
+                    if (i > 0) _output.Append(", ");
+                    TranspileExpression(call.Arguments[i]);
+                }
+                _output.Append(" }");
+            }
             _output.Append(_transpileCallAsTask ? "))" : ")");
             if (!_transpileCallAsTask && !_canAwait)
                 _output.Append(")");
@@ -13147,11 +13174,12 @@ public class CSharpTranspiler
     private void TranspileLambda(LambdaExpression lambda)
     {
         // We define the delegate as async. C# will handle the Task wrapping automatically.
-        // Use the correct Func type for 1 vs 2 parameters so two-parameter lambdas (e.g. sort compare) type-check.
-        if (lambda.Parameters.Count == 2)
-            _output.Append("new System.Func<object, object, System.Threading.Tasks.Task<object>>(async (");
-        else
-            _output.Append("new System.Func<object, System.Threading.Tasks.Task<object>>(async (");
+        // Zero and one parameter share the one-argument shape (see below); N >= 2 parameters get
+        // Func<object x N, Task<object>> so the body type-checks and CallFunctionN can invoke it.
+        var delegateArity = System.Math.Max(1, lambda.Parameters.Count);
+        _output.Append("new System.Func<");
+        _output.Append(string.Concat(Enumerable.Repeat("object, ", delegateArity)));
+        _output.Append("System.Threading.Tasks.Task<object>>(async (");
 
         // Parameters
         for (int i = 0; i < lambda.Parameters.Count; i++)

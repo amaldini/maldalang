@@ -320,4 +320,30 @@ public class ActorParityTests : TestBase
 
         AssertInterpreterAndTranspiledOutputsMatch(source, "count 2", "count 6");
     }
+
+    [Fact]
+    public void ActorParity_ConstructorCallsHelper_MatchesAcrossRuntimes()
+    {
+        var source = """
+            actor Box {
+                var label = "";
+                function Box(name) {
+                    label = decorate(name);
+                }
+                function decorate(s) {
+                    return "[" + s + "]";
+                }
+                on show() {
+                    print(label);
+                }
+            }
+
+            var b = spawn Box("x");
+            sleep(100);
+            send b.show();
+            sleep(300);
+            """;
+
+        AssertInterpreterAndTranspiledOutputsMatch(source, "[x]");
+    }
 }

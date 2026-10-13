@@ -44,6 +44,8 @@ public class JsTranspiler
     private string? _currentClassName;
     /// <summary>Actor being emitted: its fields and methods resolve through <c>this</c> like class members.</summary>
     private ActorDeclaration? _currentActor;
+    /// <summary>Methods of <see cref="_currentActor"/> that must be emitted <c>async</c>.</summary>
+    private readonly HashSet<string> _asyncActorMethods = new(StringComparer.Ordinal);
     private bool _currentMemberIsStatic;
     private bool _rewriteImplicitMembers;
 
@@ -92,6 +94,8 @@ public class JsTranspiler
             _classDeclarations[kv.Key] = kv.Value;
         _currentClassName = other._currentClassName;
         _currentActor = other._currentActor;
+        _asyncActorMethods.Clear();
+        _asyncActorMethods.UnionWith(other._asyncActorMethods);
         _currentMemberIsStatic = other._currentMemberIsStatic;
         _rewriteImplicitMembers = other._rewriteImplicitMembers;
     }
@@ -627,6 +631,10 @@ public class JsTranspiler
     private string TranspileExpressionAwaited(Expression expression)
     {
         var transpiled = TranspileExpression(expression);
+        // `var t = async f();` stores the task; awaiting it here would run f to completion
+        // (and throw its error) before `await t` / all(t, ...) ever see it.
+        if (expression is AsyncExpression)
+            return transpiled;
         return ExpressionProducesPromise(expression) ? $"await {transpiled}" : transpiled;
     }
 
@@ -1016,9 +1024,10 @@ public class JsTranspiler
                 return true;
             }
 
-            // Actor methods are emitted `async`, so a helper call inside the actor is awaited.
+            // A call to an async helper of the enclosing actor is awaited.
             if (_currentActor != null
                 && !IsLocalName(identifier.Name)
+                && _asyncActorMethods.Contains(identifier.Name)
                 && TryFindActorMember(identifier.Name, out var actorMember)
                 && actorMember.Type == MemberType.Method)
             {
@@ -1579,6 +1588,9 @@ public class JsTranspiler
                 return true;
             case "all":
                 transpiled = $"mlRuntime.all({JoinArguments(arguments)})";
+                return true;
+            case "error":
+                transpiled = $"mlRuntime.errorBuiltin({JoinArguments(arguments)})";
                 return true;
             case "range":
                 transpiled = $"mlRuntime.rangeBuiltin({JoinArguments(arguments)})";
@@ -2287,6 +2299,7 @@ public class JsTranspiler
 
         var previousActor = _currentActor;
         _currentActor = actor;
+        ComputeAsyncActorMethods(actor);
         try
         {
             foreach (var member in actor.Members)
@@ -2301,6 +2314,35 @@ public class JsTranspiler
 
         _indentLevel--;
         EmitLine("}");
+    }
+
+    /// <summary>
+    /// A method is async when its body awaits, directly or through another async helper of
+    /// the same actor (fixed point). Sync helpers stay plain methods so they can be called
+    /// from the constructor and return values rather than promises.
+    /// </summary>
+    private void ComputeAsyncActorMethods(ActorDeclaration actor)
+    {
+        _asyncActorMethods.Clear();
+        var methods = actor.Members
+            .Where(m => m.Type == MemberType.Method && m.Value is FunctionDeclaration)
+            .ToList();
+        bool changed;
+        do
+        {
+            changed = false;
+            foreach (var method in methods)
+            {
+                if (_asyncActorMethods.Contains(method.Name))
+                    continue;
+                var body = ((FunctionDeclaration)method.Value!).Body;
+                if (InLocalScope(((FunctionDeclaration)method.Value!).Parameters, () => StatementRequiresAsync(body)))
+                {
+                    _asyncActorMethods.Add(method.Name);
+                    changed = true;
+                }
+            }
+        } while (changed);
     }
 
     private void TranspileActorMember(ClassMember member, string actorName)
@@ -2325,7 +2367,8 @@ public class JsTranspiler
 
                 var staticPrefix = member.IsStatic ? "static " : string.Empty;
                 var parameters = string.Join(", ", method.Parameters.Select(EscapeIdentifier));
-                EmitLine($"{staticPrefix}async {EscapeIdentifier(member.Name)}({parameters}) {{");
+                var asyncPrefix = _asyncActorMethods.Contains(member.Name) ? "async " : string.Empty;
+                EmitLine($"{staticPrefix}{asyncPrefix}{EscapeIdentifier(member.Name)}({parameters}) {{");
                 _indentLevel++;
                 var previousInActorHandler = _isInActorHandler;
                 var previousStatic = _currentMemberIsStatic;
@@ -2361,7 +2404,13 @@ public class JsTranspiler
                 }
 
                 var parameters = string.Join(", ", constructor.Parameters.Select(EscapeIdentifier));
-                // JavaScript constructors cannot be async.
+                // JavaScript constructors cannot be async: fail at transpile time rather than
+                // emit an `await` the browser rejects when loading the script.
+                if (InLocalScope(constructor.Parameters, () => StatementRequiresAsync(constructor.Body)))
+                {
+                    throw new NotSupportedException(
+                        $"Actor '{actorName}' constructor awaits (sleep, an async helper, ...). JavaScript constructors cannot be async; move that work into a message handler.");
+                }
                 EmitLine($"constructor({parameters}) {{");
                 _indentLevel++;
                 var previousStatic = _currentMemberIsStatic;

@@ -1638,6 +1638,10 @@ class Program
             var mapFileName = Path.GetFileName(finalOutputPath) + ".map";
             var jsWithSourceMap = AppendSourceMapReference(transpileResult.JavaScript, mapFileName);
 
+            // Like the exe and PWA paths: `-o dist/app.js` must work when dist/ does not exist yet.
+            var outputDirectory = Path.GetDirectoryName(Path.GetFullPath(finalOutputPath)) ?? Directory.GetCurrentDirectory();
+            Directory.CreateDirectory(outputDirectory);
+
             File.WriteAllText(finalOutputPath, jsWithSourceMap, Encoding.UTF8);
             if (!string.IsNullOrWhiteSpace(transpileResult.SourceMapJson))
             {
@@ -1645,7 +1649,6 @@ class Program
                 File.WriteAllText(mapPath, transpileResult.SourceMapJson, Encoding.UTF8);
             }
 
-            var outputDirectory = Path.GetDirectoryName(Path.GetFullPath(finalOutputPath)) ?? Directory.GetCurrentDirectory();
             var mainScriptFileName = Path.GetFileName(finalOutputPath);
             var appName = Path.GetFileNameWithoutExtension(mainScriptFileName);
             File.WriteAllText(Path.Combine(outputDirectory, "malda-js-runtime.js"), GetJavaScriptRuntimeAssetContent(), Encoding.UTF8);
