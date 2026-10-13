@@ -102,6 +102,16 @@ public class CSharpTranspiler
     private Dictionary<string, TypedTwinSignature> _typedTwins = new(StringComparer.Ordinal);
     private readonly HashSet<string> _typedTwinRejected = new(StringComparer.Ordinal);
     private bool _typedTwinRejectedThisPass;
+    /// <summary>Member call names with built-in handling ahead of user methods.</summary>
+    private static readonly HashSet<string> BuiltInMemberMethodNames = new(StringComparer.Ordinal)
+    {
+        "append", "pop", "shift", "concat", "except", "popOrNull", "shiftOrNull", "get", "at",
+        "map", "filter", "reduce", "forEach", "find", "findIndex", "some", "every",
+        "sort", "reverse", "slice", "indexOf", "includes", "join", "sum", "average", "min", "max",
+        "start", "stop", "getRoutes", "clearCache", "generate"
+    };
+    /// <summary>Classes whose name only ever means the class, so <c>Class.m(...)</c> may call <c>m__Typed</c>.</summary>
+    private HashSet<string> _typedStaticReceivers = new(StringComparer.Ordinal);
     /// <summary>Typed parameters of the <c>__Typed</c> body being emitted (for coercion checks).</summary>
     private readonly HashSet<string> _currentTypedIntParams = new(StringComparer.Ordinal);
     private readonly HashSet<string> _currentTypedDoubleParams = new(StringComparer.Ordinal);
@@ -749,6 +759,20 @@ public class CSharpTranspiler
         throw new InvalidOperationException($"Unsupported transpiled type hint '{typeHint}'.");
     }
 
+    private bool TryResolveTranspiledTypeHint(string? typeHint, out TranspiledClrType type)
+    {
+        try
+        {
+            type = ResolveTranspiledTypeHint(typeHint);
+            return true;
+        }
+        catch (InvalidOperationException)
+        {
+            type = TranspiledClrType.Object;
+            return false;
+        }
+    }
+
     private static string GetClrTypeName(TranspiledClrType type)
     {
         return type switch
@@ -1036,27 +1060,32 @@ public class CSharpTranspiler
         for (int i = 0; i < arguments.Count; i++)
         {
             if (i > 0) _output.Append(", ");
-            if (arguments[i] is IdentifierExpression argIdExpr && IsKnownUserFunction(argIdExpr.Name))
+            EmitObjectMethodArgument(arguments[i]);
+        }
+    }
+
+    private void EmitObjectMethodArgument(Expression argument)
+    {
+        if (argument is IdentifierExpression argIdExpr && IsKnownUserFunction(argIdExpr.Name))
+        {
+            // Unary user functions → callable delegate (GraphMemory.initialize embedders, etc.).
+            // Multi-arg (e.g. HttpServer middleware) stay as name strings for runtime resolve.
+            if (TryGetKnownFunctionParameterTypes(argIdExpr.Name, out var paramTypes)
+                && paramTypes.Count == 1)
             {
-                // Unary user functions → callable delegate (GraphMemory.initialize embedders, etc.).
-                // Multi-arg (e.g. HttpServer middleware) stay as name strings for runtime resolve.
-                if (TryGetKnownFunctionParameterTypes(argIdExpr.Name, out var paramTypes)
-                    && paramTypes.Count == 1)
-                {
-                    _output.Append("(System.Func<object, System.Threading.Tasks.Task<object>>)");
-                    _output.Append(EscapeIdentifier(argIdExpr.Name));
-                }
-                else
-                {
-                    _output.Append("\"");
-                    _output.Append(argIdExpr.Name);
-                    _output.Append("\"");
-                }
+                _output.Append("(System.Func<object, System.Threading.Tasks.Task<object>>)");
+                _output.Append(EscapeIdentifier(argIdExpr.Name));
             }
             else
             {
-                TranspileExpression(arguments[i]);
+                _output.Append("\"");
+                _output.Append(argIdExpr.Name);
+                _output.Append("\"");
             }
+        }
+        else
+        {
+            TranspileExpression(argument);
         }
     }
 
@@ -1108,6 +1137,8 @@ public class CSharpTranspiler
                                              ResolveExpressionType(postfix.Left) == TranspiledClrType.Double => TranspiledClrType.Double,
             FunctionCallExpression typedCall when typedCall.Callee is IdentifierExpression typedId &&
                                             TryGetTypedTwinCall(typedId.Name, typedCall.Arguments, out var typedSignature) => typedSignature.Return,
+            FunctionCallExpression methodCall when methodCall.Callee is MemberAccessExpression &&
+                                            TryGetTypedMethodCall(methodCall, out var methodSignature) => methodSignature.Return,
             FunctionCallExpression call when call.Callee is IdentifierExpression id &&
                                             _functionReturnTypes.TryGetValue(id.Name, out var returnType) => returnType,
             FunctionCallExpression call when call.Callee is IdentifierExpression builtInId &&
@@ -7603,6 +7634,25 @@ public class CSharpTranspiler
                 return false;
         }
 
+        return TypedTwinArgumentsFit(signature, arguments);
+    }
+
+    /// <summary>
+    /// True when <c>this.m(...)</c> or <c>Class.m(...)</c> can call <c>m__Typed</c> (see
+    /// <see cref="ResolveTypedMethodKey"/>) with these arguments.
+    /// </summary>
+    private bool TryGetTypedMethodCall(FunctionCallExpression call, out TypedTwinSignature signature)
+    {
+        signature = null!;
+        var key = ResolveTypedMethodKey(call, _currentClassName, _currentMemberIsStatic);
+        return key != null &&
+               _typedTwins.TryGetValue(key, out signature!) &&
+               signature.Parameters.Length == call.Arguments.Count &&
+               TypedTwinArgumentsFit(signature, call.Arguments);
+    }
+
+    private bool TypedTwinArgumentsFit(TypedTwinSignature signature, List<Expression> arguments)
+    {
         for (int i = 0; i < arguments.Count; i++)
         {
             var argument = arguments[i];
@@ -7640,7 +7690,13 @@ public class CSharpTranspiler
 
     private NumericVariableInference.Kind ResolveTypedCallKind(FunctionCallExpression call)
     {
-        if (call.Callee is IdentifierExpression id && TryGetTypedTwinCall(id.Name, call.Arguments, out var signature))
+        TypedTwinSignature? signature = null;
+        if (call.Callee is IdentifierExpression id && TryGetTypedTwinCall(id.Name, call.Arguments, out var functionSignature))
+            signature = functionSignature;
+        else if (call.Callee is MemberAccessExpression && TryGetTypedMethodCall(call, out var methodSignature))
+            signature = methodSignature;
+
+        if (signature != null)
         {
             return signature.Return switch
             {
@@ -7652,8 +7708,18 @@ public class CSharpTranspiler
         return NumericVariableInference.Kind.None;
     }
 
+    /// <summary>A function or class method that may get a <c>__Typed</c> variant.</summary>
+    private sealed record TypedTwinCandidate(FunctionDeclaration Function, string? ClassName, bool IsStatic);
+
     /// <summary>
-    /// Chooses int/double parameter and return types for sync-twin functions.
+    /// A call inside the program: the candidate it sits in (if any), its class context, the
+    /// candidate a typed call would reach, and every candidate it gives call-site evidence for.
+    /// </summary>
+    private sealed record TypedCallSite(FunctionCallExpression Call, string? CallerKey, string? TypedTarget, List<string> EvidenceTargets);
+
+    /// <summary>
+    /// Chooses int/double parameter and return types for sync-twin functions and class methods.
+    /// Functions are keyed by name, methods by <c>Class.method</c>.
     /// <para>
     /// Optimistic fixpoint, ints first, then doubles: a parameter keeps a type while some call from
     /// outside the function passes a value certainly of that type (in the caller's scope, where the
@@ -7661,6 +7727,12 @@ public class CSharpTranspiler
     /// with other arguments keep using the untyped twin. The return keeps
     /// a type while every <c>return</c> (and an implicit last-expression return) yields one and the
     /// body cannot fall off its end. Calls count through the same assumptions, so recursion works.
+    /// </para>
+    /// <para>
+    /// A method call is a typed call only as <c>this.m(...)</c> (resolved to the one declaration
+    /// every instance runs, see <see cref="ResolveTypedMethodKey"/>) or <c>Class.m(...)</c> for a
+    /// static method. Other receivers reach the variant through the direct-dispatch type test,
+    /// whose result stays boxed, so they count as evidence only.
     /// </para>
     /// <para>
     /// Soundness does not depend on the call-site rule: the typed variant is only called where each
@@ -7671,56 +7743,147 @@ public class CSharpTranspiler
     private Dictionary<string, TypedTwinSignature> ComputeTypedTwins(List<FunctionDeclaration> functions, List<Statement> program)
     {
         var result = new Dictionary<string, TypedTwinSignature>(StringComparer.Ordinal);
-        if (!TypedTranspileEnabled || _syncTwinFunctions == null || _syncTwinFunctions.Count == 0)
+        _typedStaticReceivers = new HashSet<string>(StringComparer.Ordinal);
+        if (!TypedTranspileEnabled || ProfilingEnabled)
             return result;
 
         var topLevel = functions.Where(f => !ShaderFunction.IsMarked(f)).ToList();
-        var byName = new Dictionary<string, FunctionDeclaration>(StringComparer.Ordinal);
-        foreach (var f in topLevel)
+        var byKey = new Dictionary<string, TypedTwinCandidate>(StringComparer.Ordinal);
+        if (_syncTwinFunctions != null)
         {
-            if (_syncTwinFunctions.Contains(f.Name) && !_typedTwinRejected.Contains(f.Name))
-                byName[f.Name] = f;
+            foreach (var f in topLevel)
+            {
+                if (_syncTwinFunctions.Contains(f.Name) && !_typedTwinRejected.Contains(f.Name))
+                    byKey[f.Name] = new TypedTwinCandidate(f, null, false);
+            }
         }
-        if (byName.Count == 0)
+
+        foreach (var classDecl in _classDeclarations.Values)
+        {
+            foreach (var member in classDecl.Members)
+            {
+                if (member.Type == MemberType.Method && member.Value is FunctionDeclaration method &&
+                    IsTypedMethodCandidate(classDecl, member, method))
+                {
+                    byKey[classDecl.Name + "." + member.Name] = new TypedTwinCandidate(method, classDecl.Name, member.IsStatic);
+                }
+            }
+        }
+        if (byKey.Count == 0)
             return result;
 
-        // Call sites, each with the top-level function it sits in (null: top-level code, classes).
-        var sites = new List<(FunctionCallExpression Call, FunctionDeclaration? Caller)>();
-        var nestedFunctionNames = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var f in topLevel)
+        // `Class.m(...)` is a static call only where nothing else in the program is named Class.
+        var bound = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var statement in program)
         {
-            foreach (var node in AstNodeWalker.Descendants(f.Body))
+            if (statement is not ClassDeclaration)
+                bound.UnionWith(NumericVariableInference.BindingsWithin(statement, ignoreTypeReferences: true));
+        }
+        foreach (var classDecl in _classDeclarations.Values)
+        {
+            foreach (var member in classDecl.Members)
             {
-                if (node is FunctionCallExpression { Callee: IdentifierExpression } call)
-                    sites.Add((call, f));
+                if (member.Value is FunctionDeclaration body)
+                {
+                    bound.UnionWith(body.Parameters);
+                    bound.UnionWith(NumericVariableInference.BindingsWithin(body.Body, ignoreTypeReferences: true));
+                }
+                else if (member.Value is Expression initializer)
+                {
+                    bound.UnionWith(NumericVariableInference.BindingsWithin(initializer, ignoreTypeReferences: true));
+                }
+            }
+        }
+        foreach (var className in _classDeclarations.Keys)
+        {
+            if (!bound.Contains(className))
+                _typedStaticReceivers.Add(className);
+        }
+
+        // Call sites with the candidate they sit in and their class context (null: top-level code,
+        // field initializers, constructors).
+        var sites = new List<TypedCallSite>();
+        var typedTargetOf = new Dictionary<FunctionCallExpression, string>(ReferenceEqualityComparer.Instance);
+        var nestedFunctionNames = new HashSet<string>(StringComparer.Ordinal);
+        void Collect(object root, string? callerKey, string? className, bool isStatic)
+        {
+            foreach (var node in AstNodeWalker.Descendants(root))
+            {
+                if (node is FunctionCallExpression { Callee: IdentifierExpression or MemberAccessExpression } call)
+                {
+                    string? target = null;
+                    var evidence = new List<string>();
+                    if (call.Callee is IdentifierExpression id)
+                    {
+                        if (byKey.ContainsKey(id.Name))
+                            target = id.Name;
+                    }
+                    else
+                    {
+                        var key = ResolveTypedMethodKey(call, className, isStatic);
+                        if (key != null && byKey.TryGetValue(key, out var candidate) &&
+                            candidate.Function.Parameters.Count == call.Arguments.Count)
+                        {
+                            target = key;
+                        }
+                        else if (call.Callee is MemberAccessExpression { Object: { } receiver } access)
+                        {
+                            foreach (var owner in FindDirectMethodTargets(receiver, access.Member, call.Arguments.Count))
+                                evidence.Add(owner + "." + access.Member);
+                        }
+                    }
+                    if (target != null)
+                    {
+                        evidence.Add(target);
+                        typedTargetOf[call] = target;
+                    }
+                    sites.Add(new TypedCallSite(call, callerKey, target, evidence));
+                }
                 else if (node is FunctionDeclaration nested)
+                {
                     nestedFunctionNames.Add(nested.Name);
+                }
+            }
+        }
+
+        foreach (var f in topLevel)
+            Collect(f.Body, f.Name, null, false);
+        foreach (var classDecl in _classDeclarations.Values)
+        {
+            foreach (var member in classDecl.Members)
+            {
+                if (member.Value is FunctionDeclaration body)
+                {
+                    var callerKey = member.Type == MemberType.Method ? classDecl.Name + "." + member.Name : null;
+                    Collect(body.Body, callerKey, classDecl.Name, member.IsStatic);
+                }
+                else if (member.Value is Expression initializer)
+                {
+                    Collect(initializer, null, null, false);
+                }
             }
         }
         foreach (var statement in program)
         {
-            if (statement is FunctionDeclaration)
+            if (statement is FunctionDeclaration or ClassDeclaration)
                 continue;
-            foreach (var node in AstNodeWalker.Descendants(statement))
+            Collect(statement, null, null, false);
+        }
+
+        // A block-scoped function shadows a top-level one of the same name somewhere.
+        foreach (var name in nestedFunctionNames)
+            byKey.Remove(name);
+        foreach (var site in sites)
+        {
+            if (site.Call.Callee is IdentifierExpression id && byKey.TryGetValue(id.Name, out var target) &&
+                target.ClassName == null && site.Call.Arguments.Count != target.Function.Parameters.Count)
             {
-                if (node is FunctionCallExpression { Callee: IdentifierExpression } call)
-                    sites.Add((call, null));
-                else if (node is FunctionDeclaration nested)
-                    nestedFunctionNames.Add(nested.Name);
+                byKey.Remove(id.Name);
             }
         }
 
-        foreach (var name in nestedFunctionNames)
-            byName.Remove(name);
-        foreach (var (call, _) in sites)
-        {
-            var callee = ((IdentifierExpression)call.Callee).Name;
-            if (byName.TryGetValue(callee, out var target) && call.Arguments.Count != target.Parameters.Count)
-                byName.Remove(callee);
-        }
-
-        // Per-function facts: which parameters may be typed at all, stores and bumps per parameter,
-        // and the function's own returns (not those of nested lambdas/functions).
+        // Per-candidate facts: which parameters may be typed at all, stores and bumps per parameter,
+        // and the body's own returns (not those of nested lambdas/functions).
         var parameterKinds = new Dictionary<string, TranspiledClrType[]>(StringComparer.Ordinal);
         var parameterEligible = new Dictionary<string, bool[]>(StringComparer.Ordinal);
         var parameterBumped = new Dictionary<string, bool[]>(StringComparer.Ordinal);
@@ -7728,9 +7891,21 @@ public class CSharpTranspiler
         var returnEligible = new Dictionary<string, bool>(StringComparer.Ordinal);
         var stores = new Dictionary<string, List<AssignmentStatement>[]>(StringComparer.Ordinal);
         var returns = new Dictionary<string, List<Expression>?>(StringComparer.Ordinal);
-        foreach (var (name, f) in byName)
+        // A hint the transpiler cannot map fails later with its own error; leave such bodies alone.
+        foreach (var (key, candidate) in byKey.ToList())
         {
-            var bound = NumericVariableInference.BindingsWithin(f.Body);
+            var f = candidate.Function;
+            if (!TryResolveTranspiledTypeHint(f.ReturnType, out _) ||
+                (f.ParameterTypeHints != null && f.ParameterTypeHints.Any(h => !TryResolveTranspiledTypeHint(h, out _))))
+            {
+                byKey.Remove(key);
+            }
+        }
+
+        foreach (var (key, candidate) in byKey)
+        {
+            var f = candidate.Function;
+            var bodyBindings = NumericVariableInference.BindingsWithin(f.Body);
             var count = f.Parameters.Count;
             var kinds = new TranspiledClrType[count];
             var eligible = new bool[count];
@@ -7743,7 +7918,7 @@ public class CSharpTranspiler
                 var hint = f.ParameterTypeHints != null && i < f.ParameterTypeHints.Count ? f.ParameterTypeHints[i] : null;
                 var hinted = ResolveTranspiledTypeHint(hint);
                 eligible[i] = string.IsNullOrWhiteSpace(hint) &&
-                              !bound.Contains(parameter) &&
+                              !bodyBindings.Contains(parameter) &&
                               f.Parameters.Count(p => p == parameter) == 1;
                 kinds[i] = eligible[i] ? TranspiledClrType.Int : hinted;
                 paramStores[i] = nodes.OfType<AssignmentStatement>()
@@ -7753,25 +7928,26 @@ public class CSharpTranspiler
                     n is UnaryExpression { Operator: TokenType.Increment or TokenType.Decrement, Right: IdentifierExpression ut } && ut.Name == parameter);
             }
 
-            parameterKinds[name] = kinds;
-            parameterEligible[name] = eligible;
-            parameterBumped[name] = bumped;
-            stores[name] = paramStores;
-            returns[name] = CollectOwnReturnValues(f);
-            returnEligible[name] = string.IsNullOrWhiteSpace(f.ReturnType) && returns[name] != null;
-            returnKinds[name] = returnEligible[name] ? TranspiledClrType.Int : ResolveTranspiledTypeHint(f.ReturnType);
+            parameterKinds[key] = kinds;
+            parameterEligible[key] = eligible;
+            parameterBumped[key] = bumped;
+            stores[key] = paramStores;
+            returns[key] = CollectOwnReturnValues(f);
+            returnEligible[key] = string.IsNullOrWhiteSpace(f.ReturnType) && returns[key] != null;
+            returnKinds[key] = returnEligible[key] ? TranspiledClrType.Int : ResolveTranspiledTypeHint(f.ReturnType);
         }
 
-        (HashSet<string> Ints, HashSet<string> Doubles) ScopeOf(FunctionDeclaration? caller)
+        (HashSet<string> Ints, HashSet<string> Doubles) ScopeOf(string? callerKey)
         {
             var ints = new HashSet<string>(_inferredNumerics.Ints, StringComparer.Ordinal);
             var doubles = new HashSet<string>(_inferredNumerics.Doubles, StringComparer.Ordinal);
-            if (caller != null && parameterKinds.TryGetValue(caller.Name, out var kinds))
+            if (callerKey != null && parameterKinds.TryGetValue(callerKey, out var kinds))
             {
+                var parameters = byKey[callerKey].Function.Parameters;
                 for (int i = 0; i < kinds.Length; i++)
                 {
-                    if (kinds[i] == TranspiledClrType.Int) ints.Add(caller.Parameters[i]);
-                    else if (kinds[i] == TranspiledClrType.Double) doubles.Add(caller.Parameters[i]);
+                    if (kinds[i] == TranspiledClrType.Int) ints.Add(parameters[i]);
+                    else if (kinds[i] == TranspiledClrType.Double) doubles.Add(parameters[i]);
                 }
             }
             return (ints, doubles);
@@ -7791,9 +7967,9 @@ public class CSharpTranspiler
             NumericVariableInference.CallKindResolver self = null!;
             self = call =>
             {
-                if (call.Callee is not IdentifierExpression id || !byName.ContainsKey(id.Name))
+                if (!typedTargetOf.TryGetValue(call, out var target) || !byKey.ContainsKey(target))
                     return NumericVariableInference.Kind.None;
-                var kinds = parameterKinds[id.Name];
+                var kinds = parameterKinds[target];
                 var previous = resolver;
                 resolver = self;
                 try
@@ -7808,7 +7984,7 @@ public class CSharpTranspiler
                 {
                     resolver = previous;
                 }
-                return returnKinds[id.Name] switch
+                return returnKinds[target] switch
                 {
                     TranspiledClrType.Int => NumericVariableInference.Kind.Int,
                     TranspiledClrType.Double => NumericVariableInference.Kind.Double,
@@ -7824,26 +8000,26 @@ public class CSharpTranspiler
             do
             {
                 changed = false;
-                foreach (var (name, f) in byName)
+                foreach (var (key, _) in byKey)
                 {
-                    var kinds = parameterKinds[name];
+                    var kinds = parameterKinds[key];
                     for (int i = 0; i < kinds.Length; i++)
                     {
-                        if (kinds[i] != kind || !parameterEligible[name][i])
+                        if (kinds[i] != kind || !parameterEligible[key][i])
                             continue;
 
-                        // Evidence: some call from outside the function passes a value of this
-                        // type. Other calls simply keep using the untyped twin.
-                        var ok = kind != TranspiledClrType.Double || !parameterBumped[name][i];
+                        // Evidence: some call from outside the body passes a value of this type.
+                        // Other calls simply keep using the untyped version.
+                        var ok = kind != TranspiledClrType.Double || !parameterBumped[key][i];
                         if (ok)
                         {
                             ok = false;
-                            foreach (var (call, caller) in sites)
+                            foreach (var site in sites)
                             {
-                                if (((IdentifierExpression)call.Callee).Name != name || caller == f) continue;
-                                var (ints, doubles) = ScopeOf(caller);
+                                if (site.CallerKey == key || !site.EvidenceTargets.Contains(key)) continue;
+                                var (ints, doubles) = ScopeOf(site.CallerKey);
                                 resolver = MakeResolver(ints, doubles);
-                                if (ArgumentFits(call.Arguments[i], kind, ints, doubles))
+                                if (ArgumentFits(site.Call.Arguments[i], kind, ints, doubles))
                                 {
                                     ok = true;
                                     break;
@@ -7853,9 +8029,9 @@ public class CSharpTranspiler
 
                         if (ok)
                         {
-                            var (ints, doubles) = ScopeOf(f);
+                            var (ints, doubles) = ScopeOf(key);
                             var calls = MakeResolver(ints, doubles);
-                            ok = stores[name][i].All(a => kind == TranspiledClrType.Int
+                            ok = stores[key][i].All(a => kind == TranspiledClrType.Int
                                 ? NumericVariableInference.IsIntStore(a, ints, calls)
                                 : NumericVariableInference.IsDoubleStore(a, doubles, ints, calls));
                         }
@@ -7867,16 +8043,16 @@ public class CSharpTranspiler
                         }
                     }
 
-                    if (returnKinds[name] == kind && returnEligible[name])
+                    if (returnKinds[key] == kind && returnEligible[key])
                     {
-                        var (ints, doubles) = ScopeOf(f);
+                        var (ints, doubles) = ScopeOf(key);
                         var calls = MakeResolver(ints, doubles);
-                        var ok = returns[name]!.All(v => kind == TranspiledClrType.Int
+                        var ok = returns[key]!.All(v => kind == TranspiledClrType.Int
                             ? NumericVariableInference.IsCertainlyInt(v, ints, calls)
                             : NumericVariableInference.IsCertainlyDouble(v, doubles, ints, calls));
                         if (!ok)
                         {
-                            returnKinds[name] = TranspiledClrType.Object;
+                            returnKinds[key] = TranspiledClrType.Object;
                             changed = true;
                         }
                     }
@@ -7888,40 +8064,121 @@ public class CSharpTranspiler
         Settle(TranspiledClrType.Int);
 
         // Whatever did not stay int gets a chance as a double (ints are now fixed).
-        foreach (var (name, _) in byName)
+        foreach (var (key, _) in byKey)
         {
-            var kinds = parameterKinds[name];
+            var kinds = parameterKinds[key];
             for (int i = 0; i < kinds.Length; i++)
             {
-                if (parameterEligible[name][i] && kinds[i] == TranspiledClrType.Object)
+                if (parameterEligible[key][i] && kinds[i] == TranspiledClrType.Object)
                     kinds[i] = TranspiledClrType.Double;
             }
-            if (returnEligible[name] && returnKinds[name] == TranspiledClrType.Object)
-                returnKinds[name] = TranspiledClrType.Double;
+            if (returnEligible[key] && returnKinds[key] == TranspiledClrType.Object)
+                returnKinds[key] = TranspiledClrType.Double;
         }
         Settle(TranspiledClrType.Double);
 
         // A variant pays off only with a typed return or a typed parameter that the body does
-        // arithmetic or comparisons on; otherwise it would just duplicate the sync twin.
-        foreach (var (name, f) in byName)
+        // arithmetic or comparisons on; otherwise it would just duplicate the untyped version.
+        foreach (var (key, candidate) in byKey)
         {
-            var kinds = parameterKinds[name];
-            var worthIt = returnEligible[name] && returnKinds[name] != TranspiledClrType.Object;
+            var kinds = parameterKinds[key];
+            var worthIt = returnEligible[key] && returnKinds[key] != TranspiledClrType.Object;
             if (!worthIt)
             {
                 var numericNames = new HashSet<string>(StringComparer.Ordinal);
                 for (int i = 0; i < kinds.Length; i++)
                 {
-                    if (parameterEligible[name][i] && kinds[i] != TranspiledClrType.Object)
-                        numericNames.Add(f.Parameters[i]);
+                    if (parameterEligible[key][i] && kinds[i] != TranspiledClrType.Object)
+                        numericNames.Add(candidate.Function.Parameters[i]);
                 }
-                worthIt = numericNames.Count > 0 && UsesNamesNumerically(f.Body, numericNames);
+                worthIt = numericNames.Count > 0 && UsesNamesNumerically(candidate.Function.Body, numericNames);
             }
             if (worthIt)
-                result[name] = new TypedTwinSignature(kinds, returnKinds[name]);
+                result[key] = new TypedTwinSignature(kinds, returnKinds[key]);
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// A class method that may get <c>m__Typed</c>: plain (no decorators or budget), the only
+    /// member with its name in the class, and no member anywhere already named like the variant.
+    /// </summary>
+    private bool IsTypedMethodCandidate(ClassDeclaration classDecl, ClassMember member, FunctionDeclaration method)
+    {
+        var twinName = member.Name + "__Typed";
+        return (method.Decorators == null || method.Decorators.Count == 0) &&
+               (method.ParameterDecorators == null || method.ParameterDecorators.All(d => d == null)) &&
+               DeclarationBounds.TryGetResourceBudget(method) is not { HasAnyBound: true } &&
+               classDecl.Members.Count(m => string.Equals(m.Name, member.Name, StringComparison.Ordinal)) == 1 &&
+               !_classDeclarations.Values.Any(c => c.Members.Any(m => string.Equals(m.Name, twinName, StringComparison.Ordinal)));
+    }
+
+    /// <summary>
+    /// The <c>Class.method</c> key a method call statically reaches, or null: <c>this.m(...)</c> in
+    /// an instance member of <paramref name="className"/> when the nearest declaration of
+    /// <c>m</c> at or above it is an instance method that no subclass redeclares (so every
+    /// instance runs that one), or <c>Class.m(...)</c> for a static method of a class nothing else
+    /// is named after. A private method only counts from inside its own class.
+    /// </summary>
+    private string? ResolveTypedMethodKey(FunctionCallExpression call, string? className, bool isStatic)
+    {
+        // Member names the interpreter or this transpiler route to built-ins (array/string
+        // methods, server and console helpers) keep their existing handling.
+        if (call.Callee is not MemberAccessExpression access ||
+            IsBuiltInFunction(access.Member) ||
+            IsStringExtensionMethod(access.Member) ||
+            BuiltInMemberMethodNames.Contains(access.Member))
+        {
+            return null;
+        }
+
+        if (access.Object is ThisExpression)
+        {
+            if (className == null || isStatic)
+                return null;
+
+            string? owner = null;
+            ClassMember? found = null;
+            var visited = new HashSet<string>(StringComparer.Ordinal);
+            for (var current = className;
+                 current != null && visited.Add(current) && _classDeclarations.TryGetValue(current, out var decl);
+                 current = decl.Superclass)
+            {
+                found = decl.Members.FirstOrDefault(m => string.Equals(m.Name, access.Member, StringComparison.Ordinal));
+                if (found != null)
+                {
+                    owner = current;
+                    break;
+                }
+            }
+
+            if (found == null || found.Type != MemberType.Method || found.IsStatic ||
+                (found.Access == AccessModifier.Private && owner != className))
+            {
+                return null;
+            }
+
+            var redeclared = _classDeclarations.Values.Any(other =>
+                InheritsFrom(other, className) &&
+                other.Members.Any(m => string.Equals(m.Name, access.Member, StringComparison.Ordinal)));
+            return redeclared ? null : owner + "." + access.Member;
+        }
+
+        if (access.Object is IdentifierExpression receiver &&
+            receiver.Name is not ("ui" or "AnsiConsole") &&
+            _typedStaticReceivers.Contains(receiver.Name) &&
+            _classDeclarations.TryGetValue(receiver.Name, out var receiverDecl))
+        {
+            var method = receiverDecl.Members.FirstOrDefault(m => string.Equals(m.Name, access.Member, StringComparison.Ordinal));
+            if (method is { Type: MemberType.Method, IsStatic: true } &&
+                (method.Access != AccessModifier.Private || receiver.Name == className))
+            {
+                return receiver.Name + "." + access.Member;
+            }
+        }
+
+        return null;
     }
 
     private static bool UsesNamesNumerically(BlockStatement body, HashSet<string> names)
@@ -10410,6 +10667,12 @@ public class CSharpTranspiler
                     _currentFunctionReturnType.Pop();
                     PopTypedScope();
                     _canAwait = previousCanAwait;
+
+                    if (_currentClassName != null &&
+                        _typedTwins.TryGetValue(_currentClassName + "." + member.Name, out var typedMethodSignature))
+                    {
+                        TranspileTypedMethodTwin(member, func, typedMethodSignature);
+                    }
                 }
                 break;
                 
@@ -10493,6 +10756,67 @@ public class CSharpTranspiler
                 break;
         }
         _currentMemberIsStatic = previousMemberIsStatic;
+    }
+
+    /// <summary>
+    /// Emits <c>m__Typed</c> next to a class method: the same body with int/double parameters and
+    /// return, same access and static-ness. Methods are already synchronous, so nothing can make
+    /// the variant invalid.
+    /// </summary>
+    private void TranspileTypedMethodTwin(ClassMember member, FunctionDeclaration func, TypedTwinSignature signature)
+    {
+        WriteIndent();
+        _output.Append(member.Access == AccessModifier.Private ? "private " : "public ");
+        if (member.IsStatic)
+            _output.Append("static ");
+        _output.Append(GetClrTypeName(signature.Return));
+        _output.Append(" ");
+        _output.Append(GetTypedTwinName(member.Name));
+        _output.Append("(");
+
+        PushTypedScope();
+        _currentTypedIntParams.Clear();
+        _currentTypedDoubleParams.Clear();
+        for (int i = 0; i < func.Parameters.Count; i++)
+        {
+            if (i > 0) _output.Append(", ");
+            var parameterType = signature.Parameters[i];
+            RegisterTypedVariable(func.Parameters[i], parameterType);
+            if (parameterType == TranspiledClrType.Int) _currentTypedIntParams.Add(func.Parameters[i]);
+            if (parameterType == TranspiledClrType.Double) _currentTypedDoubleParams.Add(func.Parameters[i]);
+            _output.Append(GetClrTypeName(parameterType));
+            _output.Append(" ");
+            _output.Append(EscapeIdentifier(func.Parameters[i]));
+        }
+
+        _output.Append(")");
+        AppendComment(nameof(TranspileTypedMethodTwin));
+        _output.AppendLine();
+        var previousCanAwait = _canAwait;
+        _canAwait = false;
+        _currentFunctionReturnType.Push(signature.Return);
+        TranspileFunctionBlock(func.Body, member.Name, func.Line, appendImplicitNullReturn: true);
+        _currentFunctionReturnType.Pop();
+        PopTypedScope();
+        _canAwait = previousCanAwait;
+        _currentTypedIntParams.Clear();
+        _currentTypedDoubleParams.Clear();
+    }
+
+    /// <summary>
+    /// Arguments of a call to a <c>__Typed</c> variant: typed ones as they are (the caller checked
+    /// their C# type), the rest as a method call would pass them.
+    /// </summary>
+    private void EmitTypedMethodArguments(List<Expression> arguments, TypedTwinSignature signature)
+    {
+        for (int i = 0; i < arguments.Count; i++)
+        {
+            if (i > 0) _output.Append(", ");
+            if (signature.Parameters[i] is TranspiledClrType.Int or TranspiledClrType.Double)
+                TranspileExpression(arguments[i]);
+            else
+                EmitObjectMethodArgument(arguments[i]);
+        }
     }
 
     private void TranspileDecorator(Decorator decorator)
@@ -11349,6 +11673,22 @@ public class CSharpTranspiler
         // Check if this is a member access call (like arr.append(x))
         if (call.Callee is MemberAccessExpression memberAccess)
         {
+            // this.m(...) / Class.m(...) reaching a user method with a typed variant: a plain typed
+            // call. Built-in member names never resolve here (see ResolveTypedMethodKey).
+            if (!_transpileCallAsTask && TryGetTypedMethodCall(call, out var typedMethodSignature))
+            {
+                if (memberAccess.Object is ThisExpression)
+                    _output.Append("this");
+                else
+                    _output.Append(EscapeIdentifier(((IdentifierExpression)memberAccess.Object!).Name));
+                _output.Append(".");
+                _output.Append(GetTypedTwinName(memberAccess.Member));
+                _output.Append("(");
+                EmitTypedMethodArguments(call.Arguments, typedMethodSignature);
+                _output.Append(")");
+                return;
+            }
+
             var memberName = memberAccess.Member;
             if (memberName == "append")
             {
@@ -12173,6 +12513,20 @@ public class CSharpTranspiler
                         _output.Append(EscapeIdentifier(target));
                         _output.Append(" ");
                         _output.Append(variable);
+                        if (_typedTwins.TryGetValue(target + "." + memberAccess3.Member, out var directSignature) &&
+                            directSignature.Parameters.Length == call.Arguments.Count &&
+                            TypedTwinArgumentsFit(directSignature, call.Arguments))
+                        {
+                            // The receiver's type is only known in this branch, so box the result.
+                            _output.Append(directSignature.Return == TranspiledClrType.Int ? " ? RuntimeHelpers.BoxInt(" : " ? (object)(");
+                            _output.Append(variable);
+                            _output.Append(".");
+                            _output.Append(GetTypedTwinName(memberAccess3.Member));
+                            _output.Append("(");
+                            EmitTypedMethodArguments(call.Arguments, directSignature);
+                            _output.Append(")) : ");
+                            continue;
+                        }
                         _output.Append(" ? (object)");
                         _output.Append(variable);
                         _output.Append(".");

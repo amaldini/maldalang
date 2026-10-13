@@ -1,0 +1,34 @@
+// Method calls with numeric arguments: recursion through this, helpers, static methods.
+class MathBox {
+    function fib(n) {
+        if (n < 2) {
+            return n;
+        }
+        return this.fib(n - 1) + this.fib(n - 2);
+    }
+
+    function clamp(v, lo, hi) {
+        if (v < lo) {
+            return lo;
+        }
+        if (v > hi) {
+            return hi;
+        }
+        return v;
+    }
+
+    static function gcd(a, b) {
+        if (b == 0) {
+            return a;
+        }
+        return MathBox.gcd(b, a % b);
+    }
+}
+
+var box = new MathBox();
+io.print(box.fib(25));
+var acc = 0;
+for (var k = 0; k < 200000; k = k + 1) {
+    acc = acc + box.clamp(k % 100, 10, 90) + MathBox.gcd(k, 36);
+}
+io.print(acc);

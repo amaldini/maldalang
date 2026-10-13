@@ -491,6 +491,120 @@ public class TranspilePerformanceParityTests
     }
 
     [Fact]
+    public void TypedMethodTwins_MatchInterpreter()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            class Counter {
+                var total;
+                function Counter() { this.total = 0; }
+                function sq(n) { return n * n; }
+                function sumSquares(limit) {
+                    var acc = 0;
+                    for (var i = 0; i < limit; i++) { acc = acc + this.sq(i); }
+                    return acc;
+                }
+                function fact(n) { if (n <= 1) { return 1; } return n * this.fact(n - 1); }
+                function scale(x) { return x * 1.5; }
+                function describe(n) { return "n=" + n; }
+                function maybe(n) { if (n > 0) { return n; } }
+                function add(n) { this.total = this.total + n; return this.total; }
+            }
+
+            class Shape {
+                function area(k) { return k * 2; }
+                function report(k) { return this.area(k) + 1; }
+            }
+            class Square extends Shape {
+                function area(k) { return k * k; }
+            }
+
+            class MathUtil {
+                static function cube(n) { return n * n * n; }
+                static function half(x) { return x / 2; }
+                private static function secret(n) { return n + 1; }
+                static function useSecret(n) { return MathUtil.secret(n) * 2; }
+            }
+
+            class Base2 {
+                function twice(n) { return n * 2; }
+            }
+            class Child2 extends Base2 {
+                function quad(n) { return this.twice(this.twice(n)); }
+            }
+
+            var c = new Counter();
+            io.print(c.sumSquares(10));
+            io.print(c.fact(10));
+            io.print(c.sq(7));
+            io.print(c.sq(2.5));
+            io.print(c.describe("x"));
+            io.print(c.scale(2.0));
+            io.print(c.scale(2));
+            io.print(c.describe(3));
+            io.print(c.maybe(4));
+            io.print(c.maybe(-4));
+            io.print(c.add(5));
+            io.print(c.add(2));
+            var s = new Square();
+            io.print(s.report(3));
+            io.print(new Shape().report(3));
+            io.print(MathUtil.cube(4));
+            io.print(MathUtil.half(5));
+            io.print(MathUtil.useSecret(4));
+            io.print(new Child2().quad(3));
+            try { io.print(c.fact(20)); } catch (e) { io.print("fact overflow"); }
+            var total = 0;
+            for (var i = 0; i < 5; i++) { total = total + c.sq(i); }
+            io.print(total);
+            """,
+            "perf-typed-method-twins");
+    }
+
+    [Fact]
+    public void TypedMethodTwins_EmitTypedSignatures()
+    {
+        var generated = TranspileSource(
+            """
+            class Counter {
+                function sq(n) { return n * n; }
+                function sumSquares(limit) {
+                    var acc = 0;
+                    for (var i = 0; i < limit; i++) { acc = acc + this.sq(i); }
+                    return acc;
+                }
+                function fact(n) { if (n <= 1) { return 1; } return n * this.fact(n - 1); }
+                function describe(n) { return "n=" + n; }
+            }
+            class Shape {
+                function area(k) { return k * 2; }
+                function report(k) { return this.area(k) + 1; }
+            }
+            class Square extends Shape {
+                function area(k) { return k * k; }
+            }
+            class MathUtil {
+                static function cube(n) { return n * n * n; }
+            }
+            var c = new Counter();
+            io.print(c.sumSquares(10));
+            io.print(c.fact(5));
+            io.print(c.describe(1));
+            io.print(new Square().report(2));
+            io.print(MathUtil.cube(3));
+            """);
+        Assert.Contains("public int sq__Typed(int n)", generated);
+        Assert.Contains("public int fact__Typed(int n)", generated);
+        Assert.Contains("RuntimeHelpers.CheckedIntMultiply(n, this.fact__Typed(RuntimeHelpers.CheckedIntSubtract(n, 1)))", generated);
+        Assert.Contains("public static int cube__Typed(int n)", generated);
+        Assert.Contains("MathUtil.cube__Typed(3)", generated);
+        Assert.Contains("RuntimeHelpers.BoxInt(__dm", generated);
+        // Square redeclares area, so this.area(k) in Shape is not statically resolved.
+        Assert.DoesNotContain("this.area__Typed", generated);
+        Assert.DoesNotContain("describe__Typed", generated);
+    }
+
+    [Fact]
     public void JavaScriptConditionAndOperandShortcuts_MatchInterpreter()
     {
         // The JS emitter drops isTruthy around comparisons/!/&&/||, coerceToFloat around

@@ -27,6 +27,11 @@ The emitter takes fast paths when it can prove they print the same thing as the 
 - `name__Typed(int n)` — a third copy with `int`/`double` parameters and/or return, used by a
   direct call only when every argument already has that C# type (`fib__Typed(20)`); other
   calls keep `name__Sync`. Locals derived from parameters stay `object` in all copies.
+- `m__Typed(int n)` next to a class method, on the same rule. `this.m(...)` calls it directly
+  when every instance runs that declaration (no subclass redeclares `m`), `Class.m(...)` for
+  a static method; other receivers reach it inside the direct-dispatch test below, with the
+  result boxed (`RuntimeHelpers.BoxInt(__dm0.m__Typed(3))`). Methods named like built-in
+  member calls (`pop`, `map`, `sum`, ...) never get one.
 - `RuntimeHelpers.DirectCall(((object)recv) is Vec __dm0 ? (object)__dm0.m(args) : await RuntimeHelpers.CallObjectMethod(...))`
   — a method call dispatched directly when `recv` is a known class, with the reflective
   call as fallback.

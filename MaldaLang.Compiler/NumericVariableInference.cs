@@ -211,10 +211,12 @@ internal static class NumericVariableInference
     /// Every name bound inside <paramref name="root"/> other than by a plain use: var
     /// declarations, parameters of nested functions and lambdas, for-in / catch variables,
     /// patterns, and so on.
+    /// With <paramref name="ignoreTypeReferences"/>, names that only refer to a type
+    /// (<c>new T()</c>, <c>spawn T()</c>, a superclass, a type name) are not counted.
     /// </summary>
-    public static HashSet<string> BindingsWithin(Node root)
+    public static HashSet<string> BindingsWithin(Node root, bool ignoreTypeReferences = false)
     {
-        var facts = new Facts();
+        var facts = new Facts { IgnoreTypeReferences = ignoreTypeReferences };
         facts.Collect(root);
         var names = new HashSet<string>(facts.OtherBindings, StringComparer.Ordinal);
         names.UnionWith(facts.Declarations.Keys);
@@ -228,6 +230,7 @@ internal static class NumericVariableInference
         public Dictionary<string, List<AssignmentStatement>> Assignments { get; } = new(StringComparer.Ordinal);
         public HashSet<string> OtherBindings { get; } = new(StringComparer.Ordinal);
         public HashSet<string> Incremented { get; } = new(StringComparer.Ordinal);
+        public bool IgnoreTypeReferences { get; init; }
         private readonly HashSet<object> _visited = new(ReferenceEqualityComparer.Instance);
 
         public void Collect(object node)
@@ -261,7 +264,7 @@ internal static class NumericVariableInference
                     case null:
                         break;
                     case string text:
-                        if (IsBindingProperty(node, property))
+                        if (IsBindingProperty(node, property) && !IsIgnoredTypeReference(property))
                         {
                             OtherBindings.Add(text);
                         }
@@ -293,7 +296,7 @@ internal static class NumericVariableInference
                     return;
                 case string text:
                     // e.g. FunctionDeclaration.Parameters, LambdaExpression.Parameters.
-                    if (IsBindingProperty(owner, ownerProperty))
+                    if (IsBindingProperty(owner, ownerProperty) && !IsIgnoredTypeReference(ownerProperty))
                     {
                         OtherBindings.Add(text);
                     }
@@ -321,6 +324,9 @@ internal static class NumericVariableInference
                 CollectValue(property.GetValue(item), item, property);
             }
         }
+
+        private bool IsIgnoredTypeReference(PropertyInfo property) =>
+            IgnoreTypeReferences && property.Name is "ClassName" or "TypeName" or "ActorName" or "Superclass";
 
         private static void Add<T>(Dictionary<string, List<T>> map, string name, T value)
         {
