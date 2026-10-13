@@ -1,0 +1,22 @@
+// Top-level loops that accumulate the results of user functions. The functions have typed
+// twins; the top-level accumulators only get int fields when the global inference sees them.
+function score(x) {
+    return (x * 3) % 7;
+}
+
+function clampAdd(a, b) {
+    var s = a + b;
+    if (s > 1000) {
+        return s - 1000;
+    }
+    return s;
+}
+
+var total = 0;
+var acc = 0;
+for (var j = 0; j < 2000000; j++) {
+    total = total + score(j);
+    acc = clampAdd(acc, j % 13);
+}
+io.print(total);
+io.print(acc);

@@ -58,6 +58,7 @@ row is each backend's startup cost. JavaScript needs `node` on `PATH`.
 | `fib` | recursive calls, int arithmetic |
 | `loops` | nested int loops, comparisons, `%` |
 | `locals` | loops inside functions whose names other code also declares (per-body inference) |
+| `globals` | top-level accumulators fed by user function calls (globals typed through `__Typed` calls) |
 | `floats` | float arithmetic on top-level and local variables |
 | `strings` | string concatenation, `str.length` |
 | `collections` | array append/index, dict reads/writes, `for in` |

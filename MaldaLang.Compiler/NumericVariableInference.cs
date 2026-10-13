@@ -59,6 +59,45 @@ internal static class NumericVariableInference
 
     public static Result Infer(IEnumerable<Statement> program)
     {
+        var globals = CollectGlobals(program);
+
+        // Ints first: whether something is an int never depends on the floats.
+        var ints = new HashSet<string>(globals.Names, StringComparer.Ordinal);
+        var noDoubles = new HashSet<string>(StringComparer.Ordinal);
+        Shrink(ints, name => GlobalQualifies(globals, name, Kind.Int, ints, noDoubles, null));
+
+        var doubles = new HashSet<string>(globals.DoubleCandidates(ints), StringComparer.Ordinal);
+        Shrink(doubles, name => GlobalQualifies(globals, name, Kind.Double, ints, doubles, null));
+
+        return new Result(doubles, ints);
+    }
+
+    /// <summary>
+    /// The top-level names <see cref="Infer"/> starts from (declared once by an untyped <c>var</c>,
+    /// bound no other way), with what is stored in them, so a caller can shrink them together with
+    /// its own assumptions (the C# transpiler does, with calls to typed function variants).
+    /// </summary>
+    internal sealed class GlobalCandidates
+    {
+        private readonly Facts _facts;
+
+        internal GlobalCandidates(Facts facts, HashSet<string> names)
+        {
+            _facts = facts;
+            Names = names;
+        }
+
+        public HashSet<string> Names { get; }
+
+        internal Facts Facts => _facts;
+
+        /// <summary>The names that may still be floats once <paramref name="ints"/> are fixed.</summary>
+        public IEnumerable<string> DoubleCandidates(ISet<string> ints) =>
+            Names.Where(n => !ints.Contains(n) && !_facts.Incremented.Contains(n));
+    }
+
+    public static GlobalCandidates CollectGlobals(IEnumerable<Statement> program)
+    {
         var facts = new Facts();
         foreach (var statement in program)
         {
@@ -75,21 +114,35 @@ internal static class NumericVariableInference
                 uniquelyDeclared.Add(name);
             }
         }
+        return new GlobalCandidates(facts, uniquelyDeclared);
+    }
 
-        // Ints first: whether something is an int never depends on the floats.
-        var ints = new HashSet<string>(uniquelyDeclared, StringComparer.Ordinal);
-        Shrink(ints, facts,
-            init => IsCertainlyInt(init, ints),
-            store => IsIntStore(store, ints));
-
-        var doubles = new HashSet<string>(
-            uniquelyDeclared.Where(n => !ints.Contains(n) && !facts.Incremented.Contains(n)),
-            StringComparer.Ordinal);
-        Shrink(doubles, facts,
-            init => IsCertainlyDouble(init, doubles, ints),
-            store => IsDoubleStore(store, doubles, ints));
-
-        return new Result(doubles, ints);
+    /// <summary>
+    /// True when the initializer and every store of <paramref name="name"/> are certainly of
+    /// <paramref name="kind"/>, given the names in <paramref name="ints"/> / <paramref name="doubles"/>
+    /// and calls resolved by <paramref name="calls"/>. Stores inside function bodies are checked
+    /// with the same names, which is safe: a top-level name is bound nowhere else.
+    /// </summary>
+    public static bool GlobalQualifies(
+        GlobalCandidates globals,
+        string name,
+        Kind kind,
+        ISet<string> ints,
+        ISet<string> doubles,
+        CallKindResolver? calls)
+    {
+        var facts = globals.Facts;
+        var initializer = facts.Declarations[name][0].Initializer;
+        var ok = kind == Kind.Int
+            ? IsCertainlyInt(initializer, ints, calls)
+            : IsCertainlyDouble(initializer, doubles, ints, calls);
+        if (ok && facts.Assignments.TryGetValue(name, out var stores))
+        {
+            ok = stores.All(store => kind == Kind.Int
+                ? IsIntStore(store, ints, calls)
+                : IsDoubleStore(store, doubles, ints, calls));
+        }
+        return ok;
     }
 
     /// <summary>Locals of one function or method body that can be emitted as <c>int</c> / <c>double</c>.</summary>
@@ -265,11 +318,7 @@ internal static class NumericVariableInference
 
     // Shrink to a fixpoint: a name stays only while everything stored in it qualifies given the
     // names still standing.
-    private static void Shrink(
-        HashSet<string> candidates,
-        Facts facts,
-        Func<Expression, bool> initializerOk,
-        Func<AssignmentStatement, bool> storeOk)
+    private static void Shrink(HashSet<string> candidates, Func<string, bool> qualifies)
     {
         bool changed;
         do
@@ -277,13 +326,7 @@ internal static class NumericVariableInference
             changed = false;
             foreach (var name in candidates.ToList())
             {
-                var ok = initializerOk(facts.Declarations[name][0].Initializer);
-                if (ok && facts.Assignments.TryGetValue(name, out var stores))
-                {
-                    ok = stores.All(storeOk);
-                }
-
-                if (!ok)
+                if (!qualifies(name))
                 {
                     candidates.Remove(name);
                     changed = true;
@@ -395,7 +438,7 @@ internal static class NumericVariableInference
     }
 
     /// <summary>Declarations, assignments and every other way a name is bound or bumped.</summary>
-    private sealed class Facts
+    internal sealed class Facts
     {
         public Dictionary<string, List<VarDeclStatement>> Declarations { get; } = new(StringComparer.Ordinal);
         public Dictionary<string, List<AssignmentStatement>> Assignments { get; } = new(StringComparer.Ordinal);

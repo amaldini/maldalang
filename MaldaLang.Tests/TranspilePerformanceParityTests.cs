@@ -693,6 +693,74 @@ public class TranspilePerformanceParityTests
     }
 
     [Fact]
+    public void GlobalInference_MatchInterpreter()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            function score(x) { return (x * 3) % 7; }
+            function clampAdd(a, b) {
+                var s = a + b;
+                if (s > 20) { return s - 20; }
+                return s;
+            }
+            function half(x) { return x / 2; }
+            function label(n) { if (n > 3) { return "many"; } return n; }
+            function bumpCounter(k) { counter = counter + score(k); }
+
+            var total = 0;
+            var acc = 0;
+            var avg = 0.0;
+            var tag = 0;
+            var counter = 0;
+            var big = 2000000000;
+            for (var j = 0; j < 10; j++) {
+                total = total + score(j);
+                acc = clampAdd(acc, j);
+                avg = avg + half(j);
+                tag = label(j);
+                bumpCounter(j);
+            }
+            io.print(total);
+            io.print(acc);
+            io.print(avg);
+            io.print(tag);
+            io.print(counter);
+            try { big = big + clampAdd(big, 0); io.print(big); } catch (e) { io.print("overflow"); }
+            """,
+            "perf-global-inference");
+    }
+
+    [Fact]
+    public void GlobalInference_TypesTopLevelNamesThroughTypedCalls()
+    {
+        var generated = TranspileSource(
+            """
+            function score(x) { return (x * 3) % 7; }
+            function clampAdd(a, b) {
+                var s = a + b;
+                if (s > 1000) { return s - 1000; }
+                return s;
+            }
+            function label(n) { if (n > 3) { return "many"; } return n; }
+            var total = 0;
+            var acc = 0;
+            var tag = 0;
+            for (var j = 0; j < 10; j++) {
+                total = total + score(j);
+                acc = clampAdd(acc, j % 13);
+                tag = label(j);
+            }
+            io.print(total + acc);
+            io.print(tag);
+            """);
+        Assert.Contains("public static int total = 0;", generated);
+        Assert.Contains("public static int acc = 0;", generated);
+        Assert.Contains("public static object tag = null!;", generated);
+        Assert.Contains("total = RuntimeHelpers.CheckedIntAdd(total, score__Typed(j));", generated);
+        Assert.Contains("static int clampAdd__Typed(int a, int b)", generated);
+    }
+
+    [Fact]
     public void TypedMethodTwins_EmitTypedSignatures()
     {
         var generated = TranspileSource(

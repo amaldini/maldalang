@@ -41,7 +41,10 @@ The emitter takes fast paths when it can prove they print the same thing as the 
 - `int` / `double` locals and fields for `var`s that only ever hold ints / floats, with
   `RuntimeHelpers.CheckedIntAdd(i, 1)`, `IntModulo`, `DivideDouble` and plain `<` / `==`
   around them (overflow and division by zero still raise the interpreter's errors).
-  Top-level names must be declared once in the whole program; locals of a function, method or
+  Top-level names must be declared once in the whole program; they are settled together with the
+  `__Typed` variants, so `total = total + sumTo(j)` keeps `total` an `int` when the call resolves
+  to `sumTo__Typed`, and a global passed back through a function (`acc = step(acc, j)`) can type
+  both. Locals of a function, method or
   constructor only once per body (or in several blocks that all hold the same kind, such as
   two `for (var i ...)` loops), with every use after the declaration in its block. A `var` used
   before its declaration, or holding a string anywhere in the body, stays `object`.

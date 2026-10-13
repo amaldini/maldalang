@@ -215,20 +215,9 @@ public class CSharpTranspiler
 
         statements = ModuleSymbolResolver.ExpandFileImportsForTranspile(statements, _sourceFilePath);
 
-        _inferredNumerics = TypedTranspileEnabled
-            ? NumericVariableInference.Infer(statements)
-            : NumericVariableInference.Result.Empty();
+        // Settled together with the typed function variants in ComputeTypedTwins.
+        _inferredNumerics = NumericVariableInference.Result.Empty();
         _inferredGlobalTypes = new Dictionary<string, TranspiledClrType>(StringComparer.Ordinal);
-        // Library mode exposes top-level state through the generated API, which expects objects.
-        if (!isLibrary)
-        {
-            foreach (var topLevel in statements.OfType<VarDeclStatement>())
-            {
-                var inferred = ResolveVarDeclType(topLevel);
-                if (string.IsNullOrWhiteSpace(topLevel.TypeHint) && inferred != TranspiledClrType.Object)
-                    _inferredGlobalTypes[topLevel.Name] = inferred;
-            }
-        }
 
         // Generate using statements
         _output.AppendLine("using System;");
@@ -319,11 +308,6 @@ public class CSharpTranspiler
                 topLevelStatements.Add(statement);
         }
 
-        if (!isLibrary)
-        {
-            EmitTopLevelFieldDeclarations(topLevelVariables);
-        }
-
         // Collect function names before transpiling classes/functions so
         // method bodies can resolve direct calls to known functions.
         foreach (var funcDecl in functions)
@@ -352,6 +336,18 @@ public class CSharpTranspiler
         // top-level functions too, and must see the same set as the functions themselves.
         _syncTwinFunctions ??= ComputeSyncTwinCandidates(functions, classes);
         _typedTwins = ComputeTypedTwins(functions, statements);
+
+        // Library mode exposes top-level state through the generated API, which expects objects.
+        if (!isLibrary)
+        {
+            foreach (var topLevel in topLevelVariables)
+            {
+                var inferred = ResolveVarDeclType(topLevel);
+                if (string.IsNullOrWhiteSpace(topLevel.TypeHint) && inferred != TranspiledClrType.Object)
+                    _inferredGlobalTypes[topLevel.Name] = inferred;
+            }
+            EmitTopLevelFieldDeclarations(topLevelVariables);
+        }
 
         // Generate classes
         foreach (var classDecl in classes)
@@ -7775,6 +7771,13 @@ public class CSharpTranspiler
         if (!TypedTranspileEnabled)
             return result;
 
+        // Top-level names start optimistic (all ints) and shrink with the variants below, so
+        // `total = total + sumTo(j)` keeps `total` an int when sumTo__Typed returns one.
+        var globals = NumericVariableInference.CollectGlobals(program);
+        _inferredNumerics = new NumericVariableInference.Result(
+            new HashSet<string>(StringComparer.Ordinal),
+            new HashSet<string>(globals.Names, StringComparer.Ordinal));
+
         var topLevel = functions.Where(f => !ShaderFunction.IsMarked(f)).ToList();
         var byKey = new Dictionary<string, TypedTwinCandidate>(StringComparer.Ordinal);
         // Every body whose locals get typed, by the key its call sites use: functions by name
@@ -8138,6 +8141,21 @@ public class CSharpTranspiler
                         }
                     }
                 }
+
+                // Top-level names, with calls resolved in top-level scope (they are bound nowhere
+                // else, so that scope is safe for stores inside bodies too).
+                var shrinking = kind == TranspiledClrType.Int ? _inferredNumerics.Ints : _inferredNumerics.Doubles;
+                var globalKind = kind == TranspiledClrType.Int ? NumericVariableInference.Kind.Int : NumericVariableInference.Kind.Double;
+                foreach (var name in shrinking.ToList())
+                {
+                    var (ints, doubles) = ScopeOf(null);
+                    if (!NumericVariableInference.GlobalQualifies(globals, name, globalKind, ints, doubles, MakeResolver(ints, doubles)))
+                    {
+                        shrinking.Remove(name);
+                        changed = true;
+                        scopeCache.Clear();
+                    }
+                }
             }
             while (changed);
         }
@@ -8156,6 +8174,7 @@ public class CSharpTranspiler
             if (returnEligible[key] && returnKinds[key] == TranspiledClrType.Object)
                 returnKinds[key] = TranspiledClrType.Double;
         }
+        _inferredNumerics.Doubles.UnionWith(globals.DoubleCandidates(_inferredNumerics.Ints));
         scopeCache.Clear();
         Settle(TranspiledClrType.Double);
 
