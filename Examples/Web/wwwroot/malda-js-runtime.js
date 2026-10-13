@@ -7294,6 +7294,18 @@
         );
       }
 
+      // Upright cylinder centered on the origin; radiusTop 0 makes a cone.
+      function createCylinderGeometry(radiusTop, radiusBottom, height, radialSegments) {
+        const THREE = ensureThree("createCylinderGeometry");
+        const top = Math.max(0, toFiniteNumber(radiusTop, 0.5));
+        return new THREE.CylinderGeometry(
+          top,
+          Math.max(0, toFiniteNumber(radiusBottom, top)),
+          Math.max(0.0001, toFiniteNumber(height, 1)),
+          Math.trunc(clampFiniteNumber(radialSegments, 3, 128, 16))
+        );
+      }
+
       function dirnameOfUrl(url) {
         const text = coerceToString(url);
         const cut = Math.max(text.lastIndexOf("/"), text.lastIndexOf("\\"));
@@ -7479,7 +7491,9 @@
         return material;
       }
 
-      function lookAt(object, x, y, z) {
+      // up: optional [x, y, z] for the object's up direction before aiming
+      // (cameras that look straight down, or roll, need it).
+      function lookAt(object, x, y, z, up) {
         ensureThree("lookAt");
         if (object && object.target && (object.isDirectionalLight || object.isSpotLight)) {
           // A light shines toward its target, not along its own rotation.
@@ -7489,6 +7503,9 @@
         }
         if (!object || typeof object.lookAt !== "function") {
           throw new Error("mlRuntime.three.lookAt expects an object with lookAt(x, y, z).");
+        }
+        if (Array.isArray(up) && object.up && typeof object.up.set === "function") {
+          object.up.set(toFiniteNumber(up[0], 0), toFiniteNumber(up[1], 1), toFiniteNumber(up[2], 0));
         }
         object.lookAt(toFiniteNumber(x, 0), toFiniteNumber(y, 0), toFiniteNumber(z, 0));
         return null;
@@ -8439,7 +8456,9 @@
         return child || null;
       }
 
-      function render(renderer, scene, camera) {
+      // options: { clear: false } draws over the current frame (color and
+      // depth kept), for a second pass on top of a fullscreen shader.
+      function render(renderer, scene, camera, options) {
         const targetRenderer = renderer || ensureRenderer("render");
         if (!scene || typeof scene !== "object") {
           throw new Error("mlRuntime.three.render requires a scene object.");
@@ -8448,7 +8467,18 @@
           throw new Error("mlRuntime.three.render requires a camera object.");
         }
         refreshDirtyMaterials(scene);
-        targetRenderer.render(scene, camera);
+        const keep = options && typeof options === "object" && options.clear === false;
+        if (keep && "autoClear" in targetRenderer) {
+          const autoClear = targetRenderer.autoClear;
+          targetRenderer.autoClear = false;
+          try {
+            targetRenderer.render(scene, camera);
+          } finally {
+            targetRenderer.autoClear = autoClear;
+          }
+        } else {
+          targetRenderer.render(scene, camera);
+        }
         return null;
       }
 
@@ -8679,6 +8709,7 @@
         createBoxGeometry,
         createPlaneGeometry,
         createSphereGeometry,
+        createCylinderGeometry,
         createTexture,
         createDataTexture,
         updateDataTexture,

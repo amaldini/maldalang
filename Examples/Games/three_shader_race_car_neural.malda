@@ -9,12 +9,15 @@
 // The ground shader reads the same polyline from a float texture.
 // Edge lines are red and white kerb blocks measured along that polyline.
 // A segment grid and a bounding sphere skip tests that cannot change the hit.
-// Signs, trees, and buildings sit off the asphalt in a second, wider grid.
-// A ray reads at most 18 of those cells, far enough to see down a straight,
-// then a sphere skips the real shape.
-// Shadow rays still test cars only, so the roadside set adds no lighting pass.
-// 1, 2, and 3 toggle signs, trees, and buildings. A hidden kind is skipped
-// before its shape test, and hiding all three skips the roadside march.
+// Signs, trees, and buildings are not ray traced. They are instanced meshes,
+// as in three_forest.malda: one draw call per part for every tree trunk, every
+// canopy, every building, and so on. The ray tracer writes the depth of its
+// first hit (gl_FragDepth, with the projection of a perspective camera that
+// matches the ray camera), then a second pass draws the roadside meshes over
+// it with depth testing, so cars and roadside things hide each other properly.
+// Signs turn to face the camera every frame; their text is a small texture per
+// phrase, drawn from the same 5x7 font.
+// 1, 2, and 3 toggle signs, trees, and buildings (setInstanceCount 0 hides a kind).
 //
 // Q/E change circuit. C cycles the camera (chase, bumper, side, nose, orbit,
 // aerial, cockpit). Each shot keeps moving. N network only. T coach only.
@@ -943,410 +946,6 @@ function carMayHit(index: int, origin: vec3, dir: vec3, tMax: float) -> bool {
 }
 
 @shader()
-function signYaw(x: float, z: float) -> float {
-    var dx: float = uCamPos.x - x;
-    var dz: float = uCamPos.z - z;
-    if (dx * dx + dz * dz < 0.0001) {
-        return 0.0;
-    }
-    return atan(dz, dx);
-}
-
-@shader()
-function signCenter(x: float, z: float) -> vec3 {
-    return vec3(x, SIGN_Y, z);
-}
-
-@shader()
-function signHalf() -> vec3 {
-    return vec3(0.08, SIGN_HALF_H, SIGN_HALF_W);
-}
-
-@shader()
-function faceOut(n: vec3, dir: vec3) -> vec3 {
-    if (dot(n, dir) > 0.0) {
-        return -n;
-    }
-    return n;
-}
-
-@shader()
-function propSample(prop: int, texel: int) -> vec4 {
-    var x: int = prop * 3 + texel;
-    var u: float = (float(x) + 0.5) / uPropTexW;
-    return texture2D(uProps, vec2(u, 0.5));
-}
-
-@shader()
-function propSlot(cellX: int, cellZ: int, slot: int) -> float {
-    var u: float = (float(cellX) + 0.5) / uPropGridW;
-    var v: float = (float(cellZ) + 0.5) / uPropGridH;
-    var texel: vec4 = texture2D(uPropGrid, vec2(u, v));
-    if (slot == 0) {
-        return texel.x;
-    }
-    if (slot == 1) {
-        return texel.y;
-    }
-    if (slot == 2) {
-        return texel.z;
-    }
-    return texel.w;
-}
-
-@shader()
-function propChar(prop: int, n: int) -> int {
-    var texel: int = 1;
-    var channel: int = n;
-    if (n >= 4) {
-        texel = 2;
-        channel = n - 4;
-    }
-    var glyphTex: vec4 = propSample(prop, texel);
-    var code: float = glyphTex.x;
-    if (channel == 1) {
-        code = glyphTex.y;
-    }
-    if (channel == 2) {
-        code = glyphTex.z;
-    }
-    if (channel == 3) {
-        code = glyphTex.w;
-    }
-    return int(code + 0.5);
-}
-
-@shader()
-function propBounds(prop: int) -> vec4 {
-    var a: vec4 = propSample(prop, 0);
-    var kind: float = a.w;
-    if (kind > 2.5) {
-        var b: vec4 = propSample(prop, 1);
-        var h: float = b.x;
-        var rad: float = b.y;
-        if (b.z > rad) {
-            rad = b.z;
-        }
-        if (h * 0.5 > rad) {
-            rad = h * 0.5;
-        }
-        return vec4(a.x, h * 0.5, a.y, rad * 1.45);
-    }
-    if (kind > 1.5) {
-        var scale: float = propSample(prop, 1).x;
-        if (scale < 0.4) {
-            scale = 1.0;
-        }
-        var trunkH: float = 1.45 * scale;
-        var canopyR: float = 1.05 * scale;
-        var canopyY: float = trunkH + canopyR * 0.55;
-        return vec4(a.x, canopyY * 0.62, a.y, canopyR + trunkH * 0.85);
-    }
-    return vec4(a.x, 1.5, a.y, 2.35);
-}
-
-@shader()
-function sceneryMayHit(center: vec3, radius: float, origin: vec3, dir: vec3, tMax: float) -> bool {
-    var oc: vec3 = origin - center;
-    if (dot(oc, oc) <= radius * radius) {
-        return true;
-    }
-    var t: float = hitSphere(center, radius, origin, dir);
-    if (t < 0.0) {
-        return false;
-    }
-    return t < tMax;
-}
-
-@shader()
-function hitProp(prop: int, origin: vec3, dir: vec3) -> vec2 {
-    var a: vec4 = propSample(prop, 0);
-    var kind: float = a.w;
-    if (kind > 2.5) {
-        var b: vec4 = propSample(prop, 1);
-        var center: vec3 = vec3(a.x, b.x * 0.5, a.y);
-        var halfSize: vec3 = vec3(b.y, b.x * 0.5, b.z);
-        return vec2(hitBoxRotated(center, halfSize, a.z, origin, dir), 4.0);
-    }
-    if (kind > 1.5) {
-        var scale: float = propSample(prop, 1).x;
-        if (scale < 0.4) {
-            scale = 1.0;
-        }
-        var trunkH: float = 1.45 * scale;
-        var canopyR: float = 1.05 * scale;
-        var canopy: vec3 = vec3(a.x, trunkH + canopyR * 0.55, a.y);
-        var tCan: float = hitSphere(canopy, canopyR, origin, dir);
-        var tTrunk: float = hitCylinder(vec3(a.x, 0.0, a.y), 0.18 * scale, 0.0, trunkH, origin, dir);
-        if (tCan > 0.0 && (tTrunk < 0.0 || tCan < tTrunk)) {
-            return vec2(tCan, 3.0);
-        }
-        return vec2(tTrunk, 2.0);
-    }
-    if (kind > 0.5) {
-        var yaw: float = signYaw(a.x, a.y);
-        var center: vec3 = signCenter(a.x, a.y);
-        var tBoard: float = hitBoxRotated(center, signHalf(), yaw, origin, dir);
-        var tPost: float = hitCylinder(vec3(a.x, 0.0, a.y), 0.11, 0.0, SIGN_Y - SIGN_HALF_H + 0.04, origin, dir);
-        if (tBoard > 0.0 && (tPost < 0.0 || tBoard < tPost)) {
-            return vec2(tBoard, 0.0);
-        }
-        return vec2(tPost, 1.0);
-    }
-    return vec2(-1.0, 0.0);
-}
-
-@shader()
-function propKindOn(kind: float) -> bool {
-    if (kind > 2.5) {
-        return uShowBuildings > 0.5;
-    }
-    if (kind > 1.5) {
-        return uShowTrees > 0.5;
-    }
-    if (kind > 0.5) {
-        return uShowSigns > 0.5;
-    }
-    return false;
-}
-
-@shader()
-function sceneryHit(origin: vec3, dir: vec3, tMax: float) -> vec3 {
-    if (uPropOn < 0.5) {
-        return vec3(-1.0, 0.0, 0.0);
-    }
-    if (uShowSigns < 0.5 && uShowTrees < 0.5 && uShowBuildings < 0.5) {
-        return vec3(-1.0, 0.0, 0.0);
-    }
-    var t0: float = 0.0;
-    if (origin.y > 9.0 && dir.y < -0.0001) {
-        t0 = (9.0 - origin.y) / dir.y;
-    }
-    if (t0 < 0.0) {
-        t0 = 0.0;
-    }
-    if (t0 >= tMax) {
-        return vec3(-1.0, 0.0, 0.0);
-    }
-    var yFar: float = origin.y + dir.y * (t0 + uPropCell * 8.1);
-    if (origin.y + dir.y * t0 > 9.0 && yFar > 9.0) {
-        return vec3(-1.0, 0.0, 0.0);
-    }
-    var bestT: float = tMax;
-    var packed: float = 0.0;
-    var found: float = 0.0;
-    var t: float = t0;
-    var n: int = 0;
-    var prevX: int = -9999;
-    var prevZ: int = -9999;
-    var tStep: float = uPropCell * 0.45;
-    while (n < 18 && t < bestT) {
-        var p: vec3 = origin + dir * t;
-        var cx: int = int(floor((p.x - uPropMin.x) / uPropCell));
-        var cz: int = int(floor((p.z - uPropMin.y) / uPropCell));
-        if (cx != prevX || cz != prevZ) {
-            if (cx >= 0 && cz >= 0 && cx < int(uPropCellsW) && cz < int(uPropCellsH)) {
-                var slot: int = 0;
-                while (slot < 4) {
-                    var idf: float = propSlot(cx, cz, slot);
-                    if (idf < 0.0) {
-                        slot = 4;
-                    } else {
-                        var prop: int = int(idf + 0.5);
-                        if (prop >= 0 && prop < int(uPropCount) && propKindOn(propSample(prop, 0).w)) {
-                            var bounds: vec4 = propBounds(prop);
-                            if (sceneryMayHit(vec3(bounds.x, bounds.y, bounds.z), bounds.w, origin, dir, bestT)) {
-                                var hp: vec2 = hitProp(prop, origin, dir);
-                                if (hp.x > 0.0 && hp.x < bestT) {
-                                    bestT = hp.x;
-                                    packed = float(prop * 10) + hp.y;
-                                    found = 1.0;
-                                }
-                            }
-                        }
-                        slot = slot + 1;
-                    }
-                }
-            }
-            prevX = cx;
-            prevZ = cz;
-        }
-        t = t + tStep;
-        n = n + 1;
-    }
-    if (found < 0.5) {
-        return vec3(-1.0, 0.0, 0.0);
-    }
-    return vec3(bestT, packed, 1.0);
-}
-
-@shader()
-function sceneryNormal(prop: int, part: int, hit: vec3, dir: vec3) -> vec3 {
-    var a: vec4 = propSample(prop, 0);
-    if (part == 0) {
-        var yaw: float = signYaw(a.x, a.y);
-        return faceOut(boxNormalRotated(signCenter(a.x, a.y), signHalf(), yaw, hit), dir);
-    }
-    if (part == 1) {
-        return faceOut(cylinderNormal(vec3(a.x, 0.0, a.y), 0.11, 0.0, SIGN_Y - SIGN_HALF_H + 0.04, hit), dir);
-    }
-    if (part == 4) {
-        var b: vec4 = propSample(prop, 1);
-        var center: vec3 = vec3(a.x, b.x * 0.5, a.y);
-        var halfSize: vec3 = vec3(b.y, b.x * 0.5, b.z);
-        return faceOut(boxNormalRotated(center, halfSize, a.z, hit), dir);
-    }
-    var scale: float = propSample(prop, 1).x;
-    if (scale < 0.4) {
-        scale = 1.0;
-    }
-    var trunkH: float = 1.45 * scale;
-    var canopyR: float = 1.05 * scale;
-    if (part == 2) {
-        return faceOut(cylinderNormal(vec3(a.x, 0.0, a.y), 0.18 * scale, 0.0, trunkH, hit), dir);
-    }
-    var canopy: vec3 = vec3(a.x, trunkH + canopyR * 0.55, a.y);
-    return faceOut(normalize(hit - canopy), dir);
-}
-
-@shader()
-function shadeSign(prop: int, hit: vec3, dir: vec3) -> vec3 {
-    var a: vec4 = propSample(prop, 0);
-    var yaw: float = signYaw(a.x, a.y);
-    var ca: float = cos(yaw);
-    var sa: float = sin(yaw);
-    var center: vec3 = signCenter(a.x, a.y);
-    var o: vec3 = hit - center;
-    var lx: float = ca * o.x + sa * o.z;
-    var lz: float = -sa * o.x + ca * o.z;
-    var halfBox: vec3 = signHalf();
-    var pLocal: vec3 = vec3(lx, o.y, lz);
-    var nLocal: vec3 = boxNormal(-halfBox, halfBox, pLocal);
-    if (nLocal.x < 0.0) {
-        return vec3(0.38, 0.07, 0.08);
-    }
-    if (abs(nLocal.x) < 0.5) {
-        return vec3(0.78, 0.08, 0.09);
-    }
-    var u: float = -lz;
-    var v: float = o.y;
-    if (abs(u) > SIGN_HALF_W * 0.9 || abs(v) > SIGN_HALF_H * 0.78) {
-        return vec3(0.78, 0.08, 0.09);
-    }
-    var edgeU: float = SIGN_HALF_W * 0.9;
-    var edgeV: float = SIGN_HALF_H * 0.78;
-    var un: float = (u / edgeU) * 0.5 + 0.5;
-    var vn: float = (v / edgeV) * 0.5 + 0.5;
-    var span: float = (un - 0.06) / 0.88;
-    var vspan: float = (vn - 0.1) / 0.8;
-    var board: vec3 = vec3(0.94, 0.93, 0.88);
-    if (span < 0.0 || span >= 1.0 || vspan < 0.0 || vspan >= 1.0) {
-        return board;
-    }
-    var ci: int = int(floor(span * 6.0));
-    var fx: float = span * 6.0 - float(ci);
-    var col: int = int(floor(fx * 5.0));
-    var rowTop: int = int(floor((1.0 - vspan) * 7.0));
-    if (col < 0) {
-        col = 0;
-    }
-    if (col > 4) {
-        col = 4;
-    }
-    if (rowTop < 0) {
-        rowTop = 0;
-    }
-    if (rowTop > 6) {
-        rowTop = 6;
-    }
-    var code: int = propChar(prop, ci);
-    if (code < 32 || code > 90) {
-        return board;
-    }
-    var glyphX: int = (code - 32) * 5 + col;
-    var glyphY: int = 6 - rowTop;
-    var fu: float = (float(glyphX) + 0.5) / uFontTexW;
-    var fv: float = (float(glyphY) + 0.5) / uFontTexH;
-    if (texture2D(uFont, vec2(fu, fv)).r > 0.5) {
-        return vec3(0.05, 0.05, 0.06);
-    }
-    return board;
-}
-
-@shader()
-function shadeTree(prop: int, part: int, hit: vec3) -> vec3 {
-    if (part == 2) {
-        return vec3(0.32, 0.2, 0.1);
-    }
-    var a: vec4 = propSample(prop, 0);
-    var scale: float = propSample(prop, 1).x;
-    if (scale < 0.4) {
-        scale = 1.0;
-    }
-    var canopyR: float = 1.05 * scale;
-    var dx: float = hit.x - a.x;
-    var dz: float = hit.z - a.y;
-    var ring: float = mod(floor((dx * dx + dz * dz) / (canopyR * canopyR) * 4.0), 2.0);
-    if (ring < 0.5) {
-        return vec3(0.1, 0.38, 0.14);
-    }
-    return vec3(0.16, 0.48, 0.18);
-}
-
-@shader()
-function shadeBuilding(prop: int, hit: vec3) -> vec3 {
-    var a: vec4 = propSample(prop, 0);
-    var b: vec4 = propSample(prop, 1);
-    var yaw: float = a.z;
-    var ca: float = cos(yaw);
-    var sa: float = sin(yaw);
-    var h: float = b.x;
-    var center: vec3 = vec3(a.x, h * 0.5, a.y);
-    var halfSize: vec3 = vec3(b.y, h * 0.5, b.z);
-    var o: vec3 = hit - center;
-    var lx: float = ca * o.x + sa * o.z;
-    var ly: float = o.y;
-    var lz: float = -sa * o.x + ca * o.z;
-    var nLocal: vec3 = boxNormal(-halfSize, halfSize, vec3(lx, ly, lz));
-    if (nLocal.y > 0.5) {
-        return vec3(0.3, 0.32, 0.34);
-    }
-    var wall: vec3 = vec3(0.62, 0.6, 0.55);
-    if (b.w > 1.5) {
-        wall = vec3(0.52, 0.56, 0.6);
-    } else if (b.w > 0.5) {
-        wall = vec3(0.55, 0.28, 0.22);
-    }
-    if (abs(nLocal.y) > 0.5) {
-        return wall * 0.72;
-    }
-    var fu: float = lx;
-    if (abs(nLocal.z) > abs(nLocal.x)) {
-        fu = lz;
-    }
-    var cellX: float = mod(fu + 20.0, 1.2);
-    var cellY: float = mod(ly + h * 0.5, 1.45);
-    if (cellX > 0.22 && cellX < 0.98 && cellY > 0.32 && cellY < 1.18 && ly < h * 0.38) {
-        return vec3(0.16, 0.26, 0.36);
-    }
-    return wall;
-}
-
-@shader()
-function sceneryAlbedo(prop: int, part: int, hit: vec3, dir: vec3) -> vec3 {
-    if (part == 0) {
-        return shadeSign(prop, hit, dir);
-    }
-    if (part == 1) {
-        return vec3(0.22, 0.22, 0.24);
-    }
-    if (part == 4) {
-        return shadeBuilding(prop, hit);
-    }
-    return shadeTree(prop, part, hit);
-}
-
-@shader()
 function closestHit(
     origin: vec3,
     dir: vec3,
@@ -1396,14 +995,6 @@ function closestHit(
         }
     }
 
-    var sc: vec3 = sceneryHit(origin, dir, tHit);
-    if (sc.z > 0.5) {
-        tHit = sc.x;
-        kind = 5;
-        index = int(sc.y + 0.5);
-        material = 0;
-    }
-
     if (kind == 0) {
         return false;
     }
@@ -1414,11 +1005,6 @@ function closestHit(
         var carPart: int = index - carIdx * 40;
         normal = carNormal(carIdx, carPart, hit);
         albedo = carPartAlbedo(carIdx, carPart);
-    } else if (kind == 5) {
-        var propPart: int = index % 10;
-        var propIndex: int = index / 10;
-        normal = sceneryNormal(propIndex, propPart, hit, dir);
-        albedo = sceneryAlbedo(propIndex, propPart, hit, dir);
     } else {
         normal = vec3(0.0, 1.0, 0.0);
         if (dot(normal, dir) > 0.0) {
@@ -1511,16 +1097,19 @@ function shadeSky(dir: vec3) -> vec3 {
 }
 
 @shader()
-function traceScene(origin: vec3, dir: vec3) -> vec3 {
+function traceScene(origin: vec3, dir: vec3, depth: out float) -> vec3 {
     var tHit: float = 0.0;
     var kind: int = 0;
     var index: int = 0;
     var material: int = 0;
     var normal: vec3 = vec3(0.0);
     var albedo: vec3 = vec3(0.0);
+    depth = -1.0;
     if (!closestHit(origin, dir, 1000000.0, tHit, kind, index, material, normal, albedo)) {
         return shadeSky(dir);
     }
+    // Distance along the view axis, the z a perspective camera would see.
+    depth = tHit * dot(dir, uCamForward);
     var hit: vec3 = origin + dir * tHit;
     var viewDir: vec3 = normalize(origin - hit);
     return localShade(hit, normal, albedo, viewDir, material == 1);
@@ -1534,8 +1123,17 @@ function fragmentMain() {
         + uCamRight * (ndc.x * uAspect * uTanHalf)
         + uCamUp * (ndc.y * uTanHalf)
     );
-    var color: vec3 = traceScene(uCamPos, dir);
+    var depth: float = -1.0;
+    var color: vec3 = traceScene(uCamPos, dir, depth);
     gl_FragColor = vec4(sqrt(color), 1.0);
+    // Same depth the roadside pass's perspective camera (uNear, uFar) writes,
+    // so the rasterized signs, trees, and buildings test against ray hits.
+    if (depth <= 0.0) {
+        gl_FragDepth = 1.0;
+    } else {
+        var ndcZ: float = (uFar + uNear) / (uFar - uNear) - (2.0 * uFar * uNear) / ((uFar - uNear) * depth);
+        gl_FragDepth = clamp(ndcZ * 0.5 + 0.5, 0.0, 1.0);
+    }
 }
 
 var vertexShader = glsl.compile({
@@ -1568,23 +1166,8 @@ var fragmentShader = glsl.compile({
         "float uGridTexW",
         "float uGridTexH",
         "float uGridOn",
-        "sampler2D uProps",
-        "sampler2D uPropGrid",
-        "sampler2D uFont",
-        "float uPropTexW",
-        "float uPropCount",
-        "float uPropOn",
-        "float uShowSigns",
-        "float uShowTrees",
-        "float uShowBuildings",
-        "float uFontTexW",
-        "float uFontTexH",
-        "float uPropGridW",
-        "float uPropGridH",
-        "vec2 uPropMin",
-        "float uPropCell",
-        "float uPropCellsW",
-        "float uPropCellsH",
+        "float uNear",
+        "float uFar",
         "vec3 uCars[CAR_COUNT]",
         "float uAngles[CAR_COUNT]",
         "float uSteers[CAR_COUNT]",
@@ -1593,10 +1176,7 @@ var fragmentShader = glsl.compile({
     ],
     consts: [
         "int CAR_COUNT = 8",
-        "float EPSILON = 0.0015",
-        "float SIGN_HALF_W = 2.05",
-        "float SIGN_HALF_H = 0.62",
-        "float SIGN_Y = 1.85"
+        "float EPSILON = 0.0015"
     ],
     functions: [
         "hitSphere",
@@ -1633,23 +1213,6 @@ var fragmentShader = glsl.compile({
         "gridSegment",
         "distanceToTrack",
         "carMayHit",
-        "signYaw",
-        "signCenter",
-        "signHalf",
-        "faceOut",
-        "propSample",
-        "propSlot",
-        "propChar",
-        "propBounds",
-        "sceneryMayHit",
-        "hitProp",
-        "propKindOn",
-        "sceneryHit",
-        "sceneryNormal",
-        "shadeSign",
-        "shadeTree",
-        "shadeBuilding",
-        "sceneryAlbedo",
         "closestHit",
         "occludedByCar",
         "inShadow",
@@ -1724,6 +1287,8 @@ if (root == null) {
     var height = 540;
     var aspect = width / height;
     var tanHalf = math.tan(math.degToRad(32));
+    var propNear = 0.3;
+    var propFar = 4000.0;
 
     var circuits = circuitCatalog();
     var circuitIndex = 0;
@@ -3190,29 +2755,16 @@ if (root == null) {
     }
     var gridTex = three.createDataTexture(gridTexW, gridTexH, gridPixels, {"type": "float"});
 
+    // Roadside props: 12 floats each (x, z, yaw, kind, six params, phrase slot, spare).
     var propMax = 120;
-    var propTexW = propMax * 3;
-    var propGridMax = 96;
-    var propCell = 18.0;
-    var propMinX = 0.0;
-    var propMinZ = 0.0;
-    var propCellsW = 1;
-    var propCellsH = 1;
     var propCount = 0;
     var fontTexW = 320;
     var fontTexH = 7;
     var propPixels = [];
     var propFill = 0;
-    while (propFill < propTexW * 4) {
+    while (propFill < propMax * 12) {
         propPixels.append(0.0);
         propFill = propFill + 1;
-    }
-    var propGridPixels = [];
-    var propGridFill = 0;
-    var propGridFloats = propGridMax * propGridMax * 4;
-    while (propGridFill < propGridFloats) {
-        propGridPixels.append(-1.0);
-        propGridFill = propGridFill + 1;
     }
 
     function glyphBit(pattern: int, col: int) -> float {
@@ -3305,14 +2857,10 @@ if (root == null) {
     }
 
     var fontPixels = buildFontPixels();
-    var fontTex = three.createDataTexture(fontTexW, fontTexH, fontPixels, {"type": "float"});
-    var propTex = three.createDataTexture(propTexW, 1, propPixels, {"type": "float"});
-    var propGridTex = three.createDataTexture(propGridMax, propGridMax, propGridPixels, {"type": "float"});
 
     var material = three.createShaderMaterial({
         "vertexShader": vertexShader,
         "fragmentShader": fragmentShader,
-        "depthWrite": false,
         "uniforms": {
             "uResolution": [width, height],
             "uCamPos": [0, 3.2, 8.5],
@@ -3335,23 +2883,8 @@ if (root == null) {
             "uGridTexW": gridTexW,
             "uGridTexH": gridTexH,
             "uGridOn": 0,
-            "uProps": propTex,
-            "uPropGrid": propGridTex,
-            "uFont": fontTex,
-            "uPropTexW": propTexW,
-            "uPropCount": 0,
-            "uPropOn": 0,
-            "uShowSigns": 1,
-            "uShowTrees": 1,
-            "uShowBuildings": 1,
-            "uFontTexW": fontTexW,
-            "uFontTexH": fontTexH,
-            "uPropGridW": propGridMax,
-            "uPropGridH": propGridMax,
-            "uPropMin": [0, 0],
-            "uPropCell": 18,
-            "uPropCellsW": 1,
-            "uPropCellsH": 1,
+            "uNear": propNear,
+            "uFar": propFar,
             "uCars": [[0, 0, -5], [-3, 0, -8], [3, 0, -8], [0, 0, -11], [-3, 0, -14], [3, 0, -14], [0, 0, -17], [0, 0, -20]],
             "uCockpitCar": -1,
             "uGrip": 0
@@ -3360,6 +2893,104 @@ if (root == null) {
 
     var quad = three.createMesh(three.createPlaneGeometry(2, 2), material);
     three.add(scene, quad);
+
+    // Roadside pass: instanced meshes drawn after the ray tracer with a
+    // perspective camera that copies the ray camera every frame. Lights match
+    // the shader's 0.18 ambient plus 0.82 diffuse (three.js lights are in
+    // physical units, so both are scaled by pi).
+    var propScene = three.createScene();
+    var propCam = three.createPerspectiveCamera(64, aspect, propNear, propFar);
+    var propSun = three.createDirectionalLight("#ffffff", 3.14159 * 0.82);
+    three.add(propScene, propSun);
+    three.add(propScene, three.createAmbientLight("#ffffff", 3.14159 * 0.18));
+
+    function propMaterial() {
+        return three.createStandardMaterial({ "color": "#ffffff", "roughness": 1.0, "metalness": 0.0 });
+    }
+
+    var treeMax = 40;
+    var buildingMax = 10;
+    var signMax = 36;
+    var trunks = three.createInstancedMesh(three.createCylinderGeometry(0.18, 0.18, 1.45, 10), propMaterial(), treeMax);
+    var canopies = three.createInstancedMesh(three.createSphereGeometry(1.05, 16, 12), propMaterial(), treeMax);
+
+    // Window grid for the walls: 1.0 is wall (tinted per building), panes are
+    // dark blue. The top band stays plain, as in the old shader.
+    var windowPixels = [];
+    var wy = 0;
+    while (wy < 15) {
+        var wx = 0;
+        while (wx < 15) {
+            if (wx % 5 >= 1 && wx % 5 <= 3 && wy % 5 >= 1 && wy % 5 <= 3 && wy < 12) {
+                windowPixels.append(0.27);
+                windowPixels.append(0.43);
+                windowPixels.append(0.6);
+            } else {
+                windowPixels.append(1.0);
+                windowPixels.append(1.0);
+                windowPixels.append(1.0);
+            }
+            windowPixels.append(1.0);
+            wx = wx + 1;
+        }
+        wy = wy + 1;
+    }
+    var windowTex = three.createDataTexture(15, 15, windowPixels, {"type": "float"});
+    var walls = three.createInstancedMesh(
+        three.createBoxGeometry(1.0, 1.0, 1.0),
+        three.createStandardMaterial({ "color": "#ffffff", "roughness": 1.0, "metalness": 0.0, "map": windowTex }),
+        buildingMax
+    );
+    var roofs = three.createInstancedMesh(three.createBoxGeometry(1.0, 1.0, 1.0), propMaterial(), buildingMax);
+
+    var signY = 1.85;
+    var signHalfW = 2.05;
+    var signHalfH = 0.62;
+    var posts = three.createInstancedMesh(three.createCylinderGeometry(0.11, 0.11, signY - signHalfH + 0.04, 8), propMaterial(), signMax);
+    var boards = three.createInstancedMesh(three.createBoxGeometry(0.16, signHalfH * 2.0, signHalfW * 2.0), propMaterial(), signMax);
+
+    // One face mesh per phrase slot (8 phrases plus START), each with its own
+    // text texture: the old shader's white panel, 6 glyphs from the 5x7 font.
+    var signTexW = 34;
+    var signTexH = 9;
+    var phraseSlots = 9;
+    var faceTex = [];
+    var faces = [];
+    var faceCount = [];
+    var slotInit = 0;
+    while (slotInit < phraseSlots) {
+        var blankPixels = [];
+        var blankFill = 0;
+        while (blankFill < signTexW * signTexH * 4) {
+            blankPixels.append(1.0);
+            blankFill = blankFill + 1;
+        }
+        var slotTex = three.createDataTexture(signTexW, signTexH, blankPixels, {"type": "float"});
+        faceTex.append(slotTex);
+        var slotFace = three.createInstancedMesh(
+            three.createPlaneGeometry(signHalfW * 2.0 * 0.9, signHalfH * 2.0 * 0.78),
+            three.createStandardMaterial({ "color": "#ffffff", "roughness": 1.0, "metalness": 0.0, "map": slotTex }),
+            signMax
+        );
+        faces.append(slotFace);
+        faceCount.append(0);
+        three.add(propScene, slotFace);
+        slotInit = slotInit + 1;
+    }
+    three.add(propScene, trunks);
+    three.add(propScene, canopies);
+    three.add(propScene, walls);
+    three.add(propScene, roofs);
+    three.add(propScene, posts);
+    three.add(propScene, boards);
+
+    var treeCount = 0;
+    var buildingCount = 0;
+    var signCount = 0;
+    var signX = [];
+    var signZ = [];
+    var signSlot = [];
+    var signFaceIndex = [];
 
     function clampGridCell(v: int, limit: int) -> int {
         if (v < 0) {
@@ -3625,13 +3256,8 @@ if (root == null) {
 
     function clearPropBuffers() {
         var i = 0;
-        while (i < propTexW * 4) {
+        while (i < propMax * 12) {
             propPixels[i] = 0.0;
-            i = i + 1;
-        }
-        i = 0;
-        while (i < propGridFloats) {
-            propGridPixels[i] = -1.0;
             i = i + 1;
         }
         propCount = 0;
@@ -3695,68 +3321,6 @@ if (root == null) {
         return [0.0, 0.0, 0, 0, 0.0];
     }
 
-    function fitPropGrid() {
-        var pad = 40.0;
-        var spanX = (trackMaxX - trackMinX) + pad * 2.0;
-        var spanZ = (trackMaxZ - trackMinZ) + pad * 2.0;
-        if (spanX < 8.0) {
-            spanX = 8.0;
-        }
-        if (spanZ < 8.0) {
-            spanZ = 8.0;
-        }
-        propCell = 18.0;
-        var guard = 0;
-        while (guard < 8) {
-            propCellsW = int(spanX / propCell + 0.999);
-            propCellsH = int(spanZ / propCell + 0.999);
-            if (propCellsW < 1) {
-                propCellsW = 1;
-            }
-            if (propCellsH < 1) {
-                propCellsH = 1;
-            }
-            if (propCellsW <= propGridMax && propCellsH <= propGridMax) {
-                guard = 8;
-            } else {
-                propCell = propCell * 1.4;
-                guard = guard + 1;
-            }
-        }
-        propMinX = trackMinX - pad;
-        propMinZ = trackMinZ - pad;
-    }
-
-    function stampPropDisk(x: float, z: float, rad: float, prop: int) {
-        var cx0 = int(math.floor((x - rad - propMinX) / propCell));
-        var cx1 = int(math.floor((x + rad - propMinX) / propCell));
-        var cz0 = int(math.floor((z - rad - propMinZ) / propCell));
-        var cz1 = int(math.floor((z + rad - propMinZ) / propCell));
-        var cz = cz0;
-        while (cz <= cz1) {
-            var cx = cx0;
-            while (cx <= cx1) {
-                if (cx >= 0 && cz >= 0 && cx < propCellsW && cz < propCellsH && cx < propGridMax && cz < propGridMax) {
-                    var base = (cz * propGridMax + cx) * 4;
-                    var s = 0;
-                    while (s < 4) {
-                        var cur = propGridPixels[base + s];
-                        if (cur < 0.0) {
-                            propGridPixels[base + s] = prop;
-                            s = 4;
-                        } else if (int(cur + 0.5) == prop) {
-                            s = 4;
-                        } else {
-                            s = s + 1;
-                        }
-                    }
-                }
-                cx = cx + 1;
-            }
-            cz = cz + 1;
-        }
-    }
-
     function pushProp(x: float, z: float, yaw: float, kind: float, p0: float, p1: float, p2: float, p3: float, e0: float, e1: float) -> int {
         if (propCount >= propMax) {
             return -1;
@@ -3779,13 +3343,197 @@ if (root == null) {
         return p;
     }
 
+    var signPhrases = [];
+
+    // Text texture for one phrase: white panel, ink glyphs left to right,
+    // 2 texels of margin at the sides and 1 at the bottom (rows go up).
+    function phrasePixels(phrase: string) -> array {
+        var codes = codesOf(phrase);
+        var pixels = [];
+        var y = 0;
+        while (y < signTexH) {
+            var x = 0;
+            while (x < signTexW) {
+                var ink = false;
+                var gx = x - 2;
+                var gy = y - 1;
+                if (gx >= 0 && gx < 30 && gy >= 0 && gy < 7) {
+                    var ci = int(gx / 5);
+                    var code = int(codes[ci]);
+                    if (code >= 32 && code <= 90) {
+                        var fx = (code - 32) * 5 + (gx - ci * 5);
+                        ink = fontPixels[(gy * fontTexW + fx) * 4] > 0.5;
+                    }
+                }
+                if (ink) {
+                    pixels.append(0.05);
+                    pixels.append(0.05);
+                    pixels.append(0.06);
+                } else {
+                    pixels.append(0.94);
+                    pixels.append(0.93);
+                    pixels.append(0.88);
+                }
+                pixels.append(1.0);
+                x = x + 1;
+            }
+            y = y + 1;
+        }
+        return pixels;
+    }
+
+    // Copies the placed props into the instanced meshes. Signs only get their
+    // post here; board and face turn toward the camera in faceSigns.
+    function syncScenery() {
+        treeCount = 0;
+        buildingCount = 0;
+        signCount = 0;
+        signX = [];
+        signZ = [];
+        signSlot = [];
+        signFaceIndex = [];
+        var k = 0;
+        while (k < phraseSlots) {
+            faceCount[k] = 0;
+            k = k + 1;
+        }
+        var i = 0;
+        while (i < propCount) {
+            var o = i * 12;
+            var x = propPixels[o];
+            var z = propPixels[o + 1];
+            var yaw = propPixels[o + 2];
+            var kind = propPixels[o + 3];
+            if (kind > 2.5 && buildingCount < buildingMax) {
+                var h = propPixels[o + 4];
+                var hw = propPixels[o + 5];
+                var hd = propPixels[o + 6];
+                var style = propPixels[o + 7];
+                var wall = [0.62, 0.6, 0.55];
+                if (style > 1.5) {
+                    wall = [0.52, 0.56, 0.6];
+                } else if (style > 0.5) {
+                    wall = [0.55, 0.28, 0.22];
+                }
+                three.setInstance(walls, buildingCount, x, h * 0.5, z, {
+                    "rotation": -yaw,
+                    "scale": [hw * 2.0, h, hd * 2.0],
+                    "color": wall
+                });
+                three.setInstance(roofs, buildingCount, x, h + 0.07, z, {
+                    "rotation": -yaw,
+                    "scale": [hw * 2.0 + 0.12, 0.14, hd * 2.0 + 0.12],
+                    "color": [0.3, 0.32, 0.34]
+                });
+                buildingCount = buildingCount + 1;
+            } else if (kind > 1.5 && treeCount < treeMax) {
+                var sc = propPixels[o + 4];
+                if (sc < 0.4) {
+                    sc = 1.0;
+                }
+                var trunkH = 1.45 * sc;
+                three.setInstance(trunks, treeCount, x, trunkH * 0.5, z, {
+                    "scale": sc,
+                    "color": [0.32, 0.2, 0.1]
+                });
+                var green = [0.1, 0.38, 0.14];
+                if (treeCount % 2 == 1) {
+                    green = [0.16, 0.48, 0.18];
+                }
+                three.setInstance(canopies, treeCount, x, trunkH + 1.05 * sc * 0.55, z, {
+                    "scale": sc,
+                    "color": green
+                });
+                treeCount = treeCount + 1;
+            } else if (kind > 0.5 && signCount < signMax) {
+                var slotIndex = int(propPixels[o + 10] + 0.5);
+                three.setInstance(posts, signCount, x, (signY - signHalfH + 0.04) * 0.5, z, {
+                    "color": [0.22, 0.22, 0.24]
+                });
+                signX.append(x);
+                signZ.append(z);
+                signSlot.append(slotIndex);
+                signFaceIndex.append(faceCount[slotIndex]);
+                faceCount[slotIndex] = faceCount[slotIndex] + 1;
+                signCount = signCount + 1;
+            }
+            i = i + 1;
+        }
+        var p = 0;
+        while (p < phraseSlots) {
+            var text = "START";
+            if (p < signPhrases.length) {
+                text = signPhrases[p];
+            }
+            three.updateDataTexture(faceTex[p], phrasePixels(text));
+            p = p + 1;
+        }
+        applySceneryVisibility();
+    }
+
+    function applySceneryVisibility() {
+        var trees = 0;
+        if (showTrees > 0.5) {
+            trees = treeCount;
+        }
+        three.setInstanceCount(trunks, trees);
+        three.setInstanceCount(canopies, trees);
+        var buildings = 0;
+        if (showBuildings > 0.5) {
+            buildings = buildingCount;
+        }
+        three.setInstanceCount(walls, buildings);
+        three.setInstanceCount(roofs, buildings);
+        var signs = 0;
+        if (showSigns > 0.5) {
+            signs = signCount;
+        }
+        three.setInstanceCount(posts, signs);
+        three.setInstanceCount(boards, signs);
+        var k = 0;
+        while (k < phraseSlots) {
+            if (showSigns > 0.5) {
+                three.setInstanceCount(faces[k], faceCount[k]);
+            } else {
+                three.setInstanceCount(faces[k], 0);
+            }
+            k = k + 1;
+        }
+    }
+
+    // Boards turn around their post to face the camera, like the old shader's
+    // signYaw. The text plane sits just in front of the board's camera side.
+    function faceSigns(eyeX: float, eyeZ: float) {
+        if (showSigns < 0.5) {
+            return;
+        }
+        var i = 0;
+        while (i < signCount) {
+            var x = signX[i];
+            var z = signZ[i];
+            var dx = eyeX - x;
+            var dz = eyeZ - z;
+            var yaw = 0.0;
+            if (dx * dx + dz * dz > 0.0001) {
+                yaw = math.atan2(dz, dx);
+            }
+            three.setInstance(boards, i, x, signY, z, {
+                "rotation": -yaw,
+                "color": [0.78, 0.08, 0.09]
+            });
+            three.setInstance(faces[signSlot[i]], signFaceIndex[i],
+                x + math.cos(yaw) * 0.085, signY, z + math.sin(yaw) * 0.085,
+                { "rotation": 1.5708 - yaw });
+            i = i + 1;
+        }
+    }
+
     function buildScenery() {
         clearPropBuffers();
-        var propOn = 0.0;
         if (gridOn >= 0.5 && nPts > 8 && totalLen > 8.0) {
-            fitPropGrid();
             var spec = circuits[circuitIndex];
             var phrases = [];
+            signPhrases = phrases;
             phrases.append(circuitSign(spec.name));
             phrases.append("MALDA");
             phrases.append("BRAKE");
@@ -3817,7 +3565,11 @@ if (root == null) {
                     var codes = codesOf(phrase);
                     var prop = pushProp(spot[0], spot[1], spot[4], 1.0, codes[0], codes[1], codes[2], codes[3], codes[4], codes[5]);
                     if (prop >= 0) {
-                        stampPropDisk(spot[0], spot[1], 2.35, prop);
+                        var phraseSlot = si % phrases.length;
+                        if (phrase == "START") {
+                            phraseSlot = 8;
+                        }
+                        propPixels[prop * 12 + 10] = phraseSlot;
                     }
                 }
                 si = si + 1;
@@ -3856,14 +3608,7 @@ if (root == null) {
                     if (bend < 0.48) {
                         var spotB = seekSpot(distB, hd + 2.6, trackW + hd + 0.9, 8.5, true);
                         if (spotB[3] > 0) {
-                            var propB = pushProp(spotB[0], spotB[1], spotB[4], 3.0, bh, hw, hd, style, 0.0, 0.0);
-                            if (propB >= 0) {
-                                var reach = hw;
-                                if (hd > reach) {
-                                    reach = hd;
-                                }
-                                stampPropDisk(spotB[0], spotB[1], reach + 0.8, propB);
-                            }
+                            pushProp(spotB[0], spotB[1], spotB[4], 3.0, bh, hw, hd, style, 0.0, 0.0);
                         }
                     }
                 }
@@ -3890,26 +3635,13 @@ if (root == null) {
                     }
                     var spotT = seekSpot(distT, 4.6 + scale, trackW + 1.05 * scale + 0.45, 5.4, ti % 2 == 1);
                     if (spotT[3] > 0) {
-                        var propT = pushProp(spotT[0], spotT[1], 0.0, 2.0, scale, 0.0, 0.0, 0.0, 0.0, 0.0);
-                        if (propT >= 0) {
-                            stampPropDisk(spotT[0], spotT[1], 1.15 * scale + 0.4, propT);
-                        }
+                        pushProp(spotT[0], spotT[1], 0.0, 2.0, scale, 0.0, 0.0, 0.0, 0.0, 0.0);
                     }
                 }
                 ti = ti + 1;
             }
-            if (propCount > 0) {
-                propOn = 1.0;
-            }
         }
-        three.updateDataTexture(propTex, propPixels);
-        three.updateDataTexture(propGridTex, propGridPixels);
-        three.setUniform(material, "uPropCount", propCount);
-        three.setUniform(material, "uPropOn", propOn);
-        three.setUniform(material, "uPropMin", [propMinX, propMinZ]);
-        three.setUniform(material, "uPropCell", propCell);
-        three.setUniform(material, "uPropCellsW", propCellsW);
-        three.setUniform(material, "uPropCellsH", propCellsH);
+        syncScenery();
     }
 
     loadCircuit(0);
@@ -4290,7 +4022,7 @@ if (root == null) {
             } else {
                 showSigns = 1.0;
             }
-            three.setUniform(material, "uShowSigns", showSigns);
+            applySceneryVisibility();
         }
 
         if (three.wasKeyPressed("2")) {
@@ -4299,7 +4031,7 @@ if (root == null) {
             } else {
                 showTrees = 1.0;
             }
-            three.setUniform(material, "uShowTrees", showTrees);
+            applySceneryVisibility();
         }
 
         if (three.wasKeyPressed("3")) {
@@ -4308,7 +4040,7 @@ if (root == null) {
             } else {
                 showBuildings = 1.0;
             }
-            three.setUniform(material, "uShowBuildings", showBuildings);
+            applySceneryVisibility();
         }
 
         if (!paused) {
@@ -4364,7 +4096,16 @@ if (root == null) {
         three.setUniform(material, "uCockpitCar", cockpitCar);
         three.setUniform(material, "uGrip", shownGrip);
         refreshHud();
+
+        three.setPosition(propCam, cam.camX, cam.camY, cam.camZ);
+        three.lookAt(propCam, cam.camX + cam.forwardX, cam.camY + cam.forwardY, cam.camZ + cam.forwardZ,
+            [cam.upX, cam.upY, cam.upZ]);
+        three.setPosition(propSun, lightX, lightY, lightZ);
+        three.lookAt(propSun, focusX, 0.0, focusZ);
+        faceSigns(cam.camX, cam.camZ);
+
         three.render(renderer, scene, camera);
+        three.render(renderer, propScene, propCam, { "clear": false });
     }
 
     three.startFixed(update, render);

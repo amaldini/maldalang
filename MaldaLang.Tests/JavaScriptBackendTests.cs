@@ -5221,6 +5221,105 @@ process.stdout.write("ok\n");
     }
 
     [Fact]
+    public void ThreeRuntime_CylinderOverlayRenderAndLookAtUp_ForHybridPasses()
+    {
+        Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);
+
+        var runtimePath = PlanningPaths.ResolveRepoFile("Examples", "Web", "wwwroot", "malda-js-runtime.js");
+        var root = CreateTempDirectory("malda_js_three_hybrid_");
+        try
+        {
+            var scriptPath = Path.Combine(root, "three-hybrid-test.js");
+            File.WriteAllText(scriptPath, """
+const mount = { appendChild(el) { el.parentNode = this; return el; }, removeChild() {} };
+globalThis.document = { body: mount, querySelector() { return mount; }, createElement() { return { style: {} }; } };
+globalThis.window = { addEventListener() {}, removeEventListener() {}, requestAnimationFrame() { return 1; }, cancelAnimationFrame() {}, devicePixelRatio: 1 };
+
+function CylinderGeometry(top, bottom, height, segments) { this.args = [top, bottom, height, segments]; }
+function Camera() {
+  this.up = { x: 0, y: 1, z: 0, set(x, y, z) { this.x = x; this.y = y; this.z = z; } };
+  this.lookAt = function (x, y, z) { this.aim = [x, y, z]; this.upAtAim = [this.up.x, this.up.y, this.up.z]; };
+}
+function WebGLRenderer() {
+  this.autoClear = true;
+  this.passes = [];
+  this.domElement = { style: {}, width: 1, height: 1, getBoundingClientRect() { return { left: 0, top: 0, width: 1, height: 1 }; } };
+  this.setSize = function () {};
+  this.setPixelRatio = function () {};
+  this.setClearColor = function () {};
+  this.render = function (scene) { this.passes.push({ scene: scene.name, autoClear: this.autoClear }); };
+}
+globalThis.THREE = { CylinderGeometry, WebGLRenderer };
+
+require(process.argv[2]);
+const three = globalThis.mlRuntime.three;
+
+const trunk = three.createCylinderGeometry(0.18, 0.18, 1.45, 10);
+if (trunk.args.join() !== "0.18,0.18,1.45,10") throw new Error("cylinder args: " + trunk.args);
+const cone = three.createCylinderGeometry(0, 1, 2);
+if (cone.args.join() !== "0,1,2,16") throw new Error("cone with default segments: " + cone.args);
+if (three.createCylinderGeometry(0.5).args[1] !== 0.5) throw new Error("bottom radius defaults to top");
+
+const renderer = three.createRenderer(10, 10, "#app");
+const camera = {};
+three.render(renderer, { name: "rays" }, camera);
+three.render(renderer, { name: "props" }, camera, { "clear": false });
+const passes = renderer.passes;
+if (passes[0].autoClear !== true || passes[1].autoClear !== false) throw new Error("overlay pass should not clear: " + JSON.stringify(passes));
+if (renderer.autoClear !== true) throw new Error("autoClear must be restored after an overlay pass");
+
+const cam = new Camera();
+three.lookAt(cam, 1, 0, 0);
+if (cam.upAtAim.join() !== "0,1,0") throw new Error("lookAt without up keeps the default up");
+three.lookAt(cam, 0, -10, 0, [0, 0, -1]);
+if (cam.upAtAim.join() !== "0,0,-1" || cam.aim.join() !== "0,-10,0") throw new Error("up must be set before aiming: " + cam.upAtAim);
+
+process.stdout.write("ok\n");
+""");
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = Environment.GetEnvironmentVariable("MALDA_NODE_PATH") is { Length: > 0 } nodePath
+                    ? nodePath
+                    : "node",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = root
+            };
+            startInfo.ArgumentList.Add(scriptPath);
+            startInfo.ArgumentList.Add(runtimePath);
+
+            using var process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("Failed to start Node.js for three hybrid test.");
+            var stdout = process.StandardOutput.ReadToEnd();
+            var stderr = process.StandardError.ReadToEnd();
+            process.WaitForExit(15000);
+            Assert.True(process.ExitCode == 0, $"three hybrid test failed ({process.ExitCode}). stderr: {stderr}");
+            Assert.Equal("ok", stdout.Trim());
+        }
+        finally
+        {
+            SafeDeleteDirectory(root);
+        }
+    }
+
+    [Fact]
+    public void JsTranspiler_RaceExample_DrawsRoadsideAsInstancedOverlay()
+    {
+        var sourcePath = PlanningPaths.ResolveRepoFile("Examples", "Games", "three_shader_race_car_neural.malda");
+        var js = new Compiler.Compiler().TranspileToJavaScript(sourcePath);
+
+        Assert.Contains("gl_FragDepth", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.three.createInstancedMesh(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.three.createCylinderGeometry(", js, StringComparison.Ordinal);
+        Assert.Contains("[\"clear\"]: false", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("sceneryHit", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("uPropGrid", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void JsTranspiler_ForestExample_EmitsInstancingShadowAndFogCalls()
     {
         var sourcePath = PlanningPaths.ResolveRepoFile("Examples", "Games", "three_forest.malda");
