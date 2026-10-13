@@ -1,0 +1,10 @@
+// Nested integer loops: loop counters, comparisons, int add/modulo.
+var total = 0;
+for (var i = 0; i < 3000; i = i + 1) {
+    for (var j = 0; j < 1000; j = j + 1) {
+        if ((i + j) % 3 == 0) {
+            total = total + 1;
+        }
+    }
+}
+io.print(total);

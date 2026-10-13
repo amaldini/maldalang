@@ -402,11 +402,11 @@ public class JavaScriptBackendTests : TestBase
         var js = compiler.TranspileToJavaScriptFromSource(source);
 
         Assert.Contains("let c = (mlRuntime.coerceToFloat(a) / mlRuntime.coerceToFloat(b));", js, StringComparison.Ordinal);
-        Assert.Contains("let d = (mlRuntime.coerceToFloat(a) * mlRuntime.coerceToFloat(0.5));", js, StringComparison.Ordinal);
-        Assert.Contains("let e = (mlRuntime.coerceToFloat(a) - mlRuntime.coerceToFloat(0.25));", js, StringComparison.Ordinal);
+        Assert.Contains("let d = (mlRuntime.coerceToFloat(a) * 0.5);", js, StringComparison.Ordinal);
+        Assert.Contains("let e = (mlRuntime.coerceToFloat(a) - 0.25);", js, StringComparison.Ordinal);
         Assert.Contains("let f = (mlRuntime.coerceToFloat(a) % mlRuntime.coerceToFloat(b));", js, StringComparison.Ordinal);
         Assert.Contains("let g = (-mlRuntime.coerceToFloat(d));", js, StringComparison.Ordinal);
-        Assert.Contains("let lt = (mlRuntime.coerceToFloat(a) < mlRuntime.coerceToFloat(2.5));", js, StringComparison.Ordinal);
+        Assert.Contains("let lt = (mlRuntime.coerceToFloat(a) < 2.5);", js, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -4322,7 +4322,7 @@ process.exit(0);
 
         Assert.Contains("mlRuntime.game.startFixed(update, render)", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.startFixed(update, render,", js, StringComparison.Ordinal);
-        Assert.Contains("mlRuntime.coerceToFloat(60)", js, StringComparison.Ordinal);
+        Assert.Contains("(1000 / 60)", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.save(\"high\", 12)", js, StringComparison.Ordinal);
         Assert.Contains("let high = mlRuntime.game.load(\"high\");", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.game.removeSave(\"high\")", js, StringComparison.Ordinal);
@@ -4387,7 +4387,7 @@ process.exit(0);
         Assert.Contains("mlRuntime.three.createRenderer(800, 500, \"#app\")", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.three.setClearColor(renderer, \"#101722\")", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.three.setRendererSize(renderer, 960, 540)", js, StringComparison.Ordinal);
-        Assert.Contains("mlRuntime.three.setCameraAspect(camera, (mlRuntime.coerceToFloat(16) / mlRuntime.coerceToFloat(9)))", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.three.setCameraAspect(camera, (16 / 9))", js, StringComparison.Ordinal);
         Assert.Contains("let group = mlRuntime.three.createGroup();", js, StringComparison.Ordinal);
         Assert.Contains("let plane = mlRuntime.three.createPlaneGeometry(8, 8);", js, StringComparison.Ordinal);
         Assert.Contains("let sphere = mlRuntime.three.createSphereGeometry(0.5, 24, 16);", js, StringComparison.Ordinal);
@@ -4454,7 +4454,7 @@ process.exit(0);
 
         Assert.Contains("let shaderFn = mlRuntime.three.createShaderMaterial;", js, StringComparison.Ordinal);
         Assert.Contains(
-            "let camera = mlRuntime.three.createOrthographicCamera((-mlRuntime.coerceToFloat(1)), 1, 1, (-mlRuntime.coerceToFloat(1)), 0, 1);",
+            "let camera = mlRuntime.three.createOrthographicCamera((-1), 1, 1, (-1), 0, 1);",
             js,
             StringComparison.Ordinal);
         Assert.Contains("mlRuntime.three.createShaderMaterial(", js, StringComparison.Ordinal);
@@ -6009,7 +6009,8 @@ const missingModel = three.loadGLTF("missing.gltf");
 
         var js = compiler.TranspileToJavaScriptFromSource(source);
 
-        Assert.Contains("mlRuntime.isTruthy", js, StringComparison.Ordinal);
+        // A comparison guard is already a JS boolean, so it is not wrapped in isTruthy.
+        Assert.Contains("if ((mlRuntime.coerceToFloat(x) > 10))", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.matchPattern", js, StringComparison.Ordinal);
     }
 

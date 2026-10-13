@@ -1,0 +1,14 @@
+// Float arithmetic in a tight loop (numerical integration of sin-like recurrence).
+var x = 0.0;
+var v = 1.0;
+var dt = 0.001;
+var energy = 0.0;
+var i = 0;
+while (i < 2000000) {
+    var a = -x;
+    v = v + a * dt;
+    x = x + v * dt;
+    energy = energy + (x * x + v * v) * 0.5;
+    i = i + 1;
+}
+io.print(math.round(energy));

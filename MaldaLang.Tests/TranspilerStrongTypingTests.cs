@@ -122,8 +122,9 @@ public class TranspilerStrongTypingTests
 
         var generated = TranspileSource(source, typedTranspileLevel: 2);
         Assert.Contains("(a + b)", generated);
-        Assert.Contains("(x /", generated);
-        Assert.Contains("%", generated);
+        // Typed float / and % keep the interpreter's division-by-zero error.
+        Assert.Contains("RuntimeHelpers.DivideDouble(x, (b - a))", generated);
+        Assert.Contains("RuntimeHelpers.ModuloDouble(y, 3.0)", generated);
         Assert.DoesNotContain("RuntimeHelpers.OperatorAdd(a, b)", generated);
         Assert.DoesNotContain("RuntimeHelpers.OperatorDivide(", generated);
         Assert.DoesNotContain("RuntimeHelpers.OperatorModulo(", generated);

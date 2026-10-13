@@ -17,6 +17,24 @@ The C# emitter inserts `#line N "path.malda"` so many Roslyn diagnostics already
 
 Some AST nodes are unmapped (`#line default`). In that case Roslyn points at `GeneratedProgram.cs` / `Program.cs` — open the generated file at the reported line, then find the corresponding MALDA construct and fix the **transpiler**, not the generated file by hand.
 
+## Shapes you will see in `GeneratedProgram.cs`
+
+The emitter takes fast paths when it can prove they print the same thing as the interpreter:
+
+- `name__Sync(...)` — a synchronous copy of a top-level function whose body never awaits.
+  Direct calls use it; the `async Task<object> name(...)` method stays for delegates,
+  `spawn`, routes and reflection. A body error usually shows up in both copies.
+- `RuntimeHelpers.DirectCall(((object)recv) is Vec __dm0 ? (object)__dm0.m(args) : await RuntimeHelpers.CallObjectMethod(...))`
+  — a method call dispatched directly when `recv` is a known class, with the reflective
+  call as fallback.
+- `this.x` instead of `RuntimeHelpers.GetObjectMember(this, "x", ...)` for untyped fields
+  of the current class.
+- `int` / `double` locals and fields for `var`s that only ever hold ints / floats, with
+  `RuntimeHelpers.CheckedIntAdd(i, 1)`, `IntModulo`, `DivideDouble` and plain `<` / `==`
+  around them (overflow and division by zero still raise the interpreter's errors).
+- `RuntimeHelpers.PushDeferFrame()` / `try` / `finally` only around blocks that contain a
+  `defer`.
+
 ## Suggested steps
 
 1. Read the CLI summary (first error + path footer).

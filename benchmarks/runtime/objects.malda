@@ -1,0 +1,22 @@
+// Method calls and field access on user classes.
+class Vec {
+    var x;
+    var y;
+
+    function Vec(x, y) {
+        this.x = x;
+        this.y = y;
+    }
+
+    function dotWith(other) {
+        return this.x * other.x + this.y * other.y;
+    }
+}
+
+var acc = 0;
+var a = new Vec(1, 2);
+for (var i = 0; i < 300000; i = i + 1) {
+    var b = new Vec(i % 7, i % 5);
+    acc = acc + a.dotWith(b);
+}
+io.print(acc);

@@ -1,0 +1,9 @@
+// String building and length checks.
+var count = 0;
+for (var i = 0; i < 200000; i = i + 1) {
+    var s = "item-" + i;
+    if (str.length(s) > 9) {
+        count = count + 1;
+    }
+}
+io.print(count);

@@ -37,4 +37,33 @@ Checked-in template: [`docs/benchmarks-sample-results.json`](benchmarks-sample-r
 | Transpile `complete_starter_program` | 4.2 |
 | HTTP health loop (50 GETs) | 1.1 (~45.5 req/s) |
 
+## Runtime benchmarks (generated code)
+
+The smoke metrics above time startup and compilation. To time the code each backend
+*generates*, run the programs in [`benchmarks/runtime/`](../benchmarks/runtime/) through the
+interpreter, the C# transpiler and the JavaScript transpiler:
+
+```powershell
+powershell -File scripts/run-runtime-benchmarks.ps1
+# only some backends / programs, no rebuild, JSON out:
+powershell -File scripts/run-runtime-benchmarks.ps1 -NoBuild -Backends csharp,js -Only fib,loops -OutJson artifacts/perf/run.json
+```
+
+Each program is compiled once per backend; the table reports the best of `-Runs` runs
+(default 3) without compile time, and flags any backend whose output differs. The `hello`
+row is each backend's startup cost. JavaScript needs `node` on `PATH`.
+
+| Program | Stresses |
+|---------|----------|
+| `fib` | recursive calls, int arithmetic |
+| `loops` | nested int loops, comparisons, `%` |
+| `floats` | float arithmetic on top-level and local variables |
+| `strings` | string concatenation, `str.length` |
+| `collections` | array append/index, dict reads/writes, `for in` |
+| `objects` | `new`, method calls, field access |
+
+The C# fast paths these numbers track (conditional defer frames, primitive operator paths,
+direct `this.field`, `__Sync` function twins, direct method dispatch, inferred `int` and
+`double` variables) are pinned by `TranspilePerformanceParityTests`.
+
 Related: built-in profiler docs in [`docs/profiling.md`](profiling.md).

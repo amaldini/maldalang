@@ -26,10 +26,13 @@ public class CSharpTranspiler
     {
         Object,
         Double,
-        DoubleArray
+        DoubleArray,
+        /// <summary>Only from <see cref="NumericVariableInference"/>; MALDA int hints stay boxed.</summary>
+        Int
     }
 
     private readonly StringBuilder _output;
+    private readonly AstDeferScan _deferScan = new();
     private int _indentLevel;
     private readonly HashSet<string> _usedNamespaces;
     private readonly HashSet<string> _generatedAttributeClasses;
@@ -73,6 +76,20 @@ public class CSharpTranspiler
     private bool _currentMemberIsStatic;
     private readonly int _typedTranspileLevel;
     private string? _catchFilterRenameFrom;
+    /// <summary>
+    /// Top-level functions that also get a synchronous twin (<c>name__Sync</c>) used by direct
+    /// calls. Null until the first pass computes the candidates; functions whose twin turned
+    /// out to need an await are dropped and the program is transpiled again.
+    /// </summary>
+    private HashSet<string>? _syncTwinFunctions;
+    private int _directMethodCallCounter;
+    /// <summary>Untyped vars that are ints or floats on every path (see <see cref="NumericVariableInference"/>).</summary>
+    private NumericVariableInference.Result _inferredNumerics = NumericVariableInference.Result.Empty();
+    /// <summary>Top-level inferred vars, emitted as <c>int</c>/<c>double</c> fields.</summary>
+    private Dictionary<string, TranspiledClrType> _inferredGlobalTypes = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _syncTwinRejected = new(StringComparer.Ordinal);
+    /// <summary>Candidate → top-level functions that call it directly (reverse call graph).</summary>
+    private Dictionary<string, HashSet<string>> _syncTwinCallers = new(StringComparer.Ordinal);
     private string? _catchFilterRenameTo;
 
     public CSharpTranspiler(ProfilingOptions? profilingOptions = null, int typedTranspileLevel = 1)
@@ -111,6 +128,29 @@ public class CSharpTranspiler
 
     public string Transpile(List<Statement> statements, bool isLibrary, string? sourceFilePath)
     {
+        _syncTwinFunctions = null;
+        // A twin is rejected for something in its own body or for calling a rejected function.
+        // Rejections are pushed to every caller at once, so a second pass normally settles it;
+        // the cap is a guard, and a final pass without twins is always valid.
+        for (var pass = 0; pass < 4; pass++)
+        {
+            _syncTwinRejected.Clear();
+            var result = TranspileOnce(statements, isLibrary, sourceFilePath);
+            if (_syncTwinRejected.Count == 0)
+            {
+                return result;
+            }
+
+            RejectSyncTwinsWithCallers(_syncTwinRejected);
+        }
+
+        _syncTwinFunctions = new HashSet<string>(StringComparer.Ordinal);
+        _syncTwinRejected.Clear();
+        return TranspileOnce(statements, isLibrary, sourceFilePath);
+    }
+
+    private string TranspileOnce(List<Statement> statements, bool isLibrary, string? sourceFilePath)
+    {
         _sourceFilePath = sourceFilePath;
         _output.Clear();
         _indentLevel = 0;
@@ -138,6 +178,21 @@ public class CSharpTranspiler
         _currentMemberIsStatic = false;
 
         statements = ModuleSymbolResolver.ExpandFileImportsForTranspile(statements, _sourceFilePath);
+
+        _inferredNumerics = TypedTranspileEnabled
+            ? NumericVariableInference.Infer(statements)
+            : NumericVariableInference.Result.Empty();
+        _inferredGlobalTypes = new Dictionary<string, TranspiledClrType>(StringComparer.Ordinal);
+        // Library mode exposes top-level state through the generated API, which expects objects.
+        if (!isLibrary)
+        {
+            foreach (var topLevel in statements.OfType<VarDeclStatement>())
+            {
+                var inferred = ResolveVarDeclType(topLevel);
+                if (string.IsNullOrWhiteSpace(topLevel.TypeHint) && inferred != TranspiledClrType.Object)
+                    _inferredGlobalTypes[topLevel.Name] = inferred;
+            }
+        }
 
         // Generate using statements
         _output.AppendLine("using System;");
@@ -312,6 +367,8 @@ public class CSharpTranspiler
                 }
             }
         }
+
+        _syncTwinFunctions ??= ComputeSyncTwinCandidates(functions, classes);
 
         // Generate functions
         foreach (var funcDecl in functions)
@@ -678,6 +735,7 @@ public class CSharpTranspiler
         {
             TranspiledClrType.Double => "double",
             TranspiledClrType.DoubleArray => "System.Collections.Generic.List<double>",
+            TranspiledClrType.Int => "int",
             _ => "object"
         };
     }
@@ -688,6 +746,7 @@ public class CSharpTranspiler
         {
             TranspiledClrType.Double => "(double)RuntimeHelpers.CoerceToFloat(",
             TranspiledClrType.DoubleArray => "RuntimeHelpers.CoerceToDoubleList(",
+            TranspiledClrType.Int => "(int)RuntimeHelpers.CoerceToInt(",
             _ => string.Empty
         };
     }
@@ -698,6 +757,7 @@ public class CSharpTranspiler
         {
             TranspiledClrType.Double => ")",
             TranspiledClrType.DoubleArray => ")",
+            TranspiledClrType.Int => ")",
             _ => string.Empty
         };
     }
@@ -773,7 +833,48 @@ public class CSharpTranspiler
             if (scope.TryGetValue(name, out var type))
                 return type;
         }
-        return TranspiledClrType.Object;
+        // Inferred names are bound nowhere else in the program, so a miss here is the global.
+        return _inferredGlobalTypes.TryGetValue(name, out var globalType) ? globalType : TranspiledClrType.Object;
+    }
+
+    /// <summary>The CLR type a <c>var</c> declaration is emitted with: its hint, or an inferred int/double.</summary>
+    private TranspiledClrType ResolveVarDeclType(VarDeclStatement varDecl)
+    {
+        if (string.IsNullOrWhiteSpace(varDecl.TypeHint))
+        {
+            if (_inferredNumerics.Ints.Contains(varDecl.Name))
+                return TranspiledClrType.Int;
+            if (_inferredNumerics.Doubles.Contains(varDecl.Name))
+                return TranspiledClrType.Double;
+        }
+        return ResolveTranspiledTypeHint(varDecl.TypeHint);
+    }
+
+    /// <summary>
+    /// Emits <paramref name="value"/> converted to <paramref name="targetType"/>, skipping the
+    /// boxing coercion helper when the value is already a plain C# double.
+    /// </summary>
+    private void EmitCoercedValue(Expression value, TranspiledClrType targetType)
+    {
+        var alreadyTyped = targetType switch
+        {
+            TranspiledClrType.Double =>
+                NumericVariableInference.IsCertainlyDouble(value, _inferredNumerics.Doubles, _inferredNumerics.Ints) &&
+                ResolveExpressionType(value) == TranspiledClrType.Double,
+            // Plain int literals are typed Double for the float paths but emit as C# ints.
+            TranspiledClrType.Int =>
+                value is LiteralExpression { Value: int } || ResolveExpressionType(value) == TranspiledClrType.Int,
+            _ => false
+        };
+        if (alreadyTyped)
+        {
+            TranspileExpression(value);
+            return;
+        }
+
+        _output.Append(GetCoercionExpressionPrefix(targetType));
+        TranspileExpression(value);
+        _output.Append(GetCoercionExpressionSuffix(targetType));
     }
 
     /// <summary>
@@ -825,6 +926,139 @@ public class CSharpTranspiler
     }
 
     /// <summary>
+    /// True when <c>this.member</c> can be emitted as a plain C# field access instead of the
+    /// reflective Get/SetObjectMember helpers: an untyped instance field declared on the
+    /// current class and not redeclared by any subclass (reflection starts at the runtime
+    /// type, so a shadowing subclass field would otherwise win).
+    /// </summary>
+    private bool IsDirectThisField(Expression receiver, string memberName)
+    {
+        if (receiver is not ThisExpression ||
+            _currentClassName == null ||
+            _currentMemberIsStatic ||
+            !_classDeclarations.TryGetValue(_currentClassName, out var currentDecl))
+        {
+            return false;
+        }
+
+        var field = currentDecl.Members.FirstOrDefault(m =>
+            m.Type == MemberType.Field && !m.IsStatic && string.Equals(m.Name, memberName, StringComparison.Ordinal));
+        if (field == null || ResolveTranspiledTypeHint(field.TypeHint) != TranspiledClrType.Object)
+        {
+            return false;
+        }
+
+        foreach (var decl in _classDeclarations.Values)
+        {
+            if (decl == currentDecl || !InheritsFrom(decl, currentDecl.Name))
+            {
+                continue;
+            }
+
+            if (decl.Members.Any(m => m.Type == MemberType.Field && string.Equals(m.Name, memberName, StringComparison.Ordinal)))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Classes whose <paramref name="methodName"/> a call on <paramref name="receiver"/> may be
+    /// dispatched to directly (a C# type test plus a plain call) before falling back to the
+    /// reflective CallObjectMethod. Only public, untyped, synchronous instance methods with the
+    /// call's arity that no subclass redeclares qualify, which is exactly what the reflection
+    /// path would pick for an instance of that class.
+    /// </summary>
+    private List<string> FindDirectMethodTargets(Expression receiver, string methodName, int argumentCount)
+    {
+        var targets = new List<string>();
+        var simpleReceiver = receiver is ThisExpression ||
+            (receiver is IdentifierExpression id && !IsClassReference(receiver) && !IsKnownUserFunction(id.Name));
+        if (!simpleReceiver)
+        {
+            return targets;
+        }
+
+        foreach (var decl in _classDeclarations.Values)
+        {
+            var method = decl.Members.FirstOrDefault(m =>
+                m.Type == MemberType.Method && string.Equals(m.Name, methodName, StringComparison.Ordinal));
+            if (method == null ||
+                method.IsStatic ||
+                method.Access == AccessModifier.Private ||
+                method.Value is not FunctionDeclaration func ||
+                func.Parameters.Count != argumentCount ||
+                (func.Decorators != null && func.Decorators.Count > 0) ||
+                ResolveTranspiledTypeHint(func.ReturnType) != TranspiledClrType.Object ||
+                (func.ParameterTypeHints != null && func.ParameterTypeHints.Any(h => ResolveTranspiledTypeHint(h) != TranspiledClrType.Object)))
+            {
+                continue;
+            }
+
+            var redeclared = _classDeclarations.Values.Any(other =>
+                other != decl &&
+                InheritsFrom(other, decl.Name) &&
+                other.Members.Any(m => string.Equals(m.Name, methodName, StringComparison.Ordinal)));
+            if (redeclared)
+            {
+                continue;
+            }
+
+            targets.Add(decl.Name);
+        }
+
+        // A long type-test chain stops paying for itself; keep the reflective call.
+        return targets.Count <= 3 ? targets : new List<string>();
+    }
+
+    private void EmitObjectMethodArguments(List<Expression> arguments)
+    {
+        for (int i = 0; i < arguments.Count; i++)
+        {
+            if (i > 0) _output.Append(", ");
+            if (arguments[i] is IdentifierExpression argIdExpr && IsKnownUserFunction(argIdExpr.Name))
+            {
+                // Unary user functions → callable delegate (GraphMemory.initialize embedders, etc.).
+                // Multi-arg (e.g. HttpServer middleware) stay as name strings for runtime resolve.
+                if (TryGetKnownFunctionParameterTypes(argIdExpr.Name, out var paramTypes)
+                    && paramTypes.Count == 1)
+                {
+                    _output.Append("(System.Func<object, System.Threading.Tasks.Task<object>>)");
+                    _output.Append(EscapeIdentifier(argIdExpr.Name));
+                }
+                else
+                {
+                    _output.Append("\"");
+                    _output.Append(argIdExpr.Name);
+                    _output.Append("\"");
+                }
+            }
+            else
+            {
+                TranspileExpression(arguments[i]);
+            }
+        }
+    }
+
+    private bool InheritsFrom(ClassDeclaration decl, string ancestorName)
+    {
+        var visited = new HashSet<string>(StringComparer.Ordinal);
+        for (var current = decl.Superclass;
+             current != null && visited.Add(current);
+             current = _classDeclarations.TryGetValue(current, out var parent) ? parent.Superclass : null)
+        {
+            if (string.Equals(current, ancestorName, StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// Emits a receiver for a member access/call. Bare class names become
     /// <c>typeof(Class)</c> so the static runtime helpers can resolve them; anything
     /// else is emitted normally.
@@ -859,13 +1093,14 @@ public class CSharpTranspiler
             FunctionCallExpression call when call.Callee is IdentifierExpression builtInId &&
                                             ResolveTypedBuiltInReturnType(builtInId.Name, call.Arguments) is var builtInReturnType &&
                                             builtInReturnType != TranspiledClrType.Object => builtInReturnType,
+            UnaryExpression { Operator: TokenType.Minus } intNegation when
+                                       ResolveExpressionType(intNegation.Right) == TranspiledClrType.Int => TranspiledClrType.Int,
             UnaryExpression unary when unary.Operator == TokenType.Minus &&
                                        unary.Right is not LiteralExpression { Value: int } &&
                                        ResolveExpressionType(unary.Right) == TranspiledClrType.Double => TranspiledClrType.Double,
-            BinaryExpression binary when IsNumericBinaryOperator(binary.Operator) &&
-                                         ResolveExpressionType(binary.Left) == TranspiledClrType.Double &&
-                                         ResolveExpressionType(binary.Right) == TranspiledClrType.Double => TranspiledClrType.Double,
-            TernaryExpression ternary when ResolveExpressionType(ternary.ThenBranch) == TranspiledClrType.Double &&
+            BinaryExpression binary => ResolveBinaryType(binary),
+            TernaryExpression ternary when !IsIntLiteralOnly(ternary) &&
+                                          ResolveExpressionType(ternary.ThenBranch) == TranspiledClrType.Double &&
                                           ResolveExpressionType(ternary.ElseBranch) == TranspiledClrType.Double => TranspiledClrType.Double,
             AwaitExpression awaitExpr => ResolveExpressionType(awaitExpr.Expression),
             _ => TranspiledClrType.Object
@@ -911,6 +1146,57 @@ public class CSharpTranspiler
         };
     }
 
+    /// <summary>
+    /// Int literals resolve as Double only so they can join a real double operand. An
+    /// expression built from int literals alone must keep MALDA int semantics: emitted as raw
+    /// C# it would divide as integers (<c>7 / 2</c> is 3) and fold overflow at compile time.
+    /// </summary>
+    private static bool IsIntLiteralOnly(Expression expression)
+    {
+        return expression switch
+        {
+            LiteralExpression { Value: int } => true,
+            UnaryExpression { Operator: TokenType.Minus } unary => IsIntLiteralOnly(unary.Right),
+            BinaryExpression binary when IsNumericBinaryOperator(binary.Operator) =>
+                IsIntLiteralOnly(binary.Left) && IsIntLiteralOnly(binary.Right),
+            TernaryExpression ternary => IsIntLiteralOnly(ternary.ThenBranch) && IsIntLiteralOnly(ternary.ElseBranch),
+            _ => false
+        };
+    }
+
+    /// <summary>
+    /// Type of a binary expression in the typed emission. Int with int (an inferred int name
+    /// or a plain int literal, at least one of them typed) stays Int for <c>+ - * %</c> and is a
+    /// Double for <c>/</c>; any other mix of Int/Double operands is a Double. Each operand is
+    /// resolved once, so nested arithmetic stays linear.
+    /// </summary>
+    private TranspiledClrType ResolveBinaryType(BinaryExpression binary)
+    {
+        if (!IsNumericBinaryOperator(binary.Operator) || IsIntLiteralOnly(binary))
+            return TranspiledClrType.Object;
+
+        var left = ResolveExpressionType(binary.Left);
+        var right = ResolveExpressionType(binary.Right);
+        var leftInt = left == TranspiledClrType.Int || binary.Left is LiteralExpression { Value: int };
+        var rightInt = right == TranspiledClrType.Int || binary.Right is LiteralExpression { Value: int };
+        if (leftInt && rightInt)
+            return binary.Operator == TokenType.Divide ? TranspiledClrType.Double : TranspiledClrType.Int;
+
+        return left is TranspiledClrType.Int or TranspiledClrType.Double &&
+               right is TranspiledClrType.Int or TranspiledClrType.Double
+            ? TranspiledClrType.Double
+            : TranspiledClrType.Object;
+    }
+
+    /// <summary>Int for an inferred int name or plain int literal, Double for a typed double, else Object.</summary>
+    private TranspiledClrType ResolveNumericOperandKind(Expression expression)
+    {
+        if (expression is LiteralExpression { Value: int })
+            return TranspiledClrType.Int;
+        var type = ResolveExpressionType(expression);
+        return type is TranspiledClrType.Int or TranspiledClrType.Double ? type : TranspiledClrType.Object;
+    }
+
     private static bool IsNumericBinaryOperator(TokenType op)
     {
         return op is TokenType.Plus or TokenType.Minus or TokenType.Multiply or TokenType.Divide or TokenType.Modulo;
@@ -925,13 +1211,18 @@ public class CSharpTranspiler
                 continue;
 
             WriteIndent();
-            var declaredType = ResolveTranspiledTypeHint(varDecl.TypeHint);
+            var declaredType = ResolveVarDeclType(varDecl);
             _output.Append("public static ");
             _output.Append(GetClrTypeName(declaredType));
             _output.Append(" ");
             _output.Append(EscapeIdentifier(varDecl.Name));
             _output.Append(" = ");
-            _output.Append(declaredType == TranspiledClrType.Double ? "0d;" : "null!;");
+            _output.Append(declaredType switch
+            {
+                TranspiledClrType.Double => "0d;",
+                TranspiledClrType.Int => "0;",
+                _ => "null!;"
+            });
             AppendComment(nameof(Transpile) + " (top-level field)");
             _output.AppendLine();
         }
@@ -953,12 +1244,10 @@ public class CSharpTranspiler
             profileVariable = EmitStatementProfileStart(varDecl);
             WriteIndent();
         }
-        var declaredType = ResolveTranspiledTypeHint(varDecl.TypeHint);
+        var declaredType = ResolveVarDeclType(varDecl);
         _output.Append(EscapeIdentifier(varDecl.Name));
         _output.Append(" = ");
-        _output.Append(GetCoercionExpressionPrefix(declaredType));
-        TranspileExpression(varDecl.Initializer);
-        _output.Append(GetCoercionExpressionSuffix(declaredType));
+        EmitCoercedValue(varDecl.Initializer, declaredType);
         _output.Append(";");
         AppendComment(nameof(Transpile) + " (top-level var init)");
         _output.AppendLine();
@@ -1826,19 +2115,61 @@ public class CSharpTranspiler
         
         // Checked integer arithmetic (throws on overflow)
         WriteIndent();
-        _output.AppendLine("public static int CheckedIntAdd(int a, int b) { try { return checked(a + b); } catch (System.OverflowException) { throw new MaldaLang.Interpreter.RuntimeException(\"Integer overflow.\"); } }");
+        _output.AppendLine("// Checked int arithmetic without try/catch, so the JIT can inline it into typed int code;");
         WriteIndent();
-        _output.AppendLine("public static int CheckedIntSubtract(int a, int b) { try { return checked(a - b); } catch (System.OverflowException) { throw new MaldaLang.Interpreter.RuntimeException(\"Integer overflow.\"); } }");
+        _output.AppendLine("// overflow raises the same RuntimeException the interpreter does.");
         WriteIndent();
-        _output.AppendLine("public static int CheckedIntMultiply(int a, int b) { try { return checked(a * b); } catch (System.OverflowException) { throw new MaldaLang.Interpreter.RuntimeException(\"Integer overflow.\"); } }");
+        _output.AppendLine("[System.Diagnostics.CodeAnalysis.DoesNotReturn]");
         WriteIndent();
-        _output.AppendLine("public static int CheckedIntMod(int a, int b) { try { return checked(a % b); } catch (System.OverflowException) { throw new MaldaLang.Interpreter.RuntimeException(\"Integer overflow.\"); } }");
+        _output.AppendLine("private static void ThrowIntegerOverflow() => throw new MaldaLang.Interpreter.RuntimeException(\"Integer overflow.\");");
         WriteIndent();
-        _output.AppendLine("public static int CheckedIntNegate(int a) { try { return checked(-a); } catch (System.OverflowException) { throw new MaldaLang.Interpreter.RuntimeException(\"Integer overflow.\"); } }");
+        _output.AppendLine("[System.Diagnostics.CodeAnalysis.DoesNotReturn]");
         WriteIndent();
-        _output.AppendLine("public static int CheckedIntIncrement(int a) { try { return checked(a + 1); } catch (System.OverflowException) { throw new MaldaLang.Interpreter.RuntimeException(\"Integer overflow.\"); } }");
+        _output.AppendLine("private static void ThrowDivisionByZero() => throw new MaldaLang.Interpreter.RuntimeException(\"Division by zero.\");");
         WriteIndent();
-        _output.AppendLine("public static int CheckedIntDecrement(int a) { try { return checked(a - 1); } catch (System.OverflowException) { throw new MaldaLang.Interpreter.RuntimeException(\"Integer overflow.\"); } }");
+        _output.AppendLine("[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]");
+        WriteIndent();
+        _output.AppendLine("public static int CheckedIntAdd(int a, int b) { var r = a + b; if (((a ^ r) & (b ^ r)) < 0) ThrowIntegerOverflow(); return r; }");
+        WriteIndent();
+        _output.AppendLine("[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]");
+        WriteIndent();
+        _output.AppendLine("public static int CheckedIntSubtract(int a, int b) { var r = a - b; if (((a ^ b) & (a ^ r)) < 0) ThrowIntegerOverflow(); return r; }");
+        WriteIndent();
+        _output.AppendLine("[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]");
+        WriteIndent();
+        _output.AppendLine("public static int CheckedIntMultiply(int a, int b) { var r = (long)a * b; if (r != (int)r) ThrowIntegerOverflow(); return (int)r; }");
+        WriteIndent();
+        _output.AppendLine("[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]");
+        WriteIndent();
+        _output.AppendLine("public static int CheckedIntMod(int a, int b) { if (b == -1) { if (a == int.MinValue) ThrowIntegerOverflow(); return 0; } return a % b; }");
+        WriteIndent();
+        _output.AppendLine("[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]");
+        WriteIndent();
+        _output.AppendLine("public static int CheckedIntNegate(int a) { if (a == int.MinValue) ThrowIntegerOverflow(); return -a; }");
+        WriteIndent();
+        _output.AppendLine("[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]");
+        WriteIndent();
+        _output.AppendLine("public static int CheckedIntIncrement(int a) { if (a == int.MaxValue) ThrowIntegerOverflow(); return a + 1; }");
+        WriteIndent();
+        _output.AppendLine("[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]");
+        WriteIndent();
+        _output.AppendLine("public static int CheckedIntDecrement(int a) { if (a == int.MinValue) ThrowIntegerOverflow(); return a - 1; }");
+        WriteIndent();
+        _output.AppendLine("// Typed int % and float / % keep the interpreter's division-by-zero error (raw C# would");
+        WriteIndent();
+        _output.AppendLine("// throw DivideByZeroException, or yield Infinity/NaN for doubles).");
+        WriteIndent();
+        _output.AppendLine("[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]");
+        WriteIndent();
+        _output.AppendLine("public static int IntModulo(int a, int b) { if (b == 0) ThrowDivisionByZero(); return CheckedIntMod(a, b); }");
+        WriteIndent();
+        _output.AppendLine("[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]");
+        WriteIndent();
+        _output.AppendLine("public static double DivideDouble(double a, double b) { if (b == 0) ThrowDivisionByZero(); return a / b; }");
+        WriteIndent();
+        _output.AppendLine("[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]");
+        WriteIndent();
+        _output.AppendLine("public static double ModuloDouble(double a, double b) { if (b == 0) ThrowDivisionByZero(); return a % b; }");
         _output.AppendLine();
 
         WriteIndent();
@@ -1859,6 +2190,50 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("return value;");
         _indentLevel--;
+        WriteIndent();
+        _output.AppendLine("}");
+        _output.AppendLine();
+
+        WriteIndent();
+        _output.AppendLine("// Operator-overload probes run on every arithmetic/comparison with a non-primitive operand");
+        WriteIndent();
+        _output.AppendLine("// (`obj == null` included), so the reflective lookup is cached per (type, method name).");
+        WriteIndent();
+        _output.AppendLine("private static readonly System.Collections.Concurrent.ConcurrentDictionary<(System.Type, string), System.Reflection.MethodInfo?> __binaryOperatorMethodCache = new();");
+        WriteIndent();
+        _output.AppendLine("private static readonly System.Collections.Concurrent.ConcurrentDictionary<(System.Type, string), System.Reflection.MethodInfo?> __unaryOperatorMethodCache = new();");
+        WriteIndent();
+        _output.AppendLine("private static System.Reflection.MethodInfo? ResolveBinaryOperatorMethod(System.Type receiverType, string methodName)");
+        WriteIndent();
+        _output.AppendLine("{");
+        WriteIndent();
+        _output.AppendLine("    return __binaryOperatorMethodCache.GetOrAdd((receiverType, methodName), static key =>");
+        WriteIndent();
+        _output.AppendLine("    {");
+        WriteIndent();
+        _output.AppendLine("        var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic;");
+        WriteIndent();
+        _output.AppendLine("        return key.Item1.GetMethod(key.Item2, flags, null, new[] { typeof(object) }, null)");
+        WriteIndent();
+        _output.AppendLine("            ?? key.Item1.GetMethods(flags).FirstOrDefault(m =>");
+        WriteIndent();
+        _output.AppendLine("                m.Name == key.Item2 &&");
+        WriteIndent();
+        _output.AppendLine("                m.GetParameters().Length == 1 &&");
+        WriteIndent();
+        _output.AppendLine("                (m.GetParameters()[0].ParameterType == typeof(object) || m.GetParameters()[0].ParameterType == typeof(MaldaLang.Interpreter.RuntimeValue)));");
+        WriteIndent();
+        _output.AppendLine("    });");
+        WriteIndent();
+        _output.AppendLine("}");
+        WriteIndent();
+        _output.AppendLine("private static System.Reflection.MethodInfo? ResolveUnaryOperatorMethod(System.Type receiverType, string methodName)");
+        WriteIndent();
+        _output.AppendLine("{");
+        WriteIndent();
+        _output.AppendLine("    return __unaryOperatorMethodCache.GetOrAdd((receiverType, methodName), static key =>");
+        WriteIndent();
+        _output.AppendLine("        key.Item1.GetMethod(key.Item2, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic, null, System.Type.EmptyTypes, null));");
         WriteIndent();
         _output.AppendLine("}");
         _output.AppendLine();
@@ -1887,25 +2262,7 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("var receiverType = receiver.GetType();");
         WriteIndent();
-        _output.AppendLine("var method = receiverType.GetMethod(methodName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic, null, new[] { typeof(object) }, null);");
-        WriteIndent();
-        _output.AppendLine("if (method == null)");
-        WriteIndent();
-        _output.AppendLine("{");
-        _indentLevel++;
-        WriteIndent();
-        _output.AppendLine("method = receiverType.GetMethods(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic).FirstOrDefault(m =>");
-        _indentLevel++;
-        WriteIndent();
-        _output.AppendLine("m.Name == methodName &&");
-        WriteIndent();
-        _output.AppendLine("m.GetParameters().Length == 1 &&");
-        WriteIndent();
-        _output.AppendLine("(m.GetParameters()[0].ParameterType == typeof(object) || m.GetParameters()[0].ParameterType == typeof(MaldaLang.Interpreter.RuntimeValue)));");
-        _indentLevel--;
-        _indentLevel--;
-        WriteIndent();
-        _output.AppendLine("}");
+        _output.AppendLine("var method = ResolveBinaryOperatorMethod(receiverType, methodName);");
         WriteIndent();
         _output.AppendLine("if (method == null)");
         WriteIndent();
@@ -1973,25 +2330,7 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("var receiverType = receiver.GetType();");
         WriteIndent();
-        _output.AppendLine("var method = receiverType.GetMethod(methodName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic, null, new[] { typeof(object) }, null);");
-        WriteIndent();
-        _output.AppendLine("if (method == null)");
-        WriteIndent();
-        _output.AppendLine("{");
-        _indentLevel++;
-        WriteIndent();
-        _output.AppendLine("method = receiverType.GetMethods(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic).FirstOrDefault(m =>");
-        _indentLevel++;
-        WriteIndent();
-        _output.AppendLine("m.Name == methodName &&");
-        WriteIndent();
-        _output.AppendLine("m.GetParameters().Length == 1 &&");
-        WriteIndent();
-        _output.AppendLine("(m.GetParameters()[0].ParameterType == typeof(object) || m.GetParameters()[0].ParameterType == typeof(MaldaLang.Interpreter.RuntimeValue)));");
-        _indentLevel--;
-        _indentLevel--;
-        WriteIndent();
-        _output.AppendLine("}");
+        _output.AppendLine("var method = ResolveBinaryOperatorMethod(receiverType, methodName);");
         WriteIndent();
         _output.AppendLine("if (method == null)");
         WriteIndent();
@@ -2055,7 +2394,7 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("}");
         WriteIndent();
-        _output.AppendLine("var method = receiver.GetType().GetMethod(methodName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic, null, System.Type.EmptyTypes, null);");
+        _output.AppendLine("var method = ResolveUnaryOperatorMethod(receiver.GetType(), methodName);");
         WriteIndent();
         _output.AppendLine("if (method == null)");
         WriteIndent();
@@ -2095,11 +2434,65 @@ public class CSharpTranspiler
         _output.AppendLine("}");
         _output.AppendLine();
 
+        // Fast path shared by the arithmetic/comparison helpers: plain int/double operands skip
+        // the operator-overload probe and the RuntimeValue unwrap (neither applies to primitives).
+        WriteIndent();
+        _output.AppendLine("// Int results are boxed into object; small values (loop counters, indices, small sums)");
+        WriteIndent();
+        _output.AppendLine("// reuse one shared box each instead of allocating per operation.");
+        WriteIndent();
+        _output.AppendLine("private const int __boxedIntMin = -256;");
+        WriteIndent();
+        _output.AppendLine("private const int __boxedIntMax = 4096;");
+        WriteIndent();
+        _output.AppendLine("private static readonly object[] __boxedInts = CreateBoxedInts();");
+        WriteIndent();
+        _output.AppendLine("private static object[] CreateBoxedInts()");
+        WriteIndent();
+        _output.AppendLine("{");
+        WriteIndent();
+        _output.AppendLine("    var boxes = new object[__boxedIntMax - __boxedIntMin + 1];");
+        WriteIndent();
+        _output.AppendLine("    for (var i = 0; i < boxes.Length; i++) boxes[i] = i + __boxedIntMin;");
+        WriteIndent();
+        _output.AppendLine("    return boxes;");
+        WriteIndent();
+        _output.AppendLine("}");
+        WriteIndent();
+        _output.AppendLine("[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]");
+        WriteIndent();
+        _output.AppendLine("public static object? DirectCall(object? value) => value;");
+        WriteIndent();
+        _output.AppendLine("[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]");
+        WriteIndent();
+        _output.AppendLine("public static object BoxInt(int value) => (uint)(value - __boxedIntMin) <= (uint)(__boxedIntMax - __boxedIntMin) ? __boxedInts[value - __boxedIntMin] : value;");
+        WriteIndent();
+        _output.AppendLine("[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]");
+        WriteIndent();
+        _output.AppendLine("private static bool TryGetNumberPair(object? left, object? right, out double l, out double r)");
+        WriteIndent();
+        _output.AppendLine("{");
+        WriteIndent();
+        _output.AppendLine("    if (left is double ld) l = ld; else if (left is int li) l = li; else { l = 0; r = 0; return false; }");
+        WriteIndent();
+        _output.AppendLine("    if (right is double rd) { r = rd; return true; }");
+        WriteIndent();
+        _output.AppendLine("    if (right is int ri) { r = ri; return true; }");
+        WriteIndent();
+        _output.AppendLine("    r = 0;");
+        WriteIndent();
+        _output.AppendLine("    return false;");
+        WriteIndent();
+        _output.AppendLine("}");
+        _output.AppendLine();
+
         WriteIndent();
         _output.AppendLine("public static object OperatorAdd(object? left, object? right)");
         WriteIndent();
         _output.AppendLine("{");
         _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("if (left is int __li && right is int __ri) return BoxInt(CheckedIntAdd(__li, __ri)); if (TryGetNumberPair(left, right, out var __l, out var __r)) return __l + __r;");
         WriteIndent();
         _output.AppendLine("if (TryInvokeOperatorBinary(left, right, \"__add__\", out var overloaded)) return overloaded!;");
         WriteIndent();
@@ -2127,6 +2520,8 @@ public class CSharpTranspiler
         _output.AppendLine("{");
         _indentLevel++;
         WriteIndent();
+        _output.AppendLine("if (left is int __li && right is int __ri) return BoxInt(CheckedIntSubtract(__li, __ri)); if (TryGetNumberPair(left, right, out var __l, out var __r)) return __l - __r;");
+        WriteIndent();
         _output.AppendLine("if (TryInvokeOperatorBinary(left, right, \"__sub__\", out var overloaded)) return overloaded!;");
         WriteIndent();
         _output.AppendLine("if (TryInvokeOperatorBinaryReversed(left, right, \"__rsub__\", out overloaded)) return overloaded!;");
@@ -2150,6 +2545,8 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("{");
         _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("if (left is int __li && right is int __ri) return BoxInt(CheckedIntMultiply(__li, __ri)); if (TryGetNumberPair(left, right, out var __l, out var __r)) return __l * __r;");
         WriteIndent();
         _output.AppendLine("if (TryInvokeOperatorBinary(left, right, \"__mul__\", out var overloaded)) return overloaded!;");
         WriteIndent();
@@ -2199,6 +2596,8 @@ public class CSharpTranspiler
         _output.AppendLine("{");
         _indentLevel++;
         WriteIndent();
+        _output.AppendLine("if (TryGetNumberPair(left, right, out var __l, out var __r)) { if (__r == 0) throw new MaldaLang.Interpreter.RuntimeException(\"Division by zero.\"); return __l / __r; }");
+        WriteIndent();
         _output.AppendLine("if (TryInvokeOperatorBinary(left, right, \"__div__\", out var overloaded)) return overloaded!;");
         WriteIndent();
         _output.AppendLine("if (TryInvokeOperatorBinaryReversed(left, right, \"__rdiv__\", out overloaded)) return overloaded!;");
@@ -2224,6 +2623,8 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("{");
         _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("if (left is int __li && right is int __ri) { if (__ri == 0) throw new MaldaLang.Interpreter.RuntimeException(\"Division by zero.\"); return BoxInt(CheckedIntMod(__li, __ri)); } if (TryGetNumberPair(left, right, out var __l, out var __r)) { if (__r == 0) throw new MaldaLang.Interpreter.RuntimeException(\"Division by zero.\"); return __l % __r; }");
         WriteIndent();
         _output.AppendLine("if (TryInvokeOperatorBinary(left, right, \"__mod__\", out var overloaded)) return overloaded!;");
         WriteIndent();
@@ -2265,6 +2666,8 @@ public class CSharpTranspiler
         _output.AppendLine("{");
         _indentLevel++;
         WriteIndent();
+        _output.AppendLine("if (operand is int __oi) return BoxInt(CheckedIntNegate(__oi)); if (operand is double __od) return -__od;");
+        WriteIndent();
         _output.AppendLine("if (TryInvokeOperatorUnary(operand, \"__neg__\", out var overloaded)) return overloaded!;");
         WriteIndent();
         _output.AppendLine("var value = UnwrapRuntimeValue(operand);");
@@ -2284,6 +2687,8 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("{");
         _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("if (left is int __li && right is int __ri) return __li == __ri; if (left is double __ld && right is double __rd) return __ld.Equals(__rd); if (left is string __ls && right is string __rs) return __ls == __rs;");
         WriteIndent();
         _output.AppendLine("if (TryInvokeOperatorBinary(left, right, \"__eq__\", out var overloaded)) return CoerceToBool(UnwrapRuntimeValue(overloaded));");
         WriteIndent();
@@ -2323,6 +2728,8 @@ public class CSharpTranspiler
         _output.AppendLine("{");
         _indentLevel++;
         WriteIndent();
+        _output.AppendLine("if (TryGetNumberPair(left, right, out var __l, out var __r)) return __l < __r;");
+        WriteIndent();
         _output.AppendLine("if (TryInvokeOperatorBinary(left, right, \"__lt__\", out var overloaded)) return CoerceToBool(UnwrapRuntimeValue(overloaded));");
         WriteIndent();
         _output.AppendLine("if (TryInvokeOperatorBinaryReversed(left, right, \"__rlt__\", out overloaded)) return CoerceToBool(UnwrapRuntimeValue(overloaded));");
@@ -2346,6 +2753,8 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("{");
         _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("if (TryGetNumberPair(left, right, out var __l, out var __r)) return __l <= __r;");
         WriteIndent();
         _output.AppendLine("if (TryInvokeOperatorBinary(left, right, \"__le__\", out var overloaded)) return CoerceToBool(UnwrapRuntimeValue(overloaded));");
         WriteIndent();
@@ -2371,6 +2780,8 @@ public class CSharpTranspiler
         _output.AppendLine("{");
         _indentLevel++;
         WriteIndent();
+        _output.AppendLine("if (TryGetNumberPair(left, right, out var __l, out var __r)) return __l > __r;");
+        WriteIndent();
         _output.AppendLine("if (TryInvokeOperatorBinary(left, right, \"__gt__\", out var overloaded)) return CoerceToBool(UnwrapRuntimeValue(overloaded));");
         WriteIndent();
         _output.AppendLine("if (TryInvokeOperatorBinaryReversed(left, right, \"__rgt__\", out overloaded)) return CoerceToBool(UnwrapRuntimeValue(overloaded));");
@@ -2394,6 +2805,8 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("{");
         _indentLevel++;
+        WriteIndent();
+        _output.AppendLine("if (TryGetNumberPair(left, right, out var __l, out var __r)) return __l >= __r;");
         WriteIndent();
         _output.AppendLine("if (TryInvokeOperatorBinary(left, right, \"__ge__\", out var overloaded)) return CoerceToBool(UnwrapRuntimeValue(overloaded));");
         WriteIndent();
@@ -4373,49 +4786,63 @@ public class CSharpTranspiler
         _output.AppendLine();
 
         WriteIndent();
+        _output.AppendLine("// Lookups are cached per (type, name): member access and method calls hit them on every");
+        WriteIndent();
+        _output.AppendLine("// evaluation, and the class shapes of a transpiled program never change at run time.");
+        WriteIndent();
+        _output.AppendLine("private static readonly System.Collections.Concurrent.ConcurrentDictionary<(System.Type, string), System.Reflection.FieldInfo?> __inheritedFieldCache = new();");
+        WriteIndent();
+        _output.AppendLine("private static readonly System.Collections.Concurrent.ConcurrentDictionary<(System.Type, string), System.Reflection.MethodInfo[]> __inheritedMethodsCache = new();");
+        WriteIndent();
         _output.AppendLine("public static System.Reflection.FieldInfo? FindInheritedField(System.Type type, string name)");
         WriteIndent();
         _output.AppendLine("{");
-        _indentLevel++;
         WriteIndent();
-        _output.AppendLine("// Private base-class fields are not returned by a plain GetField on the derived type.");
+        _output.AppendLine("    return __inheritedFieldCache.GetOrAdd((type, name), static key =>");
         WriteIndent();
-        _output.AppendLine("for (var t = type; t != null && t != typeof(object); t = t.BaseType)");
+        _output.AppendLine("    {");
         WriteIndent();
-        _output.AppendLine("{");
-        _indentLevel++;
+        _output.AppendLine("        // Private base-class fields are not returned by a plain GetField on the derived type.");
         WriteIndent();
-        _output.AppendLine("var found = t.GetField(name, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.DeclaredOnly);");
+        _output.AppendLine("        for (var t = key.Item1; t != null && t != typeof(object); t = t.BaseType)");
         WriteIndent();
-        _output.AppendLine("if (found != null) return found;");
-        _indentLevel--;
+        _output.AppendLine("        {");
         WriteIndent();
-        _output.AppendLine("}");
+        _output.AppendLine("            var found = t.GetField(key.Item2, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.DeclaredOnly);");
         WriteIndent();
-        _output.AppendLine("return null;");
-        _indentLevel--;
+        _output.AppendLine("            if (found != null) return found;");
+        WriteIndent();
+        _output.AppendLine("        }");
+        WriteIndent();
+        _output.AppendLine("        return null;");
+        WriteIndent();
+        _output.AppendLine("    });");
         WriteIndent();
         _output.AppendLine("}");
         WriteIndent();
         _output.AppendLine("public static IEnumerable<System.Reflection.MethodInfo> FindInheritedMethods(System.Type type, string name)");
         WriteIndent();
         _output.AppendLine("{");
-        _indentLevel++;
         WriteIndent();
-        _output.AppendLine("// Private base-class methods are not returned by a plain GetMethod on the derived type.");
+        _output.AppendLine("    return __inheritedMethodsCache.GetOrAdd((type, name), static key =>");
         WriteIndent();
-        _output.AppendLine("for (var t = type; t != null && t != typeof(object); t = t.BaseType)");
+        _output.AppendLine("    {");
         WriteIndent();
-        _output.AppendLine("{");
-        _indentLevel++;
+        _output.AppendLine("        // Private base-class methods are not returned by a plain GetMethod on the derived type.");
         WriteIndent();
-        _output.AppendLine("foreach (var found in t.GetMethods(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.DeclaredOnly).Where(m => m.Name == name))");
+        _output.AppendLine("        var methods = new List<System.Reflection.MethodInfo>();");
         WriteIndent();
-        _output.AppendLine("yield return found;");
-        _indentLevel--;
+        _output.AppendLine("        for (var t = key.Item1; t != null && t != typeof(object); t = t.BaseType)");
         WriteIndent();
-        _output.AppendLine("}");
-        _indentLevel--;
+        _output.AppendLine("        {");
+        WriteIndent();
+        _output.AppendLine("            methods.AddRange(t.GetMethods(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.DeclaredOnly).Where(m => m.Name == key.Item2));");
+        WriteIndent();
+        _output.AppendLine("        }");
+        WriteIndent();
+        _output.AppendLine("        return methods.ToArray();");
+        WriteIndent();
+        _output.AppendLine("    });");
         WriteIndent();
         _output.AppendLine("}");
         WriteIndent();
@@ -6147,7 +6574,16 @@ public class CSharpTranspiler
                     expressionProfile = EmitStatementProfileStart(statement);
                     WriteIndent();
                 }
-                TranspileExpression(exprStmt.Expression);
+                if (exprStmt.Expression is UnaryExpression { Operator: TokenType.Increment or TokenType.Decrement } prefixStep)
+                {
+                    // As a statement `++x` is `x++`; the prefix form is emitted parenthesized,
+                    // which C# rejects as a statement (CS0201).
+                    TranspilePostfix(new PostfixExpression(prefixStep.Right, prefixStep.Operator, prefixStep.Line, prefixStep.Column));
+                }
+                else
+                {
+                    TranspileExpression(exprStmt.Expression);
+                }
                 _output.AppendLine(";");
                 if (expressionProfile != null)
                 {
@@ -6668,7 +7104,7 @@ public class CSharpTranspiler
 
     private void TranspileVarDecl(VarDeclStatement varDecl)
     {
-        var declaredType = ResolveTranspiledTypeHint(varDecl.TypeHint);
+        var declaredType = ResolveVarDeclType(varDecl);
         RegisterTypedVariable(varDecl.Name, declaredType);
         if (varDecl.IsConst)
             RegisterConstBinding(varDecl.Name);
@@ -6676,9 +7112,7 @@ public class CSharpTranspiler
         _output.Append(" ");
         _output.Append(EscapeIdentifier(varDecl.Name));
         _output.Append(" = ");
-        _output.Append(GetCoercionExpressionPrefix(declaredType));
-        TranspileExpression(varDecl.Initializer);
-        _output.Append(GetCoercionExpressionSuffix(declaredType));
+        EmitCoercedValue(varDecl.Initializer, declaredType);
         _output.Append(";");
         AppendComment(nameof(TranspileVarDecl));
         _output.AppendLine();
@@ -6754,7 +7188,15 @@ public class CSharpTranspiler
             var getHelper = IsClassReference(memberAccess.Object)
                 ? "RuntimeHelpers.GetStaticMember"
                 : "RuntimeHelpers.GetObjectMember";
-            if (assignment.Operator == TokenType.Assign)
+            if (assignment.Operator == TokenType.Assign && IsDirectThisField(memberAccess.Object, memberAccess.Member))
+            {
+                _output.Append("this.");
+                _output.Append(memberAccess.Member);
+                _output.Append(" = ");
+                TranspileExpression(assignment.Value);
+                _output.Append(";");
+            }
+            else if (assignment.Operator == TokenType.Assign)
             {
                 // Handle ObjectInstance property assignment (e.g., JsonObject properties)
                 _output.Append($"{setHelper}(");
@@ -6816,24 +7258,39 @@ public class CSharpTranspiler
                 if (assignment.Operator == TokenType.Assign)
                 {
                     _output.Append("= ");
-                    _output.Append(GetCoercionExpressionPrefix(targetType));
-                    TranspileExpression(assignment.Value);
-                    _output.Append(GetCoercionExpressionSuffix(targetType));
+                    EmitCoercedValue(assignment.Value, targetType);
                 }
                 else
                 {
-                    var opString = GetOperatorString(assignment.Operator);
-                    _output.Append(opString);
-                    _output.Append(" ");
-                    if (targetType == TranspiledClrType.Double)
+                    // x op= v becomes x = op(x, v): `object += int` does not compile, ints need
+                    // checked arithmetic, and float division must raise on zero.
+                    var boxedHelper = GetBoxedBinaryOperatorHelper(assignment.Operator);
+                    var compoundHelper = targetType switch
                     {
-                        _output.Append("(double)RuntimeHelpers.CoerceToFloat(");
-                        TranspileExpression(assignment.Value);
+                        TranspiledClrType.Int => assignment.Operator switch
+                        {
+                            TokenType.PlusAssign => "CheckedIntAdd",
+                            TokenType.MinusAssign => "CheckedIntSubtract",
+                            TokenType.MultiplyAssign => "CheckedIntMultiply",
+                            _ => null
+                        },
+                        TranspiledClrType.Double => assignment.Operator == TokenType.DivideAssign ? "DivideDouble" : null,
+                        TranspiledClrType.Object => boxedHelper,
+                        _ => null
+                    };
+                    if (compoundHelper != null)
+                    {
+                        _output.Append("= RuntimeHelpers.").Append(compoundHelper).Append("(");
+                        _output.Append(EscapeIdentifier(identifierTarget.Name));
+                        _output.Append(", ");
+                        EmitCoercedValue(assignment.Value, targetType == TranspiledClrType.Object ? TranspiledClrType.Object : targetType);
                         _output.Append(")");
                     }
                     else
                     {
-                        TranspileExpression(assignment.Value);
+                        _output.Append(GetOperatorString(assignment.Operator));
+                        _output.Append(" ");
+                        EmitCoercedValue(assignment.Value, targetType == TranspiledClrType.Double ? TranspiledClrType.Double : targetType);
                     }
                 }
             }
@@ -6861,9 +7318,9 @@ public class CSharpTranspiler
 
     private void TranspileIf(IfStatement ifStmt)
     {
-        _output.Append("if (RuntimeHelpers.CoerceToBool(");
-        TranspileExpression(ifStmt.Condition);
-        _output.Append("))");
+        _output.Append("if (");
+        EmitCondition(ifStmt.Condition);
+        _output.Append(")");
         AppendComment(nameof(TranspileIf));
         _output.AppendLine();
         TranspileStatement(ifStmt.ThenBranch);
@@ -6880,9 +7337,9 @@ public class CSharpTranspiler
 
     private void TranspileWhile(WhileStatement whileStmt)
     {
-        _output.Append("while (RuntimeHelpers.CoerceToBool(");
-        TranspileExpression(whileStmt.Condition);
-        _output.Append("))");
+        _output.Append("while (");
+        EmitCondition(whileStmt.Condition);
+        _output.Append(")");
         AppendComment(nameof(TranspileWhile));
         _output.AppendLine();
 
@@ -6953,9 +7410,7 @@ public class CSharpTranspiler
         
         if (forStmt.Condition != null)
         {
-            _output.Append("RuntimeHelpers.CoerceToBool(");
-            TranspileExpression(forStmt.Condition);
-            _output.Append(")");
+            EmitCondition(forStmt.Condition);
         }
         
         _output.Append("; ");
@@ -7042,6 +7497,169 @@ public class CSharpTranspiler
         _currentFunctionReturnType.Pop();
         PopTypedScope();
         _canAwait = previousCanAwait;
+
+        if (_syncTwinFunctions != null && _syncTwinFunctions.Contains(funcDecl.Name))
+        {
+            TranspileSyncTwin(funcDecl, returnType);
+        }
+    }
+
+    /// <summary>
+    /// Top-level functions that may get a synchronous twin. The async method stays the
+    /// public shape (delegates, reflection, spawn, routes); the twin only serves direct calls,
+    /// which otherwise pay an async state machine and a Task per call.
+    /// </summary>
+    private HashSet<string> ComputeSyncTwinCandidates(List<FunctionDeclaration> functions, List<ClassDeclaration> classes)
+    {
+        var candidates = new HashSet<string>(StringComparer.Ordinal);
+        if (ProfilingEnabled)
+        {
+            return candidates;
+        }
+
+        // A class method with the same name would win C# name lookup inside that class.
+        var memberNames = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var classDecl in classes)
+        {
+            foreach (var member in classDecl.Members)
+            {
+                memberNames.Add(member.Name);
+            }
+        }
+
+        var counts = functions
+            .GroupBy(f => f.Name, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.Count(), StringComparer.Ordinal);
+        foreach (var funcDecl in functions)
+        {
+            if (ShaderFunction.IsMarked(funcDecl) ||
+                counts[funcDecl.Name] != 1 ||
+                memberNames.Contains(funcDecl.Name) ||
+                (funcDecl.Decorators != null && funcDecl.Decorators.Count > 0) ||
+                (funcDecl.ParameterDecorators != null && funcDecl.ParameterDecorators.Any(d => d != null)) ||
+                DeclarationBounds.TryGetResourceBudget(funcDecl) is { HasAnyBound: true })
+            {
+                continue;
+            }
+
+            candidates.Add(funcDecl.Name);
+        }
+
+        _syncTwinCallers = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+        foreach (var funcDecl in functions)
+        {
+            foreach (var call in AstNodeWalker.Descendants(funcDecl.Body).OfType<FunctionCallExpression>())
+            {
+                if (call.Callee is IdentifierExpression callee && candidates.Contains(callee.Name))
+                {
+                    if (!_syncTwinCallers.TryGetValue(callee.Name, out var callers))
+                    {
+                        _syncTwinCallers[callee.Name] = callers = new HashSet<string>(StringComparer.Ordinal);
+                    }
+                    callers.Add(funcDecl.Name);
+                }
+            }
+        }
+
+        return candidates;
+    }
+
+    /// <summary>
+    /// Emits <c>name__Sync</c> with the same body under <c>_canAwait = false</c>. If the body
+    /// still needs to wait on anything (an await, a sync-over-async BlockOn, a defer epilogue),
+    /// the twin is discarded and the function is rejected for the next pass.
+    /// </summary>
+    private void TranspileSyncTwin(FunctionDeclaration funcDecl, TranspiledClrType returnType)
+    {
+        var start = _output.Length;
+        _output.AppendLine();
+        WriteIndent();
+        _output.Append("static ");
+        _output.Append(GetClrTypeName(returnType));
+        _output.Append(" ");
+        _output.Append(GetSyncTwinName(funcDecl.Name));
+        _output.Append("(");
+
+        PushTypedScope();
+        for (int i = 0; i < funcDecl.Parameters.Count; i++)
+        {
+            if (i > 0) _output.Append(", ");
+            var parameterType = (funcDecl.ParameterTypeHints != null && i < funcDecl.ParameterTypeHints.Count)
+                ? ResolveTranspiledTypeHint(funcDecl.ParameterTypeHints[i])
+                : TranspiledClrType.Object;
+            RegisterTypedVariable(funcDecl.Parameters[i], parameterType);
+            _output.Append(GetClrTypeName(parameterType));
+            _output.Append(" ");
+            _output.Append(EscapeIdentifier(funcDecl.Parameters[i]));
+        }
+
+        _output.Append(")");
+        AppendComment(nameof(TranspileSyncTwin));
+        _output.AppendLine();
+        var previousCanAwait = _canAwait;
+        _canAwait = false;
+        _currentFunctionReturnType.Push(returnType);
+        TranspileFunctionBlock(funcDecl.Body, funcDecl.Name, funcDecl.Line, appendImplicitNullReturn: true);
+        _currentFunctionReturnType.Pop();
+        PopTypedScope();
+        _canAwait = previousCanAwait;
+
+        var emitted = _output.ToString(start, _output.Length - start);
+        if (emitted.Contains("await ", StringComparison.Ordinal) ||
+            emitted.Contains("BlockOn(", StringComparison.Ordinal) ||
+            emitted.Contains("GetAwaiter()", StringComparison.Ordinal) ||
+            emitted.Contains(".Wait(", StringComparison.Ordinal) ||
+            emitted.Contains(".Result", StringComparison.Ordinal))
+        {
+            _output.Length = start;
+            _syncTwinRejected.Add(funcDecl.Name);
+        }
+    }
+
+    private string GetSyncTwinName(string functionName) => EscapeIdentifier(functionName) + "__Sync";
+
+    private void RejectSyncTwinsWithCallers(IEnumerable<string> rejected)
+    {
+        var pending = new Queue<string>(rejected);
+        while (pending.Count > 0)
+        {
+            var name = pending.Dequeue();
+            if (!_syncTwinFunctions!.Remove(name))
+            {
+                continue;
+            }
+
+            if (_syncTwinCallers.TryGetValue(name, out var callers))
+            {
+                foreach (var caller in callers)
+                {
+                    if (_syncTwinFunctions.Contains(caller))
+                    {
+                        pending.Enqueue(caller);
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// True when a direct call to <paramref name="name"/> resolves to a top-level function that
+    /// has a synchronous twin (not shadowed by a block-scoped function of the same name).
+    /// </summary>
+    private bool HasSyncTwin(string name)
+    {
+        if (_syncTwinFunctions == null || !_syncTwinFunctions.Contains(name))
+        {
+            return false;
+        }
+
+        foreach (var frame in _localFunctionStack)
+        {
+            if (frame.ContainsKey(name))
+                return false;
+        }
+
+        return true;
     }
 
     /// <summary>
@@ -8712,7 +9330,8 @@ public class CSharpTranspiler
             _indentLevel++;
         }
 
-        EmitDeferFramePrologue();
+        var needsDeferFrame = _deferScan.ContainsDefer(block);
+        EmitDeferFramePrologue(needsDeferFrame);
 
         var lastIsExpression = block.Statements.Count > 0 && block.Statements[^1] is ExpressionStatement;
         var useLastExprWins = appendImplicitNullReturn && lastIsExpression;
@@ -8745,7 +9364,7 @@ public class CSharpTranspiler
             _output.AppendLine();
         }
 
-        EmitDeferFrameEpilogue();
+        EmitDeferFrameEpilogue(needsDeferFrame);
 
         if (ProfilingEnabled)
         {
@@ -8845,8 +9464,15 @@ public class CSharpTranspiler
         return true;
     }
 
-    private void EmitDeferFramePrologue()
+    // Blocks that can never run a `defer` skip the frame: PushDeferFrame touches an AsyncLocal
+    // stack and the finally awaits, which dominated tight loops and recursive calls.
+    private void EmitDeferFramePrologue(bool enabled)
     {
+        if (!enabled)
+        {
+            return;
+        }
+
         WriteIndent();
         _output.AppendLine("RuntimeHelpers.PushDeferFrame();");
         WriteIndent();
@@ -8856,8 +9482,13 @@ public class CSharpTranspiler
         _indentLevel++;
     }
 
-    private void EmitDeferFrameEpilogue()
+    private void EmitDeferFrameEpilogue(bool enabled)
     {
+        if (!enabled)
+        {
+            return;
+        }
+
         _indentLevel--;
         WriteIndent();
         _output.AppendLine("}");
@@ -8887,7 +9518,8 @@ public class CSharpTranspiler
         AppendComment(nameof(TranspileBlock) + " (open)");
         _output.AppendLine();
         _indentLevel++;
-        EmitDeferFramePrologue();
+        var needsDeferFrame = _deferScan.ContainsDefer(block);
+        EmitDeferFramePrologue(needsDeferFrame);
         
         var lastIsExpression = block.Statements.Count > 0 && block.Statements[^1] is ExpressionStatement;
         var useLastExprWins = appendImplicitNullReturn && lastIsExpression;
@@ -8917,7 +9549,7 @@ public class CSharpTranspiler
             _output.AppendLine();
         }
         
-        EmitDeferFrameEpilogue();
+        EmitDeferFrameEpilogue(needsDeferFrame);
         _indentLevel--;
         WriteIndent();
         _output.Append("}");
@@ -9807,9 +10439,39 @@ public class CSharpTranspiler
 
     private void TranspileBinary(BinaryExpression binary)
     {
-        if (IsNumericBinaryOperator(binary.Operator) &&
-            ResolveExpressionType(binary.Left) == TranspiledClrType.Double &&
-            ResolveExpressionType(binary.Right) == TranspiledClrType.Double)
+        var numericType = ResolveBinaryType(binary);
+        string? typedHelper = numericType switch
+        {
+            // Checked int arithmetic and the interpreter's division-by-zero errors.
+            TranspiledClrType.Int => binary.Operator switch
+            {
+                TokenType.Plus => "CheckedIntAdd",
+                TokenType.Minus => "CheckedIntSubtract",
+                TokenType.Multiply => "CheckedIntMultiply",
+                TokenType.Modulo => "IntModulo",
+                _ => null
+            },
+            TranspiledClrType.Double => binary.Operator switch
+            {
+                TokenType.Divide => "DivideDouble",
+                TokenType.Modulo => "ModuloDouble",
+                _ => null
+            },
+            _ => null
+        };
+        if (typedHelper != null)
+        {
+            _output.Append("RuntimeHelpers.");
+            _output.Append(typedHelper);
+            _output.Append("(");
+            TranspileExpression(binary.Left);
+            _output.Append(", ");
+            TranspileExpression(binary.Right);
+            _output.Append(")");
+            return;
+        }
+
+        if (numericType == TranspiledClrType.Double || IsRawNumericComparison(binary))
         {
             _output.Append("(");
             TranspileExpression(binary.Left);
@@ -9853,21 +10515,21 @@ public class CSharpTranspiler
         // while comparisons use RuntimeHelpers and yield bool — raw C# &&/|| then mix types (CS0019).
         if (binary.Operator == TokenType.And)
         {
-            _output.Append("(RuntimeHelpers.CoerceToBool(");
-            TranspileExpression(binary.Left);
-            _output.Append(") && RuntimeHelpers.CoerceToBool(");
-            TranspileExpression(binary.Right);
-            _output.Append("))");
+            _output.Append("(");
+            EmitCondition(binary.Left);
+            _output.Append(" && ");
+            EmitCondition(binary.Right);
+            _output.Append(")");
             return;
         }
 
         if (binary.Operator == TokenType.Or)
         {
-            _output.Append("(RuntimeHelpers.CoerceToBool(");
-            TranspileExpression(binary.Left);
-            _output.Append(") || RuntimeHelpers.CoerceToBool(");
-            TranspileExpression(binary.Right);
-            _output.Append("))");
+            _output.Append("(");
+            EmitCondition(binary.Left);
+            _output.Append(" || ");
+            EmitCondition(binary.Right);
+            _output.Append(")");
             return;
         }
 
@@ -9890,6 +10552,60 @@ public class CSharpTranspiler
         _output.Append(")");
     }
 
+    /// <summary>
+    /// Comparisons between typed numbers compile to plain C# operators: ordering of any int/double
+    /// mix matches the helpers (both compare as doubles). Equality stays raw only between ints,
+    /// because the helper compares boxed values (<c>1 == 1.0</c> is false, NaN equals NaN).
+    /// </summary>
+    private bool IsRawNumericComparison(BinaryExpression binary)
+    {
+        if (binary.Operator is not (TokenType.LessThan or TokenType.LessThanOrEqual or
+            TokenType.GreaterThan or TokenType.GreaterThanOrEqual or TokenType.Equal or TokenType.NotEqual))
+        {
+            return false;
+        }
+
+        var left = ResolveNumericOperandKind(binary.Left);
+        var right = ResolveNumericOperandKind(binary.Right);
+        if (left == TranspiledClrType.Object || right == TranspiledClrType.Object)
+            return false;
+
+        // At least one side must be a typed variable/expression, not two constants.
+        if (binary.Left is LiteralExpression && binary.Right is LiteralExpression)
+            return false;
+
+        if (binary.Operator is TokenType.Equal or TokenType.NotEqual)
+            return left == TranspiledClrType.Int && right == TranspiledClrType.Int;
+
+        return true;
+    }
+
+    /// <summary>
+    /// Emits <paramref name="condition"/> as a C# bool. Comparisons, logical operators, <c>!</c> and
+    /// boolean literals already produce one, so they skip the boxing CoerceToBool call.
+    /// </summary>
+    private void EmitCondition(Expression condition)
+    {
+        var alreadyBool = condition switch
+        {
+            LiteralExpression { Value: bool } => true,
+            UnaryExpression { Operator: TokenType.Not } => true,
+            BinaryExpression b => b.Operator is TokenType.Equal or TokenType.NotEqual or
+                TokenType.LessThan or TokenType.LessThanOrEqual or TokenType.GreaterThan or
+                TokenType.GreaterThanOrEqual or TokenType.And or TokenType.Or,
+            _ => false
+        };
+        if (alreadyBool)
+        {
+            TranspileExpression(condition);
+            return;
+        }
+
+        _output.Append("RuntimeHelpers.CoerceToBool(");
+        TranspileExpression(condition);
+        _output.Append(")");
+    }
+
     private void TranspileUnary(UnaryExpression unary)
     {
         _output.Append("(");
@@ -9898,7 +10614,22 @@ public class CSharpTranspiler
             // For logical NOT, coerce to bool first, but don't double-wrap
             // The result is already a boolean, so we don't need CoerceToBool again
             _output.Append("!");
-            _output.Append("RuntimeHelpers.CoerceToBool(");
+            EmitCondition(unary.Right);
+        }
+        else if (unary.Operator == TokenType.Minus &&
+                 ResolveExpressionType(unary.Right) == TranspiledClrType.Int)
+        {
+            _output.Append("RuntimeHelpers.CheckedIntNegate(");
+            TranspileExpression(unary.Right);
+            _output.Append(")");
+        }
+        else if ((unary.Operator == TokenType.Increment || unary.Operator == TokenType.Decrement) &&
+                 unary.Right is IdentifierExpression &&
+                 ResolveExpressionType(unary.Right) == TranspiledClrType.Int)
+        {
+            var intHelper = unary.Operator == TokenType.Increment ? "CheckedIntIncrement" : "CheckedIntDecrement";
+            TranspileExpression(unary.Right);
+            _output.Append(" = RuntimeHelpers.").Append(intHelper).Append("(");
             TranspileExpression(unary.Right);
             _output.Append(")");
         }
@@ -9972,6 +10703,17 @@ public class CSharpTranspiler
             _output.Append(", \"");
             _output.Append(instanceMember.Member);
             _output.Append("\"))))");
+            return;
+        }
+
+        if (postfix.Left is IdentifierExpression && ResolveExpressionType(postfix.Left) == TranspiledClrType.Int &&
+            (postfix.Operator == TokenType.Increment || postfix.Operator == TokenType.Decrement))
+        {
+            var intHelper = postfix.Operator == TokenType.Increment ? "CheckedIntIncrement" : "CheckedIntDecrement";
+            TranspileExpression(postfix.Left);
+            _output.Append(" = RuntimeHelpers.").Append(intHelper).Append("(");
+            TranspileExpression(postfix.Left);
+            _output.Append(")");
             return;
         }
 
@@ -10940,6 +11682,33 @@ public class CSharpTranspiler
             // For other ObjectInstance methods, use CallObjectMethod
             if (call.Callee is MemberAccessExpression memberAccess3 && memberAccess3.Object != null)
             {
+                var directTargets = FindDirectMethodTargets(memberAccess3.Object, memberAccess3.Member, call.Arguments.Count);
+                if (directTargets.Count > 0)
+                {
+                    // `recv is Vec __dmN ? (object)__dmN.m(args) : <reflective call>`: the
+                    // receiver is a plain identifier or `this`, so testing it twice is safe.
+                    // RuntimeHelpers.DirectCall only passes the value through, so the
+                    // conditional is also valid as an expression statement (CS0201).
+                    _output.Append("RuntimeHelpers.DirectCall(");
+                    foreach (var target in directTargets)
+                    {
+                        var variable = $"__dm{_directMethodCallCounter++}";
+                        _output.Append("((object)");
+                        TranspileExpression(memberAccess3.Object);
+                        _output.Append(") is ");
+                        _output.Append(EscapeIdentifier(target));
+                        _output.Append(" ");
+                        _output.Append(variable);
+                        _output.Append(" ? (object)");
+                        _output.Append(variable);
+                        _output.Append(".");
+                        _output.Append(EscapeIdentifier(memberAccess3.Member));
+                        _output.Append("(");
+                        EmitObjectMethodArguments(call.Arguments);
+                        _output.Append(") : ");
+                    }
+                }
+
                 var callHelper = IsClassReference(memberAccess3.Object)
                     ? "RuntimeHelpers.CallStaticMethod"
                     : "RuntimeHelpers.CallObjectMethod";
@@ -10951,35 +11720,13 @@ public class CSharpTranspiler
                 _output.Append(", \"");
                 _output.Append(memberAccess3.Member);
                 _output.Append("\", new List<object> { ");
-                for (int i = 0; i < call.Arguments.Count; i++)
-                {
-                    if (i > 0) _output.Append(", ");
-                    if (call.Arguments[i] is IdentifierExpression argIdExpr && IsKnownUserFunction(argIdExpr.Name))
-                    {
-                        // Unary user functions → callable delegate (GraphMemory.initialize embedders, etc.).
-                        // Multi-arg (e.g. HttpServer middleware) stay as name strings for runtime resolve.
-                        if (TryGetKnownFunctionParameterTypes(argIdExpr.Name, out var paramTypes)
-                            && paramTypes.Count == 1)
-                        {
-                            _output.Append("(System.Func<object, System.Threading.Tasks.Task<object>>)");
-                            _output.Append(EscapeIdentifier(argIdExpr.Name));
-                        }
-                        else
-                        {
-                            _output.Append("\"");
-                            _output.Append(argIdExpr.Name);
-                            _output.Append("\"");
-                        }
-                    }
-                    else
-                    {
-                        TranspileExpression(call.Arguments[i]);
-                    }
-                }
+                EmitObjectMethodArguments(call.Arguments);
                 _output.Append(" }, ");
                 EmitAccessingClassArg();
                 _output.Append(")");
                 if (!_canAwait)
+                    _output.Append(")");
+                if (directTargets.Count > 0)
                     _output.Append(")");
                 return;
             }
@@ -11049,6 +11796,20 @@ public class CSharpTranspiler
                         EmitCallableArgument(call.Arguments[i], paramType);
                     }
                     _output.Append("))");
+                }
+                else if (HasSyncTwin(funcName))
+                {
+                    _output.Append(GetSyncTwinName(funcName));
+                    _output.Append("(");
+                    for (int i = 0; i < call.Arguments.Count; i++)
+                    {
+                        if (i > 0) _output.Append(", ");
+                        var paramType = (typedParameters != null && i < typedParameters.Count)
+                            ? typedParameters[i]
+                            : TranspiledClrType.Object;
+                        EmitCallableArgument(call.Arguments[i], paramType);
+                    }
+                    _output.Append(")");
                 }
                 else
                 {
@@ -12452,6 +13213,13 @@ public class CSharpTranspiler
             return;
         }
 
+        if (IsDirectThisField(member.Object, memberName))
+        {
+            _output.Append("this.");
+            _output.Append(memberName);
+            return;
+        }
+
         var memberHelper = member.IsNullConditional ? "RuntimeHelpers.GetObjectMemberNullSafe" : "RuntimeHelpers.GetObjectMember";
         if (IsClassReference(member.Object))
             memberHelper = "RuntimeHelpers.GetStaticMember";
@@ -13132,9 +13900,9 @@ public class CSharpTranspiler
 
     private void TranspileTernary(TernaryExpression ternary)
     {
-        _output.Append("(RuntimeHelpers.CoerceToBool(");
-        TranspileExpression(ternary.Condition);
-        _output.Append(") ? ");
+        _output.Append("(");
+        EmitCondition(ternary.Condition);
+        _output.Append(" ? ");
         TranspileExpression(ternary.ThenBranch);
         _output.Append(" : ");
         TranspileExpression(ternary.ElseBranch);

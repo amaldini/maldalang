@@ -1,0 +1,9 @@
+// Recursive calls: function-call overhead and int arithmetic.
+function fib(n) {
+    if (n < 2) {
+        return n;
+    }
+    return fib(n - 1) + fib(n - 2);
+}
+
+io.print(fib(27));

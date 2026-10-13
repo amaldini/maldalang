@@ -1125,9 +1125,9 @@ public class JsTranspiler
 
             if (matchCase.Guard != null)
             {
-                builder.Append("if (mlRuntime.isTruthy(");
-                builder.Append(TranspileExpression(matchCase.Guard));
-                builder.Append(")) { ");
+                builder.Append("if (");
+                builder.Append(TranspileCondition(matchCase.Guard));
+                builder.Append(") { ");
                 builder.Append(TranspileMatchBody(matchCase.Body));
                 builder.Append(" }");
             }
@@ -2111,15 +2111,62 @@ public class JsTranspiler
 
     private string TranspileTernaryExpression(TernaryExpression ternary)
     {
-        var condition = TranspileExpression(ternary.Condition);
+        var condition = TranspileCondition(ternary.Condition);
         var thenBranch = TranspileExpression(ternary.ThenBranch);
         var elseBranch = TranspileExpression(ternary.ElseBranch);
-        return $"(mlRuntime.isTruthy({condition}) ? {thenBranch} : {elseBranch})";
+        return $"({condition} ? {thenBranch} : {elseBranch})";
     }
 
     private string TranspileCondition(Expression expression)
     {
-        return $"mlRuntime.isTruthy({TranspileExpression(expression)})";
+        return Truthy(expression, TranspileExpression(expression));
+    }
+
+    /// <summary>
+    /// Wraps <paramref name="transpiled"/> in <c>mlRuntime.isTruthy</c> unless the expression
+    /// already yields a JS boolean (comparisons, <c>!</c>, <c>&amp;&amp;</c>/<c>||</c>, boolean
+    /// literals), where the call is the identity and only costs time in hot loops.
+    /// </summary>
+    private static string Truthy(Expression expression, string transpiled)
+    {
+        return IsStaticallyBoolean(expression) ? transpiled : $"mlRuntime.isTruthy({transpiled})";
+    }
+
+    private static bool IsStaticallyBoolean(Expression expression)
+    {
+        return expression switch
+        {
+            LiteralExpression { Value: bool } => true,
+            UnaryExpression { Operator: TokenType.Not } => true,
+            BinaryExpression binary => binary.Operator is
+                TokenType.Equal or TokenType.NotEqual or TokenType.And or TokenType.Or or
+                TokenType.LessThan or TokenType.GreaterThan or
+                TokenType.LessThanOrEqual or TokenType.GreaterThanOrEqual,
+            _ => false
+        };
+    }
+
+    /// <summary>
+    /// Coerces an arithmetic/comparison operand to a number. <c>mlRuntime.coerceToFloat</c>
+    /// returns a JS number unchanged, so operands that are numbers by construction (numeric
+    /// literals, <c>- * / %</c> results, unary minus/plus) are emitted bare. <c>+</c> is not
+    /// one of them: it concatenates strings.
+    /// </summary>
+    private static string Number(Expression expression, string transpiled)
+    {
+        return IsStaticallyNumber(expression) ? transpiled : $"mlRuntime.coerceToFloat({transpiled})";
+    }
+
+    private static bool IsStaticallyNumber(Expression expression)
+    {
+        return expression switch
+        {
+            LiteralExpression { Value: int or long or double } => true,
+            UnaryExpression { Operator: TokenType.Minus or TokenType.Plus } => true,
+            BinaryExpression binary => binary.Operator is
+                TokenType.Minus or TokenType.Multiply or TokenType.Divide or TokenType.Modulo,
+            _ => false
+        };
     }
 
     private string TranspileUnaryExpression(UnaryExpression unary)
@@ -2127,9 +2174,9 @@ public class JsTranspiler
         var right = TranspileExpression(unary.Right);
         return unary.Operator switch
         {
-            TokenType.Not => $"(!mlRuntime.isTruthy({right}))",
-            TokenType.Minus => $"(-mlRuntime.coerceToFloat({right}))",
-            TokenType.Plus => $"(mlRuntime.coerceToFloat({right}))",
+            TokenType.Not => $"(!{Truthy(unary.Right, right)})",
+            TokenType.Minus => $"(-{Number(unary.Right, right)})",
+            TokenType.Plus => $"({Number(unary.Right, right)})",
             TokenType.Increment => $"(++{right})",
             TokenType.Decrement => $"(--{right})",
             _ => throw new NotSupportedException($"JavaScript transpilation does not support unary operator '{unary.Operator}'.")
@@ -2143,22 +2190,41 @@ public class JsTranspiler
 
         return binary.Operator switch
         {
-            TokenType.Equal => $"mlRuntime.equals({left}, {right})",
-            TokenType.NotEqual => $"(!mlRuntime.equals({left}, {right}))",
-            TokenType.And => $"(mlRuntime.isTruthy({left}) && mlRuntime.isTruthy({right}))",
-            TokenType.Or => $"(mlRuntime.isTruthy({left}) || mlRuntime.isTruthy({right}))",
+            TokenType.Equal => Equality(binary, left, right),
+            TokenType.NotEqual => $"(!{Equality(binary, left, right)})",
+            TokenType.And => $"({Truthy(binary.Left, left)} && {Truthy(binary.Right, right)})",
+            TokenType.Or => $"({Truthy(binary.Left, left)} || {Truthy(binary.Right, right)})",
             TokenType.NullCoalesce => $"mlRuntime.nullCoalesce({left}, () => {right})",
-            TokenType.Minus => $"(mlRuntime.coerceToFloat({left}) - mlRuntime.coerceToFloat({right}))",
-            TokenType.Multiply => $"(mlRuntime.coerceToFloat({left}) * mlRuntime.coerceToFloat({right}))",
-            TokenType.Divide => $"(mlRuntime.coerceToFloat({left}) / mlRuntime.coerceToFloat({right}))",
-            TokenType.Modulo => $"(mlRuntime.coerceToFloat({left}) % mlRuntime.coerceToFloat({right}))",
-            TokenType.LessThan => $"(mlRuntime.coerceToFloat({left}) < mlRuntime.coerceToFloat({right}))",
-            TokenType.GreaterThan => $"(mlRuntime.coerceToFloat({left}) > mlRuntime.coerceToFloat({right}))",
-            TokenType.LessThanOrEqual => $"(mlRuntime.coerceToFloat({left}) <= mlRuntime.coerceToFloat({right}))",
-            TokenType.GreaterThanOrEqual => $"(mlRuntime.coerceToFloat({left}) >= mlRuntime.coerceToFloat({right}))",
+            TokenType.Minus => $"({Number(binary.Left, left)} - {Number(binary.Right, right)})",
+            TokenType.Multiply => $"({Number(binary.Left, left)} * {Number(binary.Right, right)})",
+            TokenType.Divide => $"({Number(binary.Left, left)} / {Number(binary.Right, right)})",
+            TokenType.Modulo => $"({Number(binary.Left, left)} % {Number(binary.Right, right)})",
+            TokenType.LessThan => $"({Number(binary.Left, left)} < {Number(binary.Right, right)})",
+            TokenType.GreaterThan => $"({Number(binary.Left, left)} > {Number(binary.Right, right)})",
+            TokenType.LessThanOrEqual => $"({Number(binary.Left, left)} <= {Number(binary.Right, right)})",
+            TokenType.GreaterThanOrEqual => $"({Number(binary.Left, left)} >= {Number(binary.Right, right)})",
             TokenType.Plus => $"({left} + {right})",
             _ => throw new NotSupportedException($"JavaScript transpilation does not support binary operator '{binary.Operator}'.")
         };
+    }
+
+    /// <summary>
+    /// <c>mlRuntime.equals</c> is strict equality that also treats null and undefined as equal.
+    /// Against a literal that reduces to plain JS: <c>=== literal</c>, or <c>== null</c>.
+    /// </summary>
+    private static string Equality(BinaryExpression binary, string left, string right)
+    {
+        if (binary.Right is LiteralExpression rightLiteral)
+        {
+            return rightLiteral.Value == null ? $"({left} == null)" : $"({left} === {right})";
+        }
+
+        if (binary.Left is LiteralExpression leftLiteral)
+        {
+            return leftLiteral.Value == null ? $"({right} == null)" : $"({left} === {right})";
+        }
+
+        return $"mlRuntime.equals({left}, {right})";
     }
 
     private string JoinArguments(List<Expression> arguments)

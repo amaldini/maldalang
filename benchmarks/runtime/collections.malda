@@ -1,0 +1,19 @@
+// Array append/index and dict reads/writes.
+var items = [];
+for (var i = 0; i < 200000; i = i + 1) {
+    items.append((i * 2) % 1000);
+}
+var sum = 0;
+for (var k = 0; k < items.length; k = k + 1) {
+    sum = sum + items[k];
+}
+var counts = {};
+for (var n in items) {
+    var key = "k" + (n % 10);
+    if (counts[key] == null) {
+        counts[key] = 0;
+    }
+    counts[key] = counts[key] + 1;
+}
+io.print(sum);
+io.print(counts["k4"]);
