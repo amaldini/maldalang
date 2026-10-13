@@ -38,6 +38,8 @@ internal sealed class InterpreterActivation
     /// <summary>Unwinding <c>return</c>/<c>break</c>/<c>continue</c> (see Interpreter.ControlFlow.cs).</summary>
     public PendingControl PendingControl { get; set; }
     public RuntimeValue? PendingReturnValue { get; set; }
+    /// <summary>Innermost <see cref="FunctionFrame"/> on <see cref="ExecutionStack"/>.</summary>
+    public FunctionFrame? CurrentFunctionFrame { get; set; }
     public CancellationToken CancelToken => CancelSource?.Token ?? CancellationToken.None;
 
     /// <summary>

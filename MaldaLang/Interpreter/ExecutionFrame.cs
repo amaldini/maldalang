@@ -20,6 +20,11 @@ public class FunctionFrame : ExecutionFrame
 {
     public FunctionValue Function { get; set; } = null!;
     public Environment? PreviousEnvironment { get; set; } // Environment to restore to when function completes
+    /// <summary>
+    /// Innermost class/actor member call as seen from this frame: itself for a method, the
+    /// caller's for a lambda, null for a named free function. Set once when the frame is pushed.
+    /// </summary>
+    public FunctionFrame? ClassMemberFrame { get; set; }
 }
 
 public class WhileLoopFrame : ExecutionFrame

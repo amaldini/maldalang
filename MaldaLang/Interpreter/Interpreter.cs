@@ -576,6 +576,7 @@ public partial class Interpreter
             // as a fresh top-level run so that declarations are re-collected.
             // This also guarantees that prompt declarations are registered before use.
             _executionStack.Clear();
+            GetActivation().CurrentFunctionFrame = null;
             
             // First pass: collect class, actor, function, prompt, workflow, and property declarations
             foreach (var stmt in statements)
@@ -707,6 +708,7 @@ public partial class Interpreter
     {
         // Clear execution stack to reset execution state
         _executionStack.Clear();
+        GetActivation().CurrentFunctionFrame = null;
     }
     
     public void SetCurrentActor(ActorInstance? actor)
@@ -1822,7 +1824,10 @@ public partial class Interpreter
         var previousFile = _currentFile;
         var statementFile = stmt.SourceFile ?? _currentFile;
         _currentFile = statementFile;
-        var profileToken = MaldaProfiler.EnterStatement(statementFile, stmt.Line, GetStatementProfileName(stmt));
+        // The profile name costs a GetType().Name and a substring: only build it when profiling.
+        var profileToken = MaldaProfiler.IsEnabled
+            ? MaldaProfiler.EnterStatement(statementFile, stmt.Line, GetStatementProfileName(stmt))
+            : default;
         // Check debugger hook before executing
         try
         {
@@ -2487,19 +2492,18 @@ public partial class Interpreter
     /// <summary>
     /// Innermost class/actor member on the stack. Lambdas are skipped so a method's
     /// implicit fields stay in scope; a named free function stops the walk.
+    /// Precomputed per frame (<see cref="FunctionFrame.ClassMemberFrame"/>): this runs on
+    /// every variable read and write.
     /// </summary>
-    private FunctionFrame? CurrentClassMemberFrame()
+    private FunctionFrame? CurrentClassMemberFrame() =>
+        GetActivation().CurrentFunctionFrame?.ClassMemberFrame;
+
+    private FunctionFrame? ClassMemberFrameFor(FunctionFrame frame)
     {
-        foreach (var frame in _executionStack)
-        {
-            if (frame is not FunctionFrame functionFrame)
-                continue;
-            if (!string.IsNullOrEmpty(functionFrame.Function.ClassName))
-                return functionFrame;
-            if (functionFrame.Function.Declaration?.Name == "<lambda>")
-                continue;
-            return null;
-        }
+        if (!string.IsNullOrEmpty(frame.Function.ClassName))
+            return frame;
+        if (frame.Function.Declaration?.Name == "<lambda>")
+            return CurrentClassMemberFrame();
         return null;
     }
 
@@ -3410,6 +3414,9 @@ public partial class Interpreter
             StatementIndex = 0,
             PreviousEnvironment = previousForFrame // Store the previous environment in the frame
         };
+        functionFrame.ClassMemberFrame = ClassMemberFrameFor(functionFrame);
+        var activation = GetActivation();
+        var callerFunctionFrame = activation.CurrentFunctionFrame;
         _executionStack.Push(functionFrame);
         
         // Track call stack for debugger
@@ -3447,6 +3454,7 @@ public partial class Interpreter
         try
         {
             _environment = environment;
+            activation.CurrentFunctionFrame = functionFrame;
             
             // Initialize function state
             if (function.IsConstructor)
@@ -3598,6 +3606,7 @@ public partial class Interpreter
         finally
         {
             PopExecutionFrame(functionFrame);
+            activation.CurrentFunctionFrame = callerFunctionFrame;
             await RunAndPopDeferFrameAsync();
 
             if (withinMs is > 0)
