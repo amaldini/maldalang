@@ -396,6 +396,101 @@ public class TranspilePerformanceParityTests
     }
 
     [Fact]
+    public void TypedFunctionTwins_MatchInterpreter()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            function fib(n) {
+                if (n < 2) { return n; }
+                return fib(n - 1) + fib(n - 2);
+            }
+            function area(r) { return r * r * 3.5; }
+            function half(x) { return x / 2; }
+            function classify(n) {
+                if (n > 0) { return n; }
+                return "non-positive";
+            }
+            function maybe(n) {
+                if (n > 0) { return 1; }
+            }
+            function twice(n) { n * 2; }
+            function countdown(n) {
+                var steps = 0;
+                while (n > 0) { n = n - 1; steps = steps + 1; }
+                return steps;
+            }
+            function shrink(n) {
+                n = n / 2;
+                return n;
+            }
+            function square(n) { return n * n; }
+            function isEven(n) { if (n == 0) { return true; } return isOdd(n - 1); }
+            function isOdd(n) { if (n == 0) { return false; } return isEven(n - 1); }
+            function label(v) { return "v=" + v; }
+
+            class Calc {
+                function run(k) { return fib(k) + square(3); }
+            }
+
+            io.print(fib(20));
+            io.print(area(2.0));
+            io.print(half(3));
+            io.print(half(2.5));
+            io.print(classify(4));
+            io.print(classify(-4));
+            io.print(maybe(1));
+            io.print(maybe(-1));
+            io.print(twice(21));
+            io.print(countdown(5));
+            io.print(shrink(9));
+            io.print(isEven(10));
+            io.print(isOdd(7));
+            io.print(label(3));
+            io.print(label("x"));
+            io.print(new Calc().run(10));
+            var f = fib;
+            io.print(f(12));
+            var t = async fib(11);
+            io.print(await t);
+            var total = 0;
+            for (var i = 0; i < 5; i++) { total = total + square(i); }
+            io.print(total);
+            try { io.print(square(100000)); } catch (e) { io.print("square overflow"); }
+            """,
+            "perf-typed-function-twins");
+    }
+
+    [Fact]
+    public void TypedFunctionTwins_EmitTypedSignatures()
+    {
+        var generated = TranspileSource(
+            """
+            function fib(n) {
+                if (n < 2) { return n; }
+                return fib(n - 1) + fib(n - 2);
+            }
+            function area(r) { return r * r * 3.5; }
+            function classify(n) {
+                if (n > 0) { return n; }
+                return "non-positive";
+            }
+            function label(v) { return "v=" + v; }
+            io.print(fib(20));
+            io.print(area(2.0));
+            io.print(classify(3));
+            io.print(label(1));
+            io.print(label("a"));
+            """);
+        Assert.Contains("static int fib__Typed(int n)", generated);
+        Assert.Contains("RuntimeHelpers.CheckedIntAdd(fib__Typed(RuntimeHelpers.CheckedIntSubtract(n, 1)), fib__Typed(RuntimeHelpers.CheckedIntSubtract(n, 2)))", generated);
+        Assert.Contains("fib__Typed(20)", generated);
+        Assert.Contains("static double area__Typed(double r)", generated);
+        Assert.Contains("static object classify__Typed(int n)", generated);
+        // A typed parameter that is only concatenated would just duplicate the sync twin.
+        Assert.DoesNotContain("label__Typed", generated);
+    }
+
+    [Fact]
     public void JavaScriptConditionAndOperandShortcuts_MatchInterpreter()
     {
         // The JS emitter drops isTruthy around comparisons/!/&&/||, coerceToFloat around

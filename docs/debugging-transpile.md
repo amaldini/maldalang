@@ -23,7 +23,10 @@ The emitter takes fast paths when it can prove they print the same thing as the 
 
 - `name__Sync(...)` — a synchronous copy of a top-level function whose body never awaits.
   Direct calls use it; the `async Task<object> name(...)` method stays for delegates,
-  `spawn`, routes and reflection. A body error usually shows up in both copies.
+  `spawn`, routes and reflection. A body error usually shows up in every copy.
+- `name__Typed(int n)` — a third copy with `int`/`double` parameters and/or return, used by a
+  direct call only when every argument already has that C# type (`fib__Typed(20)`); other
+  calls keep `name__Sync`. Locals derived from parameters stay `object` in all copies.
 - `RuntimeHelpers.DirectCall(((object)recv) is Vec __dm0 ? (object)__dm0.m(args) : await RuntimeHelpers.CallObjectMethod(...))`
   — a method call dispatched directly when `recv` is a known class, with the reflective
   call as fallback.

@@ -20,7 +20,12 @@ internal static class AstNodeWalker
 {
     private static readonly ConcurrentDictionary<Type, PropertyInfo[]> Properties = new();
 
-    public static IEnumerable<Node> Descendants(object root)
+    /// <param name="root">Where to start; it is yielded too when it is a node.</param>
+    /// <param name="descendInto">
+    /// Optional filter: a node it rejects is still yielded but its children are not visited
+    /// (e.g. stop at nested lambdas when collecting a function's own returns).
+    /// </param>
+    public static IEnumerable<Node> Descendants(object root, Func<Node, bool>? descendInto = null)
     {
         var visited = new HashSet<object>(ReferenceEqualityComparer.Instance);
         var stack = new Stack<object>();
@@ -36,6 +41,10 @@ internal static class AstNodeWalker
             if (current is Node node)
             {
                 yield return node;
+                if (descendInto != null && !ReferenceEquals(node, root) && !descendInto(node))
+                {
+                    continue;
+                }
             }
 
             foreach (var property in GetProperties(current.GetType()))

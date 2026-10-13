@@ -122,30 +122,43 @@ internal static class NumericVariableInference
         while (changed);
     }
 
-    private static bool IsIntStore(AssignmentStatement assignment, ISet<string> ints)
+    internal enum Kind
+    {
+        None,
+        Int,
+        Double
+    }
+
+    /// <summary>
+    /// Resolves the numeric kind a user function call certainly returns (see the C# transpiler's
+    /// typed function twins), or <see cref="Kind.None"/>. Null when calls are never numeric.
+    /// </summary>
+    internal delegate Kind CallKindResolver(FunctionCallExpression call);
+
+    internal static bool IsIntStore(AssignmentStatement assignment, ISet<string> ints, CallKindResolver? calls = null)
     {
         return assignment.Operator switch
         {
             TokenType.Assign or TokenType.PlusAssign or TokenType.MinusAssign or TokenType.MultiplyAssign =>
-                IsCertainlyInt(assignment.Value, ints),
+                IsCertainlyInt(assignment.Value, ints, calls),
             // x /= v makes x a float.
             _ => false
         };
     }
 
-    private static bool IsDoubleStore(AssignmentStatement assignment, ISet<string> doubles, ISet<string> ints)
+    internal static bool IsDoubleStore(AssignmentStatement assignment, ISet<string> doubles, ISet<string> ints, CallKindResolver? calls = null)
     {
         return assignment.Operator switch
         {
-            TokenType.Assign => IsCertainlyDouble(assignment.Value, doubles, ints),
+            TokenType.Assign => IsCertainlyDouble(assignment.Value, doubles, ints, calls),
             // x op= v with x a float: float op (float or int) is a float.
             TokenType.PlusAssign or TokenType.MinusAssign or TokenType.MultiplyAssign or TokenType.DivideAssign =>
-                IsCertainlyNumber(assignment.Value, doubles, ints),
+                IsCertainlyNumber(assignment.Value, doubles, ints, calls),
             _ => false
         };
     }
 
-    public static bool IsCertainlyInt(Expression? expression, ISet<string> ints)
+    public static bool IsCertainlyInt(Expression? expression, ISet<string> ints, CallKindResolver? calls = null)
     {
         switch (expression)
         {
@@ -154,16 +167,18 @@ internal static class NumericVariableInference
             case IdentifierExpression id:
                 return ints.Contains(id.Name);
             case UnaryExpression { Operator: TokenType.Minus } unary:
-                return IsCertainlyInt(unary.Right, ints);
+                return IsCertainlyInt(unary.Right, ints, calls);
             case BinaryExpression binary when binary.Operator is
                 TokenType.Plus or TokenType.Minus or TokenType.Multiply or TokenType.Modulo:
-                return IsCertainlyInt(binary.Left, ints) && IsCertainlyInt(binary.Right, ints);
+                return IsCertainlyInt(binary.Left, ints, calls) && IsCertainlyInt(binary.Right, ints, calls);
+            case FunctionCallExpression call when calls != null:
+                return calls(call) == Kind.Int;
             default:
                 return false;
         }
     }
 
-    public static bool IsCertainlyDouble(Expression? expression, ISet<string> doubles, ISet<string> ints)
+    public static bool IsCertainlyDouble(Expression? expression, ISet<string> doubles, ISet<string> ints, CallKindResolver? calls = null)
     {
         switch (expression)
         {
@@ -172,23 +187,39 @@ internal static class NumericVariableInference
             case IdentifierExpression id:
                 return doubles.Contains(id.Name);
             case UnaryExpression { Operator: TokenType.Minus } unary:
-                return IsCertainlyDouble(unary.Right, doubles, ints);
+                return IsCertainlyDouble(unary.Right, doubles, ints, calls);
             case BinaryExpression { Operator: TokenType.Divide } division:
-                return IsCertainlyNumber(division.Left, doubles, ints) &&
-                       IsCertainlyNumber(division.Right, doubles, ints);
+                return IsCertainlyNumber(division.Left, doubles, ints, calls) &&
+                       IsCertainlyNumber(division.Right, doubles, ints, calls);
             case BinaryExpression binary when binary.Operator is
                 TokenType.Plus or TokenType.Minus or TokenType.Multiply or TokenType.Modulo:
-                var left = IsCertainlyDouble(binary.Left, doubles, ints);
-                var right = IsCertainlyDouble(binary.Right, doubles, ints);
-                return (left && (right || IsCertainlyInt(binary.Right, ints))) ||
-                       (right && IsCertainlyInt(binary.Left, ints));
+                var left = IsCertainlyDouble(binary.Left, doubles, ints, calls);
+                var right = IsCertainlyDouble(binary.Right, doubles, ints, calls);
+                return (left && (right || IsCertainlyInt(binary.Right, ints, calls))) ||
+                       (right && IsCertainlyInt(binary.Left, ints, calls));
+            case FunctionCallExpression call when calls != null:
+                return calls(call) == Kind.Double;
             default:
                 return false;
         }
     }
 
-    private static bool IsCertainlyNumber(Expression? expression, ISet<string> doubles, ISet<string> ints) =>
-        IsCertainlyInt(expression, ints) || IsCertainlyDouble(expression, doubles, ints);
+    private static bool IsCertainlyNumber(Expression? expression, ISet<string> doubles, ISet<string> ints, CallKindResolver? calls) =>
+        IsCertainlyInt(expression, ints, calls) || IsCertainlyDouble(expression, doubles, ints, calls);
+
+    /// <summary>
+    /// Every name bound inside <paramref name="root"/> other than by a plain use: var
+    /// declarations, parameters of nested functions and lambdas, for-in / catch variables,
+    /// patterns, and so on.
+    /// </summary>
+    public static HashSet<string> BindingsWithin(Node root)
+    {
+        var facts = new Facts();
+        facts.Collect(root);
+        var names = new HashSet<string>(facts.OtherBindings, StringComparer.Ordinal);
+        names.UnionWith(facts.Declarations.Keys);
+        return names;
+    }
 
     /// <summary>Declarations, assignments and every other way a name is bound or bumped.</summary>
     private sealed class Facts

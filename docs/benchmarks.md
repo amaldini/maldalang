@@ -63,7 +63,7 @@ row is each backend's startup cost. JavaScript needs `node` on `PATH`.
 | `objects` | `new`, method calls, field access |
 
 The C# fast paths these numbers track (conditional defer frames, primitive operator paths,
-direct `this.field`, `__Sync` function twins, direct method dispatch, inferred `int` and
+direct `this.field`, `__Sync` / `__Typed` function twins, direct method dispatch, inferred `int` and
 `double` variables) are pinned by `TranspilePerformanceParityTests`.
 
 Related: built-in profiler docs in [`docs/profiling.md`](profiling.md).
