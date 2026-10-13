@@ -26,7 +26,8 @@ The emitter takes fast paths when it can prove they print the same thing as the 
   `spawn`, routes and reflection. A body error usually shows up in every copy.
 - `name__Typed(int n)` — a third copy with `int`/`double` parameters and/or return, used by a
   direct call only when every argument already has that C# type (`fib__Typed(20)`); other
-  calls keep `name__Sync`. Locals derived from parameters stay `object` in all copies.
+  calls keep `name__Sync`. Its locals are inferred again with the typed parameters, so
+  `var a = n * 2` can be an `int` there and an `object` in the untyped copies.
 - `m__Typed(int n)` next to a class method, on the same rule. `this.m(...)` calls it directly
   when every instance runs that declaration (no subclass redeclares `m`), `Class.m(...)` for
   a static method; other receivers reach it inside the direct-dispatch test below, with the
@@ -40,6 +41,10 @@ The emitter takes fast paths when it can prove they print the same thing as the 
 - `int` / `double` locals and fields for `var`s that only ever hold ints / floats, with
   `RuntimeHelpers.CheckedIntAdd(i, 1)`, `IntModulo`, `DivideDouble` and plain `<` / `==`
   around them (overflow and division by zero still raise the interpreter's errors).
+  Top-level names must be declared once in the whole program; locals of a function, method or
+  constructor only once per body (or in several blocks that all hold the same kind, such as
+  two `for (var i ...)` loops), with every use after the declaration in its block. A `var` used
+  before its declaration, or holding a string anywhere in the body, stays `object`.
 - `RuntimeHelpers.PushDeferFrame()` / `try` / `finally` only around blocks that contain a
   `defer`.
 

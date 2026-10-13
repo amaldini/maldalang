@@ -1,0 +1,25 @@
+// Loops inside functions whose names (i, sum) other code declares too, so only per-body
+// inference can type them.
+function sumSquares(n) {
+    var sum = 0;
+    for (var i = 0; i < n; i++) {
+        sum = sum + (i * 3) % 7;
+    }
+    return sum;
+}
+
+function countMultiples(n, k) {
+    var count = 0;
+    for (var i = 1; i <= n; i++) {
+        if (i % k == 0) {
+            count++;
+        }
+    }
+    return count;
+}
+
+var sum = 0;
+for (var i = 0; i < 10; i++) {
+    sum = sum + sumSquares(100000) + countMultiples(50000, 3);
+}
+io.print(sum);

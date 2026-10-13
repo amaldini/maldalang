@@ -102,6 +102,15 @@ public class CSharpTranspiler
     private Dictionary<string, TypedTwinSignature> _typedTwins = new(StringComparer.Ordinal);
     private readonly HashSet<string> _typedTwinRejected = new(StringComparer.Ordinal);
     private bool _typedTwinRejectedThisPass;
+    /// <summary>
+    /// Inferred int/double locals per function, method and constructor body (see
+    /// <see cref="NumericVariableInference.InferLocals"/>): for the untyped versions, and for the
+    /// <c>__Typed</c> variant where typed parameters can make more locals numeric.
+    /// </summary>
+    private Dictionary<FunctionDeclaration, NumericVariableInference.LocalResult> _untypedLocals = new(ReferenceEqualityComparer.Instance);
+    private Dictionary<FunctionDeclaration, NumericVariableInference.LocalResult> _typedLocals = new(ReferenceEqualityComparer.Instance);
+    /// <summary>The locals of the body being emitted.</summary>
+    private NumericVariableInference.LocalResult _activeLocals = NumericVariableInference.LocalResult.Empty();
     /// <summary>Member call names with built-in handling ahead of user methods.</summary>
     private static readonly HashSet<string> BuiltInMemberMethodNames = new(StringComparer.Ordinal)
     {
@@ -886,6 +895,8 @@ public class CSharpTranspiler
     {
         if (string.IsNullOrWhiteSpace(varDecl.TypeHint))
         {
+            if (_activeLocals.Declarations.TryGetValue(varDecl, out var localKind))
+                return localKind == NumericVariableInference.Kind.Int ? TranspiledClrType.Int : TranspiledClrType.Double;
             if (_inferredNumerics.Ints.Contains(varDecl.Name))
                 return TranspiledClrType.Int;
             if (_inferredNumerics.Doubles.Contains(varDecl.Name))
@@ -7543,8 +7554,10 @@ public class CSharpTranspiler
         var previousCanAwait = _canAwait;
         _canAwait = true;
         _currentFunctionReturnType.Push(returnType);
+        var previousLocals = EnterLocals(funcDecl, typed: false);
         TranspileFunctionBlock(funcDecl.Body, funcDecl.Name, funcDecl.Line, appendImplicitNullReturn: true,
             budget: DeclarationBounds.TryGetResourceBudget(funcDecl));
+        _activeLocals = previousLocals;
         _currentFunctionReturnType.Pop();
         PopTypedScope();
         _canAwait = previousCanAwait;
@@ -7596,7 +7609,9 @@ public class CSharpTranspiler
         var previousCanAwait = _canAwait;
         _canAwait = false;
         _currentFunctionReturnType.Push(signature.Return);
+        var previousLocals = EnterLocals(funcDecl, typed: true);
         TranspileFunctionBlock(funcDecl.Body, funcDecl.Name, funcDecl.Line, appendImplicitNullReturn: true);
+        _activeLocals = previousLocals;
         _currentFunctionReturnType.Pop();
         PopTypedScope();
         _canAwait = previousCanAwait;
@@ -7614,6 +7629,15 @@ public class CSharpTranspiler
             _typedTwinRejected.Add(funcDecl.Name);
             _typedTwinRejectedThisPass = true;
         }
+    }
+
+    /// <summary>Makes the inferred locals of <paramref name="body"/> active; returns the previous ones.</summary>
+    private NumericVariableInference.LocalResult EnterLocals(FunctionDeclaration body, bool typed)
+    {
+        var previous = _activeLocals;
+        var locals = typed ? _typedLocals : _untypedLocals;
+        _activeLocals = locals.TryGetValue(body, out var found) ? found : NumericVariableInference.LocalResult.Empty();
+        return previous;
     }
 
     private string GetTypedTwinName(string functionName) => EscapeIdentifier(functionName) + "__Typed";
@@ -7683,8 +7707,10 @@ public class CSharpTranspiler
 
         var doubles = new HashSet<string>(_inferredNumerics.Doubles, StringComparer.Ordinal);
         doubles.UnionWith(_currentTypedDoubleParams);
+        doubles.UnionWith(_activeLocals.Doubles);
         var ints = new HashSet<string>(_inferredNumerics.Ints, StringComparer.Ordinal);
         ints.UnionWith(_currentTypedIntParams);
+        ints.UnionWith(_activeLocals.Ints);
         return NumericVariableInference.IsCertainlyDouble(value, doubles, ints, ResolveTypedCallKind);
     }
 
@@ -7744,12 +7770,35 @@ public class CSharpTranspiler
     {
         var result = new Dictionary<string, TypedTwinSignature>(StringComparer.Ordinal);
         _typedStaticReceivers = new HashSet<string>(StringComparer.Ordinal);
-        if (!TypedTranspileEnabled || ProfilingEnabled)
+        _untypedLocals = new Dictionary<FunctionDeclaration, NumericVariableInference.LocalResult>(ReferenceEqualityComparer.Instance);
+        _typedLocals = new Dictionary<FunctionDeclaration, NumericVariableInference.LocalResult>(ReferenceEqualityComparer.Instance);
+        if (!TypedTranspileEnabled)
             return result;
 
         var topLevel = functions.Where(f => !ShaderFunction.IsMarked(f)).ToList();
         var byKey = new Dictionary<string, TypedTwinCandidate>(StringComparer.Ordinal);
-        if (_syncTwinFunctions != null)
+        // Every body whose locals get typed, by the key its call sites use: functions by name
+        // (only when the name is unique), methods by Class.method, constructors by Class..ctor.
+        var bodyByKey = new Dictionary<string, FunctionDeclaration>(StringComparer.Ordinal);
+        var allBodies = new List<FunctionDeclaration>(topLevel);
+        foreach (var group in topLevel.GroupBy(f => f.Name, StringComparer.Ordinal))
+        {
+            if (group.Count() == 1)
+                bodyByKey[group.Key] = group.First();
+        }
+        foreach (var classDecl in _classDeclarations.Values)
+        {
+            foreach (var member in classDecl.Members)
+            {
+                if (member.Value is FunctionDeclaration body && member.Type is MemberType.Method or MemberType.Constructor)
+                {
+                    allBodies.Add(body);
+                    bodyByKey[classDecl.Name + (member.Type == MemberType.Constructor ? "..ctor" : "." + member.Name)] = body;
+                }
+            }
+        }
+
+        if (_syncTwinFunctions != null && !ProfilingEnabled)
         {
             foreach (var f in topLevel)
             {
@@ -7762,16 +7811,14 @@ public class CSharpTranspiler
         {
             foreach (var member in classDecl.Members)
             {
-                if (member.Type == MemberType.Method && member.Value is FunctionDeclaration method &&
+                if (!ProfilingEnabled &&
+                    member.Type == MemberType.Method && member.Value is FunctionDeclaration method &&
                     IsTypedMethodCandidate(classDecl, member, method))
                 {
                     byKey[classDecl.Name + "." + member.Name] = new TypedTwinCandidate(method, classDecl.Name, member.IsStatic);
                 }
             }
         }
-        if (byKey.Count == 0)
-            return result;
-
         // `Class.m(...)` is a static call only where nothing else in the program is named Class.
         var bound = new HashSet<string>(StringComparer.Ordinal);
         foreach (var statement in program)
@@ -7854,7 +7901,7 @@ public class CSharpTranspiler
             {
                 if (member.Value is FunctionDeclaration body)
                 {
-                    var callerKey = member.Type == MemberType.Method ? classDecl.Name + "." + member.Name : null;
+                    var callerKey = classDecl.Name + (member.Type == MemberType.Constructor ? "..ctor" : "." + member.Name);
                     Collect(body.Body, callerKey, classDecl.Name, member.IsStatic);
                 }
                 else if (member.Value is Expression initializer)
@@ -7937,11 +7984,28 @@ public class CSharpTranspiler
             returnKinds[key] = returnEligible[key] ? TranspiledClrType.Int : ResolveTranspiledTypeHint(f.ReturnType);
         }
 
+        // The names known in a body: top-level inferred variables, its typed parameters (in the
+        // typed variant of a candidate) and its own inferred locals. Cached until an assumption
+        // changes.
+        var scopeCache = new Dictionary<string, (HashSet<string> Ints, HashSet<string> Doubles)>(StringComparer.Ordinal);
         (HashSet<string> Ints, HashSet<string> Doubles) ScopeOf(string? callerKey)
         {
+            if (callerKey != null && scopeCache.TryGetValue(callerKey, out var cached))
+                return cached;
+
             var ints = new HashSet<string>(_inferredNumerics.Ints, StringComparer.Ordinal);
             var doubles = new HashSet<string>(_inferredNumerics.Doubles, StringComparer.Ordinal);
-            if (callerKey != null && parameterKinds.TryGetValue(callerKey, out var kinds))
+            if (callerKey == null)
+                return (ints, doubles);
+
+            parameterKinds.TryGetValue(callerKey, out var kinds);
+            if (bodyByKey.TryGetValue(callerKey, out var body))
+            {
+                var locals = LocalsOf(body, kinds);
+                ints.UnionWith(locals.Ints);
+                doubles.UnionWith(locals.Doubles);
+            }
+            if (kinds != null)
             {
                 var parameters = byKey[callerKey].Function.Parameters;
                 for (int i = 0; i < kinds.Length; i++)
@@ -7950,11 +8014,26 @@ public class CSharpTranspiler
                     else if (kinds[i] == TranspiledClrType.Double) doubles.Add(parameters[i]);
                 }
             }
+            scopeCache[callerKey] = (ints, doubles);
             return (ints, doubles);
         }
 
+        // Locals of a body; kinds are the typed parameters of its __Typed variant, or null for the
+        // untyped versions (where every parameter is an object).
+        NumericVariableInference.LocalResult LocalsOf(FunctionDeclaration body, TranspiledClrType[]? kinds)
+        {
+            var ints = new HashSet<string>(_inferredNumerics.Ints, StringComparer.Ordinal);
+            var doubles = new HashSet<string>(_inferredNumerics.Doubles, StringComparer.Ordinal);
+            for (int i = 0; kinds != null && i < kinds.Length; i++)
+            {
+                if (kinds[i] == TranspiledClrType.Int) ints.Add(body.Parameters[i]);
+                else if (kinds[i] == TranspiledClrType.Double) doubles.Add(body.Parameters[i]);
+            }
+            return NumericVariableInference.InferLocals(body.Body, body.Parameters, ints, doubles, MakeResolver);
+        }
+
         NumericVariableInference.CallKindResolver? resolver = null;
-        bool ArgumentFits(Expression argument, TranspiledClrType kind, HashSet<string> ints, HashSet<string> doubles) => kind switch
+        bool ArgumentFits(Expression argument, TranspiledClrType kind, ISet<string> ints, ISet<string> doubles) => kind switch
         {
             TranspiledClrType.Int => NumericVariableInference.IsCertainlyInt(argument, ints, resolver),
             TranspiledClrType.Double => NumericVariableInference.IsCertainlyDouble(argument, doubles, ints, resolver),
@@ -7962,7 +8041,7 @@ public class CSharpTranspiler
         };
 
         // Calls are resolved in the scope they sit in; the resolver is rebuilt per scope.
-        NumericVariableInference.CallKindResolver MakeResolver(HashSet<string> ints, HashSet<string> doubles)
+        NumericVariableInference.CallKindResolver MakeResolver(ISet<string> ints, ISet<string> doubles)
         {
             NumericVariableInference.CallKindResolver self = null!;
             self = call =>
@@ -8040,6 +8119,7 @@ public class CSharpTranspiler
                         {
                             kinds[i] = TranspiledClrType.Object;
                             changed = true;
+                            scopeCache.Clear();
                         }
                     }
 
@@ -8054,6 +8134,7 @@ public class CSharpTranspiler
                         {
                             returnKinds[key] = TranspiledClrType.Object;
                             changed = true;
+                            scopeCache.Clear();
                         }
                     }
                 }
@@ -8075,6 +8156,7 @@ public class CSharpTranspiler
             if (returnEligible[key] && returnKinds[key] == TranspiledClrType.Object)
                 returnKinds[key] = TranspiledClrType.Double;
         }
+        scopeCache.Clear();
         Settle(TranspiledClrType.Double);
 
         // A variant pays off only with a typed return or a typed parameter that the body does
@@ -8096,6 +8178,11 @@ public class CSharpTranspiler
             if (worthIt)
                 result[key] = new TypedTwinSignature(kinds, returnKinds[key]);
         }
+
+        foreach (var (key, signature) in result)
+            _typedLocals[byKey[key].Function] = LocalsOf(byKey[key].Function, signature.Parameters);
+        foreach (var body in allBodies)
+            _untypedLocals[body] = LocalsOf(body, null);
 
         return result;
     }
@@ -8324,7 +8411,9 @@ public class CSharpTranspiler
         var previousCanAwait = _canAwait;
         _canAwait = false;
         _currentFunctionReturnType.Push(returnType);
+        var previousLocals = EnterLocals(funcDecl, typed: false);
         TranspileFunctionBlock(funcDecl.Body, funcDecl.Name, funcDecl.Line, appendImplicitNullReturn: true);
+        _activeLocals = previousLocals;
         _currentFunctionReturnType.Pop();
         PopTypedScope();
         _canAwait = previousCanAwait;
@@ -10662,8 +10751,10 @@ public class CSharpTranspiler
                     var previousCanAwait = _canAwait;
                     _canAwait = false;
                     _currentFunctionReturnType.Push(methodReturnType);
+                    var previousLocals = EnterLocals(func, typed: false);
                     TranspileFunctionBlock(func.Body, member.Name, func.Line, appendImplicitNullReturn: true,
                         budget: DeclarationBounds.TryGetResourceBudget(func));
+                    _activeLocals = previousLocals;
                     _currentFunctionReturnType.Pop();
                     PopTypedScope();
                     _canAwait = previousCanAwait;
@@ -10745,11 +10836,13 @@ public class CSharpTranspiler
                         _output.AppendLine(")");
                     }
                     _currentFunctionReturnType.Push(TranspiledClrType.Object);
+                    var previousLocals = EnterLocals(ctor, typed: false);
                     TranspileFunctionBlock(
                         ctor.Body,
                         member.Name + ".ctor",
                         ctor.Line,
                         skipLeadingStatement: leadingSuperCall != null);
+                    _activeLocals = previousLocals;
                     _currentFunctionReturnType.Pop();
                     PopTypedScope();
                 }
@@ -10795,7 +10888,9 @@ public class CSharpTranspiler
         var previousCanAwait = _canAwait;
         _canAwait = false;
         _currentFunctionReturnType.Push(signature.Return);
+        var previousLocals = EnterLocals(func, typed: true);
         TranspileFunctionBlock(func.Body, member.Name, func.Line, appendImplicitNullReturn: true);
+        _activeLocals = previousLocals;
         _currentFunctionReturnType.Pop();
         PopTypedScope();
         _canAwait = previousCanAwait;

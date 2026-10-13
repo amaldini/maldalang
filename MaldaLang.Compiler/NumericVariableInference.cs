@@ -92,6 +92,177 @@ internal static class NumericVariableInference
         return new Result(doubles, ints);
     }
 
+    /// <summary>Locals of one function or method body that can be emitted as <c>int</c> / <c>double</c>.</summary>
+    internal sealed record LocalResult(
+        Dictionary<VarDeclStatement, Kind> Declarations,
+        HashSet<string> Ints,
+        HashSet<string> Doubles)
+    {
+        public static LocalResult Empty() => new(
+            new Dictionary<VarDeclStatement, Kind>(ReferenceEqualityComparer.Instance),
+            new HashSet<string>(StringComparer.Ordinal),
+            new HashSet<string>(StringComparer.Ordinal));
+    }
+
+    /// <summary>
+    /// The same rules as <see cref="Infer"/>, applied to the <c>var</c>s of one body, so a name
+    /// such as <c>i</c> that other functions or top-level code also declare can still be typed
+    /// here. A local name qualifies when the body (nested lambdas and functions included) binds
+    /// it only with untyped <c>var</c>s, it is not one of <paramref name="parameters"/>, and every
+    /// use of the name sits after one of those declarations inside its block (or inside its
+    /// <c>for</c>), so no use can mean an outer variable. Several declarations (two loops that
+    /// both use <c>i</c>) are typed together: every initializer and store must qualify.
+    /// <para>
+    /// <paramref name="outerInts"/> / <paramref name="outerDoubles"/> are the names already known
+    /// in this body (top-level inferred variables, typed parameters); <paramref name="resolverFor"/>
+    /// builds the call resolver for a given set of int / double names.
+    /// </para>
+    /// </summary>
+    public static LocalResult InferLocals(
+        BlockStatement body,
+        IReadOnlyCollection<string> parameters,
+        ISet<string> outerInts,
+        ISet<string> outerDoubles,
+        Func<ISet<string>, ISet<string>, CallKindResolver?>? resolverFor = null)
+    {
+        var facts = new Facts();
+        facts.Collect(body);
+
+        var nodes = AstNodeWalker.Descendants(body).ToList();
+        var candidates = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var (name, decls) in facts.Declarations)
+        {
+            if (decls.All(d => string.IsNullOrWhiteSpace(d.TypeHint)) &&
+                !facts.OtherBindings.Contains(name) &&
+                !parameters.Contains(name) &&
+                !outerInts.Contains(name) &&
+                !outerDoubles.Contains(name) &&
+                AllUsesInScope(nodes, decls, name))
+            {
+                candidates.Add(name);
+            }
+        }
+
+        var result = LocalResult.Empty();
+        if (candidates.Count == 0)
+        {
+            return result;
+        }
+
+        var ints = new HashSet<string>(candidates, StringComparer.Ordinal);
+        ShrinkLocals(ints, facts, shrinkingInts: true, outerInts, outerDoubles, resolverFor);
+
+        var allInts = Union(outerInts, ints);
+        var doubles = new HashSet<string>(
+            candidates.Where(n => !ints.Contains(n) && !facts.Incremented.Contains(n)),
+            StringComparer.Ordinal);
+        ShrinkLocals(doubles, facts, shrinkingInts: false, allInts, outerDoubles, resolverFor);
+
+        foreach (var name in ints)
+        {
+            foreach (var declaration in facts.Declarations[name])
+                result.Declarations[declaration] = Kind.Int;
+            result.Ints.Add(name);
+        }
+        foreach (var name in doubles)
+        {
+            foreach (var declaration in facts.Declarations[name])
+                result.Declarations[declaration] = Kind.Double;
+            result.Doubles.Add(name);
+        }
+        return result;
+    }
+
+    // Shrink like Infer, over the outer names plus the locals still standing, with calls
+    // resolved in that scope.
+    private static void ShrinkLocals(
+        HashSet<string> candidates,
+        Facts facts,
+        bool shrinkingInts,
+        ISet<string> outerInts,
+        ISet<string> outerDoubles,
+        Func<ISet<string>, ISet<string>, CallKindResolver?>? resolverFor)
+    {
+        bool changed;
+        do
+        {
+            changed = false;
+            var ints = shrinkingInts ? Union(outerInts, candidates) : Union(outerInts, Array.Empty<string>());
+            var doubles = shrinkingInts ? Union(outerDoubles, Array.Empty<string>()) : Union(outerDoubles, candidates);
+            var calls = resolverFor?.Invoke(ints, doubles);
+            foreach (var name in candidates.ToList())
+            {
+                var ok = facts.Declarations[name].All(d => shrinkingInts
+                    ? IsCertainlyInt(d.Initializer, ints, calls)
+                    : IsCertainlyDouble(d.Initializer, doubles, ints, calls));
+                if (ok && facts.Assignments.TryGetValue(name, out var stores))
+                {
+                    ok = stores.All(store => shrinkingInts
+                        ? IsIntStore(store, ints, calls)
+                        : IsDoubleStore(store, doubles, ints, calls));
+                }
+
+                if (!ok)
+                {
+                    candidates.Remove(name);
+                    changed = true;
+                }
+            }
+        }
+        while (changed);
+    }
+
+    private static HashSet<string> Union(IEnumerable<string> first, IEnumerable<string> second)
+    {
+        var set = new HashSet<string>(first, StringComparer.Ordinal);
+        set.UnionWith(second);
+        return set;
+    }
+
+    /// <summary>
+    /// True when every <c>name</c> in the body refers to one of <paramref name="declarations"/>:
+    /// each is a statement of a block (or the initializer of a <c>for</c>), and each use sits in
+    /// such a block after its declaration (or in that <c>for</c>), outside that declaration's own
+    /// initializer.
+    /// </summary>
+    private static bool AllUsesInScope(List<Node> bodyNodes, List<VarDeclStatement> declarations, string name)
+    {
+        var allowed = new HashSet<Node>(ReferenceEqualityComparer.Instance);
+        foreach (var declaration in declarations)
+        {
+            IEnumerable<Node>? region = null;
+            foreach (var node in bodyNodes)
+            {
+                if (node is BlockStatement block)
+                {
+                    var index = block.Statements.FindIndex(s => ReferenceEquals(s, declaration));
+                    if (index >= 0)
+                    {
+                        region = block.Statements.Skip(index).SelectMany(s => AstNodeWalker.Descendants(s));
+                        break;
+                    }
+                }
+                else if (node is ForStatement loop && ReferenceEquals(loop.Initializer, declaration))
+                {
+                    region = AstNodeWalker.Descendants(loop);
+                    break;
+                }
+            }
+
+            if (region == null)
+            {
+                return false;
+            }
+
+            var ownInitializer = declaration.Initializer == null
+                ? new HashSet<Node>(ReferenceEqualityComparer.Instance)
+                : new HashSet<Node>(AstNodeWalker.Descendants(declaration.Initializer), ReferenceEqualityComparer.Instance);
+            allowed.UnionWith(region.Where(node => !ownInitializer.Contains(node)));
+        }
+
+        return bodyNodes.All(node => node is not IdentifierExpression id || id.Name != name || allowed.Contains(id));
+    }
+
     // Shrink to a fixpoint: a name stays only while everything stored in it qualifies given the
     // names still standing.
     private static void Shrink(

@@ -562,6 +562,137 @@ public class TranspilePerformanceParityTests
     }
 
     [Fact]
+    public void BodyLocalInference_MatchInterpreter()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            var i = "global i";
+            var total = 0;
+
+            function sumTo(n) {
+                var acc = 0;
+                for (var i = 0; i < n; i++) { acc = acc + i; }
+                return acc;
+            }
+            function average(values) {
+                var sum = 0.0;
+                var count = 0;
+                for (var v in values) { sum = sum + v; count++; }
+                return sum / count;
+            }
+            function outerRef(flag) {
+                if (flag) { var x = 5; io.print(x * 2); }
+                var y = 3;
+                y = y * 2;
+                return y;
+            }
+            function closures() {
+                var count = 0;
+                var bump = () => { count = count + 1; };
+                bump();
+                bump();
+                return count;
+            }
+            function mixed(n) {
+                var r = 1;
+                if (n > 2) { r = "big"; }
+                return r;
+            }
+            function halves() {
+                var h = 9;
+                h = h / 2;
+                return h;
+            }
+            function twoLoops(n) {
+                var a = 0;
+                for (var i = 0; i < n; i++) { a = a + i; }
+                for (var i = 0; i < n; i++) { a = a + i * 2; }
+                return a;
+            }
+            function laterString() {
+                var t = 0;
+                for (var q = 0; q < 2; q++) { t = t + q; }
+                for (var q = 0; q < 1; q++) { var w = "s" + q; io.print(w); }
+                { var q = "text"; io.print(q); }
+                return t;
+            }
+
+            class Grid {
+                var w;
+                function Grid(w) {
+                    var area = w * w;
+                    this.w = w;
+                    io.print("area " + area);
+                }
+                function sq(n) { return n * n; }
+                function sumSquares(limit) {
+                    var acc = 0;
+                    for (var i = 0; i < limit; i++) { acc = acc + this.sq(i); }
+                    return acc;
+                }
+                function scaled(f) {
+                    var s = 0.5;
+                    s = s * f;
+                    return s;
+                }
+            }
+
+            io.print(sumTo(10));
+            io.print(average([1, 2, 3, 4]));
+            io.print(outerRef(true));
+            io.print(outerRef(false));
+            io.print(closures());
+            io.print(mixed(1));
+            io.print(mixed(5));
+            io.print(halves());
+            io.print(twoLoops(5));
+            io.print(laterString());
+            var g = new Grid(4);
+            io.print(g.sumSquares(10));
+            io.print(g.scaled(3));
+            io.print(g.scaled(1.5));
+            io.print(i);
+            for (var j = 0; j < 3; j++) { total = total + sumTo(j); }
+            io.print(total);
+            try { io.print(sumTo(100000)); } catch (e) { io.print("overflow"); }
+            """,
+            "perf-body-local-inference");
+    }
+
+    [Fact]
+    public void BodyLocalInference_TypesReusedNamesPerBody()
+    {
+        var generated = TranspileSource(
+            """
+            function sumTo(n) {
+                var acc = 0;
+                for (var i = 0; i < n; i++) { acc = acc + i; }
+                for (var i = 0; i < n; i++) { acc = acc + 1; }
+                return acc;
+            }
+            function words() {
+                var i = "a";
+                return i;
+            }
+            class Grid {
+                function sq(n) { return n * n; }
+                function sumSquares(limit) {
+                    var acc = 0;
+                    for (var i = 0; i < limit; i++) { acc = acc + this.sq(i); }
+                    return acc;
+                }
+            }
+            for (var i = 0; i < 3; i++) { io.print(sumTo(i)); }
+            io.print(words());
+            io.print(new Grid().sumSquares(4));
+            """);
+        Assert.Contains("int acc = 0;", generated);
+        Assert.Contains("int i = 0;", generated);
+        Assert.Contains("object i = \"a\";", generated);
+        Assert.Contains("acc = RuntimeHelpers.CheckedIntAdd(acc, this.sq__Typed(i));", generated);
+    }
+
+    [Fact]
     public void TypedMethodTwins_EmitTypedSignatures()
     {
         var generated = TranspileSource(
