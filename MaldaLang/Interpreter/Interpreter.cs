@@ -1818,8 +1818,11 @@ public partial class Interpreter
         }
     }
     
-    /// <summary>Signal-aware statement dispatch; see Interpreter.ControlFlow.cs.</summary>
-    private async Task<RuntimeValue?> ExecuteStatementAsync(Statement stmt)
+    /// <summary>
+    /// Signal-aware statement dispatch (see Interpreter.ControlFlow.cs) with the debugger,
+    /// profiler and current-file bookkeeping; <see cref="ExecuteStatementAsync"/> skips it when idle.
+    /// </summary>
+    private async Task<RuntimeValue?> ExecuteStatementSlowAsync(Statement stmt)
     {
         var previousFile = _currentFile;
         var statementFile = stmt.SourceFile ?? _currentFile;
@@ -1916,6 +1919,18 @@ public partial class Interpreter
             throw new RuntimeException($"Cannot assign to const '{name}'.", line, _currentFile);
     }
     
+    private RuntimeValue ApplyCompoundAssignment(AssignmentStatement stmt, RuntimeValue currentValue, RuntimeValue rightValue)
+    {
+        return stmt.Operator switch
+        {
+            TokenType.PlusAssign => EvaluatePlus(currentValue, rightValue, stmt.Line),
+            TokenType.MinusAssign => EvaluateMinus(currentValue, rightValue, stmt.Line),
+            TokenType.MultiplyAssign => EvaluateMultiply(currentValue, rightValue, stmt.Line),
+            TokenType.DivideAssign => EvaluateDivide(currentValue, rightValue, stmt.Line),
+            _ => throw new RuntimeException($"Unknown compound assignment operator: {stmt.Operator}", stmt.Line, _currentFile)
+        };
+    }
+
     private async Task<RuntimeValue?> ExecuteAssignmentAsync(AssignmentStatement stmt)
     {
         RuntimeValue value;
@@ -1926,25 +1941,7 @@ public partial class Interpreter
             // Get current value of target
             var currentValue = await GetLvalueAsync(stmt.Target);
             var rightValue = await EvaluateAsync(stmt.Value);
-            
-            // Perform the operation
-            switch (stmt.Operator)
-            {
-                case TokenType.PlusAssign:
-                    value = EvaluatePlus(currentValue, rightValue, stmt.Line);
-                    break;
-                case TokenType.MinusAssign:
-                    value = EvaluateMinus(currentValue, rightValue, stmt.Line);
-                    break;
-                case TokenType.MultiplyAssign:
-                    value = EvaluateMultiply(currentValue, rightValue, stmt.Line);
-                    break;
-                case TokenType.DivideAssign:
-                    value = EvaluateDivide(currentValue, rightValue, stmt.Line);
-                    break;
-                default:
-                    throw new RuntimeException($"Unknown compound assignment operator: {stmt.Operator}", stmt.Line, _currentFile);
-            }
+            value = ApplyCompoundAssignment(stmt, currentValue, rightValue);
         }
         else
         {
@@ -2022,7 +2019,9 @@ public partial class Interpreter
             for (int i = blockFrame.StatementIndex; i < stmt.Statements.Count; i++)
             {
                 blockFrame.StatementIndex = i;
-                await ExecuteStatementAsync(stmt.Statements[i]);
+                var blockStmt = stmt.Statements[i];
+                if (!TryExecuteSync(blockStmt, out _))
+                    await ExecuteStatementAsync(blockStmt);
                 if (_pendingControl != PendingControl.None)
                     break;
             }
@@ -2047,7 +2046,9 @@ public partial class Interpreter
     
     private async Task<RuntimeValue?> ExecuteIfAsync(IfStatement stmt)
     {
-        if ((await EvaluateAsync(stmt.Condition)).IsTruthy())
+        if (!TryEvaluateSync(stmt.Condition, out var condition))
+            condition = await EvaluateCoreAsync(stmt.Condition, false);
+        if (condition.IsTruthy())
         {
             await ExecuteStatementAsync(stmt.ThenBranch);
         }
@@ -2126,7 +2127,7 @@ public partial class Interpreter
             
             // Continue looping (or start new loop if StatementIndex was 0)
             // Keep looping until condition is false
-            while ((await EvaluateAsync(stmt.Condition)).IsTruthy())
+            while ((TryEvaluateSync(stmt.Condition, out var condition) ? condition : await EvaluateCoreAsync(stmt.Condition, false)).IsTruthy())
             {
                 // Only increment LoopIteration for new iterations (StatementIndex == 0)
                 if (whileFrame.StatementIndex == 0)
@@ -2144,7 +2145,9 @@ public partial class Interpreter
                         for (int i = whileFrame.StatementIndex; i < whileFrame.BodyBlock.Statements.Count; i++)
                         {
                             whileFrame.StatementIndex = i;
-                            await ExecuteStatementAsync(whileFrame.BodyBlock.Statements[i]);
+                            var bodyStmt = whileFrame.BodyBlock.Statements[i];
+                            if (!TryExecuteSync(bodyStmt, out _))
+                                await ExecuteStatementAsync(bodyStmt);
                             if (_pendingControl != PendingControl.None)
                                 break;
                         }
@@ -2259,7 +2262,9 @@ public partial class Interpreter
         RuntimeValue? value = null;
         if (stmt.Value != null)
         {
-            value = await EvaluateAsync(stmt.Value);
+            if (!TryEvaluateSync(stmt.Value, out var returned))
+                returned = await EvaluateCoreAsync(stmt.Value, false);
+            value = returned;
         }
         return SignalControl(PendingControl.Return, value);
     }
@@ -2391,7 +2396,7 @@ public partial class Interpreter
     internal Environment CurrentEnvironment => _environment;
     internal ObjectInstance? CurrentThisObject => _currentObject;
 
-    internal async Task<RuntimeValue> EvaluateAsync(Expression expr, bool returnTask = false)
+    private async Task<RuntimeValue> EvaluateCoreAsync(Expression expr, bool returnTask)
     {
         return expr switch
         {
@@ -2666,7 +2671,13 @@ public partial class Interpreter
             if (reversedResult != null)
                 return reversedResult;
         }
-        
+
+        return ApplyBinaryOperator(expr, leftVal, rightVal);
+    }
+
+    /// <summary>Non-short-circuit binary operators on evaluated operands (no overloads).</summary>
+    private RuntimeValue ApplyBinaryOperator(BinaryExpression expr, RuntimeValue leftVal, RuntimeValue rightVal)
+    {
         switch (expr.Operator)
         {
             case TokenType.Plus:
@@ -2774,7 +2785,7 @@ public partial class Interpreter
         }
         if (left.Type == ValueType.Integer && right.Type == ValueType.Integer)
         {
-            return CheckedIntegerResult(() => { checked { return left.AsInteger() + right.AsInteger(); } }, line, _currentFile);
+            return IntegerResult((long)left.AsInteger() + right.AsInteger(), line);
         }
         var leftVal = left.Type == ValueType.Integer ? left.AsInteger() : left.AsFloat();
         var rightVal = right.Type == ValueType.Integer ? right.AsInteger() : right.AsFloat();
@@ -2786,7 +2797,7 @@ public partial class Interpreter
         CheckNumberOperands(left, right);
         if (left.Type == ValueType.Integer && right.Type == ValueType.Integer)
         {
-            return CheckedIntegerResult(() => { checked { return left.AsInteger() - right.AsInteger(); } }, line, _currentFile);
+            return IntegerResult((long)left.AsInteger() - right.AsInteger(), line);
         }
         var leftVal = left.Type == ValueType.Integer ? left.AsInteger() : left.AsFloat();
         var rightVal = right.Type == ValueType.Integer ? right.AsInteger() : right.AsFloat();
@@ -2817,7 +2828,7 @@ public partial class Interpreter
         CheckNumberOperands(left, right);
         if (left.Type == ValueType.Integer && right.Type == ValueType.Integer)
         {
-            return CheckedIntegerResult(() => { checked { return left.AsInteger() * right.AsInteger(); } }, line, _currentFile);
+            return IntegerResult((long)left.AsInteger() * right.AsInteger(), line);
         }
         var leftVal = left.Type == ValueType.Integer ? left.AsInteger() : left.AsFloat();
         var rightVal = right.Type == ValueType.Integer ? right.AsInteger() : right.AsFloat();
@@ -2841,7 +2852,11 @@ public partial class Interpreter
         {
             if (right.AsInteger() == 0)
                 throw new RuntimeException("Division by zero.", line, _currentFile);
-            return CheckedIntegerResult(() => { checked { return left.AsInteger() % right.AsInteger(); } }, line, _currentFile);
+            var dividend = left.AsInteger();
+            var divisor = right.AsInteger();
+            if (divisor == -1 && dividend == int.MinValue)
+                throw new RuntimeException("Integer overflow.", line, _currentFile);
+            return RuntimeValue.Integer(dividend % divisor);
         }
         var leftVal = left.Type == ValueType.Integer ? left.AsInteger() : left.AsFloat();
         var rightVal = right.Type == ValueType.Integer ? right.AsInteger() : right.AsFloat();
@@ -2929,10 +2944,7 @@ public partial class Interpreter
                     if (overloadedResult != null)
                         return overloadedResult;
                 }
-                CheckNumberOperand(right);
-                if (right.Type == ValueType.Integer)
-                    return CheckedIntegerResult(() => { checked { return -right.AsInteger(); } }, expr.Line, _currentFile);
-                return RuntimeValue.Float(-right.AsFloat());
+                return NegateValue(right, expr);
             case TokenType.Not:
                 right = await EvaluateAsync(expr.Right);
                 return RuntimeValue.Boolean(!right.IsTruthy());
@@ -2942,6 +2954,14 @@ public partial class Interpreter
             default:
                 throw new RuntimeException($"Unknown unary operator: {expr.Operator}", expr.Line, _currentFile);
         }
+    }
+
+    private RuntimeValue NegateValue(RuntimeValue right, UnaryExpression expr)
+    {
+        CheckNumberOperand(right);
+        if (right.Type == ValueType.Integer)
+            return IntegerResult(-(long)right.AsInteger(), expr.Line);
+        return RuntimeValue.Float(-right.AsFloat());
     }
 
     private static string? GetUnaryOperatorMethodName(TokenType op)
@@ -3029,14 +3049,14 @@ public partial class Interpreter
         if (op == TokenType.Increment)
         {
             if (currentValue.Type == ValueType.Integer)
-                newValue = CheckedIntegerResult(() => { checked { return currentValue.AsInteger() + 1; } }, line, _currentFile);
+                newValue = IntegerResult((long)currentValue.AsInteger() + 1, line);
             else
                 newValue = RuntimeValue.Float(currentValue.AsFloat() + 1.0);
         }
         else // Decrement
         {
             if (currentValue.Type == ValueType.Integer)
-                newValue = CheckedIntegerResult(() => { checked { return currentValue.AsInteger() - 1; } }, line, _currentFile);
+                newValue = IntegerResult((long)currentValue.AsInteger() - 1, line);
             else
                 newValue = RuntimeValue.Float(currentValue.AsFloat() - 1.0);
         }
@@ -3066,14 +3086,14 @@ public partial class Interpreter
         if (op == TokenType.Increment)
         {
             if (currentValue.Type == ValueType.Integer)
-                newValue = CheckedIntegerResult(() => { checked { return currentValue.AsInteger() + 1; } }, line, _currentFile);
+                newValue = IntegerResult((long)currentValue.AsInteger() + 1, line);
             else
                 newValue = RuntimeValue.Float(currentValue.AsFloat() + 1.0);
         }
         else // Decrement
         {
             if (currentValue.Type == ValueType.Integer)
-                newValue = CheckedIntegerResult(() => { checked { return currentValue.AsInteger() - 1; } }, line, _currentFile);
+                newValue = IntegerResult((long)currentValue.AsInteger() - 1, line);
             else
                 newValue = RuntimeValue.Float(currentValue.AsFloat() - 1.0);
         }
@@ -3085,26 +3105,32 @@ public partial class Interpreter
         return originalValue;
     }
     
+    /// <summary>Current value of a compound-assignment target (no built-in fallback, unlike <see cref="LookUpVariable"/>).</summary>
+    private RuntimeValue ReadIdentifierLvalue(IdentifierExpression idExpr)
+    {
+        var memberFrame = CurrentClassMemberFrame();
+        if (memberFrame != null)
+        {
+            if (TryGetFunctionLocal(idExpr.Name, memberFrame, out var local))
+                return local;
+            if (TryReadImplicitMember(idExpr.Name, out var member))
+                return member;
+        }
+
+        if (_environment.TryGet(idExpr.Name, out var value))
+            return value;
+
+        if (memberFrame == null && TryReadImplicitMember(idExpr.Name, out var leakedMember))
+            return leakedMember;
+
+        throw new RuntimeException($"Undefined variable '{idExpr.Name}'.", idExpr.Line, _currentFile);
+    }
+
     private async Task<RuntimeValue> GetLvalueAsync(Expression target)
     {
         if (target is IdentifierExpression idExpr)
         {
-            var memberFrame = CurrentClassMemberFrame();
-            if (memberFrame != null)
-            {
-                if (TryGetFunctionLocal(idExpr.Name, memberFrame, out var local))
-                    return local;
-                if (TryReadImplicitMember(idExpr.Name, out var member))
-                    return member;
-            }
-
-            if (_environment.TryGet(idExpr.Name, out var value))
-                return value;
-
-            if (memberFrame == null && TryReadImplicitMember(idExpr.Name, out var leakedMember))
-                return leakedMember;
-            
-            throw new RuntimeException($"Undefined variable '{idExpr.Name}'.", idExpr.Line, _currentFile);
+            return ReadIdentifierLvalue(idExpr);
         }
         else if (target is MemberAccessExpression memberExpr)
         {
@@ -3197,27 +3223,32 @@ public partial class Interpreter
         }
     }
     
+    private void AssignIdentifier(IdentifierExpression idExpr, RuntimeValue value)
+    {
+        var memberFrame = CurrentClassMemberFrame();
+        if (memberFrame != null)
+        {
+            if (TryAssignFunctionLocal(idExpr.Name, value, memberFrame))
+                return;
+            if (TryWriteImplicitMember(idExpr.Name, value, idExpr.Line))
+                return;
+        }
+
+        EnsureMutableIdentifier(idExpr.Name, idExpr.Line);
+        if (_environment.TryAssign(idExpr.Name, value))
+            return;
+
+        if (memberFrame == null && TryWriteImplicitMember(idExpr.Name, value, idExpr.Line))
+            return;
+
+        throw new RuntimeException($"Undefined variable '{idExpr.Name}'.", idExpr.Line, _currentFile);
+    }
+
     private async Task SetLvalueAsync(Expression target, RuntimeValue value)
     {
         if (target is IdentifierExpression idExpr)
         {
-            var memberFrame = CurrentClassMemberFrame();
-            if (memberFrame != null)
-            {
-                if (TryAssignFunctionLocal(idExpr.Name, value, memberFrame))
-                    return;
-                if (TryWriteImplicitMember(idExpr.Name, value, idExpr.Line))
-                    return;
-            }
-
-            EnsureMutableIdentifier(idExpr.Name, idExpr.Line);
-            if (_environment.TryAssign(idExpr.Name, value))
-                return;
-
-            if (memberFrame == null && TryWriteImplicitMember(idExpr.Name, value, idExpr.Line))
-                return;
-            
-            throw new RuntimeException($"Undefined variable '{idExpr.Name}'.", idExpr.Line, _currentFile);
+            AssignIdentifier(idExpr, value);
         }
         else if (target is MemberAccessExpression memberExpr)
         {
@@ -3519,7 +3550,8 @@ public partial class Interpreter
                 functionFrame.StatementIndex = i;
                 var stmt = body.Statements[i];
                 var isLast = (i == body.Statements.Count - 1);
-                var executed = await ExecuteStatementAsync(stmt);
+                if (!TryExecuteSync(stmt, out var executed))
+                    executed = await ExecuteStatementAsync(stmt);
                 if (_pendingControl != PendingControl.None)
                 {
                     if (_pendingControl != PendingControl.Return)
@@ -6478,10 +6510,12 @@ public partial class Interpreter
             throw new RuntimeException("Operands must be numbers.");
     }
     
-    private static RuntimeValue CheckedIntegerResult(Func<int> op, int? line, string? file)
+    /// <summary>An int result computed in long; out of int range is MALDA's integer overflow error.</summary>
+    private RuntimeValue IntegerResult(long result, int? line)
     {
-        try { return RuntimeValue.Integer(op()); }
-        catch (OverflowException) { throw new RuntimeException("Integer overflow.", line, file); }
+        if (result < int.MinValue || result > int.MaxValue)
+            throw new RuntimeException("Integer overflow.", line, _currentFile);
+        return RuntimeValue.Integer((int)result);
     }
     
     private async Task<RuntimeValue> EvaluateMatchAsync(MatchExpression matchExpr)
