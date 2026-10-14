@@ -194,6 +194,22 @@
       "prerequisites": ["AI_Theory/nn_dense.malda"],
       "learningGoal": "Define a 2-4-1 sigmoid stack and train it with online SGD in a few lines.",
       "expectedOutput": "Prints the last-epoch loss and classifies all four XOR inputs, then sequential xor ok.",
+      "next": "AI_Theory/save_load_state.malda",
+      "documentationPath": "/docs/start-here.md",
+      "documentationTitle": "Start Here"
+    },
+    {
+      "name": "Save and load weights",
+      "description": "state() copies a trained net into a plain object; load(state) restores it into a net built the same way",
+      "file": "save_load_state.malda",
+      "track": "student",
+      "difficulty": "intermediate",
+      "minutes": 6,
+      "requires": ["offline"],
+      "concepts": ["Sequential", "state", "load", "JSON"],
+      "prerequisites": ["AI_Theory/sequential_xor.malda"],
+      "learningGoal": "Keep trained weights as JSON text and load them into a fresh net; see a state for another shape refused.",
+      "expectedOutput": "Prints the trained and loaded XOR predictions side by side, one refused state, then save load state ok.",
       "documentationPath": "/docs/start-here.md",
       "documentationTitle": "Start Here"
     },

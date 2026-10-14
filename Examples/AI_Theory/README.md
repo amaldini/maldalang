@@ -14,6 +14,7 @@ Agents and tools stay in [`Examples/Agents/`](../Agents/).
 | `xor_neural_net.malda` | 2-4-1 MLP, named chain-rule gradients, XOR |
 | `nn_dense.malda` | Same XOR net via `nn.dense` / `nn.denseBackward` |
 | `sequential_xor.malda` | Same XOR net via `new Sequential` and `fit` |
+| `save_load_state.malda` | `state()` / `load(state)`: trained XOR weights through JSON text into a fresh net; a state for another shape is refused |
 | `softmax_classifier.malda` | 3-class softmax on 2D blobs (`math.matmul`) |
 | `mnist_digits.malda` | Ten 5×5 glyphs, chapter 14 MLP (ReLU hidden, 10 linear logits) |
 | `reinforce_bandit.malda` | One-step REINFORCE: `nn.softmaxGrad` scaled by return minus a baseline |

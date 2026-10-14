@@ -465,6 +465,38 @@ wide.sgd(1.0);
 print(int(catLeft.weights[0][0]));
 print(int(catRight.weights[0][0]));</code></pre>
 
+        <h3 id="state">14.10.3 Salvare e caricare i pesi</h3>
+        <p>Ogni layer ha <code>state()</code> e <code>load(state)</code>. <code>state()</code> restituisce un oggetto semplice: <code>type</code> è il nome della classe, ogni array di parametri sta sotto il nome della sua proprietà (<code>weights</code> e <code>bias</code> su <code>Dense</code> e <code>Conv2D</code>, <code>kernel</code> su <code>Conv</code>, <code>table</code> su <code>Embedding</code>, <code>weightsXh</code>, <code>weightsHh</code> e <code>bias</code> su <code>Rnn</code>, <code>gamma</code> e <code>beta</code> su <code>LayerNorm</code>, <code>query</code> e <code>key</code> su <code>Attention</code>, e <code>gamma</code>, <code>beta</code>, <code>runningMean</code> e <code>runningVar</code> su <code>BatchNorm2D</code>), e un <code>Sequential</code> o un <code>Parallel</code> aggiunge <code>layers</code> o <code>branches</code> con lo stato di ogni figlio. Un layer senza parametri dà solo il suo <code>type</code>. Gli array sono copie, quindi l'addestramento dopo <code>state()</code> non cambia i numeri salvati.</p>
+        <p><code>load(state)</code> ricopia quei numeri negli array esistenti. Non costruisce layer: prima costruisci la rete nello stesso modo, poi carica. Controlla ogni <code>type</code>, ogni numero di figli e ogni lunghezza di array prima di scrivere, quindi uno stato per un'altra forma solleva un errore e lascia la rete com'era. Gli iperparametri come l'attivazione, lo stride o il tasso di dropout vengono dal costruttore, non dallo stato. <code>BatchNorm2D</code> mantiene la sua modalità <code>train()</code> / <code>eval()</code>.</p>
+        <p>Per conservare una rete tra un'esecuzione e l'altra, scrivi <code>toJSON(net.state())</code> con <code>io.writeFile</code>, poi passa <code>parseJSON(io.readFile(path))</code> a <code>load</code>. Un gioco nel browser può incorporare quel testo JSON nel programma e caricarlo all'avvio. <code>Examples/AI_Theory/save_load_state.malda</code> addestra XOR, carica lo stato in una rete estratta da un altro seed e mostra uno stato rifiutato.</p>
+        <p>Lo snippet salva un layer con peso <code>3</code>, sovrascrive il peso con <code>5</code> e ricarica lo stato. La copia salvata stampa ancora <code>3</code>, e così il layer dopo <code>load</code>. Lungo la strada lo stato passa per il testo JSON, come farebbe passando per un file. Un layer a due uscite rifiuta quello stato, e il suo peso resta <code>0</code>.</p>
+        <table class="sigs">
+        <thead>
+        <tr><th>Argomenti</th><th>Restituisce</th><th>Note</th></tr>
+        </thead>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>layer.state()</code></td></tr>
+        <tr><td>nessun argomento</td><td>oggetto</td><td><code>type</code>, copie degli array di parametri, e <code>layers</code> / <code>branches</code> per i contenitori</td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>layer.load(state)</code></td></tr>
+        <tr><td>1 argomento</td><td>null</td><td>stessi tipi e forme di <code>state()</code> su questa rete. Controlla tutto prima di scrivere</td></tr>
+        </tbody>
+        </table>
+        <pre><code data-run="true" data-expect="3\n3\n0">var layer = new Dense(2, 1, "linear", 0.0);
+layer.weights[0][0] = 3.0;
+var saved = layer.state();
+layer.weights[0][0] = 5.0;
+layer.load(parseJSON(toJSON(saved)));
+print(int(saved["weights"][0][0]));
+print(int(layer.weights[0][0]));
+var wide = new Dense(2, 2, "linear", 0.0);
+try {
+    wide.load(saved);
+} catch (e) {
+    print(int(wide.weights[0][0]));
+}</code></pre>
+
         <h2 id="other-layers">14.11 Altri layer</h2>
         <p>Queste classi tengono lo stesso contratto di <code>Dense</code>. I parametri restano tuoi. <code>forward</code> ricorda l'ingresso che ha visto. <code>backward</code> tiene i gradienti. <code>sgd(lr)</code> li sottrae sul posto. Non registrano un nastro, e non sostituiscono i file scritti a mano in <a href="#examples">14.7</a>.</p>
 

@@ -1,0 +1,70 @@
+// Save a trained net and load it into a fresh one.
+//
+// state() copies the parameters into a plain object: the layer type, the
+// named weight arrays, and the inner layers of a Sequential or Parallel.
+// toJSON turns that object into text. To keep it between runs, write it with
+// io.writeFile("xor.json", text) and read it back with io.readFile.
+// load(state) needs a net built the same way. It checks every type and shape
+// before it writes, so a mismatched state leaves the net unchanged.
+// Offline and seeded — no API key.
+
+function build() {
+    return new Sequential([
+        new Dense(2, 4, "sigmoid", 1.0),
+        new Dense(4, 1, "sigmoid", 1.0)
+    ]);
+}
+
+function fmt(x: float) -> string {
+    return string(math.round(x * 1000.0) / 1000.0);
+}
+
+math.seed(42);
+var trained = build();
+var inputs = [[0.0, 0.0], [0.0, 1.0], [1.0, 0.0], [1.0, 1.0]];
+var targets = [0.0, 1.0, 1.0, 0.0];
+var loss = trained.fit(inputs, targets, 800, 0.8);
+io.print("trained: loss=" + fmt(loss));
+
+var state = trained.state();
+io.print("state type: " + state["type"] + ", layers: " + string(state["layers"].length));
+io.print("first layer: " + state["layers"][0]["type"] + " " + string(state["layers"][0]["weights"].length) + "x" + string(state["layers"][0]["weights"][0].length));
+
+var text = toJSON(state);
+
+math.seed(7);
+var fresh = build();
+var before = fresh.forward([0.0, 1.0])[0];
+fresh.load(parseJSON(text));
+
+var same = 0;
+for (var s = 0; s < inputs.length; s = s + 1) {
+    var a = trained.forward(inputs[s])[0];
+    var b = fresh.forward(inputs[s])[0];
+    io.print("  " + string(int(inputs[s][0])) + " " + string(int(inputs[s][1])) + " trained " + fmt(a) + " loaded " + fmt(b));
+    if (math.abs(a - b) < 0.000000001) {
+        same = same + 1;
+    }
+}
+io.print("before load the fresh net said " + fmt(before) + " for 0 1");
+
+// The state is a copy: training the loaded net does not move the saved numbers.
+var saved = state["layers"][1]["bias"][0];
+fresh.fit(inputs, targets, 10, 0.8);
+var untouched = state["layers"][1]["bias"][0] == saved;
+
+// A state from another shape is refused and the net keeps its weights.
+var wide = new Sequential([new Dense(2, 8, "sigmoid"), new Dense(8, 1, "sigmoid")]);
+var keep = wide.forward([1.0, 0.0])[0];
+var refused = false;
+try {
+    wide.load(state);
+} catch (e) {
+    refused = true;
+    io.print("refused: " + string(e));
+}
+var unchanged = wide.forward([1.0, 0.0])[0] == keep;
+
+if (same == inputs.length && untouched && refused && unchanged) {
+    io.print("save load state ok");
+}

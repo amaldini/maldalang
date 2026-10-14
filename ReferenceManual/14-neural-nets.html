@@ -465,6 +465,38 @@ wide.sgd(1.0);
 print(int(catLeft.weights[0][0]));
 print(int(catRight.weights[0][0]));</code></pre>
 
+        <h3 id="state">14.10.3 Saving and loading weights</h3>
+        <p>Every layer has <code>state()</code> and <code>load(state)</code>. <code>state()</code> returns a plain object: <code>type</code> is the class name, each parameter array sits under its property name (<code>weights</code> and <code>bias</code> on <code>Dense</code> and <code>Conv2D</code>, <code>kernel</code> on <code>Conv</code>, <code>table</code> on <code>Embedding</code>, <code>weightsXh</code>, <code>weightsHh</code> and <code>bias</code> on <code>Rnn</code>, <code>gamma</code> and <code>beta</code> on <code>LayerNorm</code>, <code>query</code> and <code>key</code> on <code>Attention</code>, and <code>gamma</code>, <code>beta</code>, <code>runningMean</code> and <code>runningVar</code> on <code>BatchNorm2D</code>), and a <code>Sequential</code> or <code>Parallel</code> adds <code>layers</code> or <code>branches</code> with the state of each child. A layer with no parameters gives only its <code>type</code>. The arrays are copies, so training after <code>state()</code> does not change the saved numbers.</p>
+        <p><code>load(state)</code> copies those numbers back into the existing arrays. It does not build layers: construct the net the same way first, then load. It checks every <code>type</code>, every child count, and every array length before it writes, so a state for another shape raises an error and leaves the net as it was. Hyperparameters such as the activation, the stride, or the dropout rate come from the constructor, not from the state. <code>BatchNorm2D</code> keeps its <code>train()</code> / <code>eval()</code> mode.</p>
+        <p>To keep a net between runs, write <code>toJSON(net.state())</code> with <code>io.writeFile</code>, then pass <code>parseJSON(io.readFile(path))</code> to <code>load</code>. A browser game can embed that JSON text in the program and load it at startup. <code>Examples/AI_Theory/save_load_state.malda</code> trains XOR, loads the state into a net drawn from another seed, and shows a refused state.</p>
+        <p>The snippet saves a layer with weight <code>3</code>, overwrites the weight with <code>5</code>, and loads the state back. The saved copy still prints <code>3</code>, and so does the layer after <code>load</code>. The state goes through JSON text on the way, as it would through a file. A two-output layer refuses that state, and its weight stays <code>0</code>.</p>
+        <table class="sigs">
+        <thead>
+        <tr><th>Arguments</th><th>Returns</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>layer.state()</code></td></tr>
+        <tr><td>no arguments</td><td>object</td><td><code>type</code>, copies of the parameter arrays, and <code>layers</code> / <code>branches</code> for containers</td></tr>
+        </tbody>
+        <tbody>
+        <tr class="sig"><td colspan="3"><code>layer.load(state)</code></td></tr>
+        <tr><td>1 argument</td><td>null</td><td>same types and shapes as <code>state()</code> on this net. Checks everything before it writes</td></tr>
+        </tbody>
+        </table>
+        <pre><code data-run="true" data-expect="3\n3\n0">var layer = new Dense(2, 1, "linear", 0.0);
+layer.weights[0][0] = 3.0;
+var saved = layer.state();
+layer.weights[0][0] = 5.0;
+layer.load(parseJSON(toJSON(saved)));
+print(int(saved["weights"][0][0]));
+print(int(layer.weights[0][0]));
+var wide = new Dense(2, 2, "linear", 0.0);
+try {
+    wide.load(saved);
+} catch (e) {
+    print(int(wide.weights[0][0]));
+}</code></pre>
+
         <h2 id="other-layers">14.11 Other layers</h2>
         <p>These classes keep the same contract as <code>Dense</code>. You own the parameters. <code>forward</code> remembers the input it saw. <code>backward</code> stores the gradients. <code>sgd(lr)</code> subtracts them in place. They do not record a tape, and they do not replace the handwritten files in <a href="#examples">14.7</a>.</p>
 

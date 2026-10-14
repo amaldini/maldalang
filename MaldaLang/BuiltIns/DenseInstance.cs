@@ -68,7 +68,7 @@ public sealed class DenseInstance : ObjectInstance
             return _weights;
         if (name == "bias")
             return _bias;
-        if (name is "forward" or "backward" or "sgd")
+        if (name is "state" or "load" or "forward" or "backward" or "sgd")
         {
             var wrapper = new FunctionValue(null, null, false, null)
             {
@@ -88,6 +88,8 @@ public sealed class DenseInstance : ObjectInstance
             "forward" => Forward(args),
             "backward" => Backward(args),
             "sgd" => Sgd(args),
+            "state" => NeuralState.State(this, args),
+            "load" => NeuralState.Load(this, args),
             _ => throw new RuntimeException($"Undefined method '{methodName}' on Dense.")
         };
     }

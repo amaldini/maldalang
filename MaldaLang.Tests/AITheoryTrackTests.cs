@@ -17,7 +17,7 @@ public class AITheoryTrackTests : TestBase
             .Where(example => example.Category == "AI_Theory")
             .ToList();
 
-        Assert.Equal(34, examples.Count);
+        Assert.Equal(35, examples.Count);
         Assert.All(examples, example =>
         {
             Assert.Equal("student", example.Track);

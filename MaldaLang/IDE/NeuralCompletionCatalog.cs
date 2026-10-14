@@ -198,7 +198,7 @@ internal static class NeuralCompletionCatalog
             Method("forward", "value", "mask?"),
             Method("backward", "upstream"),
             Method("sgd", "lr")),
-        ["OnnxModel"] = Layer(
+        ["OnnxModel"] = Model(
             Prop("modelPath", "string"),
             Method("inputs"),
             Method("outputs"),
@@ -300,7 +300,11 @@ internal static class NeuralCompletionCatalog
         return null;
     }
 
-    private static Member[] Layer(params Member[] members) => members;
+    // Every layer saves and restores its parameters (N15).
+    private static Member[] Layer(params Member[] members) =>
+        [.. members, Method("state"), Method("load", "state")];
+
+    private static Member[] Model(params Member[] members) => members;
 
     private static Member Prop(string name, string detail) =>
         new(name, "property", detail, name, null);

@@ -1,6 +1,6 @@
 # MALDA neural-nets kit
 
-**Status:** N0–N4 and N6–N14 landed; N5 partial  
+**Status:** N0–N4 and N6–N15 landed; N5 partial  
 **Created:** 2026-09-20  
 **Audience:** maintainers extending `math.*`, `nn.*`, and the offline AI_Theory track after Final 1.0
 
@@ -69,6 +69,7 @@ that share an input. They are not a module zoo and not a tape.
 | 12 | **N12** Local layers | Landed | `Conv`, `Embedding`, `Rnn`, `LayerNorm`, `Attention`. Same `forward` / `backward` / `sgd` contract. No tape |
 | 13 | **N13** Spatial layers | Landed | `Conv2D`, pooling, `Flatten`, `BatchNorm2D`, `Dropout2D`, `Activation`. `Sequential` stacks any of them. No tape, no Adam |
 | 14 | **N14** Parallel composition | Landed | `Parallel` (`add` / `concat`) and `Identity`. Same `forward` / `backward` / `sgd` contract. No tape, no gate |
+| 15 | **N15** Save and load weights | Landed | `state()` / `load(state)` on every layer. Train once, reload into a net built the same way. No architecture in the state, no file format of its own |
 
 ```text
 N0  roadmap file                          (landed)
@@ -100,6 +101,8 @@ N13 Conv2D / pools / Flatten / BatchNorm2D
     Dropout2D / Activation                (landed)
     Sequential stacks those layers
 N14 Parallel add / concat + Identity      (landed)
+N15 state() / load(state) on every layer  (landed)
+    save_load_state.malda
 ```
 
 ---
@@ -274,6 +277,25 @@ Tensors are CHW when `input[0][0][0]` is a number, and NCHW when that slot is a 
 `new Parallel([branch, ...], merge)` gives the same input to every branch. `merge` is `"add"` or `"concat"`. `add` requires the same shape and sends the same upstream to every branch, then sums the input gradients. `concat` joins vectors, or joins CHW / NCHW maps on the channel axis, and `backward` splits that axis before the same sum. `new Identity()` returns the input. A residual block is `new Parallel([block, new Identity()], "add")`. A `Parallel` is a layer, so an outer `Sequential` can hold it. No tape, no Adam, and no learned gate.
 
 `Examples/AI_Theory/parallel_compose.malda` checks the sum, the skip, the joined vector, and one channel stack. `residual_dropout.malda` keeps the handwritten skip. The reference manual section is [14.10.2](../ReferenceManual/14-neural-nets.html#parallel).
+
+---
+
+## N15 — Save and load weights
+
+Every layer class has `state()` and `load(state)`. Interpreter, C# transpile, and JavaScript all run them; the C# side is one helper (`MaldaLang/BuiltIns/NeuralState.cs`) and the JS side is one table beside the layer constructors in `malda-js-runtime.js`.
+
+`state()` returns a plain object: `type` (the class name), a deep copy of each parameter array under its property name, and `layers` (`Sequential`) or `branches` (`Parallel`) with the state of each child. A layer without parameters gives only `type`. `BatchNorm2D` saves `runningMean` / `runningVar` beside `gamma` / `beta`, so an `eval()` forward after `load` matches.
+
+`load(state)` copies numbers into the live arrays. It does not construct layers: the program builds the same net, then loads. It walks the whole state once to check types, child counts, array lengths, and finite numbers, and only then writes, so a refused state leaves the net unchanged. Hyperparameters (activation, stride, padding, dropout `p`, the `train` / `eval` mode) stay with the constructor.
+
+There is no file format. `toJSON(net.state())` plus `io.writeFile` saves; `net.load(parseJSON(io.readFile(path)))` restores. A `malda play` game can embed that JSON text in its source.
+
+| Call | Role |
+|------|------|
+| `layer.state()` | `{ type, <parameters>..., layers? / branches? }`. Copies, not views |
+| `layer.load(state)` | Same types and shapes as `state()` on this net. Checks everything before it writes. Returns `null` |
+
+`Examples/AI_Theory/save_load_state.malda` trains XOR, loads the JSON text into a net drawn from another seed, and shows a refused state. The reference manual section is [14.10.3](../ReferenceManual/14-neural-nets.html#state).
 
 ---
 

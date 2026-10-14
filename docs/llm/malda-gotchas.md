@@ -199,6 +199,12 @@ is `new Sequential([...])`, including a nested `Sequential`. `new Parallel([bran
 sums same-shaped outputs and sends the same upstream to every branch. `"concat"` joins vectors,
 or joins CHW / NCHW maps on the channel axis, and `backward` splits that axis. `new Identity()`
 is the skip. See Reference Manual 14.10.1, 14.10.2, and 14.11.6.
+`net.state()` copies the weights into a plain object (`type` plus the parameter arrays, and
+`layers` / `branches` for containers). `net.load(state)` does **not** build layers: construct
+the same net first, then load. It checks every type and shape before writing, so a state for
+another shape throws and changes nothing. Save with `io.writeFile(path, toJSON(net.state()))`,
+restore with `net.load(parseJSON(io.readFile(path)))`. Activation, stride, and dropout `p` come
+from the constructor, not the state. See Reference Manual 14.10.3.
 
 **Flat built-in names are deprecated aliases.** `sqrt(16)` and `Math.sqrt(16)` both run, but
 the language server reports both as deprecated. Prefer `math.sqrt(16)`. See the namespace

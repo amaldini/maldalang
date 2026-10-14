@@ -10150,6 +10150,108 @@
     return nnZipMul(upstream, deriv, "Activation.backward()");
   };
 
+  // state() / load(state): type, named parameter tensors, and layers / branches for containers.
+  // load checks the whole state before it writes, then copies into the live parameter arrays.
+  const NN_STATE_TYPES = [
+    ["Dense", Dense, ["weights", "bias"]],
+    ["Sequential", Sequential, []],
+    ["Parallel", Parallel, []],
+    ["Identity", Identity, []],
+    ["Conv", Conv, ["kernel"]],
+    ["Embedding", Embedding, ["table"]],
+    ["Rnn", Rnn, ["weightsXh", "weightsHh", "bias"]],
+    ["LayerNorm", LayerNorm, ["gamma", "beta"]],
+    ["Attention", Attention, ["query", "key"]],
+    ["Conv2D", Conv2D, ["weights", "bias"]],
+    ["MaxPool2D", MaxPool2D, []],
+    ["AvgPool2D", AvgPool2D, []],
+    ["Flatten", Flatten, []],
+    ["BatchNorm2D", BatchNorm2D, ["gamma", "beta", "runningMean", "runningVar"]],
+    ["Dropout2D", Dropout2D, []],
+    ["GlobalAvgPool2D", GlobalAvgPool2D, []],
+    ["GlobalMaxPool2D", GlobalMaxPool2D, []],
+    ["Activation", Activation, []]
+  ];
+
+  function nnStateEntry(layer) {
+    for (let i = 0; i < NN_STATE_TYPES.length; i++) {
+      if (layer instanceof NN_STATE_TYPES[i][1]) return NN_STATE_TYPES[i];
+    }
+    throw new Error("state() unsupported layer type");
+  }
+
+  function nnStateChildren(layer) {
+    if (layer instanceof Sequential) return { key: "layers", items: layer.layers };
+    if (layer instanceof Parallel) return { key: "branches", items: layer.branches };
+    return null;
+  }
+
+  function nnStateOf(layer) {
+    const entry = nnStateEntry(layer);
+    const state = markDict({ type: entry[0] });
+    for (let i = 0; i < entry[2].length; i++) state[entry[2][i]] = nnCloneDeep(layer[entry[2][i]]);
+    const children = nnStateChildren(layer);
+    if (children) state[children.key] = children.items.map(nnStateOf);
+    return state;
+  }
+
+  function nnStateCopy(owner, live, saved, path, write) {
+    if (!Array.isArray(saved) || saved.length !== live.length) {
+      throw new Error(owner + ".load() " + path + " must have " + live.length + " entries");
+    }
+    for (let i = 0; i < live.length; i++) {
+      if (Array.isArray(live[i])) {
+        nnStateCopy(owner, live[i], saved[i], path + "[" + i + "]", write);
+        continue;
+      }
+      if (typeof saved[i] !== "number") throw new Error(owner + ".load() " + path + "[" + i + "] must be a number");
+      if (!Number.isFinite(saved[i])) throw new Error(owner + ".load() " + path + "[" + i + "] must be finite");
+      if (write) live[i] = saved[i];
+    }
+  }
+
+  function nnStateApply(owner, layer, state, path, write) {
+    const entry = nnStateEntry(layer);
+    if (state == null || typeof state !== "object" || Array.isArray(state)) {
+      throw new Error(owner + ".load() " + path + " must be an object");
+    }
+    if (typeof state.type !== "string") throw new Error(owner + ".load() " + path + ".type must be a string");
+    if (state.type !== entry[0]) {
+      throw new Error(owner + ".load() " + path + " is a " + state.type + " state, expected " + entry[0]);
+    }
+    for (let i = 0; i < entry[2].length; i++) {
+      const name = entry[2][i];
+      if (!Object.prototype.hasOwnProperty.call(state, name)) {
+        throw new Error(owner + ".load() " + path + "." + name + " is missing");
+      }
+      nnStateCopy(owner, layer[name], state[name], path + "." + name, write);
+    }
+    const children = nnStateChildren(layer);
+    if (!children) return;
+    const rows = state[children.key];
+    if (!Array.isArray(rows)) throw new Error(owner + ".load() " + path + "." + children.key + " must be an array");
+    if (rows.length !== children.items.length) {
+      throw new Error(owner + ".load() " + path + "." + children.key + " has " + rows.length
+        + " entries, expected " + children.items.length);
+    }
+    for (let i = 0; i < rows.length; i++) {
+      nnStateApply(owner, children.items[i], rows[i], path + "." + children.key + "[" + i + "]", write);
+    }
+  }
+
+  NN_STATE_TYPES.forEach(function (entry) {
+    entry[1].prototype.state = function () {
+      if (arguments.length !== 0) throw new Error(entry[0] + ".state() expects no arguments");
+      return nnStateOf(this);
+    };
+    entry[1].prototype.load = function (state) {
+      if (arguments.length !== 1) throw new Error(entry[0] + ".load() expects 1 argument: (state)");
+      nnStateApply(entry[0], this, state, "state", false);
+      nnStateApply(entry[0], this, state, "state", true);
+      return null;
+    };
+  });
+
   global.Dense = Dense;
   global.Sequential = Sequential;
   global.Parallel = Parallel;

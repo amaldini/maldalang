@@ -58,7 +58,7 @@ public sealed class SequentialInstance : ObjectInstance
             return RuntimeValue.Array(list);
         }
 
-        if (name is "forward" or "backward" or "sgd" or "fit")
+        if (name is "state" or "load" or "forward" or "backward" or "sgd" or "fit")
         {
             var wrapper = new FunctionValue(null, null, false, null)
             {
@@ -79,6 +79,8 @@ public sealed class SequentialInstance : ObjectInstance
             "backward" => Backward(args),
             "sgd" => Sgd(args),
             "fit" => Fit(args),
+            "state" => NeuralState.State(this, args),
+            "load" => NeuralState.Load(this, args),
             _ => throw new RuntimeException($"Undefined method '{methodName}' on Sequential.")
         };
     }

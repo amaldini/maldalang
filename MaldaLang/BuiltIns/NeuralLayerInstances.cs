@@ -425,7 +425,7 @@ public sealed class ConvInstance : ObjectInstance
             return RuntimeValue.Integer(Size);
         if (name == "kernel")
             return _kernel;
-        if (name is "forward" or "backward" or "sgd")
+        if (name is "state" or "load" or "forward" or "backward" or "sgd")
             return NeuralLayers.Method(this, name);
         throw new RuntimeException($"Undefined property '{name}' on Conv.");
     }
@@ -437,6 +437,8 @@ public sealed class ConvInstance : ObjectInstance
             "forward" => Forward(args),
             "backward" => Backward(args),
             "sgd" => Sgd(args),
+            "state" => NeuralState.State(this, args),
+            "load" => NeuralState.Load(this, args),
             _ => throw new RuntimeException($"Undefined method '{methodName}' on Conv.")
         };
     }
@@ -547,7 +549,7 @@ public sealed class EmbeddingInstance : ObjectInstance
             return RuntimeValue.Integer(Dim);
         if (name == "table")
             return _table;
-        if (name is "forward" or "backward" or "sgd")
+        if (name is "state" or "load" or "forward" or "backward" or "sgd")
             return NeuralLayers.Method(this, name);
         throw new RuntimeException($"Undefined property '{name}' on Embedding.");
     }
@@ -559,6 +561,8 @@ public sealed class EmbeddingInstance : ObjectInstance
             "forward" => Forward(args),
             "backward" => Backward(args),
             "sgd" => Sgd(args),
+            "state" => NeuralState.State(this, args),
+            "load" => NeuralState.Load(this, args),
             _ => throw new RuntimeException($"Undefined method '{methodName}' on Embedding.")
         };
     }
@@ -659,7 +663,7 @@ public sealed class RnnInstance : ObjectInstance
             return _weightsHh;
         if (name == "bias")
             return _bias;
-        if (name is "forward" or "backward" or "sgd")
+        if (name is "state" or "load" or "forward" or "backward" or "sgd")
             return NeuralLayers.Method(this, name);
         throw new RuntimeException($"Undefined property '{name}' on Rnn.");
     }
@@ -671,6 +675,8 @@ public sealed class RnnInstance : ObjectInstance
             "forward" => Forward(args),
             "backward" => Backward(args),
             "sgd" => Sgd(args),
+            "state" => NeuralState.State(this, args),
+            "load" => NeuralState.Load(this, args),
             _ => throw new RuntimeException($"Undefined method '{methodName}' on Rnn.")
         };
     }
@@ -840,7 +846,7 @@ public sealed class LayerNormInstance : ObjectInstance
             return _gamma;
         if (name == "beta")
             return _beta;
-        if (name is "forward" or "backward" or "sgd")
+        if (name is "state" or "load" or "forward" or "backward" or "sgd")
             return NeuralLayers.Method(this, name);
         throw new RuntimeException($"Undefined property '{name}' on LayerNorm.");
     }
@@ -852,6 +858,8 @@ public sealed class LayerNormInstance : ObjectInstance
             "forward" => Forward(args),
             "backward" => Backward(args),
             "sgd" => Sgd(args),
+            "state" => NeuralState.State(this, args),
+            "load" => NeuralState.Load(this, args),
             _ => throw new RuntimeException($"Undefined method '{methodName}' on LayerNorm.")
         };
     }
@@ -993,7 +1001,7 @@ public sealed class AttentionInstance : ObjectInstance
             return NeuralLayers.ToMatrix(_probs);
         }
 
-        if (name is "forward" or "backward" or "sgd")
+        if (name is "state" or "load" or "forward" or "backward" or "sgd")
             return NeuralLayers.Method(this, name);
         throw new RuntimeException($"Undefined property '{name}' on Attention.");
     }
@@ -1005,6 +1013,8 @@ public sealed class AttentionInstance : ObjectInstance
             "forward" => Forward(args),
             "backward" => Backward(args),
             "sgd" => Sgd(args),
+            "state" => NeuralState.State(this, args),
+            "load" => NeuralState.Load(this, args),
             _ => throw new RuntimeException($"Undefined method '{methodName}' on Attention.")
         };
     }

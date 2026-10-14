@@ -80,7 +80,7 @@ public sealed class Conv2DInstance : ObjectInstance
             return _weights;
         if (name == "bias")
             return _bias;
-        if (name is "forward" or "backward" or "sgd")
+        if (name is "state" or "load" or "forward" or "backward" or "sgd")
             return NeuralLayers.Method(this, name);
         throw new RuntimeException($"Undefined property '{name}' on Conv2D.");
     }
@@ -92,6 +92,8 @@ public sealed class Conv2DInstance : ObjectInstance
             "forward" => Forward(args),
             "backward" => Backward(args),
             "sgd" => Sgd(args),
+            "state" => NeuralState.State(this, args),
+            "load" => NeuralState.Load(this, args),
             _ => throw new RuntimeException($"Undefined method '{methodName}' on Conv2D.")
         };
     }
@@ -297,7 +299,7 @@ public sealed class MaxPool2DInstance : ObjectInstance
             return RuntimeValue.Integer(_poolSize);
         if (name == "stride")
             return RuntimeValue.Integer(_stride);
-        if (name is "forward" or "backward")
+        if (name is "state" or "load" or "forward" or "backward")
             return NeuralLayers.Method(this, name);
         throw new RuntimeException($"Undefined property '{name}' on MaxPool2D.");
     }
@@ -308,6 +310,8 @@ public sealed class MaxPool2DInstance : ObjectInstance
         {
             "forward" => Forward(args),
             "backward" => Backward(args),
+            "state" => NeuralState.State(this, args),
+            "load" => NeuralState.Load(this, args),
             _ => throw new RuntimeException($"Undefined method '{methodName}' on MaxPool2D.")
         };
     }
@@ -425,7 +429,7 @@ public sealed class AvgPool2DInstance : ObjectInstance
             return RuntimeValue.Integer(_poolSize);
         if (name == "stride")
             return RuntimeValue.Integer(_stride);
-        if (name is "forward" or "backward")
+        if (name is "state" or "load" or "forward" or "backward")
             return NeuralLayers.Method(this, name);
         throw new RuntimeException($"Undefined property '{name}' on AvgPool2D.");
     }
@@ -436,6 +440,8 @@ public sealed class AvgPool2DInstance : ObjectInstance
         {
             "forward" => Forward(args),
             "backward" => Backward(args),
+            "state" => NeuralState.State(this, args),
+            "load" => NeuralState.Load(this, args),
             _ => throw new RuntimeException($"Undefined method '{methodName}' on AvgPool2D.")
         };
     }
@@ -536,7 +542,7 @@ public sealed class FlattenInstance : ObjectInstance
 
     public override RuntimeValue Get(string name, ClassDefinition? accessingClass = null)
     {
-        if (name is "forward" or "backward")
+        if (name is "state" or "load" or "forward" or "backward")
             return NeuralLayers.Method(this, name);
         throw new RuntimeException($"Undefined property '{name}' on Flatten.");
     }
@@ -547,6 +553,8 @@ public sealed class FlattenInstance : ObjectInstance
         {
             "forward" => Forward(args),
             "backward" => Backward(args),
+            "state" => NeuralState.State(this, args),
+            "load" => NeuralState.Load(this, args),
             _ => throw new RuntimeException($"Undefined method '{methodName}' on Flatten.")
         };
     }
@@ -652,7 +660,7 @@ public sealed class BatchNorm2DInstance : ObjectInstance
             return _runningVar;
         if (name == "training")
             return RuntimeValue.Boolean(_training);
-        if (name is "forward" or "backward" or "sgd" or "train" or "eval")
+        if (name is "state" or "load" or "forward" or "backward" or "sgd" or "train" or "eval")
             return NeuralLayers.Method(this, name);
         throw new RuntimeException($"Undefined property '{name}' on BatchNorm2D.");
     }
@@ -666,6 +674,8 @@ public sealed class BatchNorm2DInstance : ObjectInstance
             "sgd" => Sgd(args),
             "train" => SetTraining(args, true),
             "eval" => SetTraining(args, false),
+            "state" => NeuralState.State(this, args),
+            "load" => NeuralState.Load(this, args),
             _ => throw new RuntimeException($"Undefined method '{methodName}' on BatchNorm2D.")
         };
     }
@@ -884,7 +894,7 @@ public sealed class Dropout2DInstance : ObjectInstance
             return RuntimeValue.Float(_p);
         if (name == "training")
             return RuntimeValue.Boolean(_training);
-        if (name is "forward" or "backward" or "train" or "eval")
+        if (name is "state" or "load" or "forward" or "backward" or "train" or "eval")
             return NeuralLayers.Method(this, name);
         throw new RuntimeException($"Undefined property '{name}' on Dropout2D.");
     }
@@ -897,6 +907,8 @@ public sealed class Dropout2DInstance : ObjectInstance
             "backward" => Backward(args),
             "train" => SetTraining(args, true),
             "eval" => SetTraining(args, false),
+            "state" => NeuralState.State(this, args),
+            "load" => NeuralState.Load(this, args),
             _ => throw new RuntimeException($"Undefined method '{methodName}' on Dropout2D.")
         };
     }
@@ -1025,7 +1037,7 @@ public sealed class GlobalAvgPool2DInstance : ObjectInstance
 
     public override RuntimeValue Get(string name, ClassDefinition? accessingClass = null)
     {
-        if (name is "forward" or "backward")
+        if (name is "state" or "load" or "forward" or "backward")
             return NeuralLayers.Method(this, name);
         throw new RuntimeException($"Undefined property '{name}' on GlobalAvgPool2D.");
     }
@@ -1036,6 +1048,8 @@ public sealed class GlobalAvgPool2DInstance : ObjectInstance
         {
             "forward" => Forward(args),
             "backward" => Backward(args),
+            "state" => NeuralState.State(this, args),
+            "load" => NeuralState.Load(this, args),
             _ => throw new RuntimeException($"Undefined method '{methodName}' on GlobalAvgPool2D.")
         };
     }
@@ -1171,7 +1185,7 @@ public sealed class GlobalMaxPool2DInstance : ObjectInstance
 
     public override RuntimeValue Get(string name, ClassDefinition? accessingClass = null)
     {
-        if (name is "forward" or "backward")
+        if (name is "state" or "load" or "forward" or "backward")
             return NeuralLayers.Method(this, name);
         throw new RuntimeException($"Undefined property '{name}' on GlobalMaxPool2D.");
     }
@@ -1182,6 +1196,8 @@ public sealed class GlobalMaxPool2DInstance : ObjectInstance
         {
             "forward" => Forward(args),
             "backward" => Backward(args),
+            "state" => NeuralState.State(this, args),
+            "load" => NeuralState.Load(this, args),
             _ => throw new RuntimeException($"Undefined method '{methodName}' on GlobalMaxPool2D.")
         };
     }
@@ -1266,7 +1282,7 @@ public sealed class ActivationInstance : ObjectInstance
     {
         if (name == "activation")
             return RuntimeValue.String(_activation);
-        if (name is "forward" or "backward")
+        if (name is "state" or "load" or "forward" or "backward")
             return NeuralLayers.Method(this, name);
         throw new RuntimeException($"Undefined property '{name}' on Activation.");
     }
@@ -1277,6 +1293,8 @@ public sealed class ActivationInstance : ObjectInstance
         {
             "forward" => Forward(args),
             "backward" => Backward(args),
+            "state" => NeuralState.State(this, args),
+            "load" => NeuralState.Load(this, args),
             _ => throw new RuntimeException($"Undefined method '{methodName}' on Activation.")
         };
     }

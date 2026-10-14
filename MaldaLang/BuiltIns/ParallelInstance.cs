@@ -45,7 +45,7 @@ public sealed class ParallelInstance : ObjectInstance
         if (name == "merge")
             return RuntimeValue.String(_merge);
 
-        if (name is "forward" or "backward" or "sgd")
+        if (name is "state" or "load" or "forward" or "backward" or "sgd")
             return NeuralLayers.Method(this, name);
 
         throw new RuntimeException($"Undefined property '{name}' on Parallel.");
@@ -58,6 +58,8 @@ public sealed class ParallelInstance : ObjectInstance
             "forward" => Forward(args),
             "backward" => Backward(args),
             "sgd" => Sgd(args),
+            "state" => NeuralState.State(this, args),
+            "load" => NeuralState.Load(this, args),
             _ => throw new RuntimeException($"Undefined method '{methodName}' on Parallel.")
         };
     }
@@ -353,7 +355,7 @@ public sealed class IdentityInstance : ObjectInstance
 
     public override RuntimeValue Get(string name, ClassDefinition? accessingClass = null)
     {
-        if (name is "forward" or "backward")
+        if (name is "state" or "load" or "forward" or "backward")
             return NeuralLayers.Method(this, name);
         throw new RuntimeException($"Undefined property '{name}' on Identity.");
     }
@@ -364,6 +366,8 @@ public sealed class IdentityInstance : ObjectInstance
         {
             "forward" => Forward(args),
             "backward" => Backward(args),
+            "state" => NeuralState.State(this, args),
+            "load" => NeuralState.Load(this, args),
             _ => throw new RuntimeException($"Undefined method '{methodName}' on Identity.")
         };
     }
