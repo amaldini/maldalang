@@ -17,6 +17,12 @@
 // it with depth testing, so cars and roadside things hide each other properly.
 // Signs turn to face the camera every frame; their text is a small texture per
 // phrase, drawn from the same 5x7 font.
+// Hilly circuits (Spa, Monaco, Interlagos, Austin, and the Mount Panorama
+// mountain climb) list a height per key point. The ground is a height grid in
+// a float texture: the road follows those heights, hills and a ring of
+// mountains rise away from it, and the shader marches each ray over the grid.
+// Cars ride the ground, gravity slows them uphill and pushes them downhill,
+// and the cameras follow the slopes. Flat circuits keep the flat ground plane.
 // 1, 2, and 3 toggle signs, trees, and buildings (setInstanceCount 0 hides a kind).
 //
 // Q/E change circuit. C cycles the camera (chase, bumper, side, nose, orbit,
@@ -80,6 +86,8 @@ function circuitCatalog() -> array {
         "place": "Italy",
         "km": 5.793,
         "width": 34.0,
+        "hills": 0.0,
+        "elev": [],
         "pts": [
             260.0, 508.0, 400.0, 514.0, 540.0, 510.0, 660.0, 496.0,
             724.0, 468.0, 752.0, 424.0, 708.0, 388.0, 752.0, 346.0,
@@ -96,6 +104,8 @@ function circuitCatalog() -> array {
         "place": "Belgium",
         "km": 7.004,
         "width": 30.0,
+        "hills": 70.0,
+        "elev": [30.0, 28.0, 22.0, 5.0, 20.0, 40.0, 52.0, 70.0, 88.0, 100.0, 98.0, 92.0, 85.0, 75.0, 62.0, 50.0, 40.0, 32.0, 25.0, 15.0, 10.0, 12.0, 18.0, 24.0, 28.0, 32.0, 31.0],
         "pts": [
             180.0, 560.0, 340.0, 575.0, 500.0, 568.0, 640.0, 545.0,
             700.0, 490.0, 735.0, 430.0, 690.0, 385.0,
@@ -113,6 +123,8 @@ function circuitCatalog() -> array {
         "place": "United Kingdom",
         "km": 5.891,
         "width": 32.0,
+        "hills": 0.0,
+        "elev": [],
         "pts": [
             250.0, 522.0, 420.0, 542.0, 590.0, 532.0, 730.0, 492.0,
             812.0, 432.0, 852.0, 356.0, 832.0, 278.0,
@@ -128,6 +140,8 @@ function circuitCatalog() -> array {
         "place": "Monaco",
         "km": 3.337,
         "width": 18.0,
+        "hills": 60.0,
+        "elev": [6.0, 5.0, 4.0, 10.0, 22.0, 34.0, 42.0, 40.0, 32.0, 24.0, 18.0, 12.0, 8.0, 6.0, 4.0, 2.0, 2.0, 2.0, 3.0, 4.0, 5.0, 6.0],
         "pts": [
             180.0, 540.0, 360.0, 555.0, 540.0, 545.0, 680.0, 500.0,
             740.0, 440.0, 810.0, 390.0, 760.0, 330.0, 840.0, 280.0, 780.0, 220.0, 850.0, 170.0, 760.0, 130.0,
@@ -140,6 +154,8 @@ function circuitCatalog() -> array {
         "place": "Japan",
         "km": 5.807,
         "width": 28.0,
+        "hills": 0.0,
+        "elev": [],
         "pts": [
             300.0, 478.0, 338.0, 392.0, 392.0, 318.0, 520.0, 246.0,
             640.0, 188.0, 752.0, 172.0, 834.0, 236.0,
@@ -154,6 +170,8 @@ function circuitCatalog() -> array {
         "place": "Brazil",
         "km": 4.309,
         "width": 30.0,
+        "hills": 30.0,
+        "elev": [43.0, 40.0, 34.0, 26.0, 20.0, 14.0, 10.0, 6.0, 4.0, 2.0, 0.0, 6.0, 12.0, 16.0, 20.0, 22.0, 24.0, 26.0, 20.0, 14.0, 20.0, 28.0, 35.0, 40.0, 42.0, 43.0],
         "pts": [
             520.0, 400.0, 430.0, 440.0, 360.0, 450.0,
             300.0, 390.0, 350.0, 330.0, 290.0, 270.0,
@@ -170,6 +188,8 @@ function circuitCatalog() -> array {
         "place": "United States",
         "km": 5.513,
         "width": 32.0,
+        "hills": 25.0,
+        "elev": [8.0, 10.0, 18.0, 41.0, 30.0, 24.0, 18.0, 14.0, 12.0, 10.0, 8.0, 6.0, 4.0, 3.0, 2.0, 6.0, 10.0, 12.0, 10.0, 9.0],
         "pts": [
             150.0, 508.0, 320.0, 528.0, 510.0, 518.0, 690.0, 492.0,
             768.0, 448.0, 808.0, 386.0, 764.0, 328.0, 698.0, 308.0,
@@ -184,6 +204,8 @@ function circuitCatalog() -> array {
         "place": "Bahrain",
         "km": 5.412,
         "width": 34.0,
+        "hills": 0.0,
+        "elev": [],
         "pts": [
             140.0, 468.0, 320.0, 496.0, 520.0, 488.0, 700.0, 462.0,
             782.0, 410.0, 760.0, 338.0, 678.0, 298.0,
@@ -191,6 +213,30 @@ function circuitCatalog() -> array {
             744.0, 176.0, 702.0, 108.0, 578.0, 88.0,
             448.0, 104.0, 336.0, 152.0,
             246.0, 214.0, 176.0, 296.0, 136.0, 378.0
+        ]
+    });
+    // Mountain circuit: pit straight, Hell Corner, the climb up Mountain
+    // Straight and The Cutting to McPhillamy Park, the Esses and the Dipper,
+    // then the long drop down Conrod Straight to The Chase and Murray's.
+    circuits.append({
+        "name": "Mount Panorama",
+        "place": "Bathurst, Australia",
+        "km": 6.213,
+        "width": 18.0,
+        "hills": 140.0,
+        "elev": [
+            10.0, 8.0, 6.0, 4.0, 20.0, 40.0, 60.0, 75.0, 85.0, 105.0,
+            125.0, 145.0, 162.0, 174.0, 172.0, 158.0, 145.0, 130.0, 120.0, 110.0,
+            80.0, 50.0, 25.0, 14.0, 10.0
+        ],
+        "pts": [
+            215.0, 606.0, 330.0, 612.0, 450.0, 610.0, 530.0, 585.0,
+            565.0, 520.0, 600.0, 430.0, 640.0, 340.0, 675.0, 280.0,
+            720.0, 245.0, 740.0, 195.0, 725.0, 145.0, 680.0, 105.0,
+            610.0, 80.0, 540.0, 72.0, 475.0, 90.0, 445.0, 128.0,
+            438.0, 172.0, 408.0, 205.0, 362.0, 218.0, 320.0, 235.0,
+            265.0, 300.0, 205.0, 390.0, 155.0, 470.0, 130.0, 525.0,
+            155.0, 590.0
         ]
     });
     return circuits;
@@ -930,6 +976,77 @@ function distanceToTrack(p: vec2, trackW: float, along: out float) -> float {
     return minDist - trackW;
 }
 
+// Hilly circuits store the ground on a square grid. Each texel holds the
+// heights of its own corner and of the three corners next to it, so one fetch
+// is enough for bilinear filtering (the texture itself is nearest-filtered).
+@shader()
+function terrainHeight(p: vec2) -> float {
+    var gx: float = clamp((p.x - uHeightMin.x) / uHeightCell, 0.0, uHeightN - 1.001);
+    var gz: float = clamp((p.y - uHeightMin.y) / uHeightCell, 0.0, uHeightN - 1.001);
+    var cx: float = floor(gx);
+    var cz: float = floor(gz);
+    var fx: float = gx - cx;
+    var fz: float = gz - cz;
+    var h: vec4 = texture2D(uHeight, vec2((cx + 0.5) / uHeightN, (cz + 0.5) / uHeightN));
+    return mix(mix(h.x, h.y, fx), mix(h.z, h.w, fx), fz);
+}
+
+// March the ray over the height grid. The step is half the height above the
+// ground (safe for slopes up to 1:1) with a floor that grows with distance,
+// then six halvings pin down the crossing.
+@shader()
+function hitTerrain(origin: vec3, dir: vec3, tMax: float) -> float {
+    var t: float = 0.0;
+    if (origin.y > uHeightTop) {
+        if (dir.y > -EPSILON) {
+            return -1.0;
+        }
+        t = (uHeightTop - origin.y) / dir.y;
+    }
+    var tPrev: float = t;
+    var i: int = 0;
+    while (i < 120) {
+        if (t > tMax) {
+            return -1.0;
+        }
+        var p: vec3 = origin + dir * t;
+        var gap: float = p.y - terrainHeight(vec2(p.x, p.z)) + 0.02;
+        if (gap < 0.0) {
+            var lo: float = tPrev;
+            var hi: float = t;
+            var k: int = 0;
+            while (k < 6) {
+                var mid: float = (lo + hi) * 0.5;
+                var q: vec3 = origin + dir * mid;
+                if (q.y - terrainHeight(vec2(q.x, q.z)) + 0.02 < 0.0) {
+                    hi = mid;
+                } else {
+                    lo = mid;
+                }
+                k = k + 1;
+            }
+            return hi;
+        }
+        if (p.y > uHeightTop && dir.y >= 0.0) {
+            return -1.0;
+        }
+        tPrev = t;
+        t = t + max(gap * 0.5, 0.03 + t * 0.02);
+        i = i + 1;
+    }
+    return -1.0;
+}
+
+@shader()
+function terrainNormal(p: vec3) -> vec3 {
+    var e: float = uHeightCell * 0.5;
+    var hl: float = terrainHeight(vec2(p.x - e, p.z));
+    var hr: float = terrainHeight(vec2(p.x + e, p.z));
+    var hd: float = terrainHeight(vec2(p.x, p.z - e));
+    var hu: float = terrainHeight(vec2(p.x, p.z + e));
+    return normalize(vec3(hl - hr, 2.0 * e, hd - hu));
+}
+
 @shader()
 function carMayHit(index: int, origin: vec3, dir: vec3, tMax: float) -> bool {
     var center: vec3 = carPosition(index) + vec3(0.0, 0.32, 0.0);
@@ -985,7 +1102,15 @@ function closestHit(
         i = i + 1;
     }
 
-    if (abs(dir.y) > EPSILON) {
+    if (uHillsOn > 0.5) {
+        var tTerrain: float = hitTerrain(origin, dir, tHit);
+        if (tTerrain > EPSILON && tTerrain < tHit) {
+            tHit = tTerrain;
+            kind = 4;
+            index = -1;
+            material = 0;
+        }
+    } else if (abs(dir.y) > EPSILON) {
         var tGround: float = (-0.02 - origin.y) / dir.y;
         if (tGround > EPSILON && tGround < tHit) {
             tHit = tGround;
@@ -1007,7 +1132,9 @@ function closestHit(
         albedo = carPartAlbedo(carIdx, carPart);
     } else {
         normal = vec3(0.0, 1.0, 0.0);
-        if (dot(normal, dir) > 0.0) {
+        if (uHillsOn > 0.5) {
+            normal = terrainNormal(hit);
+        } else if (dot(normal, dir) > 0.0) {
             normal = -normal;
         }
         var along: float = 0.0;
@@ -1036,6 +1163,11 @@ function closestHit(
                 albedo = vec3(0.18, 0.42, 0.18);
             } else {
                 albedo = vec3(0.12, 0.28, 0.12);
+            }
+            // Steep hillsides turn to bare rock.
+            if (uHillsOn > 0.5) {
+                var rock: float = clamp((0.9 - normal.y) * 5.0, 0.0, 1.0);
+                albedo = mix(albedo, vec3(0.42, 0.39, 0.35), rock);
             }
         }
     }
@@ -1166,6 +1298,12 @@ var fragmentShader = glsl.compile({
         "float uGridTexW",
         "float uGridTexH",
         "float uGridOn",
+        "sampler2D uHeight",
+        "vec2 uHeightMin",
+        "float uHeightCell",
+        "float uHeightN",
+        "float uHeightTop",
+        "float uHillsOn",
         "float uNear",
         "float uFar",
         "vec3 uCars[CAR_COUNT]",
@@ -1212,6 +1350,9 @@ var fragmentShader = glsl.compile({
         "considerSegment",
         "gridSegment",
         "distanceToTrack",
+        "terrainHeight",
+        "hitTerrain",
+        "terrainNormal",
         "carMayHit",
         "closestHit",
         "occludedByCar",
@@ -1323,6 +1464,20 @@ if (root == null) {
     var gridCellsMax = 96;
     var gridTexW = gridCellsMax * 4;
     var gridTexH = gridCellsMax;
+    // Hilly circuits: road height per centerline point and a square height
+    // grid around the track (world units). Flat circuits keep hillsOn at 0 and
+    // the shader's flat ground plane.
+    var trackPy = [];
+    var hillsOn = 0.0;
+    var heightN = 160;
+    var heightCells = [];
+    var heightMinX = 0.0;
+    var heightMinZ = 0.0;
+    var heightCell = 1.0;
+    var heightTop = 0.0;
+    // Pull along a slope, in the same worldScale units as the drive force.
+    // About four times real gravity, so climbs and drops show in the lap.
+    var hillGravity = 65.0;
 
     function buildTrack(spec: map) {
         var keys = spec.pts;
@@ -1593,6 +1748,7 @@ if (root == null) {
         circuitIndex = index;
         var spec = circuits[circuitIndex];
         buildTrack(spec);
+        buildTerrain(spec);
         resetCars();
         sessionBest = -1.0;
         uploadTrackTexture();
@@ -1628,6 +1784,323 @@ if (root == null) {
         var x = trackPx[idx] + (trackPx[j] - trackPx[idx]) * t + trackNx[idx] * side;
         var z = trackPz[idx] + (trackPz[j] - trackPz[idx]) * t + trackNz[idx] * side;
         return [x, z, trackTang[idx], idx, s];
+    }
+
+    function smoothStep(a: float, b: float, x: float) -> float {
+        var t = (x - a) / (b - a);
+        if (t < 0.0) {
+            t = 0.0;
+        }
+        if (t > 1.0) {
+            t = 1.0;
+        }
+        return t * t * (3.0 - 2.0 * t);
+    }
+
+    // Value noise: a pseudo-random 0..1 at each integer lattice point,
+    // smoothly blended in between.
+    function latticeValue(ix: float, iz: float) -> float {
+        var v = math.sin(ix * 127.1 + iz * 311.7) * 43758.5453;
+        return v - math.floor(v);
+    }
+
+    function valueNoise(x: float, z: float) -> float {
+        var ix = math.floor(x);
+        var iz = math.floor(z);
+        var fx = x - ix;
+        var fz = z - iz;
+        fx = fx * fx * (3.0 - 2.0 * fx);
+        fz = fz * fz * (3.0 - 2.0 * fz);
+        var a = latticeValue(ix, iz);
+        var b = latticeValue(ix + 1.0, iz);
+        var c = latticeValue(ix, iz + 1.0);
+        var d = latticeValue(ix + 1.0, iz + 1.0);
+        var top = a + (b - a) * fx;
+        var bottom = c + (d - c) * fx;
+        return top + (bottom - top) * fz;
+    }
+
+    // Rolling hills in 0..1 from three octaves, squared so most of the
+    // ground stays low and the peaks stand out.
+    function hillNoise(x: float, z: float) -> float {
+        var s = 1.0 / (trackSpan * 0.12 + 1.0);
+        var n = 0.55 * valueNoise(x * s, z * s);
+        n = n + 0.3 * valueNoise(x * s * 2.1 + 17.0, z * s * 2.1 + 5.0);
+        n = n + 0.15 * valueNoise(x * s * 4.3 + 3.0, z * s * 4.3 + 41.0);
+        return n * n;
+    }
+
+    // Distance to the centerline and the road height there, searching the
+    // segments around a hint index.
+    function roadNear(x: float, z: float, hint: int, reach: int) -> array {
+        var bestD2 = 1000000000000.0;
+        var bestH = 0.0;
+        var k = hint - reach;
+        while (k <= hint + reach) {
+            var i = wrapIndex(k, nPts);
+            var j = wrapIndex(i + 1, nPts);
+            var dx = trackPx[j] - trackPx[i];
+            var dz = trackPz[j] - trackPz[i];
+            var len2 = dx * dx + dz * dz;
+            var t = 0.0;
+            if (len2 > 0.0001) {
+                t = ((x - trackPx[i]) * dx + (z - trackPz[i]) * dz) / len2;
+                if (t < 0.0) {
+                    t = 0.0;
+                }
+                if (t > 1.0) {
+                    t = 1.0;
+                }
+            }
+            var ex = x - (trackPx[i] + dx * t);
+            var ez = z - (trackPz[i] + dz * t);
+            var d2 = ex * ex + ez * ez;
+            if (d2 < bestD2) {
+                bestD2 = d2;
+                bestH = trackPy[i] + (trackPy[j] - trackPy[i]) * t;
+            }
+            k = k + 1;
+        }
+        return [math.sqrt(bestD2), bestH];
+    }
+
+    // Ground height under (x, z), bilinear on the same grid the shader reads.
+    function heightAt(x: float, z: float) -> float {
+        if (hillsOn < 0.5) {
+            return 0.0;
+        }
+        var top = heightN - 1.001;
+        var gx = (x - heightMinX) / heightCell;
+        var gz = (z - heightMinZ) / heightCell;
+        if (gx < 0.0) {
+            gx = 0.0;
+        }
+        if (gx > top) {
+            gx = top;
+        }
+        if (gz < 0.0) {
+            gz = 0.0;
+        }
+        if (gz > top) {
+            gz = top;
+        }
+        var cx = int(gx);
+        var cz = int(gz);
+        var fx = gx - cx;
+        var fz = gz - cz;
+        var o = cz * heightN + cx;
+        var h0 = heightCells[o] + (heightCells[o + 1] - heightCells[o]) * fx;
+        var h1 = heightCells[o + heightN] + (heightCells[o + heightN + 1] - heightCells[o + heightN]) * fx;
+        return h0 + (h1 - h0) * fz;
+    }
+
+    // Rise per unit of run along a heading at (x, z).
+    function slopeAlong(x: float, z: float, heading: float) -> float {
+        if (hillsOn < 0.5) {
+            return 0.0;
+        }
+        var probe = 1.2;
+        var fx = math.cos(heading) * probe;
+        var fz = math.sin(heading) * probe;
+        return (heightAt(x + fx, z + fz) - heightAt(x - fx, z - fz)) / (probe * 2.0);
+    }
+
+    // The spec's "elev" lists one height in metres per key point. Each
+    // centerline point takes the height at its own lap fraction. Metres become
+    // world units with the lap's scale (grades keep their real steepness),
+    // boosted 2.4x so they read on screen. Away from the road the ground
+    // blends to a distance-weighted mix of road heights, plus "hills" metres
+    // of rolling hills that start a few road widths out.
+    function buildTerrain(spec: map) {
+        trackPy = [];
+        var p = 0;
+        while (p < nPts) {
+            trackPy.append(0.0);
+            p = p + 1;
+        }
+        hillsOn = 0.0;
+        heightTop = 0.0;
+        var elev = spec.elev;
+        var keys = spec.pts;
+        var nK = int(keys.length / 2);
+        if (elev.length != nK || nK < 3 || nPts < 8) {
+            three.setUniform(material, "uHillsOn", 0.0);
+            return;
+        }
+        var keyCum = [];
+        var keyLen = 0.0;
+        var k = 0;
+        while (k < nK) {
+            keyCum.append(keyLen);
+            var kn = wrapIndex(k + 1, nK);
+            var kdx = keys[kn * 2] - keys[k * 2];
+            var kdz = keys[kn * 2 + 1] - keys[k * 2 + 1];
+            keyLen = keyLen + math.sqrt(kdx * kdx + kdz * kdz);
+            k = k + 1;
+        }
+        if (keyLen < 1.0) {
+            keyLen = 1.0;
+        }
+        var metres = 2.4 * totalLen / (spec.km * 1000.0);
+        var seg = 0;
+        p = 0;
+        while (p < nPts) {
+            var f = trackCum[p] / totalLen * keyLen;
+            while (seg < nK - 1 && keyCum[seg + 1] <= f) {
+                seg = seg + 1;
+            }
+            var segEnd = keyLen;
+            if (seg + 1 < nK) {
+                segEnd = keyCum[seg + 1];
+            }
+            var u = 0.0;
+            if (segEnd - keyCum[seg] > 0.001) {
+                u = (f - keyCum[seg]) / (segEnd - keyCum[seg]);
+            }
+            var e0 = elev[seg];
+            var e1 = elev[wrapIndex(seg + 1, nK)];
+            trackPy[p] = (e0 + (e1 - e0) * u) * metres;
+            p = p + 1;
+        }
+        var pass = 0;
+        while (pass < 3) {
+            var soft = [];
+            var s = 0;
+            while (s < nPts) {
+                var sum = 0.0;
+                var w = -4;
+                while (w <= 4) {
+                    sum = sum + trackPy[wrapIndex(s + w, nPts)];
+                    w = w + 1;
+                }
+                soft.append(sum / 9.0);
+                s = s + 1;
+            }
+            trackPy = soft;
+            pass = pass + 1;
+        }
+        var lowest = trackPy[0];
+        p = 0;
+        while (p < nPts) {
+            if (trackPy[p] < lowest) {
+                lowest = trackPy[p];
+            }
+            p = p + 1;
+        }
+        p = 0;
+        while (p < nPts) {
+            trackPy[p] = trackPy[p] - lowest;
+            p = p + 1;
+        }
+
+        var margin = trackSpan * 0.3 + trackW * 10.0;
+        var side = trackSpan + margin * 2.0;
+        heightCell = side / (heightN - 1);
+        var midX = (trackMinX + trackMaxX) * 0.5;
+        var midZ = (trackMinZ + trackMaxZ) * 0.5;
+        heightMinX = midX - side * 0.5;
+        heightMinZ = midZ - side * 0.5;
+        var stride = int((nPts + 63) / 64);
+        if (stride < 1) {
+            stride = 1;
+        }
+        var subX = [];
+        var subZ = [];
+        var subY = [];
+        var subI = [];
+        var q = 0;
+        while (q < nPts) {
+            subX.append(trackPx[q]);
+            subZ.append(trackPz[q]);
+            subY.append(trackPy[q]);
+            subI.append(q);
+            q = q + stride;
+        }
+        var nSub = subX.length;
+        var hillAmp = spec.hills * metres;
+        var soften = trackW * trackW * 9.0;
+        var nearCut = trackW * 5.0 + stride * (totalLen / nPts);
+        heightCells = [];
+        var top = 0.0;
+        var gz = 0;
+        while (gz < heightN) {
+            var z = heightMinZ + gz * heightCell;
+            var gx = 0;
+            while (gx < heightN) {
+                var x = heightMinX + gx * heightCell;
+                var wSum = 0.0;
+                var hSum = 0.0;
+                var bestD2 = 1000000000000.0;
+                var bestK = 0;
+                var j = 0;
+                while (j < nSub) {
+                    var dx = x - subX[j];
+                    var dz = z - subZ[j];
+                    var d2 = dx * dx + dz * dz;
+                    var wq = 1.0 / ((d2 + soften) * (d2 + soften));
+                    wSum = wSum + wq;
+                    hSum = hSum + wq * subY[j];
+                    if (d2 < bestD2) {
+                        bestD2 = d2;
+                        bestK = j;
+                    }
+                    j = j + 1;
+                }
+                var h = hSum / wSum;
+                var dist = math.sqrt(bestD2);
+                if (dist < nearCut) {
+                    var near = roadNear(x, z, subI[bestK], stride + 2);
+                    dist = near[0];
+                    var blend = smoothStep(trackW * 1.4, trackW * 4.0, dist);
+                    h = near[1] + (h - near[1]) * blend;
+                }
+                // Hills start a few road widths out; toward the edge of the
+                // grid they climb into a ring of mountains around the circuit.
+                var edgeX = math.abs(x - midX) / (side * 0.5);
+                var edgeZ = math.abs(z - midZ) / (side * 0.5);
+                if (edgeZ > edgeX) {
+                    edgeX = edgeZ;
+                }
+                var lift = hillNoise(x, z) + smoothStep(0.6, 1.0, edgeX) * (1.0 + hillNoise(z + 9.0, x - 4.0));
+                h = h + hillAmp * smoothStep(trackW * 2.5, trackW * 12.0, dist) * lift;
+                heightCells.append(h);
+                if (h > top) {
+                    top = h;
+                }
+                gx = gx + 1;
+            }
+            gz = gz + 1;
+        }
+
+        var pixels = [];
+        var r = 0;
+        while (r < heightN) {
+            var r1 = r + 1;
+            if (r1 >= heightN) {
+                r1 = heightN - 1;
+            }
+            var c = 0;
+            while (c < heightN) {
+                var c1 = c + 1;
+                if (c1 >= heightN) {
+                    c1 = heightN - 1;
+                }
+                pixels.append(heightCells[r * heightN + c]);
+                pixels.append(heightCells[r * heightN + c1]);
+                pixels.append(heightCells[r1 * heightN + c]);
+                pixels.append(heightCells[r1 * heightN + c1]);
+                c = c + 1;
+            }
+            r = r + 1;
+        }
+        three.updateDataTexture(heightTex, pixels);
+        heightTop = top + 0.05;
+        hillsOn = 1.0;
+        three.setUniform(material, "uHeightMin", [heightMinX, heightMinZ]);
+        three.setUniform(material, "uHeightCell", heightCell);
+        three.setUniform(material, "uHeightN", heightN);
+        three.setUniform(material, "uHeightTop", heightTop);
+        three.setUniform(material, "uHillsOn", 1.0);
     }
 
     var carCount = 8;
@@ -2044,7 +2517,7 @@ if (root == null) {
         if (gripN < 0.92 && math.abs(obs[0]) < 1.05 && thr < 0.42) {
             thr = 0.42;
         }
-        return [steer, thr];
+        return [steer, thr, pace];
     }
 
     function shareNow() -> float {
@@ -2225,6 +2698,25 @@ if (root == null) {
         }
         var dragK = 0.0032 / worldScale;
         var lonAccel = drive - dragK * vLong * math.abs(vLong) - 1.5 * worldScale * vLong;
+        // Gravity along the slope: slower uphill, faster downhill. Throttle is
+        // the only pedal the coach and the net learn, so a computer driver who
+        // lifts on a descent also brakes against the drop: the downhill push
+        // scales with throttle squared (full on a flat-out straight, a quarter
+        // or less into a corner). The player has a real brake key.
+        var pull = hillGravity * worldScale * slopeAlong(carX[i], carZ[i], carH[i]);
+        if (pull < 0.0 && !(i == driveCar && manualDrive)) {
+            pull = pull * thr * thr;
+            // Downhill the coach's corner pace is also a brake point: above
+            // it the driver brakes, fully at a quarter over.
+            if (obs[2] > teach[2]) {
+                var over = (obs[2] - teach[2]) / teach[2] * 4.0;
+                if (over > 1.0) {
+                    over = 1.0;
+                }
+                pull = pull + 110.0 * worldScale * over;
+            }
+        }
+        lonAccel = lonAccel - pull;
         if (brake) {
             if (vLong > 0.5 * worldScale) {
                 lonAccel = lonAccel - 110.0 * worldScale;
@@ -2509,6 +3001,7 @@ if (root == null) {
         }
         focusX = carX[focusI];
         focusZ = carZ[focusI];
+        var focusY = heightAt(focusX, focusZ);
         var heading = carH[focusI];
         var aheadX = math.cos(heading);
         var aheadZ = math.sin(heading);
@@ -2597,6 +3090,25 @@ if (root == null) {
             lookY = 0.30;
             lookZ = camZ + aheadZ * 9.0 + sideZ * (steerLook * 0.7);
         }
+        // The shots above are laid out on flat ground. Lift each one onto the
+        // hills: the cockpit rides the car, the aerial view floats over the
+        // middle height, and the rest sit over whichever is higher, the car or
+        // the ground below the camera. Look points follow the ground ahead, so
+        // the view tips over crests and down into dips.
+        if (camShot == 6) {
+            camY = camY + focusY;
+            lookY = lookY + heightAt(lookX, lookZ);
+        } else if (camShot == 5) {
+            camY = camY + heightTop * 0.5;
+            lookY = lookY + heightTop * 0.3;
+        } else {
+            var underCam = heightAt(camX, camZ);
+            if (underCam < focusY) {
+                underCam = focusY;
+            }
+            camY = camY + underCam;
+            lookY = lookY + heightAt(lookX, lookZ);
+        }
         if (!camReady) {
             smoothX = camX;
             smoothY = camY;
@@ -2638,6 +3150,13 @@ if (root == null) {
         camX = smoothX;
         camY = smoothY;
         camZ = smoothZ;
+        if (camShot != 6) {
+            var floorY = heightAt(camX, camZ) + 0.35;
+            if (camY < floorY) {
+                camY = floorY;
+                smoothY = floorY;
+            }
+        }
         lookX = lookSX;
         lookY = lookSY;
         lookZ = lookSZ;
@@ -2674,7 +3193,8 @@ if (root == null) {
             var relZ = camZ - focusZ;
             var localX = relX * aheadX + relZ * aheadZ;
             var localZ = relX * sideX + relZ * sideZ;
-            if (localX > -0.36 && localX < 0.22 && camY > 0.30 && camY < 0.64 && localZ > -0.20 && localZ < 0.20) {
+            var localY = camY - focusY;
+            if (localX > -0.36 && localX < 0.22 && localY > 0.30 && localY < 0.64 && localZ > -0.20 && localZ < 0.20) {
                 cockpitCar = 0.0 + focusI;
                 var roll = carYaw[focusI] * 0.11 + carLat[focusI] * (0.01 / worldScale);
                 if (roll > 0.22) {
@@ -2754,6 +3274,14 @@ if (root == null) {
         gridPix = gridPix + 1;
     }
     var gridTex = three.createDataTexture(gridTexW, gridTexH, gridPixels, {"type": "float"});
+
+    var heightPixels = [];
+    var heightPix = 0;
+    while (heightPix < heightN * heightN * 4) {
+        heightPixels.append(0.0);
+        heightPix = heightPix + 1;
+    }
+    var heightTex = three.createDataTexture(heightN, heightN, heightPixels, {"type": "float"});
 
     // Roadside props: 12 floats each (x, z, yaw, kind, six params, phrase slot, spare).
     var propMax = 120;
@@ -2883,6 +3411,12 @@ if (root == null) {
             "uGridTexW": gridTexW,
             "uGridTexH": gridTexH,
             "uGridOn": 0,
+            "uHeight": heightTex,
+            "uHeightMin": [0, 0],
+            "uHeightCell": 1,
+            "uHeightN": heightN,
+            "uHeightTop": 0,
+            "uHillsOn": 0,
             "uNear": propNear,
             "uFar": propFar,
             "uCars": [[0, 0, -5], [-3, 0, -8], [3, 0, -8], [0, 0, -11], [-3, 0, -14], [3, 0, -14], [0, 0, -17], [0, 0, -20]],
@@ -2989,6 +3523,7 @@ if (root == null) {
     var signCount = 0;
     var signX = [];
     var signZ = [];
+    var signGY = [];
     var signSlot = [];
     var signFaceIndex = [];
 
@@ -3239,6 +3774,9 @@ if (root == null) {
         if (name == "Interlagos") {
             return "LAGOS";
         }
+        if (name == "Mount Panorama") {
+            return "MOUNT";
+        }
         return name;
     }
 
@@ -3390,6 +3928,7 @@ if (root == null) {
         signCount = 0;
         signX = [];
         signZ = [];
+        signGY = [];
         signSlot = [];
         signFaceIndex = [];
         var k = 0;
@@ -3404,6 +3943,7 @@ if (root == null) {
             var z = propPixels[o + 1];
             var yaw = propPixels[o + 2];
             var kind = propPixels[o + 3];
+            var gy = heightAt(x, z);
             if (kind > 2.5 && buildingCount < buildingMax) {
                 var h = propPixels[o + 4];
                 var hw = propPixels[o + 5];
@@ -3415,12 +3955,14 @@ if (root == null) {
                 } else if (style > 0.5) {
                     wall = [0.55, 0.28, 0.22];
                 }
-                three.setInstance(walls, buildingCount, x, h * 0.5, z, {
+                // One extra unit below ground keeps a hillside from showing
+                // under the downhill wall.
+                three.setInstance(walls, buildingCount, x, gy + (h - 1.0) * 0.5, z, {
                     "rotation": -yaw,
-                    "scale": [hw * 2.0, h, hd * 2.0],
+                    "scale": [hw * 2.0, h + 1.0, hd * 2.0],
                     "color": wall
                 });
-                three.setInstance(roofs, buildingCount, x, h + 0.07, z, {
+                three.setInstance(roofs, buildingCount, x, gy + h + 0.07, z, {
                     "rotation": -yaw,
                     "scale": [hw * 2.0 + 0.12, 0.14, hd * 2.0 + 0.12],
                     "color": [0.3, 0.32, 0.34]
@@ -3432,7 +3974,7 @@ if (root == null) {
                     sc = 1.0;
                 }
                 var trunkH = 1.45 * sc;
-                three.setInstance(trunks, treeCount, x, trunkH * 0.5, z, {
+                three.setInstance(trunks, treeCount, x, gy + trunkH * 0.5 - 0.1, z, {
                     "scale": sc,
                     "color": [0.32, 0.2, 0.1]
                 });
@@ -3440,18 +3982,19 @@ if (root == null) {
                 if (treeCount % 2 == 1) {
                     green = [0.16, 0.48, 0.18];
                 }
-                three.setInstance(canopies, treeCount, x, trunkH + 1.05 * sc * 0.55, z, {
+                three.setInstance(canopies, treeCount, x, gy + trunkH + 1.05 * sc * 0.55 - 0.1, z, {
                     "scale": sc,
                     "color": green
                 });
                 treeCount = treeCount + 1;
             } else if (kind > 0.5 && signCount < signMax) {
                 var slotIndex = int(propPixels[o + 10] + 0.5);
-                three.setInstance(posts, signCount, x, (signY - signHalfH + 0.04) * 0.5, z, {
+                three.setInstance(posts, signCount, x, gy + (signY - signHalfH + 0.04) * 0.5, z, {
                     "color": [0.22, 0.22, 0.24]
                 });
                 signX.append(x);
                 signZ.append(z);
+                signGY.append(gy);
                 signSlot.append(slotIndex);
                 signFaceIndex.append(faceCount[slotIndex]);
                 faceCount[slotIndex] = faceCount[slotIndex] + 1;
@@ -3517,12 +4060,12 @@ if (root == null) {
             if (dx * dx + dz * dz > 0.0001) {
                 yaw = math.atan2(dz, dx);
             }
-            three.setInstance(boards, i, x, signY, z, {
+            three.setInstance(boards, i, x, signGY[i] + signY, z, {
                 "rotation": -yaw,
                 "color": [0.78, 0.08, 0.09]
             });
             three.setInstance(faces[signSlot[i]], signFaceIndex[i],
-                x + math.cos(yaw) * 0.085, signY, z + math.sin(yaw) * 0.085,
+                x + math.cos(yaw) * 0.085, signGY[i] + signY, z + math.sin(yaw) * 0.085,
                 { "rotation": 1.5708 - yaw });
             i = i + 1;
         }
@@ -3859,7 +4402,7 @@ if (root == null) {
                     "freq": 60,
                     "cutoff": 600,
                     "volume": 0,
-                    "position": [carX[v], 0.4, carZ[v]],
+                    "position": [carX[v], heightAt(carX[v], carZ[v]) + 0.4, carZ[v]],
                     "refDistance": 6,
                     "rolloff": 1.3
                 }));
@@ -3900,7 +4443,7 @@ if (root == null) {
                 "freq": 55.0 + speedN * 170.0 + float(i) * 1.7,
                 "cutoff": 450.0 + speedN * 2600.0,
                 "volume": engineVolume,
-                "position": [carX[i], 0.4, carZ[i]]
+                "position": [carX[i], heightAt(carX[i], carZ[i]) + 0.4, carZ[i]]
             });
             i = i + 1;
         }
@@ -3920,7 +4463,7 @@ if (root == null) {
             }
             game.audioSetVoice(scrubVoice, {
                 "volume": scrubVolume,
-                "position": [carX[hear], 0.2, carZ[hear]]
+                "position": [carX[hear], heightAt(carX[hear], carZ[hear]) + 0.2, carZ[hear]]
             });
         } else {
             game.audioSetVoice(scrubVoice, { "volume": 0 });
@@ -4080,14 +4623,14 @@ if (root == null) {
         three.setUniform(material, "uCamRight", [cam.rightX, cam.rightY, cam.rightZ]);
         three.setUniform(material, "uCamUp", [cam.upX, cam.upY, cam.upZ]);
         lightX = focusX + trackSpan * 0.45;
-        lightY = trackSpan * 0.9;
+        lightY = trackSpan * 0.9 + heightTop;
         lightZ = focusZ + trackSpan * 0.22;
         three.setUniform(material, "uLightPos", [lightX, lightY, lightZ]);
         three.setUniform(material, "uTrackW", trackW);
         var carSpots = [];
         var spot = 0;
         while (spot < carCount) {
-            carSpots.append([carX[spot], 0, carZ[spot]]);
+            carSpots.append([carX[spot], heightAt(carX[spot], carZ[spot]), carZ[spot]]);
             spot = spot + 1;
         }
         three.setUniform(material, "uCars", carSpots);
