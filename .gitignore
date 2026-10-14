@@ -31,7 +31,8 @@ _testout/
 publish-*.log
 
 # Example runtimes and local state
-Examples/runtimes/
+Examples/**/runtimes/
+Examples/**/MaldaLang.Executable.*
 *.db
 .malda-preview/
 .malda-play/
