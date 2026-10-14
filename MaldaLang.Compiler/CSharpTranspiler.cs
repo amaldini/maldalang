@@ -1917,6 +1917,14 @@ public class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("if (value is double or float or decimal) return ((IFormattable)value).ToString(null, System.Globalization.CultureInfo.InvariantCulture);");
         WriteIndent();
+        _output.AppendLine("// Same text as the interpreter's JsonObject / ObjectInstance.");
+        WriteIndent();
+        _output.AppendLine("if (value is System.Collections.IDictionary) return \"<json object>\";");
+        WriteIndent();
+        _output.AppendLine("var valueType = value.GetType();");
+        WriteIndent();
+        _output.AppendLine("if (valueType.Namespace == \"GeneratedCode\" && valueType.GetMethod(\"ToString\", System.Type.EmptyTypes)?.DeclaringType == typeof(object)) return \"<\" + valueType.Name + \" instance>\";");
+        WriteIndent();
         _output.AppendLine("return value.ToString() ?? \"null\";");
         _indentLevel--;
         WriteIndent();
@@ -13050,30 +13058,30 @@ public class CSharpTranspiler
         }
         if (TypedTranspileEnabled && name == "floor" && arguments.Count > 0 && ResolveExpressionType(arguments[0]) == TranspiledClrType.Double)
         {
-            _output.Append("Math.Floor(");
+            _output.Append("Math.Floor((double)(");
             TranspileExpression(arguments[0]);
-            _output.Append(")");
+            _output.Append("))");
             return;
         }
         if (TypedTranspileEnabled && name == "ceil" && arguments.Count > 0 && ResolveExpressionType(arguments[0]) == TranspiledClrType.Double)
         {
-            _output.Append("Math.Ceiling(");
+            _output.Append("Math.Ceiling((double)(");
             TranspileExpression(arguments[0]);
-            _output.Append(")");
+            _output.Append("))");
             return;
         }
         if (TypedTranspileEnabled && name == "round" && arguments.Count > 0 && ResolveExpressionType(arguments[0]) == TranspiledClrType.Double)
         {
-            _output.Append("Math.Round(");
+            _output.Append("Math.Round((double)(");
             TranspileExpression(arguments[0]);
-            _output.Append(")");
+            _output.Append("))");
             return;
         }
         if (TypedTranspileEnabled && name == "trunc" && arguments.Count > 0 && ResolveExpressionType(arguments[0]) == TranspiledClrType.Double)
         {
-            _output.Append("Math.Truncate(");
+            _output.Append("Math.Truncate((double)(");
             TranspileExpression(arguments[0]);
-            _output.Append(")");
+            _output.Append("))");
             return;
         }
         if (TypedTranspileEnabled && name == "sign" && arguments.Count > 0 && ResolveExpressionType(arguments[0]) == TranspiledClrType.Double)
@@ -13485,12 +13493,8 @@ public class CSharpTranspiler
                 }
                 _output.Append(" }, null))");
                 break;
+            // abs keeps an int an int (interpreter BuiltInAbs); Math.Abs over a double would not.
             case "abs":
-                _output.Append("Math.Abs((double)RuntimeHelpers.CoerceToFloat(");
-                if (arguments.Count > 0)
-                    TranspileExpression(arguments[0]);
-                _output.Append("))");
-                break;
             case "sum":
             case "average":
             case "max":
@@ -14872,9 +14876,11 @@ public class CSharpTranspiler
         {
             if (segment.IsExpression)
             {
-                _output.Append("{");
+                // Format through the runtime like print and +, so arrays, null and booleans
+                // read [1, 2] / null / true instead of the CLR type name, "" and True.
+                _output.Append("{RuntimeHelpers.CoerceToString(");
                 TranspileExpression(segment.Expression!);
-                _output.Append("}");
+                _output.Append(")}");
             }
             else
             {

@@ -3,6 +3,7 @@
         throw new Error("mlRuntime is not available. Include malda-js-runtime.js before running generated MALDA JavaScript.");
     }
     const mlRuntime = globalThis.mlRuntime;
+    const __maldaAdd = mlRuntime.add, __maldaFormat = mlRuntime.formatValue;
 
     function main() {
         let vertexShader = "varying vec2 vUv;\n\nvoid main() {\n    vUv = uv;\n    gl_Position = vec4(position.xy, 0.0, 1.0);\n}\n";
@@ -112,10 +113,10 @@
                 {
                     n = hi;
                 }
-                el.value = mlRuntime.coerceToString(mlRuntime.coerceToInt(n));
+                el.value = __maldaFormat(mlRuntime.coerceToInt(n));
             }
             function nudgeRange(el, delta, lo, hi) {
-                setRangeInt(el, (rangeInt(el, lo) + delta), lo, hi);
+                setRangeInt(el, __maldaAdd(rangeInt(el, lo), delta), lo, hi);
             }
             function syncPlaySettings() {
                 camRadius = (mlRuntime.coerceToFloat(rangeInt(zoomRange, 48)) / 10);
@@ -173,11 +174,11 @@
                 let count = 1;
                 while ((mlRuntime.coerceToFloat(row) < 5))
                 {
-                    if ((mlRuntime.coerceToFloat(n) < mlRuntime.coerceToFloat((start + count))))
+                    if ((mlRuntime.coerceToFloat(n) < mlRuntime.coerceToFloat(__maldaAdd(start, count))))
                     {
                         return (0.58 + ((mlRuntime.coerceToFloat(row) * mlRuntime.coerceToFloat(ballR)) * 1.7320508));
                     }
-                    start = (start + count);
+                    start = __maldaAdd(start, count);
                     count = (count + 1);
                     row = (row + 1);
                 }
@@ -194,12 +195,12 @@
                 let count = 1;
                 while ((mlRuntime.coerceToFloat(row) < 5))
                 {
-                    if ((mlRuntime.coerceToFloat(n) < mlRuntime.coerceToFloat((start + count))))
+                    if ((mlRuntime.coerceToFloat(n) < mlRuntime.coerceToFloat(__maldaAdd(start, count))))
                     {
                         let col = (mlRuntime.coerceToFloat(n) - mlRuntime.coerceToFloat(start));
                         return ((mlRuntime.coerceToFloat(col) - (mlRuntime.coerceToFloat(row) * 0.5)) * (mlRuntime.coerceToFloat(ballR) * 2.02));
                     }
-                    start = (start + count);
+                    start = __maldaAdd(start, count);
                     count = (count + 1);
                     row = (row + 1);
                 }
@@ -454,15 +455,15 @@
                 {
                     if ((mlRuntime.coerceToFloat(i) < mlRuntime.coerceToFloat(filled)))
                     {
-                        bar = (bar + "#");
+                        bar = (__maldaFormat(bar) + "#");
                     }
                     else
                     {
-                        bar = (bar + "-");
+                        bar = (__maldaFormat(bar) + "-");
                     }
                     i = (i + 1);
                 }
-                return (((("[" + bar) + "]   ") + mlRuntime.coerceToString(mlRuntime.coerceToInt((mlRuntime.coerceToFloat(shotPower) * 100)))) + "%");
+                return (((("[" + __maldaFormat(bar)) + "]   ") + __maldaFormat(mlRuntime.coerceToInt((mlRuntime.coerceToFloat(shotPower) * 100)))) + "%");
             }
             function aimFromMouse() {
                 let mx = mlRuntime.three.getMouseX();
@@ -676,7 +677,7 @@
                     {
                         if ((ballLive[0] === 1))
                         {
-                            demoClock = (demoClock + dtSec);
+                            demoClock = __maldaAdd(demoClock, dtSec);
                             aimAngle = 0;
                             if (((mlRuntime.coerceToFloat(demoClock) > 0.25) && (mlRuntime.coerceToFloat(demoClock) < 0.7)))
                             {
@@ -769,26 +770,26 @@
                     respawnCueIfNeeded();
                 }
                 still = ballsAreStill();
-                let orbitTxt = mlRuntime.coerceToString((mlRuntime.coerceToFloat(mlRuntime.coerceToInt((mlRuntime.coerceToFloat(camSpeed) * 100))) / 100));
-                let zoomTxt = mlRuntime.coerceToString((mlRuntime.coerceToFloat(mlRuntime.coerceToInt((mlRuntime.coerceToFloat(camRadius) * 10))) / 10));
-                let railTxt = mlRuntime.coerceToString((mlRuntime.coerceToFloat(mlRuntime.coerceToInt((mlRuntime.coerceToFloat(railRest) * 100))) / 100));
-                let ballTxt = mlRuntime.coerceToString((mlRuntime.coerceToFloat(mlRuntime.coerceToInt((mlRuntime.coerceToFloat(ballRest) * 100))) / 100));
-                let fricTxt = mlRuntime.coerceToString((mlRuntime.coerceToFloat(mlRuntime.coerceToInt((mlRuntime.coerceToFloat(feltFriction) * 100))) / 100));
-                mlRuntime.dom.setText(physLine, ((((((((("Zoom " + zoomTxt) + "   Cushion e ") + railTxt) + "   Ball e ") + ballTxt) + "   Friction ") + fricTxt) + "   Orbit ") + orbitTxt));
+                let orbitTxt = __maldaFormat((mlRuntime.coerceToFloat(mlRuntime.coerceToInt((mlRuntime.coerceToFloat(camSpeed) * 100))) / 100));
+                let zoomTxt = __maldaFormat((mlRuntime.coerceToFloat(mlRuntime.coerceToInt((mlRuntime.coerceToFloat(camRadius) * 10))) / 10));
+                let railTxt = __maldaFormat((mlRuntime.coerceToFloat(mlRuntime.coerceToInt((mlRuntime.coerceToFloat(railRest) * 100))) / 100));
+                let ballTxt = __maldaFormat((mlRuntime.coerceToFloat(mlRuntime.coerceToInt((mlRuntime.coerceToFloat(ballRest) * 100))) / 100));
+                let fricTxt = __maldaFormat((mlRuntime.coerceToFloat(mlRuntime.coerceToInt((mlRuntime.coerceToFloat(feltFriction) * 100))) / 100));
+                mlRuntime.dom.setText(physLine, ((((((((("Zoom " + __maldaFormat(zoomTxt)) + "   Cushion e ") + __maldaFormat(railTxt)) + "   Ball e ") + __maldaFormat(ballTxt)) + "   Friction ") + __maldaFormat(fricTxt)) + "   Orbit ") + __maldaFormat(orbitTxt)));
                 if (mlRuntime.isTruthy(still))
                 {
                     let deg = mlRuntime.coerceToInt(((mlRuntime.coerceToFloat(aimAngle) * 180) / 3.14159265));
                     if (mlRuntime.isTruthy(charging))
                     {
-                        mlRuntime.dom.setText(status, (((("Charging… release to shoot   Aim " + mlRuntime.coerceToString(deg)) + " deg   Potted ") + mlRuntime.coerceToString(pottedCount)) + "   C stop orbit   R reset"));
+                        mlRuntime.dom.setText(status, (((("Charging… release to shoot   Aim " + __maldaFormat(deg)) + " deg   Potted ") + __maldaFormat(pottedCount)) + "   C stop orbit   R reset"));
                     }
                     else
                     {
-                        mlRuntime.dom.setText(status, (((("Aim " + mlRuntime.coerceToString(deg)) + " deg   Hold click/Space to charge   [ ] zoom   C stop orbit   Potted ") + mlRuntime.coerceToString(pottedCount)) + "   R reset"));
+                        mlRuntime.dom.setText(status, (((("Aim " + __maldaFormat(deg)) + " deg   Hold click/Space to charge   [ ] zoom   C stop orbit   Potted ") + __maldaFormat(pottedCount)) + "   R reset"));
                     }
                     if (mlRuntime.isTruthy(charging))
                     {
-                        mlRuntime.dom.setText(powerLine, ("Power  " + powerBarText()));
+                        mlRuntime.dom.setText(powerLine, ("Power  " + __maldaFormat(powerBarText())));
                     }
                     else
                     {
@@ -797,7 +798,7 @@
                 }
                 else
                 {
-                    mlRuntime.dom.setText(status, (("Balls in motion…   Potted " + mlRuntime.coerceToString(pottedCount)) + "   C stop orbit   R reset"));
+                    mlRuntime.dom.setText(status, (("Balls in motion…   Potted " + __maldaFormat(pottedCount)) + "   C stop orbit   R reset"));
                     mlRuntime.dom.setText(powerLine, "Power  [----------------]");
                 }
                 updateCamera();

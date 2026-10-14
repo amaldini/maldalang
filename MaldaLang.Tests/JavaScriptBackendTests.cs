@@ -6316,7 +6316,7 @@ const missingModel = three.loadGLTF("missing.gltf");
         var compiler = new Compiler.Compiler();
         var js = compiler.TranspileToJavaScriptFromSource(source);
 
-        Assert.Contains("mlRuntime.coerceToString(n)", js, StringComparison.Ordinal);
+        Assert.Contains("__maldaFormat(n)", js, StringComparison.Ordinal);
         Assert.Contains("\"n is \"", js, StringComparison.Ordinal);
         Assert.DoesNotContain("${n}", js, StringComparison.Ordinal);
     }

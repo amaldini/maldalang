@@ -108,6 +108,8 @@ one runs without error on every backend and prints different output.
 | `math.round(2.5)` | `2` — banker's rounding (half to even) | `3` — half up | `math.floor(x + 0.5)` for half up everywhere |
 | `x / 0` | Runtime error (int and float) | `Infinity` / `NaN` | Check the divisor first |
 | `NaN == NaN` | `true` | `false` | Avoid producing `NaN`; test the inputs instead |
+| `typeOf(math.floor(4))`, `typeOf(6 / 2)` | `"float"` — floor/ceil/round/trunc/sign/sqrt and `/` always return a float | `"int"` — JavaScript has one number type, so a whole-valued float reads as int | Do not branch on `typeOf` for numbers; `int(x)` / `float(x)` when the kind matters |
+| `io.print(-0.0)` | `-0` | `0` | Rarely matters; `-4 % 2` prints `0` everywhere |
 
 Not differences: `0`, `""` and `[]` are truthy everywhere (see above), and
 `str.substring(s, start, length)` takes a **count** on every backend, not an end index.
@@ -116,7 +118,7 @@ Not differences: `0`, `""` and `[]` are truthy everywhere (see above), and
 
 **`@shader()` is a JavaScript compile-time GLSL kernel, not a host function.** `malda compile --mode js` inlines those functions through `glsl.compile({ ... })` and does not emit JS. Calling `hitSphere(...)` from the MALDA host, or running the file in the interpreter / C# transpile, will not execute GPU code. Keep uniforms and the `three.*` loop in host MALDA; keep rays in `@shader()` functions. Raw triple-quoted GLSL strings still work.
 
-**Top-level `function` in JS mode cannot see top-level `var`.** The JS transpiler emits `function`s beside `main()` and puts script `var`s inside `main()`, so a helper that reads `gameOver` throws `ReferenceError`. Keep the canvas locals and helpers in one block, as in `Examples/Games/game_bounce.malda` / `malda new game`. A `function` inside a block is local on the interpreter, C# transpile, and JavaScript: the name disappears when the block ends, and the body sees that block's variables. Call it after the declaration.
+**Top-level `function`s see top-level `var`s on every backend**, including `--mode js` (script `var`s are module-scoped beside the functions, not locals of `main()`). A `function` inside a block is local on the interpreter, C# transpile, and JavaScript: the name disappears when the block ends, and the body sees that block's variables. Call it after the declaration.
 
 **`malda -e` / `--exec` runs a snippet; `malda eval` runs `suite` / `case`.** `--eval` is rejected on both the top-level CLI and `malda check` so the names cannot collide. Example: `malda -e "io.print(1);"` or `malda eval path.malda`.
 

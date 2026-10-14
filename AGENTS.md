@@ -55,7 +55,13 @@ The full suite is too slow. Use filtered tests for the area you touch:
 dotnet test MaldaLang.Tests --filter "FullyQualifiedName~RelevantTests"
 ```
 
-CI smoke filter (see `.github/workflows/ci.yml`): `BuiltInRegistryTests`, `CompilerPackDecouplingGuardTests`, `OptionalPackTranspileEmitTests`, `LicenseHeaderGuardTests`, `ReleaseVersionGuardTests`, `ReferenceManual`, `BackendCapabilityMatrixGuardTests`, `ShipContractGuardTests`, `TranspileSmokeTests`, `InterpretTranspilePairTests`, `InterpretJsPairTests`, `WorkflowTranspilerParityTests`, `HttpTraceParityTests`, `JobTraceParityTests`, `Tier0CsharpShipSmokeTests`.
+Backend parity fuzzing: `BackendDifferentialFuzzTests` generates seeded programs and requires the
+interpreter, C# transpile and JS transpile to print the same output (3 seeds by default, ~20 s).
+After touching an emitter or the JS runtime, explore more seeds with
+`MALDA_FUZZ_SEEDS=100-160 dotnet test MaldaLang.Tests --filter "FullyQualifiedName~BackendDifferentialFuzzTests"`;
+a failure leaves the program and the three outputs under `%TEMP%/malda_fuzz/seed<N>/`.
+
+CI smoke filter (see `.github/workflows/ci.yml`): `BuiltInRegistryTests`, `CompilerPackDecouplingGuardTests`, `OptionalPackTranspileEmitTests`, `LicenseHeaderGuardTests`, `ReleaseVersionGuardTests`, `ReferenceManual`, `BackendCapabilityMatrixGuardTests`, `ShipContractGuardTests`, `TranspileSmokeTests`, `InterpretTranspilePairTests`, `InterpretJsPairTests`, `WorkflowTranspilerParityTests`, `HttpTraceParityTests`, `JobTraceParityTests`, `Tier0CsharpShipSmokeTests`, `BackendDifferentialFuzzTests`, `BuiltInSurfaceGuardTests` (Windows job).
 
 ## IDE roles (not interchangeable)
 
@@ -117,13 +123,17 @@ tests; drive-by “nice to have” builtins are out of scope for focused PRs.
 1. Implement in `MaldaLang/BuiltIns/BuiltInFunctions.cs` (or related BuiltIns type)
 2. Check the argument count with `BuiltInArity.Require("name", args, min, max, "a, b?")` — one
    phrasing for every built-in, and the generator in step 6 reads these call sites
-3. Register in `CallBuiltIn` and `CallBuiltInAsync`
-4. Add to `IsBuiltIn` in `MaldaLang/Interpreter/Interpreter.cs`
-5. Add to `IsBuiltInFunction` + `TranspileBuiltInFunction` in `MaldaLang.Compiler/CSharpTranspiler.cs`
-6. Name it somewhere in `ReferenceManual/*.html` (the coverage guard fails otherwise)
-7. Regenerate the agent lookup table: `pwsh scripts/sync-llm-builtins-tsv.ps1`
-8. Rebuild and smoke-test interpreted + transpiled paths
-9. Update `docs/llm/` gotchas/syntax when the built-in has agent-facing footguns; bump the
+3. Add one arm to `DispatchBuiltIn` in `BuiltInFunctions.cs`. Add an arm to `CallBuiltInAsync`
+   only when the implementation awaits — every other name falls through to `DispatchBuiltIn`
+4. Register the name in `BuiltInRegistry.GetDescriptor`, then run
+   `scripts/generate-core-builtin-inventory.ps1`. The registry is what interpreter `IsBuiltIn`
+   and transpiler `IsBuiltInFunction` read, and C# transpile emits a dispatch call for it by
+   default — add a `TranspileBuiltInFunction` case only for a special emit.
+   `BuiltInSurfaceGuardTests` fails when the registry and the dispatch table drift
+5. Name it somewhere in `ReferenceManual/*.html` (the coverage guard fails otherwise)
+6. Regenerate the agent lookup table: `pwsh scripts/sync-llm-builtins-tsv.ps1`
+7. Rebuild and smoke-test interpreted + transpiled paths
+8. Update `docs/llm/` gotchas/syntax when the built-in has agent-facing footguns; bump the
    pack `Applies to` version when cutting the release that ships it
 
 ## Debugging transpile failures

@@ -29,7 +29,58 @@
 
   function coerceToString(value) {
     if (value === null || value === undefined) return "";
+    if (typeof value === "string") return value;
+    return formatValue(value);
+  }
+
+  // The text the interpreter prints for a value (RuntimeValue.ToString): print, string(),
+  // $"{…}" and string + value all go through this, so every backend shows the same thing.
+  // Kept tiny so V8 inlines the common string case into hot string-building loops.
+  function formatValue(value) {
+    return typeof value === "string" ? value : formatNonString(value);
+  }
+
+  function formatNonString(value) {
+    if (value === null || value === undefined) return "null";
+    switch (typeof value) {
+      case "boolean": return value ? "true" : "false";
+      case "number": return formatNumber(value);
+      case "function": return "<function>";
+    }
+    if (Array.isArray(value)) return "[" + value.map(formatValue).join(", ") + "]";
+    if (isVariant(value)) return value.tag + "(" + variantPayload(value).map(formatValue).join(", ") + ")";
+    if (typeof value.then === "function") return "<task>";
+    const proto = Object.getPrototypeOf(value);
+    if (proto === null || proto === Object.prototype) return "<json object>";
+    if (proto.constructor && proto.constructor.name) return "<" + proto.constructor.name + " instance>";
     return String(value);
+  }
+
+  // .NET double.ToString(): shortest round-trip digits (same as JS), scientific when the
+  // exponent is below -4 or at least 17, written 1E-05 / 1.5E+20. -0 prints as 0: JS cannot
+  // tell an int result such as -4 % 2 (0 on the interpreter) from a float -0.0.
+  function formatNumber(value) {
+    const magnitude = Math.abs(value);
+    if (magnitude === 0 || (magnitude >= 1e-4 && magnitude < 1e17) || !Number.isFinite(value)) {
+      return String(value === 0 ? 0 : value);
+    }
+    const exponential = value.toExponential();
+    const at = exponential.indexOf("e");
+    const exponent = Number(exponential.slice(at + 1));
+    const digits = String(Math.abs(exponent)).padStart(2, "0");
+    return exponential.slice(0, at) + "E" + (exponent < 0 ? "-" : "+") + digits;
+  }
+
+  // MALDA +: numbers add, anything next to a string concatenates using formatValue.
+  function add(left, right) {
+    const leftType = typeof left;
+    if (leftType === typeof right && (leftType === "number" || leftType === "string")) return left + right;
+    return addMixed(left, right);
+  }
+
+  function addMixed(left, right) {
+    if (typeof left === "string" || typeof right === "string") return formatValue(left) + formatValue(right);
+    return left + right;
   }
 
   function resolveAssetUrl(url) {
@@ -3237,7 +3288,7 @@
 
   function ioPrint(value) {
     if (typeof console !== "undefined") {
-      console.log(coerceToString(value));
+      console.log(formatValue(value));
     }
     return null;
   }
@@ -3763,6 +3814,8 @@
     coerceToInt,
     coerceToFloat,
     coerceToString,
+    formatValue,
+    add,
     isTruthy,
     equals,
     variant,
@@ -3819,18 +3872,8 @@
     runProperty: runPropertyBuiltin,
     actors: actorsRuntime,
     builtins: {
-      print(value) {
-        if (typeof console !== "undefined") {
-          console.log(coerceToString(value));
-        }
-        return null;
-      },
-      println(value) {
-        if (typeof console !== "undefined") {
-          console.log(value);
-        }
-        return null;
-      },
+      print: ioPrint,
+      println: ioPrint,
       sleep(milliseconds) {
         const ms = Math.max(0, coerceToInt(milliseconds));
         withinCheck();

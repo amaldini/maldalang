@@ -192,6 +192,9 @@ public class JsTranspiler
         _indentLevel--;
         EmitLine("}");
         EmitLine("const mlRuntime = globalThis.mlRuntime;");
+        // Hot helpers behind +, $"{…}" and string(): a local binding keeps V8 from a property
+        // lookup on the large runtime object at every concatenation.
+        EmitLine("const __maldaAdd = mlRuntime.add, __maldaFormat = mlRuntime.formatValue;");
         EmitLine(string.Empty);
 
         foreach (var typeDeclaration in typeDeclarations)
@@ -211,6 +214,27 @@ public class JsTranspiler
 
         if (schemaDeclarations.Count > 0)
         {
+            EmitLine(string.Empty);
+        }
+
+        // A script-level var that a top-level function, class or actor uses must live beside
+        // them, not as a local of main(), or the reference throws ReferenceError (the
+        // interpreter and C# both share it). The others stay main() locals.
+        var namesUsedByDeclarations = new HashSet<string>(
+            functions.Where(f => !ShaderFunction.IsMarked(f)).Cast<Node>().Concat(classDeclarations).Concat(actorDeclarations).Concat(propertyDeclarations)
+                .SelectMany(declaration => AstNodeWalker.Descendants(declaration))
+                .OfType<IdentifierExpression>()
+                .Select(identifier => identifier.Name),
+            StringComparer.Ordinal);
+        var moduleVarNames = topLevelStatements
+            .OfType<VarDeclStatement>()
+            .Select(v => v.Name)
+            .Where(name => namesUsedByDeclarations.Contains(name) && name != "main" && name != "mlRuntime")
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        if (moduleVarNames.Count > 0)
+        {
+            EmitLine($"let {string.Join(", ", moduleVarNames.Select(EscapeIdentifier))};");
             EmitLine(string.Empty);
         }
 
@@ -273,8 +297,21 @@ public class JsTranspiler
         _indentLevel++;
         InLocalScope(Array.Empty<string>(), () =>
         {
+            var hoisted = new HashSet<string>(moduleVarNames, StringComparer.Ordinal);
             foreach (var statement in topLevelStatements)
             {
+                if (statement is VarDeclStatement moduleVar && hoisted.Contains(moduleVar.Name))
+                {
+                    WithSource(moduleVar, () =>
+                    {
+                        EmitLineWithSource(moduleVar.Initializer, $"{EscapeIdentifier(moduleVar.Name)} = {TranspileExpressionAwaited(moduleVar.Initializer)};");
+                        DeclareLocal(moduleVar.Name);
+                        if (moduleVar.IsConst)
+                            RegisterConstBinding(moduleVar.Name);
+                    });
+                    continue;
+                }
+
                 TranspileStatement(statement);
             }
         });
@@ -1575,7 +1612,7 @@ public class JsTranspiler
             case "string":
                 transpiled = arguments.Count == 0
                     ? "mlRuntime.coerceToString(\"\")"
-                    : $"mlRuntime.coerceToString({TranspileExpression(arguments[0])})";
+                    : $"__maldaFormat({TranspileExpression(arguments[0])})";
                 return true;
             case "typeOf":
                 transpiled = $"mlRuntime.typeOf({JoinArguments(arguments)})";
@@ -1930,7 +1967,7 @@ public class JsTranspiler
         {
             if (segment.IsExpression && segment.Expression != null)
             {
-                parts.Add($"mlRuntime.coerceToString({TranspileExpression(segment.Expression)})");
+                parts.Add($"__maldaFormat({TranspileExpression(segment.Expression)})");
             }
             else
             {
@@ -2183,6 +2220,42 @@ public class JsTranspiler
         };
     }
 
+    /// <summary>
+    /// MALDA <c>+</c> formats a non-string operand like <c>print</c> (<c>"x" + [1]</c> is
+    /// <c>x[1]</c>, not JS <c>x1</c>). Plain JS <c>+</c> already agrees when one side is a
+    /// number by construction (number + string concatenates the same text; number + array
+    /// is an error on the interpreter), so hot loops such as <c>i + 1</c> stay plain. Next to
+    /// a known string only the other side needs formatting; otherwise the runtime decides.
+    /// </summary>
+    private static string Plus(BinaryExpression binary, string left, string right)
+    {
+        if (IsStaticallyNumber(binary.Left) || IsStaticallyNumber(binary.Right))
+            return $"({left} + {right})";
+
+        var leftIsString = IsStaticallyString(binary.Left);
+        var rightIsString = IsStaticallyString(binary.Right);
+        if (leftIsString && rightIsString)
+            return $"({left} + {right})";
+        if (leftIsString)
+            return $"({left} + __maldaFormat({right}))";
+        if (rightIsString)
+            return $"(__maldaFormat({left}) + {right})";
+        return $"__maldaAdd({left}, {right})";
+    }
+
+    private static bool IsStaticallyString(Expression expression)
+    {
+        return expression switch
+        {
+            LiteralExpression { Value: string } => true,
+            InterpolatedStringExpression => true,
+            FunctionCallExpression { Callee: IdentifierExpression { Name: "string" } } => true,
+            BinaryExpression { Operator: TokenType.Plus } plus =>
+                IsStaticallyString(plus.Left) || IsStaticallyString(plus.Right),
+            _ => false
+        };
+    }
+
     private string TranspileBinaryExpression(BinaryExpression binary)
     {
         var left = TranspileExpression(binary.Left);
@@ -2203,7 +2276,7 @@ public class JsTranspiler
             TokenType.GreaterThan => $"({Number(binary.Left, left)} > {Number(binary.Right, right)})",
             TokenType.LessThanOrEqual => $"({Number(binary.Left, left)} <= {Number(binary.Right, right)})",
             TokenType.GreaterThanOrEqual => $"({Number(binary.Left, left)} >= {Number(binary.Right, right)})",
-            TokenType.Plus => $"({left} + {right})",
+            TokenType.Plus => Plus(binary, left, right),
             _ => throw new NotSupportedException($"JavaScript transpilation does not support binary operator '{binary.Operator}'.")
         };
     }

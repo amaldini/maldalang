@@ -57,12 +57,15 @@ Optional vertical packs are **out of tree**. The compiler may still contain **st
 
 Built-ins are the largest “surface area” for language work:
 
-- Implementation / dispatch: `MaldaLang/BuiltIns/BuiltInFunctions.cs`
-- Registry metadata: `MaldaLang/BuiltIns/BuiltInRegistry.cs`
-- Interpreter recognition: `Interpreter.IsBuiltIn`
-- Transpile recognition + codegen: `CSharpTranspiler.IsBuiltInFunction` / `TranspileBuiltInFunction`
+- Implementation / dispatch: `MaldaLang/BuiltIns/BuiltInFunctions.cs` — one name → implementation
+  table in `DispatchBuiltIn`; `CallBuiltInAsync` adds arms only for implementations that await
+- Registry metadata: `MaldaLang/BuiltIns/BuiltInRegistry.cs` — the single list that
+  `Interpreter.IsBuiltIn` and `CSharpTranspiler.IsBuiltInFunction` read
+- Transpile codegen: `CSharpTranspiler.TranspileBuiltInFunction` — special emits only; any other
+  registry name becomes a `BuiltInFunctions.CallBuiltIn(Async)` call
 
-Missing one registration site is a common bug (works interpreted XOR transpiled). CI `InterpretTranspilePairTests` asserts the same stdout when interpret and C# transpile both exit 0 (mixed success/failure fails). Ship-contract registry: [`docs/spec/ship-contract.md`](spec/ship-contract.md). Plan: [`docs/roadmap-trust.md`](roadmap-trust.md) DT7.
+`BuiltInSurfaceGuardTests` fails when a registry name has no dispatch arm, or a dispatch arm is
+not registered (namespace-only names are listed in the test with the reason). CI `InterpretTranspilePairTests` asserts the same stdout when interpret and C# transpile both exit 0 (mixed success/failure fails). Ship-contract registry: [`docs/spec/ship-contract.md`](spec/ship-contract.md). Plan: [`docs/roadmap-trust.md`](roadmap-trust.md) DT7.
 
 ## Web stack (language feature, not Web IDE)
 

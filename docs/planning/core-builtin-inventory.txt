@@ -4,7 +4,7 @@
 # Format: symbol -> tier | note
 # Optional-pack / vertical symbols must NOT appear here (enforced by OptionalPackRegistryGuardTests)
 
-# count: 371
+# count: 375
 
 abs -> tier1-core | BuiltInRegistry
 acos -> stdlib-general | BuiltInRegistry
@@ -85,11 +85,11 @@ createValidateJsonTool -> platform-ai | BuiltInRegistry
 createWebFetchTool -> platform-ai | BuiltInRegistry
 createWebSearchTool -> platform-ai | BuiltInRegistry
 createWriteFileTool -> platform-ai | BuiltInRegistry
-crossEntropyFromLogits -> stdlib-general | BuiltInRegistry
 csrfField -> stdlib-general | BuiltInRegistry
 decomposeTask -> platform-ai | BuiltInRegistry
 degToRad -> stdlib-general | BuiltInRegistry
 deleteFile -> stdlib-io | BuiltInRegistry
+dot -> stdlib-general | BuiltInRegistry
 dotnetNew -> core-interop | BuiltInRegistry
 editFile -> stdlib-general | BuiltInRegistry
 embedBagOfWords -> platform-embed | BuiltInRegistry
@@ -197,6 +197,7 @@ log2 -> stdlib-general | BuiltInRegistry
 logSumExp -> stdlib-general | BuiltInRegistry
 lower -> stdlib-general | BuiltInRegistry
 markdownToHtml -> stdlib-general | BuiltInRegistry
+matmul -> stdlib-general | BuiltInRegistry
 max -> tier1-core | BuiltInRegistry
 md5 -> stdlib-general | BuiltInRegistry
 mergeRetrievedDocs -> stdlib-general | BuiltInRegistry
@@ -260,6 +261,7 @@ setAgentVerbosePhase -> platform-ai | BuiltInRegistry
 setDefaultAgent -> platform-ai | BuiltInRegistry
 sha256 -> stdlib-general | BuiltInRegistry
 shift -> stdlib-general | BuiltInRegistry
+sigmoid -> stdlib-general | BuiltInRegistry
 sign -> stdlib-general | BuiltInRegistry
 signalWorkflow -> platform-workflow | BuiltInRegistry
 similarity -> stdlib-general | BuiltInRegistry
@@ -277,6 +279,7 @@ string -> tier1-core | BuiltInRegistry
 substring -> stdlib-general | BuiltInRegistry
 sum -> tier1-core | BuiltInRegistry
 tan -> tier1-core | BuiltInRegistry
+tanh -> tier1-core | BuiltInRegistry
 text -> stdlib-general | BuiltInRegistry
 toCsv -> stdlib-general | BuiltInRegistry
 toIntOr -> stdlib-general | BuiltInRegistry
@@ -284,6 +287,7 @@ toIntOrNull -> stdlib-general | BuiltInRegistry
 toJSON -> stdlib-general | BuiltInRegistry
 tokenize -> stdlib-general | BuiltInRegistry
 tokenOverlap -> stdlib-general | BuiltInRegistry
+transpose -> stdlib-general | BuiltInRegistry
 trim -> stdlib-general | BuiltInRegistry
 trimText -> stdlib-general | BuiltInRegistry
 trunc -> stdlib-general | BuiltInRegistry

@@ -3405,6 +3405,15 @@ public partial class Interpreter
             throw new RuntimeException($"Expected {function.Declaration.Parameters.Count} arguments but got {arguments.Count}.");
         }
 
+        // Calls that complete synchronously nest their async frames on one thread stack, so a
+        // few hundred levels of user recursion used to kill the process with an uncatchable
+        // stack overflow (C# and JavaScript go thousands deep). Near the limit, continue on a
+        // fresh stack instead.
+        if (!System.Runtime.CompilerServices.RuntimeHelpers.TryEnsureSufficientExecutionStack())
+        {
+            await Task.Yield();
+        }
+
         if (function.Declaration.Decorators != null
             && function.Declaration.Decorators.Any(d => d.Name == "requiresCitations"))
         {

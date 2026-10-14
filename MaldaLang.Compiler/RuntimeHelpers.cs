@@ -460,7 +460,15 @@ public static class RuntimeHelpers
         // Invariant, so a float never prints as "1,5" on an it-IT machine.
         if (value is double or float or decimal)
             return ((IFormattable)value).ToString(null, System.Globalization.CultureInfo.InvariantCulture);
-        
+
+        // Same text as the interpreter's JsonObject / ObjectInstance.
+        if (value is System.Collections.IDictionary)
+            return "<json object>";
+        var valueType = value.GetType();
+        if (valueType.Namespace == "GeneratedCode"
+            && valueType.GetMethod("ToString", Type.EmptyTypes)?.DeclaringType == typeof(object))
+            return "<" + valueType.Name + " instance>";
+
         return value.ToString() ?? "null";
     }
     
