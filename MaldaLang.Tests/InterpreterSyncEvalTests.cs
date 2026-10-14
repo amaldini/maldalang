@@ -120,4 +120,57 @@ public class InterpreterSyncEvalTests : TestBase
             "negstr: Operand must be a number."
         }, lines);
     }
+
+    [Fact]
+    public void BlocksWithoutDeclarations_KeepScopeDeferAndControlFlow()
+    {
+        var lines = Lines(@"
+            var total = 0;
+            for (var i = 0; i < 5; i = i + 1) {
+                if (i == 1) { continue; }
+                if (i == 4) { break; }
+                { total = total + i; }
+            }
+            print(total);
+
+            function blocks() {
+                print(""a"");
+                {
+                    defer { print(""d""); }
+                    print(""b"");
+                }
+                print(""c"");
+            }
+            blocks();
+
+            try { { if (true) var leaked = 1; } print(leaked); } catch (e) { print(""scoped: "" + e); }
+
+            function firstOver(xs, limit) {
+                for (var x in xs) {
+                    if (x > limit) { if (true) { return x; } }
+                }
+                return -1;
+            }
+            print(firstOver([1, 5, 9], 4));
+
+            function twice(n) { return n * 2; }
+            var fns = [];
+            var sum = 0;
+            for (var k = 0; k < 3; k = k + 1) {
+                { sum = sum + twice(k); fns.append(() => k); }
+            }
+            print(sum);
+            print(fns[0]());
+
+            const C = 1;
+            try { if (true) { C = 2; } } catch (e) { print(""const: "" + e); }
+        ");
+        Assert.Equal(new[]
+        {
+            "5", "a", "b", "d", "c",
+            "scoped: Undefined variable 'leaked'.",
+            "5", "6", "3",
+            "const: Cannot assign to const 'C'."
+        }, lines);
+    }
 }

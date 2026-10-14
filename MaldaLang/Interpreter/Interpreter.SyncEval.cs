@@ -192,7 +192,7 @@ public partial class Interpreter
             case IfStatement ifStmt:
                 return ExecuteIfAsync(ifStmt);
             case BlockStatement block:
-                return ExecuteBlockStatementsAsync(block, new Environment(_environment));
+                return ExecuteNestedBlockAsync(block);
             case WhileStatement whileStmt:
                 return ExecuteWhileAsync(whileStmt);
             case ForStatement forStmt:
@@ -266,5 +266,143 @@ public partial class Interpreter
             default:
                 return false;
         }
+    }
+
+    private const byte BlockScopeUnknown = 0;
+    private const byte BlockScopeNotNeeded = 1;
+    private const byte BlockScopeNeeded = 2;
+
+    /// <summary>
+    /// Runs a nested <c>{ ... }</c>. A block that binds no name and registers no
+    /// <c>defer</c> in its own scope (see <see cref="NeedsOwnScope"/>) behaves the same
+    /// without a new <see cref="Environment"/>, block frame and defer frame, so it runs its
+    /// statements directly. Loop and <c>if</c> bodies are such blocks millions of times.
+    /// </summary>
+    private Task<RuntimeValue?> ExecuteNestedBlockAsync(BlockStatement block)
+    {
+        if (BlockNeedsOwnScope(block))
+            return ExecuteBlockStatementsAsync(block, new Environment(_environment));
+        try
+        {
+            return ExecuteScopelessBlockFrom(block, 0);
+        }
+        catch (Exception ex)
+        {
+            // Keep the async contract: errors surface when the task is awaited.
+            return Task.FromException<RuntimeValue?>(ex);
+        }
+    }
+
+    private static bool BlockNeedsOwnScope(BlockStatement block)
+    {
+        var shape = block.ScopeShape;
+        if (shape == BlockScopeUnknown)
+        {
+            shape = block.Statements.Exists(NeedsOwnScope) ? BlockScopeNeeded : BlockScopeNotNeeded;
+            block.ScopeShape = shape;
+        }
+        return shape == BlockScopeNeeded;
+    }
+
+    /// <summary>
+    /// True unless <paramref name="stmt"/> is known to leave the enclosing scope alone: it
+    /// declares nothing (var, destructuring, function, import) and registers no <c>defer</c>.
+    /// Nested blocks have their own scope; the brace-less body of an <c>if</c> or loop runs
+    /// in the enclosing one, so it is checked too.
+    /// </summary>
+    private static bool NeedsOwnScope(Statement stmt) => stmt switch
+    {
+        BlockStatement => false,
+        ExpressionStatement or AssignmentStatement or PrintStatement
+            or ReturnStatement or BreakStatement or ContinueStatement or ThrowStatement => false,
+        IfStatement ifStmt => NeedsOwnScope(ifStmt.ThenBranch)
+            || (ifStmt.ElseBranch != null && NeedsOwnScope(ifStmt.ElseBranch)),
+        WhileStatement whileStmt => NeedsOwnScope(whileStmt.Body),
+        ForStatement forStmt => NeedsOwnScope(forStmt.Body),
+        ForInStatement forIn => NeedsOwnScope(forIn.Body),
+        _ => true
+    };
+
+    /// <summary>
+    /// Runs <paramref name="block"/>'s statements from <paramref name="start"/> in the current
+    /// scope. Returns a completed task while every statement completes synchronously and
+    /// switches to <see cref="ContinueScopelessBlockAsync"/> at the first one that does not.
+    /// </summary>
+    private Task<RuntimeValue?> ExecuteScopelessBlockFrom(BlockStatement block, int start)
+    {
+        var statements = block.Statements;
+        for (int i = start; i < statements.Count; i++)
+        {
+            var blockStmt = statements[i];
+            if (!TryExecuteSync(blockStmt, out _))
+            {
+                var pending = ExecuteStatementAsync(blockStmt);
+                if (!pending.IsCompletedSuccessfully)
+                    return ContinueScopelessBlockAsync(block, i, pending);
+            }
+            if (_pendingControl != PendingControl.None)
+                break;
+        }
+        return CompletedNullStatement;
+    }
+
+    private async Task<RuntimeValue?> ContinueScopelessBlockAsync(BlockStatement block, int index, Task<RuntimeValue?> pending)
+    {
+        await pending;
+        var statements = block.Statements;
+        for (int i = index; i < statements.Count; i++)
+        {
+            if (i > index)
+            {
+                var blockStmt = statements[i];
+                if (!TryExecuteSync(blockStmt, out _))
+                    await ExecuteStatementAsync(blockStmt);
+            }
+            if (_pendingControl != PendingControl.None)
+                break;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// <c>if</c> without an async frame when the condition evaluates synchronously and the
+    /// taken branch completes synchronously.
+    /// </summary>
+    private Task<RuntimeValue?> ExecuteIfAsync(IfStatement stmt)
+    {
+        try
+        {
+            if (!TryEvaluateSync(stmt.Condition, out var condition))
+                return ExecuteIfSlowAsync(stmt);
+            var branch = condition.IsTruthy() ? stmt.ThenBranch : stmt.ElseBranch;
+            if (branch == null)
+                return CompletedNullStatement;
+            var pending = ExecuteStatementAsync(branch);
+            return pending.IsCompletedSuccessfully ? CompletedNullStatement : AwaitStatementAsync(pending);
+        }
+        catch (Exception ex)
+        {
+            return Task.FromException<RuntimeValue?>(ex);
+        }
+    }
+
+    private async Task<RuntimeValue?> ExecuteIfSlowAsync(IfStatement stmt)
+    {
+        var condition = await EvaluateCoreAsync(stmt.Condition, false);
+        if (condition.IsTruthy())
+        {
+            await ExecuteStatementAsync(stmt.ThenBranch);
+        }
+        else if (stmt.ElseBranch != null)
+        {
+            await ExecuteStatementAsync(stmt.ElseBranch);
+        }
+        return null;
+    }
+
+    private static async Task<RuntimeValue?> AwaitStatementAsync(Task<RuntimeValue?> pending)
+    {
+        await pending;
+        return null;
     }
 }

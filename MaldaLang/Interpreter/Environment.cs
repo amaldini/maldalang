@@ -3,10 +3,19 @@
 
 namespace MaldaLang.Interpreter;
 
+/// <summary>Outcome of <see cref="Environment.TryAssignMutable"/>.</summary>
+public enum AssignResult
+{
+    NotFound,
+    Assigned,
+    Const
+}
+
 public class Environment
 {
     private readonly Dictionary<string, RuntimeValue> _values = new();
-    private readonly HashSet<string> _constNames = new(StringComparer.Ordinal);
+    // Most scopes declare no const; the set is created on the first one.
+    private HashSet<string>? _constNames;
     private readonly Environment? _enclosing;
     
     public Environment(Environment? enclosing = null)
@@ -18,49 +27,33 @@ public class Environment
     {
         _values[name] = value;
         if (isConst)
-            _constNames.Add(name);
+            (_constNames ??= new HashSet<string>(StringComparer.Ordinal)).Add(name);
     }
+
+    private bool IsOwnConst(string name) => _constNames != null && _constNames.Contains(name);
 
     public bool IsConst(string name)
     {
-        if (_values.ContainsKey(name))
-            return _constNames.Contains(name);
-
-        return _enclosing?.IsConst(name) ?? false;
+        for (Environment? env = this; env != null; env = env._enclosing)
+        {
+            if (env._values.ContainsKey(name))
+                return env.IsOwnConst(name);
+        }
+        return false;
     }
     
     public RuntimeValue Get(string name)
     {
-        if (_values.ContainsKey(name))
-        {
-            return _values[name];
-        }
-        
-        if (_enclosing != null)
-        {
-            return _enclosing.Get(name);
-        }
+        if (TryGet(name, out var value))
+            return value;
         
         throw new RuntimeException($"Undefined variable '{name}'.");
     }
     
     public void Assign(string name, RuntimeValue value)
     {
-        if (_values.ContainsKey(name))
-        {
-            if (_constNames.Contains(name))
-                throw new RuntimeException($"Cannot assign to const '{name}'.");
-            _values[name] = value;
-            return;
-        }
-        
-        if (_enclosing != null)
-        {
-            _enclosing.Assign(name, value);
-            return;
-        }
-        
-        throw new RuntimeException($"Undefined variable '{name}'.");
+        if (!TryAssign(name, value))
+            throw new RuntimeException($"Undefined variable '{name}'.");
     }
     
     public Environment? GetEnclosing()
@@ -70,52 +63,53 @@ public class Environment
     
     public bool Contains(string name)
     {
-        if (_values.ContainsKey(name))
+        for (Environment? env = this; env != null; env = env._enclosing)
         {
-            return true;
+            if (env._values.ContainsKey(name))
+                return true;
         }
-        
-        if (_enclosing != null)
-        {
-            return _enclosing.Contains(name);
-        }
-        
         return false;
     }
     
     public bool TryGet(string name, out RuntimeValue value)
     {
-        if (_values.ContainsKey(name))
+        for (Environment? env = this; env != null; env = env._enclosing)
         {
-            value = _values[name];
-            return true;
+            if (env._values.TryGetValue(name, out value!))
+                return true;
         }
         
-        if (_enclosing != null)
-        {
-            return _enclosing.TryGet(name, out value);
-        }
-        
-        value = default;
+        value = default!;
         return false;
     }
     
     public bool TryAssign(string name, RuntimeValue value)
     {
-        if (_values.ContainsKey(name))
+        return TryAssignMutable(name, value) switch
         {
-            if (_constNames.Contains(name))
-                throw new RuntimeException($"Cannot assign to const '{name}'.");
-            _values[name] = value;
-            return true;
-        }
-        
-        if (_enclosing != null)
+            AssignResult.Assigned => true,
+            AssignResult.Const => throw new RuntimeException($"Cannot assign to const '{name}'."),
+            _ => false
+        };
+    }
+
+    /// <summary>
+    /// Assigns the nearest binding of <paramref name="name"/> in one walk. A const binding is
+    /// left unchanged and reported, so the caller can throw with its own source location.
+    /// </summary>
+    public AssignResult TryAssignMutable(string name, RuntimeValue value)
+    {
+        for (Environment? env = this; env != null; env = env._enclosing)
         {
-            return _enclosing.TryAssign(name, value);
+            ref var slot = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(env._values, name);
+            if (System.Runtime.CompilerServices.Unsafe.IsNullRef(ref slot))
+                continue;
+            if (env.IsOwnConst(name))
+                return AssignResult.Const;
+            slot = value;
+            return AssignResult.Assigned;
         }
-        
-        return false;
+        return AssignResult.NotFound;
     }
 
     /// <summary>
@@ -127,12 +121,12 @@ public class Environment
         Environment? env = this;
         while (env != null && !ReferenceEquals(env, stopExclusive))
         {
-            if (env._values.TryGetValue(name, out value))
+            if (env._values.TryGetValue(name, out value!))
                 return true;
             env = env._enclosing;
         }
 
-        value = default;
+        value = default!;
         return false;
     }
 
@@ -147,7 +141,7 @@ public class Environment
         {
             if (env._values.ContainsKey(name))
             {
-                if (env._constNames.Contains(name))
+                if (env.IsOwnConst(name))
                     throw new RuntimeException($"Cannot assign to const '{name}'.");
                 env._values[name] = value;
                 return true;
@@ -180,7 +174,7 @@ public class Environment
     /// </summary>
     public bool TryRemoveOwn(string name)
     {
-        _constNames.Remove(name);
+        _constNames?.Remove(name);
         return _values.Remove(name);
     }
     

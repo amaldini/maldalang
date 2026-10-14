@@ -2044,21 +2044,6 @@ public partial class Interpreter
         return null;
     }
     
-    private async Task<RuntimeValue?> ExecuteIfAsync(IfStatement stmt)
-    {
-        if (!TryEvaluateSync(stmt.Condition, out var condition))
-            condition = await EvaluateCoreAsync(stmt.Condition, false);
-        if (condition.IsTruthy())
-        {
-            await ExecuteStatementAsync(stmt.ThenBranch);
-        }
-        else if (stmt.ElseBranch != null)
-        {
-            await ExecuteStatementAsync(stmt.ElseBranch);
-        }
-        return null;
-    }
-    
     private async Task<RuntimeValue?> ExecuteWhileAsync(WhileStatement stmt)
     {
         // Check if we're resuming from an existing frame
@@ -2157,7 +2142,7 @@ public partial class Interpreter
                         // Single statement body
                         await ExecuteStatementAsync(stmt.Body);
                     }
-                    if (await ConsumeWhileBodySignalAsync(whileFrame))
+                    if (_pendingControl != PendingControl.None && await ConsumeWhileBodySignalAsync(whileFrame))
                         return null;
                     // Iteration completed - reset statement index for next iteration
                     whileFrame.StatementIndex = 0;
@@ -3234,9 +3219,13 @@ public partial class Interpreter
                 return;
         }
 
-        EnsureMutableIdentifier(idExpr.Name, idExpr.Line);
-        if (_environment.TryAssign(idExpr.Name, value))
-            return;
+        switch (_environment.TryAssignMutable(idExpr.Name, value))
+        {
+            case AssignResult.Assigned:
+                return;
+            case AssignResult.Const:
+                throw new RuntimeException($"Cannot assign to const '{idExpr.Name}'.", idExpr.Line, _currentFile);
+        }
 
         if (memberFrame == null && TryWriteImplicitMember(idExpr.Name, value, idExpr.Line))
             return;

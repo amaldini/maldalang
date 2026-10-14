@@ -12,4 +12,10 @@ public class BlockStatement : Statement
     {
         Statements = statements;
     }
+
+    /// <summary>
+    /// Interpreter cache: whether this block needs its own scope and defer frame
+    /// (0 unknown, 1 no, 2 yes). See Interpreter.SyncEval.cs.
+    /// </summary>
+    internal byte ScopeShape;
 }
