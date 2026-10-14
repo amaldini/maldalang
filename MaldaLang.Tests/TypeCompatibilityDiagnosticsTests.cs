@@ -485,6 +485,35 @@ public class TypeCompatibilityDiagnosticsTests
             d.Message.Contains("does not match value", StringComparison.Ordinal));
     }
 
+    [Theory]
+    [InlineData("var n: int = math.abs(-3);")]
+    [InlineData("var n: int = math.max(1, 2);")]
+    [InlineData("var n: int = math.min(4, 2);")]
+    [InlineData("var k: int = 3; var n: int = math.abs(k);")]
+    [InlineData("var n: float = math.abs(-1.5);")]
+    [InlineData("var n: int = math.max([1, 2]);")]
+    public void GetDiagnostics_AbsMinMaxFollowArgumentKind_NoError(string source)
+    {
+        // The interpreter returns int for int arguments; a fixed "float" tag used to
+        // reject these, which also failed strict `malda compile --mode transpile`.
+        var diagnostics = new LanguageService().GetDiagnostics(source);
+        Assert.DoesNotContain(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Message.Contains("does not match value", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("var n: int = math.abs(-1.5);")]
+    [InlineData("var n: int = math.max(1, 2.5);")]
+    public void GetDiagnostics_AbsMinMaxWithFloatArgument_AssignedToInt_EmitsError(string source)
+    {
+        var diagnostics = new LanguageService().GetDiagnostics(source);
+        Assert.Contains(diagnostics, d =>
+            d.Source == "malda-types" &&
+            d.Severity == DiagnosticSeverity.Error &&
+            d.Message.Contains("(got float)", StringComparison.Ordinal));
+    }
+
     [Fact]
     public void GetDiagnostics_ClassHint_NewExpressionMatch_NoError()
     {

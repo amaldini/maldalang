@@ -241,4 +241,25 @@ public class LlmBuiltinsTsvGuardTests
             string.IsNullOrWhiteSpace(rows["prompt"].Returns),
             "AnsiConsole.prompt must document its return type in the returns column.");
     }
+
+    /// <summary>
+    /// math./str./io. are the namespaces agents reach for first, and "does this return null,
+    /// an empty string, or an error string?" is the question they cannot answer from the
+    /// argument column. A new built-in in one of them must say what it returns.
+    /// </summary>
+    [Fact]
+    public void CoreNamespaceBuiltins_DocumentTheirReturnValue()
+    {
+        var undocumented = LoadRows()
+            .Where(row => row.Call.StartsWith("math.", StringComparison.Ordinal)
+                       || row.Call.StartsWith("str.", StringComparison.Ordinal)
+                       || row.Call.StartsWith("io.", StringComparison.Ordinal))
+            .Where(row => string.IsNullOrWhiteSpace(row.Returns))
+            .Select(row => row.Call)
+            .ToList();
+
+        Assert.True(
+            undocumented.Count == 0,
+            $"Fill the returns column in docs/llm/malda-builtins.tsv for: {string.Join(", ", undocumented)}.");
+    }
 }

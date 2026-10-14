@@ -700,7 +700,10 @@ public static class TypeCompatibilityDiagnostics
                 return env.Index.NormalizeKnown(calleeHints.ReturnType);
             }
 
-            var builtin = Tier1BuiltinReturnHints.TryGetReturnType(call.Callee);
+            var builtin = Tier1BuiltinReturnHints.TryGetReturnType(
+                call.Callee,
+                call.Arguments,
+                argument => InferKnownType(argument, env, functions));
             if (builtin != null)
                 return env.Index.NormalizeKnown(builtin) ?? builtin;
         }
