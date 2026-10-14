@@ -8,7 +8,7 @@
 // before it writes, so a mismatched state leaves the net unchanged.
 // Offline and seeded — no API key.
 
-function build() {
+function build() -> Sequential {
     return new Sequential([
         new Dense(2, 4, "sigmoid", 1.0),
         new Dense(4, 1, "sigmoid", 1.0)

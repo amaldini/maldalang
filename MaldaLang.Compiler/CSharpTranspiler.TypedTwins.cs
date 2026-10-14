@@ -394,17 +394,6 @@ public partial class CSharpTranspiler
         var returnEligible = new Dictionary<string, bool>(StringComparer.Ordinal);
         var stores = new Dictionary<string, List<AssignmentStatement>[]>(StringComparer.Ordinal);
         var returns = new Dictionary<string, List<Expression>?>(StringComparer.Ordinal);
-        // A hint the transpiler cannot map fails later with its own error; leave such bodies alone.
-        foreach (var (key, candidate) in byKey.ToList())
-        {
-            var f = candidate.Function;
-            if (!TryResolveTranspiledTypeHint(f.ReturnType, out _) ||
-                (f.ParameterTypeHints != null && f.ParameterTypeHints.Any(h => !TryResolveTranspiledTypeHint(h, out _))))
-            {
-                byKey.Remove(key);
-            }
-        }
-
         foreach (var (key, candidate) in byKey)
         {
             var f = candidate.Function;

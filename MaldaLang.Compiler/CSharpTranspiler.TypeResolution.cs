@@ -22,42 +22,21 @@ namespace MaldaLang.Compiler;
 
 public partial class CSharpTranspiler
 {
+    // Hints are informational in the interpreter. Only numeric hints change the emitted CLR type;
+    // a class, schema, host class (Sequential, Dense, ...), array, or any other name stays object.
     private TranspiledClrType ResolveTranspiledTypeHint(string? typeHint)
     {
         if (!TypedTranspileEnabled)
             return TranspiledClrType.Object;
 
-        if (string.Equals(typeHint, "float", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(typeHint, "float", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(typeHint, "double", StringComparison.OrdinalIgnoreCase))
             return TranspiledClrType.Double;
         if (AggressiveTypedTranspileEnabled &&
             (string.Equals(typeHint, "floatArray", StringComparison.OrdinalIgnoreCase) ||
              string.Equals(typeHint, "doubleArray", StringComparison.OrdinalIgnoreCase)))
             return TranspiledClrType.DoubleArray;
-        if (string.Equals(typeHint, "int", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(typeHint, "integer", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(typeHint, "bool", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(typeHint, "boolean", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(typeHint, "string", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(typeHint, "object", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(typeHint, "any", StringComparison.OrdinalIgnoreCase))
-            return TranspiledClrType.Object;
-        if (string.IsNullOrWhiteSpace(typeHint))
-            return TranspiledClrType.Object;
-        throw new InvalidOperationException($"Unsupported transpiled type hint '{typeHint}'.");
-    }
-
-    private bool TryResolveTranspiledTypeHint(string? typeHint, out TranspiledClrType type)
-    {
-        try
-        {
-            type = ResolveTranspiledTypeHint(typeHint);
-            return true;
-        }
-        catch (InvalidOperationException)
-        {
-            type = TranspiledClrType.Object;
-            return false;
-        }
+        return TranspiledClrType.Object;
     }
 
     private static string GetClrTypeName(TranspiledClrType type)
