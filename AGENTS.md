@@ -83,7 +83,7 @@ Web IDE improvements (Monaco UX, examples browser, diagnostics presentation) are
 | Interpret debug core | `MaldaLang/Interpreter/Debug/DebugSession.cs` — pause gate / 1-based lines; IDE hooks wrap this |
 | DAP (interpret) | `MaldaLang/DebugAdapter/` — `malda debug-adapter` on stdio. Do not mix DAP into `malda-lsp` |
 | Built-in functions | `MaldaLang/BuiltIns/BuiltInFunctions.cs`, `BuiltInRegistry.cs` |
-| C# transpile | `MaldaLang.Compiler/CSharpTranspiler.cs`, `Compiler.cs` |
+| C# transpile | `MaldaLang.Compiler/CSharpTranspiler.cs` (+ `CSharpTranspiler.<Area>.cs` partials: `Statements`, `Expressions`, `Calls`, `BuiltIns`, `Prompts`, `RuntimeHelpers`, …), `Compiler.cs` |
 | JS / PWA transpile | `MaldaLang.Compiler/JsTranspiler.cs`, `GlslTranspiler.cs` (`@shader()` → GLSL) |
 | Server-driven UI (`ui.*` / UIHost) | `MaldaLang/Runtime/UI/`, `MaldaLang.UIHost/` — [`docs/ui-framework.md`](docs/ui-framework.md) |
 | Optional pack emit (string-only) | `MaldaLang.Compiler/OptionalPack/` |

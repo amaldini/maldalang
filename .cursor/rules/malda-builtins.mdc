@@ -9,6 +9,6 @@ alwaysApply: false
 - Implement builtin logic under `MaldaLang/BuiltIns/` (often `BuiltInFunctions.cs`).
 - Register in both `CallBuiltIn` and `CallBuiltInAsync` when applicable.
 - Add the name to `Interpreter.IsBuiltIn`.
-- Mirror recognition/codegen in `MaldaLang.Compiler/CSharpTranspiler.cs`.
+- Mirror recognition/codegen in `MaldaLang.Compiler/CSharpTranspiler.BuiltIns.cs`.
 - Update or add a focused test under `MaldaLang.Tests` with a filterable name.
 - Do not assume optional vertical-pack builtins exist in this OSS core.

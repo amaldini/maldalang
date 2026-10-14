@@ -6,8 +6,12 @@ public class TranspilerRuntimeHardeningTests
     private static string LoadTranspilerSource()
     {
         var repoRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", ".."));
-        var transpilerPath = Path.Combine(repoRoot, "MaldaLang.Compiler", "CSharpTranspiler.cs");
-        return File.ReadAllText(transpilerPath);
+        // CSharpTranspiler is split across CSharpTranspiler.*.cs partials; read them all.
+        var compilerDirectory = Path.Combine(repoRoot, "MaldaLang.Compiler");
+        return string.Concat(Directory
+            .EnumerateFiles(compilerDirectory, "CSharpTranspiler*.cs")
+            .OrderBy(path => path, StringComparer.Ordinal)
+            .Select(File.ReadAllText));
     }
 
     [Fact]

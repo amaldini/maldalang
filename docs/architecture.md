@@ -61,7 +61,7 @@ Built-ins are the largest “surface area” for language work:
   table in `DispatchBuiltIn`; `CallBuiltInAsync` adds arms only for implementations that await
 - Registry metadata: `MaldaLang/BuiltIns/BuiltInRegistry.cs` — the single list that
   `Interpreter.IsBuiltIn` and `CSharpTranspiler.IsBuiltInFunction` read
-- Transpile codegen: `CSharpTranspiler.TranspileBuiltInFunction` — special emits only; any other
+- Transpile codegen: `CSharpTranspiler.TranspileBuiltInFunction` (`CSharpTranspiler.BuiltIns.cs`) — special emits only; any other
   registry name becomes a `BuiltInFunctions.CallBuiltIn(Async)` call
 
 `BuiltInSurfaceGuardTests` fails when a registry name has no dispatch arm, or a dispatch arm is

@@ -46,8 +46,12 @@ public class OptionalPackTranspileEmitTests
     [Fact]
     public void CSharpTranspiler_DoesNotEmbedOptionalPackTypeNames()
     {
-        var transpilerPath = PlanningPaths.ResolveRepoFile("MaldaLang.Compiler", "CSharpTranspiler.cs");
-        var source = File.ReadAllText(transpilerPath);
+        // CSharpTranspiler is split across CSharpTranspiler.*.cs partials; scan them all.
+        var compilerDirectory = Path.GetDirectoryName(
+            PlanningPaths.ResolveRepoFile("MaldaLang.Compiler", "CSharpTranspiler.cs"))!;
+        var source = string.Concat(Directory
+            .EnumerateFiles(compilerDirectory, "CSharpTranspiler*.cs")
+            .Select(File.ReadAllText));
 
         Assert.DoesNotContain("MaldaLang.Timeseries", source, StringComparison.Ordinal);
         Assert.DoesNotContain("MaldaLang.Trading.Core", source, StringComparison.Ordinal);
