@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
 using System.Text;
+using System.Text.RegularExpressions;
 using MaldaLang.Tests.Conformance.Tier0;
 using Xunit;
 
@@ -68,8 +69,10 @@ public class BackendDifferentialFuzzTests
             failures.Add("interpreter: " + reference);
         if (csharp != reference)
             failures.Add("C#: " + FirstDifference(reference, csharp));
-        if (javaScript != null && javaScript != reference)
-            failures.Add("JavaScript: " + FirstDifference(reference, javaScript));
+        // JavaScript has one number type, so it cannot print a float -0 that an int 0 must not
+        // print (formatNumber in malda-js-runtime.js); compare it with -0 read as 0.
+        if (javaScript != null && WithoutNegativeZero(javaScript) != WithoutNegativeZero(reference))
+            failures.Add("JavaScript: " + FirstDifference(WithoutNegativeZero(reference), WithoutNegativeZero(javaScript)));
 
         if (failures.Count == 0)
             return;
@@ -81,6 +84,13 @@ public class BackendDifferentialFuzzTests
     }
 
     private static string Normalize(string text) => text.Replace("\r", "").Trim();
+
+    /// <summary>
+    /// A -0 not inside a word or a decimal; no number prints as -0 followed by digits, so
+    /// <c>-0240</c> is -0 concatenated with 240.
+    /// </summary>
+    private static string WithoutNegativeZero(string text) =>
+        Regex.Replace(text, @"(?<![\w.])-0(?!\.)", "0");
 
     /// <summary>The first differing line, with the <c>#n</c> case it belongs to.</summary>
     private static string FirstDifference(string expected, string actual)

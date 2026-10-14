@@ -455,7 +455,7 @@ public class JsTranspiler
                     }
                     break;
                 case WhileStatement whileStatement:
-                    _desugaredForLoopIncrements.Push(GetDesugaredForIncrement(whileStatement.Body));
+                    _desugaredForLoopIncrements.Push(whileStatement.DesugaredForIncrement);
                     EmitLineWithSource(whileStatement.Condition, $"while ({TranspileCondition(whileStatement.Condition)})");
                     TranspileEmbeddedStatement(whileStatement.Body);
                     _desugaredForLoopIncrements.Pop();
@@ -465,7 +465,7 @@ public class JsTranspiler
                     var forLocals = forStatement.Initializer is VarDeclStatement forVar
                         ? new[] { forVar.Name }
                         : Array.Empty<string>();
-                    InLocalScope(forLocals, () => TranspileEmbeddedStatement(forStatement.Body));
+                    WithOwnContinue(() => InLocalScope(forLocals, () => TranspileEmbeddedStatement(forStatement.Body)));
                     break;
                 case FunctionDeclaration declaration:
                     if (!ShaderFunction.IsMarked(declaration))
@@ -499,7 +499,7 @@ public class JsTranspiler
                     break;
                 case ForInStatement forInStatement:
                     EmitLineWithSource(forInStatement.Collection, $"for (const {EscapeIdentifier(forInStatement.VariableName)} of {TranspileExpression(forInStatement.Collection)})");
-                    InLocalScope([forInStatement.VariableName], () => TranspileEmbeddedStatement(forInStatement.Body));
+                    WithOwnContinue(() => InLocalScope([forInStatement.VariableName], () => TranspileEmbeddedStatement(forInStatement.Body)));
                     break;
                 case TryStatement tryStatement:
                     TranspileTry(tryStatement);
@@ -577,16 +577,6 @@ public class JsTranspiler
         TranspileStatement(statement);
         _indentLevel--;
         EmitLine("}");
-    }
-
-    private static Statement? GetDesugaredForIncrement(Statement body)
-    {
-        if (body is BlockStatement block && block.Statements.Count == 2)
-        {
-            return block.Statements[1];
-        }
-
-        return null;
     }
 
     private string TranspileExpression(Expression expression)
@@ -1902,6 +1892,23 @@ public class JsTranspiler
 
     private bool IsUnshadowedRuntimeModule(string name) =>
         JsRuntimeModules.Contains(name) && !IsLocalName(name);
+
+    /// <summary>
+    /// Emits a loop whose <c>continue</c> is a plain JS <c>continue</c>, so it does not also
+    /// emit the increment of an enclosing desugared <c>for</c>.
+    /// </summary>
+    private void WithOwnContinue(Action emitLoop)
+    {
+        _desugaredForLoopIncrements.Push(null);
+        try
+        {
+            emitLoop();
+        }
+        finally
+        {
+            _desugaredForLoopIncrements.Pop();
+        }
+    }
 
     private void InLocalScope(IEnumerable<string> names, Action action)
     {

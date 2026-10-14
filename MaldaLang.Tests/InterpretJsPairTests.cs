@@ -507,4 +507,23 @@ public class InterpretJsPairTests
             """,
             "multi-arg-lambdas-js");
     }
+
+    [Fact]
+    public void ContinueInNestedAndTwoStatementLoops_SameStdout()
+    {
+        InterpretJsPair.AssertSameFromSource(
+            InterpreterControlFlowTests.ContinueInNestedAndTwoStatementLoopsSource,
+            "continue-nested-loops-js");
+    }
+
+    [Fact]
+    public void MathRound_IsBankersRounding_SameStdout()
+    {
+        InterpretJsPair.AssertSameFromSource(
+            """
+            io.print([math.round(-1.5), math.round(-2.5), math.round(0.5), math.round(1.5)]);
+            io.print([math.round(2.5), math.round(2.6), math.round(-2.6), math.round(7)]);
+            """,
+            "math-round-js");
+    }
 }

@@ -73,6 +73,14 @@ public class InterpretTranspilePairTests
     }
 
     [Fact]
+    public void ContinueInNestedAndTwoStatementLoops_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            InterpreterControlFlowTests.ContinueInNestedAndTwoStatementLoopsSource,
+            "continue-nested-loops");
+    }
+
+    [Fact]
     public void MathAnneal_SameStdout()
     {
         InterpretTranspilePair.AssertSameFromSource(

@@ -2153,11 +2153,11 @@ public partial class Interpreter
                     // For desugared for loops, the while body is a Block with exactly 2 statements: [body, increment]
                     // When continue is thrown from the body (first statement), we need to execute the increment
                     // before continuing to the next iteration
-                    if (whileFrame.BodyBlock != null 
-                        && whileFrame.BodyBlock.Statements.Count == 2 
+                    if (whileFrame.BodyBlock != null
+                        && whileFrame.Statement.DesugaredForIncrement != null
                         && whileFrame.StatementIndex == 0)
                     {
-                        // This is likely a desugared for loop - execute the increment (second statement)
+                        // Desugared for loop - execute the increment (second statement)
                         whileFrame.StatementIndex = 1;
                         await ExecuteAsync(whileFrame.BodyBlock.Statements[1]);
                     }

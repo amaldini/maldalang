@@ -105,7 +105,7 @@ public partial class Interpreter
                 // A desugared for loop's body is [body, increment]: `continue` in the body
                 // still runs the increment.
                 if (whileFrame.BodyBlock != null
-                    && whileFrame.BodyBlock.Statements.Count == 2
+                    && whileFrame.Statement.DesugaredForIncrement != null
                     && whileFrame.StatementIndex == 0)
                 {
                     whileFrame.StatementIndex = 1;

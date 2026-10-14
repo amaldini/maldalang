@@ -105,7 +105,6 @@ one runs without error on every backend and prints different output.
 | You write | Interpreter / C# | JavaScript | Portable form |
 |-----------|------------------|------------|---------------|
 | `1 == 1.0` | `false` — an integer never equals a float | `true` | `float(a) == float(b)`, or compare with a tolerance |
-| `math.round(2.5)` | `2` — banker's rounding (half to even) | `3` — half up | `math.floor(x + 0.5)` for half up everywhere |
 | `x / 0` | Runtime error (int and float) | `Infinity` / `NaN` | Check the divisor first |
 | `NaN == NaN` | `true` | `false` | Avoid producing `NaN`; test the inputs instead |
 | `typeOf(math.floor(4))`, `typeOf(6 / 2)` | `"float"` — floor/ceil/round/trunc/sign/sqrt and `/` always return a float | `"int"` — JavaScript has one number type, so a whole-valued float reads as int | Do not branch on `typeOf` for numbers; `int(x)` / `float(x)` when the kind matters |

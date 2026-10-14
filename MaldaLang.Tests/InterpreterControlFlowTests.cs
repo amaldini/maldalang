@@ -85,6 +85,41 @@ public class InterpreterControlFlowTests : TestBase
         Assert.Equal(new[] { "1357", "1245", "13" }, lines);
     }
 
+    /// <summary>
+    /// <c>continue</c> in a user <c>while</c> whose block has two statements must not run the
+    /// second one as if it were a <c>for</c> increment, and <c>continue</c> in a loop nested in
+    /// a <c>for</c> belongs to the inner loop. Shared with the C# and JavaScript pair tests.
+    /// </summary>
+    public const string ContinueInNestedAndTwoStatementLoopsSource = """
+        var i = 0;
+        while (i < 3) {
+            if (i == 1) { i = i + 5; continue; }
+            i = i + 1;
+        }
+        io.print(i);
+        var s = "";
+        for (var a = 0; a < 3; a = a + 1) {
+            var w = 0;
+            while (w < 2) {
+                w = w + 1;
+                if (w == 1) { continue; }
+                s = s + "w";
+            }
+            foreach (var v in [1, 2]) {
+                if (v == 1) { continue; }
+                s = s + v;
+            }
+            s = s + a;
+        }
+        io.print(s);
+        """;
+
+    [Fact]
+    public void Continue_InTwoStatementWhileAndLoopsNestedInFor()
+    {
+        Assert.Equal(new[] { "6", "w20w21w22" }, Lines(ContinueInNestedAndTwoStatementLoopsSource));
+    }
+
     [Fact]
     public void ControlFlow_ThroughTryFinallyDeferAndCatch()
     {

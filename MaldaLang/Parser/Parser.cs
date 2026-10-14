@@ -1601,7 +1601,7 @@ public class Parser
             {
                 loopCondition = new LiteralExpression(true);
             }
-            loopBody = new WhileStatement(loopCondition, loopBody);
+            loopBody = new WhileStatement(loopCondition, loopBody) { IsDesugaredFor = loopIncrement != null };
             
             var statements2 = new List<Statement> { varInitializer, loopBody };
             loopBody = new BlockStatement(statements2);
@@ -1665,7 +1665,7 @@ public class Parser
         {
             condition = new LiteralExpression(true);
         }
-        body = new WhileStatement(condition, body);
+        body = new WhileStatement(condition, body) { IsDesugaredFor = incrementStmt != null };
         
         if (initializer != null)
         {

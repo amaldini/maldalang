@@ -10,6 +10,9 @@ namespace MaldaLang.Tests.Fuzz;
 /// differential testing of the interpreter, C# transpile and JavaScript transpile.
 /// Values stay small (every stored int is reduced <c>% 1000</c>) so no backend hits int
 /// overflow, divisors are non-zero literals and array indexes are in range by construction.
+/// Doubles are stored, passed, returned and mixed with ints so the typed int/double fast
+/// paths of the transpilers are exercised; they avoid <c>math.pow</c> and trigonometry,
+/// whose last bit may differ between .NET and V8, and never reach NaN or infinity.
 /// The same seed always yields the same program.
 /// </summary>
 internal sealed class BackendFuzzProgramGenerator
@@ -34,20 +37,25 @@ internal sealed class BackendFuzzProgramGenerator
     private sealed class Scope
     {
         public List<string> Ints { get; init; } = new();
+        public List<string> Doubles { get; init; } = new();
         public List<string> Strings { get; init; } = new();
         public List<(string Name, int Length)> Arrays { get; init; } = new();
         public List<string> Lambdas { get; init; } = new();
         public List<(string Name, int Arity)> Functions { get; init; } = new();
+        /// <summary>Helpers that take and return doubles; callers pass ints or doubles.</summary>
+        public List<(string Name, int Arity)> DoubleFunctions { get; init; } = new();
         /// <summary>Loop variables: readable, never assigned by generated code.</summary>
         public HashSet<string> ReadOnly { get; init; } = new(StringComparer.Ordinal);
 
         public Scope Child() => new()
         {
             Ints = new List<string>(Ints),
+            Doubles = new List<string>(Doubles),
             Strings = new List<string>(Strings),
             Arrays = new List<(string, int)>(Arrays),
             Lambdas = new List<string>(Lambdas),
             Functions = new List<(string, int)>(Functions),
+            DoubleFunctions = new List<(string, int)>(DoubleFunctions),
             ReadOnly = new HashSet<string>(ReadOnly, StringComparer.Ordinal)
         };
     }
@@ -80,7 +88,61 @@ internal sealed class BackendFuzzProgramGenerator
             return $"{Pick(scope.Arrays).Name}.length";
         if (scope.Strings.Count > 0 && roll < 0.75)
             return $"str.length({Pick(scope.Strings)})";
+        // math.floor / math.round return floats; int() keeps int-typed values ints.
+        if (scope.Doubles.Count > 0 && roll < 0.8)
+            return $"int({Pick(new[] { "", "math.floor", "math.round" })}({Pick(scope.Doubles)}))";
         return Between(-9, 20).ToString();
+    }
+
+    private string DoubleLeaf(Scope scope)
+    {
+        var roll = Roll();
+        if (scope.Doubles.Count > 0 && roll < 0.5)
+            return Pick(scope.Doubles);
+        if (roll < 0.75)
+            return Pick(new[] { "0.5", "1.25", "0.1", "2.0", "-3.75", "10.0", "0.2", "-0.5" });
+        if (roll < 0.85)
+            return $"float({IntLeaf(scope)})";
+        return IntLeaf(scope);
+    }
+
+    /// <summary>A finite double of modest magnitude, often mixing int and double operands.</summary>
+    private string DoubleExpr(Scope scope, int depth = 2)
+    {
+        if (depth <= 0 || Roll() < 0.3)
+            return DoubleLeaf(scope);
+
+        var roll = Roll();
+        if (roll < 0.45)
+        {
+            var op = Pick(new[] { "+", "-", "+", "-", "*" });
+            return op == "*"
+                ? $"({DoubleLeaf(scope)} * {DoubleLeaf(scope)})"
+                : $"({DoubleExpr(scope, depth - 1)} {op} {DoubleExpr(scope, depth - 1)})";
+        }
+        if (roll < 0.55)
+            return $"({DoubleExpr(scope, depth - 1)} / {Pick(new[] { "2", "3", "4.0", "0.5", "8", "10" })})";
+        if (roll < 0.6)
+            return $"({IntExpr(scope, depth - 1)} / {Between(2, 7)})";
+        if (roll < 0.65)
+            return $"({DoubleExpr(scope, depth - 1)} % {Pick(new[] { "3", "2.5", "7" })})";
+        if (roll < 0.75 && scope.DoubleFunctions.Count > 0)
+        {
+            var (name, arity) = Pick(scope.DoubleFunctions);
+            // Mix int and double arguments so one helper sees both argument types.
+            var args = Enumerable.Range(0, arity)
+                .Select(_ => Roll() < 0.5 ? DoubleExpr(scope, depth - 1) : IntExpr(scope, depth - 1));
+            return $"{name}({string.Join(", ", args)})";
+        }
+        if (roll < 0.82)
+            return $"{Pick(new[] { "math.floor", "math.ceil", "math.round", "math.abs" })}({DoubleExpr(scope, depth - 1)})";
+        if (roll < 0.86)
+            return $"math.sqrt(math.abs({DoubleExpr(scope, depth - 1)}))";
+        if (roll < 0.93)
+            return $"{Pick(new[] { "math.min", "math.max" })}({DoubleExpr(scope, depth - 1)}, {IntExpr(scope, depth - 1)})";
+        if (roll < 0.97)
+            return $"({BoolExpr(scope, 1)} ? {DoubleLeaf(scope)} : {IntLeaf(scope)})";
+        return $"(-({DoubleLeaf(scope)}))";
     }
 
     private string IntExpr(Scope scope, int depth = 2)
@@ -119,6 +181,10 @@ internal sealed class BackendFuzzProgramGenerator
         var roll = Roll();
         if (depth <= 0 || roll < 0.6)
         {
+            // Doubles are only ordered, never tested for equality: 1 == 1.0 is false on the
+            // interpreter and C# but true in JavaScript (a documented divergence).
+            if (scope.Doubles.Count > 0 && Roll() < 0.25)
+                return $"{DoubleExpr(scope, 1)} {Pick(new[] { "<", "<=", ">", ">=" })} {(Roll() < 0.5 ? DoubleExpr(scope, 1) : IntExpr(scope, 1))}";
             var op = Pick(new[] { "<", "<=", ">", ">=", "==", "!=" });
             return $"{IntExpr(scope, 1)} {op} {IntExpr(scope, 1)}";
         }
@@ -146,8 +212,12 @@ internal sealed class BackendFuzzProgramGenerator
             return $"str.upper({StrExpr(scope, depth - 1)})";
         if (roll < 0.8)
             return $"{StrExpr(scope, depth - 1)} + {IntExpr(scope, 1)}";
-        if (roll < 0.9 && scope.Ints.Count > 0)
+        if (roll < 0.85 && scope.Ints.Count > 0)
             return $"$\"<{{{Pick(scope.Ints)}}}|{{{IntExpr(scope, 1)}}}>\"";
+        if (roll < 0.9 && scope.Doubles.Count > 0)
+            return Roll() < 0.5
+                ? $"$\"<{{{Pick(scope.Doubles)}}}|{{{DoubleExpr(scope, 1)}}}>\""
+                : $"{StrExpr(scope, depth - 1)} + {DoubleExpr(scope, 1)}";
         return $"str.lower({StrExpr(scope, depth - 1)})";
     }
 
@@ -158,6 +228,11 @@ internal sealed class BackendFuzzProgramGenerator
         if (Roll() < 0.25)
         {
             ExtraStatement(scope, depth);
+            return;
+        }
+        if (Roll() < 0.2)
+        {
+            DoubleStatement(scope, depth);
             return;
         }
 
@@ -374,6 +449,95 @@ internal sealed class BackendFuzzProgramGenerator
         }
     }
 
+    /// <summary>
+    /// Double locals, compound assignment, ints widened to doubles in place, accumulating
+    /// loops, double arrays and lambdas called with both int and double arguments.
+    /// </summary>
+    private void DoubleStatement(Scope scope, int depth)
+    {
+        var roll = Roll();
+        if (roll < 0.25 || scope.Doubles.Count == 0)
+        {
+            var name = Fresh("x");
+            Emit($"var {name} = {Clamp(DoubleExpr(scope))};");
+            scope.Doubles.Add(name);
+        }
+        else if (roll < 0.4)
+        {
+            var name = Pick(scope.Doubles);
+            if (scope.ReadOnly.Contains(name))
+                return;
+            var op = Pick(new[] { "=", "+=", "-=", "*=" });
+            var value = op == "*=" ? DoubleLeaf(scope) : Clamp(DoubleExpr(scope));
+            Emit($"{name} {op} {value};");
+            if (op != "=")
+                Emit($"{name} = {name} % 1000;");
+        }
+        else if (roll < 0.5)
+        {
+            // An int-initialized local that later holds a double.
+            var name = Fresh("m");
+            Emit($"var {name} = {Clamp(IntExpr(scope, 1))};");
+            Emit($"{name} += {Pick(new[] { "0.5", "0.1", "-1.25" })};");
+            Emit($"io.print({name});");
+            scope.Doubles.Add(name);
+        }
+        else if (roll < 0.6 && depth > 0)
+        {
+            var acc = Fresh("acc");
+            var index = Fresh("i");
+            Emit($"var {acc} = {Pick(new[] { "0", "0.0", "1" })};");
+            Emit($"for (var {index} = 0; {index} < {Between(1, 6)}; {index} = {index} + 1) {{");
+            _indent++;
+            Emit($"{acc} = ({acc} + {index} * {Pick(new[] { "0.1", "0.5", "1.5", "2" })}) % 1000;");
+            _indent--;
+            Emit("}");
+            Emit($"io.print({acc});");
+            scope.Doubles.Add(acc);
+        }
+        else if (roll < 0.7)
+        {
+            var name = Fresh("da");
+            var items = Enumerable.Range(0, Between(1, 4))
+                .Select(_ => Roll() < 0.6 ? Clamp(DoubleExpr(scope, 1)) : IntLeaf(scope));
+            Emit($"var {name} = [{string.Join(", ", items)}];");
+            Emit($"io.print({name});");
+            var sum = Fresh("sum");
+            var item = Fresh("e");
+            Emit($"var {sum} = 0;");
+            Emit($"foreach (var {item} in {name}) {{ {sum} = {sum} + {item}; }}");
+            Emit($"io.print({sum});");
+            Emit($"io.print({name}.map((y) => y * {DoubleLeaf(scope)}).filter((y) => y > {DoubleLeaf(scope)}));");
+            scope.Doubles.Add(sum);
+        }
+        else if (roll < 0.8)
+        {
+            var name = Fresh("dl");
+            Emit($"var {name} = (y) => y * {Pick(new[] { "0.5", "1.5", "3" })} + {DoubleLeaf(scope)};");
+            Emit($"io.print({name}({IntExpr(scope, 1)}));");
+            Emit($"io.print({name}({DoubleExpr(scope, 1)}));");
+        }
+        else if (roll < 0.9)
+        {
+            var kind = Roll();
+            if (kind < 0.4)
+                Emit($"io.print({DoubleExpr(scope)});");
+            else if (kind < 0.6)
+                Emit($"io.print(\"d:\" + {DoubleExpr(scope, 1)});");
+            else if (kind < 0.8)
+                Emit($"io.print([{DoubleExpr(scope, 1)}, {IntExpr(scope, 1)}]);");
+            else
+                Emit($"io.print(string({DoubleExpr(scope, 1)}) + {IntExpr(scope, 1)});");
+        }
+        else
+        {
+            var box = Fresh("box");
+            Emit($"var {box} = new Box({DoubleExpr(scope, 1)});");
+            Emit($"io.print({box}.add({DoubleLeaf(scope)}));");
+            Emit($"io.print({box}.twice() + {box}.v);");
+        }
+    }
+
     private void Block(Scope scope, int depth)
     {
         _indent++;
@@ -410,6 +574,9 @@ internal sealed class BackendFuzzProgramGenerator
             Emit($"var {name} = {Between(-5, 30)};");
             top.Ints.Add(name);
         }
+        var globalDouble = Fresh("gd");
+        Emit($"var {globalDouble} = {Pick(new[] { "0.5", "2.25", "-1.5", "0.1" })};");
+        top.Doubles.Add(globalDouble);
         var globalString = Fresh("gs");
         Emit($"var {globalString} = \"start\";");
         top.Strings.Add(globalString);
@@ -431,6 +598,29 @@ internal sealed class BackendFuzzProgramGenerator
             _indent--;
             Emit("}");
             top.Functions.Add((name, arity));
+        }
+
+        // Double helpers call only earlier helpers too; callers pass ints and doubles.
+        var doubleHelperCount = Between(1, 3);
+        for (var i = 0; i < doubleHelperCount; i++)
+        {
+            var name = Fresh("fd");
+            var arity = Between(1, 2);
+            var parameters = Enumerable.Range(0, arity).Select(_ => Fresh("q")).ToList();
+            Emit($"function {name}({string.Join(", ", parameters)}) {{");
+            var body = top.Child();
+            body.Doubles.AddRange(parameters);
+            body.Lambdas.Clear();
+            _indent++;
+            var local = Fresh("t");
+            Emit($"var {local} = {parameters[0]} * {Pick(new[] { "0.5", "1.5", "2" })};");
+            body.Doubles.Add(local);
+            if (Roll() < 0.5)
+                Emit($"if ({local} > {Between(-5, 50)}) {{ return {Clamp(DoubleExpr(body, 1))}; }}");
+            Emit($"return {Clamp(DoubleExpr(body))};");
+            _indent--;
+            Emit("}");
+            top.DoubleFunctions.Add((name, arity));
         }
 
         // Bounded recursion: arguments are clamped ints, so depth stays below 1000.
@@ -459,6 +649,7 @@ internal sealed class BackendFuzzProgramGenerator
             Emit($"case{c}();");
         }
         Emit($"io.print([{string.Join(", ", top.Ints)}]);");
+        Emit($"io.print({globalDouble});");
         Emit($"io.print({globalString});");
 
         var builder = new StringBuilder();

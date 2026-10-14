@@ -180,7 +180,13 @@
   function roundBuiltin(value, digits) {
     const precision = digits === null || digits === undefined ? 0 : coerceToInt(digits);
     const factor = Math.pow(10, precision);
-    return Math.round(coerceToFloat(value) * factor) / factor;
+    return roundHalfToEven(coerceToFloat(value) * factor) / factor;
+  }
+
+  // Banker's rounding, like .NET Math.Round: Math.round sends -1.5 to -1 and 2.5 to 3.
+  function roundHalfToEven(value) {
+    if (Math.abs(value % 1) === 0.5) return 2 * Math.round(value / 2);
+    return Math.round(value);
   }
 
   function variant(tag, payload) {

@@ -55,7 +55,8 @@ public class CSharpTranspiler
     private int _profileTempCounter;
     private int _matchBindCounter;
     private int _destructureTempCounter;
-    private readonly Stack<string> _desugaredForContinueLabels = new();
+    /// <summary>Innermost loop on top; null for a loop whose <c>continue</c> is plain C#.</summary>
+    private readonly Stack<string?> _desugaredForContinueLabels = new();
     private readonly Stack<Dictionary<string, TranspiledClrType>> _typedScopeStack;
     private readonly Stack<HashSet<string>> _constScopeStack;
     private readonly HashSet<string> _moduleConstNames;
@@ -6573,10 +6574,10 @@ public class CSharpTranspiler
                 TranspileProfiledStructuredStatement(statement, () => TranspileWhile(whileStmt));
                 break;
             case ForStatement forStmt:
-                TranspileProfiledStructuredStatement(statement, () => TranspileFor(forStmt));
+                TranspileProfiledStructuredStatement(statement, () => WithOwnContinue(() => TranspileFor(forStmt)));
                 break;
             case ForInStatement forInStmt:
-                TranspileProfiledStructuredStatement(statement, () => TranspileForIn(forInStmt));
+                TranspileProfiledStructuredStatement(statement, () => WithOwnContinue(() => TranspileForIn(forInStmt)));
                 break;
             case FunctionDeclaration funcDecl:
                 TranspileLocalFunction(funcDecl);
@@ -6678,11 +6679,11 @@ public class CSharpTranspiler
                 _output.AppendLine("}");
                 break;
             case ContinueStatement:
-                if (_desugaredForContinueLabels.Count > 0)
+                if (_desugaredForContinueLabels.TryPeek(out var continueLabel) && continueLabel != null)
                 {
                     WriteIndent();
                     _output.Append("goto ");
-                    _output.AppendLine($"{_desugaredForContinueLabels.Peek()};");
+                    _output.AppendLine($"{continueLabel};");
                     break;
                 }
 
@@ -7411,8 +7412,7 @@ public class CSharpTranspiler
 
         // Parser desugars `for` into `while` with body Block { userBody, increment }.
         // `continue` in userBody must still run increment (see Interpreter.ExecuteWhileAsync).
-        if (whileStmt.Body is BlockStatement desugaredForBody &&
-            desugaredForBody.Statements.Count == 2)
+        if (whileStmt.DesugaredForIncrement != null && whileStmt.Body is BlockStatement desugaredForBody)
         {
             var incrementLabel = $"__forIncrement{_desugaredForContinueLabels.Count}";
             _desugaredForContinueLabels.Push(incrementLabel);
@@ -7437,7 +7437,24 @@ public class CSharpTranspiler
             return;
         }
 
-        TranspileStatement(whileStmt.Body);
+        WithOwnContinue(() => TranspileStatement(whileStmt.Body));
+    }
+
+    /// <summary>
+    /// Emits a loop whose <c>continue</c> is a plain C# <c>continue</c>, so it does not jump
+    /// to the increment label of an enclosing desugared <c>for</c>.
+    /// </summary>
+    private void WithOwnContinue(Action emitLoop)
+    {
+        _desugaredForContinueLabels.Push(null);
+        try
+        {
+            emitLoop();
+        }
+        finally
+        {
+            _desugaredForContinueLabels.Pop();
+        }
     }
 
     private void TranspileFor(ForStatement forStmt)
