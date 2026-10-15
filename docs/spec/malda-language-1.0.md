@@ -3,7 +3,7 @@
 **Document:** `docs/spec/malda-language-1.0.md`  
 **Status:** Final 1.0 (declared 2026-08-12; Draft from 2026-06-04)  
 **Applies to:** Malda Core interpreter and Tier 0 conformance tests (JS Tier 0 is a separate matrix subset; not Final-gated)  
-**Normative implementation:** `MaldaLang/Lexer.cs`, `MaldaLang/Parser/Parser.cs`, `MaldaLang/Interpreter/Interpreter.cs`, `MaldaLang/BuiltIns/BuiltInFunctions*.cs`
+**Normative implementation:** `MaldaLang/Lexer.cs`, `MaldaLang/Parser/Parser*.cs`, `MaldaLang/Interpreter/Interpreter*.cs`, `MaldaLang/BuiltIns/BuiltInFunctions*.cs`
 
 ---
 

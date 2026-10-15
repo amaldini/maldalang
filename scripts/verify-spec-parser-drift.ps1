@@ -22,7 +22,7 @@ $parserTriggers = @(
 
 $documentationTriggers = @(
     "docs/spec/CHANGELOG.md",
-    "ReferenceManual/35-grammar.html",
+    "ReferenceManual/37-grammar.html",
     "docs/planning/parser-manual-drift-audit.md"
 )
 
@@ -36,7 +36,9 @@ function Get-ChangedFileNames {
 
     $diffArgs = @()
     if ([string]::IsNullOrWhiteSpace($BaseRef)) {
-        $mergeBase = git merge-base HEAD origin/master 2>$null
+        # Windows PowerShell 5.1 turns native stderr into a terminating error under "Stop".
+        $mergeBase = $null
+        try { $mergeBase = git merge-base HEAD origin/main 2>$null } catch { $mergeBase = $null }
         if ($LASTEXITCODE -eq 0 -and $mergeBase) {
             $diffArgs += "$mergeBase...HEAD"
         }
@@ -88,14 +90,14 @@ if ($changed.Count -eq 0) {
 
 $parserTouched = $false
 foreach ($file in $changed) {
-    if ($parserTriggers -contains $file) {
+    if (($parserTriggers -contains $file) -or ($file -like "MaldaLang/Parser/Parser*.cs")) {
         $parserTouched = $true
         break
     }
 }
 
 if (-not $parserTouched) {
-    Write-Host "OK: Parser.cs and Lexer.cs unchanged in diff ($($changed.Count) file(s) checked)."
+    Write-Host "OK: Parser*.cs and Lexer.cs unchanged in diff ($($changed.Count) file(s) checked)."
     exit 0
 }
 
@@ -109,12 +111,12 @@ foreach ($file in $changed) {
 
 if (-not $docTouched) {
     Write-Error @"
-Spec/parser drift: MaldaLang/Parser/Parser.cs or MaldaLang/Lexer.cs changed without a documentation update.
+Spec/parser drift: MaldaLang/Parser/Parser*.cs or MaldaLang/Lexer.cs changed without a documentation update.
 
 Update at least one of:
   - docs/spec/malda-language-*.md (Tier 0 semantics)
   - docs/spec/CHANGELOG.md (version / deprecation note)
-  - ReferenceManual/35-grammar.html (syntax BNF)
+  - ReferenceManual/37-grammar.html (syntax BNF)
   - docs/planning/parser-manual-drift-audit.md (manual drift notes)
 
 Changed files in diff:

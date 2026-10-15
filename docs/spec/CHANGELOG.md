@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Changed (internal — parser and interpreter source layout)
+
+- `MaldaLang/Parser/Parser.cs` and `MaldaLang/Interpreter/Interpreter.cs` are split into `Parser.<Area>.cs` / `Interpreter.<Area>.cs` partial files; `ParseException` and the interpreter exception types moved to their own files. Code moves only: no syntax or semantics change. `scripts/verify-spec-parser-drift.ps1` now watches every `MaldaLang/Parser/Parser*.cs` file.
+
 #### Changed (PATCH — 3D race draws its roadside as instanced meshes)
 
 - `three_shader_race_car_neural.malda` no longer ray-traces trees, buildings, and signs. The shader writes `gl_FragDepth` for its first hit, and a second `three.render(..., { clear: false })` pass draws the roadside as instanced meshes (as in `three_forest.malda`) with a perspective camera copied from the ray camera, so cars and roadside hide each other correctly. Signs still turn to the camera and keep their 5×7 font text, now a small texture per phrase. The prop grid, prop and font data textures, and about 400 lines of scenery shader code are gone. Runtime additions: `three.createCylinderGeometry`, `three.render(..., { clear: false })`, and an optional `up` on `three.lookAt`. Narrative: [`28-browser-javascript-backend.html`](../../ReferenceManual/28-browser-javascript-backend.html) §28.10. JavaScript backend only; no Tier 0 change.
