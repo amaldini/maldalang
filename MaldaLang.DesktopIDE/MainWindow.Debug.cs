@@ -1361,4 +1361,28 @@ public partial class MainWindow
         _breakpointLines.Clear();
         CodeEditor.TextArea.TextView.Redraw();
     }
+
+    private async Task StopJsDebuggerAsync()
+    {
+        var debugger = _jsDebugger;
+        _jsDebugger = null;
+        _jsDebugOutput = "";
+        _jsPaused = false;
+        _jsStepInFlight = false;
+        if (debugger == null)
+        {
+            return;
+        }
+
+        try
+        {
+            await debugger.DetachAsync();
+        }
+        catch
+        {
+            // Best effort: the WebView may already have been disposed.
+        }
+
+        debugger.Dispose();
+    }
 }

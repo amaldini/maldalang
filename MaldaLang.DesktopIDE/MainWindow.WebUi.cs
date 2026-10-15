@@ -1,11 +1,17 @@
 // Copyright (c) 2026 Andrea Maldini
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-using System;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.IO;
+using MaldaLang.DesktopIDE.Services;
+using System.Windows.Threading;
+using System.Net.Http;
+using System.Text.RegularExpressions;
+using System.Diagnostics;
+using Microsoft.Web.WebView2.Core;
+using MaldaLang.UIHost;
 
 namespace MaldaLang.DesktopIDE;
 
@@ -290,5 +296,254 @@ public partial class MainWindow
             ToggleAiPanelMaximized();
             e.Handled = true;
         }
+    }
+
+    private void WebUiGoButton_Click(object sender, RoutedEventArgs e)
+    {
+        var target = WebUiUrlTextBox.Text?.Trim();
+        if (string.IsNullOrWhiteSpace(target))
+        {
+            return;
+        }
+
+        var uri = TryResolveWebViewUri(target);
+        if (uri == null)
+        {
+            IdePromptWindow.Show(this, "Enter a valid URL or a local HTML file path.", "Web UI", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        _ = OpenUriInWebUiPanelAsync(uri, target, switchToTab: true, ensureUiHost: !uri.IsFile);
+    }
+
+    private void WebUiOpenExternalButton_Click(object sender, RoutedEventArgs e)
+    {
+        var target = WebUiUrlTextBox.Text?.Trim();
+        if (string.IsNullOrWhiteSpace(target))
+        {
+            return;
+        }
+
+        var uri = TryResolveWebViewUri(target);
+        var externalTarget = uri?.IsFile == true ? uri.LocalPath : uri?.AbsoluteUri ?? target;
+
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = externalTarget,
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            IdePromptWindow.Show(this, $"Could not open URL: {ex.Message}", "Web UI", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void TryAutoOpenWebUiFromOutput(string outputText)
+    {
+        if (_showcase != null || string.IsNullOrWhiteSpace(outputText))
+        {
+            return;
+        }
+
+        var match = Regex.Match(outputText, @"Open:\s*(https?://\S+)", RegexOptions.IgnoreCase);
+        if (!match.Success)
+        {
+            return;
+        }
+
+        var detectedUrl = match.Groups[1].Value.Trim();
+        if (string.Equals(detectedUrl, _lastDetectedWebUiUrl, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+        _lastDetectedWebUiUrl = detectedUrl;
+        _ = OpenWebUiInPanelAsync(detectedUrl, switchToTab: true);
+    }
+
+    private async Task OpenWebUiInPanelAsync(string url, bool switchToTab)
+    {
+        var uri = TryResolveWebViewUri(url);
+        if (uri == null)
+        {
+            throw new InvalidOperationException("The requested Web UI target is not a valid URL or local file.");
+        }
+
+        await OpenUriInWebUiPanelAsync(uri, url, switchToTab, ensureUiHost: !uri.IsFile);
+    }
+
+    private async Task OpenUriInWebUiPanelAsync(Uri uri, string displayText, bool switchToTab, bool ensureUiHost)
+    {
+        if (ensureUiHost)
+        {
+            await EnsureUiHostRunningAsync();
+        }
+
+        await Dispatcher.InvokeAsync(() =>
+        {
+            try
+            {
+                WebUiUrlTextBox.Text = displayText;
+                WebUiWebView.Source = uri;
+                if (switchToTab)
+                {
+                    SwitchToTab("webui");
+                }
+            }
+            catch (Exception ex)
+            {
+                IdePromptWindow.Show(this, $"Failed to open Web UI: {ex.Message}", "Web UI", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        });
+    }
+
+    private static Uri? TryResolveWebViewUri(string target)
+    {
+        if (string.IsNullOrWhiteSpace(target))
+        {
+            return null;
+        }
+
+        if (Uri.TryCreate(target, UriKind.Absolute, out var absoluteUri) &&
+            (absoluteUri.Scheme == Uri.UriSchemeHttp ||
+             absoluteUri.Scheme == Uri.UriSchemeHttps ||
+             absoluteUri.Scheme == Uri.UriSchemeFile))
+        {
+            return absoluteUri;
+        }
+
+        var expandedPath = System.Environment.ExpandEnvironmentVariables(target);
+        if (File.Exists(expandedPath))
+        {
+            return new Uri(Path.GetFullPath(expandedPath));
+        }
+
+        return null;
+    }
+
+    private async Task EnsureUiHostRunningAsync()
+    {
+        var uiHostUrl = System.Environment.GetEnvironmentVariable("MALDA_UI_HOST_URL");
+        if (string.IsNullOrWhiteSpace(uiHostUrl))
+        {
+            uiHostUrl = DefaultUiHostUrl;
+        }
+
+        if (await IsUiHostHealthyAsync(uiHostUrl))
+        {
+            return;
+        }
+
+        try
+        {
+            await EmbeddedUiHostRuntime.TryStartAsync();
+            await WaitForUiHostAsync(uiHostUrl);
+        }
+        catch
+        {
+            // Keep web preview usable even if embedded UIHost startup fails.
+        }
+    }
+
+    private static async Task<bool> IsUiHostHealthyAsync(string uiHostUrl)
+    {
+        try
+        {
+            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
+            var resp = await client.GetAsync($"{uiHostUrl.TrimEnd('/')}/health");
+            return resp.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static async Task WaitForUiHostAsync(string uiHostUrl)
+    {
+        const int maxAttempts = 120;
+        for (var i = 0; i < maxAttempts; i++)
+        {
+            if (await IsUiHostHealthyAsync(uiHostUrl))
+            {
+                return;
+            }
+            await Task.Delay(500);
+        }
+    }
+
+    private static string? FindRepoRoot()
+    {
+        try
+        {
+            var dir = AppContext.BaseDirectory;
+            var current = new DirectoryInfo(dir);
+            while (current != null)
+            {
+                var sourceMarker = Path.Combine(current.FullName, "MaldaLang.UIHost");
+                var manualIndex = Path.Combine(current.FullName, "ReferenceManual", "index.html");
+                var distBin = Path.Combine(current.FullName, "bin");
+                var hasDistLayout =
+                    File.Exists(manualIndex) &&
+                    (Directory.Exists(Path.Combine(distBin, "desktop-ide")) ||
+                     Directory.Exists(Path.Combine(distBin, "ui-host")) ||
+                     Directory.Exists(Path.Combine(distBin, "malda")));
+
+                if (Directory.Exists(sourceMarker) || hasDistLayout)
+                {
+                    return current.FullName;
+                }
+                current = current.Parent;
+            }
+        }
+        catch
+        {
+            // Best effort only.
+        }
+        return null;
+    }
+
+    private async Task InitializeWebUiPreviewAsync()
+    {
+        try
+        {
+            await EnsureWebUiCoreAsync();
+        }
+        catch
+        {
+            // Keep IDE functional even if WebView2 runtime is unavailable.
+        }
+    }
+
+    private async Task<CoreWebView2?> EnsureWebUiCoreAsync()
+    {
+        await WebUiWebView.EnsureCoreWebView2Async();
+        var core = WebUiWebView.CoreWebView2;
+        if (core == null)
+        {
+            return null;
+        }
+
+        core.Settings.AreDefaultContextMenusEnabled = true;
+        core.Settings.IsStatusBarEnabled = false;
+        core.Settings.IsZoomControlEnabled = true;
+        EnsureWebPreviewVirtualHost(core);
+        return core;
+    }
+
+    private void EnsureWebPreviewVirtualHost(CoreWebView2 core)
+    {
+        var repoRoot = FindRepoRoot();
+        if (string.IsNullOrWhiteSpace(repoRoot))
+        {
+            return;
+        }
+
+        core.SetVirtualHostNameToFolderMapping(
+            WebPreviewHostBuilder.VirtualHostName,
+            repoRoot,
+            CoreWebView2HostResourceAccessKind.Allow);
     }
 }
