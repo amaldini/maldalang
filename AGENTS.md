@@ -61,7 +61,7 @@ After touching an emitter or the JS runtime, explore more seeds with
 `MALDA_FUZZ_SEEDS=100-160 dotnet test MaldaLang.Tests --filter "FullyQualifiedName~BackendDifferentialFuzzTests"`;
 a failure leaves the program and the three outputs under `%TEMP%/malda_fuzz/seed<N>/`.
 
-CI smoke filter (see `.github/workflows/ci.yml`): `BuiltInRegistryTests`, `CompilerPackDecouplingGuardTests`, `OptionalPackTranspileEmitTests`, `LicenseHeaderGuardTests`, `ReleaseVersionGuardTests`, `ReferenceManual`, `BackendCapabilityMatrixGuardTests`, `ShipContractGuardTests`, `TranspileSmokeTests`, `InterpretTranspilePairTests`, `InterpretJsPairTests`, `WorkflowTranspilerParityTests`, `HttpTraceParityTests`, `JobTraceParityTests`, `Tier0CsharpShipSmokeTests`, `BackendDifferentialFuzzTests`, `BuiltInSurfaceGuardTests` (Windows job).
+CI smoke filter (see `.github/workflows/ci.yml`): `BuiltInRegistryTests`, `CompilerPackDecouplingGuardTests`, `OptionalPackTranspileEmitTests`, `LicenseHeaderGuardTests`, `ReleaseVersionGuardTests`, `ReferenceManual`, `BackendCapabilityMatrixGuardTests`, `ShipContractGuardTests`, `TranspileSmokeTests`, `InterpretTranspilePairTests`, `InterpretJsPairTests`, `WorkflowTranspilerParityTests`, `HttpTraceParityTests`, `JobTraceParityTests`, `Tier0CsharpShipSmokeTests`, `BackendDifferentialFuzzTests`, `BuiltInSurfaceGuardTests`, `ExamplesParseGuardTests` (Windows job).
 
 ## IDE roles (not interchangeable)
 
