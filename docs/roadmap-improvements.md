@@ -116,7 +116,8 @@ Phase C (language and ecosystem)
   `BuiltIns/Conversation.cs`, `BuiltIns/GraphMemory.cs`, `BuiltIns/HttpServer.cs`,
   `BuiltIns/WebRuntime.cs`, `BuiltIns/RestServer.cs` and `BuiltIns/BuiltInTools.cs` are split
   (the tool switch in `ExecuteToolOperation` now chains per-area `Execute<Area>Tool` methods).
-  Still over ~1,500 lines: the Desktop IDE `MainWindow.xaml.cs` and `MainWindow.Editor.cs`.
+  The Desktop IDE `MainWindow.xaml.cs`, `MainWindow.Editor.cs` and `MainWindow.Run.cs` are split
+  into more `MainWindow.<Area>.cs` partials. No engine or Desktop IDE file is still over ~1,500 lines.
 
 ## I6 — `malda lint`
 
@@ -185,3 +186,4 @@ The root files that looked like leftovers are intentional:
 | 2026-10-15 | I5 (WebRuntime): one file per request/response/auth context type plus `WebMiddleware.cs` and `WebRuntimeException.cs`; `WebRuntimeHelpers` split into `WebRuntime.<Area>.cs` partials |
 | 2026-10-15 | I5 (RestServer): `RestServer.cs` split into `RestServer.<Area>.cs` partials |
 | 2026-10-15 | I5 (BuiltInTools): `BuiltInTools.cs` split into `BuiltInTools.<Area>.cs` partials (Workspace, Git, Malda, Plan; file tools stay in the main file) |
+| 2026-10-15 | I5 (Desktop IDE): `MainWindow.xaml.cs` split into `MainWindow.<Area>.cs` partials (Theme, ToolCalls, Prompts, Examples, Panels, Menus; web preview moved to `WebUi`) and `NativeMethods.cs`; `MainWindow.Editor.cs` split into Completion, SyntaxPanel, Diagnostics and Navigation; `MainWindow.Run.cs` web preview moved to `MainWindow.Preview.cs` |
