@@ -87,7 +87,7 @@ Web IDE improvements (Monaco UX, examples browser, diagnostics presentation) are
 | JS / PWA transpile | `MaldaLang.Compiler/JsTranspiler.cs` (+ `JsTranspiler.<Area>.cs` partials: `Expressions`, `Calls`, `Match`, `Scopes`, `Actors`, `Shaders`, `SourceMap`), `GlslTranspiler.cs` (`@shader()` → GLSL) |
 | Server-driven UI (`ui.*` / UIHost) | `MaldaLang/Runtime/UI/`, `MaldaLang.UIHost/` — [`docs/ui-framework.md`](docs/ui-framework.md) |
 | Optional pack emit (string-only) | `MaldaLang.Compiler/OptionalPack/` |
-| CLI | `MaldaLang/Program.cs` |
+| CLI | `MaldaLang/Program.cs` (entry + dispatch) + `Program.<Area>.cs` partials (`Compile`, `Run`, `Repl`, `Workflow`, `Assistant`, `Help`, …) |
 | Language intelligence (IDE/LSP shared) | `MaldaLang/IDE/LanguageService.cs` |
 | LSP host | `MaldaLang.LanguageServer/` (`malda-lsp`; not the debugger) |
 | Web IDE | `MaldaLang.IDE/` |
