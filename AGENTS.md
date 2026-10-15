@@ -88,7 +88,7 @@ Web IDE improvements (Monaco UX, examples browser, diagnostics presentation) are
 | Server-driven UI (`ui.*` / UIHost) | `MaldaLang/Runtime/UI/`, `MaldaLang.UIHost/` — [`docs/ui-framework.md`](docs/ui-framework.md) |
 | Optional pack emit (string-only) | `MaldaLang.Compiler/OptionalPack/` |
 | CLI | `MaldaLang/Program.cs` (entry + dispatch) + `Program.<Area>.cs` partials (`Compile`, `Run`, `Repl`, `Workflow`, `Assistant`, `Help`, …) |
-| Language intelligence (IDE/LSP shared) | `MaldaLang/IDE/LanguageService.cs` |
+| Language intelligence (IDE/LSP shared) | `MaldaLang/IDE/LanguageService.cs` (+ `LanguageService.<Area>.cs` partials: `Completions`, `Hover`, `SignatureHelp`, `Decorators`, `AutoFix`, …) |
 | LSP host | `MaldaLang.LanguageServer/` (`malda-lsp`; not the debugger) |
 | Web IDE | `MaldaLang.IDE/` |
 | Desktop IDE | `MaldaLang.DesktopIDE/` |

@@ -1,6 +1,6 @@
 # MALDA engineering improvements roadmap
 
-**Status:** I1 and I2 landed 2026-10-15; I5 in progress (Interpreter and Parser split); I3, I4, I6–I8 and I10 open; I9 dropped (root files are intentional)  
+**Status:** I1 and I2 landed 2026-10-15; I5 three named files split (follow-up list open); I3, I4, I6–I8 and I10 open; I9 dropped (root files are intentional)  
 **Created:** 2026-10-15  
 **Audience:** maintainers choosing engine / tooling work after P0, L1–L6 and DT0–DT8
 
@@ -36,7 +36,7 @@ features (agents, HTTP, workflows, prompts).
 | 2 | **I2** Differential fuzz in the nightly workflow | Landed | Backend divergence was only checked on 3 seeds | Low | S |
 | 3 | **I3** `malda fmt` | Open | No CLI / CI formatter; only the IDE indenter exists | Medium | M |
 | 4 | **I4** JavaScript capability pre-check | Open | Unsupported features fail late, one `NotSupportedException` at a time | Medium | M |
-| 5 | **I5** Split `Interpreter.cs` / `Parser.cs` / `LanguageService.cs` | In progress | Interpreter and Parser done; `LanguageService.cs` 3,142 lines left | Low | L |
+| 5 | **I5** Split `Interpreter.cs` / `Parser.cs` / `LanguageService.cs` | Partly landed | The three named files are split; other engine files still exceed ~1,500 lines (see I5) | Low | L |
 | 6 | **I6** `malda lint` (gotchas as diagnostics) | Open | Common footguns live only in `docs/llm/` | Medium | M |
 | 7 | **I7** Pure stdlib complete on JavaScript | Open | `math` / `str` / collections are `partial` on JS | Medium | M–L |
 | 8 | **I8** Gradual type inference in the editor | Open | Warnings without the deferred full static type system | High | L |
@@ -112,6 +112,10 @@ Phase C (language and ecosystem)
 - One PR per file, moves only.
 - **Done when:** no engine file exceeds ~1,500 lines and fuzz plus `InterpretTranspilePairTests`
   are green.
+- **Status (2026-10-15):** `Interpreter.cs`, `Parser.cs` and `LanguageService.cs` are split.
+  Still over ~1,500 lines: `BuiltIns/Conversation.cs`, `BuiltIns/GraphMemory.cs`,
+  `BuiltIns/HttpServer.cs`, `BuiltIns/WebRuntime.cs`, `BuiltIns/RestServer.cs`,
+  `BuiltIns/BuiltInTools.cs`, and the Desktop IDE `MainWindow` partials.
 
 ## I6 — `malda lint`
 
@@ -173,3 +177,4 @@ The root files that looked like leftovers are intentional:
 | 2026-10-15 | I1 landed: `Program.cs` split into `Program.<Area>.cs` partials |
 | 2026-10-15 | I5 (Interpreter): `Interpreter.cs` split into `Interpreter.<Area>.cs` partials; exception types moved to `RuntimeException.cs` |
 | 2026-10-15 | I5 (Parser): `Parser.cs` split into `Parser.<Area>.cs` partials; `ParseException` moved to `ParseException.cs`; spec drift guard watches `Parser*.cs` |
+| 2026-10-15 | I5 (LanguageService): `LanguageService.cs` split into `LanguageService.<Area>.cs` partials; `DecoratorInfo` moved to `DecoratorInfo.cs`; remaining large files listed under I5 |
