@@ -1,4 +1,4 @@
-# Tier 0 conformance (interpreter + C# matrix). Nightly / manual only —
+# Tier 0 conformance (interpreter + C# matrix) and backend differential fuzz. Nightly / manual only —
 # not on every PR (see ci.yml smoke filter).
 name: Tier 0 nightly
 
@@ -31,3 +31,49 @@ jobs:
           dotnet test MaldaLang.Tests -c Release --no-build
           --filter "FullyQualifiedName~Tier0MaldaConformanceTests|FullyQualifiedName~Tier0BackendMatrixTests|FullyQualifiedName~Tier0ConformanceTests"
           --verbosity minimal
+
+  fuzz:
+    # Backend differential fuzz over a seed window that moves every night, so the nights
+    # together cover new programs instead of re-running the three PR seeds.
+    name: Backend differential fuzz (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Build
+        run: |
+          dotnet build MaldaLang -c Release --verbosity minimal
+          dotnet build MaldaLang.Compiler -c Release --verbosity minimal
+          dotnet build MaldaLang.Tests -c Release --verbosity minimal
+
+      - name: Pick seed window
+        run: |
+          day=$(( $(date -u +%s) / 86400 ))
+          start=$(( 1000 + (day % 500) * 100 ))
+          echo "MALDA_FUZZ_SEEDS=${start}-$(( start + 99 ))" >> "$GITHUB_ENV"
+          echo "Fuzz seeds: ${start}-$(( start + 99 ))"
+
+      - name: Fuzz
+        run: >
+          dotnet test MaldaLang.Tests -c Release --no-build
+          --filter "FullyQualifiedName~BackendDifferentialFuzzTests"
+          --verbosity minimal
+
+      - name: Upload failing seeds
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: malda-fuzz-repro
+          path: /tmp/malda_fuzz/
+          if-no-files-found: ignore

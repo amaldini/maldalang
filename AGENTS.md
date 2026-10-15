@@ -182,4 +182,5 @@ See [`ReferenceManual/README-print.md`](ReferenceManual/README-print.md). Short 
 - [`docs/roadmap-trust.md`](docs/roadmap-trust.md) — trust plan (strict compile, smoke, gotchas; toolchain 1.0.0 landed)
 - [`docs/roadmap-games.md`](docs/roadmap-games.md) — browser games kit (`game.*` / `three.*`, JS-only; G0–G22 landed)
 - [`docs/roadmap-neural.md`](docs/roadmap-neural.md) — neural-nets kit (`math.matmul`, `nn.*` activations and dense forward/backward, spatial host layers, AI_Theory, `OnnxModel`; N0–N4 and N6–N15 landed, N5 partial)
+- [`docs/roadmap-improvements.md`](docs/roadmap-improvements.md) — engineering improvements (CLI split, nightly fuzz, `malda fmt` / `lint`, JS capability pre-check, file splits; I1–I2 landed)
 - [`llms.txt`](llms.txt) — compact doc index for LLM tools
