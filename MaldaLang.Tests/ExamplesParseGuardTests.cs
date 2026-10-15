@@ -136,7 +136,8 @@ public class ExamplesParseGuardTests
         return new ParseError(ex.SourceFileName, ex.Line, ex.Column, message);
     }
 
-    private static IEnumerable<string> EnumerateExamples(string dir)
+    /// <summary>Every <c>*.malda</c> under <paramref name="dir"/>, skipping dot-folders and build output. Shared with <see cref="ExamplesStyleGuardTests"/>.</summary>
+    internal static IEnumerable<string> EnumerateExamples(string dir)
     {
         foreach (var file in Directory.EnumerateFiles(dir, "*.malda"))
             yield return file;
@@ -151,6 +152,6 @@ public class ExamplesParseGuardTests
         }
     }
 
-    private static string RelativePath(string root, string path) =>
+    internal static string RelativePath(string root, string path) =>
         Path.GetRelativePath(root, Path.GetFullPath(path)).Replace('\\', '/');
 }

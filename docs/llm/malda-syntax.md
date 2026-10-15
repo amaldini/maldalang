@@ -156,9 +156,11 @@ io.print(sqrt(16));           // deprecated flat alias
 
 The language server emits a `malda-style` warning on the last two — *Prefer 'math.sqrt(...)'
 instead of 'sqrt(...)' (deprecated flat alias)* — so code written with them arrives with
-warnings attached. Use `math.`, `str.`, `io.`, and `nn.` in new code. The `few-shot/` snippets,
-`Examples/Basics/`, and the Reference Manual first-contact pages (Home Quick Start,
-§1.7, §32.0–32.8) model that preferred style. Later manual chapters still use flat
+warnings attached. Use `math.`, `str.`, `io.`, and `nn.` in new code; `malda lint --fix <file|dir>`
+rewrites existing flat calls (it skips names the program declares itself). The `few-shot/`
+snippets, `Examples/` (CI keeps it `malda fmt`-clean with no fixable flat alias), and the
+Reference Manual first-contact pages (Home Quick Start, §1.7, §32.0–32.8) model that preferred
+style. Later manual chapters still use flat
 spellings in many places; read those as equivalent, do not copy the style.
 
 Which names are namespaced is listed in the `call` column of

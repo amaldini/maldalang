@@ -110,9 +110,9 @@ Phase C (language and ecosystem)
   the same formatter; `MaldaIndentFormatter` remains only as the rename-edit applier.
   `MaldaFormatterTests` checks the scan is lossless and formatting idempotent on every `Examples/`
   file, interpreter stdout before/after on 16 deterministic examples, comments, strings and
-  prompts, CLI modes and the LSP handler. `Examples/` is not reformatted in the repo
-  (75 of 282 files would change). I6 should build on `SourceTriviaScanner` for comment-based
-  suppressions.
+  prompts, CLI modes and the LSP handler. `Examples/` and `Templates/` are now formatted (75
+  files reformatted after the I6 `lint --fix` pass); `ExamplesStyleGuardTests` (CI smoke) keeps
+  them `malda fmt`-clean. I6 builds on `SourceTriviaScanner` for comment-based suppressions.
 
 ## I4 — JavaScript capability pre-check
 
@@ -179,6 +179,17 @@ Phase C (language and ecosystem)
   `compile: JS0xxx` or `docs-only`), enforced by `MaldaLinterTests`. Sweep of `Examples/`: no
   warning or error besides `ML0000` on the 6 examples the parser already rejects; one justified
   info (`ML0003` on the Mode B demo `prompt_tools_mode.malda`).
+- **`--fix` (2026-10-15):** `malda lint --fix <file|dir>...` (`FlatAliasFixer`) rewrites the
+  deprecated flat aliases behind check's `malda-style` warning (`print(` → `io.print(`, `max(` →
+  `math.max(`, `Math.floor(` → `math.floor(`), with the alias table from `StdLibNamespaces`. No
+  new rule code: the warning already belongs to `malda check`. Only parser-confirmed calls
+  outside strings, comments and `@shader()` bodies (including `$"{…}"` holes); names the program,
+  its includes or whole-file imports bind are left alone. Suppress with `malda-style` as the
+  directive code. `malda-lsp` offers the same rewrite as a quick fix, and `malda check --fix` now
+  uses it instead of its own ten-name regex list. Applied to `Examples/` and
+  `Templates/` (about 1,900 calls in 129 files); the flat calls left are on names the example
+  declares itself (`function zeros`, `function transpose`, `import { clamp }`).
+  `ExamplesStyleGuardTests` fails when a fixable alias comes back.
 
 ## I7 — JavaScript stdlib
 
