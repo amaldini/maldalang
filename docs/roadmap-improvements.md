@@ -1,6 +1,6 @@
 # MALDA engineering improvements roadmap
 
-**Status:** I1, I2 and I4 landed 2026-10-15; I5 three named files split (follow-up list open); I3, I6–I8 and I10 open; I9 dropped (root files are intentional)  
+**Status:** I1, I2, I3 and I4 landed 2026-10-15; I5 three named files split (follow-up list open); I6–I8 and I10 open; I9 dropped (root files are intentional)  
 **Created:** 2026-10-15  
 **Audience:** maintainers choosing engine / tooling work after P0, L1–L6 and DT0–DT8
 
@@ -34,7 +34,7 @@ features (agents, HTTP, workflows, prompts).
 |------|------------|--------|-----|------|------|
 | 1 | **I1** Split `Program.cs` into commands | Landed | 5,217 lines; ~25 subcommands in one switch | Low | M |
 | 2 | **I2** Differential fuzz in the nightly workflow | Landed | Backend divergence was only checked on 3 seeds | Low | S |
-| 3 | **I3** `malda fmt` | Open | No CLI / CI formatter; only the IDE indenter exists | Medium | M |
+| 3 | **I3** `malda fmt` | Landed | No CLI / CI formatter; only the IDE indenter exists | Medium | M |
 | 4 | **I4** JavaScript capability pre-check | Landed | Unsupported features failed late, one `NotSupportedException` at a time | Medium | M |
 | 5 | **I5** Split `Interpreter.cs` / `Parser.cs` / `LanguageService.cs` | Partly landed | The three named files are split; other engine files still exceed ~1,500 lines (see I5) | Low | L |
 | 6 | **I6** `malda lint` (gotchas as diagnostics) | Open | Common footguns live only in `docs/llm/` | Medium | M |
@@ -93,6 +93,26 @@ Phase C (language and ecosystem)
   Desktop IDE.
 - **Done when:** formatting twice is a no-op on all `Examples/`, interpreter stdout is identical
   before and after formatting, and the `ReferenceManual` guards stay green.
+- **Status (2026-10-15): landed.** The `Lexer` is unchanged. `SourceTriviaScanner`
+  (`MaldaLang/Formatting/SourceTrivia.cs`) is a separate lossless scan that mirrors the lexer's
+  token boundaries (operators, numbers, every string and interpolation form) and keeps whitespace,
+  newlines, `//` and `/* */` comments as trivia; `SplitLines` groups it into logical lines (a
+  multi-line string or block comment belongs to the line where it starts). `MaldaFormatter`
+  works one logical line at a time and never joins or splits lines: indentation from bracket depth,
+  `match` case bodies, wrapped operator lines and `if (` / `while (` conditions; spacing around
+  operators, commas and braces (package names such as `malda-demo-math` in `import` lines are
+  left alone); trailing whitespace; at most one blank line; one final newline. String tokens are
+  copied verbatim, `// @malda-section` markers stay in column 0, CRLF and a BOM are kept. Safety
+  net: the output is lexed again and must give the same token types and lexemes, otherwise the
+  input comes back unchanged with an error; sources the lexer rejects are never formatted.
+  `malda fmt` (`Program.Fmt.cs`, `FmtCommandRunner`) has `--check`, `--stdin`, `--indent-size`,
+  `--use-tabs`. `malda-lsp` full and range formatting and the Desktop IDE *Format Document* use
+  the same formatter; `MaldaIndentFormatter` remains only as the rename-edit applier.
+  `MaldaFormatterTests` checks the scan is lossless and formatting idempotent on every `Examples/`
+  file, interpreter stdout before/after on 16 deterministic examples, comments, strings and
+  prompts, CLI modes and the LSP handler. `Examples/` is not reformatted in the repo
+  (75 of 282 files would change). I6 should build on `SourceTriviaScanner` for comment-based
+  suppressions.
 
 ## I4 — JavaScript capability pre-check
 
@@ -198,4 +218,5 @@ The root files that looked like leftovers are intentional:
 | 2026-10-15 | I5 (RestServer): `RestServer.cs` split into `RestServer.<Area>.cs` partials |
 | 2026-10-15 | I5 (BuiltInTools): `BuiltInTools.cs` split into `BuiltInTools.<Area>.cs` partials (Workspace, Git, Malda, Plan; file tools stay in the main file) |
 | 2026-10-15 | I4 landed: `JsCapabilityChecker` pre-check (`JS0001`–`JS0013`) before JavaScript emit; matrix guard requires a diagnostic and fixture per JavaScript `no` row |
+| 2026-10-15 | I3 landed: `malda fmt` (`--check`, `--stdin`) on the lossless `SourceTriviaScanner`; LSP and Desktop IDE formatting use the same `MaldaFormatter` |
 | 2026-10-15 | I5 (Desktop IDE): `MainWindow.xaml.cs` split into `MainWindow.<Area>.cs` partials (Theme, ToolCalls, Prompts, Examples, Panels, Menus; web preview moved to `WebUi`) and `NativeMethods.cs`; `MainWindow.Editor.cs` split into Completion, SyntaxPanel, Diagnostics and Navigation; `MainWindow.Run.cs` web preview moved to `MainWindow.Preview.cs` |

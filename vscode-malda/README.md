@@ -9,7 +9,7 @@ This extension adds language support for **MALDA** (`.malda` files) in VS Code a
 - Go to definition / Find references / Rename
 - Code actions (quick fixes)
 - Signature help
-- Formatting
+- Formatting (Format Document / Format Selection): the same formatter as `malda fmt`; comments and string literals are kept, and a file the lexer rejects is left unchanged
 - Workspace symbol search
 - **Interpret-mode debug** (F5): breakpoints, step, continue, and inspect via `malda debug-adapter`
 

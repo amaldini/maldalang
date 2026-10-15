@@ -48,6 +48,7 @@
             <thead><tr><th>Command</th><th>Does</th><th>Where</th></tr></thead>
             <tbody>
                 <tr><td><code>malda check</code></td><td>Diagnose without executing (<code>--json</code>, <code>--fix</code>, <code>--strict-types</code>)</td><td><a href="#check">2.1.2</a>, <a href="24-agentic-runs.html">24.10</a></td></tr>
+                <tr><td><code>malda fmt</code></td><td>Format files in place (<code>--check</code> for CI, <code>--stdin</code> for editors)</td><td><a href="#fmt">2.1.2</a></td></tr>
                 <tr><td><code>malda eval</code></td><td>Run <code>suite</code> / <code>case</code> (ordinary run skips them; not <code>malda test</code>)</td><td><a href="24-agentic-runs.html">24.1</a></td></tr>
                 <tr><td><code>malda prompts --diff</code></td><td>Compare prompt hashes against an eval baseline</td><td><a href="24-agentic-runs.html">24.10</a></td></tr>
                 <tr><td><code>malda compile</code> / <code>publish</code></td><td>Exe, DLL, JS, PWA, or fullstack. <code>publish</code> is <code>compile --mode transpile</code></td><td><a href="#compiler">2.2</a></td></tr>
@@ -216,6 +217,14 @@ malda check -e "&lt;code&gt;" --json</code></pre>
         <p><code>malda --check "&lt;code&gt;"</code> remains a syntax-only compiler validate (parse errors, no IDE diagnostics). Prefer <code>malda check --json</code> for agent loops.</p>
         <p><code>--fix</code> applies mechanical edits only (flat aliases, <code>$"…"</code> interpolation, <code>.length()</code> → <code>.length</code>). Not every gotcha is auto-fixed. Narrative: <a href="24-agentic-runs.html">24. Agentic Runs</a> §24.10.</p>
         <pre><code>malda check app.malda --fix</code></pre>
+
+        <h4 id="fmt">Formatting with <code>malda fmt</code></h4>
+        <pre><code>malda fmt app.malda
+malda fmt src
+malda fmt src --check
+malda fmt --stdin &lt; app.malda</code></pre>
+        <p><code>malda fmt</code> rewrites files in place; a directory is searched recursively for <code>*.malda</code>. It normalizes indentation (4 spaces per bracket level; <code>--indent-size N</code> or <code>--use-tabs</code>), spacing around operators, commas and braces, trailing whitespace, runs of blank lines (at most one is kept) and the final newline. It never joins or splits lines. Comments are kept, and string literals of every kind, including interpolation holes and triple-quoted prompt bodies, are copied unchanged. The output is lexed again and must give the same tokens as the input, so formatting cannot change what a program does. A file the lexer rejects is reported and left alone.</p>
+        <p><code>--check</code> writes nothing: it lists the files that need formatting and exits <code>1</code> if there are any (use it in CI). <code>--stdin</code> prints the formatted source on stdout. Exit <code>2</code> is a usage error. The LSP <code>textDocument/formatting</code> request and the Desktop IDE <em>Format Document</em> command use the same formatter.</p>
 
         <h4>Eval suites</h4>
         <p><code>malda eval</code> runs <code>suite</code> / <code>case</code> declarations. Ordinary <code>malda run</code> skips them (like <code>property</code>). That is not <code>malda test</code>. See <a href="24-agentic-runs.html">24.1</a>.</p>
@@ -526,7 +535,7 @@ var result = helper();</code></pre>
             <li><strong>Rename</strong>: Rename symbol with validation (single-file)</li>
             <li><strong>Code actions</strong>: Quick fixes for parser errors (e.g. insert missing brace or semicolon)</li>
             <li><strong>Signature help</strong>: Function signature and active parameter at call sites</li>
-            <li><strong>Formatting</strong>: Indentation by brace nesting (full document or selection)</li>
+            <li><strong>Formatting</strong>: The <code>malda fmt</code> formatter (full document or selection); see <a href="#fmt">2.1.2</a></li>
             <li><strong>Workspace symbol</strong>: Search symbols (classes, functions, actors, prompts) across open documents</li>
         </ul>
 

@@ -58,6 +58,7 @@ partial class Program
         Console.WriteLine();
         Console.WriteLine("Build, test, and ship:");
         Console.WriteLine("  check       Diagnose a .malda file without executing (add --json / --fix)");
+        Console.WriteLine("  fmt         Format .malda files in place (--check for CI, --stdin for editors)");
         Console.WriteLine("  eval        Run suite / case evals (not malda test)");
         Console.WriteLine("  prompts     Compare prompt hashes (--diff <baseline.json>)");
         Console.WriteLine("  compile     Compile a MALDA file to exe, dll, js, pwa, or fullstack output");
@@ -85,6 +86,7 @@ partial class Program
         Console.WriteLine();
         Console.WriteLine("Examples:");
         Console.WriteLine("  malda check app.malda --json");
+        Console.WriteLine("  malda fmt src --check");
         Console.WriteLine("  malda doctor");
         Console.WriteLine("  malda new webapi my-api");
         Console.WriteLine("  malda new fullstack sales-portal --local-first");
@@ -126,6 +128,9 @@ partial class Program
         {
             case "check":
                 CheckCommandRunner.PrintUsage(Console.Out);
+                return true;
+            case "fmt":
+                ShowFmtHelp();
                 return true;
             case "eval":
                 new EvalCommandRunner().Run(new[] { "--help" }, Console.Out, Console.Error);

@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.IO;
 using MaldaLang.DesktopIDE.Services;
+using MaldaLang.Formatting;
 using MaldaLang.IDE;
 using MaldaLang.IDE.Models;
 using ICSharpCode.AvalonEdit.Document;
@@ -448,8 +449,10 @@ public partial class MainWindow
     private void FormatDocumentAtCaret()
     {
         SaveEditorIntoActiveDocument();
-        var formatted = MaldaIndentFormatter.FormatDocument(CodeEditor.Text);
-        if (string.Equals(formatted, CodeEditor.Text, StringComparison.Ordinal))
+        // Same formatter as `malda fmt` and malda-lsp. A source the lexer rejects comes back unchanged.
+        var result = MaldaFormatter.Format(CodeEditor.Text);
+        var formatted = result.Text;
+        if (!result.Success || string.Equals(formatted, CodeEditor.Text, StringComparison.Ordinal))
         {
             return;
         }

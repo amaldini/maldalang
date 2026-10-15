@@ -6,7 +6,9 @@ namespace MaldaLang.IDE;
 using MaldaLang.IDE.Models;
 
 /// <summary>
-/// Brace-depth indent formatter shared by Desktop IDE and <c>malda-lsp</c>.
+/// Brace-depth indenter and text-edit applier. Document formatting now goes through
+/// <see cref="MaldaLang.Formatting.MaldaFormatter"/> (<c>malda fmt</c>, <c>malda-lsp</c>, Desktop IDE);
+/// <see cref="ApplyEdits(string, IReadOnlyList{TextEditInfo})"/> is still used to apply rename edits.
 /// </summary>
 public static class MaldaIndentFormatter
 {

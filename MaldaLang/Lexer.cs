@@ -106,6 +106,9 @@ public class Lexer
         { "onReject", TokenType.OnReject }
     };
     
+    /// <summary>True when <paramref name="text"/> lexes as a keyword (including <c>true</c> / <c>false</c>).</summary>
+    public static bool IsReservedWord(string text) => Keywords.ContainsKey(text);
+
     public Lexer(string source, string? sourceFileName = null, int lineOffset = 0)
     {
         _source = source;

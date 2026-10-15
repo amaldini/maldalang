@@ -48,6 +48,7 @@
             <thead><tr><th>Comando</th><th>Cosa fa</th><th>Dove</th></tr></thead>
             <tbody>
                 <tr><td><code>malda check</code></td><td>Diagnostica senza eseguire (<code>--json</code>, <code>--fix</code>, <code>--strict-types</code>)</td><td><a href="#check">2.1.2</a>, <a href="24-agentic-runs.html">24.10</a></td></tr>
+                <tr><td><code>malda fmt</code></td><td>Formatta i file sul posto (<code>--check</code> per la CI, <code>--stdin</code> per gli editor)</td><td><a href="#fmt">2.1.2</a></td></tr>
                 <tr><td><code>malda eval</code></td><td>Esegue <code>suite</code> / <code>case</code> (un run ordinario li salta; non è <code>malda test</code>)</td><td><a href="24-agentic-runs.html">24.1</a></td></tr>
                 <tr><td><code>malda prompts --diff</code></td><td>Confronta gli hash dei prompt rispetto a una baseline di eval</td><td><a href="24-agentic-runs.html">24.10</a></td></tr>
                 <tr><td><code>malda compile</code> / <code>publish</code></td><td>Exe, DLL, JS, PWA o fullstack. <code>publish</code> è <code>compile --mode transpile</code></td><td><a href="#compiler">2.2</a></td></tr>
@@ -216,6 +217,14 @@ malda check -e "&lt;code&gt;" --json</code></pre>
         <p><code>malda --check "&lt;code&gt;"</code> resta una validate del solo compiler (errori di parse, niente diagnostiche IDE). Per i loop degli agenti preferisci <code>malda check --json</code>.</p>
         <p><code>--fix</code> applica solo edit meccanici (alias flat, interpolazione <code>$"…"</code>, <code>.length()</code> → <code>.length</code>). Non ogni gotcha è auto-fixato. Narrazione: <a href="24-agentic-runs.html">24. Esecuzioni agentiche</a> §24.10.</p>
         <pre><code>malda check app.malda --fix</code></pre>
+
+        <h4 id="fmt">Formattare con <code>malda fmt</code></h4>
+        <pre><code>malda fmt app.malda
+malda fmt src
+malda fmt src --check
+malda fmt --stdin &lt; app.malda</code></pre>
+        <p><code>malda fmt</code> riscrive i file sul posto; in una cartella cerca ricorsivamente i <code>*.malda</code>. Normalizza l'indentazione (4 spazi per livello di parentesi; <code>--indent-size N</code> o <code>--use-tabs</code>), gli spazi attorno a operatori, virgole e graffe, gli spazi a fine riga, le sequenze di righe vuote (ne tiene al massimo una) e il newline finale. Non unisce né spezza mai righe. I commenti restano, e le stringhe di ogni tipo, compresi i buchi di interpolazione e i corpi dei prompt tra triple virgolette, sono copiate senza modifiche. L'output viene rianalizzato dal lexer e deve dare gli stessi token dell'input, quindi la formattazione non può cambiare cosa fa un programma. Un file che il lexer rifiuta viene segnalato e lasciato com'è.</p>
+        <p><code>--check</code> non scrive nulla: elenca i file da formattare ed esce con <code>1</code> se ce ne sono (da usare in CI). <code>--stdin</code> stampa il sorgente formattato su stdout. L'exit <code>2</code> è un errore di usage. La richiesta LSP <code>textDocument/formatting</code> e il comando <em>Format Document</em> della Desktop IDE usano lo stesso formatter.</p>
 
         <h4>Suite di eval</h4>
         <p><code>malda eval</code> esegue le dichiarazioni <code>suite</code> / <code>case</code>. Un <code>malda run</code> ordinario le salta (come <code>property</code>). Non è <code>malda test</code>. Vedi <a href="24-agentic-runs.html">24.1</a>.</p>
@@ -526,7 +535,7 @@ var result = helper();</code></pre>
             <li><strong>Rename</strong>: rinomina il simbolo con validazione (singolo file)</li>
             <li><strong>Code action</strong>: correzioni rapide per errori del parser (es. inserire una graffa o un punto e virgola mancanti)</li>
             <li><strong>Signature help</strong>: firma della funzione e parametro attivo nei punti di chiamata</li>
-            <li><strong>Formattazione</strong>: indentazione in base al nidificarsi delle graffe (documento intero o selezione)</li>
+            <li><strong>Formattazione</strong>: il formatter di <code>malda fmt</code> (documento intero o selezione); vedi <a href="#fmt">2.1.2</a></li>
             <li><strong>Simbolo del workspace</strong>: ricerca di simboli (classi, funzioni, actor, prompt) nei documenti aperti</li>
         </ul>
 

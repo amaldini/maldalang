@@ -4,14 +4,14 @@
 namespace MaldaLang.LanguageServer;
 
 using System.Collections.Generic;
-using MaldaLang.IDE;
-using MaldaLang.IDE.Models;
+using MaldaLang.Formatting;
 using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 
 /// <summary>
-/// Handles textDocument/formatting and textDocument/rangeFormatting: indent with spaces.
+/// Handles textDocument/formatting and textDocument/rangeFormatting with <see cref="MaldaFormatter"/>
+/// (the same formatter as <c>malda fmt</c>). Sources the lexer rejects get no edits.
 /// </summary>
 public class MaldaDocumentFormattingHandler : IDocumentFormattingHandler, IDocumentRangeFormattingHandler
 {
@@ -52,9 +52,7 @@ public class MaldaDocumentFormattingHandler : IDocumentFormattingHandler, IDocum
             return Task.FromResult<TextEditContainer?>(new TextEditContainer());
         }
 
-        var lines = text.Split('\n');
-        var edits = ToLspEdits(MaldaIndentFormatter.GetIndentEdits(
-            lines, 0, lines.Length, request.Options.TabSize, request.Options.InsertSpaces, cancellationToken));
+        var edits = ToLspEdits(MaldaFormatter.GetDocumentEdits(text, ToOptions(request.Options)));
         return Task.FromResult<TextEditContainer?>(new TextEditContainer(edits));
     }
 
@@ -72,23 +70,31 @@ public class MaldaDocumentFormattingHandler : IDocumentFormattingHandler, IDocum
             return Task.FromResult(new TextEditContainer());
         }
 
-        var lines = text.Split('\n');
         var startLine = request.Range.Start.Line;
         var endLine = request.Range.End.Line;
         if (request.Range.End.Character == 0 && endLine > startLine)
             endLine--;
-        var edits = ToLspEdits(MaldaIndentFormatter.GetIndentEdits(
-            lines, startLine, endLine + 1, request.Options.TabSize, request.Options.InsertSpaces, cancellationToken));
+        var edits = ToLspEdits(MaldaFormatter.GetRangeEdits(text, startLine, endLine, ToOptions(request.Options)));
         return Task.FromResult(new TextEditContainer(edits));
     }
 
-    private static List<TextEdit> ToLspEdits(List<TextEditInfo> edits)
+    private static MaldaFormatOptions ToOptions(FormattingOptions? options)
+    {
+        var tabSize = options?.TabSize ?? 4;
+        return new MaldaFormatOptions
+        {
+            IndentSize = tabSize > 0 ? tabSize : 4,
+            InsertSpaces = options?.InsertSpaces ?? true
+        };
+    }
+
+    private static List<TextEdit> ToLspEdits(List<MaldaFormatEdit> edits)
     {
         return edits.Select(edit => new TextEdit
         {
             Range = new Range(
-                new Position(edit.Span.Line, edit.Span.Column),
-                new Position(edit.Span.Line, edit.Span.Column + edit.Span.Length)),
+                new Position(edit.StartLine, edit.StartColumn),
+                new Position(edit.EndLine, edit.EndColumn)),
             NewText = edit.NewText
         }).ToList();
     }

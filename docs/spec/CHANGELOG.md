@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (tooling — `malda fmt`)
+
+- `malda fmt <file|dir>` formats `.malda` sources in place; `--check` lists unformatted files and exits `1` (CI), `--stdin` writes the formatted source to stdout (editors); `--indent-size N` / `--use-tabs`. It normalizes indentation (bracket depth, `match` case bodies, wrapped operator lines and `if (` / `while (` conditions), spacing around operators, commas and braces, trailing whitespace, blank-line runs (at most one) and the final newline, and never joins or splits lines. Comments are kept; every string literal form (including `$"…"` holes and `"""` prompt bodies) is copied byte for byte. The output must re-lex to the same token stream as the input or the file is left unchanged, and sources the lexer rejects are not formatted. `malda-lsp` `textDocument/formatting` / `rangeFormatting` and the Desktop IDE *Format Document* command use the same `MaldaFormatter` (replacing the brace-only indenter). Narrative: [`02-tools.html`](../../ReferenceManual/02-tools.html#fmt). Tooling only; no Tier 0 change.
+
 #### Changed (PATCH — JavaScript compile pre-check, `JS0001`–`JS0013`)
 
 - `malda compile --mode js` / `--mode pwa` run `JsCapabilityChecker` before emit and fail with **every** use of a host-only feature (file I/O, workflows, prompts, agents / LLM clients / MCP / ACP, VectorDB, ONNX, HTTP servers, `ui.*`, jobs, .NET interop, host processes, closed `api`, `within` / `context` / `policy` / `suite`) listed as `Line L:C - JS0xxx: …`. Programs that compiled before and only failed in the browser (e.g. `readFile(…)`, `new VectorDB()`) now fail at compile time; names the program declares itself are not reported. Codes: [backend-capability-matrix.md](backend-capability-matrix.md#javascript-pre-check-diagnostics). JavaScript backend only; no Tier 0 change.
@@ -583,6 +587,7 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 
 | Date | Change |
 |------|--------|
+| 2026-10-15 | Tooling: `malda fmt` formatter, also behind LSP and Desktop IDE formatting (I3) |
 | 2026-10-15 | PATCH: JavaScript compile pre-check `JS0001`–`JS0013` (I4) |
 | 2026-09-24 | MINOR: host classes `Dense` / `Sequential` and `nn.sequential` (fixed dense stack, online SGD; no tape, no Adam) |
 | 2026-09-06 | MINOR: `executePlan` `step.out` + `fixture` typed outputs (`evalPrompt` coerce path) |

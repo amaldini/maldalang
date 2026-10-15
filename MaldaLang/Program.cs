@@ -226,6 +226,11 @@ partial class Program
                 SystemEnvironment.Exit(exitCode);
                 return;
             }
+            else if (firstArg == "fmt")
+            {
+                FmtCommand(args);
+                return;
+            }
             else if (firstArg == "new")
             {
                 NewCommand(args);
