@@ -61,7 +61,4 @@ public class PromptDeclaration : Statement
         ReturnType = returnType;
         Decorators = decorators ?? new List<Decorator>();
     }
-    
-    // Legacy property for backward compatibility
-    public ObjectLiteralExpression Body => ObjectBody ?? throw new System.Exception("Prompt body is statement-based, not object literal");
 }

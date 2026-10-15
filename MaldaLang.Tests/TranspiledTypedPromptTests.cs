@@ -35,14 +35,9 @@ public class TranspiledTypedPromptTests
 
             Assert.True(result.Success, result.ErrorMessage ?? "Compilation failed.");
 
-            var generatedProgramPath = Path.Combine(tempDir, "GeneratedProgram.cs");
-            if (!File.Exists(generatedProgramPath))
-            {
-                generatedProgramPath = Path.Combine(Directory.GetCurrentDirectory(), "Examples", "GeneratedProgram.cs");
-            }
-            Assert.True(File.Exists(generatedProgramPath), "Expected transpiler to emit GeneratedProgram.cs.");
-
-            var generated = File.ReadAllText(generatedProgramPath);
+            // Compile writes Examples/GeneratedProgram.cs under the current directory, which parallel
+            // tests overwrite. Transpile this source directly instead of reading that shared file.
+            var generated = compiler.TranspileToCSharpFromSource(source, sourcePath);
             Assert.Contains("planTask__ExecuteAsync(", generated);
             Assert.Contains("await planTask__ExecuteAsync(", generated);
         }
