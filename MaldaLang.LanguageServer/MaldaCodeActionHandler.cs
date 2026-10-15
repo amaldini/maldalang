@@ -8,6 +8,7 @@ using System.IO;
 using MaldaLang.IDE;
 using MaldaLang.IDE.Models;
 using MaldaLang.IDE.Services;
+using MaldaLang.Linting;
 using OmniSharp.Extensions.LanguageServer.Protocol;
 using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
@@ -88,6 +89,17 @@ public class MaldaCodeActionHandler : ICodeActionHandler
                 continue;
             }
 
+            if (d.Source == FlatAliasFixer.StyleCode)
+            {
+                var aliasAction = TryCreateFlatAliasAction(uri, text, sourceKey, d);
+                if (aliasAction != null)
+                {
+                    actions.Add(aliasAction);
+                }
+
+                continue;
+            }
+
             if (d.Source != "parser") continue;
 
             var ideDiagnostic = new MaldaLang.IDE.Models.Diagnostic
@@ -126,6 +138,50 @@ public class MaldaCodeActionHandler : ICodeActionHandler
 
         var commandOrActions = actions.Select<CodeAction, CommandOrCodeAction>(a => a);
         return Task.FromResult<CommandOrCodeActionContainer?>(new CommandOrCodeActionContainer(commandOrActions));
+    }
+
+    /// <summary>
+    /// Quick fix for a <c>malda-style</c> deprecated-alias warning: the same rewrite as
+    /// <c>malda lint --fix</c>, offered only where that fixer would make it (not for a name the
+    /// program binds, not inside strings or comments).
+    /// </summary>
+    private static CodeAction? TryCreateFlatAliasAction(
+        DocumentUri uri,
+        string text,
+        string? sourceKey,
+        OmniSharp.Extensions.LanguageServer.Protocol.Models.Diagnostic diagnostic)
+    {
+        try
+        {
+            var fix = FlatAliasFixer.Fix(text, sourceKey);
+            var line = diagnostic.Range.Start.Line + 1;
+            var column = diagnostic.Range.Start.Character + 1;
+            var edit = fix.Edits.FirstOrDefault(e => e.Line == line && e.Column == column);
+            if (edit == null)
+            {
+                return null;
+            }
+
+            var range = new Range(
+                new Position(diagnostic.Range.Start.Line, diagnostic.Range.Start.Character),
+                new Position(diagnostic.Range.Start.Line, diagnostic.Range.Start.Character + edit.Length));
+            var changes = new Dictionary<DocumentUri, IEnumerable<TextEdit>>
+            {
+                [uri] = new[] { new TextEdit { Range = range, NewText = edit.NewText } }
+            };
+            return new CodeAction
+            {
+                Title = $"Use '{edit.NewText}' instead of '{edit.OldText}'",
+                Kind = CodeActionKind.QuickFix,
+                Diagnostics = new Container<OmniSharp.Extensions.LanguageServer.Protocol.Models.Diagnostic>(diagnostic),
+                Edit = new WorkspaceEdit { Changes = changes }
+            };
+        }
+        catch
+        {
+            // Quick fixes must never take down the language service.
+            return null;
+        }
     }
 
     /// <summary>

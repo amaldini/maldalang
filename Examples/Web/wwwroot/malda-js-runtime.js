@@ -3312,7 +3312,10 @@
 
   const ioStdLib = {
     print: ioPrint,
-    input: ioInput
+    input: ioInput,
+    getEnv: getEnvBuiltin,
+    getEnvOr: getEnvOrBuiltin,
+    hasEnv: hasEnvBuiltin
   };
 
   function reviveJson(value) {

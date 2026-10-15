@@ -123,29 +123,43 @@ public static class StdLibNamespaces
     public static string ResolveDocBuiltInName(string methodName) =>
         methodName == "extractText" ? "extractDocxText" : methodName;
 
-    public static bool TryGetDeprecatedFlatAliasMessage(string flatName, out string message)
+    /// <summary>
+    /// The namespace a deprecated flat alias belongs to (<c>print</c> → <c>io</c>, <c>max</c> →
+    /// <c>math</c>, <c>upper</c> → <c>str</c>). Single source for the <c>malda-style</c> warning
+    /// and <c>malda lint --fix</c>. A name on several modules resolves in the order math, str, io.
+    /// </summary>
+    public static bool TryGetFlatAliasModule(string flatName, out string module)
     {
         if (MathMethodNames.Contains(flatName))
+            module = MathModule;
+        else if (StrMethodNames.Contains(flatName))
+            module = StrModule;
+        else if (IoMethodNames.Contains(flatName))
+            module = IoModule;
+        else
         {
-            message = $"Prefer 'math.{flatName}(...)' instead of '{flatName}(...)' (deprecated flat alias).";
-            return true;
+            module = "";
+            return false;
         }
 
-        if (StrMethodNames.Contains(flatName))
-        {
-            message = $"Prefer 'str.{flatName}(...)' instead of '{flatName}(...)' (deprecated flat alias).";
-            return true;
-        }
+        return true;
+    }
 
-        if (IoMethodNames.Contains(flatName))
+    public static bool TryGetDeprecatedFlatAliasMessage(string flatName, out string message)
+    {
+        if (TryGetFlatAliasModule(flatName, out var module))
         {
-            message = $"Prefer 'io.{flatName}(...)' instead of '{flatName}(...)' (deprecated flat alias).";
+            message = $"Prefer '{module}.{flatName}(...)' instead of '{flatName}(...)' (deprecated flat alias).";
             return true;
         }
 
         message = "";
         return false;
     }
+
+    /// <summary>Message for <c>Math.member(...)</c> (deprecated module alias of <c>math</c>).</summary>
+    public static string DeprecatedMathModuleAliasMessage(string member) =>
+        $"Prefer 'math.{member}(...)' instead of 'Math.{member}(...)' (deprecated module alias).";
 
     public static bool IsStdLibModuleMethod(string moduleName, string methodName) =>
         moduleName switch

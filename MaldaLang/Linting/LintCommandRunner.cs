@@ -31,6 +31,7 @@ internal sealed class LintCommandRunner
     {
         output.WriteLine("Usage:");
         output.WriteLine("  malda lint <file.malda|dir>... [--json]");
+        output.WriteLine("  malda lint --fix <file.malda|dir>... [--json]");
         output.WriteLine("  malda lint --stdin [--json]");
         output.WriteLine("  malda lint --list-rules [--json]");
         output.WriteLine();
@@ -42,14 +43,20 @@ internal sealed class LintCommandRunner
         output.WriteLine("  --json        Machine-readable report on stdout (ok, counts, diagnostics; like check --json)");
         output.WriteLine("  --stdin       Lint source read from stdin");
         output.WriteLine("  --list-rules  Print every rule: code, severity, title, and the gotcha it comes from");
+        output.WriteLine("  --fix         Rewrite deprecated flat stdlib aliases in place (the malda-style warning of");
+        output.WriteLine("                malda check): print( -> io.print(, max( -> math.max(, upper( -> str.upper(,");
+        output.WriteLine("                Math.floor( -> math.floor(. Only calls the parser sees, outside strings, comments");
+        output.WriteLine("                and @shader() bodies; a name the program declares or binds is left alone. Only");
+        output.WriteLine("                the name changes (line endings, BOM and comments are kept). Then lints the result.");
         output.WriteLine();
         output.WriteLine("Suppress a finding with a comment:");
         output.WriteLine("  // malda-lint-disable-next-line ML0001        (the next line)");
         output.WriteLine("  code();  // malda-lint-disable-line ML0001   (this line)");
         output.WriteLine("  // malda-lint-disable-file ML0003            (the whole file)");
         output.WriteLine("  Several codes are separated by commas or spaces; no code silences every rule.");
+        output.WriteLine("  // malda-lint-disable-next-line malda-style    (keep --fix from rewriting the next line)");
         output.WriteLine();
-        output.WriteLine("Directories are searched recursively for *.malda (bin/, obj/, node_modules/ and .git/ are skipped).");
+        output.WriteLine("Directories are searched recursively for *.malda (bin/, obj/, node_modules/ and dot-folders are skipped).");
         output.WriteLine("Line and column are 1-based.");
         output.WriteLine("Exit codes: 0 no warning or error (info findings do not fail), 1 at least one warning or error");
         output.WriteLine("(ML0000 = a file did not parse), 2 usage or I/O error.");
@@ -61,6 +68,7 @@ internal sealed class LintCommandRunner
         var json = args.Contains("--json");
         var useStdin = false;
         var listRules = false;
+        var fix = false;
         var paths = new List<string>();
 
         foreach (var arg in args)
@@ -82,6 +90,9 @@ internal sealed class LintCommandRunner
                 case "--list-rules":
                     listRules = true;
                     break;
+                case "--fix":
+                    fix = true;
+                    break;
                 default:
                     if (arg.StartsWith("-", StringComparison.Ordinal))
                         return UsageError(json, output, error, $"Unknown option: {arg}");
@@ -101,6 +112,8 @@ internal sealed class LintCommandRunner
         {
             if (paths.Count > 0)
                 return UsageError(json, output, error, "--stdin does not take file arguments.");
+            if (fix)
+                return UsageError(json, output, error, "--fix rewrites files in place; pass files or directories, not --stdin.");
             sources.Add(("<stdin>", (stdin ?? Console.In).ReadToEnd()));
         }
         else
@@ -126,11 +139,37 @@ internal sealed class LintCommandRunner
             }
         }
 
+        FixSummary? fixSummary = null;
+        if (fix)
+        {
+            try
+            {
+                fixSummary = ApplyFixes(sources);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                return UsageError(json, output, error, $"Could not write a fixed file: {ex.Message}");
+            }
+        }
+
         var report = Analyze(sources);
+        if (fixSummary != null)
+        {
+            report.FixedFileCount = fixSummary.Files.Count;
+            report.ReplacementCount = fixSummary.Replacements;
+            report.UnparsedFileCount = fixSummary.Unparsed;
+        }
+
         if (json)
+        {
             output.WriteLine(JsonSerializer.Serialize(report, CheckCommandRunner.JsonOptions));
+        }
         else
+        {
+            if (fixSummary != null)
+                WriteFixSummary(output, fixSummary, sources.Count);
             WriteHuman(output, report);
+        }
 
         return report.Ok ? ExitOk : ExitFindings;
     }
@@ -258,6 +297,50 @@ internal sealed class LintCommandRunner
         return ExitUsage;
     }
 
+    internal sealed record FixSummary(List<(string File, int Replacements)> Files, int Replacements, int Unparsed);
+
+    /// <summary>
+    /// Rewrite deprecated flat aliases (<see cref="FlatAliasFixer"/>) in every source and update
+    /// <paramref name="sources"/> with the fixed text so the lint pass sees it. Files are
+    /// written back with their original UTF-8 BOM (or none); every other byte is unchanged.
+    /// </summary>
+    internal static FixSummary ApplyFixes(List<(string Label, string Source)> sources)
+    {
+        var fixes = FlatAliasFixer.FixFiles(sources.Select(s => (s.Label, s.Source)).ToList());
+        var changed = new List<(string File, int Replacements)>();
+        var unparsed = 0;
+        for (var i = 0; i < fixes.Count; i++)
+        {
+            var result = fixes[i];
+            if (!result.Parsed)
+                unparsed++;
+            if (!result.Changed)
+                continue;
+
+            WritePreservingBom(sources[i].Label, result.FixedSource);
+            sources[i] = (sources[i].Label, result.FixedSource);
+            changed.Add((sources[i].Label, result.Edits.Count));
+        }
+
+        return new FixSummary(changed, changed.Sum(c => c.Replacements), unparsed);
+    }
+
+    private static void WritePreservingBom(string path, string text)
+    {
+        var original = File.ReadAllBytes(path);
+        var hasBom = original.Length >= 3 && original[0] == 0xEF && original[1] == 0xBB && original[2] == 0xBF;
+        File.WriteAllText(path, text, new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: hasBom));
+    }
+
+    private static void WriteFixSummary(TextWriter output, FixSummary summary, int fileCount)
+    {
+        foreach (var (file, replacements) in summary.Files)
+            output.WriteLine($"{file}: fixed {replacements} deprecated alias call(s)");
+        var unparsed = summary.Unparsed > 0 ? $"; {summary.Unparsed} file(s) skipped (do not parse)" : "";
+        output.WriteLine(
+            $"lint --fix: {summary.Replacements} replacement(s) in {summary.Files.Count} of {fileCount} file(s){unparsed}");
+    }
+
     private static IEnumerable<string> EnumerateMaldaFiles(string root)
     {
         var pending = new Stack<string>();
@@ -269,7 +352,9 @@ internal sealed class LintCommandRunner
             found.AddRange(Directory.EnumerateFiles(dir, "*.malda"));
             foreach (var sub in Directory.EnumerateDirectories(dir))
             {
-                if (!SkippedDirectories.Contains(Path.GetFileName(sub)))
+                var name = Path.GetFileName(sub);
+                // Dot-folders (.git, .vs, .malda-play staging copies) are tooling output, not sources.
+                if (!SkippedDirectories.Contains(name) && !name.StartsWith('.'))
                     pending.Push(sub);
             }
         }
@@ -293,6 +378,10 @@ internal sealed class LintCommandReport
     public int WarningCount { get; init; }
     public int InfoCount { get; init; }
     public int SuppressedCount { get; init; }
+    /// <summary><c>--fix</c> only: files rewritten, alias calls replaced, files skipped because they do not parse.</summary>
+    public int? FixedFileCount { get; set; }
+    public int? ReplacementCount { get; set; }
+    public int? UnparsedFileCount { get; set; }
     public string? Error { get; init; }
     public List<CheckDiagnosticDto> Diagnostics { get; init; } = new();
 }

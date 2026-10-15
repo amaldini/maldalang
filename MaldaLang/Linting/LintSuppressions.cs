@@ -15,6 +15,7 @@ using MaldaLang.Formatting;
 /// <item><c>// malda-lint-disable-line ML0001</c> — the line the comment is on (trailing comment)</item>
 /// <item><c>// malda-lint-disable-file ML0003</c> — the whole file</item>
 /// </list>
+/// <c>malda-style</c> as a code keeps <c>malda lint --fix</c> from rewriting a deprecated alias there.
 /// Without codes a directive silences every rule. Text after the codes (e.g. <c>-- reason</c>) is ignored.
 /// Block comments work too. A directive inside a string literal is not a comment and is ignored.
 /// </summary>
@@ -24,7 +25,8 @@ public sealed class LintSuppressions
         @"malda-lint-disable-(?<kind>next-line|line|file)\b(?<rest>[^\r\n]*)",
         RegexOptions.CultureInvariant);
 
-    private static readonly Regex Code = new(@"^ML\d{4}$", RegexOptions.CultureInvariant);
+    /// <summary>An <c>ML0xxx</c> rule, or <c>malda-style</c> (the deprecated-alias rewrite of <c>malda lint --fix</c>).</summary>
+    private static readonly Regex Code = new(@"^(ML\d{4}|malda-style)$", RegexOptions.CultureInvariant);
 
     private const string AllRules = "*";
 

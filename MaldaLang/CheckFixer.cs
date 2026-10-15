@@ -6,33 +6,16 @@ namespace MaldaLang;
 using System.Text.RegularExpressions;
 
 /// <summary>
-/// Mechanical <c>malda check --fix</c> rewrites.
+/// Mechanical <c>malda check --fix</c> rewrites. Deprecated flat aliases go through
+/// <see cref="Linting.FlatAliasFixer"/> (the same table and safety rules as
+/// <c>malda lint --fix</c>: calls only, never inside strings or comments, never a name the
+/// program binds), after the other edits so a source they repair is rewritten too.
 /// </summary>
 internal static class CheckFixer
 {
-    private static readonly (string From, string To)[] FlatAliases =
-    [
-        ("print(", "io.print("),
-        ("readFile(", "io.readFile("),
-        ("writeFile(", "io.writeFile("),
-        ("sqrt(", "math.sqrt("),
-        ("abs(", "math.abs("),
-        ("upper(", "str.upper("),
-        ("lower(", "str.lower("),
-        ("trim(", "str.trim("),
-        ("split(", "str.split("),
-        ("join(", "str.join(")
-    ];
-
-    public static string Apply(string source)
+    public static string Apply(string source, string? path = null)
     {
-        var result = source;
-        foreach (var (from, to) in FlatAliases)
-        {
-            result = Regex.Replace(result, $@"(?<![.\w]){Regex.Escape(from)}", to);
-        }
-
-        result = Regex.Replace(result, @"(?<!\$)""([^""]*\{[^}]+\}[^""]*)""", match =>
+        var result = Regex.Replace(source, @"(?<!\$)""([^""]*\{[^}]+\}[^""]*)""", match =>
         {
             var inner = match.Groups[1].Value;
             if (inner.Contains('{') && inner.Contains('}'))
@@ -42,6 +25,6 @@ internal static class CheckFixer
 
         result = result.Replace(".length()", ".length", StringComparison.Ordinal);
         result = Regex.Replace(result, @"\barr\.append\(", "items.append(");
-        return result;
+        return Linting.FlatAliasFixer.Fix(result, path).FixedSource;
     }
 }

@@ -119,7 +119,7 @@ internal static class StdLibNamespaceDiagnostics
                          StdLibNamespaces.IsStdLibModuleMethod(moduleId.Name, memberAccess.Member))
                 {
                     AddStyleWarning(
-                        $"Prefer 'math.{memberAccess.Member}(...)' instead of 'Math.{memberAccess.Member}(...)' (deprecated module alias).",
+                        StdLibNamespaces.DeprecatedMathModuleAliasMessage(memberAccess.Member),
                         moduleId.Line,
                         moduleId.Column,
                         moduleId.Name.Length,

@@ -83,7 +83,7 @@ internal sealed class CheckCommandRunner
         var report = Analyze(source, fileLabel, options.TypeOptions);
         if (options.Fix && !string.IsNullOrEmpty(options.FilePath) && File.Exists(options.FilePath))
         {
-            var fixedSource = CheckFixer.Apply(source);
+            var fixedSource = CheckFixer.Apply(source, options.FilePath);
             if (!string.Equals(fixedSource, source, StringComparison.Ordinal))
             {
                 File.WriteAllText(options.FilePath, fixedSource);
