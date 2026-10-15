@@ -454,6 +454,48 @@ public partial class Parser
         }
     }
     
+    /// <summary>
+    /// Comma-separated call arguments up to (not including) <c>)</c>; one trailing comma is allowed.
+    /// </summary>
+    private void ParseArgumentList(List<Expression> arguments)
+    {
+        if (Check(TokenType.RightParen))
+            return;
+        do
+        {
+            if (arguments.Count > 0 && Check(TokenType.RightParen))
+                break; // trailing comma
+            arguments.Add(Expression());
+        } while (Match(TokenType.Comma));
+    }
+
+    /// <summary>
+    /// <c>function (a, b) { … }</c> as an expression. Produces the same node as the
+    /// block-bodied lambda <c>(a, b) =&gt; { … }</c>, so every backend handles it unchanged.
+    /// Optional <c>: Type</c> hints on parameters are accepted and ignored.
+    /// </summary>
+    private Expression AnonymousFunctionExpression()
+    {
+        var token = Consume(TokenType.Function, "Expect 'function'.");
+        Consume(TokenType.LeftParen, "Expect '(' after 'function'.");
+        var parameters = new List<string>();
+        if (!Check(TokenType.RightParen))
+        {
+            do
+            {
+                if (parameters.Count > 0 && Check(TokenType.RightParen))
+                    break; // trailing comma
+                parameters.Add(ConsumeIdentifierLike("Expect parameter name."));
+                if (Match(TokenType.Colon))
+                    ParseTypeHintName();
+            } while (Match(TokenType.Comma));
+        }
+        Consume(TokenType.RightParen, "Expect ')' after parameters.");
+        Consume(TokenType.LeftBrace, "Expect '{' before anonymous function body.");
+        var body = Block();
+        return new LambdaExpression(parameters, null, body, token.Line, token.Column);
+    }
+
     private Expression Primary()
     {
         if (Match(TokenType.False)) return new LiteralExpression(false, Previous().Line, Previous().Column);
@@ -516,13 +558,7 @@ public partial class Parser
             var className = ConsumeIdentifierLike("Expect class name.");
             Consume(TokenType.LeftParen, "Expect '(' after class name.");
             var arguments = new List<Expression>();
-            if (!Check(TokenType.RightParen))
-            {
-                do
-                {
-                    arguments.Add(Expression());
-                } while (Match(TokenType.Comma));
-            }
+            ParseArgumentList(arguments);
             Consume(TokenType.RightParen, "Expect ')' after arguments.");
             return new NewExpression(className, arguments, token.Line, token.Column);
         }
@@ -534,17 +570,14 @@ public partial class Parser
             var actorName = ConsumeIdentifierLike("Expect actor name.");
             Consume(TokenType.LeftParen, "Expect '(' after actor name.");
             var arguments = new List<Expression>();
-            if (!Check(TokenType.RightParen))
-            {
-                do
-                {
-                    arguments.Add(Expression());
-                } while (Match(TokenType.Comma));
-            }
+            ParseArgumentList(arguments);
             Consume(TokenType.RightParen, "Expect ')' after arguments.");
             return new SpawnExpression(actorName, arguments, token.Line, token.Column);
         }
         
+        if (Check(TokenType.Function) && Peek(1)?.Type == TokenType.LeftParen)
+            return AnonymousFunctionExpression();
+
         if (Match(TokenType.LeftBracket))
         {
             var token = Previous();
@@ -568,7 +601,7 @@ public partial class Parser
             }
 
             var elements = new List<Expression> { first };
-            while (Match(TokenType.Comma))
+            while (Match(TokenType.Comma) && !Check(TokenType.RightBracket))
                 elements.Add(Expression());
             Consume(TokenType.RightBracket, "Expect ']' after array elements.");
             return new ArrayLiteralExpression(elements, token.Line, token.Column);
@@ -584,6 +617,8 @@ public partial class Parser
             {
                 do
                 {
+                    if (entries.Count > 0 && Check(TokenType.RightBrace))
+                        break; // trailing comma
                     var key = Expression();
                     Consume(TokenType.Colon, "Expect ':' after dictionary key.");
                     var value = Expression();
@@ -622,8 +657,12 @@ public partial class Parser
             
             if (!Check(TokenType.RightBrace))
             {
+                var sawProperty = false;
                 do
                 {
+                    if (sawProperty && Check(TokenType.RightBrace))
+                        break; // trailing comma
+                    sawProperty = true;
                     // Parse property name (must be "nodes" or "edges")
                     if (Match(TokenType.Identifier))
                     {
@@ -663,6 +702,8 @@ public partial class Parser
             {
                 do
                 {
+                    if (properties.Count > 0 && Check(TokenType.RightBrace))
+                        break; // trailing comma
                     var key = Expression();
                     Consume(TokenType.Colon, "Expect ':' after object key.");
                     var value = Expression();
@@ -761,14 +802,8 @@ public partial class Parser
     private Expression FinishCall(Expression callee)
     {
         var arguments = new List<Expression>();
-        if (!Check(TokenType.RightParen))
-        {
-            do
-            {
-                arguments.Add(Expression());
-            } while (Match(TokenType.Comma));
-        }
-        
+        ParseArgumentList(arguments);
+
         var paren = Consume(TokenType.RightParen, "Expect ')' after arguments.");
         return new FunctionCallExpression(callee, arguments, paren.Line, paren.Column);
     }

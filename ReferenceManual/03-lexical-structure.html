@@ -82,7 +82,7 @@ var my-var = 60;     // Invalid: contains hyphen</code></pre>
 <a href="07-expressions.html">dict</a>, <a href="15-graphs.html">graph</a>, <a href="15-graphs.html">directed</a>, <a href="15-graphs.html">undirected</a>, <a href="08-control-structures.html">in</a>,
 <a href="01-introduction.html">using</a>, <a href="01-introduction.html">include</a>, <a href="01-introduction.html">import</a>, <a href="01-introduction.html">export</a></code></pre>
         <p><code>fn</code> and <code>def</code> are not keywords; the parser rejects them in favor of <code>function</code>. <code>reply</code> is a built-in function, not a keyword.</p>
-        <p><code>suite</code>, <code>context</code>, <code>policy</code>, and <code>within</code> are <strong>contextual</strong> words, not reserved keywords — <code>var context = 1;</code> still parses. See <a href="24-agentic-runs.html">24.1</a>.</p>
+        <p><code>suite</code>, <code>context</code>, <code>policy</code>, and <code>within</code> are <strong>contextual</strong> words, not reserved keywords — <code>var context = 1;</code> and <code>context = context + 1;</code> still parse. Each starts a declaration only in its declaration shape: <code>context Name {</code>, <code>suite "title" {</code>, <code>policy {</code>, <code>within (</code>. See <a href="24-agentic-runs.html">24.1</a>.</p>
         <p><code>using</code> serves two unrelated purposes: a top-level package alias (<code>using json = System.Text.Json;</code>) and a scoped resource block (<code>using conn = openDb() { ... }</code>). See <a href="01-introduction.html">1. Introduction</a> and <a href="08-control-structures.html">8. Control Structures</a> respectively.</p>
 
         <h3>Keyword Categories</h3>
@@ -424,7 +424,7 @@ print(user?["name"]);   // null, no error</code></pre>
                 </tr>
                 <tr>
                     <td><code>,</code></td>
-                    <td>Parameter/argument separators</td>
+                    <td>Parameter/argument separators. One trailing comma is allowed before the closing bracket of an array, object, <code>dict</code> or <code>graph</code> literal and of a call's argument list (<code>[1, 2,]</code>, <code>{ a: 1, }</code>, <code>f(a, b,)</code>); a lone <code>[,]</code> is still an error.</td>
                 </tr>
                 <tr>
                     <td><code>.</code></td>

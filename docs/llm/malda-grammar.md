@@ -180,19 +180,24 @@ Primary     ::= Literal | Identifier | "(" Expression ")"
               | "spawn" Identifier "(" ArgList? ")"
               | "receive" "(" ")"
               | ArrayLiteral | DictLiteral | GraphLiteral | ObjectLiteral
-              | InterpolatedString | LambdaExpr
+              | InterpolatedString | LambdaExpr | FunctionExpr
 
 LambdaExpr  ::= LambdaParams Arrow (Expression | Block)
 LambdaParams::= "(" ParamList? ")" | Identifier
 Arrow         ::= "=>" | "->"   /* same Arrow token in lexer */
+FunctionExpr ::= "function" "(" ParamList? ","? ")" Block
+              /* anonymous function: same node as "(" ParamList? ")" "=>" Block.
+                 "function" Identifier at statement start is a FunctionDecl. */
 
-ArrayLiteral ::= "[" (Expression ("," Expression)*)? "]"
-DictLiteral  ::= "dict" "{" (Expression ":" Expression ("," Expression ":" Expression)*)? "}"
+/* Every list below allows one trailing comma before its closing bracket
+   ([1, 2,], { a: 1, }, f(a, b,)); a lone "," ([,]) is still an error. */
+ArrayLiteral ::= "[" (Expression ("," Expression)* ","?)? "]"
+DictLiteral  ::= "dict" "{" (Expression ":" Expression ("," Expression ":" Expression)* ","?)? "}"
 GraphLiteral ::= "graph" ("directed" | "undirected") "{"
                   ("nodes" ":" Expression ("," "edges" ":" Expression)?)
-                  ("edges" ":" Expression ("," "nodes" ":" Expression)?)?
+                  ("edges" ":" Expression ("," "nodes" ":" Expression)?)? ","?
                  "}"
-ObjectLiteral ::= "{" (ObjectEntry ("," ObjectEntry)*)? "}"
+ObjectLiteral ::= "{" (ObjectEntry ("," ObjectEntry)* ","?)? "}"
 ObjectEntry  ::= (StringLiteral | Identifier) ":" Expression
 
 InterpolatedString ::= '$"' â€¦ '"' | '$"""' â€¦ '"""'
@@ -216,7 +221,7 @@ ObjectPatternEntry ::= (Identifier | StringLiteral) (":" Pattern)?
 DestructuringPattern ::= ArrayPattern | ObjectPattern
 
 Identifier  ::= [A-Za-z_][A-Za-z0-9_]*
-ArgList     ::= Expression ("," Expression)*
+ArgList     ::= Expression ("," Expression)* ","?
 
 ```
 
@@ -228,4 +233,8 @@ ArgList     ::= Expression ("," Expression)*
 
 - Only `function` declares a function. `fn` and `def` are syntax errors.
 - Both `=>` and `->` are the same Arrow token (lambdas and return-type hints).
+- `function (x) { ... }` (no name) is an anonymous function expression, equal to `(x) => { ... }`.
+- `context`, `suite`, `policy` and `within` are contextual: they start a declaration only in
+  their declaration shape (`context Name {`, `suite "title" {`, `policy {`, `within (`) and are
+  plain identifiers otherwise (`var context = ""; context = context + "x";`).
 - Semantics: `docs/spec/malda-language-1.0.md`.

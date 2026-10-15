@@ -28,8 +28,11 @@ public partial class Parser
                 return ForAwaitStatement();
             return ForStatement();
         }
-        if (MatchLexeme("within"))
+        if (CheckLexeme("within") && Peek(1)?.Type == TokenType.LeftParen)
+        {
+            Advance();
             return ParseWithinStatement();
+        }
         if (Match(TokenType.Return)) return ReturnStatement();
         if (Match(TokenType.Print)) return PrintStatement();
         if (Match(TokenType.Break)) return BreakStatement();

@@ -195,25 +195,29 @@ Primary     ::= Literal | Identifier | "(" Expression ")"
               | "spawn" Identifier "(" ArgList? ")"
               | "receive" "(" ")"
               | ArrayLiteral | DictLiteral | GraphLiteral | ObjectLiteral
-              | InterpolatedString | LambdaExpr
+              | InterpolatedString | LambdaExpr | FunctionExpr
 
 LambdaExpr  ::= LambdaParams Arrow (Expression | Block)
 LambdaParams::= "(" ParamList? ")" | Identifier
 Arrow         ::= "=&gt;" | "-&gt;"   /* same Arrow token in lexer */
+FunctionExpr ::= "function" "(" ParamList? ","? ")" Block
+              /* anonymous function: same value as "(" ParamList? ")" "=&gt;" Block */
 
-ArrayLiteral ::= "[" (Expression ("," Expression)*)? "]"
+/* Array, dict, graph and object literals and ArgList allow one trailing ","
+   before the closing bracket; a lone "," is an error. */
+ArrayLiteral ::= "[" (Expression ("," Expression)* ","?)? "]"
               | ListComprehension
 ListComprehension ::= "[" Expression "for" Identifier "in" Expression
                       ("if" Expression)? "]"
-DictLiteral  ::= "dict" "{" (Expression ":" Expression ("," Expression ":" Expression)*)? "}"
+DictLiteral  ::= "dict" "{" (Expression ":" Expression ("," Expression ":" Expression)* ","?)? "}"
               | DictComprehension
 DictComprehension ::= "dict" "{" Expression ":" Expression "for" Identifier "in" Expression
                       ("if" Expression)? "}"
 GraphLiteral ::= "graph" ("directed" | "undirected") "{"
                   ("nodes" ":" Expression ("," "edges" ":" Expression)?)
-                  ("edges" ":" Expression ("," "nodes" ":" Expression)?)?
+                  ("edges" ":" Expression ("," "nodes" ":" Expression)?)? ","?
                  "}"
-ObjectLiteral ::= "{" (ObjectEntry ("," ObjectEntry)*)? "}"
+ObjectLiteral ::= "{" (ObjectEntry ("," ObjectEntry)* ","?)? "}"
 ObjectEntry  ::= (StringLiteral | Identifier) ":" Expression
 
 InterpolatedString ::= '$"' … '"' | '$"""' … '"""'</code></pre>
@@ -235,7 +239,7 @@ DestructuringPattern ::= ArrayPattern | ObjectPattern</code></pre>
         <h2>37.6 Lexical and tokens</h2>
         <p>Keywords, operators, comments, strings, and numeric literals are defined in <a href="03-lexical-structure.html">Lexical Structure</a>. <code>fn</code> and <code>def</code> are not keywords. Both <code>=&gt;</code> and <code>-&gt;</code> produce the same <code>Arrow</code> token (lambda bodies and return types).</p>
         <pre><code>Identifier  ::= [A-Za-z_][A-Za-z0-9_]*
-ArgList     ::= Expression ("," Expression)*</code></pre>
+ArgList     ::= Expression ("," Expression)* ","?</code></pre>
         <div class="see-also">
             <h3>See Also</h3>
             <ul>

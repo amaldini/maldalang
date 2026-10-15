@@ -82,7 +82,7 @@ var my-var = 60;     // Invalid: contains hyphen</code></pre>
 <a href="07-expressions.html">dict</a>, <a href="15-graphs.html">graph</a>, <a href="15-graphs.html">directed</a>, <a href="15-graphs.html">undirected</a>, <a href="08-control-structures.html">in</a>,
 <a href="01-introduction.html">using</a>, <a href="01-introduction.html">include</a>, <a href="01-introduction.html">import</a>, <a href="01-introduction.html">export</a></code></pre>
         <p><code>fn</code> e <code>def</code> non sono keyword; il parser le rifiuta a favore di <code>function</code>. <code>reply</code> è una funzione built-in, non una keyword.</p>
-        <p><code>suite</code>, <code>context</code>, <code>policy</code> e <code>within</code> sono parole <strong>contestuali</strong>, non keyword riservate — <code>var context = 1;</code> continua a parsare. Vedi <a href="24-agentic-runs.html">24.1</a>.</p>
+        <p><code>suite</code>, <code>context</code>, <code>policy</code> e <code>within</code> sono parole <strong>contestuali</strong>, non keyword riservate — <code>var context = 1;</code> e <code>context = context + 1;</code> continuano a parsare. Ognuna apre una dichiarazione solo nella sua forma di dichiarazione: <code>context Nome {</code>, <code>suite "titolo" {</code>, <code>policy {</code>, <code>within (</code>. Vedi <a href="24-agentic-runs.html">24.1</a>.</p>
         <p><code>using</code> ha due scopi non correlati: un alias di pacchetto top-level (<code>using json = System.Text.Json;</code>) e un blocco di risorsa con scope (<code>using conn = openDb() { ... }</code>). Vedi rispettivamente <a href="01-introduction.html">1. Introduzione</a> e <a href="08-control-structures.html">8. Strutture di controllo</a>.</p>
 
         <h3>Categorie di keyword</h3>
@@ -424,7 +424,7 @@ print(user?["name"]);   // null, no error</code></pre>
                 </tr>
                 <tr>
                     <td><code>,</code></td>
-                    <td>Separatori di parametri/argomenti</td>
+                    <td>Separatori di parametri/argomenti. È ammessa una virgola finale prima della parentesi di chiusura di un letterale array, oggetto, <code>dict</code> o <code>graph</code> e della lista di argomenti di una chiamata (<code>[1, 2,]</code>, <code>{ a: 1, }</code>, <code>f(a, b,)</code>); una virgola isolata <code>[,]</code> resta un errore.</td>
                 </tr>
                 <tr>
                     <td><code>.</code></td>

@@ -553,6 +553,12 @@
   },
   {
     "file": "09-functions.html",
+    "level": 3,
+    "id": "anonymous-function-expressions",
+    "title": "Espressioni funzione anonime"
+  },
+  {
+    "file": "09-functions.html",
     "level": 2,
     "id": "",
     "title": "9.7 Decoratori"

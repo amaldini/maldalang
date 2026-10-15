@@ -186,6 +186,13 @@ var items = [];
 items.append(new Item());
 items.forEach(x => { x.done = true; });
 print(items[0].done);</code></pre>
+        <h3 id="anonymous-function-expressions">Anonymous Function Expressions</h3>
+        <p><code>function (params) { … }</code> without a name is an expression. It is the same value as the block lambda <code>(params) =&gt; { … }</code>: it captures the enclosing scope, follows <strong>last expression wins</strong>, and runs the same way in the interpreter, C# transpile, and JavaScript. A <code>function</code> followed by a name at the start of a statement is still a declaration. Parameter type hints (<code>x: int</code>) are accepted and ignored.</p>
+        <pre><code data-run="true" data-expect="5\n10\n[1, 4, 9]">var inc = function(x) { return x + 1; };
+function apply(f, v) { return f(v); }
+print(inc(4));
+print(apply(function (x) { return x * 2; }, 5));
+print([1, 2, 3].map(function(n) { return n * n; }));</code></pre>
         <h3>Closure Capture</h3>
         <p>Lambdas capture variables from their enclosing scope, enabling powerful functional programming patterns:</p>
         <pre><code>function makeMultiplier(factor) {

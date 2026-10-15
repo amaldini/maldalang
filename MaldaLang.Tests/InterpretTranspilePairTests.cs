@@ -1803,4 +1803,12 @@ print(""run="" + string(ran.success) + "","" + string(ran.output));
             """,
             "multi-arg-lambdas");
     }
+
+    [Fact]
+    public void AnonymousFunctionAndTrailingCommas_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            ParserSyntaxGapTests.AnonymousFunctionSource,
+            "anonymous-function");
+    }
 }

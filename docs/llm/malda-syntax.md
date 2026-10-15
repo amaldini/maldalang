@@ -219,6 +219,8 @@ if (true) {
 }
 
 var double = (n) => n * 2;
+var triple = function(n) { return n * 3; };   // anonymous function = (n) => { return n * 3; }
+var nums = [1, 2, 3,];                         // one trailing comma is fine in [], {}, dict {}, calls
 ```
 
 `if`, `while`, `&&`, `||`, and `not` treat only `null` and `false` as falsy. `0`, `0.0`, `""`, and `[]` are truthy. Write `n != 0` when zero should fail the condition.
@@ -440,7 +442,8 @@ When a program registers host-wrapped agent tools, call the factory — do not s
 - Logic: `and` / `or` / `not` (also `&&` `||` `!`)
 - Equality: `==` `!=`
 - Arithmetic: `+ - * / %`
-- Lambdas / return markers: `=>` or `->` (same token)
+- Lambdas / return markers: `=>` or `->` (same token); `function (x) { ... }` is the
+  anonymous-function spelling of a block lambda
 
 ## Where to go deeper
 

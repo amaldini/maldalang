@@ -526,4 +526,12 @@ public class InterpretJsPairTests
             """,
             "math-round-js");
     }
+
+    [Fact]
+    public void AnonymousFunctionAndTrailingCommas_SameStdout()
+    {
+        InterpretJsPair.AssertSameFromSource(
+            ParserSyntaxGapTests.AnonymousFunctionSource,
+            "anonymous-function-js");
+    }
 }

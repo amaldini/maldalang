@@ -187,6 +187,13 @@ var items = [];
 items.append(new Item());
 items.forEach(x => { x.done = true; });
 print(items[0].done);</code></pre>
+        <h3 id="anonymous-function-expressions">Espressioni funzione anonime</h3>
+        <p><code>function (params) { … }</code> senza nome è un'espressione. È lo stesso valore della lambda a blocco <code>(params) =&gt; { … }</code>: cattura lo scope circostante, segue la regola <strong>vale l'ultima espressione</strong> e si comporta allo stesso modo nell'interprete, nel transpile C# e in JavaScript. Un <code>function</code> seguito da un nome all'inizio di un'istruzione resta una dichiarazione. Gli hint di tipo sui parametri (<code>x: int</code>) sono accettati e ignorati.</p>
+        <pre><code data-run="true" data-expect="5\n10\n[1, 4, 9]">var inc = function(x) { return x + 1; };
+function apply(f, v) { return f(v); }
+print(inc(4));
+print(apply(function (x) { return x * 2; }, 5));
+print([1, 2, 3].map(function(n) { return n * n; }));</code></pre>
         <h3>Cattura nelle closure</h3>
         <p>Le lambda catturano le variabili dallo scope circostante, e così abilitano pattern di programmazione funzionale:</p>
         <pre><code>function makeMultiplier(factor) {

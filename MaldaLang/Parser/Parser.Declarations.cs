@@ -109,14 +109,31 @@ public partial class Parser
                 return FunctionDeclarationWithDecorators(decorators, false);
             }
             
+            // `function (params) { … }` at statement start is an anonymous function
+            // expression (e.g. immediately invoked), not a declaration.
+            if (Check(TokenType.Function) && Peek(1)?.Type == TokenType.LeftParen)
+                return Statement();
             if (Match(TokenType.Function))
                 return FunctionDeclaration();
-            if (MatchLexeme("suite"))
+            // `suite`, `context` and `policy` are contextual: they start a declaration only in
+            // their declaration shape and are ordinary identifiers otherwise
+            // (`context = context + "…";`).
+            if (CheckLexeme("suite") && Peek(1)?.Type == TokenType.String)
+            {
+                Advance();
                 return ParseSuiteDeclaration();
-            if (MatchLexeme("context"))
+            }
+            if (CheckLexeme("context") && IsIdentifierLikeExpressionToken(Peek(1)?.Type)
+                && Peek(2)?.Type == TokenType.LeftBrace)
+            {
+                Advance();
                 return ParseContextDeclaration();
-            if (MatchLexeme("policy"))
+            }
+            if (CheckLexeme("policy") && Peek(1)?.Type == TokenType.LeftBrace)
+            {
+                Advance();
                 return ParsePolicyDeclaration();
+            }
             return Statement();
         }
         catch (ParseException ex)
