@@ -145,6 +145,7 @@ public partial class Interpreter
         {
             CurrentFile = currentFile
         };
+        RootFile = currentFile;
         _debuggerHook = debuggerHook;
         _inputProvider = inputProvider;
         BuiltInFunctions.RegisterBuiltIns(_globals);
@@ -179,6 +180,9 @@ public partial class Interpreter
         return _inputProvider;
     }
     
+    /// <summary>The program file this interpreter was created for (the source of <see cref="GetSourceCode"/>).</summary>
+    public string? RootFile { get; }
+
     public string? GetCurrentFile()
     {
         return _currentFile;

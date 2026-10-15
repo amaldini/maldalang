@@ -232,7 +232,7 @@ partial class Program
             StrictTypesAnalysis.Analyze(statements, StrictTypesOptions.Enabled, strictDiagnostics, sourceFileName);
             if (StrictTypesAnalysis.HasErrors(strictDiagnostics))
             {
-                Console.Error.WriteLine(StrictTypesAnalysis.FormatErrorsForConsole(strictDiagnostics));
+                Console.Error.WriteLine(StrictTypesAnalysis.FormatErrorsForConsole(strictDiagnostics, sourceFileName));
                 SystemEnvironment.Exit(1);
                 return;
             }

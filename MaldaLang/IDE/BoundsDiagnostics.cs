@@ -32,14 +32,18 @@ public static class BoundsDiagnostics
 
         foreach (var func in CollectFunctions(statements))
         {
+            var start = diagnostics.Count;
             ValidateWithinDecorator(func.Name, func.Decorators, diagnostics);
             ValidateBudgetDecorator(func.Name, func.Decorators, diagnostics);
+            DiagnosticSourceFiles.Stamp(diagnostics, start, func);
         }
 
         foreach (var prompt in CollectPrompts(statements))
         {
+            var start = diagnostics.Count;
             ValidateWithinDecorator(prompt.Name, prompt.Decorators, diagnostics);
             ValidateBudgetDecorator(prompt.Name, prompt.Decorators, diagnostics);
+            DiagnosticSourceFiles.Stamp(diagnostics, start, prompt);
         }
     }
 

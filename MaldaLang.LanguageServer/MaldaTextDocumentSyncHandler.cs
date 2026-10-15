@@ -221,7 +221,7 @@ public class MaldaTextDocumentSyncHandler : TextDocumentSyncHandlerBase
         {
             return;
         }
-        var lspDiagnostics = maldaDiagnostics.Select(d => ToLspDiagnostic(d)).ToList();
+        var lspDiagnostics = InDocument(maldaDiagnostics).Select(d => ToLspDiagnostic(d)).ToList();
         lspDiagnostics.AddRange(LintDiagnostics(text, sourcePath));
 
         PublishDiagnostics(uri, new Container<LspDiagnostic>(lspDiagnostics));
@@ -261,13 +261,21 @@ public class MaldaTextDocumentSyncHandler : TextDocumentSyncHandlerBase
                 continue;
             }
 
-            var lspDiagnostics = diagnostics.Select(ToLspDiagnostic).ToList();
+            var lspDiagnostics = InDocument(diagnostics).Select(ToLspDiagnostic).ToList();
             lspDiagnostics.AddRange(LintDiagnostics(document.Text, document.SourceKey));
             PublishDiagnostics(
                 _workspaceDocuments.CreateDocumentUri(document.SourceKey),
                 new Container<LspDiagnostic>(lspDiagnostics));
         }
     }
+
+    /// <summary>
+    /// Diagnostics positioned in the analyzed document. One raised on code from an <c>include</c>d
+    /// file carries that file's line and column, so publishing it here would land on unrelated lines;
+    /// the included file reports it when it is analyzed itself (open, or a workspace document).
+    /// </summary>
+    public static IEnumerable<MaldaLang.IDE.Models.Diagnostic> InDocument(IEnumerable<MaldaLang.IDE.Models.Diagnostic> diagnostics) =>
+        diagnostics.Where(MaldaLang.IDE.DiagnosticSourceFiles.IsInDocument);
 
     /// <summary>
     /// <c>malda lint</c> findings (ML0xxx) beside the check diagnostics. ML0000 (does not parse) is
@@ -286,7 +294,7 @@ public class MaldaTextDocumentSyncHandler : TextDocumentSyncHandlerBase
         }
 
         return result.Findings
-            .Where(f => f.Code != LintRules.ParseFailed)
+            .Where(f => f.Code != LintRules.ParseFailed && f.File == null)
             .Select(f => new LspDiagnostic
             {
                 Range = LspPositionHelper.ToRange(f.Line - 1, f.Column - 1, Math.Max(1, f.Length)),

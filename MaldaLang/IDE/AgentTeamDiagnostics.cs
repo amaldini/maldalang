@@ -57,6 +57,7 @@ public static class AgentTeamDiagnostics
                 Message = "agents.team graph has no statically visible nodes.",
                 Line = Math.Max(0, call.Line - 1),
                 Column = Math.Max(0, call.Column - 1),
+                SourceFile = call.SourceFile,
                 Source = "malda-agents"
             });
         }

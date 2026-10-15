@@ -40,6 +40,7 @@ public static class SchemaDeclarationDiagnostics
 
         foreach (var stmt in list)
         {
+            var start = diagnostics.Count;
             if (stmt is SchemaDeclaration schema)
             {
                 foreach (var field in schema.Fields)
@@ -99,6 +100,8 @@ public static class SchemaDeclarationDiagnostics
                     }
                 }
             }
+
+            DiagnosticSourceFiles.Stamp(diagnostics, start, stmt);
         }
     }
 

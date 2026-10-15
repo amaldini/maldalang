@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using MaldaLang.IDE;
 
 /// <summary>
 /// <c>malda lint</c>: report <see cref="LintRules"/> findings for files, directories or stdin.
@@ -138,11 +139,19 @@ internal sealed class LintCommandRunner
     {
         var diagnostics = new List<CheckDiagnosticDto>();
         var suppressed = 0;
+        // A file that is both linted and included by another linted file reports its findings once.
+        var seen = new HashSet<(string File, string Code, int Line, int Column)>();
         foreach (var (label, source) in sources)
         {
             var result = MaldaLinter.Lint(source, label.StartsWith("<", StringComparison.Ordinal) ? null : label);
             suppressed += result.SuppressedCount;
-            diagnostics.AddRange(result.Findings.Select(f => ToDto(f, label)));
+            foreach (var finding in result.Findings)
+            {
+                var file = finding.File ?? label;
+                if (!seen.Add((FileKey(file), finding.Code, finding.Line, finding.Column)))
+                    continue;
+                diagnostics.Add(ToDto(finding, label));
+            }
         }
 
         var errors = diagnostics.Count(d => d.Severity == "error");
@@ -160,6 +169,21 @@ internal sealed class LintCommandRunner
         };
     }
 
+    private static string FileKey(string file)
+    {
+        if (file.StartsWith("<", StringComparison.Ordinal))
+            return file;
+        try
+        {
+            return Path.GetFullPath(file).ToUpperInvariant();
+        }
+        catch
+        {
+            return file;
+        }
+    }
+
+    /// <summary><paramref name="file"/> is the linted source's label; a finding in an included file names that file.</summary>
     internal static CheckDiagnosticDto ToDto(LintFinding finding, string? file) => new()
     {
         Severity = finding.Severity switch
@@ -170,7 +194,7 @@ internal sealed class LintCommandRunner
         },
         Code = finding.Code,
         Message = finding.Message,
-        File = file,
+        File = finding.File != null ? DiagnosticSourceFiles.ToDisplayPath(finding.File) : file,
         Line = finding.Line,
         Column = finding.Column,
         Length = Math.Max(1, finding.Length),

@@ -204,9 +204,11 @@ public partial class MainWindow
             var activeDocument = GetActiveDocument();
             var (source, sourceKey) = GetSourceForAnalysis(activeDocument);
             _aiChatPanel.Errors = _languageService.GetDiagnostics(
-                source,
-                sourceKey,
-                strictTypesOptions: _typeAnalysisSettingsService.ToOptions());
+                    source,
+                    sourceKey,
+                    strictTypesOptions: _typeAnalysisSettingsService.ToOptions())
+                .Where(MaldaLang.IDE.DiagnosticSourceFiles.IsInDocument)
+                .ToList();
         }
     }
     

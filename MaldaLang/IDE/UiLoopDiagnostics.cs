@@ -25,7 +25,7 @@ public static class UiLoopDiagnostics
         MountOrRender
     }
 
-    private readonly record struct UiCallSite(UiCallKind Kind, int Line, int Column, int Length);
+    private readonly record struct UiCallSite(UiCallKind Kind, int Line, int Column, int Length, string? SourceFile);
 
     public static void Validate(IEnumerable<Statement> statements, List<Diagnostic> diagnostics)
     {
@@ -129,6 +129,7 @@ public static class UiLoopDiagnostics
                         "or a non-null initializer ([] / 0 / \"\"); pin process-lifetime data with ui.pinState.",
                     Line = Math.Max(0, call.Line - 1),
                     Column = Math.Max(0, call.Column - 1),
+                    SourceFile = call.SourceFile,
                     Length = Math.Max(1, displayName.Length),
                     Source = "UI1003",
                     RelatedExamplePath = "Examples/Web/ui_state_lifecycle.malda",
@@ -222,6 +223,7 @@ public static class UiLoopDiagnostics
     private static void CheckMixedSurface(IList<Statement> statements, List<Diagnostic> diagnostics)
     {
         Decorator? pageDecorator = null;
+        FunctionDeclaration? pageFunction = null;
         Expression? uiMountOrRender = null;
 
         foreach (var stmt in statements)
@@ -233,7 +235,11 @@ public static class UiLoopDiagnostics
                     if (string.Equals(d.Name, "PAGE", StringComparison.OrdinalIgnoreCase) ||
                         string.Equals(d.Name, "AIPAGE", StringComparison.OrdinalIgnoreCase))
                     {
-                        pageDecorator ??= d;
+                        if (pageDecorator == null)
+                        {
+                            pageDecorator = d;
+                            pageFunction = func;
+                        }
                     }
                 }
             }
@@ -252,6 +258,7 @@ public static class UiLoopDiagnostics
             Line = Math.Max(0, pageDecorator.Line - 1),
             Column = Math.Max(0, pageDecorator.Column - 1),
             Length = Math.Max(1, pageDecorator.Name.Length + 1),
+            SourceFile = pageFunction?.SourceFile,
             Source = "UI1002",
             RelatedDocumentationPath = "ReferenceManual/25-web-ui-hub.html",
             RelatedDocumentationTitle = "Web UI Overview",
@@ -398,6 +405,7 @@ public static class UiLoopDiagnostics
                             "Order: pullEvent → update state → rebuild → render.",
                         Line = site.Line,
                         Column = site.Column,
+                        SourceFile = site.SourceFile,
                         Length = site.Length,
                         Source = "UI1001",
                         RelatedExamplePath = "Examples/Web/ui_event_loop.malda",
@@ -503,7 +511,8 @@ public static class UiLoopDiagnostics
                     kind.Value,
                     Math.Max(0, call.Line - 1),
                     Math.Max(0, call.Column - 1),
-                    Math.Max(1, member.Length)));
+                    Math.Max(1, member.Length),
+                    call.SourceFile));
             }
         }
 

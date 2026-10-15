@@ -443,7 +443,10 @@ internal sealed class CheckDiagnosticDto
             },
             Code = diagnostic.Source ?? "",
             Message = diagnostic.Message,
-            File = fileLabel,
+            // A diagnostic from an included file names that file; Line/Column are in it.
+            File = diagnostic.SourceFile != null
+                ? DiagnosticSourceFiles.ToDisplayPath(diagnostic.SourceFile)
+                : fileLabel,
             Line = diagnostic.Line + 1,
             Column = diagnostic.Column + 1,
             Length = Math.Max(diagnostic.Length, 1),

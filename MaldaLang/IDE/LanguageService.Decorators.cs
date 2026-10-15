@@ -442,6 +442,15 @@ public partial class LanguageService
         foreach (var stmt in statements)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            var start = diagnostics.Count;
+            ValidateStatementDecorators(stmt, diagnostics);
+            DiagnosticSourceFiles.Stamp(diagnostics, start, stmt);
+        }
+    }
+
+    private static void ValidateStatementDecorators(MaldaLang.Parser.AST.Statements.Statement stmt, List<Diagnostic> diagnostics)
+    {
+        {
             if (stmt is FunctionDeclaration funcDecl && funcDecl.Decorators != null)
             {
                 foreach (var decorator in funcDecl.Decorators)

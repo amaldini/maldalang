@@ -21,7 +21,11 @@ public enum LintSeverity
 /// </summary>
 public sealed record LintRule(string Code, LintSeverity Severity, string Title, string Gotcha);
 
-/// <summary>A rule violation at a 1-based line / column.</summary>
+/// <summary>
+/// A rule violation at a 1-based line / column. <see cref="File"/> is null for the linted source and
+/// names an <c>include</c>d file (full path) when the finding is on code spliced in from it; Line and
+/// Column are then in that file.
+/// </summary>
 public sealed record LintFinding(
     string Code,
     LintSeverity Severity,
@@ -29,7 +33,8 @@ public sealed record LintFinding(
     int Line,
     int Column,
     int Length,
-    string? Hint = null);
+    string? Hint = null,
+    string? File = null);
 
 /// <summary>The catalog of <c>malda lint</c> rules. Codes are stable: never renumber or reuse one.</summary>
 public static class LintRules

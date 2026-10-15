@@ -45,7 +45,7 @@ public static class CompileStrictTypesGate
         if (!StrictTypesAnalysis.HasErrors(diagnostics))
             return false;
 
-        errorText = StrictTypesAnalysis.FormatErrorsForConsole(diagnostics);
+        errorText = StrictTypesAnalysis.FormatErrorsForConsole(diagnostics, sourceFileName);
         return true;
     }
 }

@@ -11,6 +11,12 @@ public class Diagnostic
     public int Column { get; set; }
     public int Length { get; set; }
     public string? Source { get; set; }
+    /// <summary>
+    /// File the diagnostic belongs to when it is not the analyzed document — set for parser errors
+    /// and node diagnostics that come from an <c>include</c>d file (full path; Line/Column are in
+    /// that file). Null means the document passed to <c>GetDiagnostics</c>.
+    /// </summary>
+    public string? SourceFile { get; set; }
     public AutoFixInfo? AutoFix { get; set; }
     public string LearningHint { get; set; } = string.Empty;
     public string SuggestedFix { get; set; } = string.Empty;

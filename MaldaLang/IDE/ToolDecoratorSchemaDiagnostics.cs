@@ -67,6 +67,7 @@ public static class ToolDecoratorSchemaDiagnostics
                         : $"Unknown schema '{schemaName}' on @{decorator.Name} '{func.Name}'. Use a declared schema or sum-type name, or a JSON schema object string.",
                     Line = Math.Max(0, nameLine - 1),
                     Column = Math.Max(0, nameColumn - 1),
+                    SourceFile = func.SourceFile,
                     Length = Math.Max(1, schemaName.Length),
                     Source = "malda-schema"
                 });

@@ -25,7 +25,11 @@ public static class ConstImmutabilityDiagnostics
 
         var scope = new ConstScope();
         foreach (var stmt in statements)
+        {
+            var start = diagnostics.Count;
             VisitStatement(stmt, scope, diagnostics);
+            DiagnosticSourceFiles.Stamp(diagnostics, start, stmt);
+        }
     }
 
     private sealed class ConstScope

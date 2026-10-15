@@ -117,6 +117,7 @@ public static class GotchaDiagnostics
             Message = message,
             Line = expr.Line - 1,
             Column = Math.Max(0, expr.Column - 1),
+            SourceFile = expr.SourceFile,
             SuggestedFix = didYouMean
         };
 }

@@ -250,6 +250,7 @@ public static class MatchExhaustivenessDiagnostics
             // LanguageService / LSP / Desktop IDE all use 0-based coordinates.
             Line = Math.Max(0, match.Line - 1),
             Column = Math.Max(0, match.Column - 1),
+            SourceFile = match.SourceFile,
             Length = "match".Length,
             Source = "malda-match"
         });

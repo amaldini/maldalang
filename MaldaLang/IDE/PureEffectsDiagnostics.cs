@@ -36,6 +36,7 @@ public static class PureEffectsDiagnostics
                 // LanguageService / LSP / Desktop IDE all use 0-based coordinates.
                 Line = Math.Max(0, func.Line - 1),
                 Column = Math.Max(0, func.Column - 1),
+                SourceFile = func.SourceFile,
                 Severity = DiagnosticSeverity.Error,
                 Source = "malda-pure",
                 Message = $"Function '{func.Name}' cannot declare both @pure and @effects."
@@ -57,6 +58,7 @@ public static class PureEffectsDiagnostics
             {
                 Line = Math.Max(0, line - 1),
                 Column = Math.Max(0, column - 1),
+                SourceFile = func.SourceFile,
                 Severity = DiagnosticSeverity.Error,
                 Source = "malda-pure",
                 Message = $"@pure function '{func.Name}': {message}"
@@ -81,6 +83,7 @@ public static class PureEffectsDiagnostics
             {
                 Line = Math.Max(0, line - 1),
                 Column = Math.Max(0, column - 1),
+                SourceFile = func.SourceFile,
                 Severity = DiagnosticSeverity.Error,
                 Source = "malda-effects",
                 Message = $"@effects function '{func.Name}': {message}"

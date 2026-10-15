@@ -67,12 +67,18 @@ public partial class LanguageService : ILanguageService
                     Line = error.Line - 1, // 0-based
                     Column = error.Column - 1,
                     Length = 1,
-                    Source = !string.IsNullOrEmpty(error.DiagnosticCode) ? error.DiagnosticCode : "parser"
+                    Source = !string.IsNullOrEmpty(error.DiagnosticCode) ? error.DiagnosticCode : "parser",
+                    // An error inside an included file keeps that file's line/column.
+                    SourceFile = IncludedFileOf(error, sourceFileName)
                 };
                 
-                // Try to get autofix suggestion (pass the ParseException for better detection)
-                diagnostic.AutoFix = GetAutoFix(source, diagnostic, error, cancellationToken);
-                SnapDiagnosticToSemicolonAutofix(diagnostic);
+                // Try to get autofix suggestion (pass the ParseException for better detection).
+                // Auto-fixes edit this document's text, so none for an included file's error.
+                if (diagnostic.SourceFile == null)
+                {
+                    diagnostic.AutoFix = GetAutoFix(source, diagnostic, error, cancellationToken);
+                    SnapDiagnosticToSemicolonAutofix(diagnostic);
+                }
                 ApplyLearningSupport(diagnostic);
                 
                 diagnostics.Add(diagnostic);
@@ -98,12 +104,16 @@ public partial class LanguageService : ILanguageService
                 Line = ex.Line > 0 ? ex.Line - 1 : 0, // 0-based
                 Column = ex.Column > 0 ? ex.Column - 1 : 0,
                 Length = 1,
-                Source = !string.IsNullOrEmpty(ex.DiagnosticCode) ? ex.DiagnosticCode : "parser"
+                Source = !string.IsNullOrEmpty(ex.DiagnosticCode) ? ex.DiagnosticCode : "parser",
+                SourceFile = IncludedFileOf(ex, sourceFileName)
             };
             
             // Try to get autofix suggestion (pass the ParseException for better detection)
-            diagnostic.AutoFix = GetAutoFix(source, diagnostic, ex, cancellationToken);
-            SnapDiagnosticToSemicolonAutofix(diagnostic);
+            if (diagnostic.SourceFile == null)
+            {
+                diagnostic.AutoFix = GetAutoFix(source, diagnostic, ex, cancellationToken);
+                SnapDiagnosticToSemicolonAutofix(diagnostic);
+            }
             ApplyLearningSupport(diagnostic);
             
             diagnostics.Add(diagnostic);
@@ -131,7 +141,17 @@ public partial class LanguageService : ILanguageService
             });
         }
         
+        DiagnosticSourceFiles.Normalize(diagnostics, sourceFileName);
         return diagnostics;
+    }
+
+    /// <summary>The included file a parse error comes from, or null when it is in the analyzed document.</summary>
+    private static string? IncludedFileOf(MaldaLang.Parser.ParseException error, string? sourceFileName)
+    {
+        var file = error.SourceFileName;
+        if (string.IsNullOrWhiteSpace(file) || DiagnosticSourceFiles.IsSameFile(file, sourceFileName))
+            return null;
+        return file;
     }
     
     private List<Statement> ParseStatements(

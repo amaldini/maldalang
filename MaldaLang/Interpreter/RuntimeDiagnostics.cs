@@ -167,6 +167,23 @@ public static class RuntimeDiagnostics
         return builder.ToString().TrimEnd();
     }
 
+    private static bool IsOtherFile(string? file, string? rootFile)
+    {
+        if (string.IsNullOrWhiteSpace(file) || string.IsNullOrWhiteSpace(rootFile))
+            return false;
+        if (string.Equals(file, rootFile, System.StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        try
+        {
+            return !string.Equals(Path.GetFullPath(file), Path.GetFullPath(rootFile), System.StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return true;
+        }
+    }
+
     private static string? ResolveSourceLine(int? line, string? file, Interpreter? interpreter)
     {
         if (!line.HasValue || line.Value < 1)
@@ -174,7 +191,8 @@ public static class RuntimeDiagnostics
             return null;
         }
 
-        if (interpreter != null)
+        // The interpreter holds the root program's text only: a line in an included file is read from that file.
+        if (interpreter != null && !IsOtherFile(file, interpreter.RootFile))
         {
             var fromInterpreter = interpreter.GetSourceLine(line.Value);
             if (!string.IsNullOrWhiteSpace(fromInterpreter))

@@ -101,7 +101,11 @@ public static class TypeCompatibilityDiagnostics
         MergeImportedHints(list, sourceFileName, index, functions, env.Constructors, env.VariantConstructors, env.SumTypeNamespaces);
 
         foreach (var stmt in list)
+        {
+            var start = diagnostics.Count;
             VisitStatement(stmt, functions, env, currentReturn: null, diagnostics, options);
+            DiagnosticSourceFiles.Stamp(diagnostics, start, stmt);
+        }
     }
 
     private static void MergeImportedHints(

@@ -77,6 +77,7 @@ public static class VariantConstructorClashDiagnostics
                         $"declaration; write {qualified} to choose.",
                     Line = Math.Max(0, typeDecl.Line - 1),
                     Column = Math.Max(0, typeDecl.Column - 1),
+                    SourceFile = typeDecl.SourceFile,
                     Length = Math.Max(1, typeDecl.TypeName.Length),
                     Source = "malda-types",
                     SuggestedFix = others.Count > 0

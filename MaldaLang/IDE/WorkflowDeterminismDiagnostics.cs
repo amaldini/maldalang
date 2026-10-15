@@ -47,6 +47,7 @@ public static class WorkflowDeterminismDiagnostics
                     dataConstructors,
                     importedNames,
                     diagnostics);
+                walker.CurrentFile = workflow.SourceFile;
                 walker.VisitStatement(workflow.Body, checkCalls: true, depth: 0);
             }
         }
@@ -106,7 +107,10 @@ public static class WorkflowDeterminismDiagnostics
         private readonly List<Diagnostic> _diagnostics;
         private readonly List<string> _visiting = new();
         private readonly HashSet<string> _reportedUnknown = new(StringComparer.Ordinal);
-        private readonly HashSet<(string Source, int Line, int Column)> _reportedErrors = new();
+        private readonly HashSet<(string Source, int Line, int Column, string? File)> _reportedErrors = new();
+
+        /// <summary>File of the code being walked (the workflow, then each helper it calls).</summary>
+        public string? CurrentFile { get; set; }
 
         public Walker(
             Dictionary<string, FunctionDeclaration> functions,
@@ -471,6 +475,7 @@ public static class WorkflowDeterminismDiagnostics
                 Line = line - 1,
                 Column = column - 1,
                 Length = length,
+                SourceFile = CurrentFile,
                 Source = "WF1005"
             });
         }
@@ -483,13 +488,16 @@ public static class WorkflowDeterminismDiagnostics
                 return;
 
             _visiting.Add(func.Name);
+            var previousFile = CurrentFile;
+            CurrentFile = func.SourceFile ?? previousFile;
             VisitStatement(func.Body, checkCalls: true, depth + 1);
+            CurrentFile = previousFile;
             _visiting.RemoveAt(_visiting.Count - 1);
         }
 
         private void ReportDenyList(string source, string message, int line, int column, int length)
         {
-            if (!_reportedErrors.Add((source, line, column)))
+            if (!_reportedErrors.Add((source, line, column, CurrentFile)))
                 return;
 
             _diagnostics.Add(new Diagnostic
@@ -499,6 +507,7 @@ public static class WorkflowDeterminismDiagnostics
                 Line = line - 1,
                 Column = column - 1,
                 Length = length,
+                SourceFile = CurrentFile,
                 Source = source
             });
         }

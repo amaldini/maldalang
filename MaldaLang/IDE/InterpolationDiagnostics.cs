@@ -125,6 +125,7 @@ public static class InterpolationDiagnostics
                         "Use $\"n is {n}\" or string concatenation. Prompt bodies still use {name} templates.",
                     Line = Math.Max(0, literal.Line - 1),
                     Column = Math.Max(0, literal.Column - 1),
+                    SourceFile = literal.SourceFile,
                     Length = Math.Max(1, text.Length),
                     Source = "malda-interp"
                 });

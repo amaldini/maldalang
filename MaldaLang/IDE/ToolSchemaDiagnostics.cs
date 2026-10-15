@@ -34,6 +34,7 @@ public static class ToolSchemaDiagnostics
                     Message = $"@{tool.Name} '{fn.Name}' has no schema and no typed parameters; all arguments will be strings.",
                     Line = Math.Max(0, fn.Line - 1),
                     Column = Math.Max(0, fn.Column - 1),
+                    SourceFile = fn.SourceFile,
                     SuggestedFix = "Add parameter types or a schema name as the third decorator argument."
                 });
             }

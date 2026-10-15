@@ -14,7 +14,11 @@ internal static class StdLibNamespaceDiagnostics
     public static void Validate(List<Statement> statements, List<Diagnostic> diagnostics)
     {
         foreach (var statement in statements)
+        {
+            var start = diagnostics.Count;
             VisitStatement(statement, diagnostics);
+            DiagnosticSourceFiles.Stamp(diagnostics, start, statement);
+        }
     }
 
     private static void VisitStatement(Statement statement, List<Diagnostic> diagnostics)

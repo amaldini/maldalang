@@ -37,7 +37,11 @@ public static class TypeHintDiagnostics
         }
 
         foreach (var stmt in list)
+        {
+            var start = diagnostics.Count;
             ValidateStatement(stmt, diagnostics, options, index);
+            DiagnosticSourceFiles.Stamp(diagnostics, start, stmt);
+        }
     }
 
     private static void ValidateStatement(

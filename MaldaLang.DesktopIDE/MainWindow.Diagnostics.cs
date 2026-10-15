@@ -68,11 +68,14 @@ public partial class MainWindow
         {
             (diagnostics, outlineSymbols) = await Task.Run(() =>
             {
+                // Diagnostics from an included file carry that file's lines; keep this document's only.
                 var found = _languageService.GetDiagnostics(
                     source,
                     sourceKey,
                     token,
-                    typeOptions);
+                    typeOptions)
+                    .Where(MaldaLang.IDE.DiagnosticSourceFiles.IsInDocument)
+                    .ToList();
                 if (isVirtual)
                 {
                     found = _editorDiagnosticsService.FilterForVirtualSection(
@@ -249,9 +252,11 @@ public partial class MainWindow
             var activeDocument = GetActiveDocument();
             var (source, sourceKey) = GetSourceForAnalysis(activeDocument);
             var diagnostics = _languageService.GetDiagnostics(
-                source,
-                sourceKey,
-                strictTypesOptions: _typeAnalysisSettingsService.ToOptions());
+                    source,
+                    sourceKey,
+                    strictTypesOptions: _typeAnalysisSettingsService.ToOptions())
+                .Where(MaldaLang.IDE.DiagnosticSourceFiles.IsInDocument)
+                .ToList();
             if (IsVirtualDocument(activeDocument))
             {
                 diagnostics = _editorDiagnosticsService.FilterForVirtualSection(

@@ -55,7 +55,11 @@ public static class StrictTypesAnalysis
         return false;
     }
 
-    public static string FormatErrorsForConsole(IEnumerable<Diagnostic> diagnostics)
+    /// <summary>
+    /// One line per error. A diagnostic from a file other than <paramref name="documentFile"/>
+    /// (an <c>include</c>d file) is prefixed with that file.
+    /// </summary>
+    public static string FormatErrorsForConsole(IEnumerable<Diagnostic> diagnostics, string? documentFile = null)
     {
         var lines = new List<string>();
         foreach (var diagnostic in diagnostics)
@@ -65,7 +69,10 @@ public static class StrictTypesAnalysis
 
             var source = string.IsNullOrEmpty(diagnostic.Source) ? "strict-types" : diagnostic.Source;
             // Diagnostic.Line/Column are 0-based (LanguageService / LSP); console output is 1-based.
-            lines.Add($"{source}: line {diagnostic.Line + 1}, column {diagnostic.Column + 1}: {diagnostic.Message}");
+            var file = diagnostic.SourceFile != null && !DiagnosticSourceFiles.IsSameFile(diagnostic.SourceFile, documentFile)
+                ? $"{DiagnosticSourceFiles.ToDisplayPath(diagnostic.SourceFile)}: "
+                : "";
+            lines.Add($"{file}{source}: line {diagnostic.Line + 1}, column {diagnostic.Column + 1}: {diagnostic.Message}");
         }
 
         return string.Join(Environment.NewLine, lines);
