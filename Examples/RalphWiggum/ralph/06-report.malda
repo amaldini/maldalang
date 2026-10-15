@@ -1,11 +1,11 @@
 // Ralph run report (JSON/HTML) — written at end of autonomousAgentLoop.
 
 function ralphReportMode() {
-    var raw = getEnv("MALDA_RALPH_REPORT");
+    var raw = io.getEnv("MALDA_RALPH_REPORT");
     if (raw == null || raw == "") {
         return "json";
     }
-    return lower(raw);
+    return str.lower(raw);
 }
 
 function ralphReportEnabled() {
@@ -41,7 +41,7 @@ function writeRalphRunReport(workDir, taskComplete, iteration, maxIter, ralphSta
     if (!ralphReportEnabled()) {
         return;
     }
-    var prdPath = pathJoin(workDirPath, prdRelativePath);
+    var prdPath = io.pathJoin(workDirPath, prdRelativePath);
     var memoryStats = collectRalphMemoryStats(memory);
     var report = {
         "generatedAt": now(),
@@ -57,7 +57,7 @@ function writeRalphRunReport(workDir, taskComplete, iteration, maxIter, ralphSta
     }
     var mode = ralphReportMode();
     if (mode == "json" or mode == "both") {
-        writeFile(pathJoin(workDirPath, "ralph-run-report.json"), toJSON(report));
+        io.writeFile(io.pathJoin(workDirPath, "ralph-run-report.json"), toJSON(report));
     }
     if (mode == "html" or mode == "both") {
         var html = "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Ralph run report</title>" +
@@ -72,6 +72,6 @@ function writeRalphRunReport(workDir, taskComplete, iteration, maxIter, ralphSta
             (report.summary.totalCost != null && report.summary.totalCost > 0 ?
                 "<p>OpenRouter cost: " + formatOpenRouterCost(report.summary.totalCost) + "</p>" : "") +
             "</body></html>";
-        writeFile(pathJoin(workDirPath, "ralph-run-report.html"), html);
+        io.writeFile(io.pathJoin(workDirPath, "ralph-run-report.html"), html);
     }
 }

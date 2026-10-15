@@ -7,10 +7,10 @@ import { Result, Contact } from "types_lib.malda";
 
 var r = Result.Ok(42);
 match r {
-    case Ok(v): print(v);
-    case Err(m): print(m);
+    case Ok(v): io.print(v);
+    case Err(m): io.print(m);
 }
 
 var person = dict { "name": "Ada" };
 var check = validate("Contact", person);
-print(check.ok);
+io.print(check.ok);

@@ -32,22 +32,22 @@ var question = "How does GraphMemory work?";
 var context = question |> retriever.get |> formatRetrievedDocs;
 var p = answerPrompt(question, context);
 
-print("=== Pipeline context ===");
-print(context);
-print("");
-print("=== Prompt user message ===");
-print(p.user);
+io.print("=== Pipeline context ===");
+io.print(context);
+io.print("");
+io.print("=== Prompt user message ===");
+io.print(p.user);
 
 // Typed parseJson works independently of LLM
 var mockResponse = "{\"text\":\"GraphMemory stores facts with semantic retrieval.\",\"sources\":[\"memory.md\"]}";
 var parsed = mockResponse |> parseJson("Answer");
-print("");
-print("=== Parsed mock LLM output ===");
-print(parsed.text);
-print(join(parsed.sources, ", "));
+io.print("");
+io.print("=== Parsed mock LLM output ===");
+io.print(parsed.text);
+io.print(str.join(parsed.sources, ", "));
 
-print("");
-print("To run end-to-end with an LLM, set OPENROUTER_API_KEY and use:");
-print("  await (question |> retriever.get |> formatRetrievedDocs |> (ctx) => answerPrompt(question, ctx) |> runPrompt(client) |> parseJson(\"Answer\"));");
-print("");
-print("Or use named functions — see Examples/Prompts/rag_function_pipeline.malda");
+io.print("");
+io.print("To run end-to-end with an LLM, set OPENROUTER_API_KEY and use:");
+io.print("  await (question |> retriever.get |> formatRetrievedDocs |> (ctx) => answerPrompt(question, ctx) |> runPrompt(client) |> parseJson(\"Answer\"));");
+io.print("");
+io.print("Or use named functions — see Examples/Prompts/rag_function_pipeline.malda");

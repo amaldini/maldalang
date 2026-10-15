@@ -15,8 +15,8 @@ reviewer.getConversation().addUserMessage("Review this code:
 " + code);
 var reviewResponse = reviewer.getConversation().send();
 
-print("=== Generated Code ===");
-print(code);
-print("
+io.print("=== Generated Code ===");
+io.print(code);
+io.print("
 === Review ===");
-print(reviewResponse.content);
+io.print(reviewResponse.content);

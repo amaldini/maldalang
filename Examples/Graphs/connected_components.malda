@@ -1,61 +1,61 @@
 // Connected Components Example
 // Demonstrates finding connected components in graphs
 
-print("=== Connected Components ===\n");
+io.print("=== Connected Components ===\n");
 
 // Create a graph with multiple disconnected components
 var g = graph undirected {
-  nodes: ["A", "B", "C", "D", "E", "F", "G", "H"],
-  edges: [
-    // Component 1: A-B-C
-    { from: "A", to: "B", weight: 1 },
-    { from: "B", to: "C", weight: 1 },
-    // Component 2: D-E
-    { from: "D", to: "E", weight: 1 },
-    // Component 3: F-G-H
-    { from: "F", to: "G", weight: 1 },
-    { from: "G", to: "H", weight: 1 }
-  ]
+    nodes: ["A", "B", "C", "D", "E", "F", "G", "H"],
+    edges: [
+        // Component 1: A-B-C
+        { from: "A", to: "B", weight: 1 },
+        { from: "B", to: "C", weight: 1 },
+        // Component 2: D-E
+        { from: "D", to: "E", weight: 1 },
+        // Component 3: F-G-H
+        { from: "F", to: "G", weight: 1 },
+        { from: "G", to: "H", weight: 1 }
+    ]
 };
 
-print("Graph with multiple components:");
-print("Nodes: " + g.nodes());
-print("Edges: " + g.edges());
-print("");
+io.print("Graph with multiple components:");
+io.print("Nodes: " + g.nodes());
+io.print("Edges: " + g.edges());
+io.print("");
 
 // Find connected components
 var components = g.connectedComponents();
-print("Connected components: " + components);
-print("Number of components: " + components.length);
-print("");
+io.print("Connected components: " + components);
+io.print("Number of components: " + components.length);
+io.print("");
 
 // Display each component
-print("Component details:");
+io.print("Component details:");
 var compNum = 1;
 for (var component in components) {
-  print("  Component " + compNum + ": " + component + " (" + component.length + " nodes)");
-  compNum = compNum + 1;
+    io.print("  Component " + compNum + ": " + component + " (" + component.length + " nodes)");
+    compNum = compNum + 1;
 }
-print("");
+io.print("");
 
 // Example: Social network analysis
-print("Application: Social network analysis");
-print("Each component represents a group of connected individuals.");
-print("");
+io.print("Application: Social network analysis");
+io.print("Each component represents a group of connected individuals.");
+io.print("");
 
 // Create a directed graph and check components
 var directedG = graph directed {
-  nodes: ["X", "Y", "Z", "W"],
-  edges: [
-    { from: "X", to: "Y", weight: 1 },
-    { from: "Y", to: "Z", weight: 1 },
-    // W is isolated
-  ]
+    nodes: ["X", "Y", "Z", "W"],
+    edges: [
+        { from: "X", to: "Y", weight: 1 },
+        { from: "Y", to: "Z", weight: 1 },
+        // W is isolated
+    ]
 };
 
-print("Directed graph:");
-print("Nodes: " + directedG.nodes());
-print("Edges: " + directedG.edges());
+io.print("Directed graph:");
+io.print("Nodes: " + directedG.nodes());
+io.print("Edges: " + directedG.edges());
 var dirComponents = directedG.connectedComponents();
-print("Connected components: " + dirComponents);
-print("Number of components: " + dirComponents.length);
+io.print("Connected components: " + dirComponents);
+io.print("Number of components: " + dirComponents.length);

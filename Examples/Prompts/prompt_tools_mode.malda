@@ -24,7 +24,7 @@ prompt researchWithTools(topic) -> ResearchNote {
 
 var inst = researchWithTools("how prompts bind tools");
 
-print("Mode B tools prompt (offline PromptInstance):");
-print("user=" + inst.user);
-print("tools=" + toJSON(inst.tools));
-print("hasSchemaAppendix=" + (str.indexOf(inst.system, "MALDA_OUTPUT_SCHEMA") >= 0 ? "yes" : "no"));
+io.print("Mode B tools prompt (offline PromptInstance):");
+io.print("user=" + inst.user);
+io.print("tools=" + toJSON(inst.tools));
+io.print("hasSchemaAppendix=" + (str.indexOf(inst.system, "MALDA_OUTPUT_SCHEMA") >= 0 ? "yes" : "no"));

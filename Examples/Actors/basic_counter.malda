@@ -3,22 +3,22 @@
 
 actor Counter {
     var count = 0;
-    
+
     // Message handler for incrementing
     on increment() {
         count = count + 1;
-        print($"Counter incremented to {count}");
+        io.print($"Counter incremented to {count}");
     }
-    
+
     // Message handler for getting the count
     on get() {
-        print($"Current count: {count}");
+        io.print($"Current count: {count}");
     }
-    
+
     // Message handler for resetting
     on reset() {
         count = 0;
-        print("Counter reset to 0");
+        io.print("Counter reset to 0");
     }
 }
 
@@ -29,7 +29,7 @@ var counter = spawn Counter();
 sleep(100);
 
 // Send messages to the actor
-print("Sending increment messages...");
+io.print("Sending increment messages...");
 send counter.increment();
 send counter.increment();
 send counter.increment();
@@ -41,4 +41,4 @@ send counter.get();
 // Give actor time to process messages
 sleep(500);
 
-print("Done!");
+io.print("Done!");

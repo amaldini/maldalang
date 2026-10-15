@@ -565,4 +565,3 @@ export function sbCliIsNonInteractive(cli) {
     var m = str.trim(sbCliAsText(cli.mode));
     return m == "build" or m == "update" or m == "ask" or m == "generate";
 }
-

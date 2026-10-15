@@ -28,7 +28,7 @@ prompt codeReview(code) -> Review {
 var plan = planTask("Add logging", "See docs/logging.md");
 var review = codeReview("function test() { return 42; }");
 
-print("Plan prompt:");
-print(plan.user);
-print("\nReview prompt:");
-print(review.user);
+io.print("Plan prompt:");
+io.print(plan.user);
+io.print("\nReview prompt:");
+io.print(review.user);

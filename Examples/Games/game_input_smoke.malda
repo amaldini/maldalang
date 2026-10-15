@@ -55,7 +55,7 @@ if (root == null) {
         }
 
         var touches = game.getTouches();
-        if (length(touches) > 0) {
+        if (str.length(touches) > 0) {
             x = touches[0].x;
             y = touches[0].y;
         }
@@ -75,7 +75,7 @@ if (root == null) {
 
         var touches = game.getTouches();
         var i = 0;
-        while (i < length(touches)) {
+        while (i < str.length(touches)) {
             game.fillCircle(touches[i].x, touches[i].y, 10, "#66ccff");
             i = i + 1;
         }
@@ -84,7 +84,7 @@ if (root == null) {
         if (game.isGamepadConnected(0)) {
             padText = "pad ax0=" + string(game.getGamepadAxis(0, 0, 0.2));
         }
-        game.drawText("jumps " + string(jumps) + "  touches " + string(length(touches)) + "  " + padText, 12, 24, "#ffffff", "14px monospace");
+        game.drawText("jumps " + string(jumps) + "  touches " + string(str.length(touches)) + "  " + padText, 12, 24, "#ffffff", "14px monospace");
         game.drawText("Read wasKeyPressed / wasMousePressed in update, not render.", 12, 44, "#99ddee", "12px monospace");
     }
 

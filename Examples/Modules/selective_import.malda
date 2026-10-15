@@ -4,5 +4,5 @@
 
 import { add, VERSION } from "math_utils.malda";
 
-print(add(2, 3));
-print(VERSION);
+io.print(add(2, 3));
+io.print(VERSION);

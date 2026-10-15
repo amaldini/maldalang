@@ -62,28 +62,28 @@ function deleteUser(id) {
 var server = new RestServer(8080);
 server.enableSwagger(true);  // Enable Swagger/OpenAPI documentation
 server.start();
-print("REST API running at http://localhost:8080");
+io.print("REST API running at http://localhost:8080");
 
 // Print registered routes
 var routes = server.getRoutes();
-print("Registered routes:");
+io.print("Registered routes:");
 for (var i = 0; i < routes.length; i = i + 1) {
     var route = routes[i];
-    print("  " + route.method + " " + route.path);
+    io.print("  " + route.method + " " + route.path);
 }
 
-print("");
-print("Try these endpoints:");
-print("  GET  http://localhost:8080/api/health");
-print("  GET  http://localhost:8080/api/users/123");
-print("  GET  http://localhost:8080/api/users?limit=5&offset=0");
-print("  POST http://localhost:8080/api/users (with JSON body)");
-print("");
-print("Swagger/OpenAPI documentation:");
-print("  GET  http://localhost:8080/swagger.json");
-print("  GET  http://localhost:8080/openapi.json");
-print("");
-print("Server running... Press Enter to stop");
+io.print("");
+io.print("Try these endpoints:");
+io.print("  GET  http://localhost:8080/api/health");
+io.print("  GET  http://localhost:8080/api/users/123");
+io.print("  GET  http://localhost:8080/api/users?limit=5&offset=0");
+io.print("  POST http://localhost:8080/api/users (with JSON body)");
+io.print("");
+io.print("Swagger/OpenAPI documentation:");
+io.print("  GET  http://localhost:8080/swagger.json");
+io.print("  GET  http://localhost:8080/openapi.json");
+io.print("");
+io.print("Server running... Press Enter to stop");
 
 // Keep the script alive - use sleep() to avoid CPU spinning
 // Without this loop, the script would end and the server would stop
@@ -94,4 +94,4 @@ while (server.isRunning) {
 // Alternative: Wait for user input
 // var stop = input("Press Enter to stop the server...");
 // server.stop();
-print("Server stopped");
+io.print("Server stopped");

@@ -38,12 +38,12 @@ var workingDir = resolveRalphWorkingDir();
 var ralphProjectRel = resolveRalphProjectRel();
 
 var maxIterations = envInt("MALDA_RALPH_MAX_ITER", 10);
-var prdFile = getEnv("MALDA_RALPH_PRD");
+var prdFile = io.getEnv("MALDA_RALPH_PRD");
 if (prdFile == null || prdFile == "") {
     prdFile = "PRD.md";
 }
 
-var taskOverride = getEnv("MALDA_RALPH_TASK");
+var taskOverride = io.getEnv("MALDA_RALPH_TASK");
 var task = taskOverride != null && taskOverride != "" ? taskOverride : defaultTask;
 var resetEachIteration = envBool("MALDA_RALPH_RESET_EACH", true);
 var validateEachIteration = envBool("MALDA_RALPH_VALIDATE", true);
@@ -58,48 +58,48 @@ if (validateOnly) {
     if (agentRichEnabled()) {
         ralphMarkup("[bold]Ralph[/] [dim]· validate-only[/]");
     } else {
-        print("Validate-only mode");
+        io.print("Validate-only mode");
     }
-    print("Workdir: " + workingDir);
+    io.print("Workdir: " + workingDir);
     var check = validateWorkdir(workingDir, prdFile);
     if (check.ok) {
         if (agentRichEnabled()) {
             AnsiConsole.panel("Validation OK", "Result", "heavy");
         } else {
-            print("Validation: OK");
+            io.print("Validation: OK");
         }
     } else {
         var errBody = formatValidationErrors(check.errors);
         if (agentRichEnabled()) {
             AnsiConsole.panel("Validation FAILED\n\n" + errBody, "Result", "double");
         } else {
-            print("Validation FAILED:");
-            print(errBody);
+            io.print("Validation FAILED:");
+            io.print(errBody);
         }
     }
 } else if (planOnly) {
     var planResult = runPlanOnlyMode(task, workingDir, prdFile, includeSymbols);
     if (planResult != 0) {
-        print("Plan-only mode failed.");
+        io.print("Plan-only mode failed.");
     }
 } else {
     var result = autonomousAgentLoop(task, maxIterations, workingDir, ralphProjectRel, prdFile, resetEachIteration, validateEachIteration, verboseLogging, resumeRun, autoGitCommit, includeSymbols);
 
     if (result > 0) {
         if (agentRichEnabled()) {
-            print("");
+            io.print("");
             ralphMarkup("[dim]Agent finished with " + string(result) + " iteration(s).[/]");
         } else {
-            print("");
-            print("Agent finished with " + string(result) + " iteration(s).");
+            io.print("");
+            io.print("Agent finished with " + string(result) + " iteration(s).");
         }
     } else {
         if (agentRichEnabled()) {
-            print("");
+            io.print("");
             ralphMarkup("[red]Agent execution failed.[/]");
         } else {
-            print("");
-            print("Agent execution failed.");
+            io.print("");
+            io.print("Agent execution failed.");
         }
     }
 }

@@ -10,9 +10,9 @@ schema Address {
 
 type Intent =
     Search(query: string)
-  | Buy(sku: string, qty: int)
-  | Visit(addr: Address)
-  | Help();
+    | Buy(sku: string, qty: int)
+    | Visit(addr: Address)
+    | Help();
 
 var buyOk = dict { "tag": "Buy", "sku": "SKU-9", "qty": 2 };
 var buyBad = dict { "tag": "Buy", "sku": "SKU-9", "qty": "x" };

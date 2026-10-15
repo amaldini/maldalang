@@ -830,19 +830,19 @@ function hitCar(index: int, origin: vec3, dir: vec3, tHit: out float, kind: out 
         }
         w = w + 1;
     }
-        if (inCockpit(index)) {
-            var ip: int = 20;
-            while (ip <= 32) {
-                if (ip < 21 || ip > 23) {
-                    var tIn: float = hitLocalBox(pos, angle, cockpitCenter(index, ip), cockpitHalf(ip), origin, dir);
-                    if (tIn > 0.0 && tIn < tHit) {
-                        tHit = tIn;
-                        kind = ip;
-                    }
+    if (inCockpit(index)) {
+        var ip: int = 20;
+        while (ip <= 32) {
+            if (ip < 21 || ip > 23) {
+                var tIn: float = hitLocalBox(pos, angle, cockpitCenter(index, ip), cockpitHalf(ip), origin, dir);
+                if (tIn > 0.0 && tIn < tHit) {
+                    tHit = tIn;
+                    kind = ip;
                 }
-                ip = ip + 1;
             }
+            ip = ip + 1;
         }
+    }
     return kind >= 0;
 }
 

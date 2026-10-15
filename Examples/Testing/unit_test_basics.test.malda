@@ -31,4 +31,4 @@ assert(bound(15, 0, 10) == 10, "bound should cap at hi");
 assert(bound(-3, 0, 10) == 0, "bound should floor at lo");
 assert(bound(7, 0, 10) == 7, "bound should pass through in-range values");
 
-print("unit_test_basics: all asserts passed");
+io.print("unit_test_basics: all asserts passed");

@@ -4,30 +4,30 @@
 actor ConcurrentCounter {
     var counterId;
     var value = 0;
-    
+
     function ConcurrentCounter(id) {
         counterId = id;
     }
-    
+
     on increment() {
         value = value + 1;
     }
-    
+
     on incrementBy(amount) {
         value = value + amount;
     }
-    
+
     on get() {
-        print($"Counter {counterId}: value = {value}");
+        io.print($"Counter {counterId}: value = {value}");
     }
-    
+
     on getValue() {
         return value;
     }
 }
 
 // Create multiple counters
-print("Creating concurrent counters...");
+io.print("Creating concurrent counters...");
 var counters = [];
 for (var i = 0; i < 3; i = i + 1) {
     counters.append(spawn ConcurrentCounter(i + 1));
@@ -37,7 +37,7 @@ for (var i = 0; i < 3; i = i + 1) {
 sleep(100);
 
 // Send many increment operations to each counter concurrently
-print("Sending increment operations...");
+io.print("Sending increment operations...");
 for (var i = 0; i < 10; i = i + 1) {
     // Send to all counters concurrently
     for (var j = 0; j < counters.length; j = j + 1) {
@@ -53,7 +53,7 @@ for (var i = 0; i < 5; i = i + 1) {
 }
 
 // Check final values
-print("\nFinal counter values:");
+io.print("\nFinal counter values:");
 for (var i = 0; i < counters.length; i = i + 1) {
     send counters[i].get();
 }
@@ -61,5 +61,5 @@ for (var i = 0; i < counters.length; i = i + 1) {
 // Give all actors time to process their messages
 sleep(500);
 
-print("\nConcurrent counter example complete!");
-print("Each counter processed operations independently and concurrently.");
+io.print("\nConcurrent counter example complete!");
+io.print("Each counter processed operations independently and concurrently.");

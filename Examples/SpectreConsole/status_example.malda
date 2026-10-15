@@ -3,10 +3,10 @@
 
 // Simple status spinner
 AnsiConsole.status("Processing...", () => {
-  var delay = 0;
-  while (delay < 100) {
-    delay = delay + 1;
-  }
+    var delay = 0;
+    while (delay < 100) {
+        delay = delay + 1;
+    }
 });
 
 AnsiConsole.markupLine("[green]Done![/]");
@@ -14,30 +14,30 @@ AnsiConsole.markupLine("");
 
 // Status with multiple operations
 AnsiConsole.status("Loading data...", () => {
-  var delay = 0;
-  while (delay < 50) {
-    delay = delay + 1;
-  }
+    var delay = 0;
+    while (delay < 50) {
+        delay = delay + 1;
+    }
 });
 
 AnsiConsole.markupLine("[blue]Data loaded[/]");
 AnsiConsole.markupLine("");
 
 AnsiConsole.status("Processing files...", () => {
-  var delay = 0;
-  while (delay < 50) {
-    delay = delay + 1;
-  }
+    var delay = 0;
+    while (delay < 50) {
+        delay = delay + 1;
+    }
 });
 
 AnsiConsole.markupLine("[blue]Files processed[/]");
 AnsiConsole.markupLine("");
 
 AnsiConsole.status("Finalizing...", () => {
-  var delay = 0;
-  while (delay < 50) {
-    delay = delay + 1;
-  }
+    var delay = 0;
+    while (delay < 50) {
+        delay = delay + 1;
+    }
 });
 
 AnsiConsole.markupLine("[green]All operations completed![/]");

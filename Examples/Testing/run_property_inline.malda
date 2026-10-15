@@ -4,12 +4,12 @@ property stableIdentity(x) {
 
 var result = runProperty("stableIdentity", 40, 1337);
 
-print("Property: " + string(result.propertyName));
-print("Passed: " + string(result.passed));
-print("Seed: " + string(result.seed));
-print("Iterations: " + string(result.iterations));
+io.print("Property: " + string(result.propertyName));
+io.print("Passed: " + string(result.passed));
+io.print("Seed: " + string(result.seed));
+io.print("Iterations: " + string(result.iterations));
 
 if (!result.passed) {
-    print("Failed trial: " + string(result.failedTrial));
-    print("Counterexample: " + string(result.counterexample));
+    io.print("Failed trial: " + string(result.failedTrial));
+    io.print("Counterexample: " + string(result.counterexample));
 }

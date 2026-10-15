@@ -3,11 +3,11 @@ include "data/local_first.malda";
 {{/LOCAL_FIRST}}
 
 var server = new RestServer(8080);
-var jwtSecret = getEnv("MALDA_JWT_SECRET");
+var jwtSecret = io.getEnv("MALDA_JWT_SECRET");
 if (jwtSecret == null or jwtSecret == "") {
     jwtSecret = "change-me-jwt-secret";
 }
-var csrfSecret = getEnv("MALDA_CSRF_SECRET");
+var csrfSecret = io.getEnv("MALDA_CSRF_SECRET");
 if (csrfSecret == null or csrfSecret == "") {
     csrfSecret = "change-me-csrf-secret";
 }

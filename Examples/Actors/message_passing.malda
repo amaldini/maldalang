@@ -3,7 +3,7 @@
 
 actor Sender {
     on start(receiver) {
-        print("Sender: Starting to send messages...");
+        io.print("Sender: Starting to send messages...");
         send receiver.hello();
         send receiver.world();
         send receiver.handle("from sender");
@@ -12,20 +12,20 @@ actor Sender {
 
 actor Receiver {
     var messageCount = 0;
-    
+
     on hello() {
         messageCount = messageCount + 1;
-        print($"Receiver: Received 'hello' message (total: {messageCount})");
+        io.print($"Receiver: Received 'hello' message (total: {messageCount})");
     }
-    
+
     on world() {
         messageCount = messageCount + 1;
-        print($"Receiver: Received 'world' message (total: {messageCount})");
+        io.print($"Receiver: Received 'world' message (total: {messageCount})");
     }
-    
+
     on handle(msg) {
         messageCount = messageCount + 1;
-        print($"Receiver: Received message '{msg}' (total: {messageCount})");
+        io.print($"Receiver: Received message '{msg}' (total: {messageCount})");
     }
 }
 
@@ -42,4 +42,4 @@ send sender.start(receiver);
 // Give actors time to process messages
 sleep(500);
 
-print("Message passing complete!");
+io.print("Message passing complete!");

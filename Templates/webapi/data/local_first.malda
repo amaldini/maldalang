@@ -1,5 +1,5 @@
 var localDataDir = "data";
-var localDatabaseFile = pathJoin(localDataDir, "__PROJECT_SLUG__.db");
+var localDatabaseFile = io.pathJoin(localDataDir, "__PROJECT_SLUG__.db");
 var localDb = new SqliteClient();
 var localMigrationRegistry = [
     {"id": "001_baseline", "description": "Create migration registry and starter app settings tables"}
@@ -11,7 +11,7 @@ function initLocalDataPlatform() {
 }
 
 function openLocalDataPlatform() {
-    ensureDir(localDataDir);
+    io.ensureDir(localDataDir);
     localDb.connect("Data Source=" + localDatabaseFile + ";");
     localDb.execute("PRAGMA journal_mode = WAL");
     localDb.execute("PRAGMA foreign_keys = ON");
@@ -46,11 +46,11 @@ function forgetLocalMigrationApplied(migrationId) {
 }
 
 function quoteSqlName(name) {
-    return "\"" + replace(string(name), "\"", "\"\"") + "\"";
+    return "\"" + str.replace(string(name), "\"", "\"\"") + "\"";
 }
 
 function quoteSqlLiteral(value) {
-    return "'" + replace(string(value), "'", "''") + "'";
+    return "'" + str.replace(string(value), "'", "''") + "'";
 }
 
 function tableExists(name) {
@@ -123,7 +123,7 @@ function runLocalMigrations() {
                 runLocalMigration001Baseline();
             }
             recordLocalMigrationApplied(migration.id, migration.description);
-            print("Applied local migration: " + migration.id + " - " + migration.description);
+            io.print("Applied local migration: " + migration.id + " - " + migration.description);
         }
         i = i + 1;
     }

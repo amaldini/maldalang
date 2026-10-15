@@ -1,7 +1,7 @@
 // VectorDB Basic Operations Example
 // Demonstrates creating a VectorDB, adding vectors, and similarity search
 
-print("=== VectorDB Basic Operations ===\n");
+io.print("=== VectorDB Basic Operations ===\n");
 
 // Define a bag-of-letters vector calculator function
 // Counts the frequency of each letter (a-z) in the text
@@ -10,27 +10,27 @@ function calculateVector(text) {
     // Create a 26-dimensional vector (one for each letter a-z)
     var vec = [];
     var alphabet = "abcdefghijklmnopqrstuvwxyz";
-    var textLower = lower(text);
-    var textLen = length(textLower);
-    
+    var textLower = str.lower(text);
+    var textLen = str.length(textLower);
+
     // Count each letter in the text
     for (var i = 0; i < 26; i = i + 1) {
-        var letter = substring(alphabet, i, 1);
+        var letter = str.substring(alphabet, i, 1);
         var count = 0;
-        
+
         // Count occurrences of this letter
         for (var j = 0; j < textLen; j = j + 1) {
-            var char = substring(textLower, j, 1);
+            var char = str.substring(textLower, j, 1);
             if (char == letter) {
                 count = count + 1;
             }
         }
-        
+
         // Normalize by text length to get frequency (0.0 to 1.0)
         var frequency = textLen > 0 ? count / textLen : 0.0;
         vec.append(frequency);
     }
-    
+
     return vec;
 }
 
@@ -40,37 +40,37 @@ var db = new VectorDB(26, "double");
 // Initialize with the calculator function
 db.init(calculateVector);
 
-print("Created VectorDB with dimension 26 (bag of letters)\n");
+io.print("Created VectorDB with dimension 26 (bag of letters)\n");
 
 // Add some documents - vectors are calculated automatically using the calculator function
-print("Adding documents...");
+io.print("Adding documents...");
 db.add("Hello");
 db.add("World");
 db.add("Hello there");
 db.add("Goodbye");
 db.add("Hello world");
 
-print("Added 5 documents\n");
+io.print("Added 5 documents\n");
 
 // Search for similar documents
-print("=== Similarity Search ===");
+io.print("=== Similarity Search ===");
 var query = "Hello";
-print("Query: \"" + query + "\"\n");
+io.print("Query: \"" + query + "\"\n");
 
 var results = db.searchSimilar(query, 3);
 
-print("Top 3 similar documents:");
+io.print("Top 3 similar documents:");
 for (var i = 0; i < results.length; i = i + 1) {
     var result = results[i];
-    print((i + 1) + ". \"" + result.data + "\" (similarity: " + formatNumber(result.similarity, 4) + ")");
+    io.print((i + 1) + ". \"" + result.data + "\" (similarity: " + formatNumber(result.similarity, 4) + ")");
 }
-print("");
+io.print("");
 
 // Demonstrate with different query
-print("Query: \"World\"\n");
+io.print("Query: \"World\"\n");
 var results2 = db.searchSimilar("World", 2);
-print("Top 2 similar documents:");
+io.print("Top 2 similar documents:");
 for (var i = 0; i < results2.length; i = i + 1) {
     var result = results2[i];
-    print((i + 1) + ". \"" + result.data + "\" (similarity: " + formatNumber(result.similarity, 4) + ")");
+    io.print((i + 1) + ". \"" + result.data + "\" (similarity: " + formatNumber(result.similarity, 4) + ")");
 }

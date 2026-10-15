@@ -518,9 +518,9 @@ function indexBrainMemoryFull(brainDir, notes) {
     }
     AnsiConsole.markupLine(t(
         "Indexing notes into GraphMemory (embed=" + embedLabel() + ", " +
-            string(total) + " notes)...",
+        string(total) + " notes)...",
         "Indicizzazione note in GraphMemory (embed=" + embedLabel() + ", " +
-            string(total) + " note)..."));
+        string(total) + " note)..."));
     var indexed = 0;
     var startedAt = now();
     var lastProgressAt = 0;
@@ -563,11 +563,11 @@ function indexBrainMemoryIncremental(brainDir, notes, ctx) {
     var total = toUpsert.length;
     AnsiConsole.markupLine(t(
         "Incremental GraphMemory (embed=" + embedLabel() + "): forget " +
-            string(forgotten) + ", skip " + string(skipped) + ", upsert " +
-            string(total) + ".",
+        string(forgotten) + ", skip " + string(skipped) + ", upsert " +
+        string(total) + ".",
         "GraphMemory incrementale (embed=" + embedLabel() + "): forget " +
-            string(forgotten) + ", skip " + string(skipped) + ", upsert " +
-            string(total) + "."));
+        string(forgotten) + ", skip " + string(skipped) + ", upsert " +
+        string(total) + "."));
     var indexed = 0;
     var startedAt = now();
     var lastProgressAt = 0;
@@ -943,8 +943,8 @@ function showRetrievalHint(selection) {
             "GraphMemory helped:",
             "GraphMemory ha aiutato:") + "[/] " +
             string(cmp.semanticOnly.length) + t(
-            " note(s) outside lexical top-" + string(TOP_K) + ": ",
-            " nota/e fuori dal top-" + string(TOP_K) + " lessicale: ") +
+                " note(s) outside lexical top-" + string(TOP_K) + ": ",
+                " nota/e fuori dal top-" + string(TOP_K) + " lessicale: ") +
             str.join(cmp.semanticOnly, ", ") +
             "[dim]" + rerankHint + "[/]");
     } else {

@@ -1,10 +1,10 @@
 function interviewLocaleIsItalian() {
-    var raw = getEnv("MALDA_RALPH_LOCALE");
+    var raw = io.getEnv("MALDA_RALPH_LOCALE");
     if (raw == null || raw == "") {
         return false;
     }
-    var lower = lower(raw);
-    return lower == "it" or indexOf(lower, "it-") == 0 or lower == "italian";
+    var lowered = str.lower(raw);
+    return lowered == "it" or str.indexOf(lowered, "it-") == 0 or lowered == "italian";
 }
 
 function interviewText(enText, itText) {
@@ -15,7 +15,7 @@ function interviewText(enText, itText) {
 }
 
 function interviewBriefDraftPath(workDir) {
-    return pathJoin(workDir, ".ralph-interview-brief.json");
+    return io.pathJoin(workDir, ".ralph-interview-brief.json");
 }
 
 function saveInterviewBriefDraft(workDir, brief, profile, mode) {
@@ -29,7 +29,7 @@ function saveInterviewBriefDraft(workDir, brief, profile, mode) {
         "savedAt": string(now())
     };
     try {
-        writeFile(interviewBriefDraftPath(workDir), toJSON(payload));
+        io.writeFile(interviewBriefDraftPath(workDir), toJSON(payload));
     } catch (error) {
         ralphLog("interview", "Could not save interview draft: " + string(error));
     }
@@ -37,11 +37,11 @@ function saveInterviewBriefDraft(workDir, brief, profile, mode) {
 
 function loadInterviewBriefDraft(workDir) {
     var draftPath = interviewBriefDraftPath(workDir);
-    if (!hasFile(draftPath)) {
+    if (!io.hasFile(draftPath)) {
         return null;
     }
     try {
-        return parseJSON(readFile(draftPath));
+        return parseJSON(io.readFile(draftPath));
     } catch (error) {
         return null;
     }
@@ -62,15 +62,15 @@ function printInterviewBanner(workDir, prdRelativePath, modelLabel, profile, mod
     if (agentRichEnabled()) {
         ralphMarkup("[bold]Ralph Interview[/] [dim]· guided PRD authoring[/]");
         AnsiConsole.table(rows, null, ["Setting", "Value"]);
-        print("");
+        io.print("");
     } else {
-        print("Ralph Interview — guided PRD authoring");
-        print("Profile: " + profile);
-        print("PRD mode: " + mode);
-        print("Workdir: " + workDir);
-        print("Output PRD: " + prdRelativePath);
-        print("Model: " + modelLabel);
-        print("");
+        io.print("Ralph Interview — guided PRD authoring");
+        io.print("Profile: " + profile);
+        io.print("PRD mode: " + mode);
+        io.print("Workdir: " + workDir);
+        io.print("Output PRD: " + prdRelativePath);
+        io.print("Model: " + modelLabel);
+        io.print("");
     }
 }
 
@@ -80,11 +80,11 @@ function readInterviewLine(prompt, defaultValue) {
         hint = hint + " [" + defaultValue + "]";
     }
     hint = hint + ": ";
-    var line = input(hint);
+    var line = io.input(hint);
     if (line == null) {
         line = "";
     }
-    line = trim(string(line));
+    line = str.trim(string(line));
     if (line == "" && defaultValue != null && defaultValue != "") {
         return defaultValue;
     }
@@ -92,33 +92,33 @@ function readInterviewLine(prompt, defaultValue) {
 }
 
 function readInterviewMultiline(prompt) {
-    print("");
-    print(prompt);
-    print(interviewText("(Press Enter on an empty line when done)", "(Invio su riga vuota per terminare)"));
+    io.print("");
+    io.print(prompt);
+    io.print(interviewText("(Press Enter on an empty line when done)", "(Invio su riga vuota per terminare)"));
     var lines = [];
     while (true) {
-        var line = input("> ");
+        var line = io.input("> ");
         if (line == null) {
             break;
         }
         line = string(line);
-        if (trim(line) == "") {
+        if (str.trim(line) == "") {
             break;
         }
         lines.append(line);
     }
-    if (length(lines) == 0) {
+    if (str.length(lines) == 0) {
         return "";
     }
-    return join(lines, "\n");
+    return str.join(lines, "\n");
 }
 
 function resolveInterviewProfileFromEnv() {
-    var raw = getEnv("MALDA_RALPH_INTERVIEW_PROFILE");
+    var raw = io.getEnv("MALDA_RALPH_INTERVIEW_PROFILE");
     if (raw == null || raw == "") {
         return "";
     }
-    return lower(trim(raw));
+    return str.lower(str.trim(raw));
 }
 
 function collectInterviewProfileChoice() {
@@ -129,14 +129,14 @@ function collectInterviewProfileChoice() {
     if (ralphQuietEnabled()) {
         return "new";
     }
-    print("");
-    print(interviewText("Interview profile:", "Profilo interview:"));
-    print(interviewText("  1) new — full greenfield PRD (default)", "  1) new — PRD completo greenfield (default)"));
-    print(interviewText("  2) append — add checklist items to existing PRD", "  2) append — aggiungi feature al PRD esistente"));
-    print(interviewText("  3) features — only collect features (minimal questions)", "  3) features — solo raccolta feature"));
-    print(interviewText("  4) brief — reuse saved .ralph-interview-brief.json", "  4) brief — riusa .ralph-interview-brief.json salvato"));
+    io.print("");
+    io.print(interviewText("Interview profile:", "Profilo interview:"));
+    io.print(interviewText("  1) new — full greenfield PRD (default)", "  1) new — PRD completo greenfield (default)"));
+    io.print(interviewText("  2) append — add checklist items to existing PRD", "  2) append — aggiungi feature al PRD esistente"));
+    io.print(interviewText("  3) features — only collect features (minimal questions)", "  3) features — solo raccolta feature"));
+    io.print(interviewText("  4) brief — reuse saved .ralph-interview-brief.json", "  4) brief — riusa .ralph-interview-brief.json salvato"));
     var choice = readInterviewLine(interviewText("Profile", "Profilo"), "1");
-    var lowerChoice = lower(choice);
+    var lowerChoice = str.lower(choice);
     if (lowerChoice == "2" or lowerChoice == "append") {
         return "append";
     }
@@ -153,15 +153,15 @@ function resolveInterviewPrdMode(prdPath, profile) {
     if (profile == "append") {
         return "append";
     }
-    if (!hasFile(prdPath)) {
+    if (!io.hasFile(prdPath)) {
         return "new";
     }
     if (envBool("MALDA_RALPH_INTERVIEW_OVERWRITE", false)) {
         return "new";
     }
-    var modeEnv = getEnv("MALDA_RALPH_INTERVIEW_MODE");
+    var modeEnv = io.getEnv("MALDA_RALPH_INTERVIEW_MODE");
     if (modeEnv != null && modeEnv != "") {
-        var lowerMode = lower(trim(modeEnv));
+        var lowerMode = str.lower(str.trim(modeEnv));
         if (lowerMode == "append" or lowerMode == "new") {
             return lowerMode;
         }
@@ -169,35 +169,35 @@ function resolveInterviewPrdMode(prdPath, profile) {
     if (ralphQuietEnabled()) {
         return "new";
     }
-    print("");
-    print(interviewText("PRD already exists:", "PRD già presente:") + " " + prdPath);
-    print(interviewText("  o) overwrite  a) append features  c) cancel", "  o) sovrascrivi  a) aggiungi feature  c) annulla"));
+    io.print("");
+    io.print(interviewText("PRD already exists:", "PRD già presente:") + " " + prdPath);
+    io.print(interviewText("  o) overwrite  a) append features  c) cancel", "  o) sovrascrivi  a) aggiungi feature  c) annulla"));
     var answer = readInterviewLine(interviewText("Choice", "Scelta"), "c");
-    var lower = lower(answer);
-    if (lower == "a" or lower == "append") {
+    var lowered = str.lower(answer);
+    if (lowered == "a" or lowered == "append") {
         return "append";
     }
-    if (lower == "o" or lower == "y" or lower == "yes" or lower == "overwrite") {
+    if (lowered == "o" or lowered == "y" or lowered == "yes" or lowered == "overwrite") {
         return "new";
     }
     return "cancel";
 }
 
 function loadInterviewBriefFile() {
-    var briefPath = getEnv("MALDA_RALPH_BRIEF");
+    var briefPath = io.getEnv("MALDA_RALPH_BRIEF");
     if (briefPath == null || briefPath == "") {
         return "";
     }
-    if (!hasFile(briefPath)) {
-        print(interviewText("Brief file not found (MALDA_RALPH_BRIEF): ", "File brief non trovato (MALDA_RALPH_BRIEF): ") + briefPath);
+    if (!io.hasFile(briefPath)) {
+        io.print(interviewText("Brief file not found (MALDA_RALPH_BRIEF): ", "File brief non trovato (MALDA_RALPH_BRIEF): ") + briefPath);
         return "";
     }
-    return readFile(briefPath);
+    return io.readFile(briefPath);
 }
 
 function collectStructuredFeaturesList() {
-    print("");
-    print(interviewText("Structured features (one at a time). Empty title to finish.", "Feature strutturate (una alla volta). Titolo vuoto per finire."));
+    io.print("");
+    io.print(interviewText("Structured features (one at a time). Empty title to finish.", "Feature strutturate (una alla volta). Titolo vuoto per finire."));
     var items = [];
     var index = 1;
     while (true) {
@@ -222,12 +222,12 @@ function collectStructuredFeaturesList() {
 }
 
 function formatStructuredFeaturesText(items) {
-    if (items == null || length(items) == 0) {
+    if (items == null || str.length(items) == 0) {
         return "";
     }
     var text = "";
     var i = 0;
-    while (i < length(items)) {
+    while (i < str.length(items)) {
         var item = items[i];
         text = text + item.id + " [" + item.priority + "] " + item.title + " (depends: " + item.depends + ")\n";
         i = i + 1;
@@ -239,17 +239,17 @@ function collectStructuredInterviewBrief(profile, workDir) {
     if (profile == "brief") {
         var draft = loadInterviewBriefDraft(workDir);
         if (draft != null && draft.brief != null) {
-            print(interviewText("Loaded saved brief draft.", "Caricata bozza salvata."));
+            io.print(interviewText("Loaded saved brief draft.", "Caricata bozza salvata."));
             return draft.brief;
         }
-        print(interviewText("No saved brief found — falling back to full interview.", "Nessuna bozza — interview completa."));
+        io.print(interviewText("No saved brief found — falling back to full interview.", "Nessuna bozza — interview completa."));
         profile = "new";
     }
 
-    print("");
-    print("=== Step 1 — " + interviewText("Your answers (terminal)", "Le tue risposte (terminale)") + " ===");
-    print(interviewText("Answer in plain language. The assistant will turn this into a Ralph PRD.", "Rispondi in linguaggio naturale. L'assistente creerà un PRD Ralph."));
-    print("");
+    io.print("");
+    io.print("=== Step 1 — " + interviewText("Your answers (terminal)", "Le tue risposte (terminale)") + " ===");
+    io.print(interviewText("Answer in plain language. The assistant will turn this into a Ralph PRD.", "Rispondi in linguaggio naturale. L'assistente creerà un PRD Ralph."));
+    io.print("");
 
     var title = "";
     var vision = "";
@@ -267,7 +267,7 @@ function collectStructuredInterviewBrief(profile, workDir) {
     if (profile == "features") {
         title = readInterviewLine(interviewText("Project title", "Titolo progetto"), "Feature update");
         structuredFeatures = collectStructuredFeaturesList();
-        while (length(structuredFeatures) == 0) {
+        while (str.length(structuredFeatures) == 0) {
             structuredFeatures = collectStructuredFeaturesList();
         }
         features = formatStructuredFeaturesText(structuredFeatures);
@@ -295,7 +295,7 @@ function collectStructuredInterviewBrief(profile, workDir) {
     }
 
     var projectKind = readInterviewLine(interviewText("Greenfield or existing repo? (greenfield/existing)", "Greenfield o repo esistente? (greenfield/existing)"), "greenfield");
-    brownfield = lower(projectKind) == "existing" or lower(projectKind) == "brownfield" or lower(projectKind) == "e";
+    brownfield = str.lower(projectKind) == "existing" or str.lower(projectKind) == "brownfield" or str.lower(projectKind) == "e";
 
     vision = readInterviewMultiline(interviewText("Product vision — what are you building and for whom?", "Visione prodotto — cosa stai costruendo e per chi?"));
     while (vision == "") {
@@ -311,7 +311,7 @@ function collectStructuredInterviewBrief(profile, workDir) {
     metrics = readInterviewMultiline(interviewText("Success metrics — how will you know it is done?", "Metriche di successo — come capisci che è finito?"));
 
     var useStructured = readInterviewLine(interviewText("Structured feature entry? (y/n)", "Inserimento feature strutturato? (s/n)"), "y");
-    if (lower(useStructured) == "y" or lower(useStructured) == "yes" or lower(useStructured) == "s" or lower(useStructured) == "si") {
+    if (str.lower(useStructured) == "y" or str.lower(useStructured) == "yes" or str.lower(useStructured) == "s" or str.lower(useStructured) == "si") {
         structuredFeatures = collectStructuredFeaturesList();
         features = formatStructuredFeaturesText(structuredFeatures);
     }
@@ -377,17 +377,17 @@ function previewAndConfirmBrief(brief) {
     if (ralphQuietEnabled() or envBool("MALDA_RALPH_INTERVIEW_SKIP_PREVIEW", false)) {
         return brief;
     }
-    print("");
-    print("=== " + interviewText("Brief preview", "Anteprima brief") + " ===");
-    print(buildInterviewBriefText(brief));
-    print("=== " + interviewText("End preview", "Fine anteprima") + " ===");
+    io.print("");
+    io.print("=== " + interviewText("Brief preview", "Anteprima brief") + " ===");
+    io.print(buildInterviewBriefText(brief));
+    io.print("=== " + interviewText("End preview", "Fine anteprima") + " ===");
     var answer = readInterviewLine(interviewText("Continue to LLM step? (Y/edit/cancel)", "Continuare allo step LLM? (S/modifica/annulla)"), "y");
-    var lower = lower(answer);
-    if (lower == "c" or lower == "cancel" or lower == "n" or lower == "no") {
+    var lowered = str.lower(answer);
+    if (lowered == "c" or lowered == "cancel" or lowered == "n" or lowered == "no") {
         return null;
     }
-    if (lower == "edit" or lower == "modifica" or lower == "e") {
-        print(interviewText("Re-enter project title (leave empty to keep):", "Reinserisci titolo (vuoto = mantieni):"));
+    if (lowered == "edit" or lowered == "modifica" or lowered == "e") {
+        io.print(interviewText("Re-enter project title (leave empty to keep):", "Reinserisci titolo (vuoto = mantieni):"));
         var newTitle = readInterviewLine("", brief.title);
         if (newTitle != "") {
             brief.title = newTitle;
@@ -401,17 +401,17 @@ function previewAndConfirmBrief(brief) {
 }
 
 function loadInterviewTemplateContent() {
-    var templatePath = getEnv("MALDA_RALPH_INTERVIEW_TEMPLATE");
-    if (templatePath != null && templatePath != "" && hasFile(templatePath)) {
-        return readFile(templatePath);
+    var templatePath = io.getEnv("MALDA_RALPH_INTERVIEW_TEMPLATE");
+    if (templatePath != null && templatePath != "" && io.hasFile(templatePath)) {
+        return io.readFile(templatePath);
     }
     return "";
 }
 
 function loadInterviewFewShotExcerpt() {
-    var customPath = getEnv("MALDA_RALPH_INTERVIEW_FEWSHOT");
-    if (customPath != null && customPath != "" && hasFile(customPath)) {
-        return readFile(customPath);
+    var customPath = io.getEnv("MALDA_RALPH_INTERVIEW_FEWSHOT");
+    if (customPath != null && customPath != "" && io.hasFile(customPath)) {
+        return io.readFile(customPath);
     }
     return "- [TODO] [P0] **F1 — Scaffold** (depends: none)\n" +
         "  - Files: main.html\n" +
@@ -428,9 +428,9 @@ function buildBrownfieldContext(workDir, brief) {
         }
     }
     var lines = [];
-    var entries = listDirectory(workDir);
+    var entries = io.listDirectory(workDir);
     var i = 0;
-    while (i < length(entries) && length(lines) < 40) {
+    while (i < str.length(entries) && str.length(lines) < 40) {
         var entry = entries[i];
         if (entry.name != null && entry.name != "." && entry.name != "..") {
             if (entry.type == "directory") {
@@ -441,9 +441,9 @@ function buildBrownfieldContext(workDir, brief) {
         }
         i = i + 1;
     }
-    var fileSummary = join(lines, "\n");
+    var fileSummary = str.join(lines, "\n");
     var samplePaths = ralphGlobPaths(workDir, "**/*", 30);
-    var globSummary = join(samplePaths, "\n");
+    var globSummary = str.join(samplePaths, "\n");
     return "BROWNFIELD WORKDIR SNAPSHOT:\nTop-level entries:\n" + fileSummary + "\n\nSample paths (glob **/*):\n" + globSummary;
 }
 
@@ -515,16 +515,16 @@ function extractPrdFeatureIdFromLine(line) {
     if (line == null || line == "") {
         return "";
     }
-    var upperLine = upper(line);
-    var idx = indexOf(upperLine, "**F");
+    var upperLine = str.upper(line);
+    var idx = str.indexOf(upperLine, "**F");
     if (idx < 0) {
         return "";
     }
-    var rest = substring(line, idx + 3, length(line) - idx - 3);
+    var rest = str.substring(line, idx + 3, str.length(line) - idx - 3);
     var id = "F";
     var j = 0;
-    while (j < length(rest)) {
-        var ch = substring(rest, j, 1);
+    while (j < str.length(rest)) {
+        var ch = str.substring(rest, j, 1);
         if (ch >= "0" && ch <= "9") {
             id = id + ch;
             j = j + 1;
@@ -535,13 +535,13 @@ function extractPrdFeatureIdFromLine(line) {
     if (id == "F") {
         return "";
     }
-    return upper(id);
+    return str.upper(id);
 }
 
 function validateInterviewPrdStrict(prdPath) {
     var errors = [];
     var warnings = [];
-    if (!hasFile(prdPath)) {
+    if (!io.hasFile(prdPath)) {
         return {"ok": false, "reason": "PRD file was not created", "errors": errors, "warnings": warnings, "progress": {"done": 0, "open": 0, "total": 0, "percent": 0}};
     }
     var progress = countPrdChecklistProgress(prdPath);
@@ -551,12 +551,12 @@ function validateInterviewPrdStrict(prdPath) {
     if (progress.open == 0) {
         errors.append("No open [TODO] items — Ralph needs at least one open checklist item");
     }
-    var lines = split(readFile(prdPath), "\n");
+    var lines = str.split(io.readFile(prdPath), "\n");
     var allIds = [];
     var i = 0;
-    while (i < length(lines)) {
+    while (i < str.length(lines)) {
         var scanLine = lines[i];
-        var scanLower = lower(scanLine);
+        var scanLower = str.lower(scanLine);
         if (!isPrdSkippedStatus(scanLower)) {
             var scanId = extractPrdFeatureIdFromLine(scanLine);
             if (scanId != "") {
@@ -567,21 +567,21 @@ function validateInterviewPrdStrict(prdPath) {
     }
     var hasOpenP0 = false;
     i = 0;
-    while (i < length(lines)) {
+    while (i < str.length(lines)) {
         var line = lines[i];
-        var lineLower = lower(line);
+        var lineLower = str.lower(line);
         if (isPrdSkippedStatus(lineLower)) {
             i = i + 1;
             continue;
         }
-        var isOpen = indexOf(lineLower, "- [todo]") >= 0 or indexOf(lineLower, "- [ ]") >= 0;
-        var isDone = indexOf(lineLower, "- [done]") >= 0;
+        var isOpen = str.indexOf(lineLower, "- [todo]") >= 0 or str.indexOf(lineLower, "- [ ]") >= 0;
+        var isDone = str.indexOf(lineLower, "- [done]") >= 0;
         if (isOpen or isDone) {
             var fid = extractPrdFeatureIdFromLine(line);
             if (fid == "") {
-                errors.append("Checklist line missing feature id (**F1 — title**): " + trim(line));
+                errors.append("Checklist line missing feature id (**F1 — title**): " + str.trim(line));
             }
-            if (isOpen && indexOf(lineLower, "[p0]") >= 0) {
+            if (isOpen && str.indexOf(lineLower, "[p0]") >= 0) {
                 hasOpenP0 = true;
             }
             if (isOpen) {
@@ -592,18 +592,18 @@ function validateInterviewPrdStrict(prdPath) {
             }
             var deps = parsePrdDepends(line);
             var d = 0;
-            while (d < length(deps)) {
+            while (d < str.length(deps)) {
                 var depId = deps[d];
                 var found = false;
                 var k = 0;
-                while (k < length(allIds)) {
+                while (k < str.length(allIds)) {
                     if (allIds[k] == depId) {
                         found = true;
                     }
                     k = k + 1;
                 }
                 if (!found && depId != "NONE") {
-                    errors.append("Unknown dependency " + depId + " on line: " + trim(line));
+                    errors.append("Unknown dependency " + depId + " on line: " + str.trim(line));
                 }
                 d = d + 1;
             }
@@ -613,9 +613,9 @@ function validateInterviewPrdStrict(prdPath) {
     if (progress.open > 0 && !hasOpenP0) {
         warnings.append("No open [P0] item — consider marking at least one critical-path feature as P0");
     }
-    var ok = length(errors) == 0;
+    var ok = str.length(errors) == 0;
     var reason = "";
-    if (!ok && length(errors) > 0) {
+    if (!ok && str.length(errors) > 0) {
         reason = errors[0];
     }
     return {"ok": ok, "reason": reason, "errors": errors, "warnings": warnings, "progress": progress};
@@ -629,8 +629,8 @@ function responseHasPrdReady(text) {
     if (text == null || text == "") {
         return false;
     }
-    var upperText = upper(text);
-    return indexOf(upperText, "PRD_READY") >= 0;
+    var upperText = str.upper(text);
+    return str.indexOf(upperText, "PRD_READY") >= 0;
 }
 
 function createPrdInterviewAgent(client, workDir, includeSymbols) {
@@ -651,10 +651,10 @@ function createPrdInterviewAgent(client, workDir, includeSymbols) {
 
 function runInterviewPrdRepair(agent, prdRelativePath, validationResult) {
     var errors = validationResult.errors;
-    if (errors == null || length(errors) == 0) {
+    if (errors == null || str.length(errors) == 0) {
         return null;
     }
-    var errorText = join(errors, "\n- ");
+    var errorText = str.join(errors, "\n- ");
     var repairPrompt = "The PRD at " + prdRelativePath + " failed Ralph interview validation:\n- " + errorText +
         "\n\nFix ONLY " + prdRelativePath + " using read_file and write_file. Keep valid existing content. Reply PRD_READY when fixed.";
     ralphLog("interview", "Attempting automatic PRD repair...");
@@ -665,33 +665,33 @@ function printInterviewPrdPreview(prdPath, maxLines) {
     if (ralphQuietEnabled()) {
         return;
     }
-    if (!hasFile(prdPath)) {
+    if (!io.hasFile(prdPath)) {
         return;
     }
-    var lines = split(readFile(prdPath), "\n");
+    var lines = str.split(io.readFile(prdPath), "\n");
     var limit = maxLines;
     if (limit == null || limit <= 0) {
         limit = 30;
     }
-    print("");
-    print(interviewText("PRD preview (first " + string(limit) + " lines):", "Anteprima PRD (prime " + string(limit) + " righe):"));
-    print(interviewText("Absolute path:", "Percorso assoluto:") + " " + prdPath);
+    io.print("");
+    io.print(interviewText("PRD preview (first " + string(limit) + " lines):", "Anteprima PRD (prime " + string(limit) + " righe):"));
+    io.print(interviewText("Absolute path:", "Percorso assoluto:") + " " + prdPath);
     var i = 0;
-    while (i < length(lines) && i < limit) {
-        print(lines[i]);
+    while (i < str.length(lines) && i < limit) {
+        io.print(lines[i]);
         i = i + 1;
     }
-    if (length(lines) > limit) {
-        print("...");
+    if (str.length(lines) > limit) {
+        io.print("...");
     }
-    print("");
+    io.print("");
 }
 
 function writeInterviewSummary(workDir, brief, progress, prdPath, profile, prdMode) {
     if (envBool("MALDA_RALPH_INTERVIEW_NO_SUMMARY", false)) {
         return;
     }
-    var summaryPath = pathJoin(workDir, "ralph-interview-summary.md");
+    var summaryPath = io.pathJoin(workDir, "ralph-interview-summary.md");
     var text = "# Ralph Interview Summary\n\n" +
         "- Profile: " + profile + "\n" +
         "- PRD mode: " + prdMode + "\n" +
@@ -701,7 +701,7 @@ function writeInterviewSummary(workDir, brief, progress, prdPath, profile, prdMo
         "- Estimated Ralph iterations (minimum): " + string(progress.open) + "\n\n" +
         "## Next step\n\n" +
         "```bat\nset MALDA_RALPH_WORKDIR=" + workDir + "\nrun_ralph.bat\n```\n";
-    writeFile(summaryPath, text);
+    io.writeFile(summaryPath, text);
     ralphLog("interview", "Summary written: " + summaryPath);
 }
 
@@ -709,14 +709,14 @@ function suggestWorktreeIfNeeded(workDir) {
     if (ralphQuietEnabled()) {
         return;
     }
-    var worktree = getEnv("MALDA_RALPH_WORKTREE");
+    var worktree = io.getEnv("MALDA_RALPH_WORKTREE");
     if (worktree != null && worktree != "") {
         return;
     }
     if (envBool("MALDA_RALPH_INTERVIEW_NO_WORKTREE_HINT", false)) {
         return;
     }
-    print(interviewText(
+    io.print(interviewText(
         "Tip: for Ralph commits isolated from your main repo, use a git worktree (scripts/Ensure-RalphWorktree.ps1) and set MALDA_RALPH_WORKTREE.",
         "Suggerimento: per commit Ralph isolati, usa un git worktree (scripts/Ensure-RalphWorktree.ps1) e imposta MALDA_RALPH_WORKTREE."
     ));
@@ -727,9 +727,9 @@ function runInterviewPreflightCheck(workDir, prdRelativePath) {
     if (mode == "off") {
         return true;
     }
-    var prdPath = pathJoin(workDir, prdRelativePath);
+    var prdPath = io.pathJoin(workDir, prdRelativePath);
     var errors = [];
-    if (!hasFile(prdPath)) {
+    if (!io.hasFile(prdPath)) {
         errors.append("PRD not found: " + prdPath);
     } else {
         var progress = countPrdChecklistProgress(prdPath);
@@ -741,9 +741,9 @@ function runInterviewPreflightCheck(workDir, prdRelativePath) {
     if (client == null) {
         errors.append("LLM client not configured (API key / backend)");
     }
-    if (length(errors) > 0) {
+    if (str.length(errors) > 0) {
         var i = 0;
-        while (i < length(errors)) {
+        while (i < str.length(errors)) {
             ralphLog("interview", "[preflight] " + errors[i]);
             i = i + 1;
         }
@@ -756,12 +756,12 @@ function tryInterviewThenLoop(workDir) {
     if (!envBool("MALDA_RALPH_INTERVIEW_THEN_LOOP", false)) {
         return;
     }
-    var loopExe = getEnv("MALDA_RALPH_LOOP_EXE");
-    if (loopExe == null || loopExe == "" || !hasFile(loopExe)) {
+    var loopExe = io.getEnv("MALDA_RALPH_LOOP_EXE");
+    if (loopExe == null || loopExe == "" || !io.hasFile(loopExe)) {
         ralphLog("interview", "MALDA_RALPH_INTERVIEW_THEN_LOOP set but MALDA_RALPH_LOOP_EXE missing — skip smoke loop");
         return;
     }
-    print(interviewText("Running Ralph smoke loop (1 iteration)...", "Avvio smoke loop Ralph (1 iterazione)..."));
+    io.print(interviewText("Running Ralph smoke loop (1 iteration)...", "Avvio smoke loop Ralph (1 iterazione)..."));
     var hookEnv = {
         "MALDA_RALPH_WORKDIR": workDir,
         "MALDA_RALPH_MAX_ITER": "1",
@@ -779,18 +779,18 @@ function runRalphInterview(workDir, prdRelativePath) {
         return -1;
     }
 
-    var prdPath = pathJoin(workDir, prdRelativePath);
+    var prdPath = io.pathJoin(workDir, prdRelativePath);
     var profile = collectInterviewProfileChoice();
     var prdMode = resolveInterviewPrdMode(prdPath, profile);
     if (prdMode == "cancel") {
-        print(interviewText("Interview cancelled — existing PRD kept.", "Interview annullata — PRD esistente conservato."));
+        io.print(interviewText("Interview cancelled — existing PRD kept.", "Interview annullata — PRD esistente conservato."));
         return 0;
     }
     if (profile == "append") {
         prdMode = "append";
     }
-    if (prdMode == "append" && !hasFile(prdPath)) {
-        print(interviewText("Append mode requires an existing PRD — switching to new.", "Modalità append richiede un PRD esistente — passo a new."));
+    if (prdMode == "append" && !io.hasFile(prdPath)) {
+        io.print(interviewText("Append mode requires an existing PRD — switching to new.", "Modalità append richiede un PRD esistente — passo a new."));
         prdMode = "new";
     }
 
@@ -800,7 +800,7 @@ function runRalphInterview(workDir, prdRelativePath) {
     var brief = collectStructuredInterviewBrief(profile, workDir);
     brief = previewAndConfirmBrief(brief);
     if (brief == null) {
-        print(interviewText("Interview cancelled at preview.", "Interview annullata in anteprima."));
+        io.print(interviewText("Interview cancelled at preview.", "Interview annullata in anteprima."));
         return 0;
     }
 
@@ -808,13 +808,13 @@ function runRalphInterview(workDir, prdRelativePath) {
     var briefText = buildInterviewBriefText(brief);
     var brownfieldContext = buildBrownfieldContext(workDir, brief);
 
-    print("");
-    print("=== Step 2 — " + interviewText("LLM follow-up (live in this terminal)", "Follow-up LLM (live in questo terminale)") + " ===");
-    print(interviewText(
+    io.print("");
+    io.print("=== Step 2 — " + interviewText("LLM follow-up (live in this terminal)", "Follow-up LLM (live in questo terminale)") + " ===");
+    io.print(interviewText(
         "The assistant may ask clarifying questions via ask_user, then writes the PRD.",
         "L'assistente può fare domande con ask_user, poi scrive il PRD."
     ));
-    print("");
+    io.print("");
 
     var includeSymbols = envBool("MALDA_RALPH_INCLUDE_SYMBOLS", false) or envBool("MALDA_RALPH_INTERVIEW_BROWNFIELD", false) or brief.brownfield == true;
     var agent = createPrdInterviewAgent(client, workDir, includeSymbols);
@@ -827,7 +827,7 @@ function runRalphInterview(workDir, prdRelativePath) {
     var responseText = responseTextOrEmpty(response);
     printAgentFinalResponse(responseText);
 
-    if (!responseHasPrdReady(responseText) && hasFile(prdPath)) {
+    if (!responseHasPrdReady(responseText) && io.hasFile(prdPath)) {
         ralphLog("interview", "PRD_READY not signaled — validating written file anyway");
     }
 
@@ -843,16 +843,16 @@ function runRalphInterview(workDir, prdRelativePath) {
     if (!check.ok) {
         ralphLog("interview", "PRD validation failed: " + check.reason);
         var ei = 0;
-        while (check.errors != null && ei < length(check.errors)) {
-            print("  - " + check.errors[ei]);
+        while (check.errors != null && ei < str.length(check.errors)) {
+            io.print("  - " + check.errors[ei]);
             ei = ei + 1;
         }
-        print(interviewText("Fix the PRD manually or rerun the interview.", "Correggi il PRD manualmente o rilancia l'interview."));
+        io.print(interviewText("Fix the PRD manually or rerun the interview.", "Correggi il PRD manualmente o rilancia l'interview."));
         return -1;
     }
 
     var wi = 0;
-    while (check.warnings != null && wi < length(check.warnings)) {
+    while (check.warnings != null && wi < str.length(check.warnings)) {
         ralphLog("interview", "[warn] " + check.warnings[wi]);
         wi = wi + 1;
     }
@@ -865,11 +865,11 @@ function runRalphInterview(workDir, prdRelativePath) {
     persistInterviewMemoryAfterSuccess(workDir, brief, progress, prdRelativePath);
     runInterviewPreflightCheck(workDir, prdRelativePath);
 
-    print("");
-    print(interviewText("Next step — run the Ralph development loop on this folder:", "Prossimo passo — avvia il loop Ralph su questa cartella:"));
-    print("  set MALDA_RALPH_WORKDIR=" + workDir);
-    print("  run_ralph.bat");
-    print("  (or ralph.exe from the distribution bin folder)");
+    io.print("");
+    io.print(interviewText("Next step — run the Ralph development loop on this folder:", "Prossimo passo — avvia il loop Ralph su questa cartella:"));
+    io.print("  set MALDA_RALPH_WORKDIR=" + workDir);
+    io.print("  run_ralph.bat");
+    io.print("  (or ralph.exe from the distribution bin folder)");
 
     tryInterviewThenLoop(workDir);
     return 0;

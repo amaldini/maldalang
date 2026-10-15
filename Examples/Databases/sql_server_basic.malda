@@ -1,7 +1,7 @@
 // SQL Server Database Example
 // This example demonstrates basic database operations with SQL Server
 
-print("=== SQL Server Database Example ===\n");
+io.print("=== SQL Server Database Example ===\n");
 
 // Create a SQL Server client
 var db = new SqlServerClient();
@@ -10,50 +10,50 @@ var db = new SqlServerClient();
 // db.connect("Server=localhost;Database=mydb;User Id=user;Password=pass;Integrated Security=false;");
 
 // For demonstration, we'll show the API without actually connecting
-print("1. Connection Management:");
-print("   db.connect(connectionString) - Connect to database");
-print("   db.disconnect() - Close connection");
-print("   db.isConnected - Check connection status\n");
+io.print("1. Connection Management:");
+io.print("   db.connect(connectionString) - Connect to database");
+io.print("   db.disconnect() - Close connection");
+io.print("   db.isConnected - Check connection status\n");
 
-print("2. Raw SQL Queries with Parameters:");
-print("   // Query with parameters (prevents SQL injection)");
-print("   var users = db.query(\"SELECT * FROM users WHERE age > @age\", {age: 25});");
-print("   var user = db.queryOne(\"SELECT * FROM users WHERE id = @id\", {id: 1});\n");
+io.print("2. Raw SQL Queries with Parameters:");
+io.print("   // Query with parameters (prevents SQL injection)");
+io.print("   var users = db.query(\"SELECT * FROM users WHERE age > @age\", {age: 25});");
+io.print("   var user = db.queryOne(\"SELECT * FROM users WHERE id = @id\", {id: 1});\n");
 
-print("3. Execute Non-Query Commands:");
-print("   // Insert, Update, Delete");
-print("   var rowsAffected = db.execute(\"INSERT INTO users (name, email) VALUES (@name, @email)\", {name: \"John\", email: \"john@example.com\"});\n");
+io.print("3. Execute Non-Query Commands:");
+io.print("   // Insert, Update, Delete");
+io.print("   var rowsAffected = db.execute(\"INSERT INTO users (name, email) VALUES (@name, @email)\", {name: \"John\", email: \"john@example.com\"});\n");
 
-print("4. Query Builder API:");
-print("   // Type-safe query building");
-print("   var results = db.select(\"name\", \"email\")");
-print("                    .from(\"users\")");
-print("                    .where(\"age\", \">\", 25)");
-print("                    .query();\n");
+io.print("4. Query Builder API:");
+io.print("   // Type-safe query building");
+io.print("   var results = db.select(\"name\", \"email\")");
+io.print("                    .from(\"users\")");
+io.print("                    .where(\"age\", \">\", 25)");
+io.print("                    .query();\n");
 
-print("5. Insert with Query Builder:");
-print("   var result = db.insert(\"users\", {name: \"Jane\", email: \"jane@example.com\", age: 30});\n");
+io.print("5. Insert with Query Builder:");
+io.print("   var result = db.insert(\"users\", {name: \"Jane\", email: \"jane@example.com\", age: 30});\n");
 
-print("6. Update with Query Builder (where first, then update):");
-print("   db.select(\"id\").from(\"users\").where(\"id\", \"=\", 1)");
-print("     .update(\"users\", {email: \"newemail@example.com\"});\n");
+io.print("6. Update with Query Builder (where first, then update):");
+io.print("   db.select(\"id\").from(\"users\").where(\"id\", \"=\", 1)");
+io.print("     .update(\"users\", {email: \"newemail@example.com\"});\n");
 
-print("7. Delete with Query Builder (where first, then delete):");
-print("   db.select(\"id\").from(\"users\").where(\"id\", \"=\", 1)");
-print("     .delete(\"users\");\n");
+io.print("7. Delete with Query Builder (where first, then delete):");
+io.print("   db.select(\"id\").from(\"users\").where(\"id\", \"=\", 1)");
+io.print("     .delete(\"users\");\n");
 
-print("8. Transactions:");
-print("   db.beginTransaction();");
-print("   try {");
-print("       db.execute(\"INSERT INTO users (name) VALUES (@name)\", {name: \"Test\"});");
-print("       db.execute(\"UPDATE users SET email = @email WHERE name = @name\", {email: \"test@example.com\", name: \"Test\"});");
-print("       db.commit();");
-print("   } catch (e) {");
-print("       db.rollback();");
-print("       print(\"Transaction rolled back: \" + e);");
-print("   }\n");
+io.print("8. Transactions:");
+io.print("   db.beginTransaction();");
+io.print("   try {");
+io.print("       db.execute(\"INSERT INTO users (name) VALUES (@name)\", {name: \"Test\"});");
+io.print("       db.execute(\"UPDATE users SET email = @email WHERE name = @name\", {email: \"test@example.com\", name: \"Test\"});");
+io.print("       db.commit();");
+io.print("   } catch (e) {");
+io.print("       db.rollback();");
+io.print("       print(\"Transaction rolled back: \" + e);");
+io.print("   }\n");
 
-print("Note: Replace the connection string with your actual SQL Server connection details.");
-print("Example connection string formats:");
-print("  - SQL Server: \"Server=localhost;Database=mydb;User Id=user;Password=pass;\"");
-print("  - Windows Auth: \"Server=localhost;Database=mydb;Integrated Security=true;\"");
+io.print("Note: Replace the connection string with your actual SQL Server connection details.");
+io.print("Example connection string formats:");
+io.print("  - SQL Server: \"Server=localhost;Database=mydb;User Id=user;Password=pass;\"");
+io.print("  - Windows Auth: \"Server=localhost;Database=mydb;Integrated Security=true;\"");

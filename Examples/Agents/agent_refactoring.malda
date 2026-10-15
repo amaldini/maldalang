@@ -1,6 +1,6 @@
 // Note: Requires OPENROUTER_API_KEY environment variable
 // Create initial code file
-writeFile("math.malda", "function calc(x, y) {
+io.writeFile("math.malda", "function calc(x, y) {
     var result = x + y;
     return result;
 }
@@ -18,16 +18,16 @@ var refactorAgent = new CodingAgent(
     "You refactor code to improve naming, structure, and readability. Always use the file tools to read and edit files."
 );
 
-print("Original code:");
-print(readFile("math.malda"));
+io.print("Original code:");
+io.print(io.readFile("math.malda"));
 
-print("
+io.print("
 
 Agent refactoring...");
 var response = refactorAgent.think("Read math.malda, analyze the code, and refactor it to use better function names and add comments.");
-print(response.content);
+io.print(response.content);
 
-print("
+io.print("
 
 Refactored code:");
-print(readFile("math.malda"));
+io.print(io.readFile("math.malda"));

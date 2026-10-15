@@ -16,10 +16,10 @@ prompt reviewCode(code, language) {
 }
 
 // Note: Requires OPENROUTER_API_KEY environment variable
-var apiKey = getEnv("OPENROUTER_API_KEY");
+var apiKey = io.getEnv("OPENROUTER_API_KEY");
 if (apiKey == null) {
-    print("Note: OPENROUTER_API_KEY not set. This example shows the syntax but won't call the LLM.");
-    print("Set OPENROUTER_API_KEY to actually run the agent.");
+    io.print("Note: OPENROUTER_API_KEY not set. This example shows the syntax but won't call the LLM.");
+    io.print("Set OPENROUTER_API_KEY to actually run the agent.");
 } else {
     var client = new OpenRouterClient("openai/gpt-4");
     var agent = new Agent(
@@ -28,12 +28,12 @@ if (apiKey == null) {
         "You review code and provide constructive feedback.",
         client
     );
-    
+
     // Use the prompt with the agent
     var code = "function calculate(x) { return x * 2 + 1; }";
     var response = agent.think(reviewCode(code, "malda"));
-    print("Agent response:");
-    print(response.content);
+    io.print("Agent response:");
+    io.print(response.content);
 }
 
 // Even without API key, we can demonstrate prompt creation
@@ -42,5 +42,5 @@ prompt simplePrompt(task) {
 }
 
 var p = simplePrompt("test");
-print("\nPrompt created successfully:");
-print("User: " + p.user);
+io.print("\nPrompt created successfully:");
+io.print("User: " + p.user);

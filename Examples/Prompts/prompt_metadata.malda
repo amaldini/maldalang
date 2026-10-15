@@ -12,15 +12,15 @@ prompt advancedPrompt(task) {
 
 var prompt = advancedPrompt("analyze codebase");
 
-print("Prompt metadata:");
-print("System: " + (p.system != null ? p.system : "null"));
-print("User: " + p.user);
-print("Model: " + (p.model != null ? p.model : "null"));
-print("Temperature: " + (p.temperature != null ? string(p.temperature) : "null"));
-print("Max Tokens: " + (p.maxTokens != null ? string(p.maxTokens) : "null"));
+io.print("Prompt metadata:");
+io.print("System: " + (p.system != null ? p.system : "null"));
+io.print("User: " + p.user);
+io.print("Model: " + (p.model != null ? p.model : "null"));
+io.print("Temperature: " + (p.temperature != null ? string(p.temperature) : "null"));
+io.print("Max Tokens: " + (p.maxTokens != null ? string(p.maxTokens) : "null"));
 
 if (p.tools != null) {
-    print("Tools: " + toJSON(p.tools));
+    io.print("Tools: " + toJSON(p.tools));
 } else {
-    print("Tools: null");
+    io.print("Tools: null");
 }

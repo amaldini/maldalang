@@ -4,4 +4,4 @@ var client = new OpenRouterClient();
 
 // Simple completion
 var response = client.complete("What is the capital of France?");
-print(response);
+io.print(response);

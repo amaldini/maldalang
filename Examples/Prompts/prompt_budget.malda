@@ -19,6 +19,6 @@ prompt answer(q) -> Answer {
 
 var inst = answer("What is @budget?");
 
-print("Offline PromptInstance with @budget + @within:");
-print("user preview: " + str.substring(inst.user, 0, 40) + "...");
-print("Live: await answer(q) - abort if tokens or tool invocations trip.");
+io.print("Offline PromptInstance with @budget + @within:");
+io.print("user preview: " + str.substring(inst.user, 0, 40) + "...");
+io.print("Live: await answer(q) - abort if tokens or tool invocations trip.");

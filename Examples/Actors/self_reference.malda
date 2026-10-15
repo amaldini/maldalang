@@ -5,32 +5,32 @@ actor PingPong {
     var partner;
     var messageCount = 0;
     var name;
-    
+
     function PingPong(actorName) {
         name = actorName;
     }
-    
+
     on setPartner(other) {
         partner = other;
-        print($"{name}: Partner set");
+        io.print($"{name}: Partner set");
     }
-    
+
     on ping() {
         messageCount = messageCount + 1;
-        print($"{name}: Received ping (count: {messageCount})");
-        
+        io.print($"{name}: Received ping (count: {messageCount})");
+
         if (partner != null && messageCount < 5) {
             // Use 'self' to send our reference to the partner
             send partner.pong(self);
         } else {
-            print($"{name}: Stopping after {messageCount} messages");
+            io.print($"{name}: Stopping after {messageCount} messages");
         }
     }
-    
+
     on pong(other) {
         messageCount = messageCount + 1;
-        print($"{name}: Received pong from partner (count: {messageCount})");
-        
+        io.print($"{name}: Received pong from partner (count: {messageCount})");
+
         if (messageCount < 5) {
             // Send ping back using the received reference
             send other.ping();
@@ -39,7 +39,7 @@ actor PingPong {
 }
 
 // Create two actors that will ping-pong messages
-print("Creating ping-pong actors...");
+io.print("Creating ping-pong actors...");
 var ping = spawn PingPong("Ping");
 var pong = spawn PingPong("Pong");
 
@@ -54,10 +54,10 @@ send pong.setPartner(ping);
 sleep(100);
 
 // Start the ping-pong
-print("\nStarting ping-pong...");
+io.print("\nStarting ping-pong...");
 send ping.ping();
 
 // Give actors time to exchange messages
 sleep(500);
 
-print("\nPing-pong complete!");
+io.print("\nPing-pong complete!");

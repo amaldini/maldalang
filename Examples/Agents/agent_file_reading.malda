@@ -9,4 +9,4 @@ var fileAgent = new CodingAgent(
 
 // Agent already has all file tools - ready to use!
 var response = fileAgent.think("Read the file test.txt and tell me what it contains.");
-print(response.content);
+io.print(response.content);

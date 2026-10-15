@@ -2,38 +2,38 @@
 // Simple local model server with minimal configuration
 
 var MODEL_PATH = "models/qwen2.5-0.5b-instruct-q4_k_m.gguf";
-var localAppData = getEnv("LOCALAPPDATA");
+var localAppData = io.getEnv("LOCALAPPDATA");
 if (localAppData != null && localAppData != "") {
     MODEL_PATH = localAppData + "/MaldaLang/Models/default/qwen2.5-0.5b-instruct-q4_k_m.gguf";
 }
 var PORT = 8080;
 
-print("=== LLM Server - Basic Example ===");
-print("Starting server on port " + string(PORT) + "...");
+io.print("=== LLM Server - Basic Example ===");
+io.print("Starting server on port " + string(PORT) + "...");
 
 // Create server with model path
 var server = new LLMServer(MODEL_PATH, PORT);
 server.start();
 
-print("Server started successfully!");
-print("");
-print("Available endpoints:");
-print("  GET  /health                    - Health check");
-print("  POST /v1/chat/completions      - OpenAI-compatible chat completions");
-print("  POST /api/complete             - Simple text completion");
-print("  GET  /api/model                 - Get model information");
-print("  POST /api/model/settings        - Update model settings");
-print("");
-print("Example request:");
-print("  curl -X POST http://localhost:" + string(PORT) + "/v1/chat/completions \\");
-print("    -H 'Content-Type: application/json' \\");
-print("    -d '{\"messages\": [{\"role\": \"user\", \"content\": \"Hello!\"}]}'");
-print("");
-print("Server running. Press Ctrl+C to stop.");
+io.print("Server started successfully!");
+io.print("");
+io.print("Available endpoints:");
+io.print("  GET  /health                    - Health check");
+io.print("  POST /v1/chat/completions      - OpenAI-compatible chat completions");
+io.print("  POST /api/complete             - Simple text completion");
+io.print("  GET  /api/model                 - Get model information");
+io.print("  POST /api/model/settings        - Update model settings");
+io.print("");
+io.print("Example request:");
+io.print("  curl -X POST http://localhost:" + string(PORT) + "/v1/chat/completions \\");
+io.print("    -H 'Content-Type: application/json' \\");
+io.print("    -d '{\"messages\": [{\"role\": \"user\", \"content\": \"Hello!\"}]}'");
+io.print("");
+io.print("Server running. Press Ctrl+C to stop.");
 
 // Keep server running
 while (server.isRunning) {
     sleep(1000);
 }
 
-print("Server stopped.");
+io.print("Server stopped.");

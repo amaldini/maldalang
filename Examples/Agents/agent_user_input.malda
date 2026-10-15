@@ -15,4 +15,4 @@ interactiveAgent.addTool(createAskUserTool());
 
 // Agent can now ask questions to get clarification
 var response = interactiveAgent.think("Ask the user what their favorite programming language is, then provide a brief explanation of that language.");
-print(response.content);
+io.print(response.content);

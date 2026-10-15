@@ -32,7 +32,7 @@ function receiveAgentStatus(body) {
     var eventType = body.eventType;
     var timestamp = body.timestamp;
     var data = body.data;
-    
+
     // Initialize agent status if not exists
     if (agentStatuses[agentId] == null) {
         agentStatuses[agentId] = {
@@ -48,12 +48,12 @@ function receiveAgentStatus(body) {
             }
         };
     }
-    
+
     // Update agent status
     var agent = agentStatuses[agentId];
     agent.processId = processId;
     agent.lastUpdate = timestamp;
-    
+
     // Create event object
     var event = {
         "agentId": agentId,
@@ -62,7 +62,7 @@ function receiveAgentStatus(body) {
         "timestamp": timestamp,
         "data": data
     };
-    
+
     // Add to agent's event list (keep last 100 events per agent)
     append(agent.events, event);
     if (agent.events.length > 100) {
@@ -73,7 +73,7 @@ function receiveAgentStatus(body) {
         }
         agent.events.length = agent.events.length - 1;
     }
-    
+
     // Update statistics
     if (eventType == "think") {
         agent.stats.thinkCount = agent.stats.thinkCount + 1;
@@ -87,14 +87,14 @@ function receiveAgentStatus(body) {
             agent.stats.toolErrorCount = agent.stats.toolErrorCount + 1;
         }
     }
-    
+
     // Add to global event history
     addToHistory(event);
-    
+
     // Broadcast via SSE
     var sseData = toJSON(event);
     server.broadcastSSE(sseData);
-    
+
     return {"status": 200, "message": "Status received"};
 }
 
@@ -140,7 +140,7 @@ function getDashboardHTML() {
     html = html + "                <button onclick=\"location.reload()\" class=\"px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600\">Refresh</button>\n";
     html = html + "            </div>\n";
     html = html + "        </div>\n";
-    
+
     // System Overview Cards
     html = html + "        <div class=\"grid grid-cols-1 md:grid-cols-4 gap-4 mb-8\">\n";
     html = html + "            <div class=\"bg-white rounded-lg shadow p-6\">\n";
@@ -160,7 +160,7 @@ function getDashboardHTML() {
     html = html + "                <div class=\"text-3xl font-bold text-gray-800\" id=\"successRate\">0%</div>\n";
     html = html + "            </div>\n";
     html = html + "        </div>\n";
-    
+
     // Agent List
     html = html + "        <div class=\"mb-8\">\n";
     html = html + "            <h2 class=\"text-2xl font-bold text-gray-800 mb-4\">Agents</h2>\n";
@@ -168,7 +168,7 @@ function getDashboardHTML() {
     html = html + "                <div class=\"text-center text-gray-500 py-8\">No agents yet</div>\n";
     html = html + "            </div>\n";
     html = html + "        </div>\n";
-    
+
     // Recent Events Feed
     html = html + "        <div>\n";
     html = html + "            <h2 class=\"text-2xl font-bold text-gray-800 mb-4\">Recent Events</h2>\n";
@@ -178,9 +178,9 @@ function getDashboardHTML() {
     html = html + "                </div>\n";
     html = html + "            </div>\n";
     html = html + "        </div>\n";
-    
+
     html = html + "    </div>\n";
-    
+
     // JavaScript for SSE client and UI updates
     html = html + "    <script>\n";
     html = html + "        let eventSource = null;\n";
@@ -448,14 +448,14 @@ function getDashboardHTML() {
     html = html + "    </script>\n";
     html = html + "</body>\n";
     html = html + "</html>\n";
-    
+
     return html;
 }
 
 server.start();
-print("Agent Dashboard running at http://localhost:8080");
-print("Open http://localhost:8080 in your browser to view the dashboard");
-print("Press Ctrl+C to stop the server");
+io.print("Agent Dashboard running at http://localhost:8080");
+io.print("Open http://localhost:8080 in your browser to view the dashboard");
+io.print("Press Ctrl+C to stop the server");
 
 while (true) {
     sleep(1000);

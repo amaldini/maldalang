@@ -20,7 +20,7 @@ prompt codeReview(code, language) {
 // Create a prompt instance
 var reviewPrompt = codeReview("function add(a, b) { return a + b; }", "malda");
 
-print("System prompt:");
-print(reviewPrompt.system);
-print("\nUser prompt:");
-print(reviewPrompt.user);
+io.print("System prompt:");
+io.print(reviewPrompt.system);
+io.print("\nUser prompt:");
+io.print(reviewPrompt.user);

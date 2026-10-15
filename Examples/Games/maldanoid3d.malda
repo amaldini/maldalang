@@ -480,8 +480,8 @@ if (root == null) {
         }
 
         if ((state == "gameover" || state == "win") &&
-            (three.isKeyDown("r") || three.isKeyDown("enter") || mousePressed) &&
-            restartDebounceMs <= 0) {
+                (three.isKeyDown("r") || three.isKeyDown("enter") || mousePressed) &&
+                restartDebounceMs <= 0) {
             restartGame();
             restartDebounceMs = 260;
             return;

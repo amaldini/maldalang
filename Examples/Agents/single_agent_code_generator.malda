@@ -14,5 +14,5 @@ var coder = new Agent(
 var task = "Write a function that calculates the nth Fibonacci number.";
 var response = coder.think(task);
 
-print("Generated code:");
-print(response.content);
+io.print("Generated code:");
+io.print(response.content);

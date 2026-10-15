@@ -14,7 +14,7 @@ io.print($"Age string received: {ageStr}");
 if (ageStr != "") {
     var age = int(ageStr);
     io.print($"You are {age} years old.");
-    
+
     if (age >= 18) {
         io.print("You are an adult.");
     } else {

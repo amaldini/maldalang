@@ -76,22 +76,22 @@ class Value {
     }
 
     function powScalar(exponent) {
-        var out = pow(data, exponent);
-        var d = exponent * pow(data, exponent - 1.0);
+        var out = math.pow(data, exponent);
+        var d = exponent * math.pow(data, exponent - 1.0);
         return new Value(out, [this], [d]);
     }
 
     function logv() {
-        return new Value(log(data), [this], [1.0 / data]);
+        return new Value(math.log(data), [this], [1.0 / data]);
     }
 
     function expv() {
-        var e = exp(data);
+        var e = math.exp(data);
         return new Value(e, [this], [e]);
     }
 
     function reluv() {
-        return new Value(max(0.0, data), [this], [data > 0.0 ? 1.0 : 0.0]);
+        return new Value(math.max(0.0, data), [this], [data > 0.0 ? 1.0 : 0.0]);
     }
 
     function backward() {
@@ -149,7 +149,7 @@ function matrix(nout, nin, std) {
     for (var i = 0; i < nout; i = i + 1) {
         var row = [];
         for (var j = 0; j < nin; j = j + 1) {
-            row.append(new Value(Math.randn(std), [], []));
+            row.append(new Value(math.randn(std), [], []));
         }
         m.append(row);
     }
@@ -171,7 +171,7 @@ function linear(x, w) {
 function softmaxValues(logits) {
     var max_val = logits[0].data;
     for (var i = 1; i < logits.length; i = i + 1) {
-        max_val = max(max_val, logits[i].data);
+        max_val = math.max(max_val, logits[i].data);
     }
 
     var exps = [];
@@ -196,7 +196,7 @@ function softmaxDataFromValueLogits(logits, temperature) {
     for (var i = 0; i < logits.length; i = i + 1) {
         logitsData.append(logits[i].data);
     }
-    return Math.softmax(logitsData, temperature);
+    return math.softmax(logitsData, temperature);
 }
 
 function rmsnorm(x) {
@@ -235,14 +235,14 @@ function loadDocs() {
     var fallback = "input.txt";
 
     var content = "";
-    if (hasFile(preferred)) {
-        content = readFile(preferred);
-    } else if (hasFile(fallback)) {
-        content = readFile(fallback);
+    if (io.hasFile(preferred)) {
+        content = io.readFile(preferred);
+    } else if (io.hasFile(fallback)) {
+        content = io.readFile(fallback);
     }
 
     if (content != "") {
-        var lines = split(content, "\n");
+        var lines = str.split(content, "\n");
         for (var i = 0; i < lines.length; i = i + 1) {
             var s = string(lines[i]).trim().lower();
             if (s != "") {
@@ -260,7 +260,7 @@ function loadDocs() {
 
 function shuffleInPlace(arr) {
     for (var i = arr.length - 1; i > 0; i = i - 1) {
-        var j = randomInt(0, i);
+        var j = math.randomInt(0, i);
         var t = arr[i];
         arr[i] = arr[j];
         arr[j] = t;
@@ -365,7 +365,7 @@ function gpt(token_id, pos_id, keys, values) {
                 for (var j = 0; j < head_dim; j = j + 1) {
                     s = s + (qh[j] * kh[t][j]);
                 }
-                s = Math.rsqrt(head_dim) * s;
+                s = math.rsqrt(head_dim) * s;
                 attnLogits.append(s);
             }
 
@@ -404,15 +404,15 @@ function gpt(token_id, pos_id, keys, values) {
 }
 
 function trainAndSample() {
-    Math.seed(42);
+    math.seed(42);
     var docs = loadDocs();
     shuffleInPlace(docs);
     buildTokenizer(docs);
     initModel();
 
-    print($"num docs: {docs.length}");
-    print($"vocab size: {vocab_size}");
-    print($"num params: {params.length}");
+    io.print($"num docs: {docs.length}");
+    io.print($"vocab size: {vocab_size}");
+    io.print($"num params: {params.length}");
 
     // Adam optimizer
     var learningRate = 0.01;
@@ -431,7 +431,7 @@ function trainAndSample() {
     for (var step = 0; step < num_steps; step = step + 1) {
         var doc = docs[step % docs.length];
         var tokens = encodeDoc(doc);
-        var n = min(block_size, tokens.length - 1);
+        var n = math.min(block_size, tokens.length - 1);
 
         var keys = [];
         var values = [];
@@ -463,20 +463,20 @@ function trainAndSample() {
             var p = params[i];
             m[i] = beta1 * m[i] + (1.0 - beta1) * p.grad;
             v[i] = beta2 * v[i] + (1.0 - beta2) * p.grad * p.grad;
-            var mHat = m[i] / (1.0 - pow(beta1, step + 1));
-            var vHat = v[i] / (1.0 - pow(beta2, step + 1));
-            p.data = p.data - lr_t * mHat / (sqrt(vHat) + epsAdam);
+            var mHat = m[i] / (1.0 - math.pow(beta1, step + 1));
+            var vHat = v[i] / (1.0 - math.pow(beta2, step + 1));
+            p.data = p.data - lr_t * mHat / (math.sqrt(vHat) + epsAdam);
             p.grad = 0.0;
         }
 
         if ((step + 1) % 20 == 0 || step == 0) {
-            print($"step {step + 1} / {num_steps} | loss {loss.data}");
+            io.print($"step {step + 1} / {num_steps} | loss {loss.data}");
         }
     }
 
     var temperature = 0.5;
-    print("");
-    print("--- inference (new, hallucinated names) ---");
+    io.print("");
+    io.print("--- inference (new, hallucinated names) ---");
     for (var sample_idx = 0; sample_idx < 20; sample_idx = sample_idx + 1) {
         var keys = [];
         var values = [];
@@ -491,13 +491,13 @@ function trainAndSample() {
             var logits = gpt(token_id, pos_id, keys, values);
             // During inference we don't need gradient tracking; use numeric softmax.
             var probsData = softmaxDataFromValueLogits(logits, temperature);
-            token_id = Math.randomChoiceWeighted(probsData);
+            token_id = math.randomChoiceWeighted(probsData);
             if (token_id == BOS) {
                 break;
             }
             sample = sample + uchars[token_id];
         }
-        print($"sample {sample_idx + 1}: {sample}");
+        io.print($"sample {sample_idx + 1}: {sample}");
     }
 }
 

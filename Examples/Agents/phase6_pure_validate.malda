@@ -6,17 +6,17 @@ schema ToolInput {
 
 @pure()
 function normalizeName(name) {
-    return upper(trim(name));
+    return str.upper(str.trim(name));
 }
 
 function handleToolInput(raw) {
     var check = validate("ToolInput", raw);
     if (!check.ok) {
-        print("invalid: " + check.error);
+        io.print("invalid: " + check.error);
         return;
     }
     var validated = check.data;
-    print(normalizeName(validated.name));
+    io.print(normalizeName(validated.name));
 }
 
 handleToolInput(dict { "name": "  alice  " });

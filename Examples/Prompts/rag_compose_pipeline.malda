@@ -44,21 +44,21 @@ var context = buildContext(question);
 // auto-run the LLM via composePipe coercion — keep the demo offline:
 var summarize = composePipe(
     buildContext,
-    (ctx) => "chars=" + string(length(ctx))
+    (ctx) => "chars=" + string(str.length(ctx))
 );
 
 var p = answerPrompt(question, context);
 
-print("=== parallelRun + mergeRetrievedDocs ===");
-print(context);
-print("");
-print("=== composePipe ===");
-print(summarize(question));
-print("");
-print("=== prompt template ===");
-print(p.user);
+io.print("=== parallelRun + mergeRetrievedDocs ===");
+io.print(context);
+io.print("");
+io.print("=== composePipe ===");
+io.print(summarize(question));
+io.print("");
+io.print("=== prompt template ===");
+io.print(p.user);
 
-print("");
-print("End-to-end with LLM (set OPENROUTER_API_KEY):");
-print("  var pipeline = composePipe(buildContext, (ctx) => answerPrompt(q, ctx), runPrompt(client), parseJson(\"Answer\"));");
-print("  var result = await pipeline(question);");
+io.print("");
+io.print("End-to-end with LLM (set OPENROUTER_API_KEY):");
+io.print("  var pipeline = composePipe(buildContext, (ctx) => answerPrompt(q, ctx), runPrompt(client), parseJson(\"Answer\"));");
+io.print("  var result = await pipeline(question);");

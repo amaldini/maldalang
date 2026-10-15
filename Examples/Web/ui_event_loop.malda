@@ -18,7 +18,7 @@ function buildView(value) {
     );
 }
 
-print(ui.mount(buildView(count), sessionId));
+io.print(ui.mount(buildView(count), sessionId));
 
 // Client click simulation (sessionId is 2nd; optional inbound sequence is 3rd)
 ui.dispatchEvent(
@@ -33,4 +33,4 @@ if (evt != null) {
     ui.setState("LoopRoot", "count", count, sessionId);
 }
 
-print(ui.render(buildView(count), sessionId));
+io.print(ui.render(buildView(count), sessionId));

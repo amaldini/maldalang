@@ -29,51 +29,51 @@ workflow TerminalFailJob(input) {
     return task;
 }
 
-print("=== recoverable workflow (retries then succeeds) ===");
+io.print("=== recoverable workflow (retries then succeeds) ===");
 var okId = startWorkflow("RecoverableJob", null);
-print("id=" + okId + " status=" + getWorkflowStatus(okId));
+io.print("id=" + okId + " status=" + getWorkflowStatus(okId));
 var okSteps = getWorkflowSteps(okId);
-print("steps:");
-for (var k = 0; k < length(okSteps); k = k + 1) {
+io.print("steps:");
+for (var k = 0; k < str.length(okSteps); k = k + 1) {
     var okStep = okSteps[k];
-    print("  " + okStep.step_name + " state=" + okStep.state + " attempt=" + okStep.attempt +
+    io.print("  " + okStep.step_name + " state=" + okStep.state + " attempt=" + okStep.attempt +
         " output=" + okStep.output_json);
 }
 
-print("=== terminal failure (caught so the script exits 0) ===");
+io.print("=== terminal failure (caught so the script exits 0) ===");
 var failId = null;
 try {
     failId = startWorkflow("TerminalFailJob", null);
 } catch (err) {
-    print("startWorkflow threw (expected): " + err);
+    io.print("startWorkflow threw (expected): " + err);
 }
 
 var failed = listWorkflows("FAILED", "TerminalFailJob", 5);
-print("FAILED TerminalFailJob count=" + length(failed));
-if (length(failed) > 0) {
+io.print("FAILED TerminalFailJob count=" + str.length(failed));
+if (str.length(failed) > 0) {
     failId = failed[0].id;
-    print("inspect id=" + failId + " status=" + getWorkflowStatus(failId));
+    io.print("inspect id=" + failId + " status=" + getWorkflowStatus(failId));
 
     var steps = getWorkflowSteps(failId);
-    print("steps:");
-    for (var i = 0; i < length(steps); i = i + 1) {
+    io.print("steps:");
+    for (var i = 0; i < str.length(steps); i = i + 1) {
         var s = steps[i];
-        print("  " + s.step_name + " state=" + s.state + " attempt=" + s.attempt);
+        io.print("  " + s.step_name + " state=" + s.state + " attempt=" + s.attempt);
     }
 
     var events = getWorkflowEvents(failId, 20);
-    print("events:");
-    for (var j = 0; j < length(events); j = j + 1) {
+    io.print("events:");
+    for (var j = 0; j < str.length(events); j = j + 1) {
         var e = events[j];
-        print("  " + e.event_type);
+        io.print("  " + e.event_type);
     }
 }
 
 var deadLetters = listWorkflowDeadLetters(20, false);
-print("pending dead letters=" + length(deadLetters));
-if (length(deadLetters) > 0) {
+io.print("pending dead letters=" + str.length(deadLetters));
+if (str.length(deadLetters) > 0) {
     var dl = deadLetters[0];
-    print("  dlq step=" + dl.step_name + " workflow=" + dl.workflow_instance_id);
+    io.print("  dlq step=" + dl.step_name + " workflow=" + dl.workflow_instance_id);
 }
 
-print("Done.");
+io.print("Done.");

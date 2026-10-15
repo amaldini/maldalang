@@ -2,12 +2,12 @@
 // This demonstrates how agents can be used as tools by other agents
 
 // Note: Requires OPENROUTER_API_KEY environment variable
-var apiKey = getEnv("OPENROUTER_API_KEY");
+var apiKey = io.getEnv("OPENROUTER_API_KEY");
 if (apiKey == null) {
-    print("Error: OPENROUTER_API_KEY environment variable not set");
+    io.print("Error: OPENROUTER_API_KEY environment variable not set");
 } else {
     var client = new OpenRouterClient("openai/gpt-4");
-    
+
     // Create specialized subagents with detailed internal instructions
     var codeReviewer = new Agent(
         "CodeReviewer",
@@ -21,7 +21,7 @@ if (apiKey == null) {
         "Provide detailed feedback with line numbers and specific suggestions.",
         client
     );
-    
+
     var tester = new Agent(
         "Tester",
         "testing specialist",
@@ -33,7 +33,7 @@ if (apiKey == null) {
         "5. Consider boundary conditions and error handling",
         client
     );
-    
+
     // Create orchestrator agent
     var orchestrator = new Agent(
         "Orchestrator",
@@ -44,27 +44,27 @@ if (apiKey == null) {
         "Delegate work to the appropriate specialist agent.",
         client
     );
-    
+
     // Add subagents with simplified, tool-focused descriptions
     orchestrator.addSubAgent(
         codeReviewer,
         "Reviews code for bugs, style issues, and improvements. Provide the code to review as the prompt."
     );
-    
+
     orchestrator.addSubAgent(
         tester,
         "Writes comprehensive test cases for code. Provide the code to test as the prompt."
     );
-    
+
     // Now the orchestrator can delegate to subagents
-    print("=== Example: Orchestrator delegating to subagents ===\n");
-    
+    io.print("=== Example: Orchestrator delegating to subagents ===\n");
+
     var code = "function add(a, b) {\n    return a + b;\n}";
-    
+
     var response = orchestrator.think(
         "I have this code: " + code + "\n\n" +
         "Please have it reviewed and then write tests for it."
     );
-    
-    print(response.content);
+
+    io.print(response.content);
 }

@@ -24,7 +24,7 @@ function buildView(value) {
 }
 
 var firstTree = buildView(count);
-print(ui.mount(firstTree, sessionId));
+io.print(ui.mount(firstTree, sessionId));
 
 // Simulate click event from client.
 ui.dispatchEvent({"type": "click", "targetPath": "/2/", "payload": {"action": "increment"}}, sessionId, 1);
@@ -36,5 +36,5 @@ if (evt != null) {
 }
 
 var nextTree = buildView(count);
-print(ui.render(nextTree, sessionId));
-print(ui.snapshot(sessionId));
+io.print(ui.render(nextTree, sessionId));
+io.print(ui.snapshot(sessionId));

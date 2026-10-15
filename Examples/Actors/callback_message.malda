@@ -12,11 +12,11 @@ actor Worker {
 actor Coordinator {
     on start() {
         var worker = spawn Worker();
-        
+
         // Send a request with a callback that will run
         // in the Coordinator's actor context when the reply is received.
         send worker.compute(21) then (result) {
-            print($"Coordinator: received result = {result}");
+            io.print($"Coordinator: received result = {result}");
         };
     }
 }
@@ -31,4 +31,3 @@ send coordinator.start();
 // Give actors time to process messages and callbacks
 // This delay ensures the program doesn't exit before async actor work completes
 sleep(500);
-

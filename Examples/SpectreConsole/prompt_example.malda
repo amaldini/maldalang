@@ -3,9 +3,9 @@
 
 // Text prompt with default value
 var name = AnsiConsole.prompt({
-  "type": "text",
-  "message": "What is your name?",
-  "defaultValue": "Anonymous"
+    "type": "text",
+    "message": "What is your name?",
+    "defaultValue": "Anonymous"
 });
 
 AnsiConsole.markupLine("[green]Hello, " + name + "![/]");
@@ -13,28 +13,28 @@ AnsiConsole.markupLine("");
 
 // Confirm prompt (yes/no)
 var proceed = AnsiConsole.prompt({
-  "type": "confirm",
-  "message": "Do you want to continue?",
-  "defaultValue": true
+    "type": "confirm",
+    "message": "Do you want to continue?",
+    "defaultValue": true
 });
 
 if (proceed) {
-  AnsiConsole.markupLine("[green]You chose to continue[/]");
+    AnsiConsole.markupLine("[green]You chose to continue[/]");
 } else {
-  AnsiConsole.markupLine("[yellow]You chose to cancel[/]");
+    AnsiConsole.markupLine("[yellow]You chose to cancel[/]");
 }
 AnsiConsole.markupLine("");
 
 // Selection prompt (choice from list)
 var choice = AnsiConsole.prompt({
-  "type": "selection",
-  "message": "Select an option:",
-  "choices": [
-    "Option 1",
-    "Option 2",
-    "Option 3",
-    "Exit"
-  ]
+    "type": "selection",
+    "message": "Select an option:",
+    "choices": [
+        "Option 1",
+        "Option 2",
+        "Option 3",
+        "Exit"
+    ]
 });
 
 AnsiConsole.markupLine("[blue]You selected: " + choice + "[/]");
@@ -42,15 +42,15 @@ AnsiConsole.markupLine("");
 
 // Multiple prompts in sequence
 var age = AnsiConsole.prompt({
-  "type": "text",
-  "message": "How old are you?",
-  "defaultValue": "0"
+    "type": "text",
+    "message": "How old are you?",
+    "defaultValue": "0"
 });
 
 var city = AnsiConsole.prompt({
-  "type": "text",
-  "message": "What city do you live in?",
-  "defaultValue": "Unknown"
+    "type": "text",
+    "message": "What city do you live in?",
+    "defaultValue": "Unknown"
 });
 
 AnsiConsole.markupLine("");

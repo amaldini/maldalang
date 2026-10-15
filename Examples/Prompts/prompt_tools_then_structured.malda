@@ -21,8 +21,8 @@ prompt research(question) -> ResearchAnswer {
 
 var inst = research("What is Mode C for typed prompts?");
 
-print("Mode C gather-then-extract (offline PromptInstance):");
-print("gather=" + toJSON(inst.gather));
-print("tools=" + toJSON(inst.tools));
-print("user preview: " + str.substring(inst.user, 0, 40) + "...");
-print("Live: await research(question) — tool round, then typed extract.");
+io.print("Mode C gather-then-extract (offline PromptInstance):");
+io.print("gather=" + toJSON(inst.gather));
+io.print("tools=" + toJSON(inst.tools));
+io.print("user preview: " + str.substring(inst.user, 0, 40) + "...");
+io.print("Live: await research(question) — tool round, then typed extract.");

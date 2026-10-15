@@ -388,9 +388,9 @@ function packPortableAskExe() {
         "[/] [bold]" + str.replace(str.replace(string(written), "[", "[["), "]", "]]") + "[/]");
     AnsiConsole.markupLine("[dim]" + t(
         "Run the .exe to open ASK with the embedded brain. Optional: --port 8080 (or -p), --host 0.0.0.0. " +
-            "Branding in the brain folder (auto-loaded): product_name.txt, logo_right_height.txt, and optional logo.png / logo_right.png.",
+        "Branding in the brain folder (auto-loaded): product_name.txt, logo_right_height.txt, and optional logo.png / logo_right.png.",
         "Avvia l'.exe per aprire ASK col brain incorporato. Opzionale: --port 8080 (o -p), --host 0.0.0.0. " +
-            "Branding nella cartella del brain (auto-caricato): product_name.txt, logo_right_height.txt e logo.png / logo_right.png opzionali.") + "[/]");
+        "Branding nella cartella del brain (auto-caricato): product_name.txt, logo_right_height.txt e logo.png / logo_right.png opzionali.") + "[/]");
     return true;
 }
 

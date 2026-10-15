@@ -90,8 +90,8 @@ var server = new HttpServer(8082);
 server.enableSession(sessionSecret);
 server.enableCsrf(csrfSecret);
 server.start();
-print("Form validate + flash demo at http://localhost:8082/");
-print("Press Ctrl+C to stop.");
+io.print("Form validate + flash demo at http://localhost:8082/");
+io.print("Press Ctrl+C to stop.");
 
 while (server.isRunning) {
     sleep(1000);

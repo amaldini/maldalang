@@ -542,9 +542,9 @@ function updateBrain(cli) {
             } else {
                 var drop = str.trim(io.input(t(
                     "Remove notes for " + string(removed.length) + " source file(s) missing from the folder? " +
-                        ynHint() + ": ",
+                    ynHint() + ": ",
                     "Rimuovo le note di " + string(removed.length) + " file assenti dalla cartella? " +
-                        ynHint() + ": ")));
+                    ynHint() + ": ")));
                 removeOrphans = isAffirmative(drop);
             }
         }

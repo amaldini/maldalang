@@ -6,7 +6,7 @@
 //             admin / password  (role: admin)
 
 var port = 8081;
-var jwtSecret = getEnv("MALDA_JWT_SECRET");
+var jwtSecret = io.getEnv("MALDA_JWT_SECRET");
 if (jwtSecret == null or jwtSecret == "") {
     jwtSecret = "dev-only-jwt-secret-change-me";
 }
@@ -81,16 +81,16 @@ server.use(requireAuth, {
 });
 server.start();
 
-print("Bearer JWT API at http://localhost:" + port + "/");
-print("Demo: alice/password (user) or admin/password (admin)");
-print("");
-print("curl examples:");
-print("  curl http://localhost:" + port + "/api/health");
-print("  curl -X POST http://localhost:" + port + "/api/login -H \"Content-Type: application/json\" -d \"{\\\"username\\\":\\\"alice\\\",\\\"password\\\":\\\"password\\\"}\"");
-print("  curl http://localhost:" + port + "/api/profile -H \"Authorization: Bearer <token>\"");
-print("  curl http://localhost:" + port + "/api/admin/stats -H \"Authorization: Bearer <admin-token>\"");
-print("");
-print("Press Ctrl+C to stop.");
+io.print("Bearer JWT API at http://localhost:" + port + "/");
+io.print("Demo: alice/password (user) or admin/password (admin)");
+io.print("");
+io.print("curl examples:");
+io.print("  curl http://localhost:" + port + "/api/health");
+io.print("  curl -X POST http://localhost:" + port + "/api/login -H \"Content-Type: application/json\" -d \"{\\\"username\\\":\\\"alice\\\",\\\"password\\\":\\\"password\\\"}\"");
+io.print("  curl http://localhost:" + port + "/api/profile -H \"Authorization: Bearer <token>\"");
+io.print("  curl http://localhost:" + port + "/api/admin/stats -H \"Authorization: Bearer <admin-token>\"");
+io.print("");
+io.print("Press Ctrl+C to stop.");
 
 while (server.isRunning) {
     sleep(1000);

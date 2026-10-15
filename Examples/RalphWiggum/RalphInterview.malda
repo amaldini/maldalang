@@ -37,7 +37,7 @@ include "ralph/08-interview.malda";
 var config = getMaldaConfig();
 
 var workingDir = resolveRalphWorkingDir();
-var prdFile = getEnv("MALDA_RALPH_PRD");
+var prdFile = io.getEnv("MALDA_RALPH_PRD");
 if (prdFile == null || prdFile == "") {
     prdFile = "PRD.md";
 }
@@ -47,6 +47,6 @@ if (result != 0) {
     if (agentRichEnabled()) {
         ralphMarkup("[red]Interview failed.[/]");
     } else {
-        print("Interview failed.");
+        io.print("Interview failed.");
     }
 }

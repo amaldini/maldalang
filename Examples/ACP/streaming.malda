@@ -14,20 +14,20 @@ var server = new ACPServer(8083);
 server.registerAgent("streamer-agent", agent);
 server.start();
 
-print("ACP Server started on http://localhost:8083/");
-print("");
+io.print("ACP Server started on http://localhost:8083/");
+io.print("");
 
 // In another process or client, you would use:
 // var acpClient = new ACPClient("http://localhost:8083");
-// 
+//
 // // Stream execution
 // var response = acpClient.sendMessageStream("streamer-agent", "Explain how ACP streaming works");
 // print("Streamed response: " + response);
-// 
+//
 // // The stream mode automatically accumulates message parts and returns the final result
 
 // Keep server running
-print("Server running. Press Ctrl+C to stop.");
+io.print("Server running. Press Ctrl+C to stop.");
 while (server.isRunning) {
     sleep(1000);
 }

@@ -3,22 +3,22 @@
 
 actor Greeter {
     var name;
-    
+
     function Greeter(actorName) {
         name = actorName;
     }
-    
+
     on greet() {
-        print($"Hello from {name}!");
+        io.print($"Hello from {name}!");
     }
-    
+
     on introduce() {
-        print($"I am actor: {name}");
+        io.print($"I am actor: {name}");
     }
 }
 
 // Spawn multiple actor instances
-print("Spawning actors...");
+io.print("Spawning actors...");
 var greeter1 = spawn Greeter("Alice");
 var greeter2 = spawn Greeter("Bob");
 var greeter3 = spawn Greeter("Charlie");
@@ -38,4 +38,4 @@ send greeter3.introduce();
 // Give actors time to process
 sleep(500);
 
-print("All actors have been spawned and messaged!");
+io.print("All actors have been spawned and messaged!");

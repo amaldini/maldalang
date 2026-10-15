@@ -29,16 +29,16 @@ var server = new RestServer(port, "localhost");
 server.start();
 sleep(200);
 
-print("=== httpGet ===");
+io.print("=== httpGet ===");
 var getRes = httpGet(baseUrl + "/api/echo?msg=hello");
-print("ok=" + getRes.ok + " status=" + getRes.status);
+io.print("ok=" + getRes.ok + " status=" + getRes.status);
 if (getRes.ok) {
-    print("body=" + toJSON(getRes.body));
+    io.print("body=" + toJSON(getRes.body));
 } else {
-    print("error=" + getRes.error);
+    io.print("error=" + getRes.error);
 }
 
-print("=== httpPost JSON ===");
+io.print("=== httpPost JSON ===");
 var payload = {
     "name": "Ada",
     "role": "builder"
@@ -47,14 +47,14 @@ var headers = {
     "Content-Type": "application/json"
 };
 var postRes = httpPost(baseUrl + "/api/echo", payload, headers);
-print("ok=" + postRes.ok + " status=" + postRes.status);
+io.print("ok=" + postRes.ok + " status=" + postRes.status);
 if (postRes.ok) {
-    print("body=" + toJSON(postRes.body));
+    io.print("body=" + toJSON(postRes.body));
     var parsed = postRes.body;
-    print("received.name=" + parsed.received.name);
+    io.print("received.name=" + parsed.received.name);
 } else {
-    print("error=" + postRes.error);
+    io.print("error=" + postRes.error);
 }
 
 server.stop();
-print("Done.");
+io.print("Done.");

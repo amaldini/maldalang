@@ -49,27 +49,27 @@ function handleApiData() {
 
 // Start server (automatically scans for @PAGE decorated functions and loads static files)
 server.start();
-print("HttpServer running at http://localhost:8080");
-print("Static files directory: " + server.webDirectory);
-print("Registered dynamic routes: " + server.getRoutes().length);
+io.print("HttpServer running at http://localhost:8080");
+io.print("Static files directory: " + server.webDirectory);
+io.print("Registered dynamic routes: " + server.getRoutes().length);
 
 // Print registered routes
 var routes = server.getRoutes();
 var i = 0;
 while (i < routes.length) {
     var route = routes[i];
-    print("  " + route.method + " " + route.path);
+    io.print("  " + route.method + " " + route.path);
     i = i + 1;
 }
 
-print("\nTry these URLs:");
-print("  http://localhost:8080/          - Dynamic home page");
-print("  http://localhost:8080/about     - Dynamic about page");
-print("  http://localhost:8080/users    - Dynamic user list");
-print("  http://localhost:8080/user/1   - Dynamic user page with path parameter");
-print("  http://localhost:8080/api/data - Advanced response with custom headers");
-print("  http://localhost:8080/style.css - Static file (if exists in web/ folder)");
-print("\nPress Ctrl+C to stop the server");
+io.print("\nTry these URLs:");
+io.print("  http://localhost:8080/          - Dynamic home page");
+io.print("  http://localhost:8080/about     - Dynamic about page");
+io.print("  http://localhost:8080/users    - Dynamic user list");
+io.print("  http://localhost:8080/user/1   - Dynamic user page with path parameter");
+io.print("  http://localhost:8080/api/data - Advanced response with custom headers");
+io.print("  http://localhost:8080/style.css - Static file (if exists in web/ folder)");
+io.print("\nPress Ctrl+C to stop the server");
 
 // Keep script alive
 while (server.isRunning) {
@@ -77,4 +77,4 @@ while (server.isRunning) {
 }
 
 server.stop();
-print("Server stopped.");
+io.print("Server stopped.");

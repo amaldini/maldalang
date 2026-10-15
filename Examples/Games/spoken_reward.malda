@@ -140,7 +140,7 @@ function startSpoken() {
     var b1 = randomVector(hidden, 0.05);
     var w2 = randomMatrix(hidden, 1, 0.35);
     var b2 = [0.0];
-        var liveLr = 0.03;
+    var liveLr = 0.03;
     var ink = makeGrid(gridN);
     var law = [0.0, 0.0, 0.0, 0.0];
     var colorName = ["blue", "red", "gold", "green"];

@@ -15,16 +15,16 @@ workflow OpsReportJob(input) {
     return task;
 }
 
-print("=== ops report smoke (terminal failure expected) ===");
+io.print("=== ops report smoke (terminal failure expected) ===");
 var failId = null;
 try {
     failId = startWorkflow("OpsReportJob", null);
 } catch (err) {
-    print("startWorkflow threw (expected): " + err);
+    io.print("startWorkflow threw (expected): " + err);
 }
 
 var failed = listWorkflows("FAILED", "OpsReportJob", 5);
-if (length(failed) > 0) {
+if (str.length(failed) > 0) {
     failId = failed[0].id;
 }
 
@@ -32,11 +32,11 @@ if (failId == null) {
     error("ops_report: expected a FAILED OpsReportJob instance");
 }
 
-print("instanceId=" + failId);
-print("status=" + getWorkflowStatus(failId));
-print("");
-print("Inspect with:");
-print("  malda workflow report " + failId);
-print("  malda workflow report " + failId + " --json");
-print("  malda workflow dlq list --pending-only");
-print("Done.");
+io.print("instanceId=" + failId);
+io.print("status=" + getWorkflowStatus(failId));
+io.print("");
+io.print("Inspect with:");
+io.print("  malda workflow report " + failId);
+io.print("  malda workflow report " + failId + " --json");
+io.print("  malda workflow dlq list --pending-only");
+io.print("Done.");

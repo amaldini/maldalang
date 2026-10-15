@@ -20,5 +20,5 @@ prompt extractContact(raw) -> ContactCard {
 }
 
 var card = await extractContact("Ada Lovelace — ada@example.com");
-print("name=" + card.name);
-print("email=" + card.email);
+io.print("name=" + card.name);
+io.print("email=" + card.email);

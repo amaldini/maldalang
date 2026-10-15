@@ -1,21 +1,21 @@
 class Person {
     var name;
     var age;
-    
+
     function Person(name, age) {
         this.name = name;  // 'this.' required due to parameter name conflict
         this.age = age;   // 'this.' required due to parameter name conflict
     }
-    
+
     function introduce() {
         // Implicit member access - no 'this.' needed
         io.print($"Hi, I'm {name} and I'm {age} years old");
     }
-    
+
     function getAge() {
         return age;  // Implicit member access
     }
-    
+
     function setAge(newAge) {
         age = newAge;  // Implicit member access (no name conflict)
     }

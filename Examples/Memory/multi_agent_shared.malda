@@ -6,8 +6,8 @@ var memory = new GraphMemory();
 memory.initialize(384, "single", function (text) { return embedHash(text, 384); });
 
 var path = getMaldaHome() + "/memory/multi_agent_demo";
-ensureDir(getMaldaHome() + "/memory");
-if (hasFile(path + ".graph.json")) {
+io.ensureDir(getMaldaHome() + "/memory");
+if (io.hasFile(path + ".graph.json")) {
     memory.load(path);
 }
 
@@ -34,7 +34,7 @@ var betaView = memory.query("team preference", 5, {
     "minScore": 0
 });
 
-print("Alpha scoped results: " + alphaView.length);
-print("Beta scoped results: " + betaView.length);
+io.print("Alpha scoped results: " + alphaView.length);
+io.print("Beta scoped results: " + betaView.length);
 
 memory.save(path);

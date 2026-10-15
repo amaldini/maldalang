@@ -88,7 +88,7 @@ function startHost() {
     var web = new HttpServer(8080);
     web.mount(api);
     web.start();
-    print("__PROJECT_NAME__ scores at http://localhost:8080/");
+    io.print("__PROJECT_NAME__ scores at http://localhost:8080/");
     while (web.isRunning) {
         sleep(1000);
     }

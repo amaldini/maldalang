@@ -228,18 +228,18 @@ ui.configure("maxEventQueueDepth", 1024, sid);
 ui.configure("sessionTtlMs", 1800000);
 
 var mountedTree = buildShowcase("success", true);
-print(ui.mount(mountedTree, sid));
+io.print(ui.mount(mountedTree, sid));
 
 ui.dispatchEvent({"type": "click", "targetPath": "/3/9/", "payload": {"action": "submit"}}, sid, 1);
-print(ui.pullEvent(sid));
+io.print(ui.pullEvent(sid));
 
 ui.setState("UiShowcaseRoot", "lastAction", "submit", sid);
-print(ui.state("UiShowcaseRoot", "lastAction", "none", sid));
+io.print(ui.state("UiShowcaseRoot", "lastAction", "none", sid));
 
 var rerenderedTree = buildShowcase("warning", false);
-print(ui.render(rerenderedTree, sid));
-print(ui.snapshot(sid));
-print(ui.resync(sid));
+io.print(ui.render(rerenderedTree, sid));
+io.print(ui.snapshot(sid));
+io.print(ui.resync(sid));
 
 var server = new HttpServer(8080);
 
@@ -279,4 +279,4 @@ function uiControlsShowcaseApi() {
 }
 
 server.start();
-print("Open: http://localhost:8080/web/ui-controls-showcase");
+io.print("Open: http://localhost:8080/web/ui-controls-showcase");

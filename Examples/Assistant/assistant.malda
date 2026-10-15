@@ -12,7 +12,7 @@ var config = getMaldaConfig();
 // - MALDA_AGENT_BACKEND env var overrides config
 // - config.agents.defaults.backend if present
 // - defaults to "openrouter"
-var backendOverride = getEnv("MALDA_AGENT_BACKEND");
+var backendOverride = io.getEnv("MALDA_AGENT_BACKEND");
 var backend = "openrouter";
 if (backendOverride != null && backendOverride != "") {
     backend = backendOverride;
@@ -25,7 +25,7 @@ var client = null;
 if (backend == "local-llama") {
     // Local llama.cpp backend using LlamaCppClient
     if (config == null || config.providers == null || config.providers.local_llama == null || config.providers.local_llama.modelPath == null || config.providers.local_llama.modelPath == "") {
-        print("Backend 'local-llama' selected but providers.local_llama.modelPath is not configured in ~/.malda/config.json");
+        io.print("Backend 'local-llama' selected but providers.local_llama.modelPath is not configured in ~/.malda/config.json");
     } else {
         var localCfg = config.providers.local_llama;
         var modelPath = localCfg.modelPath;
@@ -51,15 +51,15 @@ if (backend == "local-llama") {
 } else {
     // OpenRouter (default) or unknown backend
     if (backend != "openrouter") {
-        print("Unknown backend '" + backend + "', falling back to 'openrouter'.");
+        io.print("Unknown backend '" + backend + "', falling back to 'openrouter'.");
     }
 
-    var apiKey = getEnv("OPENROUTER_API_KEY");
+    var apiKey = io.getEnv("OPENROUTER_API_KEY");
     if (config != null && config.providers != null && config.providers.openrouter != null && config.providers.openrouter.apiKey != null && config.providers.openrouter.apiKey != "") {
         apiKey = config.providers.openrouter.apiKey;
     }
     if (apiKey == null || apiKey == "") {
-        print("Set OPENROUTER_API_KEY or add providers.openrouter.apiKey to ~/.malda/config.json");
+        io.print("Set OPENROUTER_API_KEY or add providers.openrouter.apiKey to ~/.malda/config.json");
     } else {
         var model = null;
         // Prefer agents.defaults.model if set
@@ -75,11 +75,11 @@ if (backend == "local-llama") {
 }
 
 function resolveActiveMemoryScope() {
-    var scope = getEnv("MALDA_MEMORY_SCOPE");
+    var scope = io.getEnv("MALDA_MEMORY_SCOPE");
     if (scope != null && scope != "") {
         return scope;
     }
-    var chatId = getEnv("MALDA_CHAT_ID");
+    var chatId = io.getEnv("MALDA_CHAT_ID");
     if (chatId != null && chatId != "") {
         return "chat:" + chatId;
     }
@@ -89,7 +89,7 @@ function resolveActiveMemoryScope() {
 var memorySaveCounter = 0;
 
 function memoryReflectEnabled(cfg) {
-    var reflectEnv = getEnv("MALDA_MEMORY_REFLECT");
+    var reflectEnv = io.getEnv("MALDA_MEMORY_REFLECT");
     if (reflectEnv == "1") {
         return true;
     }
@@ -100,7 +100,7 @@ function memoryReflectEnabled(cfg) {
 }
 
 function memoryReflectAsyncEnabled(cfg) {
-    var env = getEnv("MALDA_MEMORY_REFLECT_ASYNC");
+    var env = io.getEnv("MALDA_MEMORY_REFLECT_ASYNC");
     if (env == "0" || env == "false") {
         return false;
     }
@@ -140,7 +140,7 @@ function buildReflectOpts(activeScope, cfg) {
     if (cfg != null && cfg.agents != null && cfg.agents.memory != null && cfg.agents.memory.reflectModel != null && cfg.agents.memory.reflectModel != "") {
         opts.model = cfg.agents.memory.reflectModel;
     }
-    var reflectMinConfidenceEnv = getEnv("MALDA_MEMORY_REFLECT_MIN_CONFIDENCE");
+    var reflectMinConfidenceEnv = io.getEnv("MALDA_MEMORY_REFLECT_MIN_CONFIDENCE");
     if (reflectMinConfidenceEnv != null && reflectMinConfidenceEnv != "") {
         opts.minConfidence = float(reflectMinConfidenceEnv);
     } else if (cfg != null && cfg.agents != null && cfg.agents.memory != null && cfg.agents.memory.reflectMinConfidence != null) {
@@ -154,13 +154,13 @@ function buildReflectOpts(activeScope, cfg) {
 
 function buildMemorySaveOpts(cfg) {
     var opts = dict {};
-    var backupEnv = getEnv("MALDA_MEMORY_BACKUP");
+    var backupEnv = io.getEnv("MALDA_MEMORY_BACKUP");
     if (backupEnv == "1" || backupEnv == "true") {
         opts.backup = true;
     } else if (cfg != null && cfg.agents != null && cfg.agents.memory != null && cfg.agents.memory.backupEnabled == true) {
         opts.backup = true;
     }
-    var maxBackupsEnv = getEnv("MALDA_MEMORY_MAX_BACKUPS");
+    var maxBackupsEnv = io.getEnv("MALDA_MEMORY_MAX_BACKUPS");
     if (maxBackupsEnv != null && maxBackupsEnv != "") {
         opts.maxBackups = int(maxBackupsEnv);
     } else if (cfg != null && cfg.agents != null && cfg.agents.memory != null && cfg.agents.memory.maxBackups != null && cfg.agents.memory.maxBackups > 0) {
@@ -228,7 +228,7 @@ function maintainMemory(mem, activeScope, cfg) {
 }
 
 function startAssistantKbWatch(mem, memoryPath, cfg) {
-    var kbWatchEnv = getEnv("MALDA_MEMORY_KB_WATCH");
+    var kbWatchEnv = io.getEnv("MALDA_MEMORY_KB_WATCH");
     if (kbWatchEnv == "0" || kbWatchEnv == "false") {
         return;
     }
@@ -247,24 +247,24 @@ function startAssistantKbWatch(mem, memoryPath, cfg) {
         };
         mem.startKbWatch(cfg.agents.memory.kbDir, kbPattern, watchOpts);
     } catch (error) {
-        print("KB watch not started: " + string(error));
+        io.print("KB watch not started: " + string(error));
     }
 }
 
 if (client == null) {
     // Failed to initialize any backend; nothing more to do
 } else {
-    var agentKind = getEnv("MALDA_AGENT_KIND");
+    var agentKind = io.getEnv("MALDA_AGENT_KIND");
     if (agentKind == null) {
         agentKind = "";
     }
-    var workdir = getEnv("MALDA_AGENT_WORKDIR");
+    var workdir = io.getEnv("MALDA_AGENT_WORKDIR");
     if (workdir == null || workdir == "") {
         workdir = ".";
     }
     var agent = null;
     if (agentKind == "malda") {
-        print("MALDA develop agent (MALDA) — " + workdir);
+        io.print("MALDA develop agent (MALDA) — " + workdir);
         agent = new MALDACodingAgent(
             "MaldaDev",
             "MALDA developer",
@@ -273,7 +273,7 @@ if (client == null) {
             workdir
         );
     } else if (agentKind == "dev") {
-        print("MALDA develop agent (generic) — " + workdir);
+        io.print("MALDA develop agent (generic) — " + workdir);
         agent = new DevAgent(
             "Dev",
             "software engineer",
@@ -286,12 +286,12 @@ if (client == null) {
         agent = new Agent("Assistant", "personal assistant", "You are a helpful personal assistant.", client);
         if (config != null && config.tools != null && config.tools.web != null && config.tools.web.search != null && config.tools.web.search.apiKey != null && config.tools.web.search.apiKey != "") {
             agent.addTool(createWebSearchTool());
-        } else if (getEnv("BRAVE_SEARCH_API_KEY") != null && getEnv("BRAVE_SEARCH_API_KEY") != "") {
+        } else if (io.getEnv("BRAVE_SEARCH_API_KEY") != null && io.getEnv("BRAVE_SEARCH_API_KEY") != "") {
             agent.addTool(createWebSearchTool());
         }
     }
     var embedMode = "hash";
-    var embedOverride = getEnv("MALDA_MEMORY_EMBED");
+    var embedOverride = io.getEnv("MALDA_MEMORY_EMBED");
     if (embedOverride != null && embedOverride != "") {
         embedMode = embedOverride;
     } else if (config != null && config.agents != null && config.agents.memory != null && config.agents.memory.embed != null && config.agents.memory.embed != "") {
@@ -309,7 +309,7 @@ if (client == null) {
         if (embedPath != null && embedPath != "") {
             memoryEmbedder = new LlamaEmbedder(embedPath);
         } else {
-            print("MALDA_MEMORY_EMBED=llama but no agents.memory.modelPath configured; falling back to hash");
+            io.print("MALDA_MEMORY_EMBED=llama but no agents.memory.modelPath configured; falling back to hash");
             embedMode = "hash";
         }
     }
@@ -327,7 +327,7 @@ if (client == null) {
     var memory = new GraphMemory();
     var home = getMaldaHome();
     var memoryDir = home + "/memory";
-    ensureDir(memoryDir);
+    io.ensureDir(memoryDir);
     var memoryLeaf = "assistant";
     if (agentKind == "dev") {
         memoryLeaf = "develop";
@@ -336,7 +336,7 @@ if (client == null) {
     }
     var memoryPath = memoryDir + "/" + memoryLeaf;
     memory.initialize(384, "single", memoryEmbed);
-    if (hasFile(memoryPath + ".graph.json")) {
+    if (io.hasFile(memoryPath + ".graph.json")) {
         memory.load(memoryPath);
     }
     startAssistantKbWatch(memory, memoryPath, config);
@@ -384,7 +384,7 @@ if (client == null) {
             continue;
         }
         if (s.error != null && s.error != "") {
-            print("Skill '" + s.name + "' skipped: " + s.error);
+            io.print("Skill '" + s.name + "' skipped: " + s.error);
             continue;
         }
         if (s.tools != null) {
@@ -403,7 +403,7 @@ if (client == null) {
         }
     }
     if (agentKind == "dev" || agentKind == "malda") {
-        var traceSetting = getEnv("MALDA_AGENT_TRACE");
+        var traceSetting = io.getEnv("MALDA_AGENT_TRACE");
         if (traceSetting != null && traceSetting != "" && traceSetting != "0" && traceSetting != "false") {
             var tracePath = "";
             if (traceSetting == "1" || traceSetting == "true" || traceSetting == "yes" || traceSetting == "on") {
@@ -412,26 +412,26 @@ if (client == null) {
                 tracePath = agent.enableTracing("develop", traceSetting);
             }
             if (tracePath != null && tracePath != "") {
-                print("Agent trace: " + tracePath);
+                io.print("Agent trace: " + tracePath);
             }
         }
     }
-    var oneShot = getEnv("MALDA_AGENT_MESSAGE");
+    var oneShot = io.getEnv("MALDA_AGENT_MESSAGE");
     if (oneShot != null && oneShot != "") {
         var r = agent.think(oneShot);
-        print(r.content);
+        io.print(r.content);
         maintainMemory(memory, activeMemoryScope, config);
         memory.save(memoryPath, buildMemorySaveOpts(config));
         scheduleDeferredReflect(memory, activeMemoryScope, config, memoryPath);
     } else {
         while (true) {
-            var msg = input("You: ");
+            var msg = io.input("You: ");
             if (msg == null || msg == "" || msg == "exit" || msg == "quit") {
                 break;
             }
             var turnScope = refreshMemoryScopeForTurn();
             var r = agent.think(msg);
-            print(r.content);
+            io.print(r.content);
             maintainMemory(memory, turnScope, config);
             memory.save(memoryPath, buildMemorySaveOpts(config));
             scheduleDeferredReflect(memory, activeMemoryScope, config, memoryPath);

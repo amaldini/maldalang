@@ -4,8 +4,8 @@
     }
     var fact = "Iteration " + string(iteration) + " [" + phase + "]: " + truncateText(responseText, 400);
     var context = "validation=" + string(validationOk) + "; tools=" + string(toolCount);
-    if (modifiedFiles != null && length(modifiedFiles) > 0) {
-        context = context + "; files=" + join(modifiedFiles, ", ");
+    if (modifiedFiles != null && str.length(modifiedFiles) > 0) {
+        context = context + "; files=" + str.join(modifiedFiles, ", ");
     }
     var metadata = {
         "iteration": iteration,
@@ -24,22 +24,22 @@
 }
 
 function indexModifiedFilesInMemory(memory, workDir, modifiedFiles, phase, memoryScope) {
-    if (memory == null || modifiedFiles == null || length(modifiedFiles) == 0) {
+    if (memory == null || modifiedFiles == null || str.length(modifiedFiles) == 0) {
         return;
     }
     var i = 0;
-    while (i < length(modifiedFiles)) {
+    while (i < str.length(modifiedFiles)) {
         var filePath = modifiedFiles[i];
         if (isRalphMemoryArtifact(filePath)) {
             i = i + 1;
             continue;
         }
         var resolved = filePath;
-        if (indexOf(filePath, ":") < 0 && indexOf(filePath, "\\") < 0 && indexOf(filePath, "/") < 0) {
-            resolved = pathJoin(workDir, filePath);
+        if (str.indexOf(filePath, ":") < 0 && str.indexOf(filePath, "\\") < 0 && str.indexOf(filePath, "/") < 0) {
+            resolved = io.pathJoin(workDir, filePath);
         }
         try {
-            if (hasFile(resolved)) {
+            if (io.hasFile(resolved)) {
                 memory.analyzeFile(resolved);
                 var note = "Indexed code structure for " + filePath + " during " + phase;
                 var fileMeta = {
@@ -212,10 +212,10 @@ function buildPrompt(originalTask, prdPath, iter, validationNote, contextNote, p
 }
 
 function buildGitCommitMessage(iteration, phase) {
-    var template = getEnv("MALDA_RALPH_COMMIT_MESSAGE_TEMPLATE");
+    var template = io.getEnv("MALDA_RALPH_COMMIT_MESSAGE_TEMPLATE");
     if (template != null && template != "") {
-        var msg = replace(template, "{iter}", string(iteration));
-        msg = replace(msg, "{phase}", phase);
+        var msg = str.replace(template, "{iter}", string(iteration));
+        msg = str.replace(msg, "{phase}", phase);
         return truncateText(msg, 72);
     }
     return truncateText("ralph: iter " + string(iteration) + " — " + phase, 72);
@@ -226,9 +226,9 @@ function runPreflightChecks(workDir, prdRelativePath) {
     if (mode == "off") {
         return true;
     }
-    var prdPath = pathJoin(workDir, prdRelativePath);
+    var prdPath = io.pathJoin(workDir, prdRelativePath);
     var errors = [];
-    if (!hasFile(prdPath)) {
+    if (!io.hasFile(prdPath)) {
         errors.append("PRD not found: " + prdPath);
     } else {
         var progress = countPrdChecklistProgress(prdPath);
@@ -240,11 +240,11 @@ function runPreflightChecks(workDir, prdRelativePath) {
     if (client == null) {
         errors.append("LLM client not configured (API key / backend)");
     }
-    if (length(errors) > 0) {
+    if (str.length(errors) > 0) {
         var i = 0;
-        while (i < length(errors)) {
+        while (i < str.length(errors)) {
             if (mode == "strict") {
-                print("[preflight] " + errors[i]);
+                io.print("[preflight] " + errors[i]);
             } else {
                 ralphLog("", "[preflight] " + errors[i]);
             }
@@ -289,9 +289,9 @@ function runPlanOnlyMode(task, workDir, prdRelativePath, includeSymbols) {
     if (client == null) {
         return -1;
     }
-    var prdPath = pathJoin(workDir, prdRelativePath);
-    if (!hasFile(prdPath)) {
-        print("PRD not found: " + prdPath);
+    var prdPath = io.pathJoin(workDir, prdRelativePath);
+    if (!io.hasFile(prdPath)) {
+        io.print("PRD not found: " + prdPath);
         return -1;
     }
     var agent = new DevAgent(
@@ -309,8 +309,8 @@ function runPlanOnlyMode(task, workDir, prdRelativePath, includeSymbols) {
     var response = agent.think(planPrompt);
     var text = responseTextOrEmpty(response);
     if (text != null && text != "") {
-        writeFile(pathJoin(workDir, "ralph-plan.md"), text);
-        print("Plan written to ralph-plan.md");
+        io.writeFile(io.pathJoin(workDir, "ralph-plan.md"), text);
+        io.print("Plan written to ralph-plan.md");
     }
     return 0;
 }
@@ -321,15 +321,15 @@ function tryAutoGitCommit(workDir, projectRel, iteration, validationOk, autoGitC
     }
     try {
         var files = collectModifiedFiles(workDir, projectRel);
-        if (length(files) == 0) {
+        if (str.length(files) == 0) {
             return;
         }
         var i = 0;
-        while (i < length(files)) {
-            gitAdd(workDir, files[i]);
+        while (i < str.length(files)) {
+            io.gitAdd(workDir, files[i]);
             i = i + 1;
         }
-        var result = gitCommit(workDir, buildGitCommitMessage(iteration, phase));
+        var result = io.gitCommit(workDir, buildGitCommitMessage(iteration, phase));
         ralphLog("", "[ralph] Git: " + string(result));
     } catch (error) {
         ralphLog("", "[ralph] Git commit skipped: " + string(error));
@@ -342,20 +342,20 @@ function autonomousAgentLoop(initialTask, maxIter, workDir, projectRel, prdRelat
         return -1;
     }
 
-    var prdPath = pathJoin(workDir, prdRelativePath);
-    var memoryPath = pathJoin(workDir, ".ralph-memory");
-    var statePath = pathJoin(workDir, ".ralph-state.json");
+    var prdPath = io.pathJoin(workDir, prdRelativePath);
+    var memoryPath = io.pathJoin(workDir, ".ralph-memory");
+    var statePath = io.pathJoin(workDir, ".ralph-state.json");
 
-    if (!hasFile(prdPath)) {
-        print("PRD not found: " + prdPath);
-        print("Create a PRD with checklist items marked [ ], [TODO], or [DONE].");
+    if (!io.hasFile(prdPath)) {
+        io.print("PRD not found: " + prdPath);
+        io.print("Create a PRD with checklist items marked [ ], [TODO], or [DONE].");
         return -1;
     }
 
     var ralphState = loadRalphState(statePath);
     if (ralphState.taskComplete) {
-        print("Previous run marked task complete (.ralph-state.json). Nothing to do.");
-        print("Delete .ralph-state.json to run again.");
+        io.print("Previous run marked task complete (.ralph-state.json). Nothing to do.");
+        io.print("Delete .ralph-state.json to run again.");
         return 0;
     }
 
@@ -458,7 +458,7 @@ function autonomousAgentLoop(initialTask, maxIter, workDir, projectRel, prdRelat
                         currentPhase = getCurrentPrdPhase(prdPath, lastValidationNote);
                         ralphLog("", "PRD checklist complete but validation failed; continuing...");
                         ralphLog("", lastValidationNote);
-                        print("");
+                        io.print("");
                     }
                 }
                 if (canFinish) {
@@ -482,7 +482,7 @@ function autonomousAgentLoop(initialTask, maxIter, workDir, projectRel, prdRelat
                 if (ralphResetMode() == "auto") {
                     agent.setContextTrimHandoff(buildContextTrimHandoff(ralphState, lastValidationNote));
                 }
-                ralphLog("", "[ralph] Prompt length: " + string(length(currentPrompt)) + " chars");
+                ralphLog("", "[ralph] Prompt length: " + string(str.length(currentPrompt)) + " chars");
                 ralphLog("", "[ralph] Estimated context: " + string(agent.getEstimatedContextTokens()) + " tokens");
                 ralphLog("", "[ralph] Calling agent.think() - waiting for LLM and tools (may take several minutes)...");
                 var thinkStart = now();
@@ -492,7 +492,7 @@ function autonomousAgentLoop(initialTask, maxIter, workDir, projectRel, prdRelat
                     response = agent.think(currentPrompt);
                 } catch (error) {
                     var errMsg = string(error);
-                    if (indexOf(lower(errMsg), "timeout") >= 0) {
+                    if (str.indexOf(str.lower(errMsg), "timeout") >= 0) {
                         thinkTimedOut = true;
                         lastValidationNote = "Iteration timed out: " + errMsg;
                         ralphLog("", lastValidationNote);
@@ -524,7 +524,7 @@ function autonomousAgentLoop(initialTask, maxIter, workDir, projectRel, prdRelat
                     }
                     ralphLog("", "Write tool failure(s) detected:");
                     ralphLog("", failedToolNote);
-                    print("");
+                    io.print("");
                 }
                 if (validateEachIteration && validationOk) {
                     var gitChanged = collectModifiedFiles(workDir, projectRel);
@@ -538,7 +538,7 @@ function autonomousAgentLoop(initialTask, maxIter, workDir, projectRel, prdRelat
                         lastValidationNote = formatValidationErrors(validation.errors);
                         ralphLog("", "Validation FAILED:");
                         ralphLog("", lastValidationNote);
-                        print("");
+                        io.print("");
                     }
                 }
 
@@ -602,10 +602,9 @@ function autonomousAgentLoop(initialTask, maxIter, workDir, projectRel, prdRelat
 
         return iteration;
     } catch (error) {
-        print("Fatal error in autonomous agent: " + error);
+        io.print("Fatal error in autonomous agent: " + error);
         saveRalphState(statePath, ralphState);
         finalizeRalphMemoryIteration(memory, memoryPath, client, memoryScope, maxIter);
         return -1;
     }
 }
-

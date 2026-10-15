@@ -249,27 +249,27 @@ function buildNetwork() -> Sequential {
     var block1 = createConvBlock(3, 12, true);
     var residual = createResidualBlock(12);
     var block2 = createConvBlock(12, 24, true);
-    
+
     // After Conv+Pool: 32x32 -> 12x16x16 -> 12x8x8 -> 24x8x8 = 1536
     var classifier = new Sequential([
         new Flatten(),
         new Dense(1536, 96, "relu"),
         new Dense(96, 3, "linear")
     ]);
-    
+
     return new Sequential([block1, residual, block2, classifier]);
 }
 
 function trainNetwork() {
     math.seed(42);
-    
+
     io.print("Building complex neural network for RGB 32x32 images...");
     var network = buildNetwork();
-    
+
     io.print("Generating training dataset...");
     var trainImages = [];
     var trainLabels = [];
-    
+
     for (var i = 0; i < 12; i = i + 1) {
         trainImages.append(generateCircle());
         trainLabels.append(0);
@@ -278,11 +278,11 @@ function trainNetwork() {
         trainImages.append(generateTriangle());
         trainLabels.append(2);
     }
-    
+
     io.print("Generating test dataset...");
     var testImages = [];
     var testLabels = [];
-    
+
     for (var i = 0; i < 3; i = i + 1) {
         testImages.append(generateCircle());
         testLabels.append(0);
@@ -291,67 +291,67 @@ function trainNetwork() {
         testImages.append(generateTriangle());
         testLabels.append(2);
     }
-    
+
     var learningRate = 0.01;
     var epochs = 25;
-    
+
     io.print("");
     io.print("Starting training on " + string(trainImages.length) + " RGB 32x32 images...");
     io.print("Architecture: Conv(3→12) + ResBlock(12) + Conv(12→24) + Dense(1536→96→3)");
     io.print("Colored shapes: red circles, green squares, blue triangles");
     io.print("");
-    
+
     for (var epoch = 1; epoch <= epochs; epoch = epoch + 1) {
         var epochLoss = 0.0;
         var correct = 0;
-        
+
         for (var i = 0; i < trainImages.length; i = i + 1) {
             var logits = network.forward(trainImages[i]);
             var loss = nn.crossEntropyFromLogits(logits, trainLabels[i]);
             epochLoss = epochLoss + loss;
-            
+
             var predicted = math.argmax(logits);
             if (predicted == trainLabels[i]) {
                 correct = correct + 1;
             }
-            
+
             var dLogits = nn.softmaxGrad(logits, trainLabels[i]);
             network.backward(dLogits);
             network.sgd(learningRate);
         }
-        
+
         var avgLoss = epochLoss / trainImages.length;
         var accuracy = correct * 100.0 / trainImages.length;
-        
+
         if (epoch == 1 || epoch % 5 == 0 || epoch == epochs) {
-            io.print("Epoch " + string(epoch) + "/" + string(epochs) + 
-                     ": loss=" + string(math.round(avgLoss * 1000.0) / 1000.0) +
-                     ", accuracy=" + string(int(accuracy)) + "%");
+            io.print("Epoch " + string(epoch) + "/" + string(epochs) +
+                ": loss=" + string(math.round(avgLoss * 1000.0) / 1000.0) +
+                ", accuracy=" + string(int(accuracy)) + "%");
         }
     }
-    
+
     io.print("");
     io.print("Evaluating on test set...");
-    
+
     var testCorrect = 0;
     var confusionMatrix = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
-    
+
     for (var i = 0; i < testImages.length; i = i + 1) {
         var logits = network.forward(testImages[i]);
         var predicted = math.argmax(logits);
         var actual = testLabels[i];
-        
+
         confusionMatrix[actual][predicted] = confusionMatrix[actual][predicted] + 1;
-        
+
         if (predicted == actual) {
             testCorrect = testCorrect + 1;
         }
     }
-    
+
     var testAccuracy = testCorrect * 100.0 / testImages.length;
-    io.print("Test accuracy: " + string(int(testAccuracy)) + "% (" + 
-             string(testCorrect) + "/" + string(testImages.length) + ")");
-    
+    io.print("Test accuracy: " + string(int(testAccuracy)) + "% (" +
+        string(testCorrect) + "/" + string(testImages.length) + ")");
+
     io.print("");
     io.print("Confusion matrix (rows=actual, cols=predicted):");
     io.print("          Circle   Square   Triangle");
@@ -367,7 +367,7 @@ function trainNetwork() {
         }
         io.print(line);
     }
-    
+
     io.print("");
     if (testAccuracy >= 80.0) {
         io.print("color image cnn ok");

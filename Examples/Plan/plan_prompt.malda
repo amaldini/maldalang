@@ -15,5 +15,5 @@ prompt planTask(task, docs) -> Plan {
 }
 
 var plan = planTask("Add error handling to the parser", "See docs/parsing.md");
-print("Plan prompt (system): " + plan.system);
-print("Plan prompt (user): " + plan.user);
+io.print("Plan prompt (system): " + plan.system);
+io.print("Plan prompt (user): " + plan.user);

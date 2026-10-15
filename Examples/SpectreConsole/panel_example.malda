@@ -2,8 +2,8 @@
 // Demonstrates displaying content in panels
 
 var content = "This is important information that needs to be highlighted.\n" +
-              "Panels are great for drawing attention to specific content.\n" +
-              "You can use different border styles to match your design.";
+    "Panels are great for drawing attention to specific content.\n" +
+    "You can use different border styles to match your design.";
 
 // Panel with title
 AnsiConsole.panel(content, "Important Notice");
@@ -12,8 +12,8 @@ AnsiConsole.markupLine("");
 
 // Panel with rounded border
 var code = "function greet(name) {\n" +
-           "  return 'Hello, ' + name + '!';\n" +
-           "}";
+    "  return 'Hello, ' + name + '!';\n" +
+    "}";
 
 AnsiConsole.panel(code, "Code Example", "rounded");
 
@@ -21,7 +21,7 @@ AnsiConsole.markupLine("");
 
 // Panel with double border
 var warning = "⚠ WARNING: This operation cannot be undone!\n" +
-              "Please make sure you want to proceed.";
+    "Please make sure you want to proceed.";
 
 AnsiConsole.panel(warning, "Warning", "double");
 
@@ -29,7 +29,7 @@ AnsiConsole.markupLine("");
 
 // Panel with heavy border
 var success = "✓ Operation completed successfully!\n" +
-              "All files have been processed.";
+    "All files have been processed.";
 
 AnsiConsole.panel(success, "Success", "heavy");
 

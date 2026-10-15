@@ -15,10 +15,10 @@ var envelope = ui.mountEnvelope(tree, sessionId, {
     "sessionTtlMs": 1800000
 });
 
-print("Generated root node type:");
-print(tree.type);
-print("Mount envelope:");
-print(toJSON(envelope));
+io.print("Generated root node type:");
+io.print(tree.type);
+io.print("Mount envelope:");
+io.print(toJSON(envelope));
 
 var server = new HttpServer(8081);
 
@@ -50,4 +50,4 @@ function uiAiGeneratedTreeEnvelope() {
 }
 
 server.start();
-print("Open: http://localhost:8081/web/ui-ai-generated-tree");
+io.print("Open: http://localhost:8081/web/ui-ai-generated-tree");

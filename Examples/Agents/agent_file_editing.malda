@@ -1,6 +1,6 @@
 // Note: Requires OPENROUTER_API_KEY environment variable
 // First, create a test file
-writeFile("example.txt", "function add(a, b) {
+io.writeFile("example.txt", "function add(a, b) {
     return a + b;
 }");
 
@@ -14,10 +14,10 @@ var editorAgent = new CodingAgent(
 
 // Agent already has all file tools - ready to use!
 var response = editorAgent.think("Read example.txt and add a comment to the add function.");
-print(response.content);
+io.print(response.content);
 
 // Verify the edit
-var content = readFile("example.txt");
-print("
+var content = io.readFile("example.txt");
+io.print("
 File after edit:");
-print(content);
+io.print(content);

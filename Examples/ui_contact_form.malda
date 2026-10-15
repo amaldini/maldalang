@@ -13,11 +13,11 @@ function homePage() {
 // Handle form submissions
 @POST("/submit")
 function handleSubmit(body) {
-    print("Form submitted!");
-    print("Name: " + body.name);
-    print("Email: " + body.email);
-    print("Message: " + body.message);
-    
+    io.print("Form submitted!");
+    io.print("Name: " + body.name);
+    io.print("Email: " + body.email);
+    io.print("Message: " + body.message);
+
     return {
         "status": 200,
         "body": "<html><head><title>Thank You</title></head><body><h1>Thank You!</h1><p>Your message has been received.</p><p><a href='/'>Back to form</a></p></body></html>"
@@ -25,6 +25,6 @@ function handleSubmit(body) {
 }
 
 server.start();
-print("Server running at http://localhost:8080");
-print("Open http://localhost:8080 in your browser");
-print("Press Ctrl+C to stop the server");
+io.print("Server running at http://localhost:8080");
+io.print("Open http://localhost:8080 in your browser");
+io.print("Press Ctrl+C to stop the server");

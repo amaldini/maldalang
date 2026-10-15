@@ -15,7 +15,7 @@ var eachItems = ui.each(["one", "two"], "value");
 
 var root = ui.column({"componentId": "MinimalShowcase"}, [
     ui.heading({"value": "UI Controls Minimal Showcase"}),
-    ui.row({}, [ui.text({"value": "row"}), ui.spacer({}), ui.text({"value": "end"} )]),
+    ui.row({}, [ui.text({"value": "row"}), ui.spacer({}), ui.text({"value": "end"})]),
     ui.stack({}, [ui.badge({"value": "a"}), ui.badge({"value": "b"})]),
     ui.drawer({"open": true}, [ui.text({"value": "drawer"})]),
     ui.tabs({"value": "t1"}, [ui.panel({"key": "t1"}, [ui.text({"value": "tab1"})]), ui.panel({"key": "t2"}, [ui.text({"value": "tab2"})])]),

@@ -133,10 +133,10 @@ if (root == null) {
         }
 
         if (ballVy > 0 &&
-            ballY + ballRadius >= paddleY &&
-            ballY - ballRadius <= paddleY + paddleHeight &&
-            ballX >= paddleX &&
-            ballX <= paddleX + paddleWidth) {
+                ballY + ballRadius >= paddleY &&
+                ballY - ballRadius <= paddleY + paddleHeight &&
+                ballX >= paddleX &&
+                ballX <= paddleX + paddleWidth) {
             ballY = paddleY - ballRadius;
             ballVy = 0 - ballVy;
             score = score + 1;

@@ -3,13 +3,13 @@
 
 var PORT = 8080;
 var MODEL_PATH = "models/qwen2.5-0.5b-instruct-q4_k_m.gguf";
-var localAppData = getEnv("LOCALAPPDATA");
+var localAppData = io.getEnv("LOCALAPPDATA");
 if (localAppData != null && localAppData != "") {
     MODEL_PATH = localAppData + "/MaldaLang/Models/default/qwen2.5-0.5b-instruct-q4_k_m.gguf";
 }
 
-print("=== LLM Server - Cost Optimization Example ===");
-print("Setting up cost-optimized configuration...");
+io.print("=== LLM Server - Cost Optimization Example ===");
+io.print("Setting up cost-optimized configuration...");
 
 // Create bridge with local and cloud backends
 var bridge = new LLMClientBridge([
@@ -37,31 +37,31 @@ var bridge = new LLMClientBridge([
 // Use cost-based routing
 bridge.setRoutingStrategy("cost");
 
-print("Cost optimization configuration:");
-print("  - Backend 1: Local model (free)");
-print("  - Backend 2: GPT-4 ($0.03/1K tokens)");
-print("  - Backend 3: GPT-3.5-turbo ($0.0015/1K tokens)");
-print("  - Routing strategy: Cost-based");
-print("");
-print("The server will route requests to the most cost-effective backend.");
-print("");
+io.print("Cost optimization configuration:");
+io.print("  - Backend 1: Local model (free)");
+io.print("  - Backend 2: GPT-4 ($0.03/1K tokens)");
+io.print("  - Backend 3: GPT-3.5-turbo ($0.0015/1K tokens)");
+io.print("  - Routing strategy: Cost-based");
+io.print("");
+io.print("The server will route requests to the most cost-effective backend.");
+io.print("");
 
-print("Starting server on port " + string(PORT) + "...");
+io.print("Starting server on port " + string(PORT) + "...");
 var server = new LLMServer(bridge, PORT);
 server.start();
 
-print("Server started successfully!");
-print("");
-print("Cost optimization features:");
-print("  - Simple queries → Local model (free)");
-print("  - Complex queries → GPT-3.5-turbo (cheap)");
-print("  - Very complex queries → GPT-4 (expensive but powerful)");
-print("");
-print("Server running. Press Ctrl+C to stop.");
+io.print("Server started successfully!");
+io.print("");
+io.print("Cost optimization features:");
+io.print("  - Simple queries → Local model (free)");
+io.print("  - Complex queries → GPT-3.5-turbo (cheap)");
+io.print("  - Very complex queries → GPT-4 (expensive but powerful)");
+io.print("");
+io.print("Server running. Press Ctrl+C to stop.");
 
 // Keep server running
 while (server.isRunning) {
     sleep(1000);
 }
 
-print("Server stopped.");
+io.print("Server stopped.");

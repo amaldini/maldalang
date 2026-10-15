@@ -4,15 +4,15 @@
 // Run: malda Examples/Web/auth_cookie_login.malda
 // Then open http://localhost:8080/
 
-var jwtSecret = getEnv("MALDA_JWT_SECRET");
+var jwtSecret = io.getEnv("MALDA_JWT_SECRET");
 if (jwtSecret == null or jwtSecret == "") {
     jwtSecret = "dev-only-jwt-secret-change-me";
 }
-var cookieSecret = getEnv("MALDA_COOKIE_SECRET");
+var cookieSecret = io.getEnv("MALDA_COOKIE_SECRET");
 if (cookieSecret == null or cookieSecret == "") {
     cookieSecret = "dev-only-cookie-secret-change-me";
 }
-var sessionSecret = getEnv("MALDA_SESSION_SECRET");
+var sessionSecret = io.getEnv("MALDA_SESSION_SECRET");
 if (sessionSecret == null or sessionSecret == "") {
     sessionSecret = "dev-only-session-secret-change-me";
 }
@@ -107,4 +107,4 @@ server.use(requireAuth, {
 });
 server.setRateLimit(60, 60, "verifiedSubOrIp");
 server.start();
-print("Auth cookie login demo at http://localhost:8080/");
+io.print("Auth cookie login demo at http://localhost:8080/");

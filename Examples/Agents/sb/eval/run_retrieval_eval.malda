@@ -109,7 +109,7 @@ foreach (var item in questions) {
     } else {
         var history = evalHistoryFromPrior(questions, catalog, priorId);
         if (history.length == 0) {
-            print("MISS " + item.id + " missing priorId=" + priorId);
+            io.print("MISS " + item.id + " missing priorId=" + priorId);
             continue;
         }
         var rawPicked = selectNotes(here, catalog, item.q, []);
@@ -122,7 +122,7 @@ foreach (var item in questions) {
             }
         } else {
             if (rawHit) {
-                print("MISS " + item.id + " raw unexpectedly hit");
+                io.print("MISS " + item.id + " raw unexpectedly hit");
                 continue;
             }
             var expanded = expandAskRetrievalQuery(item.q, history);
@@ -135,14 +135,14 @@ foreach (var item in questions) {
     }
     if (ok) {
         hits = hits + 1;
-        print("HIT " + item.id + " top=" + top);
+        io.print("HIT " + item.id + " top=" + top);
     } else {
-        print("MISS " + item.id + " top=" + top + " want=" + str.join(item.expectSlugs, ","));
+        io.print("MISS " + item.id + " top=" + top + " want=" + str.join(item.expectSlugs, ","));
     }
 }
-print("HIT_AT_K=" + string(hits) + "/" + string(total));
+io.print("HIT_AT_K=" + string(hits) + "/" + string(total));
 if (hits < total) {
-    print("EVAL_FAIL");
+    io.print("EVAL_FAIL");
 } else {
-    print("EVAL_PASS");
+    io.print("EVAL_PASS");
 }

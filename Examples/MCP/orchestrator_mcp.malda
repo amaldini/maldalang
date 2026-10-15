@@ -3,13 +3,13 @@
 // The Orchestrator can create agents dynamically and delegate MCP agent creation to MALDACodingAgent
 
 // Note: Requires OPENROUTER_API_KEY environment variable
-var apiKey = getEnv("OPENROUTER_API_KEY");
+var apiKey = io.getEnv("OPENROUTER_API_KEY");
 if (apiKey == null) {
-    print("Error: OPENROUTER_API_KEY environment variable not set");
+    io.print("Error: OPENROUTER_API_KEY environment variable not set");
 } else {
     // Initialize LLM client
     var client = new OpenRouterClient("openai/gpt-4");
-    
+
     // Create MALDACodingAgent - specialized agent for MALDA development and MCP agent creation
     var maldaCodingAgent = new MALDACodingAgent(
         "MALDACodingAgent",
@@ -22,7 +22,7 @@ if (apiKey == null) {
         client,
         "."
     );
-    
+
     // Create Orchestrator agent
     var orchestrator = new Agent(
         "Orchestrator",
@@ -41,19 +41,19 @@ if (apiKey == null) {
         "Use the MALDACodingAgent tool whenever you need to create new MCP-based agents.",
         client
     );
-    
+
     // Create a tool function that wraps addSubAgent
     // This function can access 'orchestrator' from its closure
     @Tool("add_sub_agent", "Adds a sub-agent to the orchestrator. Call this after creating an agent to make it available as a tool. Provide the agent instance and a tool description.")
     function addSubAgentTool(agent, description) {
         orchestrator.addSubAgent(agent, description);
         return "Sub-agent '" + agent.name + "' (" + agent.role + ") has been added successfully. " +
-               "You can now use this agent as a tool in your conversations.";
+            "You can now use this agent as a tool in your conversations.";
     }
-    
+
     // Add the tool to the orchestrator
     orchestrator.addTool("add_sub_agent");
-    
+
     // Add MALDACodingAgent as a subagent to the Orchestrator
     orchestrator.addSubAgent(
         maldaCodingAgent,
@@ -63,20 +63,20 @@ if (apiKey == null) {
         "The MALDACodingAgent will generate the MCP script, execute it, connect to it, " +
         "and return a wrapper agent. After receiving the agent, use the add_sub_agent tool to add it to your available tools."
     );
-    
-    print("=== Orchestrator with MALDACodingAgent Setup Complete ===");
-    print("Orchestrator is ready to create agents dynamically.");
-    print("MALDACodingAgent is available as a subagent for MCP agent creation.");
-    print("add_sub_agent tool is available for adding created agents as subagents.");
-    print("");
-    print("The Orchestrator can now:");
-    print("  - Create agents dynamically as needed");
-    print("  - Delegate MCP agent creation to MALDACodingAgent");
-    print("  - Add dynamically created agents as subagents using the add_sub_agent tool");
-    print("");
-    print("Example workflow:");
-    print("  1. Orchestrator asks MALDACodingAgent to create an MCP agent");
-    print("  2. MALDACodingAgent creates the agent and returns it");
-    print("  3. Orchestrator uses add_sub_agent tool to add the agent");
-    print("  4. The new agent is now available as a tool for future tasks");
+
+    io.print("=== Orchestrator with MALDACodingAgent Setup Complete ===");
+    io.print("Orchestrator is ready to create agents dynamically.");
+    io.print("MALDACodingAgent is available as a subagent for MCP agent creation.");
+    io.print("add_sub_agent tool is available for adding created agents as subagents.");
+    io.print("");
+    io.print("The Orchestrator can now:");
+    io.print("  - Create agents dynamically as needed");
+    io.print("  - Delegate MCP agent creation to MALDACodingAgent");
+    io.print("  - Add dynamically created agents as subagents using the add_sub_agent tool");
+    io.print("");
+    io.print("Example workflow:");
+    io.print("  1. Orchestrator asks MALDACodingAgent to create an MCP agent");
+    io.print("  2. MALDACodingAgent creates the agent and returns it");
+    io.print("  3. Orchestrator uses add_sub_agent tool to add the agent");
+    io.print("  4. The new agent is now available as a tool for future tasks");
 }

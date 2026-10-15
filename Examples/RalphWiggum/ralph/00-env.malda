@@ -1,5 +1,5 @@
 ﻿function resolveRalphModel() {
-    var modelOverride = getEnv("MALDA_RALPH_MODEL");
+    var modelOverride = io.getEnv("MALDA_RALPH_MODEL");
     if (modelOverride != null && modelOverride != "") {
         return modelOverride;
     }
@@ -13,7 +13,7 @@
 }
 
 function createAgentClient() {
-    var backendOverride = getEnv("MALDA_AGENT_BACKEND");
+    var backendOverride = io.getEnv("MALDA_AGENT_BACKEND");
     var backend = "openrouter";
     if (backendOverride != null && backendOverride != "") {
         backend = backendOverride;
@@ -23,7 +23,7 @@ function createAgentClient() {
 
     if (backend == "local-llama") {
         if (config == null || config.providers == null || config.providers.local_llama == null || config.providers.local_llama.modelPath == null || config.providers.local_llama.modelPath == "") {
-            print("Backend 'local-llama' selected but providers.local_llama.modelPath is not configured.");
+            io.print("Backend 'local-llama' selected but providers.local_llama.modelPath is not configured.");
             return null;
         }
         var localCfg = config.providers.local_llama;
@@ -40,12 +40,12 @@ function createAgentClient() {
         return llamaClient;
     }
 
-    var apiKey = getEnv("OPENROUTER_API_KEY");
+    var apiKey = io.getEnv("OPENROUTER_API_KEY");
     if (config != null && config.providers != null && config.providers.openrouter != null && config.providers.openrouter.apiKey != null && config.providers.openrouter.apiKey != "") {
         apiKey = config.providers.openrouter.apiKey;
     }
     if (apiKey == null || apiKey == "") {
-        print("Set OPENROUTER_API_KEY or providers.openrouter.apiKey in ~/.malda/config.json");
+        io.print("Set OPENROUTER_API_KEY or providers.openrouter.apiKey in ~/.malda/config.json");
         return null;
     }
 
@@ -60,7 +60,7 @@ function createAgentClient() {
 }
 
 function envInt(name, defaultValue) {
-    var raw = getEnv(name);
+    var raw = io.getEnv(name);
     if (raw == null || raw == "") {
         return defaultValue;
     }
@@ -72,20 +72,20 @@ function envInt(name, defaultValue) {
 }
 
 function envBool(name, defaultValue) {
-    var raw = getEnv(name);
+    var raw = io.getEnv(name);
     if (raw == null || raw == "") {
         return defaultValue;
     }
-    var lower = lower(raw);
-    return lower == "1" or lower == "true" or lower == "yes";
+    var lowered = str.lower(raw);
+    return lowered == "1" or lowered == "true" or lowered == "yes";
 }
 
 function getAgentEnv(primary, legacyAlias) {
-    var v = getEnv(primary);
+    var v = io.getEnv(primary);
     if (v != null && v != "") {
         return v;
     }
-    return getEnv(legacyAlias);
+    return io.getEnv(legacyAlias);
 }
 
 function agentRichEnabled() {
@@ -93,7 +93,7 @@ function agentRichEnabled() {
     if (raw == null || raw == "") {
         return true;
     }
-    var v = lower(raw);
+    var v = str.lower(raw);
     return not (v == "0" or v == "false" or v == "no" or v == "off");
 }
 
@@ -102,7 +102,7 @@ function agentVerboseEnabled(defaultValue) {
     if (raw == null || raw == "") {
         return defaultValue;
     }
-    var v = lower(raw);
+    var v = str.lower(raw);
     return v == "1" or v == "true" or v == "yes" or v == "on";
 }
 
@@ -127,7 +127,7 @@ function ralphVerboseConfigEnabled() {
 }
 
 function envStr(name, defaultValue) {
-    var raw = getEnv(name);
+    var raw = io.getEnv(name);
     if (raw == null || raw == "") {
         return defaultValue;
     }
@@ -135,15 +135,15 @@ function envStr(name, defaultValue) {
 }
 
 function ralphResumePolicy() {
-    return lower(envStr("MALDA_RALPH_RESUME_POLICY", "all"));
+    return str.lower(envStr("MALDA_RALPH_RESUME_POLICY", "all"));
 }
 
 function ralphResetMode() {
-    var raw = getEnv("MALDA_RALPH_RESET_EACH");
+    var raw = io.getEnv("MALDA_RALPH_RESET_EACH");
     if (raw == null || raw == "") {
         return "true";
     }
-    var v = lower(raw);
+    var v = str.lower(raw);
     if (v == "false" or v == "0" or v == "no") {
         return "false";
     }
@@ -157,7 +157,7 @@ function ralphResetMode() {
 }
 
 function ralphPreflightMode() {
-    return lower(envStr("MALDA_RALPH_PREFLIGHT", "strict"));
+    return str.lower(envStr("MALDA_RALPH_PREFLIGHT", "strict"));
 }
 
 function ralphPrdStrictEnabled() {
@@ -169,23 +169,23 @@ function ralphRequireCompleteSignal() {
 }
 
 function ralphTimeoutAction() {
-    return lower(envStr("MALDA_RALPH_TIMEOUT_ACTION", "continue"));
+    return str.lower(envStr("MALDA_RALPH_TIMEOUT_ACTION", "continue"));
 }
 
 function ralphValidateDepth() {
-    return lower(envStr("MALDA_RALPH_VALIDATE_DEPTH", "recursive"));
+    return str.lower(envStr("MALDA_RALPH_VALIDATE_DEPTH", "recursive"));
 }
 
 function ralphValidateScope() {
-    return lower(envStr("MALDA_RALPH_VALIDATE_SCOPE", "all"));
+    return str.lower(envStr("MALDA_RALPH_VALIDATE_SCOPE", "all"));
 }
 
 function ralphValidateHook() {
-    return lower(envStr("MALDA_RALPH_VALIDATE_HOOK", "always"));
+    return str.lower(envStr("MALDA_RALPH_VALIDATE_HOOK", "always"));
 }
 
 function ralphValidateFallback() {
-    return lower(envStr("MALDA_RALPH_VALIDATE_FALLBACK", "all"));
+    return str.lower(envStr("MALDA_RALPH_VALIDATE_FALLBACK", "all"));
 }
 
 function getResumeCheckpoint(state) {
@@ -239,12 +239,12 @@ function formatOpenRouterCost(cost) {
         return "";
     }
     if (cost >= 1) {
-        return "$" + string(round(cost * 100) / 100);
+        return "$" + string(math.round(cost * 100) / 100);
     }
     if (cost >= 0.01) {
-        return "$" + string(round(cost * 10000) / 10000);
+        return "$" + string(math.round(cost * 10000) / 10000);
     }
-    return "$" + string(round(cost * 1000000) / 1000000);
+    return "$" + string(math.round(cost * 1000000) / 1000000);
 }
 
 function accumulateTokenUsage(state, response) {
@@ -267,23 +267,23 @@ function accumulateTokenUsage(state, response) {
 }
 
 function resolveRalphWorkingDir() {
-    var explicit = getEnv("MALDA_RALPH_WORKDIR");
+    var explicit = io.getEnv("MALDA_RALPH_WORKDIR");
     if (explicit != null && explicit != "") {
-        return pathNormalize(explicit);
+        return io.pathNormalize(explicit);
     }
-    var worktree = getEnv("MALDA_RALPH_WORKTREE");
+    var worktree = io.getEnv("MALDA_RALPH_WORKTREE");
     if (worktree != null && worktree != "") {
-        var rel = getEnv("MALDA_RALPH_PROJECT_REL");
+        var rel = io.getEnv("MALDA_RALPH_PROJECT_REL");
         if (rel == null || rel == "") {
             rel = ".";
         }
-        return pathNormalize(pathJoin(worktree, rel));
+        return io.pathNormalize(io.pathJoin(worktree, rel));
     }
-    return pathNormalize(".");
+    return io.pathNormalize(".");
 }
 
 function resolveRalphProjectRel() {
-    var rel = getEnv("MALDA_RALPH_PROJECT_REL");
+    var rel = io.getEnv("MALDA_RALPH_PROJECT_REL");
     if (rel == null || rel == "") {
         return "";
     }

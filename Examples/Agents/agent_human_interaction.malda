@@ -2,14 +2,14 @@
 // This demonstrates how HumanAgent can be used standalone and as a subagent for human-in-the-loop workflows
 
 // Note: Requires OPENROUTER_API_KEY environment variable
-var apiKey = getEnv("OPENROUTER_API_KEY");
+var apiKey = io.getEnv("OPENROUTER_API_KEY");
 if (apiKey == null) {
-    print("Error: OPENROUTER_API_KEY environment variable not set");
+    io.print("Error: OPENROUTER_API_KEY environment variable not set");
 } else {
     var client = new OpenRouterClient();
-    
-    print("=== Example 1: Basic HumanAgent Usage ===\n");
-    
+
+    io.print("=== Example 1: Basic HumanAgent Usage ===\n");
+
     // Create a HumanAgent - it automatically includes the ask_user tool
     var assistant = new HumanAgent(
         "Assistant",
@@ -17,17 +17,17 @@ if (apiKey == null) {
         "You help users by asking clarifying questions when needed. " +
         "Be friendly and concise in your questions."
     );
-    
+
     // Agent can now ask questions without manually adding the tool
-    print("Agent will ask you a question...\n");
+    io.print("Agent will ask you a question...\n");
     var response = assistant.think(
         "Ask the user what their favorite programming language is, " +
         "then provide a brief explanation of that language."
     );
-    print("Agent response:\n" + response.content + "\n");
-    
-    print("\n=== Example 2: HumanAgent as Subagent (Human-in-the-Loop) ===\n");
-    
+    io.print("Agent response:\n" + response.content + "\n");
+
+    io.print("\n=== Example 2: HumanAgent as Subagent (Human-in-the-Loop) ===\n");
+
     // Create a HumanAgent for user interaction
     var humanInterface = new HumanAgent(
         "HumanInterface",
@@ -37,7 +37,7 @@ if (apiKey == null) {
         "Request approval before making destructive changes. " +
         "Always confirm important decisions with the user."
     );
-    
+
     // Create an orchestrator that can delegate to specialists
     var orchestrator = new CodingAgent(
         "Orchestrator",
@@ -48,7 +48,7 @@ if (apiKey == null) {
         "Always ask for confirmation before deleting files or making breaking changes. " +
         "If you're unsure about something, ask the user for guidance."
     );
-    
+
     // Add HumanAgent as a subagent
     orchestrator.addSubAgent(
         humanInterface,
@@ -56,17 +56,17 @@ if (apiKey == null) {
         "Use this when you need to ask the user a question, get their approval, " +
         "or request clarification on requirements."
     );
-    
-    print("Orchestrator with HumanAgent subagent is ready. " +
-          "It can now request human input when needed.\n");
-    
+
+    io.print("Orchestrator with HumanAgent subagent is ready. " +
+        "It can now request human input when needed.\n");
+
     // Example: Orchestrator can now request user input
-    print("Example prompt: 'Refactor the codebase to use dependency injection. " +
-          "Ask the user which design pattern they prefer before proceeding.'\n");
-    print("(This would trigger the HumanAgent to ask the user for input)\n");
-    
-    print("\n=== Example 3: Approval Workflow ===\n");
-    
+    io.print("Example prompt: 'Refactor the codebase to use dependency injection. " +
+        "Ask the user which design pattern they prefer before proceeding.'\n");
+    io.print("(This would trigger the HumanAgent to ask the user for input)\n");
+
+    io.print("\n=== Example 3: Approval Workflow ===\n");
+
     // Create a HumanAgent for approval workflows
     var approver = new HumanAgent(
         "Approver",
@@ -75,7 +75,7 @@ if (apiKey == null) {
         "Ask for explicit confirmation before proceeding with important changes. " +
         "Present options clearly and wait for user confirmation."
     );
-    
+
     // Create a coding agent that needs approval
     var codeEditor = new CodingAgent(
         "CodeEditor",
@@ -85,29 +85,29 @@ if (apiKey == null) {
         "use the Approver tool to get user confirmation. " +
         "Always explain what you're about to do before asking for approval."
     );
-    
+
     // Add approver as subagent
     codeEditor.addSubAgent(
         approver,
         "Handles approval requests. Use this to get user confirmation before " +
         "making destructive changes or important modifications."
     );
-    
-    print("CodeEditor with Approver subagent is ready. " +
-          "It will request approval before making important changes.\n");
-    
-    print("Example workflow:\n");
-    print("1. CodeEditor identifies a need for a major refactoring\n");
-    print("2. CodeEditor calls Approver tool to request confirmation\n");
-    print("3. Approver asks user: 'I'm about to refactor the authentication system. Proceed? (yes/no)'\n");
-    print("4. User responds\n");
-    print("5. CodeEditor receives approval and proceeds (or stops if denied)\n");
-    
-    print("\n=== Summary ===\n");
-    print("HumanAgent provides:\n");
-    print("- Automatic ask_user tool inclusion (no manual setup needed)\n");
-    print("- Easy creation of interactive agents\n");
-    print("- Human-in-the-loop patterns via subagent architecture\n");
-    print("- Safety through approval workflows\n");
-    print("- Separation of concerns (human interaction isolated in HumanAgent)\n");
+
+    io.print("CodeEditor with Approver subagent is ready. " +
+        "It will request approval before making important changes.\n");
+
+    io.print("Example workflow:\n");
+    io.print("1. CodeEditor identifies a need for a major refactoring\n");
+    io.print("2. CodeEditor calls Approver tool to request confirmation\n");
+    io.print("3. Approver asks user: 'I'm about to refactor the authentication system. Proceed? (yes/no)'\n");
+    io.print("4. User responds\n");
+    io.print("5. CodeEditor receives approval and proceeds (or stops if denied)\n");
+
+    io.print("\n=== Summary ===\n");
+    io.print("HumanAgent provides:\n");
+    io.print("- Automatic ask_user tool inclusion (no manual setup needed)\n");
+    io.print("- Easy creation of interactive agents\n");
+    io.print("- Human-in-the-loop patterns via subagent architecture\n");
+    io.print("- Safety through approval workflows\n");
+    io.print("- Separation of concerns (human interaction isolated in HumanAgent)\n");
 }

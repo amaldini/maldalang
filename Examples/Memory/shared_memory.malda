@@ -6,8 +6,8 @@ var memory = new GraphMemory();
 memory.initialize(384, "single", function (text) { return embedHash(text, 384); });
 
 var path = getMaldaHome() + "/memory/team_memory";
-ensureDir(getMaldaHome() + "/memory");
-if (hasFile(path + ".graph.json")) {
+io.ensureDir(getMaldaHome() + "/memory");
+if (io.hasFile(path + ".graph.json")) {
     memory.load(path);
 }
 
@@ -18,6 +18,6 @@ agent2.useMemory(memory);
 
 agent1.remember("Team preference: always summarize action items.");
 var seen = memory.query("team preference", 3, { "minScore": 0, "scope": "global" });
-print("Agent2 sees shared memory entries: " + seen.length);
+io.print("Agent2 sees shared memory entries: " + seen.length);
 
 memory.save(path);

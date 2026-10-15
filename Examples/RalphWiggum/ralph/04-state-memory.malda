@@ -16,11 +16,11 @@
 }
 
 function loadRalphState(statePath) {
-    if (!hasFile(statePath)) {
+    if (!io.hasFile(statePath)) {
         return emptyRalphState();
     }
     try {
-        var parsed = parseJSON(readFile(statePath));
+        var parsed = parseJSON(io.readFile(statePath));
         if (parsed == null) {
             return emptyRalphState();
         }
@@ -53,14 +53,14 @@ function loadRalphState(statePath) {
         }
         return parsed;
     } catch (error) {
-        print("[ralph] Warning: could not load state, starting fresh (" + string(error) + ")");
+        io.print("[ralph] Warning: could not load state, starting fresh (" + string(error) + ")");
         return emptyRalphState();
     }
 }
 
 function saveRalphState(statePath, state) {
     state.updatedAt = now();
-    writeFile(statePath, toJSON(state));
+    io.writeFile(statePath, toJSON(state));
 }
 
 function recordIterationResult(state, iteration, phase, thinkElapsed, summary, validationOk, responseText, modifiedFiles, runtimeError, usage) {
@@ -122,18 +122,18 @@ function buildStallEscalationNote(state, lastValidationNote, modifiedFiles) {
     if (lastValidationNote != null && lastValidationNote != "") {
         note = note + "Validation: " + lastValidationNote + "\n";
     }
-    if (modifiedFiles != null && length(modifiedFiles) > 0) {
-        note = note + "Recent files: " + join(modifiedFiles, ", ") + "\n";
+    if (modifiedFiles != null && str.length(modifiedFiles) > 0) {
+        note = note + "Recent files: " + str.join(modifiedFiles, ", ") + "\n";
     }
     note = note + "Try a different approach: smaller edits, re-read PRD acceptance criteria, or fix validation errors first.";
     return note;
 }
 
 function formatRecentIterations(ralphState, maxEntries) {
-    if (ralphState == null || ralphState.iterations == null || length(ralphState.iterations) == 0) {
+    if (ralphState == null || ralphState.iterations == null || str.length(ralphState.iterations) == 0) {
         return "";
     }
-    var total = length(ralphState.iterations);
+    var total = str.length(ralphState.iterations);
     var start = total - maxEntries;
     if (start < 0) {
         start = 0;
@@ -150,8 +150,8 @@ function formatRecentIterations(ralphState, maxEntries) {
         if (entry.toolResults != null) {
             line = line + ", tools=" + string(entry.toolResults);
         }
-        if (entry.modifiedFiles != null && length(entry.modifiedFiles) > 0) {
-            line = line + ", files=" + join(entry.modifiedFiles, ", ");
+        if (entry.modifiedFiles != null && str.length(entry.modifiedFiles) > 0) {
+            line = line + ", files=" + str.join(entry.modifiedFiles, ", ");
         }
         if (entry.responsePreview != null && entry.responsePreview != "") {
             line = line + " — " + entry.responsePreview;
@@ -198,12 +198,12 @@ function formatMemoryFact(mem) {
 }
 
 function formatMemoryResults(results) {
-    if (results == null || length(results) == 0) {
+    if (results == null || str.length(results) == 0) {
         return "";
     }
     var text = "";
     var i = 0;
-    while (i < length(results)) {
+    while (i < str.length(results)) {
         var line = "- " + formatMemoryFact(results[i]);
         if (text != "") {
             text = text + "\n";
@@ -229,7 +229,7 @@ function ralphMemoryEmbedFn(text) {
 }
 
 function resolveRalphMemoryScope(projectTitle) {
-    var scope = getEnv("MALDA_RALPH_MEMORY_SCOPE");
+    var scope = io.getEnv("MALDA_RALPH_MEMORY_SCOPE");
     if (scope != null && scope != "") {
         return scope;
     }
@@ -240,7 +240,7 @@ function resolveRalphMemoryScope(projectTitle) {
 }
 
 function ralphMemoryMaintainEnabled(maxIter) {
-    var raw = getEnv("MALDA_RALPH_MEMORY_MAINTAIN");
+    var raw = io.getEnv("MALDA_RALPH_MEMORY_MAINTAIN");
     if (raw != null && raw != "") {
         return envBool("MALDA_RALPH_MEMORY_MAINTAIN", true);
     }
@@ -248,12 +248,12 @@ function ralphMemoryMaintainEnabled(maxIter) {
 }
 
 function loadRalphInterviewBrief(workDir) {
-    var draftPath = pathJoin(workDir, ".ralph-interview-brief.json");
-    if (!hasFile(draftPath)) {
+    var draftPath = io.pathJoin(workDir, ".ralph-interview-brief.json");
+    if (!io.hasFile(draftPath)) {
         return null;
     }
     try {
-        return parseJSON(readFile(draftPath));
+        return parseJSON(io.readFile(draftPath));
     } catch (error) {
         return null;
     }
@@ -262,7 +262,7 @@ function loadRalphInterviewBrief(workDir) {
 function initializeRalphGraphMemory(memory) {
     ralphMemoryEmbedMode = "hash";
     ralphMemoryEmbedder = null;
-    var embedOverride = getEnv("MALDA_MEMORY_EMBED");
+    var embedOverride = io.getEnv("MALDA_MEMORY_EMBED");
     if (embedOverride != null && embedOverride != "") {
         ralphMemoryEmbedMode = embedOverride;
     } else if (config != null && config.agents != null && config.agents.memory != null && config.agents.memory.embed != null && config.agents.memory.embed != "") {
@@ -305,7 +305,7 @@ function persistInterviewMemoryAfterSuccess(workDir, brief, progress, prdRelativ
     }
     try {
         var memory = new GraphMemory();
-        var memoryPath = pathJoin(workDir, ".ralph-memory");
+        var memoryPath = io.pathJoin(workDir, ".ralph-memory");
         initializeRalphGraphMemory(memory);
         var title = brief != null ? brief.title : "";
         var memoryScope = resolveRalphMemoryScope(title);
@@ -382,10 +382,10 @@ function indexRalphKnowledgeBase(memory, workDir, prdRelativePath, memoryScope) 
     } catch (error) {
         ralphLog("", "[ralph] PRD reindex warning: " + string(error));
     }
-    var indexDir = getEnv("MALDA_RALPH_MEMORY_INDEX_DIR");
+    var indexDir = io.getEnv("MALDA_RALPH_MEMORY_INDEX_DIR");
     if (indexDir != null && indexDir != "") {
         var pattern = "**/*.md";
-        var patternEnv = getEnv("MALDA_RALPH_MEMORY_INDEX_PATTERN");
+        var patternEnv = io.getEnv("MALDA_RALPH_MEMORY_INDEX_PATTERN");
         if (patternEnv != null && patternEnv != "") {
             pattern = patternEnv;
         }
@@ -492,7 +492,7 @@ function maintainRalphMemory(memory, client, memoryScope, maxIter) {
     } else if (config != null && config.agents != null && config.agents.memory != null && config.agents.memory.reflectMinEpisodic != null && config.agents.memory.reflectMinEpisodic > 0) {
         maintainOpts.minEpisodic = config.agents.memory.reflectMinEpisodic;
     }
-    var reflectMinConfidenceEnv = getEnv("MALDA_MEMORY_REFLECT_MIN_CONFIDENCE");
+    var reflectMinConfidenceEnv = io.getEnv("MALDA_MEMORY_REFLECT_MIN_CONFIDENCE");
     if (reflectMinConfidenceEnv != null && reflectMinConfidenceEnv != "") {
         maintainOpts.minConfidence = float(reflectMinConfidenceEnv);
     } else if (config != null && config.agents != null && config.agents.memory != null && config.agents.memory.reflectMinConfidence != null) {
@@ -562,8 +562,8 @@ function normalizePathForCompare(pathValue) {
     if (pathValue == null || pathValue == "") {
         return "";
     }
-    var normalized = pathNormalize(pathValue);
-    return lower(replace(normalized, "/", "\\"));
+    var normalized = io.pathNormalize(pathValue);
+    return str.lower(str.replace(normalized, "/", "\\"));
 }
 
 function isFileUnderRalphWorkDir(workDir, projectRel, filePath) {
@@ -574,25 +574,25 @@ function isFileUnderRalphWorkDir(workDir, projectRel, filePath) {
     if (workNorm == "") {
         return false;
     }
-    var gitPath = lower(replace(filePath, "/", "\\"));
+    var gitPath = str.lower(str.replace(filePath, "/", "\\"));
     if (projectRel != null && projectRel != "" && projectRel != ".") {
-        var rel = lower(replace(projectRel, "/", "\\"));
-        if (endsWith(rel, "\\")) {
-            rel = substring(rel, 0, length(rel) - 1);
+        var rel = str.lower(str.replace(projectRel, "/", "\\"));
+        if (str.endsWith(rel, "\\")) {
+            rel = str.substring(rel, 0, str.length(rel) - 1);
         }
         if (gitPath == rel) {
             return true;
         }
         var relPrefix = rel + "\\";
-        if (startsWith(gitPath, relPrefix)) {
+        if (str.startsWith(gitPath, relPrefix)) {
             return true;
         }
     }
-    var hasSlash = indexOf(filePath, "\\") >= 0 || indexOf(filePath, "/") >= 0;
+    var hasSlash = str.indexOf(filePath, "\\") >= 0 || str.indexOf(filePath, "/") >= 0;
     var resolved = filePath;
     if (!hasSlash) {
-        resolved = pathJoin(workDir, filePath);
-    } else if (indexOf(filePath, ":") < 0) {
+        resolved = io.pathJoin(workDir, filePath);
+    } else if (str.indexOf(filePath, ":") < 0) {
         return false;
     }
     var fileNorm = normalizePathForCompare(resolved);
@@ -600,10 +600,10 @@ function isFileUnderRalphWorkDir(workDir, projectRel, filePath) {
         return true;
     }
     var prefix = workNorm;
-    if (!endsWith(prefix, "\\")) {
+    if (!str.endsWith(prefix, "\\")) {
         prefix = prefix + "\\";
     }
-    if (startsWith(fileNorm, prefix)) {
+    if (str.startsWith(fileNorm, prefix)) {
         return true;
     }
     return false;
@@ -618,27 +618,27 @@ function appendFileIfCommittableInWorkDir(files, workDir, projectRel, filePath) 
 function collectModifiedFiles(workDir, projectRel) {
     var files = [];
     try {
-        var status = gitStatus(workDir);
+        var status = io.gitStatus(workDir);
         if (status == null) {
             return files;
         }
         if (status.modified != null) {
             var i = 0;
-            while (i < length(status.modified)) {
+            while (i < str.length(status.modified)) {
                 appendFileIfCommittableInWorkDir(files, workDir, projectRel, status.modified[i]);
                 i = i + 1;
             }
         }
         if (status.staged != null) {
             var j = 0;
-            while (j < length(status.staged)) {
+            while (j < str.length(status.staged)) {
                 appendFileIfCommittableInWorkDir(files, workDir, projectRel, status.staged[j]);
                 j = j + 1;
             }
         }
         if (status.untracked != null) {
             var k = 0;
-            while (k < length(status.untracked)) {
+            while (k < str.length(status.untracked)) {
                 appendFileIfCommittableInWorkDir(files, workDir, projectRel, status.untracked[k]);
                 k = k + 1;
             }
@@ -648,4 +648,3 @@ function collectModifiedFiles(workDir, projectRel) {
     }
     return files;
 }
-

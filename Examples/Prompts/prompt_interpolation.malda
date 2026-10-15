@@ -6,7 +6,7 @@ prompt taskPlan(task, priority, deadline) {
 }
 
 var plan = taskPlan("Implement authentication", 1, "2026-02-15");
-print(plan.user);
+io.print(plan.user);
 
 // Using multi-line interpolation
 prompt detailedPlan(goal, steps) {
@@ -20,5 +20,5 @@ prompt detailedPlan(goal, steps) {
 }
 
 var detailed = detailedPlan("Build a web API", 5);
-print("\nDetailed plan prompt:");
-print(detailed.user);
+io.print("\nDetailed plan prompt:");
+io.print(detailed.user);

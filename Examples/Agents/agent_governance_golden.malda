@@ -16,24 +16,24 @@ schema AgentReply {
 
 @pure()
 function normalizeSummary(text) {
-    return upper(trim(text));
+    return str.upper(str.trim(text));
 }
 
 @pure()
 function joinSteps(steps) {
-    return join(steps, " | ");
+    return str.join(steps, " | ");
 }
 
 @effects("print")
 function handleToolArgs(raw) {
     var check = validate("AgentReply", raw);
     if (!check.ok) {
-        print("invalid: " + check.error);
+        io.print("invalid: " + check.error);
         return;
     }
     var data = check.data;
-    print("summary=" + normalizeSummary(data.summary));
-    print("steps=" + joinSteps(data.steps));
+    io.print("summary=" + normalizeSummary(data.summary));
+    io.print("steps=" + joinSteps(data.steps));
 }
 
 // Simulated LLM / tool payload (no API key required).

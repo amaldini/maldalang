@@ -10,14 +10,14 @@ var tree = ui.row(
 );
 
 var mountEnvelope = ui.mount(tree, sid);
-print(mountEnvelope.version);
-print(mountEnvelope.type);
+io.print(mountEnvelope.version);
+io.print(mountEnvelope.type);
 
 // Simulate recovery request.
 var full = ui.resync(sid);
-print(full.type);
+io.print(full.type);
 
 // Tune policy for this session.
 ui.configure("maxPayloadBytes", 131072, sid);
 ui.configure("maxPatchCount", 2048, sid);
-print(ui.snapshot(sid));
+io.print(ui.snapshot(sid));

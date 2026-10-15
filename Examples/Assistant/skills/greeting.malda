@@ -14,7 +14,7 @@ var tools = ["greet_user"];
 var agentDescription = "Greets users by name using greet_user when asked to say hello.";
 
 var skillClient = null;
-var apiKey = getEnv("OPENROUTER_API_KEY");
+var apiKey = io.getEnv("OPENROUTER_API_KEY");
 var config = getMaldaConfig();
 if (config != null && config.providers != null && config.providers.openrouter != null && config.providers.openrouter.apiKey != null && config.providers.openrouter.apiKey != "") {
     apiKey = config.providers.openrouter.apiKey;

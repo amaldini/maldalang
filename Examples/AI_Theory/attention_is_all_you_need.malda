@@ -251,7 +251,7 @@ function ones(n: int) -> array {
 
 function embedTokens(ids: array, table: array) -> array {
     var x = [];
-        for (var t = 0; t < ids.length; t = t + 1) {
+    for (var t = 0; t < ids.length; t = t + 1) {
         var row = [];
         var id = int(ids[t]);
         for (var j = 0; j < table[id].length; j = j + 1) {

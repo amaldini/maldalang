@@ -1,19 +1,19 @@
 // Ralph completion notifications (desktop / webhook).
 
 function ralphNotifyOnEvent(eventName, projectTitle, iteration, maxIter, prdPath, taskComplete) {
-    var raw = getEnv("MALDA_RALPH_NOTIFY");
+    var raw = io.getEnv("MALDA_RALPH_NOTIFY");
     if (raw == null || raw == "") {
         return;
     }
     var progress = countPrdChecklistProgress(prdPath);
-    var parts = split(raw, ",");
+    var parts = str.split(raw, ",");
     var i = 0;
-    while (i < length(parts)) {
-        var part = trim(parts[i]);
+    while (i < str.length(parts)) {
+        var part = str.trim(parts[i]);
         if (part == "desktop") {
             sendRalphDesktopNotification(eventName, projectTitle, progress.percent, taskComplete);
-        } else if (startsWith(part, "webhook:")) {
-            var url = trim(substring(part, length("webhook:"), length(part) - length("webhook:")));
+        } else if (str.startsWith(part, "webhook:")) {
+            var url = str.trim(str.substring(part, str.length("webhook:"), str.length(part) - str.length("webhook:")));
             sendRalphWebhookNotification(url, eventName, projectTitle, iteration, maxIter, progress.percent, taskComplete);
         }
         i = i + 1;
@@ -32,8 +32,8 @@ function sendRalphDesktopNotification(eventName, projectTitle, prdPercent, taskC
             var ps = "powershell -NoProfile -Command \"[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] > $null; " +
                 "$t = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('Ralph'); " +
                 "$x = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02); " +
-                "$n = $x.GetElementsByTagName('text'); $n.Item(0).AppendChild($x.CreateTextNode('" + replace(title, "'", "''") + "')) > $null; " +
-                "$n.Item(1).AppendChild($x.CreateTextNode('" + replace(body, "'", "''") + "')) > $null; " +
+                "$n = $x.GetElementsByTagName('text'); $n.Item(0).AppendChild($x.CreateTextNode('" + str.replace(title, "'", "''") + "')) > $null; " +
+                "$n.Item(1).AppendChild($x.CreateTextNode('" + str.replace(body, "'", "''") + "')) > $null; " +
                 "$t.Show([Windows.UI.Notifications.ToastNotification]::new($x))\"";
             runCommand("cmd", ["/c", ps]);
         } else if (host.os == "macos") {

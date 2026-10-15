@@ -19,4 +19,4 @@ var nav = ui.column(
     ]
 );
 
-print(ui.mount(nav, sid));
+io.print(ui.mount(nav, sid));

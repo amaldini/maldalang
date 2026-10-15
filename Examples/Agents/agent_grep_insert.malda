@@ -1,6 +1,6 @@
 // Note: Requires OPENROUTER_API_KEY environment variable
 // Create a sample code file
-writeFile("utils.malda", "function helper1() {
+io.writeFile("utils.malda", "function helper1() {
     return 1;
 }
 
@@ -20,17 +20,17 @@ var codeAgent = new CodingAgent(
     "You help with code by searching for patterns and inserting new code at appropriate locations."
 );
 
-print("Original file:");
-print(readFile("utils.malda"));
+io.print("Original file:");
+io.print(io.readFile("utils.malda"));
 
-print("
+io.print("
 
 Agent searching and inserting...");
 // Agent can search for patterns and insert new functions
 var response = codeAgent.think("Search for all function definitions in utils.malda, then insert a new helper function called helper3 that returns 3, right after helper2.");
-print(response.content);
+io.print(response.content);
 
-print("
+io.print("
 
 File after insertion:");
-print(readFile("utils.malda"));
+io.print(io.readFile("utils.malda"));

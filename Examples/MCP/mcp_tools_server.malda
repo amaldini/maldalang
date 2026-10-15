@@ -20,9 +20,9 @@ function reverseString(text) {
         return "";
     }
     var reversed = "";
-    var i = length(text) - 1;
+    var i = str.length(text) - 1;
     while (i >= 0) {
-        reversed = reversed + substring(text, i, 1);
+        reversed = reversed + str.substring(text, i, 1);
         i = i - 1;
     }
     return reversed;
@@ -37,8 +37,8 @@ function countWords(text) {
     var words = 0;
     var inWord = false;
     var i = 0;
-    while (i < length(text)) {
-        var char = substring(text, i, 1);
+    while (i < str.length(text)) {
+        var char = str.substring(text, i, 1);
         if (char != " " && char != "\t" && char != "\n") {
             if (!inWord) {
                 words = words + 1;
@@ -68,20 +68,20 @@ function getWeather(location, unit) {
 var server = new MCPServer();
 server.start();
 
-print("MCP Server started with STDIO transport");
-print("Available tools:");
-print("  - add: Adds two numbers together");
-print("  - reverse_string: Reverses a string");
-print("  - count_words: Counts words in a text string");
-print("  - get_weather: Gets weather for a location");
-print("Server running... Waiting for MCP client connections");
-print("");
-print("To use with Claude Desktop, configure it to run this script.");
-print("The server communicates via JSON-RPC 2.0 over STDIO.");
+io.print("MCP Server started with STDIO transport");
+io.print("Available tools:");
+io.print("  - add: Adds two numbers together");
+io.print("  - reverse_string: Reverses a string");
+io.print("  - count_words: Counts words in a text string");
+io.print("  - get_weather: Gets weather for a location");
+io.print("Server running... Waiting for MCP client connections");
+io.print("");
+io.print("To use with Claude Desktop, configure it to run this script.");
+io.print("The server communicates via JSON-RPC 2.0 over STDIO.");
 
 // Keep the server running
 while (server.isRunning) {
     sleep(1000);  // Sleep for 1 second
 }
 
-print("MCP Server stopped");
+io.print("MCP Server stopped");

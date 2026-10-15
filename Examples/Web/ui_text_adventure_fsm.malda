@@ -162,7 +162,7 @@ function transitionSolveLibrary(hp, inventory, flags, log, answer) {
     if (flags.lens == true) {
         return makeExploring("Whispering Library", hp, inventory, flags, pushLog(log, "The raven already trusts you."));
     }
-    var normalized = lower(asString(answer));
+    var normalized = str.lower(asString(answer));
     if (normalized == "shadow" || normalized == "a shadow") {
         return makeExploring(
             "Whispering Library",
@@ -198,7 +198,7 @@ function transitionSearchObservatory(hp, inventory, flags, log) {
 }
 
 function transitionSolveVault(hp, inventory, flags, log, answer) {
-    if (flags.cipher == true && lower(asString(answer)) == "stella") {
+    if (flags.cipher == true && str.lower(asString(answer)) == "stella") {
         return makeWon("The vault opens. You claim the Astral Core and the manor exhales.");
     }
     var nextHp = hp - 1;
@@ -404,7 +404,7 @@ function adventureEventApi(body) {
     var action = asString(body.action);
     var answer = asString(body.answer);
     var state = getGameState();
-    setGameState(transition(state, lower(action), answer));
+    setGameState(transition(state, str.lower(action), answer));
     return {"status": 200, "data": snapshotPayload()};
 }
 
@@ -421,7 +421,7 @@ function roomLink(action, label) {
 function applyAction(action, answer) {
     try {
         var state = getGameState();
-        setGameState(transition(state, lower(asString(action)), asString(answer)));
+        setGameState(transition(state, str.lower(asString(action)), asString(answer)));
     } catch (e) {
         setGameState(makeLost("Engine error while handling action '" + asString(action) + "': " + asString(e)));
     }
@@ -522,7 +522,7 @@ function adventurePage() {
 
 var server = new HttpServer(39017);
 server.start();
-print("Open: http://localhost:39017/web/adventure-fsm");
+io.print("Open: http://localhost:39017/web/adventure-fsm");
 
 while (server.isRunning) {
     sleep(1000);

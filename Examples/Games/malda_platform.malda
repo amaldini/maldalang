@@ -101,10 +101,10 @@ if (root == null) {
         }
 
         if (game.isKeyDown("arrowleft") ||
-            game.isKeyDown("arrowright") ||
-            game.wasKeyPressed(" ") ||
-            game.wasKeyPressed("arrowup") ||
-            game.isMouseDown(0)) {
+                game.isKeyDown("arrowright") ||
+                game.wasKeyPressed(" ") ||
+                game.wasKeyPressed("arrowup") ||
+                game.isMouseDown(0)) {
             tryStartAudio();
         }
 

@@ -559,8 +559,8 @@ function runAskUpdateFromUpload(body) {
             var fileName = io.getFileName(askAsText(fileObj.fileName));
             var lower = str.lower(fileName);
             if (fileName == "" or not (str.endsWith(lower, ".md") or str.endsWith(lower, ".html") or
-                    str.endsWith(lower, ".htm") or str.endsWith(lower, ".pdf") or
-                    str.endsWith(lower, ".docx"))) {
+                str.endsWith(lower, ".htm") or str.endsWith(lower, ".pdf") or
+                str.endsWith(lower, ".docx"))) {
                 continue;
             }
             var dest = sbAssertUnderRoot(docsRoot, io.pathJoin(docsRoot, fileName));

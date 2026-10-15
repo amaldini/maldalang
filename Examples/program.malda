@@ -1,8 +1,8 @@
 actor Worker {
     on start() {
-        print("Started");
+        io.print("Started");
         var me = self;
-        print("Self reference obtained");
+        io.print("Self reference obtained");
     }
 }
 
@@ -13,8 +13,8 @@ send worker.start();
 var x = 0;
 while (x < 10) {
     x = x + 1;
-    print(x);
+    io.print(x);
     sleep(500);
 }
 
-print("Done");
+io.print("Done");

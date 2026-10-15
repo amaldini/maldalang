@@ -10,8 +10,8 @@
 
 type Intent =
     Search(query: string)
-  | Buy(sku: string, qty: int)
-  | Help();
+    | Buy(sku: string, qty: int)
+    | Help();
 
 prompt parseUtterance(text) -> Intent {
     system: "Map the user utterance to exactly one Intent variant. JSON only.";
@@ -21,9 +21,9 @@ prompt parseUtterance(text) -> Intent {
 var intent = await parseUtterance("buy 2 of SKU-9");
 match intent {
     case Search(q):
-        print("search: " + q);
+        io.print("search: " + q);
     case Buy(sku, qty):
-        print("buy sku=" + sku + " qty=" + string(qty));
+        io.print("buy sku=" + sku + " qty=" + string(qty));
     case Help():
-        print("help");
+        io.print("help");
 }

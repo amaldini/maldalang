@@ -13,6 +13,6 @@ var formNode = ui.form(
     ]
 );
 
-print(ui.mount(formNode, sid));
+io.print(ui.mount(formNode, sid));
 ui.dispatchEvent({"type": "submit", "targetPath": "/", "payload": {"name": "Andrea", "message": "Hello!"}}, sid, 1);
-print(ui.pullEvent(sid));
+io.print(ui.pullEvent(sid));

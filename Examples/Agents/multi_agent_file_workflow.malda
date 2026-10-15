@@ -1,6 +1,6 @@
 // Note: Requires OPENROUTER_API_KEY environment variable
 // Create a sample code file
-writeFile("calculator.malda", "function add(a, b) {
+io.writeFile("calculator.malda", "function add(a, b) {
     return a + b;
 }
 
@@ -29,20 +29,20 @@ var reviewerAgent = new CodingAgent(
 );
 
 // Workflow: Reader -> Reviewer -> Editor
-print("Step 1: Reader analyzes the file");
+io.print("Step 1: Reader analyzes the file");
 var readResponse = readerAgent.think("Read calculator.malda and summarize what it does.");
-print(readResponse.content);
+io.print(readResponse.content);
 
-print("
+io.print("
 Step 2: Reviewer reviews the code");
-var code = readFile("calculator.malda");
+var code = io.readFile("calculator.malda");
 reviewerAgent.getConversation().addUserMessage("Review this code and suggest improvements:
 
 " + code);
 var reviewResponse = reviewerAgent.getConversation().send();
-print(reviewResponse.content);
+io.print(reviewResponse.content);
 
-print("
+io.print("
 Step 3: Editor applies improvements");
 var editResponse = editorAgent.think("Read calculator.malda and add comments to each function explaining what it does.");
-print(editResponse.content);
+io.print(editResponse.content);
