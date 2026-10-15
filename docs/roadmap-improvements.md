@@ -113,9 +113,9 @@ Phase C (language and ecosystem)
 - **Done when:** no engine file exceeds ~1,500 lines and fuzz plus `InterpretTranspilePairTests`
   are green.
 - **Status (2026-10-15):** `Interpreter.cs`, `Parser.cs`, `LanguageService.cs`,
-  `BuiltIns/Conversation.cs`, `BuiltIns/GraphMemory.cs` and `BuiltIns/HttpServer.cs` are split
-  (the tool switch in `ExecuteToolOperation` now chains per-area `Execute<Area>Tool` methods).
-  Still over ~1,500 lines: `BuiltIns/WebRuntime.cs`, `BuiltIns/RestServer.cs`,
+  `BuiltIns/Conversation.cs`, `BuiltIns/GraphMemory.cs`, `BuiltIns/HttpServer.cs` and
+  `BuiltIns/WebRuntime.cs` are split (the tool switch in `ExecuteToolOperation` now chains
+  per-area `Execute<Area>Tool` methods). Still over ~1,500 lines: `BuiltIns/RestServer.cs`,
   `BuiltIns/BuiltInTools.cs`, and the Desktop IDE `MainWindow` partials.
 
 ## I6 — `malda lint`
@@ -182,3 +182,4 @@ The root files that looked like leftovers are intentional:
 | 2026-10-15 | I5 (Conversation): `Conversation.cs` split into `Conversation.<Area>.cs` partials; the built-in tool switch is split into `ExecuteFileTool` / `ExecuteWorkspaceTool` / `ExecuteGitTool` / `ExecuteMaldaTool` / `ExecutePlanTool` |
 | 2026-10-15 | I5 (GraphMemory): `GraphMemory.cs` split into `GraphMemory.<Area>.cs` partials |
 | 2026-10-15 | I5 (HttpServer): `HttpServer.cs` split into `HttpServer.<Area>.cs` partials; `CachedFile` moved to `CachedFile.cs` |
+| 2026-10-15 | I5 (WebRuntime): one file per request/response/auth context type plus `WebMiddleware.cs` and `WebRuntimeException.cs`; `WebRuntimeHelpers` split into `WebRuntime.<Area>.cs` partials |
