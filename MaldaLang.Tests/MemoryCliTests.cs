@@ -29,7 +29,7 @@ public class MemoryCliTests : TestBase
         try
         {
             var memoryCommand = GetMemoryCommand();
-            lock (_consoleLock)
+            using (EnterConsoleGate())
             {
                 var originalOut = Console.Out;
                 var originalErr = Console.Error;
@@ -69,7 +69,7 @@ public class MemoryCliTests : TestBase
         try
         {
             var memoryCommand = GetMemoryCommand();
-            lock (_consoleLock)
+            using (EnterConsoleGate())
             {
                 var originalOut = Console.Out;
                 var originalErr = Console.Error;

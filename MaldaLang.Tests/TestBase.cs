@@ -30,6 +30,7 @@ public abstract class TestBase : IDisposable
     private StringWriter? _outputWriter;
     private StringWriter? _errorWriter;
     private bool _disposed = false;
+    private ConsoleGate? _consoleGate;
 
     protected TestBase()
     {
@@ -39,9 +40,13 @@ public abstract class TestBase : IDisposable
 
     /// <summary>
     /// Redirects Console.Out and Console.Error to StringWriters for capturing output.
+    /// Holds the console gate until <see cref="RestoreConsole"/> (or Dispose), so a gated
+    /// <see cref="RunProgram"/> in a parallel test cannot have Console.Out swapped mid-run.
     /// </summary>
     protected void RedirectConsole()
     {
+        _consoleGate ??= EnterConsoleGate();
+
         lock (_consoleLock)
         {
             _originalOut = Console.Out;
@@ -76,6 +81,8 @@ public abstract class TestBase : IDisposable
             _errorWriter = null;
         }
         BuiltInFunctions.RebindSpectreConsoleForTesting(Console.Out);
+        _consoleGate?.Dispose();
+        _consoleGate = null;
     }
 
     /// <summary>
@@ -107,7 +114,7 @@ public abstract class TestBase : IDisposable
     /// </summary>
     protected async Task<string> RunProgramAsync(string source)
     {
-        return await CaptureInterpretAsync(source);
+        return await CaptureInterpretAsync(source).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -131,10 +138,13 @@ public abstract class TestBase : IDisposable
         {
             await action();
             return 0;
-        });
+        }).ConfigureAwait(false);
     }
 
-    internal static async Task<T> WithIsolatedConsoleAsync<T>(Func<Task<T>> action)
+    internal static Task<T> WithIsolatedConsoleAsync<T>(Func<Task<T>> action) =>
+        OffTestContext(() => WithIsolatedConsoleCoreAsync(action));
+
+    private static async Task<T> WithIsolatedConsoleCoreAsync<T>(Func<Task<T>> action)
     {
         await _consoleSemaphore.WaitAsync();
         var originalOut = Console.Out;
@@ -163,7 +173,7 @@ public abstract class TestBase : IDisposable
     /// </summary>
     internal static async Task<string> CaptureInterpretAsync(string source, string? sourceFileName = null)
     {
-        var outcome = await CaptureInterpretOutcomeAsync(source, sourceFileName);
+        var outcome = await CaptureInterpretOutcomeAsync(source, sourceFileName).ConfigureAwait(false);
         if (outcome.Exception != null)
             throw outcome.Exception;
         return outcome.StdOut;
@@ -173,7 +183,20 @@ public abstract class TestBase : IDisposable
     /// Same capture as <see cref="CaptureInterpretAsync"/> but does not rethrow, so
     /// interpret/transpile pairs can compare exit identity.
     /// </summary>
-    internal static async Task<InterpretOutcome> CaptureInterpretOutcomeAsync(string source, string? sourceFileName = null)
+    internal static Task<InterpretOutcome> CaptureInterpretOutcomeAsync(string source, string? sourceFileName = null) =>
+        OffTestContext(() => CaptureInterpretOutcomeCoreAsync(source, sourceFileName));
+
+    /// <summary>
+    /// Runs a console-gated body on the thread pool. xUnit runs tests on a few worker threads
+    /// under its own SynchronizationContext, and <see cref="RunProgram"/> and the pair helpers
+    /// block those threads with <c>GetResult()</c>. A gate holder whose continuations were posted
+    /// back to that context could then never resume (every worker blocked, most of them waiting
+    /// on this same gate), so the run hung. Off the context, its continuations go to the pool.
+    /// The async wrappers above await with <c>ConfigureAwait(false)</c> for the same reason.
+    /// </summary>
+    private static Task<T> OffTestContext<T>(Func<Task<T>> body) => Task.Run(body);
+
+    private static async Task<InterpretOutcome> CaptureInterpretOutcomeCoreAsync(string source, string? sourceFileName)
     {
         await _consoleSemaphore.WaitAsync();
         try
@@ -234,6 +257,39 @@ public abstract class TestBase : IDisposable
         }
         finally
         {
+            _consoleSemaphore.Release();
+        }
+    }
+
+    /// <summary>
+    /// Takes the console gate for code that swaps Console.Out itself. Not reentrant: do not call
+    /// <see cref="RunProgram"/> or another gated helper while holding it.
+    /// </summary>
+    protected static ConsoleGate EnterConsoleGate() => new();
+
+    /// <summary>
+    /// The console gate held synchronously. While held, the thread runs with no
+    /// SynchronizationContext, so async work the holder blocks on resumes on the thread pool
+    /// instead of waiting for an xUnit worker that may itself be queued on this gate.
+    /// </summary>
+    protected sealed class ConsoleGate : IDisposable
+    {
+        private readonly SynchronizationContext? _context = SynchronizationContext.Current;
+        private readonly int _threadId = System.Environment.CurrentManagedThreadId;
+        private int _released;
+
+        internal ConsoleGate()
+        {
+            _consoleSemaphore.Wait();
+            SynchronizationContext.SetSynchronizationContext(null);
+        }
+
+        public void Dispose()
+        {
+            if (Interlocked.Exchange(ref _released, 1) != 0)
+                return;
+            if (System.Environment.CurrentManagedThreadId == _threadId)
+                SynchronizationContext.SetSynchronizationContext(_context);
             _consoleSemaphore.Release();
         }
     }

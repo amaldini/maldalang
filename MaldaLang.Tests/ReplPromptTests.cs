@@ -37,7 +37,7 @@ public class ReplPromptTests : TestBase
     {
         interpreter ??= new Interpreter.Interpreter();
         sessionSource ??= new ReplSessionSource();
-        lock (_consoleLock)
+        using (EnterConsoleGate())
         {
             var originalOut = Console.Out;
             var originalErr = Console.Error;
@@ -65,7 +65,7 @@ public class ReplPromptTests : TestBase
     private static (InputResult? Result, string StdOut) InvokeReadMultilineInputCapturing(
         string consoleInput, ReplSessionSource? sessionSource)
     {
-        lock (_consoleLock)
+        using (EnterConsoleGate())
         {
             var originalIn = Console.In;
             var originalOut = Console.Out;

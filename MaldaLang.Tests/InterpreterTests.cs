@@ -2414,12 +2414,10 @@ public class InterpreterTests : TestBase
         var output = new StringWriter();
         TextWriter originalOut;
         
-        // Synchronize Console.Out access to prevent race conditions in parallel test execution
-        lock (_consoleLock)
-        {
-            originalOut = Console.Out;
-            Console.SetOut(output);
-        }
+        // Hold the console gate for the whole run so parallel captures cannot swap Console.Out.
+        var gate = EnterConsoleGate();
+        originalOut = Console.Out;
+        Console.SetOut(output);
         
         try
         {
@@ -2466,11 +2464,8 @@ public class InterpreterTests : TestBase
         }
         finally
         {
-            // Synchronize Console.Out restoration
-            lock (_consoleLock)
-            {
-                Console.SetOut(originalOut);
-            }
+            Console.SetOut(originalOut);
+            gate.Dispose();
             output.Dispose();
         }
     }
@@ -2619,12 +2614,10 @@ public class InterpreterTests : TestBase
         var output = new StringWriter();
         TextWriter originalOut;
         
-        // Synchronize Console.Out access to prevent race conditions in parallel test execution
-        lock (_consoleLock)
-        {
-            originalOut = Console.Out;
-            Console.SetOut(output);
-        }
+        // Hold the console gate for the whole run so parallel captures cannot swap Console.Out.
+        var gate = EnterConsoleGate();
+        originalOut = Console.Out;
+        Console.SetOut(output);
         
         try
         {
@@ -2673,11 +2666,8 @@ public class InterpreterTests : TestBase
         }
         finally
         {
-            // Synchronize Console.Out restoration
-            lock (_consoleLock)
-            {
-                Console.SetOut(originalOut);
-            }
+            Console.SetOut(originalOut);
+            gate.Dispose();
             output.Dispose();
         }
     }

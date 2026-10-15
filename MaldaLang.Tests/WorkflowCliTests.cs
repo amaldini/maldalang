@@ -51,7 +51,7 @@ public class WorkflowCliTests : TestBase
             static int InvokeWorkflow(MethodInfo method, string[] args) =>
                 (int)(method.Invoke(null, new object[] { args }) ?? -1);
 
-            lock (_consoleLock)
+            using (EnterConsoleGate())
             {
                 var originalOut = Console.Out;
                 var originalErr = Console.Error;
@@ -156,7 +156,7 @@ public class WorkflowCliTests : TestBase
             static int InvokeWorkflow(MethodInfo method, string[] args) =>
                 (int)(method.Invoke(null, new object[] { args }) ?? -1);
 
-            lock (_consoleLock)
+            using (EnterConsoleGate())
             {
                 var originalOut = Console.Out;
                 var originalErr = Console.Error;
@@ -242,7 +242,7 @@ public class WorkflowCliTests : TestBase
             static int InvokeWorkflow(MethodInfo method, string[] args) =>
                 (int)(method.Invoke(null, new object[] { args }) ?? -1);
 
-            lock (_consoleLock)
+            using (EnterConsoleGate())
             {
                 var originalOut = Console.Out;
                 var originalErr = Console.Error;
@@ -317,7 +317,7 @@ public class WorkflowCliTests : TestBase
             static int InvokeWorkflow(MethodInfo method, string[] args) =>
                 (int)(method.Invoke(null, new object[] { args }) ?? -1);
 
-            lock (_consoleLock)
+            using (EnterConsoleGate())
             {
                 var originalOut = Console.Out;
                 var originalErr = Console.Error;
@@ -359,7 +359,7 @@ public class WorkflowCliTests : TestBase
             static int InvokeWorkflow(MethodInfo method, string[] args) =>
                 (int)(method.Invoke(null, new object[] { args }) ?? -1);
 
-            lock (_consoleLock)
+            using (EnterConsoleGate())
             {
                 var originalOut = Console.Out;
                 var originalErr = Console.Error;
@@ -421,7 +421,7 @@ public class WorkflowCliTests : TestBase
             static int InvokeWorkflow(MethodInfo method, string[] args) =>
                 (int)(method.Invoke(null, new object[] { args }) ?? -1);
 
-            lock (_consoleLock)
+            using (EnterConsoleGate())
             {
                 var originalOut = Console.Out;
                 var originalErr = Console.Error;
