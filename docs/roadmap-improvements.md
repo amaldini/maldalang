@@ -112,8 +112,9 @@ Phase C (language and ecosystem)
 - One PR per file, moves only.
 - **Done when:** no engine file exceeds ~1,500 lines and fuzz plus `InterpretTranspilePairTests`
   are green.
-- **Status (2026-10-15):** `Interpreter.cs`, `Parser.cs` and `LanguageService.cs` are split.
-  Still over ~1,500 lines: `BuiltIns/Conversation.cs`, `BuiltIns/GraphMemory.cs`,
+- **Status (2026-10-15):** `Interpreter.cs`, `Parser.cs`, `LanguageService.cs` and
+  `BuiltIns/Conversation.cs` are split (the tool switch in `ExecuteToolOperation` now chains
+  per-area `Execute<Area>Tool` methods). Still over ~1,500 lines: `BuiltIns/GraphMemory.cs`,
   `BuiltIns/HttpServer.cs`, `BuiltIns/WebRuntime.cs`, `BuiltIns/RestServer.cs`,
   `BuiltIns/BuiltInTools.cs`, and the Desktop IDE `MainWindow` partials.
 
@@ -178,3 +179,4 @@ The root files that looked like leftovers are intentional:
 | 2026-10-15 | I5 (Interpreter): `Interpreter.cs` split into `Interpreter.<Area>.cs` partials; exception types moved to `RuntimeException.cs` |
 | 2026-10-15 | I5 (Parser): `Parser.cs` split into `Parser.<Area>.cs` partials; `ParseException` moved to `ParseException.cs`; spec drift guard watches `Parser*.cs` |
 | 2026-10-15 | I5 (LanguageService): `LanguageService.cs` split into `LanguageService.<Area>.cs` partials; `DecoratorInfo` moved to `DecoratorInfo.cs`; remaining large files listed under I5 |
+| 2026-10-15 | I5 (Conversation): `Conversation.cs` split into `Conversation.<Area>.cs` partials; the built-in tool switch is split into `ExecuteFileTool` / `ExecuteWorkspaceTool` / `ExecuteGitTool` / `ExecuteMaldaTool` / `ExecutePlanTool` |

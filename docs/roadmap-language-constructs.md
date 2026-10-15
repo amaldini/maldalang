@@ -244,7 +244,7 @@ prompt answer(q) -> Answer { ... }
 
 **Primary paths:** `DeclarationBounds.cs`, `WithinBoundsContext.cs` (or a sibling
 `ResourceBoundsContext`), `BoundsDiagnostics.cs`, `PromptValue.Execution.cs`, `Agent.cs` /
-`Conversation.cs` usage hooks, RM §9.7, Phase 6 tests style (`Phase6EffectsTests`).
+`Conversation.Send.cs` usage hooks, RM §9.7, Phase 6 tests style (`Phase6EffectsTests`).
 
 **Done when (L3 — landed)**
 
