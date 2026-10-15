@@ -1,6 +1,6 @@
 # MALDA engineering improvements roadmap
 
-**Status:** I1 and I2 landed 2026-10-15; I5 three named files split (follow-up list open); I3, I4, I6–I8 and I10 open; I9 dropped (root files are intentional)  
+**Status:** I1, I2 and I4 landed 2026-10-15; I5 three named files split (follow-up list open); I3, I6–I8 and I10 open; I9 dropped (root files are intentional)  
 **Created:** 2026-10-15  
 **Audience:** maintainers choosing engine / tooling work after P0, L1–L6 and DT0–DT8
 
@@ -35,7 +35,7 @@ features (agents, HTTP, workflows, prompts).
 | 1 | **I1** Split `Program.cs` into commands | Landed | 5,217 lines; ~25 subcommands in one switch | Low | M |
 | 2 | **I2** Differential fuzz in the nightly workflow | Landed | Backend divergence was only checked on 3 seeds | Low | S |
 | 3 | **I3** `malda fmt` | Open | No CLI / CI formatter; only the IDE indenter exists | Medium | M |
-| 4 | **I4** JavaScript capability pre-check | Open | Unsupported features fail late, one `NotSupportedException` at a time | Medium | M |
+| 4 | **I4** JavaScript capability pre-check | Landed | Unsupported features failed late, one `NotSupportedException` at a time | Medium | M |
 | 5 | **I5** Split `Interpreter.cs` / `Parser.cs` / `LanguageService.cs` | Partly landed | The three named files are split; other engine files still exceed ~1,500 lines (see I5) | Low | L |
 | 6 | **I6** `malda lint` (gotchas as diagnostics) | Open | Common footguns live only in `docs/llm/` | Medium | M |
 | 7 | **I7** Pure stdlib complete on JavaScript | Open | `math` / `str` / collections are `partial` on JS | Medium | M–L |
@@ -103,6 +103,17 @@ Phase C (language and ecosystem)
 - `NotSupportedException` in `JsTranspiler.*.cs` stays as a safety net.
 - **Done when:** `BackendCapabilityMatrixGuardTests` checks that each JavaScript `no` row has a
   diagnostic and a fixture.
+- **Status (2026-10-15): landed.** `MaldaLang.Compiler/JsCapabilityChecker.cs` runs on the
+  JavaScript partition after target partitioning and before `JsTranspiler`. Codes `JS0001`–`JS0013`
+  (table in [`backend-capability-matrix.md`](spec/backend-capability-matrix.md)); `--mode js` /
+  `--mode pwa` fail with every violation as `Line L:C - JS0xxx: …` and write no JavaScript.
+  Names the program declares (a user `function readFile`, `class VectorDB`) are not reported;
+  `@property` blocks that do not target `js` are skipped. `JsCapabilityCheckerTests` holds one
+  fixture per code; `EveryJavaScriptNoRow_HasPreCheckDiagnosticAndFixture` maps each matrix `no`
+  row to a rule (the `actors` property tag is exempt: JavaScript runs actors process-local). A
+  sweep of `Examples/` found no false positives: every newly rejected example uses agents, LLM
+  clients, files, servers, `ui.*`, jobs or databases. `malda check` has no backend option, so the
+  pre-check runs on compile only.
 
 ## I5 — Split the largest files
 
@@ -186,4 +197,5 @@ The root files that looked like leftovers are intentional:
 | 2026-10-15 | I5 (WebRuntime): one file per request/response/auth context type plus `WebMiddleware.cs` and `WebRuntimeException.cs`; `WebRuntimeHelpers` split into `WebRuntime.<Area>.cs` partials |
 | 2026-10-15 | I5 (RestServer): `RestServer.cs` split into `RestServer.<Area>.cs` partials |
 | 2026-10-15 | I5 (BuiltInTools): `BuiltInTools.cs` split into `BuiltInTools.<Area>.cs` partials (Workspace, Git, Malda, Plan; file tools stay in the main file) |
+| 2026-10-15 | I4 landed: `JsCapabilityChecker` pre-check (`JS0001`–`JS0013`) before JavaScript emit; matrix guard requires a diagnostic and fixture per JavaScript `no` row |
 | 2026-10-15 | I5 (Desktop IDE): `MainWindow.xaml.cs` split into `MainWindow.<Area>.cs` partials (Theme, ToolCalls, Prompts, Examples, Panels, Menus; web preview moved to `WebUi`) and `NativeMethods.cs`; `MainWindow.Editor.cs` split into Completion, SyntaxPanel, Diagnostics and Navigation; `MainWindow.Run.cs` web preview moved to `MainWindow.Preview.cs` |

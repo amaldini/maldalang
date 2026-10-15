@@ -70,6 +70,34 @@ These strings are what `@property` / `runProperty` use via `GetRequiredCapabilit
 
 Jobs are a lightweight SQLite queue (`./.malda/jobs.db`, or `MALDA_JOBS_CONNECTION`), not durable `workflow` / `step` semantics.
 
+## JavaScript pre-check diagnostics
+
+`malda compile --mode js` / `--mode pwa` run one AST pass (`MaldaLang.Compiler/JsCapabilityChecker.cs`)
+before emit. It reports **every** use of a feature this matrix marks `no` for JavaScript, as
+`Line L:C - JS0xxx: …`, and writes no output. Names the program declares itself (a user
+`function readFile`, `class VectorDB`) are not reported. `NotSupportedException` in the
+JavaScript transpiler stays as a safety net. `BackendCapabilityMatrixGuardTests` fails when a
+JavaScript `no` row has no rule or no fixture (`MaldaLang.Tests/JsCapabilityCheckerTests.cs`).
+
+| Code | Feature | Detected on | Matrix rows |
+|------|---------|-------------|-------------|
+| `JS0001` | File I/O | `readFile` / `writeFile` / `hasFile` / `glob` / `git*` / `path*` …, `io.*` file members, `pdf.*` / `doc.*` | File I/O, `file-io` |
+| `JS0002` | Durable workflows | `workflow` declarations, `startWorkflow` / `getWorkflow*` / `listWorkflows` … | Durable workflows, `workflows` |
+| `JS0003` | Prompts | `prompt` declarations (typed or not), `runPrompt`, `evalPrompt` | Agents / prompts, Typed prompt `response_format` |
+| `JS0004` | Agents / LLM clients / MCP / ACP | `agents.*`, `new Agent` / `LLMClient` / `OpenRouterClient` / `Conversation` / `MCPServer` / `ACPServer` / `GraphMemory` …, `create*Tool`, `executePlan`, `graph` literals | Agents / prompts / MCP / ACP |
+| `JS0005` | VectorDB | `new VectorDB` | VectorDB |
+| `JS0006` | ONNX | `new OnnxModel` | ONNX inspect |
+| `JS0007` | HTTP servers | `new HttpServer` / `RestServer` / `HTMLCache` | HttpServer / RestServer / sessions |
+| `JS0008` | UIHost | `ui.*`, `ui*` builtins, `generateUI` | UIHost / `ui.*` |
+| `JS0009` | Jobs | `enqueueJob` / `claimJob` / `completeJob` / `failJob` / `getJob` / `listJobs` | Jobs |
+| `JS0010` | .NET interop | `loadAssembly` / `getDotNetType` / `dotnetNew` / `loadNativeModule` / `createNativeCallback` | .NET interop, `dotnet-interop` |
+| `JS0011` | Host processes and drivers | `runCommand` / `runMALDA` / `compileMALDA` / `checkMalda`, `new SqliteClient` / `PostgresClient` / `SqlServerClient` / `SerialConnection` / `ArduinoConnection` | `host-interop` |
+| `JS0012` | Closed api | `api` declarations, `runProgram` | Closed `api` |
+| `JS0013` | Agentic runs | `within (…) { }`, `context`, `policy`, `suite` | `within` scopes / `context` / `policy`, `suite` |
+
+The `actors` property tag is `no` for `@property` runs only; the JavaScript backend runs actors
+process-local, so the pre-check does not reject them.
+
 When in doubt, smoke both interpreter and transpile for shippable `.exe`s, and treat JS as browser-only. Silent interpreter≠transpile footguns: [`docs/llm/malda-gotchas.md`](../llm/malda-gotchas.md).
 
 ## Related

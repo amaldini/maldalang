@@ -332,6 +332,14 @@ public partial class Compiler
         var partitionResult = TargetPartitioner.Partition(statements);
         ThrowIfTargetPartitionDiagnostics(partitionResult.Diagnostics);
 
+        // I4: report every host-only feature (JS0xxx) before emit instead of the first
+        // NotSupportedException, or a call that only fails in the browser.
+        var capabilityDiagnostics = JsCapabilityChecker.Check(partitionResult.JavaScriptStatements);
+        if (capabilityDiagnostics.Count > 0)
+        {
+            throw new JsCapabilityException(capabilityDiagnostics);
+        }
+
         var transpiler = new JsTranspiler();
         return transpiler.TranspileWithSourceMap(
             partitionResult.JavaScriptStatements,

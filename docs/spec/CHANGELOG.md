@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Changed (PATCH — JavaScript compile pre-check, `JS0001`–`JS0013`)
+
+- `malda compile --mode js` / `--mode pwa` run `JsCapabilityChecker` before emit and fail with **every** use of a host-only feature (file I/O, workflows, prompts, agents / LLM clients / MCP / ACP, VectorDB, ONNX, HTTP servers, `ui.*`, jobs, .NET interop, host processes, closed `api`, `within` / `context` / `policy` / `suite`) listed as `Line L:C - JS0xxx: …`. Programs that compiled before and only failed in the browser (e.g. `readFile(…)`, `new VectorDB()`) now fail at compile time; names the program declares itself are not reported. Codes: [backend-capability-matrix.md](backend-capability-matrix.md#javascript-pre-check-diagnostics). JavaScript backend only; no Tier 0 change.
+
 #### Changed (internal — parser and interpreter source layout)
 
 - `MaldaLang/Parser/Parser.cs` and `MaldaLang/Interpreter/Interpreter.cs` are split into `Parser.<Area>.cs` / `Interpreter.<Area>.cs` partial files; `ParseException` and the interpreter exception types moved to their own files. Code moves only: no syntax or semantics change. `scripts/verify-spec-parser-drift.ps1` now watches every `MaldaLang/Parser/Parser*.cs` file.
@@ -579,6 +583,7 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 
 | Date | Change |
 |------|--------|
+| 2026-10-15 | PATCH: JavaScript compile pre-check `JS0001`–`JS0013` (I4) |
 | 2026-09-24 | MINOR: host classes `Dense` / `Sequential` and `nn.sequential` (fixed dense stack, online SGD; no tape, no Adam) |
 | 2026-09-06 | MINOR: `executePlan` `step.out` + `fixture` typed outputs (`evalPrompt` coerce path) |
 | 2026-09-06 | MINOR: sum-type constructor namespaces (`Result.Ok`); clash diagnostic; `import { T }` no longer flattens constructors |

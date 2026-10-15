@@ -626,6 +626,10 @@ Audio Spec v1 adds a browser-hosted game audio API in JavaScript mode. The goal 
 
 - Actor support in JS backend is **process-local only** (browser or Node actor refs). Seamless communication with server-side actors is not part of this phase.
 - File I/O, agents/prompts, durable workflows, `HttpServer` / UIHost, and .NET interop stay host-only.
+  Compile to JavaScript checks for them before emit and lists **every** use with its line,
+  column and code (`JS0001`–`JS0013`, e.g. `Line 4:12 - JS0001: readFile(…) is host-only; …`)
+  instead of failing at the first unsupported construct or emitting a call that throws in the
+  browser. Codes: [`spec/backend-capability-matrix.md`](spec/backend-capability-matrix.md#javascript-pre-check-diagnostics).
 
 ## Desktop IDE debug
 

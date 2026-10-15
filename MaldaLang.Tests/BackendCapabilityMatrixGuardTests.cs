@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Andrea Maldini
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
+using MaldaLang.Compiler;
 using MaldaLang.Tests.Planning;
 using Xunit;
 
@@ -69,6 +70,57 @@ public class BackendCapabilityMatrixGuardTests
         AssertContains(markdown, "UIHost", "UIHost row");
         AssertContains(markdown, "Jobs", "Jobs row");
         AssertContains(markdown, "`enqueueJob`", "Jobs row");
+    }
+
+    /// <summary>
+    /// I4: every row the matrix marks <c>no</c> for JavaScript has a <see cref="JsCapabilityChecker"/>
+    /// diagnostic and a fixture that raises it, and the doc lists every diagnostic code.
+    /// </summary>
+    [Fact]
+    public void EveryJavaScriptNoRow_HasPreCheckDiagnosticAndFixture()
+    {
+        var path = PlanningPaths.ResolveRepoFile("docs", "spec", "backend-capability-matrix.md");
+        var markdown = File.ReadAllText(path);
+
+        // `actors` gates @property runs only; the JavaScript backend runs actors process-local
+        // (product row "Actors" is yes), so the pre-check must not reject them.
+        var exempt = new HashSet<string>(StringComparer.Ordinal) { "`actors`" };
+
+        var noRows = markdown.Split('\n')
+            .Select(line => line.Trim())
+            .Where(line => line.StartsWith('|') && line.EndsWith('|'))
+            .Select(line => line.Trim('|').Split('|').Select(cell => cell.Trim()).ToArray())
+            .Where(cells => cells.Length == 4 && cells[3] == "no")
+            .Select(cells => cells[0])
+            .Where(row => !exempt.Contains(row))
+            .ToList();
+
+        Assert.True(noRows.Count >= 10, "Expected the matrix to list the JavaScript 'no' rows; found: " + string.Join(", ", noRows));
+
+        var problems = new List<string>();
+        foreach (var row in noRows)
+        {
+            var rules = JsCapabilityChecker.Rules
+                .Where(rule => rule.MatrixRows.Any(prefix => row.StartsWith(prefix, StringComparison.Ordinal)))
+                .ToList();
+            if (rules.Count == 0)
+            {
+                problems.Add($"no JS0xxx rule for row '{row}'");
+                continue;
+            }
+
+            foreach (var rule in rules.Where(rule => !JsCapabilityFixtures.ByCode.ContainsKey(rule.Code)))
+            {
+                problems.Add($"rule {rule.Code} (row '{row}') has no fixture");
+            }
+        }
+
+        foreach (var rule in JsCapabilityChecker.Rules.Where(rule => !markdown.Contains("`" + rule.Code + "`", StringComparison.Ordinal)))
+        {
+            problems.Add($"diagnostic `{rule.Code}` is not listed in backend-capability-matrix.md");
+        }
+
+        Assert.True(problems.Count == 0, string.Join(Environment.NewLine, problems));
     }
 
     private static void AssertContains(string markdown, string marker, string rowLabel)
