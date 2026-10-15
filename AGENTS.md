@@ -82,7 +82,7 @@ Web IDE improvements (Monaco UX, examples browser, diagnostics presentation) are
 | Interpreter | `MaldaLang/Interpreter/Interpreter.cs` (+ partials) |
 | Interpret debug core | `MaldaLang/Interpreter/Debug/DebugSession.cs` — pause gate / 1-based lines; IDE hooks wrap this |
 | DAP (interpret) | `MaldaLang/DebugAdapter/` — `malda debug-adapter` on stdio. Do not mix DAP into `malda-lsp` |
-| Built-in functions | `MaldaLang/BuiltIns/BuiltInFunctions.cs`, `BuiltInRegistry.cs` |
+| Built-in functions | `MaldaLang/BuiltIns/BuiltInFunctions.cs` (dispatch) + `BuiltInFunctions.<Area>.cs` partials (`Math`, `Strings`, `Files`, `Ui`, `Workflows`, …), `BuiltInRegistry.cs` |
 | C# transpile | `MaldaLang.Compiler/CSharpTranspiler.cs` (+ `CSharpTranspiler.<Area>.cs` partials: `Statements`, `Expressions`, `Calls`, `BuiltIns`, `Prompts`, `RuntimeHelpers.<Area>`, …), `Compiler.cs` (+ `Compiler.<Area>.cs`: `ProjectFiles`, `DotnetBuild`, `JavaScript`, `Transpiled`, `UiHost`) |
 | JS / PWA transpile | `MaldaLang.Compiler/JsTranspiler.cs` (+ `JsTranspiler.<Area>.cs` partials: `Expressions`, `Calls`, `Match`, `Scopes`, `Actors`, `Shaders`, `SourceMap`), `GlslTranspiler.cs` (`@shader()` → GLSL) |
 | Server-driven UI (`ui.*` / UIHost) | `MaldaLang/Runtime/UI/`, `MaldaLang.UIHost/` — [`docs/ui-framework.md`](docs/ui-framework.md) |
@@ -120,7 +120,7 @@ tests; drive-by “nice to have” builtins are out of scope for focused PRs.
 
 ## New built-in checklist (summary)
 
-1. Implement in `MaldaLang/BuiltIns/BuiltInFunctions.cs` (or related BuiltIns type)
+1. Implement in the matching `MaldaLang/BuiltIns/BuiltInFunctions.<Area>.cs` partial (or related BuiltIns type)
 2. Check the argument count with `BuiltInArity.Require("name", args, min, max, "a, b?")` — one
    phrasing for every built-in, and the generator in step 6 reads these call sites
 3. Add one arm to `DispatchBuiltIn` in `BuiltInFunctions.cs`. Add an arm to `CallBuiltInAsync`

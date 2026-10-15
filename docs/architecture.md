@@ -58,7 +58,7 @@ Optional vertical packs are **out of tree**. The compiler may still contain **st
 Built-ins are the largest “surface area” for language work:
 
 - Implementation / dispatch: `MaldaLang/BuiltIns/BuiltInFunctions.cs` — one name → implementation
-  table in `DispatchBuiltIn`; `CallBuiltInAsync` adds arms only for implementations that await
+  table in `DispatchBuiltIn` (implementations live in `BuiltInFunctions.<Area>.cs` partials); `CallBuiltInAsync` adds arms only for implementations that await
 - Registry metadata: `MaldaLang/BuiltIns/BuiltInRegistry.cs` — the single list that
   `Interpreter.IsBuiltIn` and `CSharpTranspiler.IsBuiltInFunction` read
 - Transpile codegen: `CSharpTranspiler.TranspileBuiltInFunction` (`CSharpTranspiler.BuiltIns.cs`) — special emits only; any other

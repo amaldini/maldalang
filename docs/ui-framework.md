@@ -110,7 +110,7 @@ host wiring from `MaldaLang.Compiler`.
 | Concern | Primary path |
 |---------|----------------|
 | Nodes / diff / sessions / control specs | `MaldaLang/Runtime/UI/` |
-| `ui.*` builtins | `MaldaLang/BuiltIns/BuiltInFunctions.cs` (UI section) |
+| `ui.*` builtins | `MaldaLang/BuiltIns/BuiltInFunctions.Ui.cs`, `.UiCrud.cs`, `.UiGenerate.cs` |
 | Standalone / embedded host | `MaldaLang.UIHost/` |
 | Browser client | `MaldaLang.UIHost/wwwroot/malda-ui-client.js` |
 | Language API (user docs) | `ReferenceManual/26-web-ui.html` |
