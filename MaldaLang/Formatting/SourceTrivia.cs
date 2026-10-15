@@ -145,7 +145,7 @@ public sealed class SourceLine
 /// Lossless scanner for MALDA source: keeps whitespace, newlines and comments as trivia that
 /// <see cref="Lexer"/> discards. Token boundaries mirror <see cref="Lexer"/> (same longest-match
 /// operators, same string / interpolation / triple-quote rules) without changing the lexer the
-/// parser and interpreter use. Shared by <c>malda fmt</c> and future <c>malda lint</c> rules
+/// parser and interpreter use. Shared by <c>malda fmt</c> and <c>malda lint</c>
 /// (comment-based suppressions, trivia-aware checks).
 /// </summary>
 public static class SourceTriviaScanner

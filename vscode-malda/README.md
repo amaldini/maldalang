@@ -3,7 +3,7 @@
 This extension adds language support for **MALDA** (`.malda` files) in VS Code and Cursor by starting the MALDA Language Server. You get:
 
 - Syntax coloring (TextMate grammar aligned with `Lexer.cs`)
-- Diagnostics (parser errors, decorator validation)
+- Diagnostics (parser errors, decorator validation, and `malda lint` findings with their `ML0xxx` code)
 - Completion (keywords, built-ins, symbols)
 - Hover documentation
 - Go to definition / Find references / Rename

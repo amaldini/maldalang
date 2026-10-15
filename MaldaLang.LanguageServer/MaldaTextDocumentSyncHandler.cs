@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.IO;
 using MaldaLang.IDE.Services;
 using MaldaLang.IDE.Models;
+using MaldaLang.Linting;
 using OmniSharp.Extensions.LanguageServer.Protocol;
 using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
@@ -221,6 +222,7 @@ public class MaldaTextDocumentSyncHandler : TextDocumentSyncHandlerBase
             return;
         }
         var lspDiagnostics = maldaDiagnostics.Select(d => ToLspDiagnostic(d)).ToList();
+        lspDiagnostics.AddRange(LintDiagnostics(text, sourcePath));
 
         PublishDiagnostics(uri, new Container<LspDiagnostic>(lspDiagnostics));
     }
@@ -260,10 +262,45 @@ public class MaldaTextDocumentSyncHandler : TextDocumentSyncHandlerBase
             }
 
             var lspDiagnostics = diagnostics.Select(ToLspDiagnostic).ToList();
+            lspDiagnostics.AddRange(LintDiagnostics(document.Text, document.SourceKey));
             PublishDiagnostics(
                 _workspaceDocuments.CreateDocumentUri(document.SourceKey),
                 new Container<LspDiagnostic>(lspDiagnostics));
         }
+    }
+
+    /// <summary>
+    /// <c>malda lint</c> findings (ML0xxx) beside the check diagnostics. ML0000 (does not parse) is
+    /// skipped: the parser errors are already published. Lint never blocks diagnostics.
+    /// </summary>
+    public static IEnumerable<LspDiagnostic> LintDiagnostics(string text, string? sourcePath)
+    {
+        LintResult result;
+        try
+        {
+            result = MaldaLinter.Lint(text, sourcePath);
+        }
+        catch
+        {
+            return Array.Empty<LspDiagnostic>();
+        }
+
+        return result.Findings
+            .Where(f => f.Code != LintRules.ParseFailed)
+            .Select(f => new LspDiagnostic
+            {
+                Range = LspPositionHelper.ToRange(f.Line - 1, f.Column - 1, Math.Max(1, f.Length)),
+                Severity = f.Severity switch
+                {
+                    LintSeverity.Error => OmniSharp.Extensions.LanguageServer.Protocol.Models.DiagnosticSeverity.Error,
+                    LintSeverity.Warning => OmniSharp.Extensions.LanguageServer.Protocol.Models.DiagnosticSeverity.Warning,
+                    _ => OmniSharp.Extensions.LanguageServer.Protocol.Models.DiagnosticSeverity.Information
+                },
+                Code = f.Code,
+                Message = string.IsNullOrEmpty(f.Hint) ? f.Message : $"{f.Message} Fix: {f.Hint}",
+                Source = "malda-lint"
+            })
+            .ToList();
     }
 
     private static LspDiagnostic ToLspDiagnostic(MaldaLang.IDE.Models.Diagnostic d)

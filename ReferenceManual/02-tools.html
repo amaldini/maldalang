@@ -49,6 +49,7 @@
             <tbody>
                 <tr><td><code>malda check</code></td><td>Diagnose without executing (<code>--json</code>, <code>--fix</code>, <code>--strict-types</code>)</td><td><a href="#check">2.1.2</a>, <a href="24-agentic-runs.html">24.10</a></td></tr>
                 <tr><td><code>malda fmt</code></td><td>Format files in place (<code>--check</code> for CI, <code>--stdin</code> for editors)</td><td><a href="#fmt">2.1.2</a></td></tr>
+                <tr><td><code>malda lint</code></td><td>Report gotchas as <code>ML0xxx</code> findings (<code>--json</code>; exit 1 on warnings)</td><td><a href="#lint">2.1.2</a></td></tr>
                 <tr><td><code>malda eval</code></td><td>Run <code>suite</code> / <code>case</code> (ordinary run skips them; not <code>malda test</code>)</td><td><a href="24-agentic-runs.html">24.1</a></td></tr>
                 <tr><td><code>malda prompts --diff</code></td><td>Compare prompt hashes against an eval baseline</td><td><a href="24-agentic-runs.html">24.10</a></td></tr>
                 <tr><td><code>malda compile</code> / <code>publish</code></td><td>Exe, DLL, JS, PWA, or fullstack. <code>publish</code> is <code>compile --mode transpile</code></td><td><a href="#compiler">2.2</a></td></tr>
@@ -225,6 +226,33 @@ malda fmt src --check
 malda fmt --stdin &lt; app.malda</code></pre>
         <p><code>malda fmt</code> rewrites files in place; a directory is searched recursively for <code>*.malda</code>. It normalizes indentation (4 spaces per bracket level; <code>--indent-size N</code> or <code>--use-tabs</code>), spacing around operators, commas and braces, trailing whitespace, runs of blank lines (at most one is kept) and the final newline. It never joins or splits lines. Comments are kept, and string literals of every kind, including interpolation holes and triple-quoted prompt bodies, are copied unchanged. The output is lexed again and must give the same tokens as the input, so formatting cannot change what a program does. A file the lexer rejects is reported and left alone.</p>
         <p><code>--check</code> writes nothing: it lists the files that need formatting and exits <code>1</code> if there are any (use it in CI). <code>--stdin</code> prints the formatted source on stdout. Exit <code>2</code> is a usage error. The LSP <code>textDocument/formatting</code> request and the Desktop IDE <em>Format Document</em> command use the same formatter.</p>
+
+        <h4 id="lint">Linting with <code>malda lint</code></h4>
+        <pre><code>malda lint app.malda
+malda lint src --json
+malda lint --stdin &lt; app.malda
+malda lint --list-rules</code></pre>
+        <p><code>malda lint</code> reports the gotchas from <code>docs/llm/malda-gotchas.md</code> that run without error but do the wrong thing, as findings with stable codes <code>ML0001</code>, <code>ML0002</code>, … It does not execute the program and does not repeat what <code>malda check</code> reports (parser, types, <code>malda-interp</code>, WF1001 / WF1002, UI1001–UI1003), so run both. A directory is searched recursively for <code>*.malda</code>. A file that does not parse gets one <code>ML0000</code> error and no other findings.</p>
+        <table>
+            <thead><tr><th>Code</th><th>Severity</th><th>Finds</th></tr></thead>
+            <tbody>
+                <tr><td><code>ML0001</code></td><td>warning</td><td><code>{name.field}</code>, <code>{items[0]}</code> or <code>{f(x)}</code> in a plain (non-<code>$</code>) string; it prints literally</td></tr>
+                <tr><td><code>ML0002</code></td><td>warning</td><td><code>parseJSON</code> of model output (a prompt, <code>runPrompt</code>, <code>.think(…)</code>) whose result never reaches <code>validate</code> / <code>asVariant</code></td></tr>
+                <tr><td><code>ML0003</code></td><td>info</td><td>Prompt with <code>tools:</code> and <code>-&gt; Type</code> but no <code>gather:</code> (Mode B: structured output only if the backend supports it)</td></tr>
+                <tr><td><code>ML0004</code></td><td>warning</td><td>Model call, network, file, repository or job effect in a workflow body outside a <code>step</code>, directly or through same-file helpers (beyond the WF1001 / WF1002 deny-list)</td></tr>
+                <tr><td><code>ML0005</code></td><td>warning</td><td>Assignment in an expression-bodied lambda (<code>x =&gt; x.done = true</code>); the parser keeps only the right-hand side</td></tr>
+                <tr><td><code>ML0006</code></td><td>warning</td><td><code>step</code> inside a loop in a workflow; steps are memoized by name</td></tr>
+                <tr><td><code>ML0007</code></td><td>warning</td><td><code>case BUY:</code> where <code>BUY</code> is a <code>var</code>; the pattern binds and always matches</td></tr>
+                <tr><td><code>ML0008</code></td><td>warning</td><td>Condition that is always true: <code>0</code>, <code>""</code>, <code>[]</code>, <code>items.length</code></td></tr>
+                <tr><td><code>ML0009</code></td><td>warning</td><td><code>result.map</code> / <code>option.map</code> callback that returns <code>Ok</code> / <code>Some</code> (use <code>andThen</code>)</td></tr>
+                <tr><td><code>ML0010</code></td><td>warning</td><td><code>str.*</code> call directly on <code>io.getEnv(…)</code>, which is <code>null</code> when unset</td></tr>
+                <tr><td><code>ML0011</code></td><td>warning</td><td><code>str.repeat(s, n / 2)</code>: <code>/</code> yields a float and an odd numerator fails</td></tr>
+                <tr><td><code>ML0012</code></td><td>warning</td><td><code>ui.dispatchEvent(event, 1)</code>: the second argument is the session id</td></tr>
+                <tr><td><code>ML0013</code></td><td>warning</td><td><code>case</code> after an unguarded <code>case x:</code> / <code>case _:</code> is unreachable</td></tr>
+            </tbody>
+        </table>
+        <p>Suppress a finding with a comment: <code>// malda-lint-disable-next-line ML0011</code> on the line before, <code>// malda-lint-disable-line ML0011</code> at the end of the line, or <code>// malda-lint-disable-file ML0003</code> anywhere for the whole file. List several codes with commas or spaces; a directive without a code silences every rule. Text after the codes (for example <code>-- reason</code>) is ignored.</p>
+        <p>Human output is <code>file:line:column: severity[ML0xxx]: message</code> plus a <code>fix:</code> line. <code>--json</code> has the <code>malda check --json</code> shape (<code>ok</code>, <code>executed</code>, <code>file</code> when one source is linted, <code>errorCount</code> / <code>warningCount</code> / <code>infoCount</code>, <code>diagnostics[]</code> with 1-based <code>line</code> / <code>column</code>, <code>code</code>, <code>message</code>, <code>hint</code> naming the gotcha, <code>suggestedFix</code>) plus <code>fileCount</code> and <code>suppressedCount</code>. Exit <code>0</code> when there is no warning or error (info findings such as <code>ML0003</code> never fail), <code>1</code> when at least one finding is a warning or an error (including <code>ML0000</code>), <code>2</code> on a usage or I/O error. <code>malda-lsp</code> publishes the same findings as diagnostics with source <code>malda-lint</code> and the rule code.</p>
 
         <h4>Eval suites</h4>
         <p><code>malda eval</code> runs <code>suite</code> / <code>case</code> declarations. Ordinary <code>malda run</code> skips them (like <code>property</code>). That is not <code>malda test</code>. See <a href="24-agentic-runs.html">24.1</a>.</p>
@@ -526,7 +554,7 @@ var result = helper();</code></pre>
 
         <ul>
             <li><strong>Document sync</strong>: Tracks open, change, and close of <code>.malda</code> files</li>
-            <li><strong>Diagnostics</strong>: Parser errors and decorator validation (published after a short debounce on edit)</li>
+            <li><strong>Diagnostics</strong>: Parser errors and decorator validation, plus <code>malda lint</code> findings (source <code>malda-lint</code>, see <a href="#lint">2.1.2</a>), published after a short debounce on edit</li>
             <li><strong>Completion</strong>: Keywords, built-ins, decorators, and symbols (classes, functions, variables, members)</li>
             <li><strong>Hover</strong>: Documentation for symbols and decorators</li>
             <li><strong>Document symbols</strong>: Outline (classes, functions, actors, prompts and their members)</li>

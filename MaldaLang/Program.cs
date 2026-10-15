@@ -231,6 +231,11 @@ partial class Program
                 FmtCommand(args);
                 return;
             }
+            else if (firstArg == "lint")
+            {
+                LintCommand(args);
+                return;
+            }
             else if (firstArg == "new")
             {
                 NewCommand(args);

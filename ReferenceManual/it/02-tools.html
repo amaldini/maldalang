@@ -49,6 +49,7 @@
             <tbody>
                 <tr><td><code>malda check</code></td><td>Diagnostica senza eseguire (<code>--json</code>, <code>--fix</code>, <code>--strict-types</code>)</td><td><a href="#check">2.1.2</a>, <a href="24-agentic-runs.html">24.10</a></td></tr>
                 <tr><td><code>malda fmt</code></td><td>Formatta i file sul posto (<code>--check</code> per la CI, <code>--stdin</code> per gli editor)</td><td><a href="#fmt">2.1.2</a></td></tr>
+                <tr><td><code>malda lint</code></td><td>Segnala i gotcha come <code>ML0xxx</code> (<code>--json</code>; exit 1 sui warning)</td><td><a href="#lint">2.1.2</a></td></tr>
                 <tr><td><code>malda eval</code></td><td>Esegue <code>suite</code> / <code>case</code> (un run ordinario li salta; non è <code>malda test</code>)</td><td><a href="24-agentic-runs.html">24.1</a></td></tr>
                 <tr><td><code>malda prompts --diff</code></td><td>Confronta gli hash dei prompt rispetto a una baseline di eval</td><td><a href="24-agentic-runs.html">24.10</a></td></tr>
                 <tr><td><code>malda compile</code> / <code>publish</code></td><td>Exe, DLL, JS, PWA o fullstack. <code>publish</code> è <code>compile --mode transpile</code></td><td><a href="#compiler">2.2</a></td></tr>
@@ -225,6 +226,33 @@ malda fmt src --check
 malda fmt --stdin &lt; app.malda</code></pre>
         <p><code>malda fmt</code> riscrive i file sul posto; in una cartella cerca ricorsivamente i <code>*.malda</code>. Normalizza l'indentazione (4 spazi per livello di parentesi; <code>--indent-size N</code> o <code>--use-tabs</code>), gli spazi attorno a operatori, virgole e graffe, gli spazi a fine riga, le sequenze di righe vuote (ne tiene al massimo una) e il newline finale. Non unisce né spezza mai righe. I commenti restano, e le stringhe di ogni tipo, compresi i buchi di interpolazione e i corpi dei prompt tra triple virgolette, sono copiate senza modifiche. L'output viene rianalizzato dal lexer e deve dare gli stessi token dell'input, quindi la formattazione non può cambiare cosa fa un programma. Un file che il lexer rifiuta viene segnalato e lasciato com'è.</p>
         <p><code>--check</code> non scrive nulla: elenca i file da formattare ed esce con <code>1</code> se ce ne sono (da usare in CI). <code>--stdin</code> stampa il sorgente formattato su stdout. L'exit <code>2</code> è un errore di usage. La richiesta LSP <code>textDocument/formatting</code> e il comando <em>Format Document</em> della Desktop IDE usano lo stesso formatter.</p>
+
+        <h4 id="lint">Lint con <code>malda lint</code></h4>
+        <pre><code>malda lint app.malda
+malda lint src --json
+malda lint --stdin &lt; app.malda
+malda lint --list-rules</code></pre>
+        <p><code>malda lint</code> segnala i gotcha di <code>docs/llm/malda-gotchas.md</code> che girano senza errori ma fanno la cosa sbagliata, come segnalazioni con codici stabili <code>ML0001</code>, <code>ML0002</code>, … Non esegue il programma e non ripete ciò che riporta <code>malda check</code> (parser, tipi, <code>malda-interp</code>, WF1001 / WF1002, UI1001–UI1003), quindi conviene lanciarli entrambi. In una cartella cerca ricorsivamente i <code>*.malda</code>. Un file che non si analizza riceve un solo errore <code>ML0000</code> e nessun'altra segnalazione.</p>
+        <table>
+            <thead><tr><th>Codice</th><th>Gravità</th><th>Trova</th></tr></thead>
+            <tbody>
+                <tr><td><code>ML0001</code></td><td>warning</td><td><code>{nome.campo}</code>, <code>{items[0]}</code> o <code>{f(x)}</code> in una stringa semplice (senza <code>$</code>): viene stampato alla lettera</td></tr>
+                <tr><td><code>ML0002</code></td><td>warning</td><td><code>parseJSON</code> di output del modello (un prompt, <code>runPrompt</code>, <code>.think(…)</code>) il cui risultato non arriva mai a <code>validate</code> / <code>asVariant</code></td></tr>
+                <tr><td><code>ML0003</code></td><td>info</td><td>Prompt con <code>tools:</code> e <code>-&gt; Tipo</code> ma senza <code>gather:</code> (Mode B: output strutturato solo se il backend lo supporta)</td></tr>
+                <tr><td><code>ML0004</code></td><td>warning</td><td>Chiamata al modello, rete, file, repository o job nel corpo di un workflow fuori da uno <code>step</code>, direttamente o tramite helper dello stesso file (oltre la deny-list WF1001 / WF1002)</td></tr>
+                <tr><td><code>ML0005</code></td><td>warning</td><td>Assegnazione in una lambda a espressione (<code>x =&gt; x.done = true</code>): il parser tiene solo il lato destro</td></tr>
+                <tr><td><code>ML0006</code></td><td>warning</td><td><code>step</code> dentro un ciclo in un workflow: gli step sono memoizzati per nome</td></tr>
+                <tr><td><code>ML0007</code></td><td>warning</td><td><code>case BUY:</code> dove <code>BUY</code> è una <code>var</code>: il pattern lega un nome e corrisponde sempre</td></tr>
+                <tr><td><code>ML0008</code></td><td>warning</td><td>Condizione sempre vera: <code>0</code>, <code>""</code>, <code>[]</code>, <code>items.length</code></td></tr>
+                <tr><td><code>ML0009</code></td><td>warning</td><td>Callback di <code>result.map</code> / <code>option.map</code> che restituisce <code>Ok</code> / <code>Some</code> (usare <code>andThen</code>)</td></tr>
+                <tr><td><code>ML0010</code></td><td>warning</td><td>Chiamata <code>str.*</code> direttamente su <code>io.getEnv(…)</code>, che è <code>null</code> se la variabile non è impostata</td></tr>
+                <tr><td><code>ML0011</code></td><td>warning</td><td><code>str.repeat(s, n / 2)</code>: <code>/</code> dà un float e un numeratore dispari fallisce</td></tr>
+                <tr><td><code>ML0012</code></td><td>warning</td><td><code>ui.dispatchEvent(event, 1)</code>: il secondo argomento è l'id di sessione</td></tr>
+                <tr><td><code>ML0013</code></td><td>warning</td><td>Un <code>case</code> dopo un <code>case x:</code> / <code>case _:</code> senza guardia non è raggiungibile</td></tr>
+            </tbody>
+        </table>
+        <p>Per silenziare una segnalazione si usa un commento: <code>// malda-lint-disable-next-line ML0011</code> sulla riga prima, <code>// malda-lint-disable-line ML0011</code> in fondo alla riga, oppure <code>// malda-lint-disable-file ML0003</code> in un punto qualsiasi per tutto il file. Più codici si separano con virgole o spazi; una direttiva senza codice silenzia tutte le regole. Il testo dopo i codici (per esempio <code>-- motivo</code>) viene ignorato.</p>
+        <p>L'output leggibile è <code>file:riga:colonna: gravità[ML0xxx]: messaggio</code> più una riga <code>fix:</code>. <code>--json</code> ha la forma di <code>malda check --json</code> (<code>ok</code>, <code>executed</code>, <code>file</code> quando si analizza una sola sorgente, <code>errorCount</code> / <code>warningCount</code> / <code>infoCount</code>, <code>diagnostics[]</code> con <code>line</code> / <code>column</code> a partire da 1, <code>code</code>, <code>message</code>, <code>hint</code> che nomina il gotcha, <code>suggestedFix</code>) più <code>fileCount</code> e <code>suppressedCount</code>. Exit <code>0</code> se non ci sono warning né errori (le segnalazioni info come <code>ML0003</code> non fanno mai fallire), <code>1</code> se almeno una segnalazione è un warning o un errore (compreso <code>ML0000</code>), <code>2</code> per un errore di usage o di I/O. <code>malda-lsp</code> pubblica le stesse segnalazioni come diagnostica con sorgente <code>malda-lint</code> e il codice della regola.</p>
 
         <h4>Suite di eval</h4>
         <p><code>malda eval</code> esegue le dichiarazioni <code>suite</code> / <code>case</code>. Un <code>malda run</code> ordinario le salta (come <code>property</code>). Non è <code>malda test</code>. Vedi <a href="24-agentic-runs.html">24.1</a>.</p>
@@ -526,7 +554,7 @@ var result = helper();</code></pre>
 
         <ul>
             <li><strong>Sincronizzazione dei documenti</strong>: tiene traccia di apertura, modifica e chiusura dei file <code>.malda</code></li>
-            <li><strong>Diagnostica</strong>: errori del parser e validazione dei decoratori (pubblicata dopo un breve debounce in modifica)</li>
+            <li><strong>Diagnostica</strong>: errori del parser e validazione dei decoratori, più le segnalazioni di <code>malda lint</code> (sorgente <code>malda-lint</code>, vedi <a href="#lint">2.1.2</a>), pubblicata dopo un breve debounce in modifica</li>
             <li><strong>Completamento</strong>: keyword, built-in, decoratori e simboli (classi, funzioni, variabili, membri)</li>
             <li><strong>Hover</strong>: documentazione per simboli e decoratori</li>
             <li><strong>Simboli del documento</strong>: outline (classi, funzioni, actor, prompt e i loro membri)</li>

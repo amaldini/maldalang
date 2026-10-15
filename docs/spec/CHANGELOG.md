@@ -107,6 +107,10 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (tooling — `malda lint`)
+
+- `malda lint <file|dir>...` reports gotchas from `docs/llm/malda-gotchas.md` as stable `ML0xxx` findings without executing the program: `{a.b}` / `{a[i]}` / `{f(x)}` in a plain string (`ML0001`), unvalidated `parseJSON` of model output (`ML0002`), Mode B prompts (`ML0003`, info), model / network / file / job effects in a workflow body outside a step, including through same-file helpers (`ML0004`), assignment in an expression-bodied lambda (`ML0005`), `step` in a loop (`ML0006`), `case NAME:` on a `var` (`ML0007`), always-true conditions (`ML0008`), `result.map` / `option.map` returning `Ok` / `Some` (`ML0009`), `str.*` on `io.getEnv(…)` (`ML0010`), `str.repeat(s, n / 2)` (`ML0011`), numeric `ui.dispatchEvent` session (`ML0012`), unreachable `case` after a catch-all (`ML0013`); `ML0000` means the file does not parse. Suppress with `// malda-lint-disable-next-line ML0xxx`, a trailing `// malda-lint-disable-line ML0xxx`, or `// malda-lint-disable-file ML0xxx`. `--json` uses the `malda check --json` shape plus `fileCount` / `suppressedCount`; exit `1` when a finding is a warning or an error (info never fails), `2` on usage errors; `--stdin`, `--list-rules`. `malda-lsp` publishes the same findings (source `malda-lint`). Each gotcha now names its rule, check code, or `docs-only`. Narrative: [`02-tools.html`](../../ReferenceManual/02-tools.html#lint). Tooling only; no Tier 0 change.
+
 #### Added (tooling — `malda fmt`)
 
 - `malda fmt <file|dir>` formats `.malda` sources in place; `--check` lists unformatted files and exits `1` (CI), `--stdin` writes the formatted source to stdout (editors); `--indent-size N` / `--use-tabs`. It normalizes indentation (bracket depth, `match` case bodies, wrapped operator lines and `if (` / `while (` conditions), spacing around operators, commas and braces, trailing whitespace, blank-line runs (at most one) and the final newline, and never joins or splits lines. Comments are kept; every string literal form (including `$"…"` holes and `"""` prompt bodies) is copied byte for byte. The output must re-lex to the same token stream as the input or the file is left unchanged, and sources the lexer rejects are not formatted. `malda-lsp` `textDocument/formatting` / `rangeFormatting` and the Desktop IDE *Format Document* command use the same `MaldaFormatter` (replacing the brace-only indenter). Narrative: [`02-tools.html`](../../ReferenceManual/02-tools.html#fmt). Tooling only; no Tier 0 change.
@@ -587,6 +591,7 @@ Implementation plan: [`docs/roadmap-p0-types-impl.md`](../roadmap-p0-types-impl.
 
 | Date | Change |
 |------|--------|
+| 2026-10-15 | Tooling: `malda lint` (`ML0000`–`ML0013`), also in `malda-lsp` diagnostics (I6) |
 | 2026-10-15 | Tooling: `malda fmt` formatter, also behind LSP and Desktop IDE formatting (I3) |
 | 2026-10-15 | PATCH: JavaScript compile pre-check `JS0001`–`JS0013` (I4) |
 | 2026-09-24 | MINOR: host classes `Dense` / `Sequential` and `nn.sequential` (fixed dense stack, online SGD; no tape, no Adam) |

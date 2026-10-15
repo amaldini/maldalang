@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Andrea Maldini
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-namespace MaldaLang.Compiler;
+namespace MaldaLang.Parser.AST;
 
 using System;
 using System.Collections;
@@ -9,14 +9,14 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using MaldaLang.Parser.AST;
 
 /// <summary>
 /// Enumerates every <see cref="Node"/> reachable from a root by reflecting over node-typed
 /// properties, collections and the non-node holders the parser uses (class members, match
-/// cases, tuples). Used by transpiler analyses that must not miss a construct when the AST grows.
+/// cases, tuples). Used by transpiler analyses and <c>malda lint</c> rules that must not miss a
+/// construct when the AST grows.
 /// </summary>
-internal static class AstNodeWalker
+public static class AstNodeWalker
 {
     private static readonly ConcurrentDictionary<Type, PropertyInfo[]> Properties = new();
 

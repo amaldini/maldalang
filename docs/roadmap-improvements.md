@@ -1,6 +1,6 @@
 # MALDA engineering improvements roadmap
 
-**Status:** I1, I2, I3 and I4 landed 2026-10-15; I5 three named files split (follow-up list open); I6–I8 and I10 open; I9 dropped (root files are intentional)  
+**Status:** I1, I2, I3, I4 and I6 landed 2026-10-15; I5 three named files split (follow-up list open); I7, I8 and I10 open; I9 dropped (root files are intentional)  
 **Created:** 2026-10-15  
 **Audience:** maintainers choosing engine / tooling work after P0, L1–L6 and DT0–DT8
 
@@ -37,7 +37,7 @@ features (agents, HTTP, workflows, prompts).
 | 3 | **I3** `malda fmt` | Landed | No CLI / CI formatter; only the IDE indenter exists | Medium | M |
 | 4 | **I4** JavaScript capability pre-check | Landed | Unsupported features failed late, one `NotSupportedException` at a time | Medium | M |
 | 5 | **I5** Split `Interpreter.cs` / `Parser.cs` / `LanguageService.cs` | Partly landed | The three named files are split; other engine files still exceed ~1,500 lines (see I5) | Low | L |
-| 6 | **I6** `malda lint` (gotchas as diagnostics) | Open | Common footguns live only in `docs/llm/` | Medium | M |
+| 6 | **I6** `malda lint` (gotchas as diagnostics) | Landed | Common footguns live only in `docs/llm/` | Medium | M |
 | 7 | **I7** Pure stdlib complete on JavaScript | Open | `math` / `str` / collections are `partial` on JS | Medium | M–L |
 | 8 | **I8** Gradual type inference in the editor | Open | Warnings without the deferred full static type system | High | L |
 | 9 | **I9** Repository root cleanup | Dropped | See I9 below | — | — |
@@ -156,6 +156,29 @@ Phase C (language and ecosystem)
   ambiguous Mode B prompts, non-deterministic calls in workflows beyond the deny-list.
 - Stable codes (`ML0xxx`), per-line suppression, `--json` output like `check`.
 - **Done when:** every gotcha in `docs/llm/` links to a rule or is marked docs-only.
+- **Status (2026-10-15): landed.** `MaldaLang/Linting/` (`MaldaLinter` + `.Rules` / `.Workflows`
+  partials, `LintRules`, `LintSuppressions`, `LintCommandRunner`; CLI in `Program.Lint.cs`). Rules
+  run on the parser AST through `AstNodeWalker` (moved from `MaldaLang.Compiler` into
+  `MaldaLang/Parser/AST/` so both share it) and, for constructs the parser drops, on
+  `SourceTriviaScanner` tokens. Codes: `ML0000` the file does not parse (error); `ML0001`
+  `{a.b}` / `{a[i]}` / `{f(x)}` in a plain string (plain `{name}` stays check's `malda-interp`);
+  `ML0002` `parseJSON` of model output never validated; `ML0003` Mode B prompt (info); `ML0004`
+  model / network / file / repository / job effects in a workflow body outside a step, through
+  same-file helpers, beyond the WF1001/WF1002 deny-list; `ML0005` assignment in an
+  expression-bodied lambda; `ML0006` `step` in a loop; `ML0007` `case NAME:` on a `var`;
+  `ML0008` always-true condition (`0`, `""`, `[]`, `.length`); `ML0009` `result.map` /
+  `option.map` returning `Ok` / `Some`; `ML0010` `str.*` on `io.getEnv(…)`; `ML0011`
+  `str.repeat(s, n / 2)`; `ML0012` numeric `ui.dispatchEvent` session; `ML0013` `case` after an
+  unguarded catch-all. Suppression: `// malda-lint-disable-next-line ML0xxx`, trailing
+  `// malda-lint-disable-line ML0xxx`, `// malda-lint-disable-file ML0xxx` (no code = all rules).
+  `malda lint <file|dir>... [--json] [--stdin] [--list-rules]`: `--json` is the `check --json`
+  shape plus `fileCount` / `suppressedCount`; exit 1 when any finding is a warning or an error,
+  info never fails. `malda-lsp` publishes the findings (source `malda-lint`, code `ML0xxx`;
+  `ML0000` is skipped because the parser errors are already published). Every row and
+  paragraph of `docs/llm/malda-gotchas.md` now carries a Lint marker (`ML0xxx`, `check: …`,
+  `compile: JS0xxx` or `docs-only`), enforced by `MaldaLinterTests`. Sweep of `Examples/`: no
+  warning or error besides `ML0000` on the 6 examples the parser already rejects; one justified
+  info (`ML0003` on the Mode B demo `prompt_tools_mode.malda`).
 
 ## I7 — JavaScript stdlib
 
@@ -219,4 +242,5 @@ The root files that looked like leftovers are intentional:
 | 2026-10-15 | I5 (BuiltInTools): `BuiltInTools.cs` split into `BuiltInTools.<Area>.cs` partials (Workspace, Git, Malda, Plan; file tools stay in the main file) |
 | 2026-10-15 | I4 landed: `JsCapabilityChecker` pre-check (`JS0001`–`JS0013`) before JavaScript emit; matrix guard requires a diagnostic and fixture per JavaScript `no` row |
 | 2026-10-15 | I3 landed: `malda fmt` (`--check`, `--stdin`) on the lossless `SourceTriviaScanner`; LSP and Desktop IDE formatting use the same `MaldaFormatter` |
+| 2026-10-15 | I6 landed: `malda lint` (`ML0000`–`ML0013`, suppression comments, `--json`), findings in `malda-lsp`; every gotcha in `docs/llm/malda-gotchas.md` is linked to a rule or marked docs-only |
 | 2026-10-15 | I5 (Desktop IDE): `MainWindow.xaml.cs` split into `MainWindow.<Area>.cs` partials (Theme, ToolCalls, Prompts, Examples, Panels, Menus; web preview moved to `WebUi`) and `NativeMethods.cs`; `MainWindow.Editor.cs` split into Completion, SyntaxPanel, Diagnostics and Navigation; `MainWindow.Run.cs` web preview moved to `MainWindow.Preview.cs` |
