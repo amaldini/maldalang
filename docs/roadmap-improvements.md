@@ -1,6 +1,6 @@
 # MALDA engineering improvements roadmap
 
-**Status:** I1 and I2 landed 2026-10-15; I3–I8 and I10 open; I9 dropped (root files are intentional)  
+**Status:** I1 and I2 landed 2026-10-15; I5 in progress (Interpreter split); I3, I4, I6–I8 and I10 open; I9 dropped (root files are intentional)  
 **Created:** 2026-10-15  
 **Audience:** maintainers choosing engine / tooling work after P0, L1–L6 and DT0–DT8
 
@@ -36,7 +36,7 @@ features (agents, HTTP, workflows, prompts).
 | 2 | **I2** Differential fuzz in the nightly workflow | Landed | Backend divergence was only checked on 3 seeds | Low | S |
 | 3 | **I3** `malda fmt` | Open | No CLI / CI formatter; only the IDE indenter exists | Medium | M |
 | 4 | **I4** JavaScript capability pre-check | Open | Unsupported features fail late, one `NotSupportedException` at a time | Medium | M |
-| 5 | **I5** Split `Interpreter.cs` / `Parser.cs` / `LanguageService.cs` | Open | 7,048 / 3,844 / 3,142 lines | Low | L |
+| 5 | **I5** Split `Interpreter.cs` / `Parser.cs` / `LanguageService.cs` | In progress | Interpreter done; 3,844 / 3,142 lines left | Low | L |
 | 6 | **I6** `malda lint` (gotchas as diagnostics) | Open | Common footguns live only in `docs/llm/` | Medium | M |
 | 7 | **I7** Pure stdlib complete on JavaScript | Open | `math` / `str` / collections are `partial` on JS | Medium | M–L |
 | 8 | **I8** Gradual type inference in the editor | Open | Warnings without the deferred full static type system | High | L |
@@ -171,3 +171,4 @@ The root files that looked like leftovers are intentional:
 |------|--------|
 | 2026-10-15 | Initial plan (I1–I10); I9 dropped after checking root file references; I2 landed (nightly fuzz job) |
 | 2026-10-15 | I1 landed: `Program.cs` split into `Program.<Area>.cs` partials |
+| 2026-10-15 | I5 (Interpreter): `Interpreter.cs` split into `Interpreter.<Area>.cs` partials; exception types moved to `RuntimeException.cs` |

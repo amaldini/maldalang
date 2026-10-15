@@ -27,7 +27,7 @@ This is the plan for **source-level debugging of interpreted `.malda`**. It is n
 | Piece | Location | Reality |
 |-------|----------|---------|
 | Hook interface | [`MaldaLang/Interpreter/IDebuggerHook.cs`](../MaldaLang/Interpreter/IDebuggerHook.cs) | `OnStatement` / `OnPause` / enter-exit / breakpoint / `DebugMode` |
-| Pause site | [`Interpreter.ExecuteAsync`](../MaldaLang/Interpreter/Interpreter.cs) | Every statement; **converts `stmt.Line - 1`** for `OnStatement`, then `OnPause(stmt.Line)` (1-based). Busy-wait `Task.Delay(50)` up to **5 minutes** |
+| Pause site | [`Interpreter.ExecuteAsync`](../MaldaLang/Interpreter/Interpreter.ControlFlow.cs) | Every statement; **converts `stmt.Line - 1`** for `OnStatement`, then `OnPause(stmt.Line)` (1-based). Busy-wait `Task.Delay(50)` up to **5 minutes** |
 | Call stack | `Interpreter._callStack` / `GetCallStack()` | Pushed on function enter; **stores declaration line**, not current statement |
 | Variables | `GetVariables()` / `DebugSession.GetFrameScopes` | D1 inspect: Locals / Closure / Globals / This + lazy `variablesReference`. Legacy `GetVariables()` remains globals-as-strings for IDE panels until D4. |
 | Source file | `stmt.SourceFile` / `_currentFile` | Set around `ExecuteAsync`; imports/includes can switch file |
