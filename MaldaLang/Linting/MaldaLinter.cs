@@ -213,12 +213,9 @@ public static partial class MaldaLinter
             Findings.Add(new LintFinding(code, rule.Severity, message, Math.Max(1, line), Math.Max(1, column), Math.Max(1, length), hint, file));
         }
 
-        /// <summary>Report at <paramref name="node"/>, or at <paramref name="fallback"/> when the parser left the node without a position.</summary>
-        public void Report(string code, Node node, int length, string message, string? hint = null, Node? fallback = null)
-        {
-            var at = node.Line <= 0 && fallback != null ? fallback : node;
-            Report(code, at.Line, at.Column, length, message, hint, IncludedFile(at.SourceFile, SourceFileName));
-        }
+        /// <summary>Report at <paramref name="node"/> (the parser positions every node; see <c>AstSourcePositionGuardTests</c>).</summary>
+        public void Report(string code, Node node, int length, string message, string? hint = null) =>
+            Report(code, node.Line, node.Column, length, message, hint, IncludedFile(node.SourceFile, SourceFileName));
 
         private void Collect()
         {

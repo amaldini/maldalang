@@ -157,7 +157,7 @@ public partial class Parser
         var op = equals.Type;
         if (target is IdentifierExpression idExpr)
         {
-            return new AssignmentStatement(new IdentifierExpression(idExpr.Name), value, op, equals.Line, equals.Column);
+            return new AssignmentStatement(new IdentifierExpression(idExpr.Name, idExpr.Line, idExpr.Column), value, op, equals.Line, equals.Column);
         }
         else if (target is MemberAccessExpression memberExpr)
         {
@@ -296,29 +296,34 @@ public partial class Parser
                 if (IsQuestionMarkArrayTernaryStart())
                     break;
 
-                Advance();
+                var question = Advance();
                 Match(TokenType.LeftBracket);
                 var index = Expression();
                 Consume(TokenType.RightBracket, "Expect ']' after index.");
-                expr = new ArrayAccessExpression(expr, index, isNullConditional: true);
+                expr = new ArrayAccessExpression(expr, index, isNullConditional: true, question.Line, question.Column);
             }
             else if (Check(TokenType.QuestionMark) && Peek(1)?.Type == TokenType.Dot)
             {
                 Advance();
                 Match(TokenType.Dot);
                 var name = ConsumeIdentifierOrKeyword("Expect property name after '?.'.");
-                expr = new MemberAccessExpression(expr, name, isNullConditional: true);
+                var nameToken = Previous();
+                expr = new MemberAccessExpression(expr, name, isNullConditional: true, nameToken.Line, nameToken.Column);
             }
             else if (Match(TokenType.LeftBracket))
             {
+                var bracket = Previous();
                 var index = Expression();
                 Consume(TokenType.RightBracket, "Expect ']' after index.");
-                expr = new ArrayAccessExpression(expr, index);
+                expr = new ArrayAccessExpression(expr, index, isNullConditional: false, bracket.Line, bracket.Column);
             }
             else if (Match(TokenType.Dot))
             {
                 var name = ConsumeIdentifierOrKeyword("Expect property name after '.'.");
-                expr = new MemberAccessExpression(expr, name);
+                // Position of the member name: diagnostics underline it (`io.ensureDir`) and
+                // runtime errors on `o.missing.x` point at the property that failed.
+                var nameToken = Previous();
+                expr = new MemberAccessExpression(expr, name, isNullConditional: false, nameToken.Line, nameToken.Column);
             }
             else if (Match(TokenType.Increment, TokenType.Decrement))
             {
@@ -772,8 +777,10 @@ public partial class Parser
                     // Parse the expression string
                     // Use the original string's line as a line offset so nested lexer
                     // reports the correct source line number in errors.
-                    var expressionLexer = new Lexer(expressionContent, _sourceFileName, token.Line - 1);
-                    var expressionTokens = expressionLexer.Tokenize();
+                    var segmentLine = lexerSegment.SourceLine > 0 ? lexerSegment.SourceLine : token.Line;
+                    var segmentColumn = lexerSegment.SourceLine > 0 ? lexerSegment.SourceColumn : token.Column;
+                    var expressionLexer = new Lexer(expressionContent, _sourceFileName, segmentLine - 1);
+                    var expressionTokens = RebaseTokens(expressionLexer.Tokenize(), segmentLine, segmentColumn);
                     
                     // Parse a single expression using the static helper
                     var expression = ParseExpression(expressionTokens);
@@ -801,6 +808,19 @@ public partial class Parser
         return new InterpolatedStringExpression(segments, token.Line, token.Column);
     }
     
+    /// <summary>
+    /// Tokens lexed from an interpolation hole start at 1:1; move them to where the hole sits in
+    /// the file so nodes inside <c>$"{…}"</c> report real positions.
+    /// </summary>
+    private static List<Token> RebaseTokens(List<Token> tokens, int line, int column) =>
+        tokens.Select(t => new Token(
+                t.Type,
+                t.Lexeme,
+                t.Literal,
+                line + t.Line - 1,
+                t.Line == 1 ? column + t.Column - 1 : t.Column))
+            .ToList();
+
     private Expression FinishCall(Expression callee)
     {
         var arguments = new List<Expression>();

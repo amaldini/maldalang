@@ -268,17 +268,18 @@ public partial class Parser
             if (loopIncrement != null)
             {
                 var statements = new List<Statement> { loopBody, loopIncrement };
-                loopBody = new BlockStatement(statements);
+                loopBody = new BlockStatement(statements, loopBody.Line, loopBody.Column);
             }
             
+            // The desugared nodes stand for the `for` itself.
             if (loopCondition == null)
             {
-                loopCondition = new LiteralExpression(true);
+                loopCondition = new LiteralExpression(true, token.Line, token.Column);
             }
-            loopBody = new WhileStatement(loopCondition, loopBody) { IsDesugaredFor = loopIncrement != null };
+            loopBody = new WhileStatement(loopCondition, loopBody, token.Line, token.Column) { IsDesugaredFor = loopIncrement != null };
             
             var statements2 = new List<Statement> { varInitializer, loopBody };
-            loopBody = new BlockStatement(statements2);
+            loopBody = new BlockStatement(statements2, token.Line, token.Column);
             
             return loopBody;
         }
@@ -332,19 +333,20 @@ public partial class Parser
         if (incrementStmt != null)
         {
             var statements = new List<Statement> { body, incrementStmt };
-            body = new BlockStatement(statements);
+            body = new BlockStatement(statements, body.Line, body.Column);
         }
         
+        // The desugared nodes stand for the `for` itself.
         if (condition == null)
         {
-            condition = new LiteralExpression(true);
+            condition = new LiteralExpression(true, token.Line, token.Column);
         }
-        body = new WhileStatement(condition, body) { IsDesugaredFor = incrementStmt != null };
+        body = new WhileStatement(condition, body, token.Line, token.Column) { IsDesugaredFor = incrementStmt != null };
         
         if (initializer != null)
         {
             var statements = new List<Statement> { initializer, body };
-            body = new BlockStatement(statements);
+            body = new BlockStatement(statements, token.Line, token.Column);
         }
         
         return body;
@@ -446,8 +448,10 @@ public partial class Parser
         return new CatchClause(exceptionVariable, body, filter, token.Line, token.Column);
     }
     
+    /// <summary>Statements up to the closing <c>}</c>; callers have just consumed the opening <c>{</c>.</summary>
     private BlockStatement Block()
     {
+        var open = Previous();
         var statements = new List<Statement>();
         _blockDepth++;
         try
@@ -460,7 +464,7 @@ public partial class Parser
                 AppendFlattened(statements, stmt, applySourceFile: false);
             }
             Consume(TokenType.RightBrace, "Expect '}' after block.");
-            return new BlockStatement(statements);
+            return new BlockStatement(statements, open.Line, open.Column);
         }
         finally
         {

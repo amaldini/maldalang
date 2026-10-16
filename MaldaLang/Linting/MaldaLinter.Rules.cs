@@ -296,20 +296,20 @@ public static partial class MaldaLinter
                 _ => null
             };
             if (condition != null)
-                CheckCondition(context, condition, node);
+                CheckCondition(context, condition);
         }
     }
 
-    private static void CheckCondition(LintContext context, Expression condition, Node owner)
+    private static void CheckCondition(LintContext context, Expression condition)
     {
         switch (condition)
         {
             case UnaryExpression { Operator: TokenType.Not } not:
-                CheckCondition(context, not.Right, owner);
+                CheckCondition(context, not.Right);
                 return;
             case BinaryExpression { Operator: TokenType.And or TokenType.Or } logical:
-                CheckCondition(context, logical.Left, owner);
-                CheckCondition(context, logical.Right, owner);
+                CheckCondition(context, logical.Left);
+                CheckCondition(context, logical.Right);
                 return;
         }
 
@@ -330,8 +330,7 @@ public static partial class MaldaLinter
             condition,
             1,
             $"This condition is always true: {what} is truthy in MALDA (only null and false are falsy).",
-            what is ".length" or "str.length(…)" ? "Compare explicitly: items.length > 0" : "Write the comparison you mean, e.g. n != 0",
-            owner);
+            what is ".length" or "str.length(…)" ? "Compare explicitly: items.length > 0" : "Write the comparison you mean, e.g. n != 0");
     }
 
     // ML0009 — result.map / option.map whose callback returns Ok / Err / Some / None.
@@ -444,7 +443,7 @@ public static partial class MaldaLinter
                 var next = match.Cases[i + 1];
                 context.Report(
                     LintRules.UnreachableCaseAfterCatchAll,
-                    next.Pattern.Line > 0 ? next.Pattern : next,
+                    next.Pattern,
                     "case".Length,
                     $"Unreachable case: the earlier 'case {label}:' (line {arm.Pattern.Line}) matches every value, and an if inside its body does not fall through.",
                     $"Use a guard: case {label} if <condition>: and keep the catch-all last");

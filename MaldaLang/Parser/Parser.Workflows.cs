@@ -41,6 +41,7 @@ public partial class Parser
 
     private BlockStatement WorkflowBlock()
     {
+        var open = Previous(); // the workflow body's '{'
         var statements = new List<Statement>();
         var stepIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         _workflowStepIds = stepIds;
@@ -52,7 +53,7 @@ public partial class Parser
             {
                 AppendFlattened(statements, WorkflowStatement(stepIds), applySourceFile: false);
             }
-            return new BlockStatement(statements);
+            return new BlockStatement(statements, open.Line, open.Column);
         }
         finally
         {

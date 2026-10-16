@@ -14,6 +14,7 @@ using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 
 public partial class Parser
 {
@@ -115,22 +116,54 @@ public partial class Parser
 
     private void ApplySourceFileRecursive(Node node)
     {
-        ApplySourceFileRecursive(node, new HashSet<Node>());
+        ApplySourceFileRecursive(node, new HashSet<object>(ReferenceEqualityComparer.Instance));
     }
 
-    private void ApplySourceFileRecursive(Node? node, HashSet<Node> visited)
+    /// <summary>
+    /// Stamps <see cref="_sourceFileName"/> on every node under <paramref name="value"/> that has
+    /// no file yet. Descends through node properties and also through the non-node holders the
+    /// parser uses (class members, interpolation segments, object/dict literal tuples).
+    /// </summary>
+    private void ApplySourceFileRecursive(object? value, HashSet<object> visited)
     {
-        if (node == null || !visited.Add(node))
+        if (value == null || value is string || !visited.Add(value))
         {
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(node.SourceFile))
+        if (value is ITuple tuple)
         {
-            node.SourceFile = _sourceFileName;
+            for (var i = 0; i < tuple.Length; i++)
+                ApplySourceFileRecursive(tuple[i], visited);
+            return;
         }
 
-        var properties = node.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public);
+        var valueType = value.GetType();
+        if (valueType.IsGenericType && valueType.GetGenericTypeDefinition() == typeof(KeyValuePair<,>))
+        {
+            ApplySourceFileRecursive(valueType.GetProperty("Key")!.GetValue(value), visited);
+            ApplySourceFileRecursive(valueType.GetProperty("Value")!.GetValue(value), visited);
+            return;
+        }
+
+        if (value is IEnumerable sequence)
+        {
+            foreach (var item in sequence)
+                ApplySourceFileRecursive(item, visited);
+            return;
+        }
+
+        if (value is Node node)
+        {
+            if (string.IsNullOrWhiteSpace(node.SourceFile))
+                node.SourceFile = _sourceFileName;
+        }
+        else if (valueType.Namespace?.StartsWith("MaldaLang.Parser", StringComparison.Ordinal) != true)
+        {
+            return;
+        }
+
+        var properties = valueType.GetProperties(BindingFlags.Instance | BindingFlags.Public);
         foreach (var property in properties)
         {
             if (!property.CanRead || property.GetIndexParameters().Length != 0)
@@ -138,31 +171,28 @@ public partial class Parser
                 continue;
             }
 
-            object? value;
+            var type = property.PropertyType;
+            if (type.IsPrimitive || type.IsEnum || type == typeof(string))
+            {
+                continue;
+            }
+
+            object? child;
             try
             {
-                value = property.GetValue(node);
+                child = property.GetValue(value);
             }
             catch
             {
                 continue;
             }
 
-            switch (value)
+            if (child == null || child is string)
             {
-                case Node child:
-                    ApplySourceFileRecursive(child, visited);
-                    break;
-                case IEnumerable sequence when value is not string:
-                    foreach (var item in sequence)
-                    {
-                        if (item is Node childNode)
-                        {
-                            ApplySourceFileRecursive(childNode, visited);
-                        }
-                    }
-                    break;
+                continue;
             }
+
+            ApplySourceFileRecursive(child, visited);
         }
     }
     

@@ -269,7 +269,7 @@ public partial class Parser
 
         var expr = Expression();
         var semi = Consume(TokenType.Semicolon, $"Expect ';' after single-expression {kind} body.");
-        return new BlockStatement(new List<Statement> { new ReturnStatement(expr, semi.Line, semi.Column) });
+        return new BlockStatement(new List<Statement> { new ReturnStatement(expr, semi.Line, semi.Column) }, expr.Line, expr.Column);
     }
 
     private Statement PromptDeclaration(List<Decorator> decorators)

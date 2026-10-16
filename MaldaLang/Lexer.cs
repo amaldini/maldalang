@@ -27,6 +27,9 @@ public class Lexer
     private readonly string? _sourceFileName;
     private readonly int _lineOffset;
     private int _start = 0;
+    /// <summary>Line and column of <see cref="_start"/>: a token is positioned where it begins, even when it spans lines.</summary>
+    private int _startLine = 1;
+    private int _startColumn = 1;
     private int _current = 0;
     private int _line = 1;
     private int _column = 1;
@@ -123,6 +126,8 @@ public class Lexer
         while (!IsAtEnd())
         {
             _start = _current;
+            _startLine = _line;
+            _startColumn = _column;
             var token = ScanToken();
             if (token != null)
             {
@@ -828,8 +833,7 @@ public class Lexer
     private Token CreateToken(TokenType type, object? literal)
     {
         string text = _source.Substring(_start, _current - _start);
-        int column = _column - (text.Length);
-        return new Token(type, text, literal, _line, column);
+        return new Token(type, text, literal, _startLine, _startColumn);
     }
     
     /// <summary>
