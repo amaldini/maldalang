@@ -132,6 +132,10 @@ public partial class JsTranspiler
         _currentSourceLine = null;
         _currentSourceColumn = null;
 
+        // User bindings shadow flat built-ins of the same name (same rule as the interpreter):
+        // marks IdentifierExpression.ShadowsBuiltIn, read by the call emitters.
+        BuiltInShadowAnalysis.Analyze(statements);
+
         var functions = new List<FunctionDeclaration>();
         var typeDeclarations = new List<TypeDeclaration>();
         var schemaDeclarations = new List<SchemaDeclaration>();

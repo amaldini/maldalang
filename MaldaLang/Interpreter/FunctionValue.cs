@@ -17,6 +17,12 @@ public class FunctionValue
     /// <summary>When set with BoundBuiltInName, this function is a bound built-in (extension-style): call with [BoundReceiver, ...args].</summary>
     public RuntimeValue? BoundReceiver { get; set; }
     public string? BoundBuiltInName { get; set; }
+    /// <summary>
+    /// When set, this value is a reference to the flat built-in of that name (a built-in used as
+    /// a value, e.g. passed to <c>map</c>); calling it dispatches the built-in. A user function
+    /// that merely has a built-in's name leaves this null and runs its own body.
+    /// </summary>
+    public string? BuiltInFunctionName { get; set; }
     /// <summary>When set, this function is a variant constructor: calling it returns RuntimeValue.Variant(VariantConstructorTag, arguments).</summary>
     public string? VariantConstructorTag { get; set; }
     public int VariantConstructorArity { get; set; }

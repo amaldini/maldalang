@@ -48,6 +48,17 @@ function double(n) -> int n * 2;</code></pre>
     factor = 4;
     io.print(scale(2));
 }</code></pre>
+        <h3 id="shadowing-built-ins">Names that match a built-in</h3>
+        <p>A name you bind shadows a flat built-in of the same name while it is in scope. This covers a function (top-level, nested, imported, or from an <code>include</code>), a variable, a constant, a parameter, a lambda parameter, and a loop, <code>catch</code>, or pattern variable. Name lookup goes from the innermost scope outward, and built-ins come last. With <code>function zeros(n)</code> declared, <code>zeros(3)</code> runs your function, and so do <code>xs |&gt; zeros</code> and <code>arr.map(zeros)</code>. Outside the binding's scope, the name is the built-in again. A namespaced call such as <code>math.abs(x)</code> always reaches the built-in, unless the program binds <code>math</code> itself. A class method is not a bare name: inside the class, <code>abs(x)</code> is still the built-in, and <code>this.abs(x)</code> calls the method. Top-level functions are visible before their declaration. The interpreter, C# transpile, and JavaScript agree. <code>malda check</code> reports an <code>info[malda-shadow]</code> on a function named like a built-in. It also skips the deprecated-alias warning for a call that reaches your function.</p>
+        <pre><code data-run="true" data-expect="mine\n3\n21">function abs(x) {
+    return "mine";
+}
+function pick(max) {
+    return max(1, 2);
+}
+io.print(abs(-3));
+io.print(math.abs(-3));
+io.print(pick((a, b) => a + b * 10));</code></pre>
         <p>You may optionally add <strong>informational type hints</strong> to parameters and a return type. These are not enforced at interpret-time unless you pass CLI <code>--strict-types</code>. <code>malda compile --mode transpile</code> / <code>publish</code> refuse emit when analysis reports Errors (<code>--lenient-types</code> skips the gate). Known names include Tier 0 primitives, declared class/schema/sum-type names (including those imported from other modules), and built-in host classes. Mismatches on literals, <code>new ClassName()</code>, identifiers with known hints, call arguments, <code>return</code> vs <code>-&gt; T</code>, and <strong>results of calls</strong> whose callee declares a return hint produce an IDE/LSP <strong>Error</strong> by default. Operators and built-in return types are not inferred. Hints are also used by tools (e.g. <code>getSymbols</code>), IDEs, and documentation.</p>
         <pre><code>function name(param: Type?, ...) -> ReturnType? {
     // param and return type hints are optional and informational only

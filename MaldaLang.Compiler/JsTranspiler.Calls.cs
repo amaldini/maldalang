@@ -26,7 +26,8 @@ public partial class JsTranspiler
             return $"mlRuntime.actors.callActorOrVoidStop({TranspileExpression(stopCall.Object)})";
         }
 
-        if (functionCall.Callee is IdentifierExpression identifier &&
+        // A user binding named like a built-in (ShadowsBuiltIn) is called as written.
+        if (functionCall.Callee is IdentifierExpression { ShadowsBuiltIn: false } identifier &&
             TryTranspileBuiltInCall(identifier.Name, functionCall.Arguments, out var builtInCall))
         {
             return builtInCall;

@@ -57,7 +57,7 @@ public partial class LanguageService
             }
             
             // Look up symbol information (local + imported schemas/types when path known)
-            return GetSymbolInfo(statements, token.Lexeme, sourceFileName);
+            return GetSymbolInfo(statements, token.Lexeme, sourceFileName, token.Line, token.Column);
         }
         catch (OperationCanceledException)
         {
@@ -179,6 +179,32 @@ public partial class LanguageService
         return ReadReceiverBefore(lineText, nameStart);
     }
 
+    /// <summary>
+    /// True when <paramref name="name"/> at this position means a user binding rather than the
+    /// flat built-in: the program declares it at top level, or the identifier there is a
+    /// shadowed use (a parameter, local, or import of that name is in scope).
+    /// </summary>
+    internal static bool IsUserBindingOfBuiltInName(List<Statement> statements, string name, int line, int column)
+    {
+        if (DeclaresSymbol(statements, name))
+            return true;
+        if (line <= 0)
+            return false;
+
+        BuiltInShadowAnalysis.Analyze(statements);
+        foreach (var statement in statements)
+        {
+            foreach (var node in MaldaLang.Parser.AST.AstNodeWalker.Descendants(statement))
+            {
+                if (node is IdentifierExpression { ShadowsBuiltIn: true } id &&
+                    id.Line == line && id.Column == column && id.Name == name)
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
     private static bool DeclaresSymbol(List<Statement> statements, string name)
     {
         foreach (var stmt in statements)
@@ -238,10 +264,15 @@ public partial class LanguageService
     private string? GetSymbolInfo(
         List<MaldaLang.Parser.AST.Statements.Statement> statements,
         string name,
-        string? sourceFileName = null)
+        string? sourceFileName = null,
+        int tokenLine = 0,
+        int tokenColumn = 0)
     {
-        // Check for built-in functions first
-        var builtInInfo = GetBuiltInFunctionInfo(name);
+        // Built-in functions first, unless the program binds the name itself: a user binding
+        // shadows the flat built-in (see BuiltInShadowAnalysis).
+        var builtInInfo = IsUserBindingOfBuiltInName(statements, name, tokenLine, tokenColumn)
+            ? null
+            : GetBuiltInFunctionInfo(name);
         if (builtInInfo != null)
         {
             return builtInInfo;

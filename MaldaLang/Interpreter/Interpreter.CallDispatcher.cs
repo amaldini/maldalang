@@ -166,7 +166,13 @@ public partial class Interpreter
         else if (expr.Callee is IdentifierExpression idExpr)
         {
             functionName = idExpr.Name;
-            if (IsBuiltIn(functionName))
+            if (!IsBuiltIn(functionName))
+            {
+                callee = await EvaluateAsync(expr.Callee);
+            }
+            // A user binding in scope (function, variable, parameter, import) wins over the
+            // flat built-in of the same name; otherwise dispatch the built-in directly.
+            else if (!TryResolveShadowingBinding(idExpr, out callee))
             {
                 try
                 {
@@ -179,7 +185,6 @@ public partial class Interpreter
                     throw new RuntimeException(ex.Message);
                 }
             }
-            callee = await EvaluateAsync(expr.Callee);
         }
         else
         {

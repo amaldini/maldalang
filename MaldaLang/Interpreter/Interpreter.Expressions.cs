@@ -31,6 +31,13 @@ public partial class Interpreter
         var previousObject = _currentObject;
         _environment = env;
         _currentObject = thisObject;
+        // REPL / debugger expression: a built-in name bound in this environment means the binding.
+        foreach (var node in AstNodeWalker.Descendants(expr))
+        {
+            if (node is IdentifierExpression { ShadowsBuiltIn: false } id && IsBuiltIn(id.Name) && env.TryGet(id.Name, out _))
+                id.ShadowsBuiltIn = true;
+        }
+
         try
         {
             return await EvaluateAsync(expr);
@@ -135,7 +142,7 @@ public partial class Interpreter
                 expr.Line,
                 expr.Column
             );
-            var funcValue = new FunctionValue(funcDecl, _globals);
+            var funcValue = new FunctionValue(funcDecl, _globals) { BuiltInFunctionName = expr.Name };
             return RuntimeValue.Function(funcValue);
         }
 
@@ -144,6 +151,27 @@ public partial class Interpreter
             return leakedMember;
         
         throw new RuntimeException($"Undefined variable '{expr.Name}'.", expr.Line, _currentFile);
+    }
+
+    /// <summary>
+    /// <see cref="LookUpVariable"/> without the built-in fallback: the user binding of
+    /// <paramref name="name"/> (local, parameter, implicit member, or environment), if any.
+    /// </summary>
+    private bool TryLookUpUserBinding(string name, out RuntimeValue value)
+    {
+        var memberFrame = CurrentClassMemberFrame();
+        if (memberFrame != null)
+        {
+            if (TryGetFunctionLocal(name, memberFrame, out value))
+                return true;
+            if (TryReadImplicitMember(name, out value))
+                return true;
+        }
+
+        if (_environment.TryGet(name, out value))
+            return true;
+
+        return memberFrame == null && TryReadImplicitMember(name, out value);
     }
 
     /// <summary>

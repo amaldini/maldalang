@@ -65,6 +65,11 @@ public partial class JsTranspiler
 
         switch (right)
         {
+            // A user binding named like a built-in: `x |> f(a)` is the plain call f(x, a).
+            case FunctionCallExpression { Callee: IdentifierExpression { ShadowsBuiltIn: true } shadowed } call:
+                return TranspileFunctionCall(new FunctionCallExpression(shadowed, [left, ..call.Arguments], pipe.Line, pipe.Column));
+            case IdentifierExpression { ShadowsBuiltIn: true } shadowed:
+                return TranspileFunctionCall(new FunctionCallExpression(shadowed, [left], pipe.Line, pipe.Column));
             case FunctionCallExpression call when call.Callee is IdentifierExpression identifier:
                 if (ArrayPipelineMethods.Contains(identifier.Name))
                 {

@@ -409,7 +409,7 @@ public partial class CSharpTranspiler
                                             TryGetTypedMethodCall(methodCall, out var methodSignature) => methodSignature.Return,
             FunctionCallExpression call when call.Callee is IdentifierExpression id &&
                                             _functionReturnTypes.TryGetValue(id.Name, out var returnType) => returnType,
-            FunctionCallExpression call when call.Callee is IdentifierExpression builtInId &&
+            FunctionCallExpression call when call.Callee is IdentifierExpression { ShadowsBuiltIn: false } builtInId &&
                                             ResolveTypedBuiltInReturnType(builtInId.Name, call.Arguments) is var builtInReturnType &&
                                             builtInReturnType != TranspiledClrType.Object => builtInReturnType,
             UnaryExpression { Operator: TokenType.Minus } intNegation when

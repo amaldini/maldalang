@@ -785,8 +785,8 @@ public static class AiPipelineHelpers
             return await BuiltInFunctions.CallBuiltInAsync(fn.BoundBuiltInName, boundArgs, interpreter);
         }
 
-        if (fn.Declaration != null && BuiltInRegistry.IsInterpreterBuiltIn(fn.Declaration.Name))
-            return await BuiltInFunctions.CallBuiltInAsync(fn.Declaration.Name, args, interpreter);
+        if (fn.BuiltInFunctionName != null)
+            return await BuiltInFunctions.CallBuiltInAsync(fn.BuiltInFunctionName, args, interpreter);
 
         if (fn.TranspiledDelegate != null)
             return await InvokeTranspiledDelegateAsync(fn.TranspiledDelegate, args);

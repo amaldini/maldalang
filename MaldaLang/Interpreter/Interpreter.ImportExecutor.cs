@@ -168,7 +168,10 @@ public partial class Interpreter
             foreach (var symbol in moduleSymbols)
             {
                 if (!_environment.Contains(symbol.Key))
+                {
                     _environment.Define(symbol.Key, symbol.Value);
+                    NoteMergedBinding(symbol.Key);
+                }
             }
         }
 

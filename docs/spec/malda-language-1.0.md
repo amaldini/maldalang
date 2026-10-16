@@ -56,6 +56,8 @@ A **program** is a list of top-level declarations and statements parsed from one
 
 Functions declared in the first pass are callable during the statement pass. `var` bindings are created when their initializer runs; there is no hoisting of `var` initializers across other top-level statements.
 
+**Name resolution and built-ins.** A bare name resolves from the innermost lexical scope outward — locals and parameters, enclosing functions and blocks, (inside a method) fields of the class, the module (top-level functions, variables, imports, included declarations) — and flat built-ins come **last**. A user binding therefore shadows a flat built-in of the same name wherever the binding is in scope: with `function zeros(n)` declared, `zeros(3)`, `xs |> zeros` and `xs.map(zeros)` run the user function; a parameter or lambda parameter named `max` shadows `max` inside its function only. Namespaced calls (`math.abs(x)`) are member accesses on the module object and always mean the built-in unless the program binds the module name itself. Class methods are not bare-name bindings (`this.abs(x)` calls the method; bare `abs(x)` in the class is the built-in). Interpreter, C# transpile, and JavaScript agree.
+
 ---
 
 ## 4. Values and types
@@ -560,3 +562,4 @@ Versioning and deprecation rules: [CHANGELOG.md](CHANGELOG.md).
 | 2026-09-15 | Final 1.0 | §20 compact method bodies and brace-less `class Name function …` |
 | 2026-09-15 | Final 1.0 | §19 brace-less `class Name(params) function …` on a first declaration |
 | 2026-09-15 | Final 1.0 | §20 REPL later `class Name` augments the session-bound class |
+| 2026-10-16 | Final 1.0 | §3 user bindings shadow flat built-ins (built-ins resolve last) |

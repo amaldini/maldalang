@@ -167,6 +167,10 @@ Which names are namespaced is listed in the `call` column of
 [`malda-builtins.tsv`](malda-builtins.tsv). Names that never had a namespace — `parseJSON`,
 `toJSON`, `sleep`, `range`, `exit` — are written bare.
 
+Built-ins resolve **last**: a `function`, `var`, parameter, or import you name `zeros` / `max` /
+`clamp` shadows the flat built-in wherever it is in scope (all backends). `math.zeros(…)` is
+always the built-in. A class method does not shadow — call it as `this.abs(x)`.
+
 ## Core constructs
 
 ```malda

@@ -82,12 +82,13 @@ public partial class Interpreter
             }
         }
         
-        // Check if it's a built-in function
-        if (function.Declaration != null && IsBuiltIn(function.Declaration.Name))
+        // A built-in used as a value (see LookUpVariable). A user function named like a
+        // built-in has no BuiltInFunctionName and runs its own body below.
+        if (function.BuiltInFunctionName != null)
         {
             try
             {
-                return await BuiltInFunctions.CallBuiltInAsync(function.Declaration.Name, arguments, this);
+                return await BuiltInFunctions.CallBuiltInAsync(function.BuiltInFunctionName, arguments, this);
             }
             catch (System.Exception ex) when (!(ex is RuntimeException))
             {
@@ -453,6 +454,47 @@ public partial class Interpreter
     private bool IsBuiltIn(string name)
     {
         return BuiltInRegistry.IsInterpreterBuiltIn(name);
+    }
+
+    /// <summary>
+    /// Built-in names the program binds at top level, kept across <see cref="InterpretAsync"/>
+    /// calls so a later REPL line still sees an earlier <c>function join(...)</c>.
+    /// </summary>
+    private readonly HashSet<string> _programBuiltInBindings = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// Built-in names merged into scope by an import that does not name them (whole-module
+    /// <c>import</c> / <c>using</c>), which the static analysis cannot see.
+    /// </summary>
+    private readonly HashSet<string> _mergedBuiltInBindings = new(StringComparer.Ordinal);
+
+    /// <summary>Marks uses of built-in names that a user binding shadows (see <see cref="BuiltInShadowAnalysis"/>).</summary>
+    private void AnalyzeBuiltInShadowing(List<Statement> statements)
+    {
+        var result = BuiltInShadowAnalysis.Analyze(statements, outerNames: _programBuiltInBindings);
+        _programBuiltInBindings.UnionWith(result.ProgramScopeNames);
+    }
+
+    private void NoteMergedBinding(string name)
+    {
+        if (IsBuiltIn(name))
+            _mergedBuiltInBindings.Add(name);
+    }
+
+    /// <summary>
+    /// For an identifier whose name is a built-in: the user binding it resolves to, when one
+    /// shadows the built-in here. Cheap when nothing is shadowed (a flag and a count check).
+    /// An unbound name (a <c>var</c> not declared yet) falls back to the built-in.
+    /// </summary>
+    private bool TryResolveShadowingBinding(IdentifierExpression id, out RuntimeValue value)
+    {
+        if (!id.ShadowsBuiltIn && (_mergedBuiltInBindings.Count == 0 || !_mergedBuiltInBindings.Contains(id.Name)))
+        {
+            value = default;
+            return false;
+        }
+
+        return TryLookUpUserBinding(id.Name, out value);
     }
     
     

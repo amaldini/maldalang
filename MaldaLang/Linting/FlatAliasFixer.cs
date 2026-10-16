@@ -69,7 +69,11 @@ public sealed class FlatAliasFileFix
 /// <c>@shader()</c> bodies. A name the program (or a file it includes or imports) binds anywhere —
 /// function, class, member, variable, parameter, pattern, import, or any bare non-call use — is
 /// left alone, and so is every alias of a module whose name (<c>io</c> / <c>str</c> / <c>math</c>)
-/// the program binds. Calls inside <c>$"{…}"</c> holes are rewritten too (the hole text is scanned
+/// the program binds. Such a binding shadows the flat built-in in every backend (see
+/// <see cref="BuiltInShadowAnalysis"/>), so the call already means the user's function and
+/// rewriting it to <c>math.abs(</c> would change what runs; the skip is deliberately broader
+/// than the lexical scope of the binding (over-approximating only skips rewrites).
+/// Calls inside <c>$"{…}"</c> holes are rewritten too (the hole text is scanned
 /// the same way). Only the name token changes; every other byte is kept.
 /// </para>
 /// <para>

@@ -186,6 +186,15 @@ public partial class CSharpTranspiler
                 return;
             }
 
+            // A user binding named like a built-in: `x |> f(a)` is the plain call f(x, a).
+            case FunctionCallExpression { Callee: IdentifierExpression { ShadowsBuiltIn: true } shadowed } call:
+                TranspileFunctionCall(new FunctionCallExpression(shadowed, [left, ..call.Arguments], pipe.Line, pipe.Column));
+                return;
+
+            case IdentifierExpression { ShadowsBuiltIn: true } shadowed:
+                TranspileFunctionCall(new FunctionCallExpression(shadowed, [left], pipe.Line, pipe.Column));
+                return;
+
             case FunctionCallExpression call when call.Callee is IdentifierExpression id:
                 if (ArrayPipelineMethods.Contains(id.Name))
                 {

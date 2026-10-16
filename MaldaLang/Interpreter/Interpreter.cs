@@ -351,6 +351,7 @@ public partial class Interpreter
                     newFunc.ParameterDecorators = func.ParameterDecorators;
                     newFunc.BuiltInInstance = func.BuiltInInstance;
                     newFunc.BuiltInMethod = func.BuiltInMethod;
+                    newFunc.BuiltInFunctionName = func.BuiltInFunctionName;
                     target.Define(kvp.Key, RuntimeValue.Function(newFunc));
                 }
             }
@@ -525,6 +526,7 @@ public partial class Interpreter
         // even when AsyncLocal was unset on this thread.
         SetActivation(GetActivation());
         _interpretCancellation = cancellationToken;
+        AnalyzeBuiltInShadowing(statements);
         var scriptFile = _currentFile ?? "main.malda";
         var scriptLine = statements.Count > 0 && statements[0].Line > 0 ? statements[0].Line : 1;
         var scriptFrame = new InterpreterCallStackFrame

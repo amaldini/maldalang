@@ -87,7 +87,7 @@ public partial class CSharpTranspiler
                         if (funcCall.Callee is IdentifierExpression argIdExpr)
                         {
                             // If it's not a known function name, it's likely a function parameter
-                            if (!IsKnownUserFunction(argIdExpr.Name) && !IsBuiltInFunction(argIdExpr.Name))
+                            if (!IsKnownUserFunction(argIdExpr.Name) && !IsBuiltInCallee(argIdExpr))
                             {
                                 // Function parameter call - needs to be awaited
                                 isAsyncCall = true;
@@ -241,7 +241,7 @@ public partial class CSharpTranspiler
         if (call.Callee is IdentifierExpression identifier)
         {
             var funcName = identifier.Name;
-            if (IsBuiltInFunction(funcName))
+            if (IsBuiltInCallee(identifier))
             {
                 TranspileBuiltInFunction(funcName, call.Arguments);
                 return;
@@ -936,8 +936,8 @@ public partial class CSharpTranspiler
         {
             var funcName = idExpr.Name;
             
-            // If it's a built-in, handle it
-            if (IsBuiltInFunction(funcName))
+            // If it's a built-in, handle it (unless a user binding of that name is in scope)
+            if (IsBuiltInCallee(idExpr))
             {
                 TranspileBuiltInFunction(funcName, call.Arguments);
                 return;
@@ -1116,6 +1116,13 @@ public partial class CSharpTranspiler
             _output.Append(")");
     }
 
+    /// <summary>
+    /// A call target that means the flat built-in: a built-in name with no user binding of the
+    /// same name in scope (<see cref="IdentifierExpression.ShadowsBuiltIn"/>).
+    /// </summary>
+    private bool IsBuiltInCallee(IdentifierExpression callee) =>
+        !callee.ShadowsBuiltIn && IsBuiltInFunction(callee.Name);
+
     private bool IsBuiltInFunction(string name)
     {
         return BuiltInRegistry.IsTranspilerBuiltIn(name)
@@ -1190,7 +1197,7 @@ public partial class CSharpTranspiler
 
     private bool FunctionCallContainsAwait(FunctionCallExpression call)
     {
-        if (call.Callee is IdentifierExpression identifier)
+        if (call.Callee is IdentifierExpression { ShadowsBuiltIn: false } identifier)
         {
             var descriptor = BuiltInRegistry.GetDescriptor(identifier.Name);
             if (descriptor?.IsAlwaysSynchronousForCodegen == true)

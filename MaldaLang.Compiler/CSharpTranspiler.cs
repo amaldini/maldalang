@@ -216,6 +216,10 @@ public partial class CSharpTranspiler
 
         statements = ModuleSymbolResolver.ExpandFileImportsForTranspile(statements, _sourceFilePath);
 
+        // User bindings shadow flat built-ins of the same name (same rule as the interpreter):
+        // marks IdentifierExpression.ShadowsBuiltIn, read by the call emitters.
+        BuiltInShadowAnalysis.Analyze(statements, name => IsBuiltInFunction(name) || BuiltInShadowAnalysis.IsFlatBuiltIn(name));
+
         // Settled together with the typed function variants in ComputeTypedTwins.
         _inferredNumerics = NumericVariableInference.Result.Empty();
         _inferredGlobalTypes = new Dictionary<string, TranspiledClrType>(StringComparer.Ordinal);

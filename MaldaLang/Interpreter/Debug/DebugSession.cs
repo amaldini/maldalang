@@ -715,7 +715,8 @@ public sealed class DebugSession : IDebuggerHook
     {
         if (HiddenGlobalNames.Contains(name))
             return true;
-        if (value.Type == ValueType.Function && BuiltInRegistry.IsInterpreterBuiltIn(name))
+        // A global holding a built-in reference; a user function named like a built-in stays visible.
+        if (value.Type == ValueType.Function && value.AsFunction()?.BuiltInFunctionName != null)
             return true;
         return false;
     }

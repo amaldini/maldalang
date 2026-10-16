@@ -517,6 +517,12 @@
   },
   {
     "file": "09-functions.html",
+    "level": 3,
+    "id": "shadowing-built-ins",
+    "title": "Names that match a built-in"
+  },
+  {
+    "file": "09-functions.html",
     "level": 2,
     "id": "function-call",
     "title": "9.2 Function Call"

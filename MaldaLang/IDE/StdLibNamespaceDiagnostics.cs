@@ -11,13 +11,57 @@ using MaldaLang.Parser.AST.Statements;
 
 internal static class StdLibNamespaceDiagnostics
 {
+    /// <summary>Source of the info diagnostic for a function that shadows a flat built-in.</summary>
+    public const string ShadowSource = "malda-shadow";
+
     public static void Validate(List<Statement> statements, List<Diagnostic> diagnostics)
     {
+        // A call whose name a user binding shadows is the user's function, not a deprecated alias.
+        BuiltInShadowAnalysis.Analyze(statements);
         foreach (var statement in statements)
         {
             var start = diagnostics.Count;
             VisitStatement(statement, diagnostics);
+            ReportShadowingFunctions(statement, diagnostics);
             DiagnosticSourceFiles.Stamp(diagnostics, start, statement);
+        }
+    }
+
+    /// <summary>
+    /// Info: <c>function zeros(n)</c> shadows the flat built-in <c>zeros</c> wherever it is in
+    /// scope. Class methods are skipped (they are not unqualified bindings), and so are
+    /// <c>@shader()</c> functions (GLSL).
+    /// </summary>
+    private static void ReportShadowingFunctions(Statement statement, List<Diagnostic> diagnostics)
+    {
+        var methods = new HashSet<FunctionDeclaration>(ReferenceEqualityComparer.Instance);
+        foreach (var node in MaldaLang.Parser.AST.AstNodeWalker.Descendants(statement))
+        {
+            if (node is ClassDeclaration cls)
+            {
+                foreach (var member in cls.Members)
+                {
+                    if (member.Value is FunctionDeclaration method)
+                        methods.Add(method);
+                }
+            }
+
+            if (node is not FunctionDeclaration function || methods.Contains(function) ||
+                ShaderFunction.IsMarked(function) || !BuiltInShadowAnalysis.IsFlatBuiltIn(function.Name))
+                continue;
+
+            var qualified = StdLibNamespaces.TryGetFlatAliasModule(function.Name, out var module)
+                ? $" Call `{module}.{function.Name}(...)` for the built-in."
+                : string.Empty;
+            diagnostics.Add(new Diagnostic
+            {
+                Severity = DiagnosticSeverity.Info,
+                Message = $"Function `{function.Name}` shadows the built-in `{function.Name}`: calls to `{function.Name}(...)` in its scope run this function.{qualified}",
+                Line = Math.Max(0, function.Line - 1),
+                Column = Math.Max(0, function.Column - 1),
+                Length = Math.Max(1, function.Name.Length),
+                Source = ShadowSource
+            });
         }
     }
 
@@ -108,7 +152,7 @@ internal static class StdLibNamespaceDiagnostics
         switch (expression)
         {
             case FunctionCallExpression call:
-                if (call.Callee is IdentifierExpression id &&
+                if (call.Callee is IdentifierExpression { ShadowsBuiltIn: false } id &&
                     StdLibNamespaces.TryGetDeprecatedFlatAliasMessage(id.Name, out var flatMessage))
                 {
                     AddStyleWarning(flatMessage, id.Line, id.Column, id.Name.Length, diagnostics);

@@ -37,7 +37,7 @@ public partial class Interpreter
         if (callee.Type == ValueType.Prompt)
             return await callee.AsPrompt().Call(new List<RuntimeValue> { left }, this);
 
-        return await InvokeCallableByName(id.Name, left, []);
+        return await InvokeCallableByName(id, left, []);
     }
 
     private async Task<RuntimeValue> InvokePipedLambdaAsync(RuntimeValue left, LambdaExpression lambda)
@@ -54,8 +54,9 @@ public partial class Interpreter
 
         if (call.Callee is IdentifierExpression id)
         {
+            // `xs |> join(",")` is the array method, unless the program binds `join` itself.
             if (left.Type == ValueType.Array && left.AsObject() is ArrayInstance array &&
-                ArrayPipelineMethods.Contains(id.Name))
+                ArrayPipelineMethods.Contains(id.Name) && !TryResolveShadowingBinding(id, out _))
                 return array.CallMethod(id.Name, callArgs, this);
 
             var callee = LookUpVariable(id);
@@ -66,7 +67,7 @@ public partial class Interpreter
                 return await callee.AsPrompt().Call(promptArgs, this);
             }
 
-            return await InvokeCallableByName(id.Name, left, callArgs);
+            return await InvokeCallableByName(id, left, callArgs);
         }
 
         var evaluatedCallee = await EvaluateAsync(call.Callee);
@@ -93,12 +94,13 @@ public partial class Interpreter
     internal RuntimeValue InvokeBuiltInInstanceMethod(ObjectInstance instance, string methodName, List<RuntimeValue> arguments) =>
         CallBuiltInMethod(instance, methodName, arguments);
 
-    private async Task<RuntimeValue> InvokeCallableByName(string name, RuntimeValue left, List<RuntimeValue> tailArgs)
+    private async Task<RuntimeValue> InvokeCallableByName(IdentifierExpression id, RuntimeValue left, List<RuntimeValue> tailArgs)
     {
+        var name = id.Name;
         var args = new List<RuntimeValue> { left };
         args.AddRange(tailArgs);
 
-        if (IsBuiltIn(name))
+        if (IsBuiltIn(name) && !TryResolveShadowingBinding(id, out _))
         {
             try
             {
@@ -110,7 +112,7 @@ public partial class Interpreter
             }
         }
 
-        var fn = LookUpVariable(new IdentifierExpression(name));
+        var fn = LookUpVariable(id);
         if (fn.Type != ValueType.Function)
             throw new RuntimeException($"'{name}' is not callable.");
 
