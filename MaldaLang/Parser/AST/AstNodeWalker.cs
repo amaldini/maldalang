@@ -9,12 +9,15 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 
 /// <summary>
 /// Enumerates every <see cref="Node"/> reachable from a root by reflecting over node-typed
-/// properties, collections and the non-node holders the parser uses (class members, match
-/// cases, tuples). Used by transpiler analyses and <c>malda lint</c> rules that must not miss a
-/// construct when the AST grows.
+/// properties, collections and the non-node holders the parser uses: class members, match
+/// cases, interpolation segments, <c>KeyValuePair</c>s and tuples such as the
+/// <c>(Key, Value)</c> entries of object and dictionary literals (tuple items are fields, so
+/// they are read through <see cref="ITuple"/>). Used by transpiler analyses and
+/// <c>malda lint</c> rules that must not miss a construct when the AST grows.
 /// </summary>
 public static class AstNodeWalker
 {
@@ -47,34 +50,51 @@ public static class AstNodeWalker
                 }
             }
 
-            foreach (var property in GetProperties(current.GetType()))
-            {
-                var value = property.GetValue(current);
-                switch (value)
+            PushChildren(current, stack);
+        }
+    }
+
+    private static void PushChildren(object current, Stack<object> stack)
+    {
+        switch (current)
+        {
+            case Node:
+                break;
+            case ITuple tuple:
+                for (var i = 0; i < tuple.Length; i++)
                 {
-                    case null:
-                    case string:
-                        break;
-                    case Node child:
-                        stack.Push(child);
-                        break;
-                    case IEnumerable sequence:
-                        foreach (var item in sequence)
-                        {
-                            if (item != null && IsStructural(item.GetType()))
-                            {
-                                stack.Push(item);
-                            }
-                        }
-                        break;
-                    default:
-                        if (IsStructural(value.GetType()))
-                        {
-                            stack.Push(value);
-                        }
-                        break;
+                    PushIfStructural(tuple[i], stack);
                 }
+                return;
+            case IEnumerable sequence:
+                foreach (var item in sequence)
+                {
+                    PushIfStructural(item, stack);
+                }
+                return;
+        }
+
+        foreach (var property in GetProperties(current.GetType()))
+        {
+            object? value;
+            try
+            {
+                value = property.GetValue(current);
             }
+            catch (TargetInvocationException)
+            {
+                continue;
+            }
+
+            PushIfStructural(value, stack);
+        }
+    }
+
+    private static void PushIfStructural(object? value, Stack<object> stack)
+    {
+        if (value != null && IsStructural(value.GetType()))
+        {
+            stack.Push(value);
         }
     }
 
@@ -87,9 +107,8 @@ public static class AstNodeWalker
 
         return typeof(Node).IsAssignableFrom(type) ||
                typeof(IEnumerable).IsAssignableFrom(type) ||
+               typeof(ITuple).IsAssignableFrom(type) ||
                type.Namespace?.StartsWith("MaldaLang", StringComparison.Ordinal) == true ||
-               (type.IsGenericType && type.Namespace == "System" &&
-                (type.Name.StartsWith("ValueTuple`", StringComparison.Ordinal) || type.Name.StartsWith("Tuple`", StringComparison.Ordinal))) ||
                (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(KeyValuePair<,>));
     }
 
@@ -97,7 +116,9 @@ public static class AstNodeWalker
     {
         return Properties.GetOrAdd(type, static t => t
             .GetProperties(BindingFlags.Instance | BindingFlags.Public)
-            .Where(p => p.GetIndexParameters().Length == 0 && p.CanRead)
+            .Where(p => p.GetIndexParameters().Length == 0 && p.CanRead &&
+                        !p.PropertyType.IsPrimitive && !p.PropertyType.IsEnum &&
+                        p.PropertyType != typeof(string) && p.PropertyType != typeof(decimal))
             .ToArray());
     }
 }

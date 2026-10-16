@@ -46,6 +46,24 @@ public class InterpretJsPairTests
             "interpolation-js");
     }
 
+    /// <summary>
+    /// A script var a function reads only inside an object literal must be module scope, not a
+    /// <c>main()</c> local (the reference used to throw ReferenceError).
+    /// </summary>
+    [Fact]
+    public void ScriptVarUsedInsideObjectLiteral_SameStdout()
+    {
+        InterpretJsPair.AssertSameFromSource(
+            """
+            var greeting = "hi";
+            function make() {
+                return { msg: greeting };
+            }
+            io.print(make().msg);
+            """,
+            "script-var-object-literal-js");
+    }
+
     [Fact]
     public void Truthiness_SameStdout()
     {

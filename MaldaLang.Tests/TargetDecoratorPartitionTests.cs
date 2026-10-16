@@ -115,4 +115,20 @@ public class TargetDecoratorPartitionTests : TestBase
         Assert.Contains("@shared()", ex.Message, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("server-only", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public void TranspileToCSharpFromSource_FailsWhenSharedUsesServerOnlyBuiltInInsideObjectLiteral()
+    {
+        var source = """
+            @shared()
+            function invalidShared() {
+                return { text: readFile("x.txt") };
+            }
+            """;
+
+        var compiler = new Compiler.Compiler();
+        var ex = Assert.Throws<Exception>(() => compiler.TranspileToCSharpFromSource(source));
+
+        Assert.Contains("server-only", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
 }

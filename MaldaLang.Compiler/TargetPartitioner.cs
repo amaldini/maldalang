@@ -2,10 +2,8 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using MaldaLang.Parser.AST;
 using MaldaLang.Parser.AST.Declarations;
 using MaldaLang.Parser.AST.Expressions;
@@ -266,66 +264,14 @@ internal static class TargetPartitioner
         }
     }
 
-    private static IEnumerable<string> EnumerateCalledIdentifiers(object rootNode)
+    private static IEnumerable<string> EnumerateCalledIdentifiers(Node rootNode)
     {
-        var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var visited = new HashSet<object>(ReferenceEqualityComparer.Instance);
-        Traverse(rootNode, names, visited);
-        return names;
-    }
-
-    private static void Traverse(object? node, HashSet<string> names, HashSet<object> visited)
-    {
-        if (node == null)
-        {
-            return;
-        }
-
-        if (node is string || node is ValueType)
-        {
-            return;
-        }
-
-        if (!visited.Add(node))
-        {
-            return;
-        }
-
-        if (node is FunctionCallExpression functionCall && functionCall.Callee is IdentifierExpression identifier)
-        {
-            names.Add(identifier.Name);
-        }
-
-        if (node is IEnumerable enumerable)
-        {
-            foreach (var item in enumerable)
-            {
-                Traverse(item, names, visited);
-            }
-
-            return;
-        }
-
-        var type = node.GetType();
-        foreach (var property in type.GetProperties(BindingFlags.Instance | BindingFlags.Public))
-        {
-            if (!property.CanRead || property.GetIndexParameters().Length > 0)
-            {
-                continue;
-            }
-
-            object? value;
-            try
-            {
-                value = property.GetValue(node);
-            }
-            catch
-            {
-                continue;
-            }
-
-            Traverse(value, names, visited);
-        }
+        return AstNodeWalker.Descendants(rootNode)
+            .OfType<FunctionCallExpression>()
+            .Select(call => call.Callee)
+            .OfType<IdentifierExpression>()
+            .Select(identifier => identifier.Name)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
     }
 
     private static FunctionDeclaration CloneFunctionWithRuntimeDecorators(FunctionDeclaration function)

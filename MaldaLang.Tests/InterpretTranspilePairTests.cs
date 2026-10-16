@@ -1812,6 +1812,27 @@ print(""run="" + string(ran.success) + "","" + string(ran.output));
             "anonymous-function");
     }
 
+    /// <summary>
+    /// A double stored from a closure inside an object literal must keep the local untyped
+    /// (numeric inference used to miss the store and declare <c>int x</c>, printing 2).
+    /// </summary>
+    [Fact]
+    public void ObjectLiteralClosureStoresDouble_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            function run() {
+                var x = 1;
+                var o = { bump: function() { x = 2.5; } };
+                var bump = o.bump;
+                bump();
+                io.print(x);
+            }
+            run();
+            """,
+            "object-literal-closure-double");
+    }
+
     [Fact]
     public void TrailingCommaParams_SameStdout()
     {

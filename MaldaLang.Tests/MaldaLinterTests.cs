@@ -284,6 +284,17 @@ public class MaldaLinterTests
         Assert.Empty(MaldaTextDocumentSyncHandler.LintDiagnostics("var x = ;\n", null));
     }
 
+    /// <summary>Rules see code inside object and dictionary literal values (AstNodeWalker tuples).</summary>
+    [Fact]
+    public void Rules_FireInsideObjectAndDictLiteralValues()
+    {
+        var workflow = "function load(p) {\n    return io.readFile(p);\n}\nworkflow W(input) {\n    var r = { text: load(input) };\n    return r;\n}\n";
+        Assert.Single(Lint(workflow), f => f.Code == LintRules.WorkflowEffectOutsideStep);
+
+        var lambda = "var items = [{ done: false }];\nvar handlers = dict { \"mark\": () => items.forEach(x => x.done = true) };\n";
+        Assert.Contains(LintRules.LambdaAssignmentDropped, Codes(lambda));
+    }
+
     /// <summary>
     /// False-positive sweep. Files the parser rejects get ML0000 (malda check reports the same
     /// parser errors). Any other warning or error is a false positive and fails the test.

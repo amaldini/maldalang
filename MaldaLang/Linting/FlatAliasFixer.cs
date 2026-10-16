@@ -240,42 +240,11 @@ public static class FlatAliasFixer
     }
 
     /// <summary>
-    /// <see cref="AstNodeWalker.Descendants"/> plus the <c>(key, value)</c> entries of object and
-    /// dictionary literals, which it does not reach (tuple items are fields, not properties).
-    /// A start node <paramref name="descendInto"/> rejects is yielded without its children.
+    /// <see cref="AstNodeWalker.Descendants"/>, except that a start node <paramref name="descendInto"/>
+    /// rejects is yielded without its children.
     /// </summary>
-    private static IEnumerable<Node> Walk(Node start, Func<Node, bool> descendInto)
-    {
-        if (!descendInto(start))
-        {
-            yield return start;
-            yield break;
-        }
-
-        foreach (var node in AstNodeWalker.Descendants(start, descendInto))
-        {
-            yield return node;
-            if (!ReferenceEquals(node, start) && !descendInto(node))
-                continue;
-
-            var entries = node switch
-            {
-                ObjectLiteralExpression obj => obj.Properties,
-                DictionaryLiteralExpression dict => dict.Entries,
-                _ => null
-            };
-            if (entries == null)
-                continue;
-
-            foreach (var (key, value) in entries)
-            {
-                foreach (var inner in Walk(key, descendInto))
-                    yield return inner;
-                foreach (var inner in Walk(value, descendInto))
-                    yield return inner;
-            }
-        }
-    }
+    private static IEnumerable<Node> Walk(Node start, Func<Node, bool> descendInto) =>
+        descendInto(start) ? AstNodeWalker.Descendants(start, descendInto) : [start];
 
     private static bool IsShader(Node node) => node is FunctionDeclaration function && ShaderFunction.IsMarked(function);
 

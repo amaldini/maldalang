@@ -9,6 +9,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using MaldaLang.Parser.AST;
 using MaldaLang.Parser.AST.Statements;
 
@@ -83,6 +84,8 @@ internal sealed class AstDeferScan
             // Dictionary entries and tuples (e.g. object literal properties) can hold nodes.
             DictionaryEntry entry => ContainsDeferInValue(entry.Key) || ContainsDeferInValue(entry.Value),
             IEnumerable sequence and not string => sequence.Cast<object?>().Any(ContainsDeferInValue),
+            // Tuple items are fields, not properties, so read them through ITuple.
+            ITuple tuple => Enumerable.Range(0, tuple.Length).Any(i => ContainsDeferInValue(tuple[i])),
             _ when value != null && IsKeyValuePairOrTuple(value.GetType()) =>
                 GetChildProperties(value.GetType()).Any(p => ContainsDeferInValue(p.GetValue(value))),
             _ => false

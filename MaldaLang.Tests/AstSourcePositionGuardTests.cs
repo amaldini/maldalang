@@ -147,36 +147,9 @@ public class AstSourcePositionGuardTests
         return statements;
     }
 
-    /// <summary>
-    /// Every reachable node, including object/dict literal keys and values, which
-    /// <see cref="AstNodeWalker"/> does not visit (they live in tuple fields).
-    /// </summary>
-    private static IEnumerable<Node> AllNodes(IEnumerable<Statement> statements)
-    {
-        var seen = new HashSet<Node>(ReferenceEqualityComparer.Instance);
-        var roots = new Stack<Node>(statements);
-        while (roots.Count > 0)
-        {
-            foreach (var node in AstNodeWalker.Descendants(roots.Pop()))
-            {
-                if (!seen.Add(node))
-                    continue;
-                yield return node;
-
-                IEnumerable<(Expression Key, Expression Value)> entries = node switch
-                {
-                    ObjectLiteralExpression obj => obj.Properties,
-                    DictionaryLiteralExpression dict => dict.Entries,
-                    _ => [],
-                };
-                foreach (var (key, value) in entries)
-                {
-                    roots.Push(key);
-                    roots.Push(value);
-                }
-            }
-        }
-    }
+    /// <summary>Every reachable node, including object/dict literal keys and values.</summary>
+    private static IEnumerable<Node> AllNodes(IEnumerable<Statement> statements) =>
+        statements.SelectMany(statement => AstNodeWalker.Descendants(statement)).Distinct<Node>(ReferenceEqualityComparer.Instance);
 
     /// <summary>Descriptions of nodes with line or column 0, or without the source file.</summary>
     private static IEnumerable<string> MissingPositions(IEnumerable<Statement> statements, string path)

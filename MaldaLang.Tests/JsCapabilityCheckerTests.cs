@@ -186,6 +186,21 @@ public class JsCapabilityCheckerTests : TestBase
     }
 
     [Fact]
+    public void Check_ReportsHostOnlyCallInsideObjectLiteralValue()
+    {
+        var diagnostics = Check("""
+            var handlers = {
+                load: function(x) { return readFile(x); },
+                nested: { env: dict { "k": getCommandLineArgs() } }
+            };
+            """);
+
+        var fileIo = Assert.Single(diagnostics, d => d.Code == "JS0001");
+        Assert.Equal(2, fileIo.Line);
+        Assert.Contains(diagnostics, d => d.Code == "JS0011" && d.Line == 3);
+    }
+
+    [Fact]
     public void Check_AcceptsJavaScriptSupportedFeatures()
     {
         var diagnostics = Check("""

@@ -9,6 +9,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using MaldaLang;
 using MaldaLang.Parser.AST;
 using MaldaLang.Parser.AST.Expressions;
@@ -522,6 +523,14 @@ internal static class NumericVariableInference
                     foreach (var inner in nested)
                     {
                         CollectValue(inner, owner, ownerProperty);
+                    }
+                    return;
+                case ITuple tuple:
+                    // e.g. the (Key, Value) entries of object and dictionary literals: tuple
+                    // items are fields, so property reflection would not reach them.
+                    for (var i = 0; i < tuple.Length; i++)
+                    {
+                        CollectValue(tuple[i], owner, ownerProperty);
                     }
                     return;
             }
