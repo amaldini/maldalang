@@ -872,7 +872,10 @@ public partial class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("}");
         WriteIndent();
-        _output.AppendLine("throw new InvalidOperationException(\"Only built-in function callbacks can be invoked from transpiled CallFunction.\");");
+        // A transpiled lambda wrapped as a runtime value (match bindings, dict entries, ...).
+        _output.AppendLine("if (functionValue.TranspiledDelegate != null) func = functionValue.TranspiledDelegate;");
+        WriteIndent();
+        _output.AppendLine("else throw new InvalidOperationException(\"Only built-in function callbacks can be invoked from transpiled CallFunction.\");");
         _indentLevel--;
         WriteIndent();
         _output.AppendLine("}");
@@ -888,6 +891,9 @@ public partial class CSharpTranspiler
         _indentLevel--;
         WriteIndent();
         _output.AppendLine("}");
+        WriteIndent();
+        // Another arity: CallFunctionN pads / trims the argument list to the delegate.
+        _output.AppendLine("if (func is System.Delegate) return await CallFunctionN(func, new object?[] { arg });");
         WriteIndent();
         _output.AppendLine("throw new InvalidOperationException($\"Cannot call function: {func.GetType()}\");");
         _indentLevel--;

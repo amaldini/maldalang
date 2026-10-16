@@ -285,7 +285,7 @@ public partial class CSharpTranspiler
     {
         var targets = new List<string>();
         var simpleReceiver = receiver is ThisExpression ||
-            (receiver is IdentifierExpression id && !IsClassReference(receiver) && !IsKnownUserFunction(id.Name));
+            (receiver is IdentifierExpression id && !IsClassReference(receiver) && !IsKnownUserFunction(id));
         if (!simpleReceiver)
         {
             return targets;
@@ -334,7 +334,7 @@ public partial class CSharpTranspiler
 
     private void EmitObjectMethodArgument(Expression argument)
     {
-        if (argument is IdentifierExpression argIdExpr && IsKnownUserFunction(argIdExpr.Name))
+        if (argument is IdentifierExpression argIdExpr && IsKnownUserFunction(argIdExpr))
         {
             // Unary user functions → callable delegate (GraphMemory.initialize embedders, etc.).
             // Multi-arg (e.g. HttpServer middleware) stay as name strings for runtime resolve.
@@ -403,11 +403,11 @@ public partial class CSharpTranspiler
             ArrayAccessExpression arrayAccess when ResolveExpressionType(arrayAccess.Array) == TranspiledClrType.DoubleArray => TranspiledClrType.Double,
             PostfixExpression postfix when (postfix.Operator == TokenType.Increment || postfix.Operator == TokenType.Decrement) &&
                                              ResolveExpressionType(postfix.Left) == TranspiledClrType.Double => TranspiledClrType.Double,
-            FunctionCallExpression typedCall when typedCall.Callee is IdentifierExpression typedId &&
+            FunctionCallExpression typedCall when typedCall.Callee is IdentifierExpression { ResolvesToLocalValue: false } typedId &&
                                             TryGetTypedTwinCall(typedId.Name, typedCall.Arguments, out var typedSignature) => typedSignature.Return,
             FunctionCallExpression methodCall when methodCall.Callee is MemberAccessExpression &&
                                             TryGetTypedMethodCall(methodCall, out var methodSignature) => methodSignature.Return,
-            FunctionCallExpression call when call.Callee is IdentifierExpression id &&
+            FunctionCallExpression call when call.Callee is IdentifierExpression { ResolvesToLocalValue: false } id &&
                                             _functionReturnTypes.TryGetValue(id.Name, out var returnType) => returnType,
             FunctionCallExpression call when call.Callee is IdentifierExpression { ShadowsBuiltIn: false } builtInId &&
                                             ResolveTypedBuiltInReturnType(builtInId.Name, call.Arguments) is var builtInReturnType &&

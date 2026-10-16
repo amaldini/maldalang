@@ -14,6 +14,14 @@ public class IdentifierExpression : Expression
     /// </summary>
     public bool ShadowsBuiltIn { get; set; }
 
+    /// <summary>
+    /// True when this use resolves to a local, non-function binding (parameter, lambda
+    /// parameter, local / loop / catch / pattern variable, class field), so a top-level user
+    /// function of the same name is hidden here. Set by
+    /// <see cref="MaldaLang.BuiltIns.BuiltInShadowAnalysis.MarkLocalValueUses"/>.
+    /// </summary>
+    public bool ResolvesToLocalValue { get; set; }
+
     public IdentifierExpression(string name, int line = 0, int column = 0)
         : base(line, column)
     {

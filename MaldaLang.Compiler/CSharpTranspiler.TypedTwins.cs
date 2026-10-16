@@ -166,7 +166,7 @@ public partial class CSharpTranspiler
     private NumericVariableInference.Kind ResolveTypedCallKind(FunctionCallExpression call)
     {
         TypedTwinSignature? signature = null;
-        if (call.Callee is IdentifierExpression id && TryGetTypedTwinCall(id.Name, call.Arguments, out var functionSignature))
+        if (call.Callee is IdentifierExpression { ResolvesToLocalValue: false } id && TryGetTypedTwinCall(id.Name, call.Arguments, out var functionSignature))
             signature = functionSignature;
         else if (call.Callee is MemberAccessExpression && TryGetTypedMethodCall(call, out var methodSignature))
             signature = methodSignature;
@@ -318,7 +318,8 @@ public partial class CSharpTranspiler
                     var evidence = new List<string>();
                     if (call.Callee is IdentifierExpression id)
                     {
-                        if (byKey.ContainsKey(id.Name))
+                        // A local value named like the function is not a call to it.
+                        if (!id.ResolvesToLocalValue && byKey.ContainsKey(id.Name))
                             target = id.Name;
                     }
                     else

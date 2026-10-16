@@ -222,6 +222,9 @@ public partial class CSharpTranspiler
         // User bindings shadow flat built-ins of the same name (same rule as the interpreter):
         // marks IdentifierExpression.ShadowsBuiltIn, read by the call emitters.
         BuiltInShadowAnalysis.Analyze(statements, name => IsBuiltInFunction(name) || BuiltInShadowAnalysis.IsFlatBuiltIn(name));
+        // Locals (parameters, variables, loop / catch / pattern names) shadow top-level user
+        // functions: marks IdentifierExpression.ResolvesToLocalValue, read by IsKnownUserFunction.
+        BuiltInShadowAnalysis.MarkLocalValueUses(statements);
 
         // Settled together with the typed function variants in ComputeTypedTwins.
         _inferredNumerics = NumericVariableInference.Result.Empty();

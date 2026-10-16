@@ -125,6 +125,22 @@ public partial class CSharpTranspiler
     {
         _matchBindCounter = 0;
         var valueVar = "__matchValue";
+        // The match runs inside a synchronous Func: calls that would await (a function-valued
+        // pattern variable or parameter, an async user function) block instead.
+        var savedCanAwait = _canAwait;
+        _canAwait = false;
+        try
+        {
+            TranspileMatchCore(match, valueVar);
+        }
+        finally
+        {
+            _canAwait = savedCanAwait;
+        }
+    }
+
+    private void TranspileMatchCore(MatchExpression match, string valueVar)
+    {
         _output.Append("((");
         _output.Append("Func<MaldaLang.Interpreter.RuntimeValue>)(() => { var ");
         _output.Append(valueVar);

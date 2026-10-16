@@ -178,6 +178,13 @@ public partial class CSharpTranspiler
         return _functionNames.Contains(name);
     }
 
+    /// <summary>
+    /// <paramref name="id"/> names a user function here: a local value binding of the same
+    /// name (parameter, variable, ...) hides the function (<see cref="IdentifierExpression.ResolvesToLocalValue"/>).
+    /// </summary>
+    private bool IsKnownUserFunction(IdentifierExpression id) =>
+        !id.ResolvesToLocalValue && IsKnownUserFunction(id.Name);
+
     private bool TryGetKnownFunctionParameterTypes(string name, out IReadOnlyList<TranspiledClrType> types)
     {
         foreach (var frame in _localFunctionStack)

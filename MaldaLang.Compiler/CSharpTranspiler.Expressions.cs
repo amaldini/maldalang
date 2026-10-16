@@ -187,12 +187,14 @@ public partial class CSharpTranspiler
             }
 
             // A user binding named like a built-in: `x |> f(a)` is the plain call f(x, a).
-            case FunctionCallExpression { Callee: IdentifierExpression { ShadowsBuiltIn: true } shadowed } call:
+            // A local value binding named like a top-level function: also the plain call.
+            case FunctionCallExpression { Callee: IdentifierExpression { ShadowsBuiltIn: true } or IdentifierExpression { ResolvesToLocalValue: true } } call:
+                var shadowed = (IdentifierExpression)call.Callee;
                 TranspileFunctionCall(new FunctionCallExpression(shadowed, [left, ..call.Arguments], pipe.Line, pipe.Column));
                 return;
 
-            case IdentifierExpression { ShadowsBuiltIn: true } shadowed:
-                TranspileFunctionCall(new FunctionCallExpression(shadowed, [left], pipe.Line, pipe.Column));
+            case IdentifierExpression { ShadowsBuiltIn: true } or IdentifierExpression { ResolvesToLocalValue: true }:
+                TranspileFunctionCall(new FunctionCallExpression((IdentifierExpression)right, [left], pipe.Line, pipe.Column));
                 return;
 
             case FunctionCallExpression call when call.Callee is IdentifierExpression id:
@@ -917,7 +919,7 @@ public partial class CSharpTranspiler
 
     private bool ShouldEmitTranspiledFunctionDelegate(Expression value)
     {
-        if (value is not IdentifierExpression id || !IsKnownUserFunction(id.Name))
+        if (value is not IdentifierExpression id || !IsKnownUserFunction(id))
             return false;
 
         foreach (var frame in _localFunctionStack)
@@ -938,7 +940,7 @@ public partial class CSharpTranspiler
     {
         if (paramType == TranspiledClrType.Object
             && argument is IdentifierExpression id
-            && IsKnownUserFunction(id.Name)
+            && IsKnownUserFunction(id)
             && TryGetKnownFunctionParameterTypes(id.Name, out var paramTypes)
             && paramTypes.Count == 1)
         {

@@ -90,7 +90,7 @@ public partial class CSharpTranspiler
                         if (funcCall.Callee is IdentifierExpression argIdExpr)
                         {
                             // If it's not a known function name, it's likely a function parameter
-                            if (!IsKnownUserFunction(argIdExpr.Name) && !IsBuiltInCallee(argIdExpr))
+                            if (!IsKnownUserFunction(argIdExpr) && !IsBuiltInCallee(argIdExpr))
                             {
                                 // Function parameter call - needs to be awaited
                                 isAsyncCall = true;
@@ -98,7 +98,7 @@ public partial class CSharpTranspiler
                                 funcArg = funcCall.Arguments.Count > 0 ? funcCall.Arguments[0] : null;
                             }
                             // If it's a known function, it's already async and returns Task<object>
-                            else if (IsKnownUserFunction(argIdExpr.Name))
+                            else if (IsKnownUserFunction(argIdExpr))
                             {
                                 // User-defined function - also returns Task, needs async handling
                                 isAsyncCall = true;
@@ -141,7 +141,7 @@ public partial class CSharpTranspiler
                             _output.Append("(");
                             // Transpile without await - we'll get the Task
                             var funcCallExpr = (FunctionCallExpression)argExpr;
-                            if (funcCallExpr.Callee is IdentifierExpression funcIdExpr && IsKnownUserFunction(funcIdExpr.Name))
+                            if (funcCallExpr.Callee is IdentifierExpression funcIdExpr && IsKnownUserFunction(funcIdExpr))
                             {
                                 // User-defined function - call directly to get Task
                                 _output.Append(EscapeIdentifier(funcIdExpr.Name));
@@ -631,7 +631,7 @@ public partial class CSharpTranspiler
             }
             
             // If it's a known function name, call it directly
-            if (IsKnownUserFunction(funcName))
+            if (IsKnownUserFunction(idExpr))
             {
                 TryGetKnownFunctionParameterTypes(funcName, out var typedParameters);
                 if (_transpileCallAsTask)
@@ -706,64 +706,72 @@ public partial class CSharpTranspiler
                 return;
             }
             
-            // Otherwise, it's likely a function parameter - use helper
-            // For single-parameter functions, use CallFunction helper
-            if (call.Arguments.Count == 1)
-            {
-                if (_transpileCallAsTask)
-                    _output.Append("RuntimeHelpers.WrapObjectTaskAsRuntimeValueTask(RuntimeHelpers.CallFunction(");
-                else
-                    _output.Append(_canAwait ? "await RuntimeHelpers.CallFunction(" : "RuntimeHelpers.BlockOn(RuntimeHelpers.CallFunction(");
-                _output.Append(EscapeIdentifier(funcName));
-                _output.Append(", ");
-                TranspileExpression(call.Arguments[0]);
-                _output.Append(_transpileCallAsTask ? "))" : ")");
-                if (!_transpileCallAsTask && !_canAwait)
-                    _output.Append(")");
-                return;
-            }
-            
-            // Zero or several arguments: f() passes null to the one-argument shape (zero-arg
-            // lambdas ignore it); f(a, b, ...) forwards every argument through CallFunctionN.
-            var helper = call.Arguments.Count == 0 ? "CallFunction" : "CallFunctionN";
+            // Otherwise it is a value holding a function (parameter, local, lambda variable).
+            EmitDynamicFunctionCall(() => _output.Append(EscapeIdentifier(funcName)), call.Arguments);
+            return;
+        }
+
+        // A lambda literal called in place: the emitted lambda is an invocable delegate.
+        if (call.Callee is LambdaExpression)
+        {
             if (_transpileCallAsTask)
-                _output.Append($"RuntimeHelpers.WrapObjectTaskAsRuntimeValueTask(RuntimeHelpers.{helper}(");
+                _output.Append("RuntimeHelpers.WrapObjectTaskAsRuntimeValueTask(");
             else
-                _output.Append(_canAwait ? $"await RuntimeHelpers.{helper}(" : $"RuntimeHelpers.BlockOn(RuntimeHelpers.{helper}(");
-            _output.Append(EscapeIdentifier(funcName));
-            _output.Append(", ");
-            if (call.Arguments.Count == 0)
+                _output.Append(_canAwait ? "await " : "RuntimeHelpers.BlockOn(");
+            TranspileExpression(call.Callee);
+            _output.Append("(");
+            for (int i = 0; i < call.Arguments.Count; i++)
             {
-                _output.Append("null");
-            }
-            else
-            {
-                _output.Append("new object?[] { ");
-                for (int i = 0; i < call.Arguments.Count; i++)
-                {
-                    if (i > 0) _output.Append(", ");
-                    TranspileExpression(call.Arguments[i]);
-                }
-                _output.Append(" }");
+                if (i > 0) _output.Append(", ");
+                TranspileExpression(call.Arguments[i]);
             }
             _output.Append(_transpileCallAsTask ? "))" : ")");
             if (!_transpileCallAsTask && !_canAwait)
                 _output.Append(")");
             return;
         }
-        
-        // Fallback for other expression types as callee (e.g., lambda expressions)
-        // Other expression types (shouldn't happen often)
-        if (_transpileCallAsTask)
-            _output.Append("RuntimeHelpers.WrapObjectTaskAsRuntimeValueTask(");
-        else
-            _output.Append(_canAwait ? "await " : "RuntimeHelpers.BlockOn(");
-        TranspileExpression(call.Callee);
-        _output.Append("(");
-        for (int i = 0; i < call.Arguments.Count; i++)
+
+        // Any other callee (opts["action"](5), make()(5), ...) evaluates to a function value:
+        // call it through the runtime helpers like a function-valued variable.
+        EmitDynamicFunctionCall(() =>
         {
-            if (i > 0) _output.Append(", ");
-            TranspileExpression(call.Arguments[i]);
+            _output.Append("(object)(");
+            TranspileExpression(call.Callee);
+            _output.Append(")");
+        }, call.Arguments);
+    }
+
+    /// <summary>
+    /// Calls a function value (not a method group): <c>CallFunction(f, arg)</c> for zero or one
+    /// argument (zero-arg lambdas ignore the null), <c>CallFunctionN(f, new object?[] {...})</c>
+    /// otherwise.
+    /// </summary>
+    private void EmitDynamicFunctionCall(Action emitCallee, List<Expression> arguments)
+    {
+        var helper = arguments.Count <= 1 ? "CallFunction" : "CallFunctionN";
+        if (_transpileCallAsTask)
+            _output.Append($"RuntimeHelpers.WrapObjectTaskAsRuntimeValueTask(RuntimeHelpers.{helper}(");
+        else
+            _output.Append(_canAwait ? $"await RuntimeHelpers.{helper}(" : $"RuntimeHelpers.BlockOn(RuntimeHelpers.{helper}(");
+        emitCallee();
+        _output.Append(", ");
+        if (arguments.Count == 0)
+        {
+            _output.Append("null");
+        }
+        else if (arguments.Count == 1)
+        {
+            TranspileExpression(arguments[0]);
+        }
+        else
+        {
+            _output.Append("new object?[] { ");
+            for (int i = 0; i < arguments.Count; i++)
+            {
+                if (i > 0) _output.Append(", ");
+                TranspileExpression(arguments[i]);
+            }
+            _output.Append(" }");
         }
         _output.Append(_transpileCallAsTask ? "))" : ")");
         if (!_transpileCallAsTask && !_canAwait)
@@ -790,7 +798,7 @@ public partial class CSharpTranspiler
     private void EmitToRuntimeValueArgument(Expression argument)
     {
         if (argument is IdentifierExpression id
-            && IsKnownUserFunction(id.Name)
+            && IsKnownUserFunction(id)
             && TryGetKnownFunctionParameterTypes(id.Name, out var paramTypes)
             && paramTypes.Count == 1)
         {

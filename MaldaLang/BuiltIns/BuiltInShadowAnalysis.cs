@@ -75,19 +75,54 @@ public static class BuiltInShadowAnalysis
         return new Result(program.NamesOrEmpty(), walker.Shadowed);
     }
 
+    /// <summary>
+    /// Sets <see cref="IdentifierExpression.ResolvesToLocalValue"/> on every identifier use that
+    /// resolves to a local, non-function binding (parameter, lambda parameter, local variable,
+    /// loop / catch / pattern variable, class field) rather than to a program-level declaration
+    /// or a nested function. The transpilers read it so <c>join(x)</c> inside
+    /// <c>function apply(join, x)</c> calls the parameter even when a top-level function
+    /// <c>join</c> exists. Same scope rules as <see cref="Analyze"/>; actor members are left
+    /// to the actor emitters.
+    /// </summary>
+    public static void MarkLocalValueUses(IReadOnlyList<Statement> statements)
+    {
+        var walker = new Walker(static _ => true, statements, markLocalValues: true);
+        var program = new Scope(null);
+        walker.Hoist(statements, program);
+        foreach (var statement in statements)
+            walker.Visit(statement, program);
+    }
+
     private sealed class Scope
     {
         private HashSet<string>? _names;
+        private HashSet<string>? _functionNames;
 
         public Scope(Scope? parent) => Parent = parent;
 
         public Scope? Parent { get; }
 
-        public void Add(string? name, Func<string, bool> isBuiltIn)
+        public void Add(string? name, Func<string, bool> isBuiltIn, bool isFunction = false)
         {
             if (string.IsNullOrEmpty(name) || !isBuiltIn(name))
                 return;
             (_names ??= new HashSet<string>(StringComparer.Ordinal)).Add(name);
+            if (isFunction)
+                (_functionNames ??= new HashSet<string>(StringComparer.Ordinal)).Add(name);
+            else
+                _functionNames?.Remove(name);
+        }
+
+        /// <summary>True when the innermost binding of <paramref name="name"/> is a local, non-function one.</summary>
+        public bool ResolvesToLocalValue(string name)
+        {
+            for (var scope = this; scope != null; scope = scope.Parent)
+            {
+                if (scope._names != null && scope._names.Contains(name))
+                    return scope.Parent != null && (scope._functionNames == null || !scope._functionNames.Contains(name));
+            }
+
+            return false;
         }
 
         public bool Resolves(string name)
@@ -121,11 +156,13 @@ public static class BuiltInShadowAnalysis
         private readonly Dictionary<string, ClassDeclaration> _classes = new(StringComparer.Ordinal);
         private bool? _anyNestedBinding;
         private readonly IReadOnlyList<Statement> _statements;
+        private readonly bool _markLocalValues;
 
-        public Walker(Func<string, bool> isBuiltIn, IReadOnlyList<Statement> statements)
+        public Walker(Func<string, bool> isBuiltIn, IReadOnlyList<Statement> statements, bool markLocalValues = false)
         {
             IsBuiltIn = isBuiltIn;
             _statements = statements;
+            _markLocalValues = markLocalValues;
             foreach (var cls in statements.OfType<ClassDeclaration>())
                 _classes[cls.Name] = cls;
         }
@@ -232,7 +269,7 @@ public static class BuiltInShadowAnalysis
                             scope.Add(name, IsBuiltIn);
                         break;
                     case FunctionDeclaration f when !ShaderFunction.IsMarked(f):
-                        scope.Add(f.Name, IsBuiltIn);
+                        scope.Add(f.Name, IsBuiltIn, isFunction: true);
                         break;
                     case ClassDeclaration c:
                         scope.Add(c.Name, IsBuiltIn);
@@ -266,6 +303,11 @@ public static class BuiltInShadowAnalysis
         {
             switch (node)
             {
+                case IdentifierExpression id when _markLocalValues:
+                    if (scope.ResolvesToLocalValue(id.Name))
+                        id.ResolvesToLocalValue = true;
+                    return;
+
                 case IdentifierExpression id:
                     if (IsBuiltIn(id.Name) && scope.Resolves(id.Name))
                     {
@@ -372,7 +414,7 @@ public static class BuiltInShadowAnalysis
 
                 case ActorDeclaration actor:
                 {
-                    var inner = With(scope, actor.Members.Select(m => m.Name));
+                    var inner = _markLocalValues ? scope : With(scope, actor.Members.Select(m => m.Name));
                     foreach (var member in actor.Members)
                     {
                         if (member.Value is Node value)
