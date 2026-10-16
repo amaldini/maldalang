@@ -30,10 +30,13 @@ public class WorkflowDeterminismDenyListTests
         "runCommand",
         "writeFile",
         "writePng",
+        "writeFileBase64",
         "copyFile",
         "replaceInFile",
         "editFile",
         "deleteFile",
+        "ensureDir",
+        "insertAtLine",
         "runMALDA",
         "compileMALDA",
         "httpGet",
@@ -79,11 +82,11 @@ public class WorkflowDeterminismDenyListTests
     }
 
     [Fact]
-    public void DenyList_CountIsTwentyTwo()
+    public void DenyList_CountIsTwentyFive()
     {
-        // Documented in Reference Manual Determinism Boundary (8 WF1001 + 14 WF1002).
+        // Documented in Reference Manual Determinism Boundary (8 WF1001 + 17 WF1002).
         Assert.Equal(8, ExpectedNonDeterministic.Length);
-        Assert.Equal(14, ExpectedSideEffecting.Length);
-        Assert.Equal(22, ExpectedNonDeterministic.Length + ExpectedSideEffecting.Length);
+        Assert.Equal(17, ExpectedSideEffecting.Length);
+        Assert.Equal(25, ExpectedNonDeterministic.Length + ExpectedSideEffecting.Length);
     }
 }
