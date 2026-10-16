@@ -9,6 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using MaldaLang.IDE;
+using MaldaLang.Tooling;
 
 /// <summary>
 /// <c>malda lint</c>: report <see cref="LintRules"/> findings for files, directories or stdin.
@@ -21,11 +22,6 @@ internal sealed class LintCommandRunner
     /// <summary>At least one finding is a warning or an error (info never fails), or a file did not parse.</summary>
     public const int ExitFindings = 1;
     public const int ExitUsage = 2;
-
-    private static readonly HashSet<string> SkippedDirectories = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "bin", "obj", "node_modules", ".git", ".vs", "artifacts"
-    };
 
     public static void PrintUsage(TextWriter output)
     {
@@ -56,7 +52,7 @@ internal sealed class LintCommandRunner
         output.WriteLine("  Several codes are separated by commas or spaces; no code silences every rule.");
         output.WriteLine("  // malda-lint-disable-next-line malda-style    (keep --fix from rewriting the next line)");
         output.WriteLine();
-        output.WriteLine("Directories are searched recursively for *.malda (bin/, obj/, node_modules/ and dot-folders are skipped).");
+        output.WriteLine(MaldaSourceFiles.UsageNote);
         output.WriteLine("Line and column are 1-based.");
         output.WriteLine("Exit codes: 0 no warning or error (info findings do not fail), 1 at least one warning or error");
         output.WriteLine("(ML0000 = a file did not parse), 2 usage or I/O error.");
@@ -129,7 +125,7 @@ internal sealed class LintCommandRunner
                 }
                 else if (Directory.Exists(path))
                 {
-                    foreach (var file in EnumerateMaldaFiles(path))
+                    foreach (var file in MaldaSourceFiles.Enumerate(path))
                         sources.Add((file, File.ReadAllText(file)));
                 }
                 else
@@ -339,28 +335,6 @@ internal sealed class LintCommandRunner
         var unparsed = summary.Unparsed > 0 ? $"; {summary.Unparsed} file(s) skipped (do not parse)" : "";
         output.WriteLine(
             $"lint --fix: {summary.Replacements} replacement(s) in {summary.Files.Count} of {fileCount} file(s){unparsed}");
-    }
-
-    private static IEnumerable<string> EnumerateMaldaFiles(string root)
-    {
-        var pending = new Stack<string>();
-        pending.Push(root);
-        var found = new List<string>();
-        while (pending.Count > 0)
-        {
-            var dir = pending.Pop();
-            found.AddRange(Directory.EnumerateFiles(dir, "*.malda"));
-            foreach (var sub in Directory.EnumerateDirectories(dir))
-            {
-                var name = Path.GetFileName(sub);
-                // Dot-folders (.git, .vs, .malda-play staging copies) are tooling output, not sources.
-                if (!SkippedDirectories.Contains(name) && !name.StartsWith('.'))
-                    pending.Push(sub);
-            }
-        }
-
-        found.Sort(StringComparer.OrdinalIgnoreCase);
-        return found;
     }
 }
 

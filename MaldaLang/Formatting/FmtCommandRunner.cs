@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using MaldaLang.Tooling;
 
 /// <summary>
 /// <c>malda fmt</c>: rewrite files in place, <c>--check</c> for CI, <c>--stdin</c> for editors.
@@ -18,11 +19,6 @@ internal sealed class FmtCommandRunner
     /// <summary><c>--check</c> found unformatted files, or a file could not be formatted.</summary>
     public const int ExitNeedsFormatting = 1;
     public const int ExitUsage = 2;
-
-    private static readonly HashSet<string> SkippedDirectories = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "bin", "obj", "node_modules", ".git", ".vs", "artifacts"
-    };
 
     private static readonly UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false);
 
@@ -42,7 +38,7 @@ internal sealed class FmtCommandRunner
         output.WriteLine("  --indent-size N  Spaces per indent level (default 4)");
         output.WriteLine("  --use-tabs       Indent with tabs");
         output.WriteLine();
-        output.WriteLine("Directories are searched recursively for *.malda (bin/, obj/, node_modules/ and .git/ are skipped).");
+        output.WriteLine(MaldaSourceFiles.UsageNote);
         output.WriteLine("Exit codes: 0 ok, 1 unformatted (--check) or a file could not be formatted, 2 usage error.");
     }
 
@@ -145,7 +141,7 @@ internal sealed class FmtCommandRunner
             }
             else if (Directory.Exists(path))
             {
-                files.AddRange(EnumerateMaldaFiles(path));
+                files.AddRange(MaldaSourceFiles.Enumerate(path));
             }
             else
             {
@@ -198,25 +194,5 @@ internal sealed class FmtCommandRunner
         if (files.Count > 1 || rewritten == 0)
             output.WriteLine($"{rewritten} file(s) formatted, {files.Count - rewritten - failed} already formatted" + (failed > 0 ? $", {failed} failed" : ""));
         return failed > 0 ? ExitNeedsFormatting : ExitOk;
-    }
-
-    private static IEnumerable<string> EnumerateMaldaFiles(string root)
-    {
-        var pending = new Stack<string>();
-        pending.Push(root);
-        var found = new List<string>();
-        while (pending.Count > 0)
-        {
-            var dir = pending.Pop();
-            found.AddRange(Directory.EnumerateFiles(dir, "*.malda"));
-            foreach (var sub in Directory.EnumerateDirectories(dir))
-            {
-                if (!SkippedDirectories.Contains(Path.GetFileName(sub)))
-                    pending.Push(sub);
-            }
-        }
-
-        found.Sort(StringComparer.OrdinalIgnoreCase);
-        return found;
     }
 }

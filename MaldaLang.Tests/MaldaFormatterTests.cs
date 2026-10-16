@@ -290,6 +290,46 @@ public class MaldaFormatterTests
     }
 
     [Fact]
+    public void Cli_Directory_SkipsDotFoldersAndBuildOutput()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "malda_fmt_" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var visible = Path.Combine(dir, "sub", "a.malda");
+            var hidden = Path.Combine(dir, ".hidden", "x.malda");
+            var build = Path.Combine(dir, "bin", "y.malda");
+            foreach (var file in new[] { visible, hidden, build })
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+                File.WriteAllText(file, "var x=1;\n");
+            }
+
+            var output = new StringWriter();
+            var exit = new FmtCommandRunner().Run(new[] { dir, "--check" }, output, new StringWriter());
+            Assert.Equal(FmtCommandRunner.ExitNeedsFormatting, exit);
+            Assert.Contains("a.malda", output.ToString());
+            Assert.DoesNotContain("x.malda", output.ToString());
+            Assert.DoesNotContain("y.malda", output.ToString());
+
+            exit = new FmtCommandRunner().Run(new[] { dir }, new StringWriter(), new StringWriter());
+            Assert.Equal(FmtCommandRunner.ExitOk, exit);
+            Assert.Equal("var x = 1;\n", File.ReadAllText(visible));
+            Assert.Equal("var x=1;\n", File.ReadAllText(hidden));
+            Assert.Equal("var x=1;\n", File.ReadAllText(build));
+
+            // A dot-folder named directly is still formatted: only the walk skips it.
+            exit = new FmtCommandRunner().Run(new[] { Path.Combine(dir, ".hidden") }, new StringWriter(), new StringWriter());
+            Assert.Equal(FmtCommandRunner.ExitOk, exit);
+            Assert.Equal("var x = 1;\n", File.ReadAllText(hidden));
+        }
+        finally
+        {
+            if (Directory.Exists(dir))
+                Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
     public void Cli_Stdin_WritesFormattedSourceToStdout()
     {
         var output = new StringWriter();
