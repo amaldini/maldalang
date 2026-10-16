@@ -36,7 +36,8 @@ These strings are what `@property` / `runProperty` use via `GetRequiredCapabilit
 | Feature | Interpreter | C# transpile | JavaScript |
 |---------|:-----------:|:------------:|:----------:|
 | Core language (vars, functions, classes, match, async/await) | yes | yes | yes (Tier 0 subset) |
-| Standard library (`math` / `str` / `io`, AnsiConsole) | yes | yes | partial (`math` / `str` / `io.print` / `io.input` / JSON) |
+| Standard library (`math` / `str` / collections / JSON / encodings / conversions, `io.print` / `io.input`) | yes | yes | yes‡ |
+| Host-only stdlib helpers (`markdownToHtml` / `extractHTML` / `hashPassword` / JWT / `race` / `firstOk` / `stream` / `AnsiConsole`) | yes | yes | no |
 | File I/O | yes | yes | no |
 | Actors (`spawn` / `send` / `on`) | yes | yes | yes (process-local) |
 | Durable workflows (`workflow` / `step`) | yes | yes | no |
@@ -68,6 +69,36 @@ These strings are what `@property` / `runProperty` use via `GetRequiredCapabilit
 
 † Host embed on interpret/transpile via `MaldaLang.UIHost` when the program uses `ui.mount` / related APIs — see [`docs/ui-framework.md`](../ui-framework.md). Not available on the JS backend.
 
+‡ JavaScript runs every pure `math.*` / `str.*` built-in and the flat collection, JSON, encoding and
+conversion helpers (`sort` / `reverse` / `includes` / `range` / `toCsv`, `toJSON` / `parseJSON`,
+`urlEncode` / `urlDecode`, `toIntOr` / `toIntOrNull` / `formatNumber`, `isString` / `isArray` / `isObject`,
+`assert` / `expect`) with interpreter semantics; the differential fuzz and `InterpretJsPairTests` check them
+against the interpreter and C# transpile. Exceptions:
+
+- **One number type.** `typeOf` cannot tell a whole float from an int, `1 == 1.0` is true, and a float
+  `-0` prints `0` (see [`docs/llm/malda-gotchas.md`](../llm/malda-gotchas.md)).
+- **Transcendental math** (`math.exp` / `log*` / trigonometry / `pow` with a fractional result /
+  `sigmoid` / `tanh` / `softmax` / `logSumExp`) uses the host's libm; the last bit can differ from .NET.
+- **Random numbers.** `math.seed` / `random` / `randomInt` / `randn` … exist, but the sequence differs from
+  the interpreter's for the same seed.
+- **Regex flavor.** `str.regex*` and regex `str.split` use JavaScript `RegExp`: .NET-only syntax (`(?i)`,
+  atomic groups, `\d` matching non-ASCII digits, named groups numbered after unnamed ones) differs.
+  .NET replacement syntax (`$0`, `${name}`, `$+`, `$_`) is honored.
+- **Culture.** `sort` on strings uses `localeCompare` (the interpreter uses the current .NET culture);
+  `str.upper` / `str.lower` map one character at a time without culture rules (`"İ"` stays `"İ"`).
+- **Dict key order.** Integer-like keys (`"2"`) come first in a JavaScript object, so printing,
+  `toJSON` and `toCsv` columns can reorder them.
+- **`toJSON` of a variant** writes `{"tag":…,"payload":[…]}`; the interpreter writes `"<Variant>"`.
+- **Error paths.** Wrong argument types or arity often coerce on JavaScript where the interpreter stops
+  with an error; `str.includes(text, part)` also accepts a string (the interpreter wants an array).
+- **Dates and environment** (`now` / `formatDate` / `getEnv` …) follow the browser or Node clock, time zone
+  and environment.
+- **Not on JavaScript (`JS0014` and the rows above):** `markdownToHtml`, `extractHTML`, `hashPassword` /
+  `verifyPassword`, `createJwt` / `verifyJwt`, `race` / `firstOk` / `stream`, `AnsiConsole.*`; web-server
+  helpers (`renderTemplate`, `component*`, CSRF / cookies / forms: `JS0007`); AI-pipeline helpers
+  (`embed*`, `splitDocuments`, `composePipe`, `webFetch` / `webSearch` …: `JS0004`); host info
+  (`exit`, `getMaldaHome`, `getCommandLineArgs` …: `JS0011`).
+
 Jobs are a lightweight SQLite queue (`./.malda/jobs.db`, or `MALDA_JOBS_CONNECTION`), not durable `workflow` / `step` semantics.
 
 ## JavaScript pre-check diagnostics
@@ -84,16 +115,17 @@ JavaScript `no` row has no rule or no fixture (`MaldaLang.Tests/JsCapabilityChec
 | `JS0001` | File I/O | `readFile` / `writeFile` / `hasFile` / `glob` / `git*` / `path*` …, `io.*` file members, `pdf.*` / `doc.*` | File I/O, `file-io` |
 | `JS0002` | Durable workflows | `workflow` declarations, `startWorkflow` / `getWorkflow*` / `listWorkflows` … | Durable workflows, `workflows` |
 | `JS0003` | Prompts | `prompt` declarations (typed or not), `runPrompt`, `evalPrompt` | Agents / prompts, Typed prompt `response_format` |
-| `JS0004` | Agents / LLM clients / MCP / ACP | `agents.*`, `new Agent` / `LLMClient` / `OpenRouterClient` / `Conversation` / `MCPServer` / `ACPServer` / `GraphMemory` …, `create*Tool`, `executePlan`, `graph` literals | Agents / prompts / MCP / ACP |
+| `JS0004` | Agents / LLM clients / MCP / ACP | `agents.*`, `new Agent` / `LLMClient` / `OpenRouterClient` / `Conversation` / `MCPServer` / `ACPServer` / `GraphMemory` …, `create*Tool`, `executePlan`, `graph` literals, skills, `embed*` / retrieval-pipeline helpers, `webFetch` / `webSearch` | Agents / prompts / MCP / ACP |
 | `JS0005` | VectorDB | `new VectorDB` | VectorDB |
 | `JS0006` | ONNX | `new OnnxModel` | ONNX inspect |
-| `JS0007` | HTTP servers | `new HttpServer` / `RestServer` / `HTMLCache` | HttpServer / RestServer / sessions |
+| `JS0007` | HTTP servers | `new HttpServer` / `RestServer` / `HTMLCache`, `renderTemplate` / `component*` / `redirect` / CSRF / secure cookies / `bindForm` / `pageLayout` | HttpServer / RestServer / sessions |
 | `JS0008` | UIHost | `ui.*`, `ui*` builtins, `generateUI` | UIHost / `ui.*` |
 | `JS0009` | Jobs | `enqueueJob` / `claimJob` / `completeJob` / `failJob` / `getJob` / `listJobs` | Jobs |
 | `JS0010` | .NET interop | `loadAssembly` / `getDotNetType` / `dotnetNew` / `loadNativeModule` / `createNativeCallback` | .NET interop, `dotnet-interop` |
-| `JS0011` | Host processes and drivers | `runCommand` / `runMALDA` / `compileMALDA` / `checkMalda`, `new SqliteClient` / `PostgresClient` / `SqlServerClient` / `SerialConnection` / `ArduinoConnection` | `host-interop` |
+| `JS0011` | Host processes and drivers | `runCommand` / `runMALDA` / `compileMALDA` / `checkMalda` / `getSymbols` / `exit` / `getMaldaHome` / `getCommandLineArgs` …, `new SqliteClient` / `PostgresClient` / `SqlServerClient` / `SerialConnection` / `ArduinoConnection` | `host-interop` |
 | `JS0012` | Closed api | `api` declarations, `runProgram` | Closed `api` |
 | `JS0013` | Agentic runs | `within (…) { }`, `context`, `policy`, `suite` | `within` scopes / `context` / `policy`, `suite` |
+| `JS0014` | Host-only stdlib helpers | `markdownToHtml` / `extractHTML` / `hashPassword` / `verifyPassword` / `createJwt` / `verifyJwt` / `race` / `firstOk` / `stream`, `AnsiConsole.*` | Host-only stdlib helpers |
 
 The `actors` property tag is `no` for `@property` runs only; the JavaScript backend runs actors
 process-local, so the pre-check does not reject them.

@@ -86,6 +86,7 @@ compile pre-check, and `docs-only` means no tool detects it reliably: only this 
 | `api` / `runProgram` with `--mode js` | JS transpile rejects `api` declarations (host-only, same as prompts). | Interpreter or `malda compile --mode transpile` | compile: JS0012 |
 | `new VectorDB(...)` with `--mode js` | JS has no VectorDB runtime (`malda-js-runtime.js`). Emit is a bare `new VectorDB(...)` that fails at run time. | Interpreter or `malda compile --mode transpile` | compile: JS0005 |
 | `new OnnxModel(...)` with `--mode js` | Host-only inspect + forward (`Microsoft.ML.OnnxRuntime`). JS has no ONNX runtime. | Interpreter or `malda compile --mode transpile` (auto-includes OnnxRuntime) | compile: JS0006 |
+| `markdownToHtml` / `hashPassword` / `createJwt` / `race` / `AnsiConsole.*` with `--mode js` | Host libraries (Markdig, PBKDF2, HMAC, Spectre.Console) or blocking task helpers; the rest of `math` / `str` / JSON runs on JS. | Interpreter or `malda compile --mode transpile`; in the browser, `await all(...)` instead of `race` | compile: JS0014 |
 | `api` method without a top-level `function` of the same name | `runProgram` fails at the call step. | Declare `function add(a, b) { … }` matching the signature | docs-only |
 | `result.map(r, (x) => result.ok(x + 1))` (or `option.map` returning `Some`/`None`) | `map` transforms a **payload**. Interpreter, C#, and JS all wrap as `Ok(Ok(...))` / `Some(Some(...))`. Sequencing fallible steps this way is wrong. | `result.andThen(r, (x) => result.ok(x + 1))` — `fn` must return `Ok`/`Err` (or `Some`/`None` on `option.andThen`) | ML0009 |
 | `pdf.extractText(scanned.pdf)` expecting OCR | Extracts the **digital text layer** only (PdfPig). Image-only / scanned PDFs often return empty or near-empty text with no error. | OCR first, or convert to `.md` / `.txt` before BUILD | docs-only |
@@ -117,6 +118,17 @@ one runs without error on every backend and prints different output.
 
 Not differences: `0`, `""` and `[]` are truthy everywhere (see above), and
 `str.substring(s, start, length)` takes a **count** on every backend, not an end index.
+
+The pure stdlib (`math.*`, `str.*`, `sort` / `reverse` / `toCsv`, `toJSON` / `parseJSON`, encodings,
+`toIntOr` / `formatNumber`, `assert`) prints the same on all three backends. These edges do not:
+
+| You write | Interpreter / C# | JavaScript | Portable form | Lint |
+|-----------|------------------|------------|---------------|------|
+| `toJSON(Some(1))` (any variant) | `"<Variant>"` | `{"tag":"Some","payload":[1]}` | Convert to a dict first: `{ "tag": "Some", "value": x }` | docs-only |
+| `math.seed(7); math.random()` | One sequence | Another sequence | Do not compare random output across backends | docs-only |
+| `str.regexReplace(s, "(?i)abc", …)` | .NET regex syntax | JavaScript `RegExp` (no inline `(?i)`, no atomic groups) | Portable regex: classes, groups, `?`/`*`/`+`, anchors | docs-only |
+| `sort(["b", "A", "a"])` | Current .NET culture order | `localeCompare` order | Sort ASCII text of one case, or pass a compare function | docs-only |
+| `{ "b": 1, "2": 2 }` printed / `toJSON` | Insertion order | `"2"` first (JavaScript orders integer-like keys) | Keep dict keys non-numeric | docs-only |
 
 ## Half-truths
 

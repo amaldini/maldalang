@@ -1,6 +1,6 @@
 # MALDA engineering improvements roadmap
 
-**Status:** I1, I2, I3, I4 and I6 landed 2026-10-15; I5 three named files split (follow-up list open); I7, I8 and I10 open; I9 dropped (root files are intentional)  
+**Status:** I1, I2, I3, I4 and I6 landed 2026-10-15; I7 landed 2026-10-16; I5 three named files split (follow-up list open); I8 and I10 open; I9 dropped (root files are intentional)  
 **Created:** 2026-10-15  
 **Audience:** maintainers choosing engine / tooling work after P0, L1–L6 and DT0–DT8
 
@@ -38,7 +38,7 @@ features (agents, HTTP, workflows, prompts).
 | 4 | **I4** JavaScript capability pre-check | Landed | Unsupported features failed late, one `NotSupportedException` at a time | Medium | M |
 | 5 | **I5** Split `Interpreter.cs` / `Parser.cs` / `LanguageService.cs` | Partly landed | The three named files are split; other engine files still exceed ~1,500 lines (see I5) | Low | L |
 | 6 | **I6** `malda lint` (gotchas as diagnostics) | Landed | Common footguns live only in `docs/llm/` | Medium | M |
-| 7 | **I7** Pure stdlib complete on JavaScript | Open | `math` / `str` / collections are `partial` on JS | Medium | M–L |
+| 7 | **I7** Pure stdlib complete on JavaScript | Landed | `math` / `str` / collections were `partial` on JS | Medium | M–L |
 | 8 | **I8** Gradual type inference in the editor | Open | Warnings without the deferred full static type system | High | L |
 | 9 | **I9** Repository root cleanup | Dropped | See I9 below | — | — |
 | 10 | **I10** Git-index package registry | Open | Bridge toward the deferred public registry | Medium | L |
@@ -199,6 +199,24 @@ Phase C (language and ecosystem)
 - **Done when:** the stdlib row in the capability matrix goes from `partial` to `yes`, with an
   explicit exception list.
 
+**Landed 2026-10-16.** `malda-js-runtime.js` now runs every pure registry name with interpreter
+semantics: the missing `str.*` helpers (`normalizeText` / `tokenize` / `tokenOverlap` /
+`similarity` / `extractNumbers`, `base64Encode` / `base64Decode`, `md5` / `sha256` in plain JS) and
+the flat `toIntOr` / `toIntOrNull` / `formatNumber` (exact half-to-even `F` formatting),
+`isString` / `isArray` / `isObject`, `reverse`, `toCsv`, `urlEncode` / `urlDecode`, `assert` /
+`expect`, `input`. Existing helpers that disagreed with the interpreter were fixed: default and
+regex `str.split`, one-character `padStart` / `padEnd`, global `regexReplace` with .NET
+substitutions, `regexFind` returning `{ text, groups }`, string `sort` (it compared every
+string as `0`), `includes` on arrays, `join` printing `null`, `math.clamp` with swapped
+bounds, `math.hypot`, .NET-style trim and per-character case mapping, and `toJSON` (System.Text.Json
+escaping, .NET number text, `<Function>`). `parseJSON` objects are `typeOf` `"object"` as on the
+interpreter. The C# transpile ignored `str.normalizeText` options passed as a dict literal; fixed in
+the shared `GetBooleanOption`. Host-library helpers (`markdownToHtml`, `hashPassword`, JWT,
+`race` / `firstOk` / `stream`, `AnsiConsole.*`) get the new `JS0014` diagnostic, and the other
+registry names that used to emit a bare call are now reported under `JS0004` / `JS0007` / `JS0011`.
+The fuzz generator calls the pure stdlib (`StdLibStatement`), and `InterpretJsPairTests` has one
+pair per group. The exception list lives under the stdlib row of the capability matrix.
+
 ## I8 — Gradual inference
 
 - Warnings only, in `LanguageService` and `check --json`: literal types, function signatures,
@@ -255,3 +273,4 @@ The root files that looked like leftovers are intentional:
 | 2026-10-15 | I3 landed: `malda fmt` (`--check`, `--stdin`) on the lossless `SourceTriviaScanner`; LSP and Desktop IDE formatting use the same `MaldaFormatter` |
 | 2026-10-15 | I6 landed: `malda lint` (`ML0000`–`ML0013`, suppression comments, `--json`), findings in `malda-lsp`; every gotcha in `docs/llm/malda-gotchas.md` is linked to a rule or marked docs-only |
 | 2026-10-15 | I5 (Desktop IDE): `MainWindow.xaml.cs` split into `MainWindow.<Area>.cs` partials (Theme, ToolCalls, Prompts, Examples, Panels, Menus; web preview moved to `WebUi`) and `NativeMethods.cs`; `MainWindow.Editor.cs` split into Completion, SyntaxPanel, Diagnostics and Navigation; `MainWindow.Run.cs` web preview moved to `MainWindow.Preview.cs` |
+| 2026-10-16 | I7 landed: pure stdlib on JavaScript (missing `str.*` / flat helpers implemented, divergent ones fixed), `JS0014` for host-library helpers, fuzz generator calls the stdlib, matrix stdlib row `yes` with an exception list |

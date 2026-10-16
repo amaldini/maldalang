@@ -70,6 +70,11 @@ public static class JsCapabilityFixtures
             within (30s) {
                 println("bounded");
             }
+            """,
+        ["JS0014"] = """
+            var html = markdownToHtml("# Title");
+            var hash = hashPassword("secret");
+            AnsiConsole.markupLine("[green]done[/]");
             """
     };
 }

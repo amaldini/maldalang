@@ -97,8 +97,9 @@ Validation rules currently enforced:
 - Current helper surface:
   - Type helpers: `coerceToInt`, `coerceToFloat`, `coerceToString`, `isTruthy`, `equals`, `isObject`, `objectHasKey`. `isTruthy` matches the interpreter (spec §6): only `null`, `undefined`, and `false` are falsy. `0`, `NaN`, `""`, and empty arrays are truthy.
   - Built-ins: `builtins.print`, `builtins.println`, `builtins.sleep`
-  - Stdlib: `math.*`, `str.*`, `io.print`, `io.input`
-  - JSON: `parseJSON`, `parseJson`, `toJSON`
+  - Stdlib: `math.*`, `str.*`, `io.print`, `io.input` (also flat `input`)
+  - Collections / conversions: `sortBuiltin`, `reverse`, `rangeBuiltin`, `joinBuiltin`, `toCsv`, `toIntOr`, `toIntOrNull`, `formatNumber`, `isString`, `isArray`, `isObjectBuiltin`, `urlEncode`, `urlDecode`, `assert`, `expect` (interpreter semantics; exceptions in [`spec/backend-capability-matrix.md`](spec/backend-capability-matrix.md))
+  - JSON: `parseJSON`, `parseJson`, `toJSON` (System.Text.Json escaping and .NET number text)
   - Schema: `schema.register`, `schema.registerSumType`, `schema.validate`, `schema.asVariant`
   - Date/env: `now`, `formatDate`, `parseDate`, `addDays`, `addHours`, `getEnv`, `getEnvOr`, `hasEnv`
   - HTTP client: `http.get|post|put|delete|patch` (`fetch`; not `HttpServer`)

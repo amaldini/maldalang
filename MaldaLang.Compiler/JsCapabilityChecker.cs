@@ -82,12 +82,13 @@ public static class JsCapabilityChecker
     public static readonly JsCapabilityRule HostInterop = new("JS0011", "host processes and drivers", ["`host-interop`"]);
     public static readonly JsCapabilityRule ClosedApi = new("JS0012", "closed api / runProgram", ["Closed `api`"]);
     public static readonly JsCapabilityRule AgenticRuns = new("JS0013", "agentic run constructs", ["`within` scopes", "Run journal"]);
+    public static readonly JsCapabilityRule HostStdLib = new("JS0014", "host-only stdlib helpers", ["Host-only stdlib helpers"]);
 
     /// <summary>Every rule, in code order.</summary>
     public static IReadOnlyList<JsCapabilityRule> Rules { get; } =
     [
         FileIo, Workflows, Prompts, Agents, VectorDb, Onnx, HttpServer, UiHost, Jobs,
-        DotNetInterop, HostInterop, ClosedApi, AgenticRuns
+        DotNetInterop, HostInterop, ClosedApi, AgenticRuns, HostStdLib
     ];
 
     private static readonly Dictionary<string, JsCapabilityRule> FlatBuiltIns = BuildFlatBuiltIns();
@@ -250,6 +251,7 @@ public static class JsCapabilityChecker
             StdLibNamespaces.PdfModule or StdLibNamespaces.DocModule => FileIo,
             StdLibNamespaces.AgentsModule => Agents,
             "ui" => UiHost,
+            "AnsiConsole" => HostStdLib,
             _ => null
         };
 
@@ -351,17 +353,35 @@ public static class JsCapabilityChecker
             "getWorkflowMetrics", "listWorkflows", "listWorkflowDeadLetters", "requeueDeadLetter", "cancelWorkflow",
             "resumeWorkflow", "retryWorkflow", "approveWorkflowStep", "signalWorkflow", "runWorkflowInstance");
 
-        AddAll(Prompts, "runPrompt", "evalPrompt");
+        AddAll(Prompts, "runPrompt", "evalPrompt", "parallelRun");
 
         AddAll(Agents,
             "executePlan", "decomposeTask", "setDefaultAgent", "onAgentProgress", "clearAgentProgress", "cancelThink",
-            "enableAgentVerboseLogging", "setAgentVerbosePhase", "setAgentStatusBanner", "createMcpAgentScript");
+            "enableAgentVerboseLogging", "setAgentVerbosePhase", "setAgentStatusBanner", "createMcpAgentScript",
+            "getAssistantMemory", "reportRalphStatus", "getSkillNames", "loadSkill", "loadSkillsFromDir",
+            "splitDocuments", "formatRetrievedDocs", "composePipe", "mergeRetrievedDocs", "withExamples", "indexInto",
+            "embedBagOfWords", "embedCharacterNGrams", "embedHash", "embedTFIDF", "webFetch", "webSearch");
+
+        AddAll(HttpServer,
+            "renderTemplate", "componentFragment", "componentLiveEmit", "componentStateGet", "componentStateSet",
+            "componentStateObject", "componentStateClear", "componentStateConfigure", "componentStatePin",
+            "componentStateUnpin", "redirect", "RedirectTo", "httpBearerToken", "httpCookieToken", "httpAuthToken",
+            "generateCsrfToken", "verifyCsrfToken", "csrfField", "formErrors", "bindForm", "pageLayout",
+            "createSecureCookie", "readSecureCookie");
+
+        // Pure-looking helpers that need a host library (Markdig, HTML parsing, PBKDF2 / HMAC)
+        // or block on tasks; the rest of math / str / collections / JSON runs on JavaScript.
+        AddAll(HostStdLib,
+            "markdownToHtml", "extractHTML", "hashPassword", "verifyPassword", "createJwt", "verifyJwt",
+            "race", "firstOk", "stream");
 
         AddAll(Jobs, "enqueueJob", "claimJob", "completeJob", "failJob", "getJob", "listJobs");
 
         AddAll(DotNetInterop, "loadAssembly", "getDotNetType", "dotnetNew", "loadNativeModule", "createNativeCallback");
 
-        AddAll(HostInterop, "runCommand", "runMALDA", "compileMALDA", "checkMalda");
+        AddAll(HostInterop,
+            "runCommand", "runMALDA", "compileMALDA", "checkMalda", "getSymbols", "getParseErrors", "exit",
+            "getMaldaHome", "getProgramDirectory", "getMaldaConfig", "getHostPlatform", "getCommandLineArgs");
 
         AddAll(ClosedApi, "runProgram");
 
