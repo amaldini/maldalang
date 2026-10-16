@@ -101,6 +101,9 @@ require(runtimePath);
                 FileName = nodePath,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
+                // Node writes UTF-8; the default (console code page) garbles non-ASCII output.
+                StandardOutputEncoding = System.Text.Encoding.UTF8,
+                StandardErrorEncoding = System.Text.Encoding.UTF8,
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 WorkingDirectory = tempDir

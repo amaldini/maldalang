@@ -179,6 +179,26 @@ public partial class JsTranspiler
             case "toJSON":
                 transpiled = $"mlRuntime.toJSON({JoinArguments(arguments)})";
                 return true;
+            case "toIntOr":
+            case "toIntOrNull":
+            case "formatNumber":
+            case "isString":
+            case "isArray":
+            case "toCsv":
+            case "reverse":
+            case "urlEncode":
+            case "urlDecode":
+            case "assert":
+            case "expect":
+                transpiled = $"mlRuntime.{name}({JoinArguments(arguments)})";
+                return true;
+            case "isObject":
+                // mlRuntime.isObject is the destructuring test; the built-in excludes tasks.
+                transpiled = $"mlRuntime.isObjectBuiltin({JoinArguments(arguments)})";
+                return true;
+            case "input":
+                transpiled = $"mlRuntime.io.input({JoinArguments(arguments)})";
+                return true;
             case "validate":
                 transpiled = $"mlRuntime.schema.validate({JoinArguments(arguments)})";
                 return true;

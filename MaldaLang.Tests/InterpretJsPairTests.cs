@@ -534,4 +534,156 @@ public class InterpretJsPairTests
             ParserSyntaxGapTests.AnonymousFunctionSource,
             "anonymous-function-js");
     }
+
+    // ---- I7: pure stdlib on JavaScript (one test per group) ----
+
+    [Fact]
+    public void MathStdLib_ArraysClampHypotAndExactOps_SameStdout()
+    {
+        InterpretJsPair.AssertSameFromSource(
+            """
+            var xs = [5, -3, 12, 7];
+            var ds = [0.5, -3.75, 2, 10.0];
+            io.print([math.sum(xs), math.sum(ds), math.average(xs), math.max(ds), math.min(xs)]);
+            io.print([math.argmax(ds), math.argmin(xs), math.dot(xs, xs), math.dot(ds, xs)]);
+            io.print([math.clamp(15.5, 10, 0), math.clamp(-2, 0, 10), math.hypot(3, 4.5), math.hypot(1, 1)]);
+            io.print([math.trunc(-2.75), math.sign(-0.5), math.pow(7, 3), math.rsqrt(4.5)]);
+            io.print([math.degToRad(45), math.radToDeg(1.25), math.floor(-0.5), math.ceil(1.25)]);
+            io.print(math.zeros(2, 3));
+            io.print(math.transpose([[1, 2, 3], [4, 5, 6]]));
+            io.print(math.matmul([[1, 2], [3, 4]], [[5, 6], [7, 8]]));
+            """,
+            "i7-math-js");
+    }
+
+    [Fact]
+    public void StrStdLib_SplitPadRegexAndCase_SameStdout()
+    {
+        InterpretJsPair.AssertSameFromSource(
+            """
+            io.print(str.split("x y  z"));
+            io.print(str.split("a1b22c3", "[0-9]+"));
+            io.print(str.split("a1b22c", "([0-9]+)", true));
+            io.print(str.split("a,b,,c", ","));
+            io.print(str.split("abc", ""));
+            io.print(str.padStart("ab", 5, "xy") + "|" + str.padEnd("ab", 4, "-") + "|" + str.padStart("abcdef", 3));
+            io.print(str.regexReplace("Hello world", "[aeiou]", "<$0>"));
+            io.print(str.regexReplace("a1b22", "([a-z])([0-9]+)", "$2$1 $$"));
+            io.print(toJSON(str.regexFind("a1 b22 c", "([a-z])([0-9]+)?")));
+            io.print(str.regexMatch("Zed", "^[A-Z]"));
+            io.print(str.join([1, null, "q", 2.5, true], "|") + " " + str.join([1, 2], 5));
+            io.print(str.includes([1, "x", null], null) + " " + str.includes([1, 2], "2"));
+            io.print(str.upper("straße héllo ǆ") + " " + str.lower("HÉLLO Wörld ΣΑΣ"));
+            io.print("[" + str.trim(" \t x \n") + "][" + str.trimText(null) + "][" + str.text(12) + "]");
+            io.print(str.repeat("ab", 3) + str.replace("aaa", "aa", "b"));
+            """,
+            "i7-str-js");
+    }
+
+    [Fact]
+    public void StrStdLib_TextSimilarityHelpers_SameStdout()
+    {
+        InterpretJsPair.AssertSameFromSource(
+            """
+            io.print(str.normalizeText("  Héllo, Wörld!  "));
+            io.print(str.normalizeText("A-B c", { "removePunctuation": false, "lowercase": false }));
+            io.print(str.tokenize("naïve café, OK"));
+            var overlap = str.tokenOverlap("the cat sat", "the dog sat down");
+            io.print(toJSON(overlap));
+            io.print(typeOf(overlap));
+            io.print([str.similarity("the cat", "the cat sat"), str.similarity("", "")]);
+            io.print([str.similarity("hello", "help", "char-ngram"), str.similarity("ab", "abc", "char-ngram")]);
+            io.print([str.similarity("hello world", "world", "contains"), str.similarity("Héllo", "hello", " EXACT ")]);
+            io.print(str.extractNumbers("x12 y-3.75 z4,25 big99999999999 -0 3,"));
+            """,
+            "i7-str-text-js");
+    }
+
+    [Fact]
+    public void EncodingAndHashBuiltIns_SameStdout()
+    {
+        InterpretJsPair.AssertSameFromSource(
+            """
+            io.print(str.base64Encode("Hi there é €😀"));
+            io.print(str.base64Decode(" aGk = ") + str.base64Decode(str.base64Encode("x y")));
+            io.print(base64Encode("") + "|" + base64Decode("") + "|");
+            io.print(str.md5("") + " " + str.md5("The quick brown fox jumps over the lazy dog"));
+            io.print(str.sha256("") + " " + sha256("abc€"));
+            io.print(md5("é"));
+            io.print(urlEncode("a b&c=d/é!'()*~-_."));
+            io.print(urlDecode("%E2%82%AC%zz%41+%") + " " + urlDecode("%C3%A9%C3") + " " + urlDecode("%e9"));
+            io.print(urlDecode(urlEncode("x y+z😀")));
+            """,
+            "i7-encoding-js");
+    }
+
+    [Fact]
+    public void ConversionAndTypeBuiltIns_SameStdout()
+    {
+        InterpretJsPair.AssertSameFromSource(
+            """
+            io.print([toIntOr(" 42 ", 0), toIntOr("+7", 0), toIntOr("x", -1), toIntOr("3.7", 0), toIntOr("-3.75", 0)]);
+            io.print([toIntOr("", 9), toIntOr(null, 9), toIntOr("1e3", 0), toIntOr(".5", 9), toIntOr("0x10", 9), toIntOr(true, 0)]);
+            io.print([toIntOrNull("1e2"), toIntOrNull("abc"), toIntOrNull(" "), toIntOrNull("-8")]);
+            io.print([formatNumber(2.5, 0), formatNumber(3.5, 0), formatNumber(-2.5, 0), formatNumber(0.125, 2)]);
+            io.print([formatNumber(0.625, 2), formatNumber(1.005, 2), formatNumber(-0.001, 2), formatNumber(12, 3)]);
+            io.print([formatNumber(123456789.123, 1), formatNumber(1e21, 1), formatNumber(7, 0)]);
+            io.print([isString("a"), isString(1), isArray([1]), isArray("a"), isObject({ "a": 1 }), isObject([1])]);
+            """,
+            "i7-conversion-js");
+    }
+
+    [Fact]
+    public void CollectionBuiltIns_SameStdout()
+    {
+        InterpretJsPair.AssertSameFromSource(
+            """
+            var xs = [5, -3, 12, 7];
+            io.print(reverse(xs));
+            io.print(xs);
+            io.print(sort([0.5, -3.75, 2, 10.0]));
+            io.print(sort(["pear", "fig", "apple", "kiwi"]));
+            io.print(sort(xs, (a, b) => b - a));
+            io.print(sort(xs, (a, b) => a > b));
+            io.print([includes(xs, 7), includes(["a", "b"], "c"), includes([[1]], [1])]);
+            io.print(range(2, 11, 3));
+            io.print(range(5, 0, -2));
+            io.print(toCsv([{ "a": 1, "b": "x,y", "c": 2.5, "d": [1, 2] }, { "a": -3, "b": "q\"r", "c": null }]));
+            io.print(toCsv(xs));
+            io.print(toCsv([{ "a": 1, "b": 2 }], ["b", "a", "zz"], { "delimiter": ";", "includeHeader": false }));
+            io.print(toCsv([{ "a": "x" }], null, { "quoteAll": true, "newline": "\r\n" }));
+            """,
+            "i7-collections-js");
+    }
+
+    [Fact]
+    public void JsonBuiltIns_EscapingNumbersAndOrder_SameStdout()
+    {
+        InterpretJsPair.AssertSameFromSource(
+            """
+            io.print(toJSON({ "s": "a<b> & \"c\" é +'`", "n": [1, 2.5, -3.75, null, true, 1e20, 0.1], "d": { "k": "v" } }));
+            io.print(toJSON(["a", (x) => x, 2.0]));
+            class P { var x = 1; var y = "z"; function P() {} function m() { return 1; } }
+            io.print(toJSON(new P()));
+            var parsed = parseJSON("{\"b\": 1.0, \"a\": [1, 2.5, {\"y\": null}], \"c\": 1e3}");
+            io.print(toJSON(parsed));
+            io.print(typeOf(parsed) + " " + isObject(parsed) + " " + parsed.c);
+            io.print(parseJSON(toJSON({ "a": [1, 2], "b": "x" })).b);
+            """,
+            "i7-json-js");
+    }
+
+    [Fact]
+    public void AssertAndExpect_ThrowCatchableErrors_SameStdout()
+    {
+        InterpretJsPair.AssertSameFromSource(
+            """
+            try { assert(1 > 2, "nope"); io.print("held"); } catch (e) { io.print("caught " + e); }
+            try { assert(true); io.print("held"); } catch (e) { io.print("caught " + e); }
+            try { assert(false); } catch (e) { io.print("caught " + e); }
+            try { expect(false); } catch (e) { io.print("caught " + e); }
+            try { expect(1 == 1, "fine"); io.print("held"); } catch (e) { io.print("caught " + e); }
+            """,
+            "i7-assert-js");
+    }
 }

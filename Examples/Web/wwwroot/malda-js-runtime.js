@@ -170,11 +170,15 @@
   }
 
   function replaceBuiltin(value, search, replacement) {
-    return coerceToString(value).split(coerceToString(search)).join(coerceToString(replacement));
+    const oldText = coerceToString(search);
+    if (oldText.length === 0) {
+      throw new Error("replace() search text cannot be empty");
+    }
+    return coerceToString(value).split(oldText).join(coerceToString(replacement));
   }
 
   function lowerBuiltin(value) {
-    return coerceToString(value).toLowerCase();
+    return mapCaseSimple(coerceToString(value), false);
   }
 
   function roundBuiltin(value, digits) {
@@ -406,30 +410,37 @@
     return result;
   }
 
+  // Interpreter join: items print as they do in print (null is "null"); a separator that
+  // is not a string means ",".
   function joinBuiltin(arrayValue, separator) {
     const array = getArray(arrayValue);
-    const sep = separator === null || separator === undefined ? "," : coerceToString(separator);
-    return array.map((item) => coerceToString(item)).join(sep);
+    const sep = typeof separator === "string" ? separator : ",";
+    return array.map((item) => formatValue(item)).join(sep);
   }
 
+  // Interpreter sort: two numbers compare numerically, anything else by printed text with
+  // the culture-aware comparison (.NET string.CompareTo, here localeCompare).
   function compareSortValues(a, b) {
-    const aNum = coerceToFloat(a);
-    const bNum = coerceToFloat(b);
-    if (Number.isFinite(aNum) && Number.isFinite(bNum)) {
-      return aNum - bNum;
+    if (typeof a === "number" && typeof b === "number") {
+      return a < b ? -1 : (a > b ? 1 : 0);
     }
-    return coerceToString(a).localeCompare(coerceToString(b));
+    return formatValue(a).localeCompare(formatValue(b));
   }
 
+  // A compare function may return a number (truncated), a bool (true = 1, false = -1) or
+  // anything else (truthy = 1, falsy = -1).
   function sortBuiltin(arrayValue, compareFn) {
     const array = getArray(arrayValue);
     if (typeof compareFn === "function") {
       return array.slice().sort((a, b) => {
         const result = compareFn(a, b);
+        if (typeof result === "number") {
+          return Number.isFinite(result) ? Math.trunc(result) : 0;
+        }
         if (typeof result === "boolean") {
           return result ? 1 : -1;
         }
-        return coerceToInt(result);
+        return isTruthy(result) ? 1 : -1;
       });
     }
     return array.slice().sort(compareSortValues);
@@ -1817,11 +1828,17 @@
     return mathArrayExtreme("min", Math.min, value);
   }
 
+  // Interpreter clamp: bounds given in either order.
   function mathClamp(value, minValue, maxValue) {
     const n = coerceToFloat(value);
-    const lo = coerceToFloat(minValue);
-    const hi = coerceToFloat(maxValue);
-    return Math.min(hi, Math.max(lo, n));
+    let lo = coerceToFloat(minValue);
+    let hi = coerceToFloat(maxValue);
+    if (lo > hi) {
+      const swap = lo;
+      lo = hi;
+      hi = swap;
+    }
+    return n < lo ? lo : (n > hi ? hi : n);
   }
 
   function requireNonNegativeDimension(value) {
@@ -2747,7 +2764,12 @@
     acos: (value) => Math.acos(coerceToFloat(value)),
     atan: (value) => Math.atan(coerceToFloat(value)),
     atan2: (y, x) => Math.atan2(coerceToFloat(y), coerceToFloat(x)),
-    hypot: (a, b) => Math.hypot(coerceToFloat(a), coerceToFloat(b)),
+    // sqrt(x*x + y*y) like the interpreter (Math.hypot rounds differently).
+    hypot: (a, b) => {
+      const x = coerceToFloat(a);
+      const y = coerceToFloat(b);
+      return Math.sqrt(x * x + y * y);
+    },
     clamp: mathClamp,
     degToRad: (value) => coerceToFloat(value) * Math.PI / 180,
     radToDeg: (value) => coerceToFloat(value) * 180 / Math.PI,
@@ -3217,11 +3239,74 @@
     sequential: nnSequential
   };
 
-  function strUpper(value) { return coerceToString(value).toUpperCase(); }
-  function strTrim(value) { return coerceToString(value).trim(); }
-  function strSplit(value, separator) {
-    const sep = separator === null || separator === undefined ? "" : coerceToString(separator);
-    return coerceToString(value).split(sep);
+  // ---- Pure stdlib, aligned with the interpreter (BuiltInFunctions.Strings / Encoding /
+  // Arrays / Conversion). Exceptions are listed in docs/spec/backend-capability-matrix.md.
+
+  // .NET char.IsWhiteSpace / Regex \s: Unicode separators, \t-\r and U+0085 (not U+FEFF).
+  const DOTNET_SPACE_CLASS = "[\\t\\n\\v\\f\\r\\x85\\p{Z}]";
+  const dotnetSpaceRun = new RegExp(DOTNET_SPACE_CLASS + "+", "gu");
+  const dotnetTrimEdges = new RegExp("^" + DOTNET_SPACE_CLASS + "+|" + DOTNET_SPACE_CLASS + "+$", "gu");
+  const dotnetSpaceChar = new RegExp("^" + DOTNET_SPACE_CLASS + "$", "u");
+  const letterOrDigitChar = /^[\p{L}\p{Nd}]$/u;
+  const asciiOnly = /^[\x00-\x7f]*$/;
+
+  function dotnetTrim(text) {
+    return text.replace(dotnetTrimEdges, "");
+  }
+
+  // .NET maps case one character at a time: "ß" stays "ß" (JavaScript gives "SS") and a
+  // final sigma lowers to "σ". Keep any character whose JavaScript mapping changes length.
+  function mapCaseSimple(text, upper) {
+    if (asciiOnly.test(text)) return upper ? text.toUpperCase() : text.toLowerCase();
+    let out = "";
+    for (const ch of text) {
+      const mapped = upper ? ch.toUpperCase() : ch.toLowerCase();
+      out += mapped.length === ch.length ? mapped : ch;
+    }
+    return out;
+  }
+
+  function strUpper(value) { return mapCaseSimple(coerceToString(value), true); }
+  function strTrim(value) { return dotnetTrim(coerceToString(value)); }
+
+  function requireStringArg(name, value, signature) {
+    if (typeof value !== "string") {
+      throw new Error(name + "() expects " + signature);
+    }
+    return value;
+  }
+
+  // split(text) splits on space/tab/CR/LF and drops empties; a separator with ( [ * + ? \
+  // is a regex whose empty pieces are dropped (keepSeparator adds each match); any other
+  // separator splits literally.
+  function strSplit(value, separator, keepSeparator) {
+    const text = coerceToString(value);
+    if (separator === null || separator === undefined) {
+      return text.split(/[ \t\n\r]+/).filter((part) => part.length > 0);
+    }
+    if (typeof separator !== "string") {
+      throw new Error("split() separator must be a string or null");
+    }
+    if (/[(\[*+?\\]/.test(separator)) {
+      let regex;
+      try {
+        regex = new RegExp(separator, "g");
+      } catch (error) {
+        throw new Error("Invalid regex pattern in split(): " + (error && error.message ? error.message : String(error)));
+      }
+      const keep = keepSeparator === true;
+      const result = [];
+      let last = 0;
+      for (const match of text.matchAll(regex)) {
+        if (match.index > last) result.push(text.slice(last, match.index));
+        if (keep) result.push(match[0]);
+        last = match.index + match[0].length;
+      }
+      if (last < text.length) result.push(text.slice(last));
+      return result;
+    }
+    if (separator === "") return [text];
+    return text.split(separator);
   }
   function strStartsWith(value, prefix) {
     return coerceToString(value).startsWith(coerceToString(prefix));
@@ -3229,21 +3314,48 @@
   function strEndsWith(value, suffix) {
     return coerceToString(value).endsWith(coerceToString(suffix));
   }
+  // .NET PadLeft / PadRight: one pad character (the first of `pad`, default space).
+  function padCharOf(pad) {
+    return typeof pad === "string" && pad.length > 0 ? pad[0] : " ";
+  }
   function strPadStart(value, length, pad) {
-    return coerceToString(value).padStart(Math.max(0, coerceToInt(length)), coerceToString(pad === undefined ? " " : pad));
+    const text = coerceToString(value);
+    const width = coerceToInt(length);
+    return text.length >= width ? text : padCharOf(pad).repeat(width - text.length) + text;
   }
   function strPadEnd(value, length, pad) {
-    return coerceToString(value).padEnd(Math.max(0, coerceToInt(length)), coerceToString(pad === undefined ? " " : pad));
+    const text = coerceToString(value);
+    const width = coerceToInt(length);
+    return text.length >= width ? text : text + padCharOf(pad).repeat(width - text.length);
+  }
+
+  // Interpreter includes(): same value kind and the same printed text. Strings keep the
+  // substring test (a JavaScript-only convenience; the interpreter wants an array).
+  function valueKind(value) {
+    if (value === null || value === undefined) return "null";
+    if (Array.isArray(value)) return "array";
+    if (isVariant(value)) return "variant";
+    return typeof value;
+  }
+  function sameKindAndText(left, right) {
+    return valueKind(left) === valueKind(right) && formatValue(left) === formatValue(right);
   }
   function strIncludes(value, search) {
+    if (Array.isArray(value)) {
+      return value.some((item) => sameKindAndText(item, search));
+    }
     return coerceToString(value).includes(coerceToString(search));
   }
   function strRepeat(value, count) {
-    return coerceToString(value).repeat(Math.max(0, coerceToInt(count)));
+    const times = coerceToInt(count);
+    if (times < 0) {
+      throw new Error("repeat() count must be non-negative");
+    }
+    return coerceToString(value).repeat(times);
   }
-  function compileRegex(pattern) {
+  function compileRegex(pattern, flags) {
     try {
-      return new RegExp(coerceToString(pattern));
+      return new RegExp(coerceToString(pattern), flags || "");
     } catch (error) {
       throw new Error("Invalid regex pattern: " + (error && error.message ? error.message : String(error)));
     }
@@ -3251,12 +3363,80 @@
   function strRegexMatch(value, pattern) {
     return compileRegex(pattern).test(coerceToString(value));
   }
-  function strRegexReplace(value, pattern, replacement) {
-    return coerceToString(value).replace(compileRegex(pattern), coerceToString(replacement));
+
+  // .NET substitutions: $n / ${n} / ${name}, $$, $& and $0, $`, $', $+ (last group), $_.
+  // $n takes the longest digit run that names an existing group; anything else is literal.
+  function expandDotnetReplacement(replacement, match, input) {
+    const groupCount = match.length - 1;
+    let out = "";
+    for (let i = 0; i < replacement.length; i++) {
+      const ch = replacement[i];
+      if (ch !== "$" || i + 1 >= replacement.length) {
+        out += ch;
+        continue;
+      }
+      const next = replacement[i + 1];
+      if (next === "$") { out += "$"; i++; continue; }
+      if (next === "&") { out += match[0]; i++; continue; }
+      if (next === "`") { out += input.slice(0, match.index); i++; continue; }
+      if (next === "'") { out += input.slice(match.index + match[0].length); i++; continue; }
+      if (next === "_") { out += input; i++; continue; }
+      if (next === "+") { out += groupCount > 0 ? (match[groupCount] ?? "") : ""; i++; continue; }
+      if (next === "{") {
+        const close = replacement.indexOf("}", i + 2);
+        if (close > i + 2) {
+          const name = replacement.slice(i + 2, close);
+          if (/^\d+$/.test(name) && Number(name) <= groupCount) {
+            out += match[Number(name)] ?? "";
+            i = close;
+            continue;
+          }
+          if (match.groups && Object.prototype.hasOwnProperty.call(match.groups, name)) {
+            out += match.groups[name] ?? "";
+            i = close;
+            continue;
+          }
+        }
+        out += ch;
+        continue;
+      }
+      if (next >= "0" && next <= "9") {
+        let end = i + 1;
+        while (end < replacement.length && replacement[end] >= "0" && replacement[end] <= "9") end++;
+        let digits = replacement.slice(i + 1, end);
+        while (digits.length > 0 && Number(digits) > groupCount) digits = digits.slice(0, -1);
+        if (digits.length > 0) {
+          out += match[Number(digits)] ?? "";
+          i += digits.length;
+          continue;
+        }
+      }
+      out += ch;
+    }
+    return out;
   }
+  function strRegexReplace(value, pattern, replacement) {
+    const input = coerceToString(value);
+    const template = coerceToString(replacement);
+    const regex = compileRegex(pattern, "g");
+    let out = "";
+    let last = 0;
+    for (const match of input.matchAll(regex)) {
+      out += input.slice(last, match.index) + expandDotnetReplacement(template, match, input);
+      last = match.index + match[0].length;
+    }
+    return out + input.slice(last);
+  }
+  // Every match as { text, groups }: groups[0] is the whole match, unmatched groups are "".
   function strRegexFind(value, pattern) {
-    const match = coerceToString(value).match(compileRegex(pattern));
-    return match ? match[0] : null;
+    const input = coerceToString(value);
+    const result = [];
+    for (const match of input.matchAll(compileRegex(pattern, "g"))) {
+      const groups = [];
+      for (let i = 0; i < match.length; i++) groups.push(match[i] ?? "");
+      result.push({ text: match[0], groups });
+    }
+    return result;
   }
 
   // Null-safe boundary coercion: null -> "" (unlike string(null) -> "null" in the interpreter).
@@ -3266,7 +3446,446 @@
   }
   function strTrimText(value) {
     requireCallArity("trimText", Array.prototype.slice.call(arguments), 1, 1);
-    return strText(value).trim();
+    return dotnetTrim(strText(value));
+  }
+
+  // ---- normalizeText / tokenize / tokenOverlap / similarity / extractNumbers ----
+
+  function textOptionFlag(options, key, fallback) {
+    if (options === null || typeof options !== "object" || Array.isArray(options) || isVariant(options)) return fallback;
+    const value = options[key];
+    return typeof value === "boolean" ? value : fallback;
+  }
+
+  function normalizeTextValue(text, options) {
+    let normalized = text;
+    if (textOptionFlag(options, "lowercase", true)) {
+      normalized = mapCaseSimple(normalized, false);
+    }
+    if (textOptionFlag(options, "stripDiacritics", true)) {
+      normalized = normalized.normalize("NFD").replace(/\p{Mn}/gu, "").normalize("NFC");
+    }
+    if (textOptionFlag(options, "removePunctuation", true)) {
+      // Per UTF-16 unit, like .NET char.IsLetterOrDigit / char.IsWhiteSpace.
+      let out = "";
+      for (let i = 0; i < normalized.length; i++) {
+        const unit = normalized[i];
+        out += letterOrDigitChar.test(unit) || dotnetSpaceChar.test(unit) ? unit : " ";
+      }
+      normalized = out;
+    }
+    if (textOptionFlag(options, "collapseWhitespace", true)) {
+      normalized = dotnetTrim(normalized.replace(dotnetSpaceRun, " "));
+    }
+    return normalized;
+  }
+
+  function tokenizeNormalized(text) {
+    return text.split(" ").filter((token) => token.length > 0);
+  }
+
+  function strNormalizeText(value, options) {
+    requireCallArity("normalizeText", Array.prototype.slice.call(arguments), 1, 2);
+    return normalizeTextValue(requireStringArg("normalizeText", value, "(string, options?)"), options);
+  }
+
+  function strTokenize(value, options) {
+    requireCallArity("tokenize", Array.prototype.slice.call(arguments), 1, 2);
+    return tokenizeNormalized(normalizeTextValue(requireStringArg("tokenize", value, "(string, options?)"), options));
+  }
+
+  function tokenSet(text, options) {
+    return new Set(tokenizeNormalized(normalizeTextValue(text, options)));
+  }
+
+  function strTokenOverlap(left, right, options) {
+    requireCallArity("tokenOverlap", Array.prototype.slice.call(arguments), 2, 3);
+    if (typeof left !== "string" || typeof right !== "string") {
+      throw new Error("tokenOverlap() expects (string, string, options?)");
+    }
+    const leftSet = tokenSet(left, options);
+    const rightSet = tokenSet(right, options);
+    const shared = Array.from(leftSet).filter((token) => rightSet.has(token)).sort();
+    const unionCount = new Set([...leftSet, ...rightSet]).size;
+    return {
+      sharedCount: shared.length,
+      leftCount: leftSet.size,
+      rightCount: rightSet.size,
+      jaccard: unionCount === 0 ? 1 : shared.length / unionCount,
+      sharedTokens: shared
+    };
+  }
+
+  function jaccardSimilarity(left, right, options) {
+    const leftSet = tokenSet(left, options);
+    const rightSet = tokenSet(right, options);
+    if (leftSet.size === 0 && rightSet.size === 0) return 1;
+    let intersection = 0;
+    leftSet.forEach((token) => { if (rightSet.has(token)) intersection++; });
+    const union = new Set([...leftSet, ...rightSet]).size;
+    return union === 0 ? 0 : intersection / union;
+  }
+
+  function characterNgrams(text, size) {
+    const compact = text.split(" ").join("");
+    const grams = new Set();
+    if (compact.length === 0) return grams;
+    if (compact.length <= size) {
+      grams.add(compact);
+      return grams;
+    }
+    for (let i = 0; i <= compact.length - size; i++) grams.add(compact.substring(i, i + size));
+    return grams;
+  }
+
+  function strSimilarity(left, right, method, options) {
+    requireCallArity("similarity", Array.prototype.slice.call(arguments), 2, 4);
+    if (typeof left !== "string" || typeof right !== "string") {
+      throw new Error("similarity() expects (string, string, method?, options?)");
+    }
+    const kind = typeof method === "string" ? dotnetTrim(method).toLowerCase() : "jaccard";
+    switch (kind) {
+      case "exact":
+        return normalizeTextValue(left, options) === normalizeTextValue(right, options) ? 1 : 0;
+      case "contains": {
+        const a = normalizeTextValue(left, options);
+        const b = normalizeTextValue(right, options);
+        if (a.length === 0 && b.length === 0) return 1;
+        if (a.includes(b) || b.includes(a)) return 1;
+        return jaccardSimilarity(left, right, options);
+      }
+      case "char-ngram": {
+        const a = characterNgrams(normalizeTextValue(left, options), 3);
+        const b = characterNgrams(normalizeTextValue(right, options), 3);
+        if (a.size === 0 && b.size === 0) return 1;
+        let shared = 0;
+        a.forEach((gram) => { if (b.has(gram)) shared++; });
+        const total = a.size + b.size;
+        return total === 0 ? 0 : (2 * shared) / total;
+      }
+      default:
+        return jaccardSimilarity(left, right, options);
+    }
+  }
+
+  const INT32_MIN = -2147483648;
+  const INT32_MAX = 2147483647;
+
+  // Numbers in text: "1.5" and "4,25" are floats, "12" an int; ints outside int32 are skipped.
+  function strExtractNumbers(value) {
+    requireCallArity("extractNumbers", Array.prototype.slice.call(arguments), 1, 1);
+    const text = requireStringArg("extractNumbers", value, "a string");
+    const values = [];
+    for (const match of text.matchAll(/-?\d+(?:[.,]\d+)?/g)) {
+      const literal = match[0].replace(",", ".");
+      const parsed = Number(literal);
+      if (literal.includes(".")) {
+        values.push(parsed);
+      } else if (parsed >= INT32_MIN && parsed <= INT32_MAX) {
+        values.push(parsed === 0 ? 0 : parsed);
+      }
+    }
+    return values;
+  }
+
+  // ---- UTF-8, base64, URL encoding, hashes ----
+
+  // UTF-8 bytes of a string; a lone surrogate becomes U+FFFD like .NET Encoding.UTF8.
+  function utf8Bytes(text) {
+    const bytes = [];
+    for (let i = 0; i < text.length; i++) {
+      let code = text.charCodeAt(i);
+      if (code >= 0xd800 && code <= 0xdbff && i + 1 < text.length) {
+        const low = text.charCodeAt(i + 1);
+        if (low >= 0xdc00 && low <= 0xdfff) {
+          code = 0x10000 + ((code - 0xd800) << 10) + (low - 0xdc00);
+          i++;
+        } else {
+          code = 0xfffd;
+        }
+      } else if (code >= 0xd800 && code <= 0xdfff) {
+        code = 0xfffd;
+      }
+      if (code < 0x80) {
+        bytes.push(code);
+      } else if (code < 0x800) {
+        bytes.push(0xc0 | (code >> 6), 0x80 | (code & 0x3f));
+      } else if (code < 0x10000) {
+        bytes.push(0xe0 | (code >> 12), 0x80 | ((code >> 6) & 0x3f), 0x80 | (code & 0x3f));
+      } else {
+        bytes.push(0xf0 | (code >> 18), 0x80 | ((code >> 12) & 0x3f), 0x80 | ((code >> 6) & 0x3f), 0x80 | (code & 0x3f));
+      }
+    }
+    return bytes;
+  }
+
+  // Length of the valid UTF-8 sequence starting at `at`, or 0 (overlong, surrogate, truncated).
+  function utf8SequenceLength(bytes, at) {
+    const first = bytes[at];
+    if (first < 0x80) return 1;
+    let length;
+    let min;
+    if (first >= 0xc2 && first <= 0xdf) { length = 2; min = 0x80; }
+    else if (first >= 0xe0 && first <= 0xef) { length = 3; min = 0x800; }
+    else if (first >= 0xf0 && first <= 0xf4) { length = 4; min = 0x10000; }
+    else return 0;
+    if (at + length > bytes.length) return 0;
+    let code = first & (0xff >> (length + 1));
+    for (let k = 1; k < length; k++) {
+      const next = bytes[at + k];
+      if ((next & 0xc0) !== 0x80) return 0;
+      code = (code << 6) | (next & 0x3f);
+    }
+    if (code < min || code > 0x10ffff || (code >= 0xd800 && code <= 0xdfff)) return 0;
+    return length;
+  }
+
+  function utf8SequenceText(bytes, at, length) {
+    let code = length === 1 ? bytes[at] : bytes[at] & (0xff >> (length + 1));
+    for (let k = 1; k < length; k++) code = (code << 6) | (bytes[at + k] & 0x3f);
+    return String.fromCodePoint(code);
+  }
+
+  // Decodes UTF-8 with U+FFFD for invalid input (the WHATWG / .NET replacement rules).
+  function utf8Decode(bytes) {
+    if (typeof TextDecoder === "function") {
+      return new TextDecoder("utf-8").decode(new Uint8Array(bytes));
+    }
+    let out = "";
+    for (let i = 0; i < bytes.length;) {
+      const length = utf8SequenceLength(bytes, i);
+      if (length === 0) {
+        out += "�";
+        i++;
+      } else {
+        out += utf8SequenceText(bytes, i, length);
+        i += length;
+      }
+    }
+    return out;
+  }
+
+  const BASE64_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+  function base64FromBytes(bytes) {
+    let out = "";
+    for (let i = 0; i < bytes.length; i += 3) {
+      const b0 = bytes[i];
+      const b1 = i + 1 < bytes.length ? bytes[i + 1] : 0;
+      const b2 = i + 2 < bytes.length ? bytes[i + 2] : 0;
+      out += BASE64_ALPHABET[b0 >> 2] + BASE64_ALPHABET[((b0 & 3) << 4) | (b1 >> 4)];
+      out += i + 1 < bytes.length ? BASE64_ALPHABET[((b1 & 15) << 2) | (b2 >> 6)] : "=";
+      out += i + 2 < bytes.length ? BASE64_ALPHABET[b2 & 63] : "=";
+    }
+    return out;
+  }
+
+  // Convert.FromBase64String: whitespace ignored, length a multiple of 4, up to two '='.
+  function bytesFromBase64(text) {
+    const compact = text.replace(/[ \t\r\n]/g, "");
+    if (compact.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(compact)) {
+      throw new Error("base64Decode() invalid base64 string");
+    }
+    const bytes = [];
+    let buffer = 0;
+    let bits = 0;
+    for (let i = 0; i < compact.length && compact[i] !== "="; i++) {
+      buffer = ((buffer << 6) | BASE64_ALPHABET.indexOf(compact[i])) & 0xffffff;
+      bits += 6;
+      if (bits >= 8) {
+        bits -= 8;
+        bytes.push((buffer >> bits) & 0xff);
+      }
+    }
+    return bytes;
+  }
+
+  function base64EncodeBuiltin(value) {
+    requireCallArity("base64Encode", Array.prototype.slice.call(arguments), 1, 1);
+    return base64FromBytes(utf8Bytes(requireStringArg("base64Encode", value, "a string argument")));
+  }
+
+  function base64DecodeBuiltin(value) {
+    requireCallArity("base64Decode", Array.prototype.slice.call(arguments), 1, 1);
+    return utf8Decode(bytesFromBase64(requireStringArg("base64Decode", value, "a string argument")));
+  }
+
+  // Uri.EscapeDataString: only A-Z a-z 0-9 - _ . ~ stay literal.
+  function urlEncodeBuiltin(value) {
+    requireCallArity("urlEncode", Array.prototype.slice.call(arguments), 1, 1);
+    const text = requireStringArg("urlEncode", value, "a string argument");
+    let wellFormed = "";
+    for (let i = 0; i < text.length; i++) {
+      const code = text.charCodeAt(i);
+      if (code >= 0xd800 && code <= 0xdbff && i + 1 < text.length) {
+        const low = text.charCodeAt(i + 1);
+        if (low >= 0xdc00 && low <= 0xdfff) {
+          wellFormed += text[i] + text[i + 1];
+          i++;
+          continue;
+        }
+      }
+      wellFormed += code >= 0xd800 && code <= 0xdfff ? "�" : text[i];
+    }
+    return encodeURIComponent(wellFormed).replace(/[!'()*]/g,
+      (ch) => "%" + ch.charCodeAt(0).toString(16).toUpperCase());
+  }
+
+  // Uri.UnescapeDataString: %XX runs that form valid UTF-8 are decoded; anything else
+  // (a bad escape, a byte that is not valid UTF-8) stays as written. '+' is not a space.
+  function urlDecodeBuiltin(value) {
+    requireCallArity("urlDecode", Array.prototype.slice.call(arguments), 1, 1);
+    const text = requireStringArg("urlDecode", value, "a string argument");
+    return text.replace(/(?:%[0-9A-Fa-f]{2})+/g, (run) => {
+      const bytes = [];
+      for (let i = 0; i < run.length; i += 3) bytes.push(parseInt(run.substr(i + 1, 2), 16));
+      let out = "";
+      for (let i = 0; i < bytes.length;) {
+        const length = utf8SequenceLength(bytes, i);
+        if (length === 0) {
+          out += run.substr(i * 3, 3);
+          i++;
+        } else {
+          out += utf8SequenceText(bytes, i, length);
+          i += length;
+        }
+      }
+      return out;
+    });
+  }
+
+  function hexOfWords(words, littleEndian) {
+    let out = "";
+    for (const word of words) {
+      for (let k = 0; k < 4; k++) {
+        const shift = littleEndian ? k * 8 : 24 - k * 8;
+        out += ((word >>> shift) & 0xff).toString(16).padStart(2, "0");
+      }
+    }
+    return out;
+  }
+
+  // Message padding shared by MD5 (little-endian length) and SHA-256 (big-endian length).
+  function padHashMessage(bytes, littleEndian) {
+    const padded = bytes.slice();
+    padded.push(0x80);
+    while (padded.length % 64 !== 56) padded.push(0);
+    const bitLength = bytes.length * 8;
+    for (let k = 0; k < 8; k++) {
+      const shift = littleEndian ? k : 7 - k;
+      padded.push(Math.floor(bitLength / Math.pow(2, 8 * shift)) & 0xff);
+    }
+    return padded;
+  }
+
+  const MD5_SHIFTS = [7, 12, 17, 22, 5, 9, 14, 20, 4, 11, 16, 23, 6, 10, 15, 21];
+  let md5Constants = null;
+
+  function md5Hex(bytes) {
+    if (md5Constants === null) {
+      md5Constants = [];
+      for (let i = 0; i < 64; i++) md5Constants.push(Math.floor(Math.abs(Math.sin(i + 1)) * 4294967296) >>> 0);
+    }
+    const padded = padHashMessage(bytes, true);
+    let a0 = 0x67452301;
+    let b0 = 0xefcdab89;
+    let c0 = 0x98badcfe;
+    let d0 = 0x10325476;
+    const m = new Array(16);
+    for (let offset = 0; offset < padded.length; offset += 64) {
+      for (let i = 0; i < 16; i++) {
+        const at = offset + i * 4;
+        m[i] = (padded[at] | (padded[at + 1] << 8) | (padded[at + 2] << 16) | (padded[at + 3] << 24)) >>> 0;
+      }
+      let a = a0;
+      let b = b0;
+      let c = c0;
+      let d = d0;
+      for (let i = 0; i < 64; i++) {
+        let f;
+        let g;
+        if (i < 16) { f = (b & c) | (~b & d); g = i; }
+        else if (i < 32) { f = (d & b) | (~d & c); g = (5 * i + 1) % 16; }
+        else if (i < 48) { f = b ^ c ^ d; g = (3 * i + 5) % 16; }
+        else { f = c ^ (b | ~d); g = (7 * i) % 16; }
+        f = (f + a + md5Constants[i] + m[g]) >>> 0;
+        a = d;
+        d = c;
+        c = b;
+        const shift = MD5_SHIFTS[(i >> 4) * 4 + (i % 4)];
+        b = (b + ((f << shift) | (f >>> (32 - shift)))) >>> 0;
+      }
+      a0 = (a0 + a) >>> 0;
+      b0 = (b0 + b) >>> 0;
+      c0 = (c0 + c) >>> 0;
+      d0 = (d0 + d) >>> 0;
+    }
+    return hexOfWords([a0, b0, c0, d0], true);
+  }
+
+  const SHA256_K = [
+    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+    0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+    0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+    0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+    0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+    0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+    0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
+  ];
+
+  function sha256Hex(bytes) {
+    const rotr = (x, n) => (x >>> n) | (x << (32 - n));
+    const padded = padHashMessage(bytes, false);
+    const h = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
+    const w = new Array(64);
+    for (let offset = 0; offset < padded.length; offset += 64) {
+      for (let i = 0; i < 16; i++) {
+        const at = offset + i * 4;
+        w[i] = ((padded[at] << 24) | (padded[at + 1] << 16) | (padded[at + 2] << 8) | padded[at + 3]) >>> 0;
+      }
+      for (let i = 16; i < 64; i++) {
+        const s0 = rotr(w[i - 15], 7) ^ rotr(w[i - 15], 18) ^ (w[i - 15] >>> 3);
+        const s1 = rotr(w[i - 2], 17) ^ rotr(w[i - 2], 19) ^ (w[i - 2] >>> 10);
+        w[i] = (w[i - 16] + s0 + w[i - 7] + s1) >>> 0;
+      }
+      let [a, b, c, d, e, f, g, hh] = h;
+      for (let i = 0; i < 64; i++) {
+        const s1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25);
+        const ch = (e & f) ^ (~e & g);
+        const t1 = (hh + s1 + ch + SHA256_K[i] + w[i]) >>> 0;
+        const s0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22);
+        const maj = (a & b) ^ (a & c) ^ (b & c);
+        const t2 = (s0 + maj) >>> 0;
+        hh = g;
+        g = f;
+        f = e;
+        e = (d + t1) >>> 0;
+        d = c;
+        c = b;
+        b = a;
+        a = (t1 + t2) >>> 0;
+      }
+      h[0] = (h[0] + a) >>> 0;
+      h[1] = (h[1] + b) >>> 0;
+      h[2] = (h[2] + c) >>> 0;
+      h[3] = (h[3] + d) >>> 0;
+      h[4] = (h[4] + e) >>> 0;
+      h[5] = (h[5] + f) >>> 0;
+      h[6] = (h[6] + g) >>> 0;
+      h[7] = (h[7] + hh) >>> 0;
+    }
+    return hexOfWords(h, false);
+  }
+
+  function md5Builtin(value) {
+    requireCallArity("md5", Array.prototype.slice.call(arguments), 1, 1);
+    return md5Hex(utf8Bytes(requireStringArg("md5", value, "a string argument")));
+  }
+
+  function sha256Builtin(value) {
+    requireCallArity("sha256", Array.prototype.slice.call(arguments), 1, 1);
+    return sha256Hex(utf8Bytes(requireStringArg("sha256", value, "a string argument")));
   }
 
   const strStdLib = {
@@ -3289,7 +3908,16 @@
     regexReplace: strRegexReplace,
     regexFind: strRegexFind,
     text: strText,
-    trimText: strTrimText
+    trimText: strTrimText,
+    normalizeText: strNormalizeText,
+    tokenize: strTokenize,
+    tokenOverlap: strTokenOverlap,
+    similarity: strSimilarity,
+    extractNumbers: strExtractNumbers,
+    base64Encode: base64EncodeBuiltin,
+    base64Decode: base64DecodeBuiltin,
+    md5: md5Builtin,
+    sha256: sha256Builtin
   };
 
   function ioPrint(value) {
@@ -3318,10 +3946,254 @@
     hasEnv: hasEnvBuiltin
   };
 
+  // ---- Conversion, type tests, arrays, assertions (interpreter semantics) ----
+
+  // Int32 parse of int.TryParse(NumberStyles.Integer) then double.TryParse(Float), as in
+  // BuiltInFunctions.TryCoerceRuntimeValueToInt. Returns null when the value does not convert.
+  function tryCoerceToInt32(value) {
+    if (typeof value === "number") {
+      if (!Number.isFinite(value)) return null;
+      return clampToInt32(Math.trunc(value));
+    }
+    if (typeof value === "boolean") return value ? 1 : 0;
+    if (typeof value !== "string") return null;
+    const text = dotnetTrim(value);
+    if (text.length === 0) return null;
+    if (/^[+-]?\d+$/.test(text)) {
+      const parsed = Number(text);
+      if (parsed >= INT32_MIN && parsed <= INT32_MAX) return parsed === 0 ? 0 : parsed;
+    }
+    if (/^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/.test(text)) {
+      const parsed = Number(text);
+      return Number.isFinite(parsed) ? clampToInt32(Math.trunc(parsed)) : null;
+    }
+    return null;
+  }
+
+  function clampToInt32(value) {
+    if (value <= INT32_MIN) return INT32_MIN;
+    if (value >= INT32_MAX) return INT32_MAX;
+    return value === 0 ? 0 : value;
+  }
+
+  function isNullOrBlank(value) {
+    return value === null || value === undefined || (typeof value === "string" && dotnetTrim(value).length === 0);
+  }
+
+  function toIntOrBuiltin(value, fallback) {
+    requireCallArity("toIntOr", Array.prototype.slice.call(arguments), 2, 2, "value, fallback");
+    const fallbackInt = tryCoerceToInt32(fallback);
+    if (fallbackInt === null) {
+      throw new Error("toIntOr() fallback must be an integer-compatible value");
+    }
+    if (isNullOrBlank(value)) return fallbackInt;
+    const parsed = tryCoerceToInt32(value);
+    return parsed === null ? fallbackInt : parsed;
+  }
+
+  function toIntOrNullBuiltin(value) {
+    requireCallArity("toIntOrNull", Array.prototype.slice.call(arguments), 1, 1);
+    if (isNullOrBlank(value)) return null;
+    return tryCoerceToInt32(value);
+  }
+
+  const BIG_TEN = typeof BigInt === "function" ? BigInt(10) : null;
+
+  // .NET value.ToString("F<places>"): the exact binary value rounded half to even, so
+  // 0.125 -> "0.12", 2.5 -> "2" and 1.005 -> "1.00" (its double is just below 1.005).
+  function formatFixed(value, places) {
+    if (Number.isNaN(value)) return "NaN";
+    if (!Number.isFinite(value)) return value > 0 ? "Infinity" : "-Infinity";
+    const magnitude = Math.abs(value);
+    let digits;
+    if (BIG_TEN === null) {
+      digits = magnitude.toFixed(Math.min(places, 100)).replace(".", "");
+    } else {
+      const view = new DataView(new ArrayBuffer(8));
+      view.setFloat64(0, magnitude);
+      const high = view.getUint32(0);
+      const low = view.getUint32(4);
+      const biased = (high >>> 20) & 0x7ff;
+      let mantissa = (BigInt(high & 0xfffff) << BigInt(32)) | BigInt(low);
+      let exponent = -1074;
+      if (biased !== 0) {
+        mantissa |= BigInt(1) << BigInt(52);
+        exponent = biased - 1075;
+      }
+      let numerator = mantissa;
+      for (let i = 0; i < places; i++) numerator *= BIG_TEN;
+      let denominator = BigInt(1);
+      if (exponent >= 0) numerator <<= BigInt(exponent);
+      else denominator <<= BigInt(-exponent);
+      let quotient = numerator / denominator;
+      const twiceRemainder = (numerator % denominator) * BigInt(2);
+      if (twiceRemainder > denominator || (twiceRemainder === denominator && (quotient & BigInt(1)) === BigInt(1))) {
+        quotient += BigInt(1);
+      }
+      digits = quotient.toString();
+    }
+    if (places > 0) {
+      digits = digits.padStart(places + 1, "0");
+      digits = digits.slice(0, digits.length - places) + "." + digits.slice(digits.length - places);
+    }
+    return (value < 0 ? "-" : "") + digits;
+  }
+
+  function formatNumberBuiltin(number, decimalPlaces) {
+    requireCallArity("formatNumber", Array.prototype.slice.call(arguments), 2, 2, "number, decimalPlaces");
+    if (typeof decimalPlaces !== "number" || !Number.isInteger(decimalPlaces)) {
+      throw new Error("formatNumber() second argument (decimalPlaces) must be an integer");
+    }
+    if (decimalPlaces < 0) {
+      throw new Error("formatNumber() decimalPlaces must be non-negative");
+    }
+    if (typeof number !== "number") {
+      throw new Error("formatNumber() first argument must be a number");
+    }
+    return formatFixed(number, decimalPlaces);
+  }
+
+  function isStringBuiltin(value) {
+    requireCallArity("isString", Array.prototype.slice.call(arguments), 1, 1);
+    return typeof value === "string";
+  }
+
+  function isArrayBuiltin(value) {
+    requireCallArity("isArray", Array.prototype.slice.call(arguments), 1, 1);
+    return Array.isArray(value);
+  }
+
+  // Dicts, parsed JSON and class instances; not variants, arrays, functions or tasks.
+  function isObjectBuiltin(value) {
+    requireCallArity("isObject", Array.prototype.slice.call(arguments), 1, 1);
+    return isObject(value) && typeof value.then !== "function";
+  }
+
+  function reverseBuiltin(value) {
+    requireCallArity("reverse", Array.prototype.slice.call(arguments), 1, 1);
+    if (!Array.isArray(value)) {
+      throw new Error("reverse() expects an array");
+    }
+    return value.slice().reverse();
+  }
+
+  function assertionMessage(message, fallback) {
+    return typeof message === "string" ? message : fallback;
+  }
+
+  function assertBuiltin(condition, message) {
+    const args = Array.prototype.slice.call(arguments);
+    if (args.length < 1 || args.length > 2) {
+      throw new Error("assert() expects 1-2 arguments: (condition, message?)");
+    }
+    if (!isTruthy(condition)) {
+      throw new Error(assertionMessage(message, "Assertion failed"));
+    }
+    return null;
+  }
+
+  function expectBuiltin(condition, message) {
+    requireCallArity("expect", Array.prototype.slice.call(arguments), 1, 2);
+    if (!isTruthy(condition)) {
+      throw new Error(assertionMessage(message, "Expectation failed"));
+    }
+    return null;
+  }
+
+  // A dict or parsed JSON object (not a class instance or variant): what toCsv reads by key.
+  function isPlainDict(value) {
+    if (value === null || typeof value !== "object" || Array.isArray(value) || isVariant(value)) return false;
+    const proto = Object.getPrototypeOf(value);
+    return proto === null || proto === Object.prototype;
+  }
+
+  function dictKeys(value) {
+    return Object.keys(value).filter((key) => key !== "__maldaDict");
+  }
+
+  function csvStringOption(options, key, fallback) {
+    const value = options[key];
+    if (value === null || value === undefined) return fallback;
+    const text = typeof value === "string" ? value : formatValue(value);
+    return text.length === 0 ? fallback : text;
+  }
+
+  function csvBooleanOption(options, key, fallback) {
+    const value = options[key];
+    if (value === null || value === undefined) return fallback;
+    if (typeof value === "boolean") return value;
+    if (typeof value === "number" && Number.isInteger(value)) return value !== 0;
+    if (typeof value === "string") {
+      const text = dotnetTrim(value).toLowerCase();
+      if (text === "true") return true;
+      if (text === "false") return false;
+      if (/^[+-]?\d+$/.test(text)) return Number(text) !== 0;
+    }
+    return fallback;
+  }
+
+  function escapeCsvCell(text, delimiter, quoteAll) {
+    const escaped = text.split("\"").join("\"\"");
+    const mustQuote = quoteAll || escaped.includes(delimiter) || escaped.includes("\"") ||
+      escaped.includes("\n") || escaped.includes("\r");
+    return mustQuote ? "\"" + escaped + "\"" : escaped;
+  }
+
+  function toCsvBuiltin(rows, second, third) {
+    const args = Array.prototype.slice.call(arguments);
+    if (args.length < 1 || args.length > 3) {
+      throw new Error("toCsv() expects 1-3 arguments: (rows, columns?, options?)");
+    }
+    if (!Array.isArray(rows)) {
+      throw new Error("toCsv() first argument must be an array");
+    }
+    let columns = [];
+    let options = null;
+    if (args.length >= 2 && second !== null && second !== undefined) {
+      if (Array.isArray(second)) {
+        columns = second.map((column) => (typeof column === "string" ? column : formatValue(column)));
+      } else if (isObject(second)) {
+        options = isPlainDict(second) ? second : null;
+      } else {
+        throw new Error("toCsv() second argument must be columns array, options object, or null");
+      }
+    }
+    if (args.length === 3) {
+      if (isObject(third)) {
+        options = isPlainDict(third) ? third : null;
+      } else if (third !== null && third !== undefined) {
+        throw new Error("toCsv() third argument must be options object or null");
+      }
+    }
+    const delimiter = options ? csvStringOption(options, "delimiter", ",") : ",";
+    const newline = options ? csvStringOption(options, "newline", "\n") : "\n";
+    const includeHeader = options === null || csvBooleanOption(options, "includeHeader", true);
+    const quoteAll = options !== null && csvBooleanOption(options, "quoteAll", false);
+    if (columns.length === 0 && rows.length > 0) {
+      columns = isPlainDict(rows[0]) ? dictKeys(rows[0]) : ["value"];
+    }
+    const lines = [];
+    if (includeHeader && columns.length > 0) {
+      lines.push(columns.map((column) => escapeCsvCell(column, delimiter, quoteAll)).join(delimiter));
+    }
+    for (const row of rows) {
+      const cells = columns.map((column) => {
+        let cell = null;
+        if (isPlainDict(row)) {
+          cell = Object.prototype.hasOwnProperty.call(row, column) && column !== "__maldaDict" ? row[column] : null;
+        } else if (column === "value") {
+          cell = row;
+        }
+        const text = cell === null || cell === undefined ? "" : (typeof cell === "string" ? cell : toJSON(cell));
+        return escapeCsvCell(text, delimiter, quoteAll);
+      });
+      lines.push(cells.join(delimiter));
+    }
+    return lines.join(newline);
+  }
+
+  // Parsed objects stay plain JSON objects (typeOf "object"), as in the interpreter.
   function reviveJson(value) {
-    if (value === null) return null;
-    if (Array.isArray(value)) return value.map(reviveJson);
-    if (typeof value === "object") return markDict(value);
     return value;
   }
 
@@ -3336,22 +4208,70 @@
     }
   }
 
+  // System.Text.Json's default encoder: printable ASCII stays, except " & ' + < > ` and
+  // \ ; \b \f \n \r \t keep short escapes; everything else is \uXXXX (upper-case hex).
+  function jsonQuote(text) {
+    let out = "\"";
+    for (let i = 0; i < text.length; i++) {
+      const code = text.charCodeAt(i);
+      switch (code) {
+        case 0x5c: out += "\\\\"; continue;
+        case 0x08: out += "\\b"; continue;
+        case 0x0c: out += "\\f"; continue;
+        case 0x0a: out += "\\n"; continue;
+        case 0x0d: out += "\\r"; continue;
+        case 0x09: out += "\\t"; continue;
+      }
+      if (code < 0x20 || code > 0x7e || code === 0x22 || code === 0x26 || code === 0x27 ||
+          code === 0x2b || code === 0x3c || code === 0x3e || code === 0x60) {
+        out += "\\u" + code.toString(16).toUpperCase().padStart(4, "0");
+      } else {
+        out += text[i];
+      }
+    }
+    return out + "\"";
+  }
+
+  // toJSON like the interpreter: numbers as printed (1E+20), NaN/Infinity as null, dict and
+  // instance fields in order, functions "<Function>", tasks "<Task>". Variants stay
+  // { "tag", "payload" } (the interpreter writes "<Variant>"; see the capability matrix).
   function toJSON(value) {
-    return JSON.stringify(value, function (_key, item) {
-      if (isVariant(item)) {
-        return { tag: item.tag, payload: item.payload };
+    return toJsonText(value, []);
+  }
+
+  function toJsonText(value, seen) {
+    if (value === null || value === undefined) return "null";
+    switch (typeof value) {
+      case "string": return jsonQuote(value);
+      case "boolean": return value ? "true" : "false";
+      case "number": return Number.isFinite(value) ? formatNumber(value) : "null";
+      case "function": return "\"<Function>\"";
+      case "bigint": return value.toString();
+    }
+    if (typeof value.then === "function") return "\"<Task>\"";
+    if (seen.indexOf(value) >= 0) {
+      throw new Error("toJSON() cannot serialize a cyclic value");
+    }
+    seen.push(value);
+    try {
+      if (Array.isArray(value)) {
+        return "[" + value.map((item) => toJsonText(item, seen)).join(",") + "]";
       }
-      if (item && typeof item === "object" && item.__maldaDict) {
-        const copy = {};
-        Object.keys(item).forEach((key) => {
-          if (key !== "__maldaDict") copy[key] = item[key];
-        });
-        return copy;
+      if (isVariant(value)) {
+        return "{\"tag\":" + jsonQuote(coerceToString(value.tag)) + ",\"payload\":" + toJsonText(variantPayload(value), seen) + "}";
       }
-      // Class instances: own enumerable fields only (methods live on the prototype).
-      // Matches interpreter toJSON: public instance data, no type tag.
-      return item;
-    });
+      if (typeof value.toJSON === "function" && !isPlainDict(value)) {
+        return toJsonText(value.toJSON(), seen);
+      }
+      const parts = [];
+      for (const key of Object.keys(value)) {
+        if (key === "__maldaDict") continue;
+        parts.push(jsonQuote(key) + ":" + toJsonText(value[key], seen));
+      }
+      return "{" + parts.join(",") + "}";
+    } finally {
+      seen.pop();
+    }
   }
 
   const schemaRegistry = Object.create(null);
@@ -3854,6 +4774,18 @@
     rangeBuiltin,
     joinBuiltin,
     sortBuiltin,
+    toIntOr: toIntOrBuiltin,
+    toIntOrNull: toIntOrNullBuiltin,
+    formatNumber: formatNumberBuiltin,
+    isString: isStringBuiltin,
+    isArray: isArrayBuiltin,
+    isObjectBuiltin,
+    toCsv: toCsvBuiltin,
+    reverse: reverseBuiltin,
+    urlEncode: urlEncodeBuiltin,
+    urlDecode: urlDecodeBuiltin,
+    assert: assertBuiltin,
+    expect: expectBuiltin,
     callArrayMethod,
     callDictMethod,
     parseJSON,
