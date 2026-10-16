@@ -102,6 +102,8 @@ public partial class Parser
         {
             do
             {
+                if (names.Count > 0 && Check(TokenType.RightParen))
+                    break; // trailing comma
                 var paramToken = ConsumeIdentifierTokenLike("Expect parameter name in primary constructor.");
                 var paramName = paramToken.Lexeme;
                 if (!seen.Add(paramName))
@@ -196,6 +198,8 @@ public partial class Parser
         {
             do
             {
+                if (parameters.Count > 0 && Check(TokenType.RightParen))
+                    break; // trailing comma
                 parameters.Add(ConsumeIdentifierLike("Expect parameter name in message declaration."));
             } while (Match(TokenType.Comma));
         }
@@ -314,6 +318,8 @@ public partial class Parser
         {
             do
             {
+                if (parameters.Count > 0 && Check(TokenType.RightParen))
+                    break; // trailing comma
                 parameters.Add(ConsumeIdentifierOrInput("Expect parameter name."));
             } while (Match(TokenType.Comma));
         }
@@ -386,6 +392,8 @@ public partial class Parser
         {
             do
             {
+                if (parameters.Count > 0 && Check(TokenType.RightParen))
+                    break; // trailing comma
                 var paramDecorators = ParseDecorators();
                 parameters.Add(ConsumeIdentifierOrInput("Expect parameter name."));
                 parameterDecorators.AddRange(paramDecorators);
@@ -423,6 +431,8 @@ public partial class Parser
         {
             do
             {
+                if (parameters.Count > 0 && Check(TokenType.RightParen))
+                    break; // trailing comma
                 var paramDecorators = ParseDecorators();
                 parameters.Add(ConsumeIdentifierLike("Expect parameter name."));
                 parameterDecorators.AddRange(paramDecorators);

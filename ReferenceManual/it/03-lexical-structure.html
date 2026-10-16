@@ -424,7 +424,7 @@ print(user?["name"]);   // null, no error</code></pre>
                 </tr>
                 <tr>
                     <td><code>,</code></td>
-                    <td>Separatori di parametri/argomenti. È ammessa una virgola finale prima della parentesi di chiusura di un letterale array, oggetto, <code>dict</code> o <code>graph</code> e della lista di argomenti di una chiamata (<code>[1, 2,]</code>, <code>{ a: 1, }</code>, <code>f(a, b,)</code>); una virgola isolata <code>[,]</code> resta un errore.</td>
+                    <td>Separatori di parametri/argomenti. È ammessa una virgola finale prima della parentesi di chiusura di un letterale array, oggetto, <code>dict</code> o <code>graph</code>, della lista di argomenti di una chiamata e di una lista di parametri — funzioni, metodi, costruttori, lambda, prompt e workflow (<code>[1, 2,]</code>, <code>{ a: 1, }</code>, <code>f(a, b,)</code>, <code>function g(a, b,) { … }</code>, <code>(a, b,) =&gt; a + b</code>); una virgola isolata <code>[,]</code> o <code>(,)</code> resta un errore.</td>
                 </tr>
                 <tr>
                     <td><code>.</code></td>

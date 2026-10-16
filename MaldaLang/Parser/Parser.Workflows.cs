@@ -27,6 +27,8 @@ public partial class Parser
         {
             do
             {
+                if (parameters.Count > 0 && Check(TokenType.RightParen))
+                    break; // trailing comma
                 parameters.Add(ConsumeIdentifierOrInput("Expect parameter name."));
             } while (Match(TokenType.Comma));
         }

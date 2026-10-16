@@ -15,7 +15,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | learn.html | d33158b5283703385f202d0d3ca18d6d168124b2318a0719327cb4bd550705a6 |
 | 01-introduction.html | eecfd6010fbc8939d551b022afee1ede73177ac3a6bc441714b0460ba51012ba |
 | 02-tools.html | 5ccad607b54d4627318572dc12160edb833a34ca909eea183d5c5a4aa41f01ed |
-| 03-lexical-structure.html | f7edcc57115664775fe5c097cade16c2f6038b12269f1aa2dcfb474b5dca18b8 |
+| 03-lexical-structure.html | fba656e7a593b86e30e20329437168443ab6794325a767030fc2e5cee2a41c49 |
 | 04-data-types.html | 37533f5be6f47ab840c8ecf15d7cabb93d9c0b0c938e9c36515797ed3765f71d |
 | 05-variables.html | fed6bbe8b94c976a0465aceb644ec95a78ea2d6286196b44dac3877ed3de9e01 |
 | 06-arrays.html | d731e8b2192dd1c7f524b65752d918e4e98121d0dff4c28b60878396ae55eb3e |
@@ -49,6 +49,6 @@ python3 scripts/sync-reference-manual-it-status.py
 | 34-personal-assistant.html | 6e4bfdeb93e312407b9b308359456a17974f6d3f68f89c0597db216903223746 |
 | 35-examples.html | b4cf606d19d95edd5e6bba57bb0136d940c662fb27971c6e4426185e2f535025 |
 | 36-property-testing.html | ca3e9b414d46506e7fa4ae72e6f2097d5c8423e5ff0d3c7602c5af11528edcf0 |
-| 37-grammar.html | b9851a077f7fcae73cdbb6b4b6298c8b4910fe506daf9d6e0b49458e03994835 |
+| 37-grammar.html | ec86b6630b1adb66f70b6e30dc67b3750408af1428f98addc1218042f3d7271d |
 | 38-appendix.html | 200e2a3ef584cf1549a032bd2ec75717ac7fec749192b219548bb51d9f777ec4 |
 | 39-appendix-gpu-billiards.html | 75e8b4a65155807421dd4bd6e25a025bd98aacae76215314d8ff3fe136d39566 |

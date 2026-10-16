@@ -44,7 +44,7 @@ ConstructorDecl ::= AccessModifier? FunctionDecl   /* name equals class name; fo
 
 TypeDecl      ::= "type" Identifier "=" Constructor ("|" Constructor)* ";"
 Constructor   ::= Identifier ("(" CtorParamList? ")")?
-CtorParamList ::= CtorParam ("," CtorParam)*
+CtorParamList ::= CtorParam ("," CtorParam)* ","?
 CtorParam     ::= Identifier (":" SchemaType)?
 
 SchemaDecl    ::= "schema" Identifier "{" SchemaField* "}"
@@ -102,7 +102,7 @@ WaitStmt      ::= "wait" Identifier "=" "awaitSignal"
 
 AccessModifier ::= ("public" | "private")? "static"?
 TypeHint      ::= ":" "out"? Identifier
-ParamList     ::= Param ("," Param)*
+ParamList     ::= Param ("," Param)* ","?   /* one trailing "," allowed; a lone "," is an error */
 Param         ::= Decorator* Identifier TypeHint?
 CallExpr      ::= Expression PostfixSuffix*   /* see Â§34.4 */
 
@@ -185,12 +185,13 @@ Primary     ::= Literal | Identifier | "(" Expression ")"
 LambdaExpr  ::= LambdaParams Arrow (Expression | Block)
 LambdaParams::= "(" ParamList? ")" | Identifier
 Arrow         ::= "=>" | "->"   /* same Arrow token in lexer */
-FunctionExpr ::= "function" "(" ParamList? ","? ")" Block
+FunctionExpr ::= "function" "(" ParamList? ")" Block
               /* anonymous function: same node as "(" ParamList? ")" "=>" Block.
                  "function" Identifier at statement start is a FunctionDecl. */
 
 /* Every list below allows one trailing comma before its closing bracket
-   ([1, 2,], { a: 1, }, f(a, b,)); a lone "," ([,]) is still an error. */
+   ([1, 2,], { a: 1, }, f(a, b,)); so do ParamList and CtorParamList
+   (function f(a, b,) { }, (a, b,) => a + b). A lone "," ([,], (,)) is still an error. */
 ArrayLiteral ::= "[" (Expression ("," Expression)* ","?)? "]"
 DictLiteral  ::= "dict" "{" (Expression ":" Expression ("," Expression ":" Expression)* ","?)? "}"
 GraphLiteral ::= "graph" ("directed" | "undirected") "{"

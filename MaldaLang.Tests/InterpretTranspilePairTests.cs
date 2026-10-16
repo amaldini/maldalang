@@ -1811,4 +1811,12 @@ print(""run="" + string(ran.success) + "","" + string(ran.output));
             ParserSyntaxGapTests.AnonymousFunctionSource,
             "anonymous-function");
     }
+
+    [Fact]
+    public void TrailingCommaParams_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            ParserSyntaxGapTests.TrailingCommaParamsSource,
+            "trailing-comma-params");
+    }
 }

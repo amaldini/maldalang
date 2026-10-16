@@ -686,4 +686,12 @@ public class InterpretJsPairTests
             """,
             "i7-assert-js");
     }
+
+    [Fact]
+    public void TrailingCommaParams_SameStdout()
+    {
+        InterpretJsPair.AssertSameFromSource(
+            ParserSyntaxGapTests.TrailingCommaParamsSource,
+            "trailing-comma-params-js");
+    }
 }

@@ -61,7 +61,7 @@ ConstructorDecl ::= AccessModifier? FunctionDecl   /* name equals class name; fo
 
 TypeDecl      ::= "type" Identifier "=" Constructor ("|" Constructor)* ";"
 Constructor   ::= Identifier ("(" CtorParamList? ")")?
-CtorParamList ::= CtorParam ("," CtorParam)*
+CtorParamList ::= CtorParam ("," CtorParam)* ","?
 CtorParam     ::= Identifier (":" SchemaType)?
 
 SchemaDecl    ::= "schema" Identifier "{" SchemaField* "}"
@@ -112,7 +112,7 @@ WaitStmt      ::= "wait" Identifier "=" "awaitSignal"
 
 AccessModifier ::= ("public" | "private")? "static"?
 TypeHint      ::= ":" "out"? Identifier
-ParamList     ::= Param ("," Param)*
+ParamList     ::= Param ("," Param)* ","?   /* one trailing "," allowed; a lone "," is an error */
 Param         ::= Decorator* Identifier TypeHint?
 CallExpr      ::= Expression PostfixSuffix*   /* see §34.4 */</code></pre>
         <p>Property declarations can include decorators such as <code>@requires(...)</code> and <code>@targets(...)</code> for backend capability hints.</p>
@@ -200,10 +200,10 @@ Primary     ::= Literal | Identifier | "(" Expression ")"
 LambdaExpr  ::= LambdaParams Arrow (Expression | Block)
 LambdaParams::= "(" ParamList? ")" | Identifier
 Arrow         ::= "=&gt;" | "-&gt;"   /* same Arrow token in lexer */
-FunctionExpr ::= "function" "(" ParamList? ","? ")" Block
+FunctionExpr ::= "function" "(" ParamList? ")" Block
               /* anonymous function: same value as "(" ParamList? ")" "=&gt;" Block */
 
-/* Array, dict, graph and object literals and ArgList allow one trailing ","
+/* Array, dict, graph and object literals, ArgList and ParamList allow one trailing ","
    before the closing bracket; a lone "," is an error. */
 ArrayLiteral ::= "[" (Expression ("," Expression)* ","?)? "]"
               | ListComprehension

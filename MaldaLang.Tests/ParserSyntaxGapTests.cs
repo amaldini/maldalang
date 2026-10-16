@@ -13,7 +13,7 @@ using MaldaLang.Parser.AST.Statements;
 using Xunit;
 
 /// <summary>
-/// Anonymous <c>function (…) { … }</c> expressions, trailing commas in literals and argument
+/// Anonymous <c>function (…) { … }</c> expressions, trailing commas in literals, argument and parameter
 /// lists, and contextual keywords (<c>context</c>, <c>suite</c>, <c>policy</c>, <c>within</c>)
 /// used as plain identifiers.
 /// </summary>
@@ -39,6 +39,33 @@ public class ParserSyntaxGapTests : TestBase
         var context = "a";
         context = context + "b";
         io.print(context);
+        """;
+
+    /// <summary>Trailing commas in parameter lists; shared with the interpret/C#/JS pair tests.</summary>
+    public const string TrailingCommaParamsSource =
+        """
+        function mul(a, b,) { return a * b; }
+        function sub(
+            a,
+            b,
+        ) {
+            return a - b;
+        }
+        var add = (a, b,) => a + b;
+        var tenfold = (x,) => { return x * 10; };
+        var grouped = (1 + 2);
+        class Pt {
+            public var x;
+            public var y;
+            function Pt(x, y,) { this.x = x; this.y = y; }
+            function plus(z,) { return this.x + this.y + z; }
+        }
+        io.print(mul(3, 4));
+        io.print(sub(9, 4));
+        io.print(add(1, 2));
+        io.print(tenfold(5));
+        io.print(grouped);
+        io.print(new Pt(1, 2).plus(3));
         """;
 
     private static List<Statement> Parse(string source)
@@ -164,5 +191,76 @@ public class ParserSyntaxGapTests : TestBase
         Assert.IsType<ContextDeclaration>(stmts[0]);
         Assert.IsType<PolicyDeclaration>(stmts[1]);
         Assert.IsType<SuiteDeclaration>(stmts[2]);
+    }
+
+    [Fact]
+    public void TrailingComma_InArrowLambdaParams()
+    {
+        var stmts = Parse("""
+            var f = (a, b,) => a + b;
+            var g = (x,) => { return x; };
+            var p = (1 + 2);
+            """);
+        Assert.Equal(new[] { "a", "b" }, Assert.IsType<LambdaExpression>(Initializer(stmts[0])).Parameters);
+        Assert.Equal(new[] { "x" }, Assert.IsType<LambdaExpression>(Initializer(stmts[1])).Parameters);
+        Assert.IsNotType<LambdaExpression>(Initializer(stmts[2]));
+    }
+
+    [Fact]
+    public void TrailingComma_InDeclarationParams()
+    {
+        var stmts = Parse("""
+            function f(a, b,) { return a + b; }
+            function g(
+                x,
+            ) { return x; }
+            class C(p, q,) {
+                function m(z,) { return z; }
+            }
+            class D {
+                function D(a, b,) { }
+            }
+            workflow W(m, n,) { return m; }
+            prompt Ask(topic, tone,) -> string {
+                user: "Say {topic} in {tone}"
+            }
+            """);
+        Assert.Equal(new[] { "a", "b" }, Assert.IsType<FunctionDeclaration>(stmts[0]).Parameters);
+        Assert.Equal(new[] { "x" }, Assert.IsType<FunctionDeclaration>(stmts[1]).Parameters);
+        Assert.True(Assert.IsType<ClassDeclaration>(stmts[2]).HasPrimaryConstructor);
+        Assert.IsType<ClassDeclaration>(stmts[3]);
+        Assert.Equal(new[] { "m", "n" }, Assert.IsType<WorkflowDeclaration>(stmts[4]).Parameters);
+        Assert.Equal(new[] { "topic", "tone" }, Assert.IsType<PromptDeclaration>(stmts[5]).Parameters);
+    }
+
+    [Theory]
+    [InlineData("var f = (,) => 1;")]
+    [InlineData("function f(,) { return 1; }")]
+    [InlineData("var f = (a,,) => a;")]
+    [InlineData("function f(a,,) { return a; }")]
+    public void TrailingComma_LoneOrDoubleCommaInParams_StillAnError(string source)
+    {
+        var parser = new Parser(new Lexer(source).Tokenize());
+        parser.Parse();
+        Assert.NotEmpty(parser.Errors);
+    }
+
+    [Fact]
+    public void TrailingCommaParams_Interprets()
+    {
+        var output = RunProgram(TrailingCommaParamsSource);
+        Assert.Equal("12\n5\n3\n50\n3\n6", output.Replace("\r\n", "\n").Trim());
+    }
+
+    [Fact]
+    public void TrailingCommaParams_FormatIsIdempotent()
+    {
+        var once = MaldaLang.Formatting.MaldaFormatter.Format(TrailingCommaParamsSource);
+        Assert.True(once.Success, once.Error);
+        var twice = MaldaLang.Formatting.MaldaFormatter.Format(once.Text);
+        Assert.True(twice.Success, twice.Error);
+        Assert.Equal(once.Text, twice.Text);
+        Assert.Contains("function mul(a, b,)", once.Text);
+        Assert.Contains("var add = (a, b,) =>", once.Text);
     }
 }

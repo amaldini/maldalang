@@ -228,6 +228,8 @@ public partial class Parser
         {
             do
             {
+                if (parameters.Count > 0 && Check(TokenType.RightParen))
+                    break; // trailing comma
                 // Parse optional parameter decorators (e.g., @PathParam("id"))
                 var paramDecorators = ParseDecorators();
                 var paramName = ConsumeIdentifierLike("Expect parameter name.");
@@ -280,6 +282,8 @@ public partial class Parser
         {
             do
             {
+                if (parameters.Count > 0 && Check(TokenType.RightParen))
+                    break; // trailing comma
                 var paramName = ConsumeIdentifierLike("Expect parameter name.");
                 parameters.Add(paramName);
             } while (Match(TokenType.Comma));
@@ -402,6 +406,8 @@ public partial class Parser
             {
                 do
                 {
+                    if (parameters.Count > 0 && Check(TokenType.RightParen))
+                        break; // trailing comma
                     parameters.Add(ConsumeIdentifierLike("Expect parameter name."));
                 } while (Match(TokenType.Comma));
             }
@@ -450,6 +456,8 @@ public partial class Parser
             {
                 do
                 {
+                    if (paramNames.Count > 0 && Check(TokenType.RightParen))
+                        break; // trailing comma
                     paramNames.Add(ConsumeIdentifierOrKeyword("Expect parameter name in api method."));
                     if (Match(TokenType.Colon))
                     {
@@ -525,6 +533,8 @@ public partial class Parser
                 {
                     do
                     {
+                        if (paramNames.Count > 0 && Check(TokenType.RightParen))
+                            break; // trailing comma
                         paramNames.Add(ConsumeIdentifierOrKeyword("Expect parameter name in constructor."));
                         if (Match(TokenType.Colon))
                         {

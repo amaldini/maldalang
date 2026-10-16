@@ -424,7 +424,7 @@ print(user?["name"]);   // null, no error</code></pre>
                 </tr>
                 <tr>
                     <td><code>,</code></td>
-                    <td>Parameter/argument separators. One trailing comma is allowed before the closing bracket of an array, object, <code>dict</code> or <code>graph</code> literal and of a call's argument list (<code>[1, 2,]</code>, <code>{ a: 1, }</code>, <code>f(a, b,)</code>); a lone <code>[,]</code> is still an error.</td>
+                    <td>Parameter/argument separators. One trailing comma is allowed before the closing bracket of an array, object, <code>dict</code> or <code>graph</code> literal, of a call's argument list and of a parameter list — functions, methods, constructors, lambdas, prompts and workflows (<code>[1, 2,]</code>, <code>{ a: 1, }</code>, <code>f(a, b,)</code>, <code>function g(a, b,) { … }</code>, <code>(a, b,) =&gt; a + b</code>); a lone <code>[,]</code> or <code>(,)</code> is still an error.</td>
                 </tr>
                 <tr>
                     <td><code>.</code></td>
