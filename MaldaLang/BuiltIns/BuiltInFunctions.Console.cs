@@ -124,7 +124,7 @@ public static partial class BuiltInFunctions
         if (firstRow.Type == ValueType.Object)
         {
             var firstRowObj = firstRow.AsObject();
-            if (firstRowObj is JsonObject firstJsonObj)
+            if (firstRowObj is ObjectInstance firstJsonObj)
             {
                 // Object array - use object keys as columns
                 if (columnNames == null)
@@ -147,12 +147,12 @@ public static partial class BuiltInFunctions
                 // Add rows
                 foreach (var row in dataArray)
                 {
-                    if (row.Type == ValueType.Object && row.AsObject() is JsonObject rowObj)
+                    if (row.Type == ValueType.Object && row.AsObject() is ObjectInstance rowObj)
                     {
                         var rowValues = new List<string>();
                         foreach (var col in columnNames)
                         {
-                            var value = rowObj.Get(col, null);
+                            var value = GetObjectField(rowObj, col);
                             rowValues.Add(value?.ToString() ?? "");
                         }
                         table.AddRow(rowValues.ToArray());
@@ -298,16 +298,16 @@ public static partial class BuiltInFunctions
                 {
                     tree.AddNode(item.AsString());
                 }
-                else if (item.Type == ValueType.Object && item.AsObject() is JsonObject itemObj)
+                else if (item.Type == ValueType.Object && item.AsObject() is ObjectInstance itemObj)
                 {
                     // Object with label and children
-                    var itemLabelValue = itemObj.Get("label", null);
+                    var itemLabelValue = GetObjectField(itemObj, "label");
                     var itemLabel = itemLabelValue != null && itemLabelValue.Type == ValueType.String 
                         ? itemLabelValue.AsString() 
                         : "";
                     var node = tree.AddNode(itemLabel);
                     
-                    var children = itemObj.Get("children", null);
+                    var children = GetObjectField(itemObj, "children");
                     if (children != null && children.Type == ValueType.Array)
                     {
                         var childrenArray = children.AsArray();
@@ -327,7 +327,7 @@ public static partial class BuiltInFunctions
         return RuntimeValue.Null();
     }
     
-    public static async Task<RuntimeValue> BuiltInSpectreConsoleStatusAsync(List<RuntimeValue> args, Interpreter interpreter)
+    public static async Task<RuntimeValue> BuiltInSpectreConsoleStatusAsync(List<RuntimeValue> args, Interpreter? interpreter)
     {
         if (args.Count < 1 || args[0].Type != ValueType.String)
             throw new Exception("status() expects at least 1 string argument: (message, action?)");
@@ -342,7 +342,7 @@ public static partial class BuiltInFunctions
                 {
                     // Call the action function
                     var funcValue = args[1].AsFunction();
-                    await interpreter.CallFunctionAsync(funcValue, new List<RuntimeValue>());
+                    await InvokeConsoleCallbackAsync(funcValue, null, interpreter);
                 });
         }
         else
@@ -358,19 +358,17 @@ public static partial class BuiltInFunctions
         if (args.Count < 1 || args[0].Type != ValueType.Object)
             throw new Exception("prompt() expects at least 1 object argument: (type, message, defaultValue?)");
         
-        var promptObj = args[0].AsObject();
-        if (promptObj is not JsonObject promptJson)
-            throw new Exception("prompt() first argument must be an object");
+        var promptJson = args[0].AsObject() ?? throw new Exception("prompt() first argument must be an object");
         
-        var typeValue = promptJson.Get("type", null);
+        var typeValue = GetObjectField(promptJson, "type");
         var type = typeValue != null && typeValue.Type == ValueType.String 
             ? typeValue.AsString().ToLower() 
             : "text";
-        var messageValue = promptJson.Get("message", null);
+        var messageValue = GetObjectField(promptJson, "message");
         var message = messageValue != null && messageValue.Type == ValueType.String 
             ? messageValue.AsString() 
             : "";
-        var defaultValue = promptJson.Get("defaultValue", null);
+        var defaultValue = GetObjectField(promptJson, "defaultValue");
         
         string result;
         
@@ -396,7 +394,7 @@ public static partial class BuiltInFunctions
                 
             case "selection":
             case "choice":
-                var choicesValue = promptJson.Get("choices", null);
+                var choicesValue = GetObjectField(promptJson, "choices");
                 if (choicesValue == null || choicesValue.Type != ValueType.Array)
                     throw new Exception("prompt() with type 'selection' requires 'choices' array");
                 var choices = choicesValue;
@@ -429,9 +427,6 @@ public static partial class BuiltInFunctions
         // Check if the first argument is a function (new callback syntax)
         if (args[0].Type == ValueType.Function)
         {
-            if (interpreter == null)
-                throw new Exception("progress() with callback function requires an interpreter.");
-            
             var callbackFunc = args[0].AsFunction();
             
             await AnsiConsole.Progress()
@@ -439,9 +434,7 @@ public static partial class BuiltInFunctions
                 {
                     var taskDict = new Dictionary<string, ProgressTask>();
                     var progressCtx = new ProgressContextWrapper(ctx, taskDict);
-                    var progressCtxValue = RuntimeValue.Object(progressCtx);
-                    
-                    await interpreter.CallFunctionAsync(callbackFunc, new List<RuntimeValue> { progressCtxValue });
+                    await InvokeConsoleCallbackAsync(callbackFunc, progressCtx, interpreter);
                 });
             
             return RuntimeValue.Null();
@@ -451,16 +444,14 @@ public static partial class BuiltInFunctions
         if (args[0].Type != ValueType.Object)
             throw new Exception("progress() expects either a function callback or an object with 'tasks' array");
         
-        var progressObj = args[0].AsObject();
-        if (progressObj is not JsonObject progressJson)
-            throw new Exception("progress() first argument must be an object");
+        var progressSpec = args[0].AsObject() ?? throw new Exception("progress() first argument must be an object");
         
-        var tasks = progressJson.Get("tasks", null);
+        var tasks = GetObjectField(progressSpec, "tasks");
         if (tasks == null || tasks.Type != ValueType.Array)
             throw new Exception("progress() requires 'tasks' array");
         
         var tasksArray = tasks.AsArray();
-        var action = progressJson.Get("action", null);
+        var action = GetObjectField(progressSpec, "action");
         
         await AnsiConsole.Progress()
             .StartAsync(async ctx =>
@@ -470,13 +461,13 @@ public static partial class BuiltInFunctions
                 // Create progress tasks
                 foreach (var task in tasksArray)
                 {
-                    if (task.Type == ValueType.Object && task.AsObject() is JsonObject taskObj)
+                    if (task.Type == ValueType.Object && task.AsObject() is ObjectInstance taskObj)
                     {
-                        var taskNameValue = taskObj.Get("name", null);
+                        var taskNameValue = GetObjectField(taskObj, "name");
                         var taskName = taskNameValue != null && taskNameValue.Type == ValueType.String 
                             ? taskNameValue.AsString() 
                             : "";
-                        var maxValueValue = taskObj.Get("maxValue", null);
+                        var maxValueValue = GetObjectField(taskObj, "maxValue");
                         var maxValue = maxValueValue != null && maxValueValue.Type == ValueType.Integer 
                             ? maxValueValue.AsInteger() 
                             : (maxValueValue != null && maxValueValue.Type == ValueType.Float 
@@ -490,9 +481,6 @@ public static partial class BuiltInFunctions
                 // Execute action if provided
                 if (action != null && action.Type == ValueType.Function)
                 {
-                    if (interpreter == null)
-                        throw new Exception("progress() with action callback requires an interpreter. In transpiled code, callbacks are not yet supported.");
-                    
                     var funcValue = action.AsFunction();
                     
                     // Create a dictionary mapping task names to ProgressTask instances
@@ -500,9 +488,9 @@ public static partial class BuiltInFunctions
                     for (int i = 0; i < progressTasks.Count; i++)
                     {
                         var taskName = $"Task{i}";
-                        if (i < tasksArray.Count && tasksArray[i].Type == ValueType.Object && tasksArray[i].AsObject() is JsonObject t)
+                        if (i < tasksArray.Count && tasksArray[i].Type == ValueType.Object && tasksArray[i].AsObject() is ObjectInstance t)
                         {
-                            var nameValue = t.Get("name", null);
+                            var nameValue = GetObjectField(t, "name");
                             if (nameValue != null && nameValue.Type == ValueType.String)
                             {
                                 taskName = nameValue.AsString();
@@ -513,12 +501,43 @@ public static partial class BuiltInFunctions
                     
                     // Create a wrapper object that allows reading and updating progress
                     var progressWrapper = new ProgressWrapperObjectInstance(taskDict);
-                    var progressWrapperValue = RuntimeValue.Object(progressWrapper);
-                    
-                    await interpreter.CallFunctionAsync(funcValue, new List<RuntimeValue> { progressWrapperValue });
+                    await InvokeConsoleCallbackAsync(funcValue, progressWrapper, interpreter);
                 }
             });
         
         return RuntimeValue.Null();
+    }
+
+    /// <summary>
+    /// Reads an option field from an object argument, or null when absent. Interpreted object
+    /// literals arrive as JsonObjects, C# transpiled ones as DictionaryInstances, so the console
+    /// built-ins accept any ObjectInstance.
+    /// </summary>
+    private static RuntimeValue? GetObjectField(ObjectInstance obj, string name) =>
+        obj.TryGet(name, out var value) ? value : null;
+
+    /// <summary>
+    /// Runs a status/progress callback with an optional context object: through the interpreter
+    /// when interpreting, or through the transpiled lambda delegate (which takes the raw object)
+    /// in C# transpiled programs, which call these built-ins with no interpreter.
+    /// </summary>
+    private static async Task InvokeConsoleCallbackAsync(FunctionValue callback, ObjectInstance? context, Interpreter? interpreter)
+    {
+        if (interpreter != null)
+        {
+            var arguments = context == null
+                ? new List<RuntimeValue>()
+                : new List<RuntimeValue> { RuntimeValue.Object(context) };
+            await interpreter.CallFunctionAsync(callback, arguments);
+            return;
+        }
+
+        if (callback.TranspiledDelegate != null)
+        {
+            await callback.TranspiledDelegate(context!).ConfigureAwait(false);
+            return;
+        }
+
+        throw new Exception("AnsiConsole callback cannot be invoked without an interpreter.");
     }
 }

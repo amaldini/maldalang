@@ -1987,6 +1987,42 @@ print(""run="" + string(ran.success) + "","" + string(ran.output));
         InterpretTranspilePair.AssertSameFromSource(ClassMethodNamedStartSource, "class-method-named-start");
     }
 
+    // Block-bodied lambdas declaring an int-inferred `var` at top level (no enclosing function):
+    // as an object-literal value passed to a call, and bound to a name. The declaration was
+    // emitted `int current = 0;` but later stores resolved the name as object (CS0266).
+    internal const string TopLevelLambdaTypedLocalsSource =
+        """
+        function runWith(opts) {
+            var cb = opts["action"];
+            return cb(opts["start"]);
+        }
+        var total = runWith({
+            "start": 2,
+            "action": (p) => {
+                var current = 0;
+                while (current < 3) {
+                    current = current + 1;
+                }
+                return current + p;
+            }
+        });
+        io.print(total);
+        var counter = (n) => {
+            var acc = 0;
+            for (var i = 0; i < n; i++) {
+                acc = acc + i;
+            }
+            acc;
+        };
+        io.print(counter(5));
+        """;
+
+    [Fact]
+    public void TopLevelLambdaTypedLocals_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(TopLevelLambdaTypedLocalsSource, "top-level-lambda-typed-locals");
+    }
+
     [Fact]
     public void ObjectEntryNotCallable_BothFail()
     {

@@ -34,12 +34,58 @@ public class TranspileSmokeTests
     [InlineData("Examples/Modules/selective_import.malda")]
     [InlineData("Examples/Modules/export_type_schema.malda")]
     [InlineData("Examples/VectorDB/basic_vectordb.malda")]
+    // AnsiConsole.progress/status callbacks (object-literal "action" and bare lambda forms)
+    [InlineData("Examples/SpectreConsole/progress_example.malda")]
+    [InlineData("Examples/SpectreConsole/progress_callback_example.malda")]
+    [InlineData("Examples/SpectreConsole/comprehensive_example.malda")]
     public void Example_TranspileToCSharp_Succeeds(string relativePath)
     {
         var parts = relativePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
         var sourcePath = PlanningPaths.ResolveRepoFile(parts);
         Assert.True(File.Exists(sourcePath), $"Missing smoke example: {sourcePath}");
+        AssertTranspiles(sourcePath, relativePath);
+    }
 
+    /// <summary>
+    /// Minimal AnsiConsole.progress repro: a block-bodied lambda as an object-literal value in
+    /// the call argument. The old special emit inlined the body and left the call unclosed
+    /// (CS1026 at the closing <c>});</c>).
+    /// </summary>
+    [Fact]
+    public void AnsiConsoleProgress_ObjectLiteralBlockLambda_Transpiles()
+    {
+        const string source = """
+            AnsiConsole.progress({
+                "tasks": [ { "name": "T", "maxValue": 10 } ],
+                "action": (p) => {
+                    var step = 0;
+                    while (step < 10) {
+                        step = step + 5;
+                        p["T"] = step;
+                    }
+                }
+            });
+            AnsiConsole.status("Working...", () => {
+                var n = 0;
+                n = n + 1;
+            });
+            """;
+        var dir = Path.Combine(Path.GetTempPath(), "malda_transpile_smoke_src", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        var sourcePath = Path.Combine(dir, "ansi_progress_lambda.malda");
+        File.WriteAllText(sourcePath, source);
+        try
+        {
+            AssertTranspiles(sourcePath, "ansi_progress_lambda");
+        }
+        finally
+        {
+            try { Directory.Delete(dir, recursive: true); } catch { /* ignore */ }
+        }
+    }
+
+    private static void AssertTranspiles(string sourcePath, string relativePath)
+    {
         var tempDir = Path.Combine(Path.GetTempPath(), "malda_transpile_smoke", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(tempDir);
         var outputPath = Path.Combine(tempDir, Path.GetFileNameWithoutExtension(sourcePath) + ".exe");

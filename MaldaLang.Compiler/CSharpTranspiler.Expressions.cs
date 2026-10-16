@@ -1047,6 +1047,15 @@ public partial class CSharpTranspiler
         var previousCanAwaitInLambda = _canAwait;
         _canAwait = true;
 
+        // The lambda is its own typed scope: its parameters are boxed objects, and a `var` it
+        // declares is emitted with the int/double type ResolveVarDeclType infers, so later reads
+        // and stores must resolve that same type. Without a scope (a lambda at top level, where
+        // the stack is empty) the declaration registered nowhere: `int current = 0;` followed
+        // by `current = RuntimeHelpers.OperatorAdd(current, 1);` failed with CS0266.
+        PushTypedScope();
+        foreach (var parameter in lambda.Parameters)
+            RegisterTypedVariable(parameter, TranspiledClrType.Object);
+
         // Body handling
         if (lambda.BlockBody != null)
         {
@@ -1132,6 +1141,7 @@ public partial class CSharpTranspiler
             _output.Append(")");
         }
 
+        PopTypedScope();
         _canAwait = previousCanAwaitInLambda;
     }
 

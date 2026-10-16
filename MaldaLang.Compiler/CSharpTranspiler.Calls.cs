@@ -440,59 +440,12 @@ public partial class CSharpTranspiler
                 }
                 else if (ansiMethodName == "status")
                 {
-                    // Async method with callback - transpile to Spectre.Console directly
+                    // Like progress below: the runtime built-in runs the spinner and invokes the
+                    // callback (a transpiled lambda or function value) through its delegate.
                     if (call.Arguments.Count < 1)
                         throw new Exception("AnsiConsole.status() expects at least 1 argument");
-                    
-                    _output.Append("await Spectre.Console.AnsiConsole.Status().StartAsync(RuntimeHelpers.CoerceToString(");
-                    TranspileExpression(call.Arguments[0]);
-                    _output.Append("), async ctx => ");
-                    
-                    if (call.Arguments.Count > 1)
-                    {
-                        // Has callback - transpile it
-                        var callbackArg = call.Arguments[1];
-                        if (callbackArg is LambdaExpression lambda)
-                        {
-                            // Transpile lambda directly
-                            _output.Append("{");
-                            _indentLevel++;
-                            _output.AppendLine();
-                            WriteIndent();
-                            
-                            // Transpile lambda body
-                            if (lambda.BlockBody != null)
-                            {
-                                foreach (var stmt in lambda.BlockBody.Statements)
-                                {
-                                    WriteIndent();
-                                    TranspileStatement(stmt);
-                                }
-                            }
-                            else if (lambda.ExpressionBody != null)
-                            {
-                                _output.Append("await ");
-                                TranspileExpression(lambda.ExpressionBody);
-                                _output.AppendLine(";");
-                            }
-                            
-                            _indentLevel--;
-                            WriteIndent();
-                            _output.Append("}");
-                        }
-                        else
-                        {
-                            // Function reference - call it
-                            _output.Append("{ await ");
-                            TranspileExpression(callbackArg);
-                            _output.Append("(null); }");
-                        }
-                    }
-                    else
-                    {
-                        _output.Append("{ }");
-                    }
-                    _output.Append(")");
+
+                    EmitAnsiConsoleCallbackBuiltIn("BuiltInSpectreConsoleStatusAsync", call.Arguments);
                     return;
                 }
                 else if (ansiMethodName == "prompt")
@@ -510,318 +463,16 @@ public partial class CSharpTranspiler
                 }
                 else if (ansiMethodName == "progress")
                 {
-                    // Transpile progress to call Spectre.Console directly with callback support
+                    // Both forms — AnsiConsole.progress((ctx) => { ... }) and
+                    // AnsiConsole.progress({ "tasks": [...], "action": (p) => { ... } }) — go through
+                    // the runtime built-in, so transpiled and interpreted programs share one
+                    // implementation. The callback is an ordinary transpiled lambda (a
+                    // Func<object, Task<object>>); ToRuntimeValue wraps it as a FunctionValue whose
+                    // TranspiledDelegate the built-in invokes when there is no interpreter.
                     if (call.Arguments.Count < 1)
                         throw new Exception("AnsiConsole.progress() expects at least 1 argument");
-                    
-                    // Check if the first argument is a lambda (new callback syntax)
-                    if (call.Arguments[0] is LambdaExpression callbackLambda)
-                    {
-                        // New callback-based syntax: AnsiConsole.progress((ctx) => { ... })
-                        _output.Append("await Spectre.Console.AnsiConsole.Progress().StartAsync(async ctx =>");
-                        _output.AppendLine();
-                        WriteIndent();
-                        _output.Append("{");
-                        _indentLevel++;
-                        _output.AppendLine();
-                        
-                        // Create task dictionary to map task names to ProgressTask instances
-                        WriteIndent();
-                        _output.AppendLine("var __taskDict = new System.Collections.Generic.Dictionary<string, Spectre.Console.ProgressTask>();");
-                        _output.AppendLine();
-                        
-                        // Create wrapper instance (shared by all methods)
-                        WriteIndent();
-                        _output.AppendLine("var __progressCtxWrapper = new MaldaLang.BuiltIns.ProgressContextWrapper(ctx, __taskDict);");
-                        _output.AppendLine();
-                        
-                        // Create wrapper object with addTask, increment, and isFinished methods
-                        WriteIndent();
-                        _output.AppendLine("var __progressCtx = new MaldaLang.BuiltIns.JsonObject();");
-                        _output.AppendLine();
-                        
-                        // Add addTask method
-                        WriteIndent();
-                        _output.AppendLine("__progressCtx.Set(\"addTask\", MaldaLang.Interpreter.RuntimeValue.Function(new MaldaLang.Interpreter.FunctionValue(null, null, false, null)");
-                        WriteIndent();
-                        _output.AppendLine("{");
-                        _indentLevel++;
-                        WriteIndent();
-                        _output.AppendLine("BuiltInInstance = __progressCtxWrapper,");
-                        WriteIndent();
-                        _output.AppendLine("BuiltInMethod = \"addTask\"");
-                        _indentLevel--;
-                        WriteIndent();
-                        _output.AppendLine("}));");
-                        _output.AppendLine();
-                        
-                        // Add increment method
-                        WriteIndent();
-                        _output.AppendLine("__progressCtx.Set(\"increment\", MaldaLang.Interpreter.RuntimeValue.Function(new MaldaLang.Interpreter.FunctionValue(null, null, false, null)");
-                        WriteIndent();
-                        _output.AppendLine("{");
-                        _indentLevel++;
-                        WriteIndent();
-                        _output.AppendLine("BuiltInInstance = __progressCtxWrapper,");
-                        WriteIndent();
-                        _output.AppendLine("BuiltInMethod = \"increment\"");
-                        _indentLevel--;
-                        WriteIndent();
-                        _output.AppendLine("}));");
-                        _output.AppendLine();
-                        
-                        // Add isFinished method
-                        WriteIndent();
-                        _output.AppendLine("__progressCtx.Set(\"isFinished\", MaldaLang.Interpreter.RuntimeValue.Function(new MaldaLang.Interpreter.FunctionValue(null, null, false, null)");
-                        WriteIndent();
-                        _output.AppendLine("{");
-                        _indentLevel++;
-                        WriteIndent();
-                        _output.AppendLine("BuiltInInstance = __progressCtxWrapper,");
-                        WriteIndent();
-                        _output.AppendLine("BuiltInMethod = \"isFinished\"");
-                        _indentLevel--;
-                        WriteIndent();
-                        _output.AppendLine("}));");
-                        _output.AppendLine();
-                        
-                        // Transpile the lambda body with the wrapper context
-                        WriteIndent();
-                        _output.Append("// Execute callback with progress context wrapper");
-                        _output.AppendLine();
-                        if (callbackLambda.Parameters.Count > 0)
-                        {
-                            WriteIndent();
-                            _output.Append("var ");
-                            _output.Append(EscapeIdentifier(callbackLambda.Parameters[0]));
-                            _output.Append(" = MaldaLang.Interpreter.RuntimeValue.Object(__progressCtx);");
-                            _output.AppendLine();
-                        }
-                        
-                        // Transpile lambda body
-                        if (callbackLambda.BlockBody != null)
-                        {
-                            foreach (var stmt in callbackLambda.BlockBody.Statements)
-                            {
-                                WriteIndent();
-                                TranspileStatement(stmt);
-                            }
-                        }
-                        else if (callbackLambda.ExpressionBody != null)
-                        {
-                            WriteIndent();
-                            _output.Append("await ");
-                            TranspileExpression(callbackLambda.ExpressionBody);
-                            _output.AppendLine(";");
-                        }
-                        
-                        _indentLevel--;
-                        WriteIndent();
-                        _output.Append("}");
-                        return;
-                    }
-                    
-                    // Check if the first argument is an object literal with a lambda callback (old syntax)
-                    LambdaExpression? actionLambda = null;
-                    if (call.Arguments[0] is ObjectLiteralExpression objLit)
-                    {
-                        // Look for "action" property that is a lambda
-                        foreach (var (key, value) in objLit.Properties)
-                        {
-                            if (key is LiteralExpression keyLit && keyLit.Value is string keyStr && keyStr == "action")
-                            {
-                                if (value is LambdaExpression lambda)
-                                {
-                                    actionLambda = lambda;
-                                }
-                                break;
-                            }
-                        }
-                    }
-                    
-                    // The first argument is an object with "tasks" array and optional "action" callback
-                    _output.Append("await Spectre.Console.AnsiConsole.Progress().StartAsync(async ctx =>");
-                    _output.AppendLine();
-                    WriteIndent();
-                    _output.Append("{");
-                    _indentLevel++;
-                    _output.AppendLine();
-                    
-                    // Extract tasks array and action from the object
-                    WriteIndent();
-                    _output.Append("var __progressObj = RuntimeHelpers.ToRuntimeValue(");
-                    TranspileExpression(call.Arguments[0]);
-                    _output.AppendLine(").AsObject() as MaldaLang.BuiltIns.JsonObject;");
-                    
-                    WriteIndent();
-                    _output.AppendLine("var __tasksValue = __progressObj?.Get(\"tasks\", null);");
-                    WriteIndent();
-                    _output.AppendLine("var __tasksArray = __tasksValue != null && __tasksValue.Type == MaldaLang.Interpreter.ValueType.Array ? __tasksValue.AsArray() : new MaldaLang.Interpreter.ArrayInstance();");
-                    WriteIndent();
-                    _output.AppendLine("var __progressTasks = new System.Collections.Generic.List<Spectre.Console.ProgressTask>();");
-                    _output.AppendLine();
-                    
-                    // Create progress tasks
-                    WriteIndent();
-                    _output.AppendLine("foreach (var __task in __tasksArray)");
-                    WriteIndent();
-                    _output.AppendLine("{");
-                    _indentLevel++;
-                    WriteIndent();
-                    _output.AppendLine("if (__task.Type == MaldaLang.Interpreter.ValueType.Object && __task.AsObject() is MaldaLang.BuiltIns.JsonObject __taskObj)");
-                    WriteIndent();
-                    _output.AppendLine("{");
-                    _indentLevel++;
-                    WriteIndent();
-                    _output.AppendLine("var __taskNameValue = __taskObj.Get(\"name\", null);");
-                    WriteIndent();
-                    _output.AppendLine("var __taskName = __taskNameValue != null && __taskNameValue.Type == MaldaLang.Interpreter.ValueType.String ? __taskNameValue.AsString() : \"\";");
-                    WriteIndent();
-                    _output.AppendLine("var __maxValueValue = __taskObj.Get(\"maxValue\", null);");
-                    WriteIndent();
-                    _output.AppendLine("var __maxValue = __maxValueValue != null && __maxValueValue.Type == MaldaLang.Interpreter.ValueType.Integer ? __maxValueValue.AsInteger() : (__maxValueValue != null && __maxValueValue.Type == MaldaLang.Interpreter.ValueType.Float ? (int)__maxValueValue.AsFloat() : 100);");
-                    WriteIndent();
-                    _output.AppendLine("var __progressTask = ctx.AddTask(__taskName, maxValue: __maxValue);");
-                    WriteIndent();
-                    _output.AppendLine("__progressTasks.Add(__progressTask);");
-                    _indentLevel--;
-                    WriteIndent();
-                    _output.AppendLine("}");
-                    _indentLevel--;
-                    WriteIndent();
-                    _output.AppendLine("}");
-                    _output.AppendLine();
-                    
-                    // Execute action callback if provided
-                    if (actionLambda != null)
-                    {
-                        // We have a lambda in the AST - transpile it directly
-                        WriteIndent();
-                        _output.AppendLine("// Create progress wrapper object for callback");
-                        WriteIndent();
-                        _output.AppendLine("var __progressWrapper = new MaldaLang.BuiltIns.JsonObject();");
-                        WriteIndent();
-                        _output.AppendLine("for (int __i = 0; __i < __progressTasks.Count; __i++)");
-                        WriteIndent();
-                        _output.AppendLine("{");
-                        _indentLevel++;
-                        WriteIndent();
-                        _output.AppendLine("var __taskName = $\"Task{__i}\";");
-                        WriteIndent();
-                        _output.AppendLine("if (__i < __tasksArray.Count && __tasksArray[__i].Type == MaldaLang.Interpreter.ValueType.Object && __tasksArray[__i].AsObject() is MaldaLang.BuiltIns.JsonObject __t)");
-                        WriteIndent();
-                        _output.AppendLine("{");
-                        _indentLevel++;
-                        WriteIndent();
-                        _output.AppendLine("var __nameValue = __t.Get(\"name\", null);");
-                        WriteIndent();
-                        _output.AppendLine("if (__nameValue != null && __nameValue.Type == MaldaLang.Interpreter.ValueType.String)");
-                        WriteIndent();
-                        _output.AppendLine("{");
-                        _indentLevel++;
-                        WriteIndent();
-                        _output.AppendLine("__taskName = __nameValue.AsString();");
-                        _indentLevel--;
-                        WriteIndent();
-                        _output.AppendLine("}");
-                        _indentLevel--;
-                        WriteIndent();
-                        _output.AppendLine("}");
-                        WriteIndent();
-                        _output.AppendLine("__progressWrapper.Set(__taskName, MaldaLang.Interpreter.RuntimeValue.Integer((int)__progressTasks[__i].Value));");
-                        _indentLevel--;
-                        WriteIndent();
-                        _output.AppendLine("}");
-                        _output.AppendLine();
-                        
-                        // Transpile the lambda body directly
-                        WriteIndent();
-                        _output.Append("// Call callback with progress object");
-                        _output.AppendLine();
-                        WriteIndent();
-                        if (actionLambda.Parameters.Count > 0)
-                        {
-                            _output.Append("var ");
-                            _output.Append(EscapeIdentifier(actionLambda.Parameters[0]));
-                            _output.Append(" = MaldaLang.Interpreter.RuntimeValue.Object(__progressWrapper);");
-                            _output.AppendLine();
-                        }
-                        
-                        // Transpile lambda body
-                        if (actionLambda.BlockBody != null)
-                        {
-                            foreach (var stmt in actionLambda.BlockBody.Statements)
-                            {
-                                WriteIndent();
-                                TranspileStatement(stmt);
-                            }
-                        }
-                        else if (actionLambda.ExpressionBody != null)
-                        {
-                            WriteIndent();
-                            _output.Append("await ");
-                            TranspileExpression(actionLambda.ExpressionBody);
-                            _output.AppendLine(";");
-                        }
-                    }
-                    else
-                    {
-                        // Fallback: extract action at runtime and call it
-                        WriteIndent();
-                        _output.AppendLine("var __actionValue = __progressObj?.Get(\"action\", null);");
-                        WriteIndent();
-                        _output.AppendLine("if (__actionValue != null && __actionValue.Type == MaldaLang.Interpreter.ValueType.Function)");
-                        WriteIndent();
-                        _output.AppendLine("{");
-                        _indentLevel++;
-                        WriteIndent();
-                        _output.AppendLine("// Create progress wrapper object");
-                        WriteIndent();
-                        _output.AppendLine("var __progressWrapper = new MaldaLang.BuiltIns.JsonObject();");
-                        WriteIndent();
-                        _output.AppendLine("for (int __i = 0; __i < __progressTasks.Count; __i++)");
-                        WriteIndent();
-                        _output.AppendLine("{");
-                        _indentLevel++;
-                        WriteIndent();
-                        _output.AppendLine("var __taskName = $\"Task{__i}\";");
-                        WriteIndent();
-                        _output.AppendLine("if (__i < __tasksArray.Count && __tasksArray[__i].Type == MaldaLang.Interpreter.ValueType.Object && __tasksArray[__i].AsObject() is MaldaLang.BuiltIns.JsonObject __t)");
-                        WriteIndent();
-                        _output.AppendLine("{");
-                        _indentLevel++;
-                        WriteIndent();
-                        _output.AppendLine("var __nameValue = __t.Get(\"name\", null);");
-                        WriteIndent();
-                        _output.AppendLine("if (__nameValue != null && __nameValue.Type == MaldaLang.Interpreter.ValueType.String)");
-                        WriteIndent();
-                        _output.AppendLine("{");
-                        _indentLevel++;
-                        WriteIndent();
-                        _output.AppendLine("__taskName = __nameValue.AsString();");
-                        _indentLevel--;
-                        WriteIndent();
-                        _output.AppendLine("}");
-                        _indentLevel--;
-                        WriteIndent();
-                        _output.AppendLine("}");
-                        WriteIndent();
-                        _output.AppendLine("__progressWrapper.Set(__taskName, MaldaLang.Interpreter.RuntimeValue.Integer((int)__progressTasks[__i].Value));");
-                        _indentLevel--;
-                        WriteIndent();
-                        _output.AppendLine("}");
-                        WriteIndent();
-                        _output.AppendLine("// Note: Function callbacks in transpiled code require runtime function calling");
-                        WriteIndent();
-                        _output.AppendLine("// This may not work for all cases - prefer using lambda expressions");
-                        _indentLevel--;
-                        WriteIndent();
-                        _output.AppendLine("}");
-                    }
-                    
-                    _indentLevel--;
-                    WriteIndent();
-                    _output.Append("}");
+
+                    EmitAnsiConsoleCallbackBuiltIn("BuiltInSpectreConsoleProgressAsync", call.Arguments);
                     return;
                 }
             }
@@ -1152,6 +803,29 @@ public partial class CSharpTranspiler
         _output.Append("RuntimeHelpers.ToRuntimeValue(");
         TranspileExpression(argument);
         _output.Append(")");
+    }
+
+    /// <summary>
+    /// <c>AnsiConsole.status/progress(...)</c>: calls the async Spectre built-in with no interpreter.
+    /// Callbacks (bare or as an object-literal <c>"action"</c>) are emitted as ordinary values, so
+    /// the built-in invokes them through <c>FunctionValue.TranspiledDelegate</c>. Inlining the
+    /// lambda body instead broke on closing parentheses, <c>return</c>, and typed locals.
+    /// </summary>
+    private void EmitAnsiConsoleCallbackBuiltIn(string builtInMethod, List<Expression> arguments)
+    {
+        if (_canAwait)
+            _output.Append("await ");
+        _output.Append("RuntimeHelpers.UnwrapRuntimeValueAsync(MaldaLang.BuiltIns.BuiltInFunctions.");
+        _output.Append(builtInMethod);
+        _output.Append("(new List<MaldaLang.Interpreter.RuntimeValue> { ");
+        for (int i = 0; i < arguments.Count; i++)
+        {
+            if (i > 0) _output.Append(", ");
+            EmitToRuntimeValueArgument(arguments[i]);
+        }
+        _output.Append(" }, null))");
+        if (!_canAwait)
+            _output.Append(".GetAwaiter().GetResult()");
     }
 
     /// <summary>
