@@ -521,7 +521,8 @@ public static partial class BuiltInFunctions
 
     private static bool GetBooleanOption(RuntimeValue options, string key, bool fallback)
     {
-        if (options.Type != ValueType.Object || options.AsObject() is not JsonObject jsonObject)
+        // Dict literals are JsonObject in the interpreter and DictionaryInstance in C# transpile.
+        if (CoerceRuntimeObjectToJsonObject(options) is not { } jsonObject)
         {
             return fallback;
         }

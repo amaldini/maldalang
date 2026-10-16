@@ -225,6 +225,11 @@ internal sealed class BackendFuzzProgramGenerator
 
     private void Statement(Scope scope, int depth)
     {
+        if (Roll() < 0.15)
+        {
+            StdLibStatement(scope);
+            return;
+        }
         if (Roll() < 0.25)
         {
             ExtraStatement(scope, depth);
@@ -349,6 +354,134 @@ internal sealed class BackendFuzzProgramGenerator
                 Emit($"io.print({BoolExpr(scope)});");
             else if (scope.Arrays.Count > 0)
                 Emit($"io.print({Pick(scope.Arrays).Name});");
+        }
+    }
+
+    /// <summary>Literal texts for the string built-ins: accents, punctuation, digits, quotes.</summary>
+    private static readonly string[] StdLibTexts =
+    {
+        "Héllo, Wörld!", "  naïve  café ", "A-B_c.d", "the cat sat", "x y  z", "a1b22c3", "Zed",
+        "q\\\"r <&> +'`", "", "start 12 and -3.75"
+    };
+
+    /// <summary>Lower-case ASCII words: sort() compares text with the culture rules of each host.</summary>
+    private static readonly string[] SortWords = { "pear", "fig", "apple", "kiwi", "plum", "date" };
+
+    private string StdText(Scope scope) =>
+        Roll() < 0.5 ? "\"" + Pick(StdLibTexts) + "\"" : StrExpr(scope, 1);
+
+    /// <summary>
+    /// Pure stdlib calls (I7): math without transcendental functions (their last bit may differ
+    /// between .NET and V8), str.* text helpers, encodings and hashes, conversions, collections,
+    /// toCsv / toJSON / parseJSON and assert / expect. Arguments stay in the domain where the
+    /// interpreter documents a result (no error paths, no culture-dependent text).
+    /// </summary>
+    private void StdLibStatement(Scope scope)
+    {
+        string Int() => IntExpr(scope, 1);
+        string Dbl() => DoubleExpr(scope, 1);
+        string Text() => StdText(scope);
+        var array = scope.Arrays.Count > 0 ? Pick(scope.Arrays).Name : $"[{Int()}, {Int()}, {Int()}]";
+
+        var roll = Roll();
+        if (roll < 0.25)
+        {
+            Emit($"io.print({Pick(new[]
+            {
+                $"math.clamp({Dbl()}, {Int()}, {Int()})",
+                $"math.hypot({Int()}, {Dbl()})",
+                $"math.trunc({Dbl()})",
+                $"math.sign({Dbl()})",
+                $"math.round({Dbl()})",
+                $"math.sum({array})",
+                $"math.average({array})",
+                $"math.max({array})",
+                $"math.min({array})",
+                $"math.argmax({array})",
+                $"math.argmin({array})",
+                $"math.dot({array}, {array})",
+                $"math.zeros({Between(0, 3)})",
+                $"math.transpose([[{Int()}, {Int()}], [{Int()}, {Int()}]])",
+                $"math.matmul([[{Int()}, {Int()}], [{Int()}, {Int()}]], [[{Int()}], [{Int()}]])",
+                $"math.degToRad({Dbl()})",
+                $"math.radToDeg({Dbl()})",
+                $"math.pow({Between(-6, 9)}, {Between(0, 3)})",
+                $"math.rsqrt(math.abs({Dbl()}) + 1)",
+                $"math.sum([{Dbl()}, {Int()}, {Dbl()}])"
+            })});");
+        }
+        else if (roll < 0.55)
+        {
+            Emit($"io.print({Pick(new[]
+            {
+                $"str.normalizeText({Text()})",
+                $"str.normalizeText({Text()}, {{ \"removePunctuation\": false, \"lowercase\": {(Roll() < 0.5 ? "true" : "false")} }})",
+                $"str.tokenize({Text()})",
+                $"toJSON(str.tokenOverlap({Text()}, {Text()}))",
+                $"str.similarity({Text()}, {Text()})",
+                $"str.similarity({Text()}, {Text()}, \"{Pick(new[] { "jaccard", "contains", "char-ngram", "exact" })}\")",
+                $"str.extractNumbers({Text()} + {Int()} + \" \" + {Dbl()})",
+                $"str.padStart({Text()}, {Between(0, 12)}, \"*\")",
+                $"str.padEnd({Text()}, {Between(0, 12)}, \"-\")",
+                $"str.split({Text()})",
+                $"str.split({Text()}, \" \")",
+                $"str.split({Text()} + {Int()}, \"[0-9]+\")",
+                $"str.regexReplace({Text()}, \"[aeiou]\", \"<$0>\")",
+                $"str.regexReplace({Text()} + {Int()}, \"([a-z])([0-9]+)\", \"$2$1\")",
+                $"toJSON(str.regexFind({Text()} + {Int()}, \"([a-z])([0-9]+)?\"))",
+                $"str.regexMatch({Text()}, \"^[A-Z]\")",
+                $"str.trimText({Text()})",
+                $"str.upper({Text()})",
+                $"str.lower({Text()})",
+                $"str.join([{Int()}, null, {Text()}, {Dbl()}, true], \"|\")",
+                $"str.includes({array}, {Int()})"
+            })});");
+        }
+        else if (roll < 0.7)
+        {
+            Emit($"io.print({Pick(new[]
+            {
+                $"str.base64Encode({Text()})",
+                $"str.base64Decode(str.base64Encode({Text()}))",
+                $"str.md5({Text()})",
+                $"str.sha256({Text()})",
+                $"urlEncode({Text()})",
+                $"urlDecode(urlEncode({Text()}))",
+                $"toIntOr({Pick(new[] { "\" 42 \"", "\"x\"", "\"3.7\"", "\"\"", "\"1e2\"", $"string({Dbl()})", $"string({Int()})" })}, {Int()})",
+                $"toIntOrNull({Pick(new[] { "\"-8\"", "\"abc\"", "\" \"", $"string({Dbl()})" })})",
+                $"formatNumber({Dbl()}, {Between(0, 3)})",
+                $"formatNumber({Int()}, {Between(0, 2)})",
+                $"isString({Text()}) + \" \" + isArray({array}) + \" \" + isObject({{ \"k\": {Int()} }}) + \" \" + isObject({array})"
+            })});");
+        }
+        else if (roll < 0.88)
+        {
+            Emit($"io.print({Pick(new[]
+            {
+                $"reverse({array})",
+                $"sort({array})",
+                $"sort([{Dbl()}, {Int()}, {Dbl()}, {Int()}])",
+                $"sort([\"{Pick(SortWords)}\", \"{Pick(SortWords)}\", \"{Pick(SortWords)}\"])",
+                $"sort({array}, (a, b) => b - a)",
+                $"includes({array}, {Int()})",
+                $"range({Between(-3, 3)}, {Between(4, 12)}, {Between(1, 3)})",
+                $"range({Between(5, 9)}, {Between(-3, 2)}, -{Between(1, 3)})",
+                $"toCsv([{{ \"a\": {Int()}, \"b\": {Text()}, \"c\": {Dbl()} }}, {{ \"a\": {Int()}, \"b\": null }}])",
+                $"toCsv({array})",
+                $"toCsv([{{ \"a\": {Int()}, \"b\": {Text()} }}], [\"b\", \"a\"], {{ \"delimiter\": \";\", \"includeHeader\": {(Roll() < 0.5 ? "true" : "false")} }})"
+            })});");
+        }
+        else if (roll < 0.96)
+        {
+            var dict = Fresh("jd");
+            Emit($"var {dict} = {{ \"s\": {Text()}, \"n\": [{Int()}, {Dbl()}, null, true], \"d\": {{ \"k\": {Text()} }} }};");
+            Emit($"io.print(toJSON({dict}));");
+            Emit($"io.print(toJSON(parseJSON(toJSON({dict}))));");
+            Emit($"io.print(parseJSON(toJSON({dict})).s);");
+        }
+        else
+        {
+            Emit($"try {{ {Pick(new[] { "assert", "expect" })}({BoolExpr(scope, 1)}, \"failed-{_nameCounter}\"); io.print(\"held\"); }} catch (e) {{ io.print(\"caught \" + e); }}");
         }
     }
 
