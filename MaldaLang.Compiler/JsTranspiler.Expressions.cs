@@ -55,7 +55,7 @@ public partial class JsTranspiler
 
     private static readonly HashSet<string> DictionaryMethods = new(StringComparer.Ordinal)
     {
-        "keys", "values", "containsKey"
+        "keys", "values", "containsKey", "set", "remove", "entries"
     };
 
     private string TranspilePipeExpression(PipeExpression pipe)

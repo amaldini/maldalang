@@ -60,6 +60,8 @@ public partial class CSharpTranspiler
     private readonly Stack<Dictionary<string, TranspiledClrType>> _typedScopeStack;
     private readonly Stack<HashSet<string>> _constScopeStack;
     private readonly HashSet<string> _moduleConstNames;
+    /// <summary>Names of top-level <c>var</c>s (static fields of the generated program).</summary>
+    private readonly HashSet<string> _topLevelVariableNames = new(StringComparer.Ordinal);
     private readonly Dictionary<string, TranspiledClrType> _functionReturnTypes;
     private readonly Dictionary<string, IReadOnlyList<TranspiledClrType>> _functionParameterTypes;
     /// <summary>
@@ -207,6 +209,7 @@ public partial class CSharpTranspiler
         _typedScopeStack.Clear();
         _constScopeStack.Clear();
         _moduleConstNames.Clear();
+        _topLevelVariableNames.Clear();
         _functionReturnTypes.Clear();
         _functionParameterTypes.Clear();
         _localFunctionStack.Clear();
@@ -304,6 +307,7 @@ public partial class CSharpTranspiler
             {
                 // Track top-level variables for field generation in executable mode.
                 topLevelVariables.Add(varDecl);
+                _topLevelVariableNames.Add(varDecl.Name);
                 if (varDecl.IsConst)
                     _moduleConstNames.Add(varDecl.Name);
                 if (!isLibrary)

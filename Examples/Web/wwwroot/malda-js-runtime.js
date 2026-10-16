@@ -446,10 +446,34 @@
     return array.slice().sort(compareSortValues);
   }
 
+  // An object/dict literal entry (or a class method) named like a built-in member method
+  // wins over it, as in the interpreter (JsonObject.Get looks up entries first):
+  // `{ pop: () => 1 }.pop()` calls the entry. A non-function entry cannot be called.
+  const noMemberEntry = Symbol("noMemberEntry");
+  function callMemberEntry(receiver, methodName, callArgs) {
+    if (receiver === null || typeof receiver !== "object" || Array.isArray(receiver) ||
+        isVariant(receiver) || !(methodName in receiver)) {
+      return noMemberEntry;
+    }
+    const member = receiver[methodName];
+    if (typeof member !== "function") {
+      throw new Error("Can only call functions, prompts, and classes.");
+    }
+    return member.apply(receiver, callArgs);
+  }
+
+  function isDictReceiver(value) {
+    return value !== null && typeof value === "object" && !Array.isArray(value) && !isVariant(value);
+  }
+
   // Dictionary methods (`d.keys()`, ...) on the plain objects that dict literals become.
   // A receiver that defines the method itself (class instance, Map wrapper) keeps it.
   function callDictMethod(receiver, methodName, args) {
     const callArgs = Array.isArray(args) ? args : [];
+    const entryResult = callMemberEntry(receiver, methodName, callArgs);
+    if (entryResult !== noMemberEntry) {
+      return entryResult;
+    }
     if (receiver !== null && receiver !== undefined && typeof receiver[methodName] === "function") {
       return receiver[methodName](...callArgs);
     }
@@ -457,7 +481,35 @@
       throw new Error(`${methodName}() expects a dictionary receiver`);
     }
     const isEntryKey = (key) => key !== "__maldaDict";
+    const requireKey = () => {
+      if (typeof callArgs[0] !== "string") {
+        throw new Error("Dictionary keys must be strings.");
+      }
+      return callArgs[0];
+    };
     switch (methodName) {
+      case "get": {
+        requireCallArity("get", callArgs, 1, 1);
+        const key = requireKey();
+        return isEntryKey(key) && Object.prototype.hasOwnProperty.call(receiver, key) ? receiver[key] : null;
+      }
+      case "set": {
+        requireCallArity("set", callArgs, 2, 2);
+        receiver[requireKey()] = callArgs[1];
+        return receiver;
+      }
+      case "remove": {
+        requireCallArity("remove", callArgs, 1, 1);
+        const key = requireKey();
+        if (!isEntryKey(key) || !Object.prototype.hasOwnProperty.call(receiver, key)) {
+          return false;
+        }
+        delete receiver[key];
+        return true;
+      }
+      case "entries":
+        requireCallArity("entries", callArgs, 0, 0);
+        return Object.keys(receiver).filter(isEntryKey).map((key) => [key, receiver[key]]);
       case "keys":
         requireCallArity("keys", callArgs, 0, 0);
         return Object.keys(receiver).filter(isEntryKey);
@@ -478,6 +530,13 @@
 
   function callArrayMethod(arrayValue, methodName, args) {
     const callArgs = Array.isArray(args) ? args : [];
+    const entryResult = callMemberEntry(arrayValue, methodName, callArgs);
+    if (entryResult !== noMemberEntry) {
+      return entryResult;
+    }
+    if (methodName === "get" && isDictReceiver(arrayValue)) {
+      return callDictMethod(arrayValue, methodName, callArgs);
+    }
     switch (methodName) {
       case "pop": {
         requireCallArity("pop", callArgs, 0, 0);
@@ -1165,6 +1224,10 @@
   }
 
   function arrayAppend(array, value) {
+    const entryResult = callMemberEntry(array, "append", [value]);
+    if (entryResult !== noMemberEntry) {
+      return entryResult;
+    }
     if (!Array.isArray(array)) {
       throw new Error("append() expects an array");
     }

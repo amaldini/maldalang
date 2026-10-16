@@ -59,6 +59,9 @@ public partial class CSharpTranspiler
                 return;
             }
 
+            if (TryTranspileObjectEntryGuardedCall(call, memberAccess))
+                return;
+
             var memberName = memberAccess.Member;
             if (memberName == "append")
             {
@@ -1149,6 +1152,76 @@ public partial class CSharpTranspiler
         _output.Append("RuntimeHelpers.ToRuntimeValue(");
         TranspileExpression(argument);
         _output.Append(")");
+    }
+
+    /// <summary>
+    /// Member names this emitter routes to array/string/server built-ins at compile time.
+    /// </summary>
+    private static readonly HashSet<string> CompileTimeMemberCallNames = new(StringComparer.Ordinal)
+    {
+        "append", "pop", "shift", "concat", "except", "sum", "average", "min", "max",
+        "start", "stop", "clearCache", "getRoutes"
+    };
+
+    private bool _emittingObjectEntryFallback;
+
+    /// <summary>
+    /// <c>o.pop()</c> / <c>o.start()</c> / <c>o.upper()</c> are emitted as array, server or string
+    /// built-ins, but when <c>o</c> is an object/dict literal holding an entry of that name the
+    /// interpreter calls the entry (JsonObject/DictionaryInstance.Get looks up entries first).
+    /// For a receiver that is a plain variable (or a member chain on one), so evaluating it
+    /// twice is harmless, emit
+    /// <c>DirectCall(HasObjectEntry(o, "pop") ? CallObjectMethod(o, "pop", args) : (object)(builtin))</c>.
+    /// </summary>
+    private bool TryTranspileObjectEntryGuardedCall(FunctionCallExpression call, MemberAccessExpression memberAccess)
+    {
+        if (_emittingObjectEntryFallback)
+        {
+            // The fallback branch of this very call: emit the built-in. Cleared here so
+            // calls nested in its arguments are guarded again.
+            _emittingObjectEntryFallback = false;
+            return false;
+        }
+        if (_transpileCallAsTask || memberAccess.IsNullConditional)
+            return false;
+        var name = memberAccess.Member;
+        if (!CompileTimeMemberCallNames.Contains(name) && !IsStringExtensionMethod(name))
+            return false;
+        if (!IsSideEffectFreeVariableReceiver(memberAccess.Object) ||
+            ResolveExpressionType(memberAccess.Object) != TranspiledClrType.Object)
+            return false;
+
+        _output.Append("RuntimeHelpers.DirectCall(RuntimeHelpers.HasObjectEntry(");
+        TranspileExpression(memberAccess.Object);
+        _output.Append(", \"");
+        _output.Append(name);
+        _output.Append("\") ? (object)(");
+        _output.Append(_canAwait ? "await RuntimeHelpers.CallObjectMethod(" : "RuntimeHelpers.BlockOn(RuntimeHelpers.CallObjectMethod(");
+        TranspileExpression(memberAccess.Object);
+        _output.Append(", \"");
+        _output.Append(name);
+        _output.Append("\", new List<object> { ");
+        EmitObjectMethodArguments(call.Arguments);
+        _output.Append(" }, ");
+        EmitAccessingClassArg();
+        _output.Append(_canAwait ? ")" : "))");
+        _output.Append(") : (object)(");
+        _emittingObjectEntryFallback = true;
+        TranspileFunctionCall(call);
+        _emittingObjectEntryFallback = false;
+        _output.Append("))");
+        return true;
+    }
+
+    /// <summary>A declared variable, or a member chain on one (<c>a</c>, <c>a.b.c</c>).</summary>
+    private bool IsSideEffectFreeVariableReceiver(Expression? expression)
+    {
+        return expression switch
+        {
+            IdentifierExpression id => IsDeclaredLocal(id.Name) || _topLevelVariableNames.Contains(id.Name),
+            MemberAccessExpression { IsNullConditional: false } member => IsSideEffectFreeVariableReceiver(member.Object),
+            _ => false
+        };
     }
 
     private static bool IsStringExtensionMethod(string name)

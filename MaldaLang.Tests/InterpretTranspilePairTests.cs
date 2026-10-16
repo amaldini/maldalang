@@ -1840,4 +1840,161 @@ print(""run="" + string(ran.success) + "","" + string(ran.output));
             ParserSyntaxGapTests.TrailingCommaParamsSource,
             "trailing-comma-params");
     }
+    /// <summary>
+    /// Calling a function stored in an object/dict literal: <c>o.bump()</c> used to reach the
+    /// reflective fallback on the transpiled dictionary and silently return null.
+    /// </summary>
+    internal const string ObjectLiteralMethodCallSource =
+        """
+        var o = { n: 0, bump: function() { o.n = o.n + 1; } };
+        o.bump();
+        o.bump();
+        io.print(o.n);
+        var b = o.bump;
+        b();
+        io.print(o.n);
+        var a = { add: (x, y) => x + y, twice: function(v) { return v * 2; }, three: (p, q, r) => p * q * r };
+        io.print(a.add(2, 3));
+        io.print(a.twice(21));
+        io.print(a.three(2, 3, 4));
+        var count = 0;
+        var c = { inc: () => { count = count + 1; return count; } };
+        c.inc();
+        io.print(c.inc());
+        var nest = { b: { f: (x) => "nested " + x } };
+        io.print(nest.b.f(7));
+        var d = dict { "g": (x) => x + 100, "h": () => "dict h" };
+        io.print(d.g(1));
+        io.print(d.h());
+        function makeCounter() {
+            var total = 10;
+            return { add: (k) => { total = total + k; return total; }, read: () => total };
+        }
+        var counter = makeCounter();
+        counter.add(5);
+        io.print(counter.read());
+        io.print(makeCounter().add(1));
+        """;
+
+    /// <summary>
+    /// An entry named like a dictionary, array, string or server built-in method is the
+    /// interpreter's callee (JsonObject.Get looks up entries first).
+    /// </summary>
+    internal const string ObjectEntryNamedLikeBuiltInSource =
+        """
+        var s = { set: (v) => v * 2, get: (k) => "got " + k, has: (k) => "has " + k, keys: () => "mykeys", remove: (k) => "rm " + k, count: () => 42, values: () => "vals", containsKey: (k) => "ck " + k, entries: () => "ents" };
+        io.print(s.set(4));
+        io.print(s.get("a"));
+        io.print(s.has("z"));
+        io.print(s.keys());
+        io.print(s.remove("q"));
+        io.print(s.count());
+        io.print(s.values());
+        io.print(s.containsKey("x"));
+        io.print(s.entries());
+        var o = { pop: () => "popped", start: (n) => "start " + n, stop: () => "stopped", upper: () => "UP", length: () => 99, sum: () => "summed", append: (x) => "app " + x };
+        io.print(o.pop());
+        io.print(o.start(3));
+        io.print(o.stop());
+        io.print(o.upper());
+        io.print(o.length());
+        io.print(o.sum());
+        io.print(o.append(1));
+        var w = { inner: { pop: () => "inner pop", keys: () => "inner keys" } };
+        io.print(w.inner.pop());
+        io.print(w.inner.keys());
+        var dd = dict { "set": (v) => "dict set " + v };
+        io.print(dd.set(1));
+        function useLocal() {
+            var loc = { shift: () => "shifted", repeat: (t) => t + t };
+            io.print(loc.shift());
+            io.print(loc.repeat("ab"));
+            var arr = [1, 2, 3];
+            io.print(arr.pop());
+            var str2 = "xyz";
+            io.print(str2.upper());
+        }
+        useLocal();
+        var arr2 = [4, 5];
+        arr2.append(6);
+        io.print(arr2.sum());
+        io.print(arr2.pop());
+        var st = { stop: () => { io.print("stop called"); } };
+        st.stop();
+        var plain = { x: 1 };
+        try { plain.has("x"); io.print("no error"); } catch (e) { io.print("missing method fails"); }
+        """;
+
+    /// <summary>The built-in dictionary methods on an object/dict literal without such entries.</summary>
+    internal const string DictionaryBuiltInMethodsSource =
+        """
+        var p = { x: 1, y: 2 };
+        io.print(p.get("x"));
+        io.print(p.get("nope"));
+        p.set("z", 3);
+        io.print(p.z);
+        io.print(p.containsKey("z"));
+        io.print(p.remove("y"));
+        io.print(p.remove("y"));
+        io.print(p.keys());
+        io.print(p.values());
+        var es = p.entries();
+        io.print(es.length);
+        io.print(es[1][0] + "=" + es[1][1]);
+        var d = dict { "a": 1 };
+        d.set("b", 2).set("c", 3);
+        io.print(d.get("b"));
+        io.print(d.keys());
+        """;
+
+    /// <summary><c>e.start()</c> on a class instance used to go to the built-in server no-op.</summary>
+    internal const string ClassMethodNamedStartSource =
+        """
+        class Engine {
+            var on = false;
+            function Engine() {}
+            function start() { this.on = true; io.print("started"); }
+            function stop() { this.on = false; io.print("stopped"); }
+        }
+        var e = new Engine();
+        e.start();
+        io.print(e.on);
+        e.stop();
+        io.print(e.on);
+        """;
+
+    [Fact]
+    public void ObjectLiteralMethodCall_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(ObjectLiteralMethodCallSource, "object-literal-method-call");
+    }
+
+    [Fact]
+    public void ObjectEntryNamedLikeBuiltIn_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(ObjectEntryNamedLikeBuiltInSource, "object-entry-named-like-builtin");
+    }
+
+    [Fact]
+    public void DictionaryBuiltInMethods_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(DictionaryBuiltInMethodsSource, "dictionary-builtin-methods");
+    }
+
+    [Fact]
+    public void ClassMethodNamedStart_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(ClassMethodNamedStartSource, "class-method-named-start");
+    }
+
+    [Fact]
+    public void ObjectEntryNotCallable_BothFail()
+    {
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            var o = { keys: 5 };
+            io.print(o.keys());
+            """,
+            "object-entry-not-callable");
+    }
 }

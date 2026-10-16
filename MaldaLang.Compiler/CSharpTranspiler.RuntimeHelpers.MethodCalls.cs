@@ -24,6 +24,38 @@ public partial class CSharpTranspiler
 {
     private void GenerateRuntimeMethodCallHelpers()
     {
+        // Object/dict literals hold their members as entries. Like the interpreter
+        // (JsonObject/DictionaryInstance.Get), an entry named like the call wins over the
+        // built-in dictionary methods: `{ set: v => v * 2 }.set(4)` calls the stored lambda.
+        EmitLines(
+            "public static bool TryGetObjectEntry(object? obj, string name, out object? value)",
+            "{",
+            "    if (obj is MaldaLang.Interpreter.RuntimeValue entryRv && entryRv.Type == MaldaLang.Interpreter.ValueType.Object)",
+            "        obj = entryRv.AsObject();",
+            "    switch (obj)",
+            "    {",
+            "        case System.Collections.Generic.Dictionary<string, object?> entryDict:",
+            "            return entryDict.TryGetValue(name, out value);",
+            "        case MaldaLang.BuiltIns.JsonObject entryJson when entryJson.GetProperties().TryGetValue(name, out var jsonEntry):",
+            "            value = jsonEntry;",
+            "            return true;",
+            "        case MaldaLang.Interpreter.DictionaryInstance entryDi when entryDi.TryGetEntry(name, out var dictEntry):",
+            "            value = dictEntry;",
+            "            return true;",
+            "    }",
+            "    value = null;",
+            "    return false;",
+            "}",
+            "public static bool HasObjectEntry(object? obj, string name) => TryGetObjectEntry(obj, name, out _);",
+            "public static async System.Threading.Tasks.Task<object> CallObjectEntry(object? entry, List<object> args)",
+            "{",
+            "    var callable = entry is System.Delegate || entry is MaldaLang.Interpreter.FunctionValue ||",
+            "        (entry is MaldaLang.Interpreter.RuntimeValue entryFn && entryFn.Type == MaldaLang.Interpreter.ValueType.Function);",
+            "    if (!callable) throw new MaldaLang.Interpreter.RuntimeException(\"Can only call functions, prompts, and classes.\");",
+            "    if (args.Count <= 1 && entry is System.Func<object, System.Threading.Tasks.Task<object>> unary)",
+            "        return await unary(args.Count == 1 ? args[0] : null!);",
+            "    return await CallFunctionN(entry, args.Cast<object?>().ToArray());",
+            "}");
         WriteIndent();
         _output.AppendLine("public static async System.Threading.Tasks.Task<object> CallObjectMethod(object? obj, string methodName, List<object> args, System.Type? accessingClass = null)");
         WriteIndent();
@@ -46,6 +78,10 @@ public partial class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("}");
         WriteIndent();
+        _output.AppendLine("if (TryGetObjectEntry(obj, methodName, out var __entryValue))");
+        WriteIndent();
+        _output.AppendLine("    return await CallObjectEntry(__entryValue, args);");
+        WriteIndent();
         _output.AppendLine("if (obj is System.Collections.Generic.Dictionary<string, object?> nativeDict)");
         WriteIndent();
         _output.AppendLine("{");
@@ -55,6 +91,23 @@ public partial class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("{");
         _indentLevel++;
+        // The remaining dictionary methods of JsonObject/DictionaryInstance.CallMethod.
+        EmitLines(
+            "case \"get\":",
+            "    if (args.Count != 1) throw new MaldaLang.Interpreter.RuntimeException(\"get() expects 1 argument\");",
+            "    if (args[0] is not string getKey) throw new MaldaLang.Interpreter.RuntimeException(\"Dictionary keys must be strings.\");",
+            "    return nativeDict.TryGetValue(getKey, out var gotValue) ? gotValue! : null!;",
+            "case \"set\":",
+            "    if (args.Count != 2) throw new MaldaLang.Interpreter.RuntimeException(\"set() expects 2 arguments\");",
+            "    if (args[0] is not string setKey) throw new MaldaLang.Interpreter.RuntimeException(\"Dictionary keys must be strings.\");",
+            "    nativeDict[setKey] = args[1];",
+            "    return nativeDict;",
+            "case \"remove\":",
+            "    if (args.Count != 1) throw new MaldaLang.Interpreter.RuntimeException(\"remove() expects 1 argument\");",
+            "    if (args[0] is not string removeKey) throw new MaldaLang.Interpreter.RuntimeException(\"Dictionary keys must be strings.\");",
+            "    return nativeDict.Remove(removeKey);",
+            "case \"entries\":",
+            "    return nativeDict.Select(e => (object)new List<object> { e.Key, e.Value! }).ToList();");
         WriteIndent();
         _output.AppendLine("case \"containsKey\":");
         _indentLevel++;
@@ -876,6 +929,10 @@ public partial class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("}");
         WriteIndent();
+        _output.AppendLine("// A dictionary without that entry or built-in method: the interpreter's callee is null.");
+        WriteIndent();
+        _output.AppendLine("if (obj is System.Collections.Generic.Dictionary<string, object?>) throw new MaldaLang.Interpreter.RuntimeException(\"Can only call functions, prompts, and classes.\");");
+        WriteIndent();
         _output.AppendLine("// Reflection fallback for transpiled class instances");
         WriteIndent();
         _output.AppendLine("var targetType = obj.GetType();");
@@ -1023,6 +1080,13 @@ public partial class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("{");
         _indentLevel++;
+        // An object-literal entry, or a method of a transpiled class (`e.start()`), is a
+        // user call like any other; only the built-in servers below are fire-and-forget.
+        EmitLines(
+            "if (TryGetObjectEntry(obj, methodName, out var voidEntry))",
+            "    return CallObjectEntry(voidEntry, new List<object>()).GetAwaiter().GetResult();",
+            "if (obj != null && obj.GetType().Assembly == typeof(RuntimeHelpers).Assembly)",
+            "    return CallObjectMethod(obj, methodName, new List<object>()).GetAwaiter().GetResult();");
         WriteIndent();
         _output.AppendLine("if (obj is MaldaLang.BuiltIns.HttpServerInstance httpServer)");
         WriteIndent();
@@ -1095,12 +1159,12 @@ public partial class CSharpTranspiler
         // Helper to route .stop() calls either to ActorsRuntime.Stop for actors
         // or to regular object methods (e.g., HttpServerInstance, MCPServerInstance).
         WriteIndent();
-        _output.AppendLine("public static void CallActorOrVoidStop(object? target)");
+        _output.AppendLine("public static object? CallActorOrVoidStop(object? target)");
         WriteIndent();
         _output.AppendLine("{");
         _indentLevel++;
         WriteIndent();
-        _output.AppendLine("if (target == null) return;");
+        _output.AppendLine("if (target == null) return null;");
         WriteIndent();
         _output.AppendLine("// Check if target is an ActorRef (struct, may be boxed)");
         WriteIndent();
@@ -1111,14 +1175,14 @@ public partial class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("ActorsRuntime.Stop(actorRef);");
         WriteIndent();
-        _output.AppendLine("return;");
+        _output.AppendLine("return null;");
         _indentLevel--;
         WriteIndent();
         _output.AppendLine("}");
         WriteIndent();
         _output.AppendLine("// For non-actor objects, try calling their stop method");
         WriteIndent();
-        _output.AppendLine("CallVoidMethod(target, \"stop\");");
+        _output.AppendLine("return CallVoidMethod(target, \"stop\");");
         _indentLevel--;
         WriteIndent();
         _output.AppendLine("}");

@@ -712,4 +712,37 @@ public class InterpretJsPairTests
             ParserSyntaxGapTests.TrailingCommaParamsSource,
             "trailing-comma-params-js");
     }
+    [Fact]
+    public void ObjectLiteralMethodCall_SameStdout()
+    {
+        InterpretJsPair.AssertSameFromSource(
+            InterpretTranspilePairTests.ObjectLiteralMethodCallSource,
+            "object-literal-method-call-js");
+    }
+
+    [Fact]
+    public void ObjectEntryNamedLikeBuiltIn_SameStdout()
+    {
+        // String extension methods on string receivers (`"xyz".upper()`) are not a JS feature.
+        InterpretJsPair.AssertSameFromSource(
+            InterpretTranspilePairTests.ObjectEntryNamedLikeBuiltInSource
+                .Replace("io.print(str2.upper());", "io.print(str2);"),
+            "object-entry-named-like-builtin-js");
+    }
+
+    [Fact]
+    public void DictionaryBuiltInMethods_SameStdout()
+    {
+        InterpretJsPair.AssertSameFromSource(
+            InterpretTranspilePairTests.DictionaryBuiltInMethodsSource,
+            "dictionary-builtin-methods-js");
+    }
+
+    [Fact]
+    public void ClassMethodNamedStart_SameStdout()
+    {
+        InterpretJsPair.AssertSameFromSource(
+            InterpretTranspilePairTests.ClassMethodNamedStartSource,
+            "class-method-named-start-js");
+    }
 }
