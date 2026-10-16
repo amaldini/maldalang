@@ -133,15 +133,14 @@ actor GameCoordinator {
     }
 }
 
-// Helper functions
+// Helper functions: robot angles are in degrees. These shadow the flat cos / sin
+// built-ins inside this program, so the robots call them; math.* stays the radian built-in.
 function cos(degrees) {
-    var radians = degrees * 3.14159 / 180;
-    return 1 - (radians * radians) / 2;  // Simple approximation
+    return math.cos(math.degToRad(degrees));
 }
 
 function sin(degrees) {
-    var radians = degrees * 3.14159 / 180;
-    return radians - (radians * radians * radians) / 6;  // Simple approximation
+    return math.sin(math.degToRad(degrees));
 }
 
 // Main program
