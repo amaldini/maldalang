@@ -38,6 +38,10 @@ public partial class CSharpTranspiler
                 }
                 else
                 {
+                    // A user function used as a value is a method group: cast it to the
+                    // delegate of its arity so it can be stored, passed and called later.
+                    if (TryGetFunctionDelegateType(identifier, out var delegateType))
+                        _output.Append('(').Append(delegateType).Append(')');
                     _output.Append(EscapeIdentifier(identifier.Name));
                 }
                 break;
@@ -818,15 +822,7 @@ public partial class CSharpTranspiler
             _output.Append("RuntimeHelpers.CoerceToString(");
             TranspileExpression(key);
             _output.Append("), ");
-            if (ShouldEmitTranspiledFunctionDelegate(value))
-            {
-                _output.Append("(System.Func<object, System.Threading.Tasks.Task<object>>)");
-                TranspileExpression(value);
-            }
-            else
-            {
-                TranspileExpression(value);
-            }
+            TranspileExpression(value);
             _output.Append(" }");
         }
         _output.Append(" }");
@@ -903,33 +899,25 @@ public partial class CSharpTranspiler
                 _output.Append(")");
             }
             _output.Append(", ");
-            if (ShouldEmitTranspiledFunctionDelegate(value))
-            {
-                _output.Append("(System.Func<object, System.Threading.Tasks.Task<object>>)");
-                TranspileExpression(value);
-            }
-            else
-            {
-                TranspileExpression(value);
-            }
+            TranspileExpression(value);
             _output.Append(" }");
         }
         _output.Append(" }");
     }
 
-    private bool ShouldEmitTranspiledFunctionDelegate(Expression value)
+    /// <summary>
+    /// The <c>Func&lt;object, ..., Task&lt;object&gt;&gt;</c> type of a user function named by
+    /// <paramref name="id"/>, when it is one: every transpiled user function takes object
+    /// parameters and returns <c>Task&lt;object&gt;</c>.
+    /// </summary>
+    private bool TryGetFunctionDelegateType(IdentifierExpression id, out string delegateType)
     {
-        if (value is not IdentifierExpression id || !IsKnownUserFunction(id))
+        delegateType = string.Empty;
+        if (!IsKnownUserFunction(id) || !TryGetKnownFunctionParameterTypes(id.Name, out var paramTypes) || paramTypes.Count > 16)
             return false;
 
-        foreach (var frame in _localFunctionStack)
-        {
-            if (!frame.ContainsKey(id.Name))
-                continue;
-            return frame.TryGetValue(id.Name, out var localTypes) && localTypes.Count == 1;
-        }
-
-        return _functionNames.Contains(id.Name);
+        delegateType = "System.Func<" + string.Concat(Enumerable.Repeat("object, ", paramTypes.Count)) + "System.Threading.Tasks.Task<object>>";
+        return true;
     }
 
     /// <summary>

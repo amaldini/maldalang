@@ -1971,6 +1971,51 @@ print(""run="" + string(ran.success) + "","" + string(ran.output));
         InterpretTranspilePair.AssertSameFromSource(ObjectLiteralMethodCallSource, "object-literal-method-call");
     }
 
+    /// <summary>
+    /// A named user function of any arity used as a value (dict entry, array item, variable,
+    /// argument) used to be cast to the one-argument delegate, or emitted as a bare method
+    /// group: CS0123 / CS0428 for zero- and two-argument functions.
+    /// </summary>
+    internal const string NamedFunctionValueAnyAritySource =
+        """
+        function zero() { return 7; }
+        function two(a, b) { return a + b; }
+        function typed(a: int, b: int) -> int { return a * b; }
+        function one(x) { return x * 2; }
+        function outer(k) {
+            function inner(a, b) { return a + b + k; }
+            function inner0() { return k * 10; }
+            var t = { "i": inner, "z": inner0 };
+            var l = [inner, inner0];
+            return t.i(1, 2) + l[1]() + inner(0, 0);
+        }
+        var d = { "z": zero, "t": two, "y": typed, "o": one };
+        io.print(d.z());
+        io.print(d["t"](1, 2));
+        io.print(d.y(3, 4));
+        io.print(d.o(5));
+        var arr = [zero, one];
+        io.print(arr[0]() + arr[1](3));
+        var h = zero;
+        io.print(h());
+        var hh = two;
+        io.print(hh(2, 3));
+        function call0(fn) { return fn(); }
+        function call2(fn, a, b) { return fn(a, b); }
+        io.print(call0(zero));
+        io.print(call2(typed, 6, 7));
+        function pick(n) { if (n > 0) { return two; } return one; }
+        io.print(pick(1)(2, 5));
+        io.print(pick(0)(2));
+        io.print(outer(5));
+        """;
+
+    [Fact]
+    public void NamedFunctionValueAnyArity_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(NamedFunctionValueAnyAritySource, "named-function-value-any-arity");
+    }
+
     [Fact]
     public void ObjectEntryNamedLikeBuiltIn_SameStdout()
     {
