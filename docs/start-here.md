@@ -63,20 +63,21 @@ Then the short **Algorithms** track (ideas, not an encyclopedia):
 24. `Examples/Algorithms/union_find.malda`
 25. `Examples/Algorithms/qlearn_grid.malda`
 26. `Examples/Algorithms/simulated_annealing.malda`
+27. `Examples/Algorithms/ransac.malda` (line fit that ignores outliers)
 
 Then the **AI theory** track (from-scratch models; no API key, no agent runtime):
 
-27. `Examples/AI_Theory/sarsa_cliff.malda` (SARSA vs Q-learning on a cliff)
-28. `Examples/AI_Theory/chain_rule.malda` (why backprop multiplies local derivatives)
-29. `Examples/AI_Theory/perceptron.malda` (one neuron; AND/OR vs XOR)
-30. `Examples/AI_Theory/xor_neural_net.malda`
-31. `Examples/AI_Theory/softmax_classifier.malda` (3-class softmax on 2D blobs)
-32. `Examples/AI_Theory/svm_linear.malda`
-33. `Examples/AI_Theory/attention_is_all_you_need.malda`
-34. `Examples/AI_Theory/microgpt.malda`
-35. `Examples/AI_Theory/embedding_2d.malda` (hash embeddings projected to 2D)
-36. `Examples/AI_Theory/onnx_inspect.malda` (host ONNX inspect + forward)
-37. `Examples/Games/xor_decision_boundary.malda` (`malda play` — see the XOR net)
+28. `Examples/AI_Theory/sarsa_cliff.malda` (SARSA vs Q-learning on a cliff)
+29. `Examples/AI_Theory/chain_rule.malda` (why backprop multiplies local derivatives)
+30. `Examples/AI_Theory/perceptron.malda` (one neuron; AND/OR vs XOR)
+31. `Examples/AI_Theory/xor_neural_net.malda`
+32. `Examples/AI_Theory/softmax_classifier.malda` (3-class softmax on 2D blobs)
+33. `Examples/AI_Theory/svm_linear.malda`
+34. `Examples/AI_Theory/attention_is_all_you_need.malda`
+35. `Examples/AI_Theory/microgpt.malda`
+36. `Examples/AI_Theory/embedding_2d.malda` (hash embeddings projected to 2D)
+37. `Examples/AI_Theory/onnx_inspect.malda` (host ONNX inspect + forward)
+38. `Examples/Games/xor_decision_boundary.malda` (`malda play` — see the XOR net)
 
 The neural-nets kit (`math.matmul`, `nn.dense` / activations, `OnnxModel`) is [Reference Manual 14](../ReferenceManual/14-neural-nets.html). [14.1](../ReferenceManual/14-neural-nets.html#what-a-net-is) is the idea of a net, before any library call. A ten-glyph MLP in that same training step is `Examples/AI_Theory/mnist_digits.malda`. A one-step REINFORCE bandit on that gradient is `Examples/AI_Theory/reinforce_bandit.malda`. After it, the chapter 14 chain is `gradcheck_dense.malda`, `init_scale.malda`, `glyph_holdout.malda`, `momentum_valley.malda`, `grad_clip.malda`, `adam_valley.malda`, `rnn_delay.malda`, `conv_stroke.malda`, `conv_classifier.malda`, `cnn_basic_layers.malda`, `cnn_composable.malda`, `parallel_compose.malda`, `residual_dropout.malda`, `embed_row.malda`, `next_char.malda`, `next_char_mlp.malda`, `layer_norm.malda`, `attention_step.malda`, `positional_encoding.malda`, and `sentence_decoder.malda`. The three-class picture is `malda play Examples/Games/softmax_decision_boundary.malda`. The maintainer plan is [`docs/roadmap-neural.md`](roadmap-neural.md).
 

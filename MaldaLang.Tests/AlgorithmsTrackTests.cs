@@ -25,17 +25,18 @@ public class AlgorithmsTrackTests : TestBase
         ("knapsack.malda", "knapsack ok"),
         ("union_find.malda", "union-find ok"),
         ("qlearn_grid.malda", "q-learning ok"),
-        ("simulated_annealing.malda", "simulated annealing ok")
+        ("simulated_annealing.malda", "simulated annealing ok"),
+        ("ransac.malda", "ransac ok")
     ];
 
     [Fact]
-    public void Catalog_ListsEightOfflineStudentExamples()
+    public void Catalog_ListsNineOfflineStudentExamples()
     {
         var examples = ExampleProgramsService.GetExamples()
             .Where(example => example.Category == "Algorithms")
             .ToList();
 
-        Assert.Equal(8, examples.Count);
+        Assert.Equal(9, examples.Count);
         Assert.All(examples, example =>
         {
             Assert.Equal("student", example.Track);
@@ -56,7 +57,11 @@ public class AlgorithmsTrackTests : TestBase
         Assert.NotNull(first);
         Assert.Equal("Algorithms/binary_search.malda", first!.Next);
 
-        var last = ExampleProgramsService.GetExampleByRelativePath("Algorithms/simulated_annealing.malda");
+        var annealing = ExampleProgramsService.GetExampleByRelativePath("Algorithms/simulated_annealing.malda");
+        Assert.NotNull(annealing);
+        Assert.Equal("Algorithms/ransac.malda", annealing!.Next);
+
+        var last = ExampleProgramsService.GetExampleByRelativePath("Algorithms/ransac.malda");
         Assert.NotNull(last);
         Assert.Equal("AI_Theory/sarsa_cliff.malda", last!.Next);
     }

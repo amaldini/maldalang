@@ -57,7 +57,8 @@ the pole and the cart. The same dense layer drives a Grand Prix grid in
 Kit roadmap: [`docs/roadmap-neural.md`](../../docs/roadmap-neural.md).
 
 All are seeded with `math.seed` where they use randomness. The student
-path arrives here from `Examples/Algorithms/simulated_annealing.malda`.
+path arrives here from `Examples/Algorithms/ransac.malda`.
+Simulated annealing is the step before that sample.
 Tabular Q-learning without the cliff is `Examples/Algorithms/qlearn_grid.malda`.
 
 Catalog fields: [`metadata.json`](metadata.json).

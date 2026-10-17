@@ -126,10 +126,26 @@
       "prerequisites": ["Algorithms/qlearn_grid.malda"],
       "learningGoal": "Accept worse moves early, then freeze near a short tour.",
       "expectedOutput": "Prints a best length under 9, shorter than the shuffled start.",
-      "next": "AI_Theory/sarsa_cliff.malda",
+      "next": "Algorithms/ransac.malda",
       "documentationPath": "/docs/start-here.md",
       "documentationTitle": "Start Here",
       "featured": true
+    },
+    {
+      "name": "RANSAC Line Fit",
+      "description": "Fit y = 0.5x + 1 when four of ten points are outliers",
+      "file": "ransac.malda",
+      "track": "student",
+      "difficulty": "advanced",
+      "minutes": 12,
+      "requires": ["offline"],
+      "concepts": ["RANSAC", "robust estimation", "least squares", "outliers"],
+      "prerequisites": ["Algorithms/simulated_annealing.malda"],
+      "learningGoal": "See a random pair of points ignore outliers that ordinary least squares cannot.",
+      "expectedOutput": "Prints a naive slope pulled off 0.5, then a RANSAC slope near 0.5 with 6 inliers.",
+      "next": "AI_Theory/sarsa_cliff.malda",
+      "documentationPath": "/docs/start-here.md",
+      "documentationTitle": "Start Here"
     }
   ]
 }
