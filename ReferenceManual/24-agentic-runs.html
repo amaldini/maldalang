@@ -71,7 +71,7 @@
         <div class="info-box">
             <strong>Known gaps (do not invent a workaround in docs):</strong>
             <ul>
-                <li><code>Examples/Prompts/prompt_tools_then_structured.malda</code> interprets offline; C# construct currently throws <code>NullReferenceException</code>. Ship row stays <code>n/a</code>.</li>
+                <li><code>Examples/Prompts/prompt_tools_then_structured.malda</code> prints the same offline output interpreted and C#-transpiled (ship row <code>pair</code>).</li>
                 <li>In-process llama.cpp / LLamaSharp <code>stream()</code> is <strong>buffered</strong> (chunks from the final text), not live tokens.</li>
                 <li><code>policy { shell: approve }</code> is not a workflow approval UI. It auto-approves only when <code>MALDA_POLICY_APPROVE=1</code> or a host <code>ApprovalCallback</code> returns true; otherwise it denies.</li>
             </ul>

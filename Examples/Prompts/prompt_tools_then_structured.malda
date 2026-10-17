@@ -25,4 +25,4 @@ io.print("Mode C gather-then-extract (offline PromptInstance):");
 io.print("gather=" + toJSON(inst.gather));
 io.print("tools=" + toJSON(inst.tools));
 io.print("user preview: " + str.substring(inst.user, 0, 40) + "...");
-io.print("Live: await research(question) — tool round, then typed extract.");
+io.print("Live: await research(question) - tool round, then typed extract.");

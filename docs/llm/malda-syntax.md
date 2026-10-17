@@ -428,7 +428,7 @@ metadata (own key `usage` wins). `stream(value, schema?)` + `for await (var c in
 `grounded.wrap` + `$"…"` citation union; `@requiresCitations` on sinks.
 WF1006: context mutate / compact inside `workflow` only in a `step`.
 
-Known gaps: `prompt_tools_then_structured` C# NRE (ship `n/a`); GGUF `stream` is buffered;
+Known gaps: GGUF `stream` is buffered;
 `policy { shell: approve }` is env/callback, not a workflow approval UI.
 
 ## Agent host tools (prefer factories, not the shell)

@@ -71,7 +71,7 @@
         <div class="info-box">
             <strong>Gap noti (non inventare un workaround nella documentazione):</strong>
             <ul>
-                <li><code>Examples/Prompts/prompt_tools_then_structured.malda</code> interpreta offline; il costrutto C# oggi lancia <code>NullReferenceException</code>. La riga ship resta <code>n/a</code>.</li>
+                <li><code>Examples/Prompts/prompt_tools_then_structured.malda</code> stampa lo stesso output offline interpretato e transpilato in C# (riga ship <code>pair</code>).</li>
                 <li>llama.cpp / LLamaSharp in-process: <code>stream()</code> è <strong>bufferizzato</strong> (chunk dal testo finale), non token live.</li>
                 <li><code>policy { shell: approve }</code> non è una UI di approval dei workflow. Auto-approva solo con <code>MALDA_POLICY_APPROVE=1</code> o se un <code>ApprovalCallback</code> dell'host torna true; altrimenti deny.</li>
             </ul>

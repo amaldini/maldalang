@@ -270,7 +270,7 @@ public partial class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("tools = new System.Collections.Generic.List<string>();");
         WriteIndent();
-        _output.AppendLine("foreach (var tool in RuntimeHelpers.UnwrapRuntimeValue(toolsValue) as System.Collections.Generic.List<RuntimeValue>)");
+        _output.AppendLine("foreach (var tool in RuntimeHelpers.ToRuntimeValue(toolsValue).AsArray())");
         WriteIndent();
         _output.AppendLine("{");
         _indentLevel++;
@@ -301,7 +301,7 @@ public partial class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("gather = new System.Collections.Generic.List<string>();");
         WriteIndent();
-        _output.AppendLine("foreach (var tool in RuntimeHelpers.UnwrapRuntimeValue(gatherValue) as System.Collections.Generic.List<RuntimeValue>)");
+        _output.AppendLine("foreach (var tool in RuntimeHelpers.ToRuntimeValue(gatherValue).AsArray())");
         WriteIndent();
         _output.AppendLine("{");
         _indentLevel++;
@@ -424,7 +424,7 @@ public partial class CSharpTranspiler
                                 WriteIndent();
                                 _output.AppendLine("tools = new System.Collections.Generic.List<string>();");
                                 WriteIndent();
-                                _output.AppendLine("foreach (var tool in RuntimeHelpers.UnwrapRuntimeValue(" + keyword + "Value) as System.Collections.Generic.List<RuntimeValue>)");
+                                _output.AppendLine("foreach (var tool in RuntimeHelpers.ToRuntimeValue(" + keyword + "Value).AsArray())");
                                 WriteIndent();
                                 _output.AppendLine("{");
                                 _indentLevel++;
@@ -445,7 +445,7 @@ public partial class CSharpTranspiler
                                 WriteIndent();
                                 _output.AppendLine("gather = new System.Collections.Generic.List<string>();");
                                 WriteIndent();
-                                _output.AppendLine("foreach (var tool in RuntimeHelpers.UnwrapRuntimeValue(" + keyword + "Value) as System.Collections.Generic.List<RuntimeValue>)");
+                                _output.AppendLine("foreach (var tool in RuntimeHelpers.ToRuntimeValue(" + keyword + "Value).AsArray())");
                                 WriteIndent();
                                 _output.AppendLine("{");
                                 _indentLevel++;

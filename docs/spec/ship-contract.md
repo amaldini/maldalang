@@ -38,7 +38,8 @@ Templates (`malda new`) and README showcases must appear below even when `n/a`.
 | `Examples/Prompts/prompt_budget.malda` | pair | InterpretTranspilePairTests | no `await` |
 | `Examples/Prompts/context_turns.malda` | pair | InterpretTranspilePairTests | declared context + prompt instance; no LLM |
 | `Examples/Prompts/multimodal_attachments.malda` | pair | InterpretTranspilePairTests | builds instance only |
-| `Examples/Prompts/prompt_tools_then_structured.malda` | n/a | TranspileSmokeTests | offline print works; C# construct NRE; live await is llm-await |
+| `Examples/Prompts/prompt_tools_then_structured.malda` | pair | InterpretTranspilePairTests | Mode C instance only; live await is llm-await |
+| `Examples/Prompts/prompt_tools_mode.malda` | pair | InterpretTranspilePairTests | Mode B instance only; live await is llm-await |
 | `Examples/Agents/phase6_pure_validate.malda` | pair | InterpretTranspilePairTests | |
 | `Examples/Agents/agent_governance_golden.malda` | pair | InterpretTranspilePairTests | offline validate + @pure; live agent wiring is commented |
 | `Examples/Agents/secondbrain_ask_wrapper.malda` | trace | HttpTraceParityTests | GET `/health` + `/ask` fixture; stand-in for ASK HTTP |
