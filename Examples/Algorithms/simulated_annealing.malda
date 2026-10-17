@@ -4,7 +4,7 @@
 // is close to the hull (8). Seeded. Change this: start colder (temp=0.2).
 // The same search is math.anneal(initial, cost, neighbor, options) in the
 // stdlib when you want the loop without writing it out.
-// Next: AI_Theory/sarsa_cliff.malda (SARSA vs Q-learning), then xor_neural_net.malda.
+// Next: ransac.malda (robust line fit), then AI_Theory/sarsa_cliff.malda.
 
 function dist(a, b) {
     var dx = a[0] - b[0];

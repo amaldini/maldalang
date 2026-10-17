@@ -1,0 +1,128 @@
+// RANSAC: fit a line when some of the points are outliers.
+//
+// Six points sit on y = 0.5x + 1. Four do not. Ordinary least squares
+// uses every point, so the outliers tilt the slope. Random sample
+// consensus draws pairs, keeps the line the most points agree with,
+// then refits on that inlier set. Seeded. Change this: set threshold
+// to 6.0 so the outliers join the consensus.
+// Next: AI_Theory/sarsa_cliff.malda
+
+function lineThrough(p, q) {
+    var dx = q[0] - p[0];
+    if (math.abs(dx) < 0.0000001) {
+        return null;
+    }
+    var slope = (q[1] - p[1]) / dx;
+    var intercept = p[1] - slope * p[0];
+    return { "slope": slope, "intercept": intercept };
+}
+
+function pointResidual(line, p) {
+    var num = line.slope * p[0] - p[1] + line.intercept;
+    var den = math.sqrt(line.slope * line.slope + 1.0);
+    return math.abs(num) / den;
+}
+
+function selectInliers(points, line, tol) {
+    var kept = [];
+    var i = 0;
+    while (i < points.length) {
+        if (pointResidual(line, points[i]) <= tol) {
+            kept.append(points[i]);
+        }
+        i = i + 1;
+    }
+    return kept;
+}
+
+function leastSquares(points) {
+    var n = 0.0;
+    var sumX = 0.0;
+    var sumY = 0.0;
+    var sumXX = 0.0;
+    var sumXY = 0.0;
+    var i = 0;
+    while (i < points.length) {
+        var x = points[i][0];
+        var y = points[i][1];
+        n = n + 1.0;
+        sumX = sumX + x;
+        sumY = sumY + y;
+        sumXX = sumXX + x * x;
+        sumXY = sumXY + x * y;
+        i = i + 1;
+    }
+    var den = n * sumXX - sumX * sumX;
+    var slope = (n * sumXY - sumX * sumY) / den;
+    var intercept = (sumY - slope * sumX) / n;
+    return { "slope": slope, "intercept": intercept, "count": int(n) };
+}
+
+function ransacLine(points, trials, tol) {
+    var bestCount = -1;
+    var bestInliers = [];
+    var t = 0;
+    while (t < trials) {
+        var i = math.randomInt(0, points.length - 1);
+        var j = math.randomInt(0, points.length - 1);
+        if (i != j) {
+            var guess = lineThrough(points[i], points[j]);
+            if (guess != null) {
+                var hits = selectInliers(points, guess, tol);
+                if (hits.length > bestCount) {
+                    bestCount = hits.length;
+                    bestInliers = hits;
+                }
+            }
+        }
+        t = t + 1;
+    }
+    if (bestCount < 2) {
+        return null;
+    }
+    return leastSquares(bestInliers);
+}
+
+function fmt(x) {
+    return string(math.round(x * 100.0) / 100.0);
+}
+
+function near(a, b, tol) {
+    return math.abs(a - b) < tol;
+}
+
+var points = [
+    [0.0, 1.0],
+    [2.0, 2.0],
+    [4.0, 3.0],
+    [6.0, 4.0],
+    [8.0, 5.0],
+    [10.0, 6.0],
+    [1.0, 8.0],
+    [3.0, 0.0],
+    [7.0, 9.0],
+    [9.0, 1.0]
+];
+
+var threshold = 0.35;
+var trials = 80;
+
+math.seed(7);
+var naive = leastSquares(points);
+var fit = ransacLine(points, trials, threshold);
+
+io.print("points=" + string(points.length));
+io.print("naive slope=" + fmt(naive.slope) + " intercept=" + fmt(naive.intercept));
+
+if (fit == null) {
+    io.print("ransac failed");
+} else {
+    io.print("ransac slope=" + fmt(fit.slope) + " intercept=" + fmt(fit.intercept) + " inliers=" + string(fit.count));
+    var recovered = fit.count == 6 && near(fit.slope, 0.5, 0.05) && near(fit.intercept, 1.0, 0.05);
+    var naiveTilted = math.abs(naive.slope - 0.5) > 0.15;
+    if (recovered && naiveTilted) {
+        io.print("ransac ok");
+    } else {
+        io.print("ransac failed");
+    }
+}
