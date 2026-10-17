@@ -522,10 +522,19 @@ public partial class Interpreter
                     continue;
 
                 exceptionHandled = true;
-                await ExecuteCatchBodyAsync(catchClause, caughtException);
+                try
+                {
+                    await ExecuteCatchBodyAsync(catchClause, caughtException);
+                }
+                catch
+                {
+                    // break / continue / return / throw out of the catch body: finally still runs.
+                    await ExecuteFinallyBlockAsync(stmt.FinallyBlock);
+                    throw;
+                }
                 break;
             }
-            
+
             // If exception wasn't caught by any clause, execute finally and rethrow
             if (!exceptionHandled)
             {

@@ -721,6 +721,14 @@ public class InterpretJsPairTests
     }
 
     [Fact]
+    public void FinallyAfterCatchExit_SameStdout()
+    {
+        InterpretJsPair.AssertSameFromSource(
+            InterpretTranspilePairTests.FinallyAfterCatchExitSource,
+            "finally-after-catch-exit-js");
+    }
+
+    [Fact]
     public void ObjectEntryNamedLikeBuiltIn_SameStdout()
     {
         // String extension methods on string receivers (`"xyz".upper()`) are not a JS feature.

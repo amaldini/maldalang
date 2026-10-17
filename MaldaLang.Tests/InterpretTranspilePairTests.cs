@@ -2010,6 +2010,32 @@ print(""run="" + string(ran.success) + "","" + string(ran.output));
         io.print(outer(5));
         """;
 
+    /// <summary>
+    /// <c>finally</c> runs when the catch body leaves by break, continue, return or throw; the
+    /// interpreter used to skip it on those paths (C# and JavaScript ran it).
+    /// </summary>
+    internal const string FinallyAfterCatchExitSource =
+        """
+        var c1 = 0;
+        for (var i = 0; i < 5; i = i + 1) { try { if (i % 2 == 0) { throw "e"; } c1 = c1 + 1; } catch (e) { c1 = c1 + 10; continue; } finally { c1 = c1 + 100; } }
+        io.print(c1);
+        var c2 = 0;
+        for (var i = 0; i < 3; i = i + 1) { try { throw "x"; } catch (e) { c2 = c2 + 1; break; } finally { c2 = c2 + 10; } }
+        io.print(c2);
+        function retCatch() { try { throw "x"; } catch (e) { return "c"; } finally { io.print("fin ret"); } }
+        io.print(retCatch());
+        try { try { throw "a"; } catch (e) { throw "b" + e; } finally { io.print("fin rethrow"); } } catch (e) { io.print("outer " + e); }
+        var c3 = 0;
+        for (var i = 0; i < 3; i = i + 1) { try { c3 = c3 + 1; continue; } finally { c3 = c3 + 10; } }
+        io.print(c3);
+        """;
+
+    [Fact]
+    public void FinallyAfterCatchExit_SameStdout()
+    {
+        InterpretTranspilePair.AssertSameFromSource(FinallyAfterCatchExitSource, "finally-after-catch-exit");
+    }
+
     [Fact]
     public void NamedFunctionValueAnyArity_SameStdout()
     {
