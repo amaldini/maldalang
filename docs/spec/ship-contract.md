@@ -58,6 +58,9 @@ Templates (`malda new`) and README showcases must appear below even when `n/a`.
 | `Examples/Memory/grounded_ask.malda` | n/a | TranspileSmokeTests | graphmemory-score |
 | `Examples/Tools/capability_tokens.malda` | n/a | TranspileSmokeTests | relative-cwd; abs-path cap fixtures are inline pairs |
 | `Examples/VectorDB/basic_vectordb.malda` | n/a | TranspileSmokeTests | inline VectorDB pair covers the contract |
+| `Examples/SpectreConsole/progress_example.malda` | n/a | TranspileSmokeTests | live-ansi; progress bars redraw with timing-dependent output |
+| `Examples/SpectreConsole/progress_callback_example.malda` | n/a | TranspileSmokeTests | live-ansi; callback progress loop redraws with timing-dependent output |
+| `Examples/SpectreConsole/comprehensive_example.malda` | n/a | TranspileSmokeTests | live-ansi; progress/status widgets render terminal-dependent output |
 | `Templates/agent/app.malda` | n/a | — | relative-cwd; `malda new agent`; cap pair fixtures cover the contract |
 | `Templates/webapi/app.malda` | trace | HttpTraceParityTests | GET `/api/health` status + JSON; scaffold + inline health fixture |
 | `Templates/fullstack/backend/app.malda` | trace | HttpTraceParityTests | GET `/api/health` on scaffolded `malda new fullstack` |
