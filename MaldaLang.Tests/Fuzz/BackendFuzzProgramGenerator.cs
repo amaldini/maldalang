@@ -240,6 +240,11 @@ internal sealed class BackendFuzzProgramGenerator
             DoubleStatement(scope, depth);
             return;
         }
+        if (Roll() < 0.12)
+        {
+            FunctionValueStatement(scope);
+            return;
+        }
 
         var roll = Roll();
         if (roll < 0.18 || scope.Ints.Count == 0)
@@ -668,6 +673,97 @@ internal sealed class BackendFuzzProgramGenerator
             Emit($"var {box} = new Box({DoubleExpr(scope, 1)});");
             Emit($"io.print({box}.add({DoubleLeaf(scope)}));");
             Emit($"io.print({box}.twice() + {box}.v);");
+        }
+    }
+
+    /// <summary>Flat built-ins that generated code calls; a binding of the same name shadows them.</summary>
+    private static readonly string[] ShadowableBuiltIns = { "reverse", "range", "sort", "includes" };
+
+    private string Call(string name, int arity, Scope scope) =>
+        $"{name}({string.Join(", ", Enumerable.Range(0, arity).Select(_ => IntExpr(scope, 1)))})";
+
+    /// <summary>
+    /// Functions as values and bindings that shadow them: lambda parameters, block locals,
+    /// loop and catch variables named like a user function or a flat built-in; user functions
+    /// of every arity stored in dicts, arrays and variables; closure factories and calls on
+    /// call results. The shadowed function is called again afterwards, where it is visible.
+    /// </summary>
+    private void FunctionValueStatement(Scope scope)
+    {
+        string Int() => IntExpr(scope, 1);
+        var helpers = scope.Functions;
+        var unary = helpers.Where(f => f.Arity == 1).Select(f => f.Name).Concat(scope.Lambdas).ToList();
+        var shadowNames = helpers.Select(f => f.Name).Append("area").Concat(ShadowableBuiltIns).ToList();
+        var roll = Roll();
+        if (roll < 0.15)
+        {
+            var name = Pick(shadowNames);
+            var lambda = Fresh("sl");
+            Emit($"var {lambda} = ({name}) => {Clamp($"{name} * {Between(-3, 3)} + {IntLeaf(scope)}")};");
+            Emit($"io.print({lambda}({Int()}));");
+        }
+        else if (roll < 0.3)
+        {
+            var name = Pick(shadowNames);
+            var lambda = Fresh("sb");
+            Emit($"var {lambda} = (n) => {{ var {name} = {Clamp($"n + {IntLeaf(scope)}")}; {name} = {name} * 2; return {name}; }};");
+            Emit($"io.print({lambda}({Int()}));");
+        }
+        else if (roll < 0.4)
+        {
+            var name = Pick(shadowNames);
+            var lambda = Fresh("sf");
+            var array = scope.Arrays.Count > 0 ? Pick(scope.Arrays).Name : $"[{Int()}, {Int()}]";
+            Emit($"var {lambda} = (n) => {{ var t = 0; foreach (var {name} in {array}) {{ t = (t + {name} * n) % 1000; }} return t; }};");
+            Emit($"io.print({lambda}({Int()}));");
+        }
+        else if (roll < 0.5)
+        {
+            var name = Pick(shadowNames);
+            Emit($"try {{ assert(false, \"shadow-{_nameCounter}\"); }} catch ({name}) {{ io.print(\"caught \" + {name}); }}");
+        }
+        else if (roll < 0.7 && helpers.Count > 0)
+        {
+            var dict = Fresh("fx");
+            var (name, arity) = Pick(helpers);
+            var lambda = scope.Lambdas.Count > 0 ? Pick(scope.Lambdas) : "(x) => x - 1";
+            Emit($"var {dict} = {{ \"f\": {name}, \"l\": {lambda}, \"k\": (x) => {Clamp($"x + {IntLeaf(scope)}")} }};");
+            Emit($"io.print({Call($"{dict}.f", arity, scope)});");
+            Emit($"io.print({Call($"{dict}[\"f\"]", arity, scope)});");
+            Emit($"io.print({dict}.l({Int()}) + {dict}[\"k\"]({Int()}));");
+            if (Roll() < 0.5)
+            {
+                Emit($"{dict}.k = (x) => {Clamp($"x * {Between(2, 4)}")};");
+                Emit($"io.print({dict}.k({Int()}));");
+            }
+            var alias = Fresh("fv");
+            Emit($"var {alias} = {name};");
+            Emit($"io.print({Call(alias, arity, scope)});");
+        }
+        else if (roll < 0.8 && unary.Count > 0)
+        {
+            var items = Enumerable.Range(0, Between(1, 3)).Select(_ => Pick(unary)).Append("(x) => x % 7").ToList();
+            var array = Fresh("fa");
+            Emit($"var {array} = [{string.Join(", ", items)}];");
+            Emit($"io.print({array}[{_random.Next(items.Count)}]({Int()}));");
+            Emit($"io.print([{Int()}, {Int()}].map({Pick(unary)}));");
+        }
+        else
+        {
+            var factory = Fresh("mk");
+            Emit($"var {factory} = (k) => (x) => {Clamp("x * 2 + k")};");
+            Emit($"io.print({factory}({Int()})({Int()}));");
+            var made = Fresh("lam");
+            Emit($"var {made} = {factory}({Int()});");
+            scope.Lambdas.Add(made);
+            Emit($"io.print({made}({Int()}));");
+        }
+
+        // The shadowed names are functions again out here.
+        if (helpers.Count > 0 && Roll() < 0.5)
+        {
+            var (name, arity) = Pick(helpers);
+            Emit($"io.print({Call(name, arity, scope)});");
         }
     }
 
