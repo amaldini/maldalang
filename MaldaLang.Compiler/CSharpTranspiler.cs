@@ -563,6 +563,11 @@ public partial class CSharpTranspiler
             WriteIndent();
             _output.AppendLine("System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.InvariantCulture;");
 
+            // Match the CLI: without this, redirected stdout uses the OEM code page and
+            // non-ASCII text ("—", "è") is best-fit to ASCII, diverging from the interpreter.
+            WriteIndent();
+            _output.AppendLine("try { Console.OutputEncoding = System.Text.Encoding.UTF8; } catch { }");
+
             // Enable ANSI escape codes in Windows console for Spectre.Console support
             WriteIndent();
             _output.AppendLine("// Enable ANSI escape codes in Windows console");
