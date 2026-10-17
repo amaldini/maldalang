@@ -245,6 +245,11 @@ internal sealed class BackendFuzzProgramGenerator
             FunctionValueStatement(scope);
             return;
         }
+        if (Roll() < 0.1)
+        {
+            ErrorPathStatement(scope);
+            return;
+        }
 
         var roll = Roll();
         if (roll < 0.18 || scope.Ints.Count == 0)
@@ -764,6 +769,90 @@ internal sealed class BackendFuzzProgramGenerator
         {
             var (name, arity) = Pick(helpers);
             Emit($"io.print({Call(name, arity, scope)});");
+        }
+    }
+
+    /// <summary>
+    /// Errors that every backend raises the same way: throw of strings and ints (also from
+    /// nested lambdas and map callbacks), rethrow, and finally after the try or catch body
+    /// leaves by falling through, break, continue, return or throw. Built-in failures (null
+    /// member or call, bad JSON, pop of an empty array) print a fixed text, since their messages
+    /// differ by host. Out-of-range indexes, division by zero, int("abc") and writes past the
+    /// end of an array are not generated: the backends disagree on them.
+    /// </summary>
+    private void ErrorPathStatement(Scope scope)
+    {
+        string Int() => IntExpr(scope, 1);
+        var tag = Fresh("err");
+        var roll = Roll();
+        if (roll < 0.15)
+        {
+            var thrown = Roll() < 0.5 ? $"\"{tag}-\" + {Int()}" : Clamp(Int());
+            Emit($"try {{ if ({BoolExpr(scope, 1)}) {{ throw {thrown}; }} io.print(\"no throw\"); }} catch (e) {{ io.print(\"caught \" + e); }}");
+        }
+        else if (roll < 0.3)
+        {
+            var log = Fresh("log");
+            Emit($"var {log} = \"\";");
+            Emit($"try {{ {log} = {log} + \"t\"; if ({BoolExpr(scope, 1)}) {{ throw \"{tag}\"; }} {log} = {log} + \"n\"; }} catch (e) {{ {log} = {log} + \"c\" + e; }} finally {{ {log} = {log} + \"f\"; }}");
+            Emit($"io.print({log});");
+        }
+        else if (roll < 0.5)
+        {
+            // A loop whose try or catch body leaves by break or continue; finally still runs.
+            var acc = Fresh("acc");
+            var index = Fresh("i");
+            var exit = Pick(new[] { "break", "continue" });
+            var exitInCatch = Roll() < 0.5;
+            Emit($"var {acc} = 0;");
+            Emit($"for (var {index} = 0; {index} < {Between(1, 5)}; {index} = {index} + 1) {{");
+            _indent++;
+            var tryBody = exitInCatch
+                ? $"if ({index} % {Between(2, 3)} == 0) {{ throw \"{tag}\"; }} {acc} = {acc} + 1;"
+                : $"{acc} = {acc} + 1; if ({index} >= {Between(0, 3)}) {{ {exit}; }}";
+            var catchBody = exitInCatch ? $"{acc} = {acc} + 10; {exit};" : $"{acc} = {acc} + 10;";
+            Emit($"try {{ {tryBody} }} catch (e) {{ {catchBody} }} finally {{ {acc} = {acc} + 100; }}");
+            _indent--;
+            Emit("}");
+            Emit($"io.print({acc});");
+            scope.Ints.Add(acc);
+        }
+        else if (roll < 0.6)
+        {
+            var lambda = Fresh("rt");
+            var fromCatch = Roll() < 0.5;
+            var body = fromCatch
+                ? $"try {{ throw \"{tag}\"; }} catch (e) {{ return n + 1; }} finally {{ io.print(\"fin {tag}\"); }}"
+                : $"try {{ if (n > {Between(-5, 10)}) {{ return n * 2; }} }} finally {{ io.print(\"fin {tag}\"); }} return n;";
+            Emit($"var {lambda} = (n) => {{ {body} }};");
+            Emit($"io.print({lambda}({Int()}));");
+        }
+        else if (roll < 0.7)
+        {
+            Emit($"try {{ try {{ throw \"{tag}\"; }} catch (e) {{ throw \"re-\" + e; }} finally {{ io.print(\"fin {tag}\"); }} }} catch (e) {{ io.print(\"outer \" + e); }}");
+        }
+        else if (roll < 0.8)
+        {
+            var thrower = Fresh("th");
+            Emit($"var {thrower} = (n) => {{ if (n > {Between(-5, 10)}) {{ throw \"{tag}:\" + n; }} return n; }};");
+            Emit($"try {{ io.print({thrower}({Int()}) + {thrower}({Int()})); }} catch (e) {{ io.print(\"caught \" + e); }}");
+        }
+        else if (roll < 0.88)
+        {
+            var array = scope.Arrays.Count > 0 ? Pick(scope.Arrays).Name : $"[{Int()}, {Int()}, {Int()}]";
+            Emit($"try {{ io.print({array}.map((x) => {{ if (x > {Between(-5, 20)}) {{ throw \"{tag}:\" + x; }} return x; }})); }} catch (e) {{ io.print(\"caught \" + e); }}");
+        }
+        else
+        {
+            var failing = Pick(new[]
+            {
+                "var n = null; io.print(n.x);",
+                "var n = null; io.print(n(1));",
+                "io.print(parseJSON(\"{x\"));",
+                "var e0 = []; io.print(e0.pop());",
+                $"assert({BoolExpr(scope, 1)}, \"{tag}\"); io.print(\"held\");"
+            });
+            Emit($"try {{ {failing} }} catch (e) {{ io.print(\"failed {tag}\"); }}");
         }
     }
 
