@@ -31,7 +31,7 @@ The `vscode-malda` extension contributes debugger type `malda`. LSP stays on `ma
 `dotnet run --project MaldaLang` is **not** the adapter. You need a `malda` executable that understands `debug-adapter`:
 
 ```bash
-dotnet build MaldaLang -o artifacts/malda-cli
+dotnet build MaldaLang.Compiler -o artifacts/malda-cli
 ```
 
 Then put that directory on PATH, or set `malda.cli.path` to `artifacts/malda-cli/malda` (Linux / macOS) or `artifacts/malda-cli/malda.exe` (Windows). There is no compile step for the extension; `package.json` `"main"` is `./src/extension.js`.

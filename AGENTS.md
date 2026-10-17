@@ -30,9 +30,14 @@ dotnet run --project MaldaLang -- Examples/Basics/hello_world.malda
 Stable CLI output (preferred over `dotnet run -e` on Windows):
 
 ```bash
-dotnet build MaldaLang -o artifacts/malda-cli
+dotnet build MaldaLang.Compiler -o artifacts/malda-cli
 artifacts/malda-cli/malda.exe Examples/Basics/hello_world.malda
 ```
+
+Build `MaldaLang.Compiler`, not `MaldaLang`: the CLI has no reference to the compiler (it loads
+`MaldaLang.Compiler.dll` from beside `malda.exe`), so `dotnet build MaldaLang -o …` leaves a
+stale compiler DLL there and `malda compile` silently uses the old transpiler. Building the
+compiler project also builds and copies the CLI.
 
 Produce a self-contained executable (default mode is Interpreter — that is expected, not a
 fallback). Use `--mode transpile` for typed publish:

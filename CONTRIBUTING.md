@@ -49,7 +49,7 @@ dotnet run --project MaldaLang -- Examples/Basics/hello_world.malda
 Stable CLI output (any OS):
 
 ```bash
-dotnet build MaldaLang -o artifacts/malda-cli
+dotnet build MaldaLang.Compiler -o artifacts/malda-cli
 # Windows: artifacts/malda-cli/malda.exe
 # Linux/macOS: artifacts/malda-cli/malda
 artifacts/malda-cli/malda check Examples/Basics/hello_world.malda --json
