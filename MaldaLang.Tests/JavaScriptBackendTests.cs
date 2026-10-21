@@ -401,10 +401,10 @@ public class JavaScriptBackendTests : TestBase
 
         var js = compiler.TranspileToJavaScriptFromSource(source);
 
-        Assert.Contains("let c = (mlRuntime.coerceToFloat(a) / mlRuntime.coerceToFloat(b));", js, StringComparison.Ordinal);
+        Assert.Contains("let c = __maldaDivide(mlRuntime.coerceToFloat(a), mlRuntime.coerceToFloat(b));", js, StringComparison.Ordinal);
         Assert.Contains("let d = (mlRuntime.coerceToFloat(a) * 0.5);", js, StringComparison.Ordinal);
         Assert.Contains("let e = (mlRuntime.coerceToFloat(a) - 0.25);", js, StringComparison.Ordinal);
-        Assert.Contains("let f = (mlRuntime.coerceToFloat(a) % mlRuntime.coerceToFloat(b));", js, StringComparison.Ordinal);
+        Assert.Contains("let f = __maldaModulo(mlRuntime.coerceToFloat(a), mlRuntime.coerceToFloat(b));", js, StringComparison.Ordinal);
         Assert.Contains("let g = (-mlRuntime.coerceToFloat(d));", js, StringComparison.Ordinal);
         Assert.Contains("let lt = (mlRuntime.coerceToFloat(a) < 2.5);", js, StringComparison.Ordinal);
     }

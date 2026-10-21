@@ -46,7 +46,9 @@ public static partial class BuiltInFunctions
         {
             MaldaLang.Interpreter.ValueType.Integer => arg,
             MaldaLang.Interpreter.ValueType.Float => RuntimeValue.Integer((int)arg.AsFloat()),
-            MaldaLang.Interpreter.ValueType.String => RuntimeValue.Integer(int.Parse(arg.AsString())),
+            // A string that is not an integer gives 0, as on the C# and JavaScript backends.
+            MaldaLang.Interpreter.ValueType.String => RuntimeValue.Integer(
+                int.TryParse(arg.AsString(), System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var parsed) ? parsed : 0),
             _ => throw new Exception("Cannot convert to int")
         };
     }

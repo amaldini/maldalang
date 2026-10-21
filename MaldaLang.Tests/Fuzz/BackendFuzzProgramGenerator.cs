@@ -777,8 +777,9 @@ internal sealed class BackendFuzzProgramGenerator
     /// nested lambdas and map callbacks), rethrow, and finally after the try or catch body
     /// leaves by falling through, break, continue, return or throw. Built-in failures (null
     /// member or call, bad JSON, pop of an empty array) print a fixed text, since their messages
-    /// differ by host. Out-of-range indexes, division by zero, int("abc") and writes past the
-    /// end of an array are not generated: the backends disagree on them.
+    /// differ by host. Array reads out of range and division by zero throw the same message on
+    /// every backend, a write past the end of an array pads it with null, and int() of a string
+    /// that is not an integer gives 0.
     /// </summary>
     private void ErrorPathStatement(Scope scope)
     {
@@ -837,10 +838,31 @@ internal sealed class BackendFuzzProgramGenerator
             Emit($"var {thrower} = (n) => {{ if (n > {Between(-5, 10)}) {{ throw \"{tag}:\" + n; }} return n; }};");
             Emit($"try {{ io.print({thrower}({Int()}) + {thrower}({Int()})); }} catch (e) {{ io.print(\"caught \" + e); }}");
         }
-        else if (roll < 0.88)
+        else if (roll < 0.85)
         {
             var array = scope.Arrays.Count > 0 ? Pick(scope.Arrays).Name : $"[{Int()}, {Int()}, {Int()}]";
             Emit($"try {{ io.print({array}.map((x) => {{ if (x > {Between(-5, 20)}) {{ throw \"{tag}:\" + x; }} return x; }})); }} catch (e) {{ io.print(\"caught \" + e); }}");
+        }
+        else if (roll < 0.94)
+        {
+            var name = Fresh("ix");
+            var length = Between(1, 3);
+            Emit($"var {name} = [{string.Join(", ", Enumerable.Range(0, length).Select(_ => Int()))}];");
+            var zero = Fresh("z");
+            Emit($"var {zero} = {Pick(new[] { "0", "0.0" })};");
+            var statement = Pick(new[]
+            {
+                $"io.print({name}[{Pick(new[] { length, length + 2, -1 })}]);",
+                $"io.print({name}[{length}] + 1);",
+                $"{name}[{length + 1}] += 1; io.print({name});",
+                $"{name}[{length + Between(0, 2)}] = {Int()}; io.print({name}); io.print({name}.length);",
+                $"{name}[-1] = 1; io.print({name});",
+                $"io.print({Int()} / {zero});",
+                $"io.print({Int()} % {zero});",
+                $"{name}[0] /= {zero}; io.print({name});",
+                $"io.print(int({Pick(new[] { "\"abc\"", "\"\"", "\"12x\"", "\" 7 \"", "\"3.5\"", "\"1e3\"", "\"-42\"" })}));"
+            });
+            Emit($"try {{ {statement} }} catch (e) {{ io.print(\"caught \" + e); }}");
         }
         else
         {

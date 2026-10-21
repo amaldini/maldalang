@@ -627,8 +627,11 @@ public static class RuntimeHelpers
     /// <summary>Writes an indexed update on a bridged array back into the runtime array.</summary>
     public static void SyncIndexed(List<object> arr, int index, object? newValue)
     {
-        if (ObjectListToRvListCache.TryGetValue(arr, out var source) && (uint)index < (uint)source.Count)
-            source[index] = ToRuntimeValue(newValue);
+        if (index < 0 || !ObjectListToRvListCache.TryGetValue(arr, out var source))
+            return;
+        while (source.Count <= index)
+            source.Add(RuntimeValue.Null());
+        source[index] = ToRuntimeValue(newValue);
     }
 
     public static object ArrayAppend(List<object> arr, object? item)
@@ -774,9 +777,13 @@ public static class RuntimeHelpers
         {
             var arr = GetArray(value);
             int i = (int)CoerceToInt(index);
-            if (i < 0 || i >= arr.Count)
+            if (i < 0)
                 throw new InvalidOperationException("Array index out of bounds.");
+            // A write past the end pads with null, as on the interpreter.
+            while (arr.Count <= i)
+                arr.Add(null!);
             arr[i] = newValue!;
+            SyncIndexed(arr, i, newValue);
             return;
         }
 

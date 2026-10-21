@@ -5,9 +5,13 @@
     if (value === null || value === undefined) return 0;
     if (typeof value === "number") return Number.isFinite(value) ? Math.trunc(value) : 0;
     if (typeof value === "boolean") return value ? 1 : 0;
+    // Only an optionally signed decimal integer in the int range parses (int.TryParse on
+    // the interpreter and C#); "3.5", "1e3", "0x10" and "abc" give 0.
     if (typeof value === "string") {
-      const parsed = Number(value.trim());
-      return Number.isFinite(parsed) ? Math.trunc(parsed) : 0;
+      const text = value.trim();
+      if (!/^[+-]?\d+$/.test(text)) return 0;
+      const parsed = Number(text);
+      return parsed >= -2147483648 && parsed <= 2147483647 ? parsed : 0;
     }
     return 0;
   }
@@ -1253,7 +1257,56 @@
     if (object === null || object === undefined) {
       return null;
     }
+    return getIndex(object, index);
+  }
+
+  // Array reads and writes with the interpreter's checks: a read outside 0..length-1 throws,
+  // and a write past the end pads with null (JavaScript would leave holes). Other values
+  // (dicts, strings, host objects) keep plain JavaScript indexing.
+  function arrayIndex(index) {
+    if (typeof index !== "number" || !Number.isInteger(index)) {
+      throw new Error("Array index must be an integer.");
+    }
+    return index;
+  }
+
+  function getIndex(object, index) {
+    if (Array.isArray(object)) {
+      const i = arrayIndex(index);
+      if (i < 0 || i >= object.length) {
+        throw new Error("Array index out of bounds.");
+      }
+      return object[i];
+    }
     return object[index];
+  }
+
+  function setIndex(object, index, value) {
+    if (Array.isArray(object)) {
+      const i = arrayIndex(index);
+      if (i < 0) {
+        throw new Error("Array index out of bounds.");
+      }
+      while (object.length < i) {
+        object.push(null);
+      }
+    }
+    object[index] = value;
+  }
+
+  // MALDA `/` and `%` throw on a zero divisor instead of giving Infinity or NaN.
+  function divide(left, right) {
+    if (right === 0) {
+      throw new Error("Division by zero.");
+    }
+    return left / right;
+  }
+
+  function modulo(left, right) {
+    if (right === 0) {
+      throw new Error("Division by zero.");
+    }
+    return left % right;
   }
 
   function matchLiteral(patternValue, runtimeValue) {
@@ -4825,6 +4878,10 @@
     arrayAppend,
     getMemberNullSafe,
     getIndexNullSafe,
+    getIndex,
+    setIndex,
+    divide,
+    modulo,
     nullCoalesce,
     matchPattern,
     pushDeferFrame,

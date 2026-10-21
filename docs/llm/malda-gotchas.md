@@ -112,7 +112,6 @@ one runs without error on every backend and prints different output.
 | You write | Interpreter / C# | JavaScript | Portable form | Lint |
 |-----------|------------------|------------|---------------|------|
 | `1 == 1.0` | `false` — an integer never equals a float | `true` | `float(a) == float(b)`, or compare with a tolerance | docs-only |
-| `x / 0` | Runtime error (int and float) | `Infinity` / `NaN` | Check the divisor first | docs-only |
 | `NaN == NaN` | `true` | `false` | Avoid producing `NaN`; test the inputs instead | docs-only |
 | `typeOf(math.floor(4))`, `typeOf(6 / 2)` | `"float"` — floor/ceil/round/trunc/sign/sqrt and `/` always return a float | `"int"` — JavaScript has one number type, so a whole-valued float reads as int | Do not branch on `typeOf` for numbers; `int(x)` / `float(x)` when the kind matters | docs-only |
 | `io.print(-0.0)` | `-0` | `0` | Rarely matters; `-4 % 2` prints `0` everywhere | docs-only |

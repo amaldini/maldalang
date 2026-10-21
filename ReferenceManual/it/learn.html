@@ -585,7 +585,10 @@ var ada = new Grade("Ada", 92);
 io.print(ada.name + ": " + ada.label());
 
 try {
-    int("not-a-number");
+    var score = toIntOrNull("not-a-number");
+    if (score == null) {
+        throw "bad score";
+    }
 } catch (error) {
     io.print("caught bad score");
 }

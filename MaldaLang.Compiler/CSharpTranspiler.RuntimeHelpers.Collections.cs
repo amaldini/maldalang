@@ -259,9 +259,13 @@ public partial class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("int i = (int)CoerceToInt(index);");
         WriteIndent();
-        _output.AppendLine("if (i < 0 || i >= arr.Count)");
+        _output.AppendLine("if (i < 0)");
         WriteIndent();
         _output.AppendLine("    throw new InvalidOperationException(\"Array index out of bounds.\");");
+        WriteIndent();
+        _output.AppendLine("// A write past the end pads with null, as on the interpreter.");
+        WriteIndent();
+        _output.AppendLine("while (arr.Count <= i) arr.Add(null!);");
         WriteIndent();
         _output.AppendLine("arr[i] = newValue!;");
         WriteIndent();

@@ -382,8 +382,8 @@ public partial class JsTranspiler
             TokenType.NullCoalesce => $"mlRuntime.nullCoalesce({left}, () => {right})",
             TokenType.Minus => $"({Number(binary.Left, left)} - {Number(binary.Right, right)})",
             TokenType.Multiply => $"({Number(binary.Left, left)} * {Number(binary.Right, right)})",
-            TokenType.Divide => $"({Number(binary.Left, left)} / {Number(binary.Right, right)})",
-            TokenType.Modulo => $"({Number(binary.Left, left)} % {Number(binary.Right, right)})",
+            TokenType.Divide => Division("/", "__maldaDivide", binary.Right, Number(binary.Left, left), Number(binary.Right, right)),
+            TokenType.Modulo => Division("%", "__maldaModulo", binary.Right, Number(binary.Left, left), Number(binary.Right, right)),
             TokenType.LessThan => $"({Number(binary.Left, left)} < {Number(binary.Right, right)})",
             TokenType.GreaterThan => $"({Number(binary.Left, left)} > {Number(binary.Right, right)})",
             TokenType.LessThanOrEqual => $"({Number(binary.Left, left)} <= {Number(binary.Right, right)})",
@@ -391,6 +391,48 @@ public partial class JsTranspiler
             TokenType.Plus => Plus(binary, left, right),
             _ => throw new NotSupportedException($"JavaScript transpilation does not support binary operator '{binary.Operator}'.")
         };
+    }
+
+    /// <summary>
+    /// MALDA <c>/</c> and <c>%</c> throw on a zero divisor; JavaScript gives Infinity or NaN.
+    /// A non-zero numeric literal divisor stays a plain operator.
+    /// </summary>
+    private static string Division(string op, string helper, Expression divisor, string left, string right)
+    {
+        return divisor is LiteralExpression { Value: int or long or double } literal && Convert.ToDouble(literal.Value, CultureInfo.InvariantCulture) != 0
+            ? $"({left} {op} {right})"
+            : $"{helper}({left}, {right})";
+    }
+
+    /// <summary>
+    /// Assignment with the interpreter's semantics: a write past the end of an array pads with
+    /// null, and a compound assignment reads the element first (out of range throws) and
+    /// evaluates the target twice, as the interpreter does. <c>/=</c> throws on a zero divisor.
+    /// </summary>
+    private string TranspileAssignment(AssignmentStatement assignment)
+    {
+        var value = TranspileExpressionAwaited(assignment.Value);
+        if (assignment.Target is ArrayAccessExpression access)
+        {
+            var array = TranspileExpression(access.Array);
+            var index = TranspileExpression(access.Index);
+            if (assignment.Operator == TokenType.Assign)
+                return $"__maldaSetIndex({array}, {index}, {value});";
+            var current = $"__maldaGetIndex({array}, {index})";
+            return $"__maldaSetIndex({array}, {index}, {CompoundValue(assignment, current, value)});";
+        }
+
+        var target = TranspileAssignmentTarget(assignment.Target);
+        if (assignment.Operator == TokenType.DivideAssign)
+            return $"{target} = {CompoundValue(assignment, target, value)};";
+        return $"{target} {MapAssignmentOperator(assignment.Operator)} {value};";
+    }
+
+    private static string CompoundValue(AssignmentStatement assignment, string current, string value)
+    {
+        return assignment.Operator == TokenType.DivideAssign
+            ? Division("/", "__maldaDivide", assignment.Value, $"mlRuntime.coerceToFloat({current})", Number(assignment.Value, value))
+            : $"({current} {MapAssignmentOperator(assignment.Operator)[..1]} {value})";
     }
 
     /// <summary>

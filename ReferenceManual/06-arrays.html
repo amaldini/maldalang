@@ -40,6 +40,7 @@ io.print(arr.length);</code></pre>
         <pre><code>var arr = [1, 2, 3];
 arr[3] = 4;  // Array automatically grows
 // arr is now [1, 2, 3, 4]</code></pre>
+        <p>Writing past the end fills the gap with <code>null</code>: after <code>arr[6] = 7</code> the array above is <code>[1, 2, 3, 4, null, null, 7]</code>. A negative index raises <code>Array index out of bounds.</code>, and so does a compound assignment such as <code>arr[9] += 1</code>, because it reads the element first. All backends behave the same way.</p>
         <h3>Multi-dimensional Arrays</h3>
         <p>MALDA supports multi-dimensional arrays (arrays of arrays):</p>
         <pre><code>var matrix = [[1, 2], [3, 4]];

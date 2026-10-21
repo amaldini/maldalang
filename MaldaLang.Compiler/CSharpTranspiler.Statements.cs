@@ -359,16 +359,15 @@ public partial class CSharpTranspiler
             }
             else
             {
-                // Compound assignment for indexed targets: expand to get, operate, set
-                var opString = GetOperatorString(assignment.Operator);
+                // Compound assignment for indexed targets: expand to get, operate, set.
+                // Elements are boxed as object, so arithmetic goes through RuntimeHelpers.Operator*.
+                var boxedHelper = GetBoxedBinaryOperatorHelper(assignment.Operator)
+                    ?? throw new NotSupportedException($"Compound assignment '{assignment.Operator}' on an indexed target is not supported.");
                 _output.Append("{ var __indexedTarget = ");
                 TranspileExpression(arrayAccess.Array);
                 _output.Append("; var __indexedKey = ");
                 TranspileExpression(arrayAccess.Index);
-                _output.Append("; var __current = RuntimeHelpers.GetIndexed(__indexedTarget, __indexedKey); __current = (");
-                _output.Append("__current ");
-                _output.Append(opString);
-                _output.Append(" ");
+                _output.Append($"; var __current = RuntimeHelpers.{boxedHelper}(RuntimeHelpers.GetIndexed(__indexedTarget, __indexedKey), ");
                 TranspileExpression(assignment.Value);
                 _output.Append("); RuntimeHelpers.SetIndexed(__indexedTarget, __indexedKey, __current); }");
             }

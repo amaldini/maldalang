@@ -92,6 +92,7 @@ var message = "Name: " + name + ", Age: " + age;
         <pre><code>var num = int("123");      // Convert string to integer
 var floatVal = float("3.14");  // Convert string to float
 var str = string(42);     // Convert number to string</code></pre>
+        <p><code>int()</code> of a string that is not a decimal integer in the 32-bit range gives <code>0</code>: <code>int("abc")</code>, <code>int("3.5")</code> and <code>int("1e3")</code> are all <code>0</code>, while <code>int(" 7 ")</code> is <code>7</code>. Use <code>toIntOrNull</code> to tell a bad input apart from a real zero.</p>
 
         <h2>4.3 Object Types</h2>
 

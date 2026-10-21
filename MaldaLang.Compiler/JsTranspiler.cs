@@ -196,9 +196,10 @@ public partial class JsTranspiler
         _indentLevel--;
         EmitLine("}");
         EmitLine("const mlRuntime = globalThis.mlRuntime;");
-        // Hot helpers behind +, $"{…}" and string(): a local binding keeps V8 from a property
-        // lookup on the large runtime object at every concatenation.
+        // Hot helpers behind +, $"{…}", string(), a[i], / and %: a local binding keeps V8 from a
+        // property lookup on the large runtime object at every call.
         EmitLine("const __maldaAdd = mlRuntime.add, __maldaFormat = mlRuntime.formatValue;");
+        EmitLine("const __maldaGetIndex = mlRuntime.getIndex, __maldaSetIndex = mlRuntime.setIndex, __maldaDivide = mlRuntime.divide, __maldaModulo = mlRuntime.modulo;");
         EmitLine(string.Empty);
 
         foreach (var typeDeclaration in typeDeclarations)
@@ -444,7 +445,7 @@ public partial class JsTranspiler
                     TranspileDestructuringVarDecl(destVarDecl);
                     break;
                 case AssignmentStatement assignment:
-                    EmitLineWithSource(assignment.Value, $"{TranspileAssignmentTarget(assignment.Target)} {MapAssignmentOperator(assignment.Operator)} {TranspileExpressionAwaited(assignment.Value)};");
+                    EmitLineWithSource(assignment.Value, TranspileAssignment(assignment));
                     break;
                 case DestructuringAssignment destAssign:
                     TranspileDestructuringAssignment(destAssign);
@@ -621,7 +622,7 @@ public partial class JsTranspiler
                 {
                     return $"mlRuntime.getIndexNullSafe({TranspileExpression(arrayAccess.Array)}, {TranspileExpression(arrayAccess.Index)})";
                 }
-                return $"{TranspileExpression(arrayAccess.Array)}[{TranspileExpression(arrayAccess.Index)}]";
+                return $"__maldaGetIndex({TranspileExpression(arrayAccess.Array)}, {TranspileExpression(arrayAccess.Index)})";
             case ArrayLiteralExpression arrayLiteral:
                 return $"[{string.Join(", ", arrayLiteral.Elements.Select(TranspileExpression))}]";
             case ObjectLiteralExpression objectLiteral:

@@ -294,9 +294,11 @@ public partial class CSharpTranspiler
         _output.AppendLine("{");
         _indentLevel++;
         WriteIndent();
-        _output.AppendLine("if (__objectListToRvListCache.TryGetValue(arr, out var source) && (uint)index < (uint)source.Count)");
+        _output.AppendLine("if (index < 0 || !__objectListToRvListCache.TryGetValue(arr, out var source)) return;");
         WriteIndent();
-        _output.AppendLine("    source[index] = ToRuntimeValue(newValue);");
+        _output.AppendLine("while (source.Count <= index) source.Add(MaldaLang.Interpreter.RuntimeValue.Null());");
+        WriteIndent();
+        _output.AppendLine("source[index] = ToRuntimeValue(newValue);");
         _indentLevel--;
         WriteIndent();
         _output.AppendLine("}");
