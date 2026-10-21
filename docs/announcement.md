@@ -67,7 +67,7 @@ coding agents, in a language that is in no model's training data.
 Second Brain (~7,600 lines with shared libs) distills a docs
 folder into a linked note tree and serves an ASK web UI; malda
 compile --embed-folder ships it as a single .exe.
-Examples/RalphWiggum/ is a PRD-driven coding agent (4,049 lines,
+Examples/RalphWiggum/ is a PRD-driven coding agent (~4,300 lines,
 eleven files). That works because docs/llm/ is a language pack —
 idioms, a parser-aligned BNF, a built-in list, few-shots. An
 agent reads a few thousand tokens and writes idiomatic MALDA;
@@ -88,8 +88,8 @@ match stdout. C# on .NET 8, hand-written recursive-descent
 parser, ~350 built-ins, ~1,900 tests. Dual MIT OR Apache-2.0
 with a runtime exception. No CLA.
 
-Honest about where it is. Public core is 1.0.40 (Spec Final 1.0)
-and the toolchain share that number). Publish is the type
+Honest about where it is. Public core is on the 1.0.x line (Spec
+Final 1.0; CLI and Desktop IDE share one version). Publish is the type
 boundary; runtime is still dynamically typed. I run a Second
 Brain instance that others use. The large systems already in
 flight are not being rewritten for an experiment. Full IDE is
@@ -349,7 +349,7 @@ Composition across files is `include` (parse-time splice) or `import` / selectiv
 `import { … } from` (module export surface, including `export type` / `export schema`).
 
 The existence proof for the coding-agent item is in the repository. `Examples/RalphWiggum/` is a
-PRD-driven autonomous coding agent — **4,049 lines of MALDA** across eleven files, nine of
+PRD-driven autonomous coding agent — **~4,300 lines of MALDA** across eleven files, nine of
 them the agent loop and two an interactive interview entry point — that reads a markdown
 checklist, implements one open item per iteration using an agent with file and git tools,
 validates what it wrote, persists resumable state and a knowledge graph between iterations,

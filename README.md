@@ -1,12 +1,18 @@
 # MALDA™
 
+[![CI](https://github.com/amaldini/maldalang/actions/workflows/ci.yml/badge.svg)](https://github.com/amaldini/maldalang/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/amaldini/maldalang)](https://github.com/amaldini/maldalang/releases)
+[![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue)](#license)
+
 **MALDA** (Multi Agent Language with Development Automation) is an AI-native programming language and platform for agents, web apps, and durable workflows. The automation in the name runs both ways: coding agents write MALDA — the language pack in [`docs/llm/`](docs/llm/) exists for that reader — and MALDA programs automate development work in turn.
 
 This repository is the **open-source core**: language runtime, compiler/transpiler, IDEs, language server, examples, templates, and reference manual.
 
+Language reference: [English](https://amaldini.github.io/maldalang/) · [Italiano](https://amaldini.github.io/maldalang/it/)
+
 ## MALDA in one file
 
-Verbatim from [`Examples/Basics/first_look.malda`](Examples/Basics/first_look.malda). No API key. `-> Review` binds the prompt to the schema. Without `await`, the call is a rendered template; `await` would call the model and validate the JSON against `Review`. `validate("Review", …)` is that same check, shown offline (type annotations elsewhere are IDE/LSP hints, not runtime checks).
+Verbatim from [`Examples/Basics/first_look.malda`](Examples/Basics/first_look.malda). Runs offline, no API key:
 
 ```malda
 schema Review {
@@ -37,6 +43,12 @@ if (checked.ok) {
 malda Examples/Basics/first_look.malda
 ```
 
+- `-> Review` binds the prompt to the schema.
+- Without `await`, calling the prompt returns the rendered template; `await` calls the model
+  and validates its JSON against `Review`.
+- `validate("Review", …)` is that same check, shown offline. Type annotations elsewhere are
+  IDE/LSP hints, not runtime checks.
+
 ![Prompt declaration demo](docs/assets/prompt-demo.gif)
 
 *`prompt` is syntax: without `await` you get the rendered prompt; with `await` you call the model.*
@@ -56,12 +68,12 @@ malda Examples/Basics/first_look.malda
 - **Types** — annotations feed the IDE/LSP (mismatches are Errors by default in the editor); runtime stays dynamic. `malda compile --mode transpile` / `publish` refuses emit on those Errors (`--lenient-types` to skip)
 - **Tooling** — Desktop IDE (Windows reference), Web IDE (browser playground — not Desktop parity), VS Code + LSP
 
-**What this is not:** a Temporal cluster, a full static type system, or three equal backends. Workflows are local SQLite (single writer). JavaScript is a browser subset. Spec Final 1.0 is the language kernel; the toolchain is **1.0.40** (publish is the type boundary).
+**What this is not:** a Temporal cluster, a full static type system, or three equal backends. Workflows are local SQLite (single writer). JavaScript is a browser subset. Spec Final 1.0 is the language kernel; the toolchain is on the 1.0.x line (publish is the type boundary) — current version on [Releases](https://github.com/amaldini/maldalang/releases).
 
 The two largest showcases were written entirely by coding agents, even though MALDA is in no
 model's training data, because [`docs/llm/`](docs/llm/) ships a compact language pack for that
 reader: **`Examples/Agents/secondbrain_semantic.malda`** (~7,600 lines with shared libs) and
-**`Examples/RalphWiggum/`** (4,049 lines). Guard tests, the conformance matrix, and executed
+**`Examples/RalphWiggum/`** (~4,300 lines). Guard tests, the conformance matrix, and executed
 reference-manual snippets keep those claims checkable.
 
 Longer version, with objections and current weaknesses stated up front:
@@ -131,12 +143,14 @@ dotnet run --project MaldaLang -- Examples/Basics/first_look.malda
 Or build a reusable CLI output:
 
 ```bash
-dotnet build MaldaLang -o artifacts/malda-cli
+# Build the compiler project: it also builds the CLI and puts MaldaLang.Compiler.dll beside it.
+# (`dotnet build MaldaLang -o …` would leave a stale compiler DLL there.)
+dotnet build MaldaLang.Compiler -o artifacts/malda-cli
 # Windows: malda.exe — Linux/macOS: malda
 artifacts/malda-cli/malda Examples/Basics/first_look.malda
 ```
 
-Compile to an executable (one-liner smoke: `Examples/Basics/hello_world.malda`):
+Compile to an executable:
 
 ```bash
 dotnet run --project MaldaLang -- compile Examples/Basics/first_look.malda --mode transpile -o first-look.exe
@@ -184,25 +198,6 @@ dotnet run --project MaldaLang.DesktopIDE
 
 Community help on the Web IDE (Monaco UX, diagnostics, examples browser) is welcome; Desktop remains the reference IDE.
 
-## Why MALDA exists
-
-I have spent years writing business software in C#, Java and VB.NET — PDM/PLM systems, CAD
-integrations, integrations with ERP and other business systems, data processing — work where
-the hard part is the domain and getting existing systems to agree with each other, not
-language internals. This is the first compiler or interpreter I have written. With coding
-agents I now write far less code by hand, and a language is the project where what remains is
-the deciding: an agent will type a parser, but someone still has to say what the grammar
-means. Those decisions were not made alone either — the grammar and the semantics were argued
-out with models, so the project ended up being its own subject: how you design a programming
-language now that agents write most of the code. The push to try came from Geoff Huntley's
-[Ralph Wiggum technique](https://ghuntley.com/ralph/) and the
-[`cursed`](https://ghuntley.com/cursed/) language he built with it — hence the name of
-`Examples/RalphWiggum/`. What I wanted was different from an esoteric language: one whose
-subject is the work I spend my days around, so prompts, tools, agents, endpoints and durable
-workflows are syntax instead of glue code. I am not running MALDA in that work today — my day
-job is large systems already in flight, and those do not get rewritten for an experiment. For
-now it is where I experiment with what building on AI looks like.
-
 ## Learn more
 
 | Path | Purpose |
@@ -212,15 +207,7 @@ now it is where I experiment with what building on AI looks like.
 | [`docs/architecture.md`](docs/architecture.md) | Pipeline and project layout |
 | [`docs/start-here.md`](docs/start-here.md) | Guided onboarding |
 | [`llms.txt`](llms.txt) | Compact doc index for LLM tools |
-| [`docs/releases/v1.0.0.md`](docs/releases/v1.0.0.md) | Toolchain 1.0.0 (publish is the type boundary) |
-| [`docs/releases/v0.1.0.md`](docs/releases/v0.1.0.md) | Notes for the first public tag |
-| [`docs/releases/v0.1.1.md`](docs/releases/v0.1.1.md) | Notes for `--embed-folder` and Second Brain |
-| [`docs/releases/v0.1.2.md`](docs/releases/v0.1.2.md) | Semantic Second Brain, BGE-M3, `getProgramDirectory()` |
-| [`docs/releases/v0.1.3.md`](docs/releases/v0.1.3.md) | GraphMemory read-only load from `embed:` |
-| [`docs/releases/v0.1.4.md`](docs/releases/v0.1.4.md) | Second Brain ASK web UI, `markdownToHtml`, empty-brain chat |
-| [`docs/releases/v0.1.5.md`](docs/releases/v0.1.5.md) | Portable ASK branding, menu PACK, `compileMALDA` embedFolder |
-| [`docs/releases/v0.1.6.md`](docs/releases/v0.1.6.md) | Locale-safe float transpile, Spectre markup fallback, release version guard |
-| [`docs/releases/v0.1.7.md`](docs/releases/v0.1.7.md) | Agent/CodingAgent transpile, optional Agent client, Second Brain compile |
+| [`docs/releases/`](docs/releases/) | Release notes for every tag ([`v1.0.0`](docs/releases/v1.0.0.md): publish is the type boundary) |
 | [`Examples/README.md`](Examples/README.md) | Full examples catalog (`requires`, tracks) |
 | [`Examples/Basics`](Examples/Basics) | Language basics |
 | [`Examples/Prompts`](Examples/Prompts) | Prompts and agents |
@@ -228,7 +215,7 @@ now it is where I experiment with what building on AI looks like.
 | [`Examples/Games`](Examples/Games) | Canvas games and three.js graphics |
 | [`docs/tutorials/fullstack-sessions-auth.md`](docs/tutorials/fullstack-sessions-auth.md) | Sessions / CSRF / jobs walkthrough |
 | [`Templates/`](Templates) | `malda new webapi` / `malda new fullstack` / `malda new game` / `malda new game --fullstack` / `malda new agent` |
-| [`ReferenceManual/`](ReferenceManual) | Language reference (HTML); [English](https://amaldini.github.io/maldalang/) · [Italiano](https://amaldini.github.io/maldalang/it/) |
+| [`ReferenceManual/`](ReferenceManual) | Language reference (HTML sources of the online manual) |
 | [`vscode-malda/`](vscode-malda) | VS Code extension |
 
 ## Solution layout
@@ -274,6 +261,25 @@ at your option — the same arrangement Rust uses. Take whichever fits your proj
 Programs you compile with MALDA are yours. The toolchain injects runtime code into its output, and [`LICENSE-RUNTIME-EXCEPTION`](LICENSE-RUNTIME-EXCEPTION) confirms that this creates no attribution obligation for your own program.
 
 The name "MALDA" is not covered by either licence — see [TRADEMARK.md](TRADEMARK.md). Third-party dependencies are listed in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+
+## Why MALDA exists
+
+I have spent years writing business software in C#, Java and VB.NET — PDM/PLM systems, CAD
+integrations, integrations with ERP and other business systems, data processing — work where
+the hard part is the domain and getting existing systems to agree with each other, not
+language internals. This is the first compiler or interpreter I have written. With coding
+agents I now write far less code by hand, and a language is the project where what remains is
+the deciding: an agent will type a parser, but someone still has to say what the grammar
+means. Those decisions were not made alone either — the grammar and the semantics were argued
+out with models, so the project ended up being its own subject: how you design a programming
+language now that agents write most of the code. The push to try came from Geoff Huntley's
+[Ralph Wiggum technique](https://ghuntley.com/ralph/) and the
+[`cursed`](https://ghuntley.com/cursed/) language he built with it — hence the name of
+`Examples/RalphWiggum/`. What I wanted was different from an esoteric language: one whose
+subject is the work I spend my days around, so prompts, tools, agents, endpoints and durable
+workflows are syntax instead of glue code. I am not running MALDA in that work today — my day
+job is large systems already in flight, and those do not get rewritten for an experiment. For
+now it is where I experiment with what building on AI looks like.
 
 ## Maintainer
 
