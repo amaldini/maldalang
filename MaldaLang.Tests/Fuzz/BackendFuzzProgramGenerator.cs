@@ -963,9 +963,11 @@ internal sealed class BackendFuzzProgramGenerator
             top.DoubleFunctions.Add((name, arity));
         }
 
-        // Bounded recursion: arguments are clamped ints, so depth stays below 1000.
+        // Bounded recursion: the function stops above depth 900 itself, because calls through
+        // function arrays and map() pass unclamped values (g * g) that would overflow the
+        // native stack on C# and JavaScript while the interpreter keeps going.
         var recursive = Fresh("rec");
-        Emit($"function {recursive}(n) {{ if (n <= 0) {{ return 1; }} return ({recursive}(n - 1) + n * 3) % 1000; }}");
+        Emit($"function {recursive}(n) {{ if (n <= 0 || n > 900) {{ return 1; }} return ({recursive}(n - 1) + n * 3) % 1000; }}");
         Emit(string.Empty);
 
         for (var c = 0; c < caseCount; c++)

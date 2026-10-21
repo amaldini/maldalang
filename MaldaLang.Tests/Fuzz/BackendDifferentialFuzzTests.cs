@@ -87,10 +87,13 @@ public class BackendDifferentialFuzzTests
 
     /// <summary>
     /// A -0 not inside a word or a decimal; no number prints as -0 followed by digits, so
-    /// <c>-0240</c> is -0 concatenated with 240.
+    /// <c>-0240</c> is -0 concatenated with 240. A fixed-point zero such as <c>-0.00</c>
+    /// (<c>formatNumber</c> of a float -0) is the same case.
     /// </summary>
     private static string WithoutNegativeZero(string text) =>
-        Regex.Replace(text, @"(?<![\w.])-0(?!\.)", "0");
+        Regex.Replace(
+            Regex.Replace(text, @"(?<![\w.])-0(?!\.)", "0"),
+            @"(?<![\w.])-0\.(0+)(?!\d)", "0.$1");
 
     /// <summary>The first differing line, with the <c>#n</c> case it belongs to.</summary>
     private static string FirstDifference(string expected, string actual)

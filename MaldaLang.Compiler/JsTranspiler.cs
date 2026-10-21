@@ -503,9 +503,31 @@ public partial class JsTranspiler
                     EmitLine("continue;");
                     break;
                 case ForInStatement forInStatement:
-                    EmitLineWithSource(forInStatement.Collection, $"for (const {EscapeIdentifier(forInStatement.VariableName)} of {TranspileExpression(forInStatement.Collection)})");
+                {
+                    // `for (const f of [f(1)])` reads the loop binding of `f`, still uninitialized,
+                    // while evaluating the collection; MALDA reads the outer `f` there. Evaluate a
+                    // collection that names the loop variable before the loop.
+                    var collection = TranspileExpression(forInStatement.Collection);
+                    var shadowsCollection = AstNodeWalker.Descendants(forInStatement.Collection)
+                        .OfType<IdentifierExpression>()
+                        .Any(identifier => identifier.Name == forInStatement.VariableName);
+                    if (shadowsCollection)
+                    {
+                        var temp = $"__forInCollection_{++_matchTempCounter}";
+                        EmitLine("{");
+                        _indentLevel++;
+                        EmitLineWithSource(forInStatement.Collection, $"const {temp} = {collection};");
+                        collection = temp;
+                    }
+                    EmitLineWithSource(forInStatement.Collection, $"for (const {EscapeIdentifier(forInStatement.VariableName)} of {collection})");
                     WithOwnContinue(() => InLocalScope([forInStatement.VariableName], () => TranspileEmbeddedStatement(forInStatement.Body)));
+                    if (shadowsCollection)
+                    {
+                        _indentLevel--;
+                        EmitLine("}");
+                    }
                     break;
+                }
                 case TryStatement tryStatement:
                     TranspileTry(tryStatement);
                     break;
