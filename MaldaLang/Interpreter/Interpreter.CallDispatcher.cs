@@ -50,10 +50,17 @@ public partial class Interpreter
         RuntimeValue callee;
         string? functionName = null;
 
-        var arguments = new List<RuntimeValue>();
-        foreach (var arg in expr.Arguments)
+        // Left to right, as on C# and JavaScript: the callee (and the receiver of a method call)
+        // is evaluated before the arguments, so `make(g)(f())` reads g before f() changes it.
+        List<RuntimeValue> arguments;
+        async Task<List<RuntimeValue>> EvaluateArgumentsAsync()
         {
-            arguments.Add(await EvaluateAsync(arg));
+            var values = new List<RuntimeValue>(expr.Arguments.Count);
+            foreach (var arg in expr.Arguments)
+            {
+                values.Add(await EvaluateAsync(arg));
+            }
+            return values;
         }
 
         if (expr.Callee is MemberAccessExpression memberExpr)
@@ -118,6 +125,7 @@ public partial class Interpreter
                 }
                 else if (obj.Type == ValueType.String && IsStringExtensionMethod(memberExpr.Member))
                 {
+                    arguments = await EvaluateArgumentsAsync();
                     var args = new List<RuntimeValue> { obj };
                     args.AddRange(arguments);
                     try
@@ -148,6 +156,7 @@ public partial class Interpreter
                 throw new RuntimeException("Cannot use 'super()' outside of a constructor.");
 
             var superclass = declaringClass.Superclass;
+            arguments = await EvaluateArgumentsAsync();
 
             // Mirror JavaScript: super(...) runs the nearest ancestor constructor, forwarding
             // the arguments. A class without a constructor of its own has an implicit one that
@@ -174,6 +183,7 @@ public partial class Interpreter
             // flat built-in of the same name; otherwise dispatch the built-in directly.
             else if (!TryResolveShadowingBinding(idExpr, out callee))
             {
+                arguments = await EvaluateArgumentsAsync();
                 try
                 {
                     if (returnTask)
@@ -190,6 +200,8 @@ public partial class Interpreter
         {
             callee = await EvaluateAsync(expr.Callee);
         }
+
+        arguments = await EvaluateArgumentsAsync();
 
         if (callee.Type == ValueType.Prompt)
         {

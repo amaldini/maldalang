@@ -163,6 +163,7 @@ Used by `if`, `while`, `&&`, `||`, and `not`.
 - `+`, `-`, `*`, `/`, `%` require numeric operands unless a class overload (`__add__`, etc.) applies.
 - **String concatenation:** if the left operand of `+` is a string, string conversion applies to the other side per `EvaluatePlus` rules.
 - **Integer overflow** on `+`, `-`, `*`, unary `-`, and `++`/`--` throws `RuntimeException` with message `Integer overflow.`
+- **Division by zero:** `/`, `%` and `/=` with a divisor of `0` or `0.0` throw `RuntimeException` with message `Division by zero.`
 
 ### 7.2 Equality
 
@@ -175,7 +176,11 @@ Used by `if`, `while`, `&&`, `||`, and `not`.
 
 ### 7.4 Builtin coercions
 
-Tier 1 builtins such as `int()`, `float()`, and `string()` perform explicit conversion and may throw on invalid input. They are **not** implicit coercions in expressions unless documented for a specific builtin.
+Tier 1 builtins such as `int()`, `float()`, and `string()` perform explicit conversion and may throw on invalid input. They are **not** implicit coercions in expressions unless documented for a specific builtin. `int()` of a string that is not a decimal integer in the 32-bit range returns `0`.
+
+### 7.5 Evaluation order
+
+Expressions are evaluated left to right. In a call, the callee is evaluated first (for a method call, the receiver object), then the arguments in order: in `make(g)(f())`, `make(g)` runs before `f()`.
 
 ---
 
@@ -563,3 +568,4 @@ Versioning and deprecation rules: [CHANGELOG.md](CHANGELOG.md).
 | 2026-09-15 | Final 1.0 | §19 brace-less `class Name(params) function …` on a first declaration |
 | 2026-09-15 | Final 1.0 | §20 REPL later `class Name` augments the session-bound class |
 | 2026-10-16 | Final 1.0 | §3 user bindings shadow flat built-ins (built-ins resolve last) |
+| 2026-10-21 | Final 1.0 | §7.1 division by zero; §7.4 `int()` of a non-integer string is `0`; §7.5 left-to-right evaluation, callee before arguments |
