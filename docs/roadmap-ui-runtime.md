@@ -1,6 +1,6 @@
 # MALDA web UI runtime roadmap
 
-**Status:** U0–U3b landed 2026-10-22; U4–U7 open  
+**Status:** U0–U4 landed 2026-10-22; U5–U7 open  
 **Created:** 2026-10-22  
 **Audience:** maintainers working on `ui.*`, `MaldaLang.UIHost` and `malda-ui-client.js`
 
@@ -177,6 +177,17 @@ and `UiHostProtocolTests.Program_AnswersBrowserClicks` (loop and `ui.run`, inter
 - Tests: extend `UiPatchFuzzTests` with a minimal fake DOM in Node; DOM after patches must
   equal a fresh render. Explore with `MALDA_UI_FUZZ_SEEDS=1-200`.
 - Manual check: `Examples/Web/ui_form_workflow.malda` — typing keeps caret and selection.
+
+**Landed:** no path → element map: the DOM mirrors the tree, so a path walks `childNodes`.
+The renderer moved into `MaldaUiDom.create(document, hooks)` so Node can run it on a fake DOM.
+`SetProp` / `RemoveProp` sync a fresh render's attributes onto the live element instead of
+setting one attribute, which keeps every prop rule in one place; value and checked change only
+for their own props (the headless-browser check caught a class patch overwriting typed text).
+Text, `dataGrid` and `treeView` re-render on any patch on or inside them; `dataGrid` local sort
+re-renders only the grid, not the page. Tests: `UiPatchFuzzTests` compares the patched fake DOM
+and its listener paths with a fresh render (200 seeds clean), and
+`DomPatch_KeepsTheEditedInputAndItsListener`. Checked in headless Edge with the real client:
+focus, typed value and selection survive sibling patches, inserts, moves and class changes.
 
 ### U5 — Input events
 

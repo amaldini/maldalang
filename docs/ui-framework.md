@@ -120,6 +120,27 @@ patch core at the top of `malda-ui-client.js`, loadable from Node). `MaldaUiProt
 it, is the client's sequence / ack / resync state machine; `UiHostProtocolTests` drives it over a
 real WebSocket against the embedded and the standalone host.
 
+The browser applies each patch to the DOM in place (`MaldaUiDom`, also in
+`malda-ui-client.js`, created with the page's `document`). The DOM mirrors the tree: the
+element at `/1/0/` is child 0 of child 1 of the root, and `data-ui-path` names it.
+
+- `SetProp` / `RemoveProp` copy a fresh render's attributes, class and style onto the live
+  element, which keeps focus, caret and selection. The input's value and checked state change
+  only when the patch is to `value` / `defaultValue` or `checked` / `defaultChecked`.
+- `InsertChild`, `RemoveChild` and `MoveChild` insert, remove or move one DOM node and renumber
+  the `data-ui-path` of the siblings after it.
+- `ReplaceNode` renders that subtree again.
+- `text`, `dataGrid` and `treeView` do not mirror their children in the DOM: a patch on or
+  inside one renders that node again. `dataGrid` keeps scroll, sort and selection in its
+  per-path control state, and a replaced node keeps its scroll position.
+- Listeners read the element's current node and `data-ui-path` when the event fires, so
+  patches never re-bind them.
+- A snapshot, or a patch the DOM cannot follow, renders the whole tree.
+
+`UiPatchFuzzTests` renders each fuzz case's first tree into a fake DOM, applies the patches
+with `MaldaUiDom`, and requires the result, and the paths its listeners report, to equal a
+fresh render of the second tree.
+
 ## State model
 
 State uses the component state store (`HttpServerInstance`), wrapped by:

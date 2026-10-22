@@ -17,7 +17,9 @@ namespace MaldaLang.Tests.Fuzz;
 /// (props changed, children inserted, removed, swapped or shuffled, keyed and unkeyed). The
 /// patches from <see cref="UiDiffEngine.Diff"/>, applied to the first tree by
 /// <see cref="UiPatchApplier"/> and by <c>MaldaUiCore</c> from <c>malda-ui-client.js</c> under
-/// Node, must give the second tree. Set <c>MALDA_UI_FUZZ_SEEDS</c> (e.g. <c>1-200</c>) to
+/// Node, must give the second tree. Under Node, <c>MaldaUiDom</c> also applies them to a fake
+/// DOM rendered from the first tree: the result, and the paths its listeners report, must equal
+/// a fresh render of the second tree. Set <c>MALDA_UI_FUZZ_SEEDS</c> (e.g. <c>1-200</c>) to
 /// explore more locally; a failure writes the trees and patches to
 /// <c>%TEMP%/malda_ui_fuzz/seed&lt;N&gt;/</c>. Without Node only the C# applier runs.
 /// </summary>
@@ -26,7 +28,7 @@ public class UiPatchFuzzTests
     private const int CasesPerSeed = 40;
 
     private static readonly string[] ContainerTypes = { "column", "row", "panel" };
-    private static readonly string[] LeafTypes = { "text", "button", "badge" };
+    private static readonly string[] LeafTypes = { "text", "button", "badge", "textField" };
     private static readonly string[] Keys = { "a", "b", "c", "d", "e", "f", "g", "h" };
 
     public static IEnumerable<object[]> Seeds()
@@ -72,9 +74,14 @@ public class UiPatchFuzzTests
             for (var i = 0; i < CasesPerSeed; i++)
             {
                 var expected = (string)cases[i]!["expected"]!;
-                var actual = UiPatchApplier.Canonical(JsonNode.Parse(clientResults[i]));
+                var result = clientResults[i];
+                var actual = UiPatchApplier.Canonical(JsonNode.Parse((string)result["tree"]!));
                 if (actual != expected)
                     failures.Add($"case {i} (malda-ui-client.js)");
+                if ((string?)result["patchedDom"] != (string?)result["freshDom"])
+                    failures.Add($"case {i} (DOM patch): {Truncate((string?)result["patchedDom"] ?? "")} != fresh {Truncate((string?)result["freshDom"] ?? "")}");
+                else if ((string?)result["patchedEvents"] != (string?)result["freshEvents"])
+                    failures.Add($"case {i} (DOM listeners): {result["patchedEvents"]} != fresh {result["freshEvents"]}");
             }
         }
 
@@ -87,6 +94,50 @@ public class UiPatchFuzzTests
         Assert.Fail(
             $"Seed {seed}: patches do not rebuild the new tree. Cases: {Path.Combine(folder, "cases.json")}"
             + System.Environment.NewLine + string.Join(System.Environment.NewLine, failures));
+    }
+
+    [Fact]
+    public void DomPatch_KeepsTheEditedInputAndItsListener()
+    {
+        RunNodeScript(FakeDom + """
+const assert = require("assert");
+const events = [];
+const dom = renderer(events);
+const app = fakeDocument.createElement("div");
+const text = (value) => ({ type: "text", props: { value } });
+let tree = { type: "column", props: {}, children: [{ type: "textField", props: { value: "a" } }, text("x")] };
+dom.renderInto(app, tree);
+const input = app.firstChild.childNodes[0];
+input.value = "typed"; // the user is typing
+
+// A patch elsewhere leaves the input alone.
+tree = dom.applyPayload(app, tree, { patches: [{ op: "SetProp", path: "/1/", prop: "value", value: "y" }] });
+assert.strictEqual(app.firstChild.childNodes[0], input);
+assert.strictEqual(input.value, "typed");
+assert.strictEqual(app.firstChild.childNodes[1].nodeValue, "y");
+
+// An insert before it moves it: same element, new path, and its listener reports the new path.
+tree = dom.applyPayload(app, tree, { patches: [{ op: "InsertChild", path: "/", index: 0, value: text("new") }] });
+assert.strictEqual(app.firstChild.childNodes[1], input);
+assert.strictEqual(input.getAttribute("data-ui-path"), "/1/");
+input.fire("input");
+assert.deepStrictEqual(events, ["input /1/"]);
+
+// Another prop of the input keeps what the user typed.
+input.value = "typed again";
+tree = dom.applyPayload(app, tree, { patches: [{ op: "SetProp", path: "/1/", prop: "className", value: "wide" }] });
+assert.strictEqual(input.className, "wide");
+assert.strictEqual(input.value, "typed again");
+
+// Its own value from the server lands on the same element.
+tree = dom.applyPayload(app, tree, { patches: [{ op: "SetProp", path: "/1/", prop: "value", value: "b" }] });
+assert.strictEqual(app.firstChild.childNodes[1], input);
+assert.strictEqual(input.value, "b");
+
+// A patch the DOM cannot follow falls back to a full render of the patched tree.
+tree = dom.applyPayload(app, tree, { patches: [{ op: "MoveChild", path: "/", from: 7, index: 0 }] });
+assert.strictEqual(serialize(app.firstChild), serialize((() => { const c = fakeDocument.createElement("div"); dom.renderInto(c, tree); return c.firstChild; })()));
+""");
     }
 
     private static UiNode RandomNode(Random random, int depth)
@@ -189,15 +240,162 @@ public class UiPatchFuzzTests
 
     private static string Truncate(string text) => text.Length <= 2000 ? text : text[..2000] + "...";
 
-    private const string Harness = """
-const core = require(process.argv[2]);
-const cases = JSON.parse(require("fs").readFileSync(process.argv[3], "utf8"));
-const results = cases.map((c) => JSON.stringify(core.applyPatches(c.previous, c.patches)));
+    /// <summary>
+    /// A document with just what <c>MaldaUiDom</c> uses on the fuzzed control types, and a
+    /// serializer for comparing two DOMs. Prepended to the Node scripts below.
+    /// </summary>
+    private const string FakeDom = """
+const fs = require("fs");
+const client = require(process.argv[2]);
+
+class FakeNode {
+  constructor() { this.childNodes = []; this.parentNode = null; }
+  get firstChild() { return this.childNodes[0] || null; }
+  appendChild(child) { return this.insertBefore(child, null); }
+  insertBefore(child, ref) {
+    if (child.parentNode) child.parentNode.removeChild(child);
+    const index = ref ? this.childNodes.indexOf(ref) : this.childNodes.length;
+    if (index < 0) throw new Error("insertBefore: reference is not a child");
+    this.childNodes.splice(index, 0, child);
+    child.parentNode = this;
+    return child;
+  }
+  removeChild(child) {
+    const index = this.childNodes.indexOf(child);
+    if (index < 0) throw new Error("removeChild: not a child");
+    this.childNodes.splice(index, 1);
+    child.parentNode = null;
+    return child;
+  }
+  replaceChild(next, old) { this.insertBefore(next, old); this.removeChild(old); return old; }
+}
+
+class FakeText extends FakeNode {
+  constructor(text) { super(); this.nodeType = 3; this.nodeValue = text; }
+}
+
+class FakeElement extends FakeNode {
+  constructor(tag) {
+    super();
+    this.nodeType = 1;
+    this.tagName = tag.toUpperCase();
+    this.attrs = new Map();
+    this.listeners = {};
+    this.dataset = {};
+    this.style = { cssText: "", setProperty(name, value) { this.cssText += name + ": " + value + ";"; } };
+    this.classList = { add: (name) => { this.className = (this.className + " " + name).trim(); } };
+    if (["INPUT", "TEXTAREA", "SELECT"].includes(this.tagName)) this.value = "";
+    if (this.tagName === "INPUT") { this.checked = false; this.type = "text"; }
+  }
+  get attributes() { return Array.from(this.attrs, ([name, value]) => ({ name, value })); }
+  setAttribute(name, value) { this.attrs.set(name, String(value)); }
+  getAttribute(name) { return this.attrs.has(name) ? this.attrs.get(name) : null; }
+  hasAttribute(name) { return this.attrs.has(name); }
+  removeAttribute(name) { this.attrs.delete(name); }
+  get className() { return this.getAttribute("class") || ""; }
+  set className(value) { this.setAttribute("class", value); }
+  addEventListener(type, listener) { (this.listeners[type] = this.listeners[type] || []).push(listener); }
+  fire(type) { for (const listener of this.listeners[type] || []) listener({ preventDefault() {} }); }
+}
+
+const fakeDocument = { createElement: (tag) => new FakeElement(tag), createTextNode: (text) => new FakeText(text) };
+
+function serialize(node) {
+  if (node.nodeType === 3) return JSON.stringify(node.nodeValue);
+  const attrs = node.attributes.map((a) => a.name + "=" + JSON.stringify(a.value)).sort().join(" ");
+  const state = node.tagName === "INPUT" ? " {" + node.type + " " + JSON.stringify(node.value) + " " + node.checked + "}"
+    : "value" in node ? " {" + JSON.stringify(node.value) + "}" : "";
+  const style = node.style.cssText ? " style=" + JSON.stringify(node.style.cssText) : "";
+  return "<" + node.tagName + " " + attrs + style + state + ">" + node.childNodes.map(serialize).join("") + "</" + node.tagName + ">";
+}
+
+function elements(node, out = []) {
+  if (node.nodeType === 1) out.push(node);
+  node.childNodes.forEach((child) => elements(child, out));
+  return out;
+}
+
+// A renderer whose UI events land in `events` as "type path".
+function renderer(events) {
+  return client.MaldaUiDom.create(fakeDocument, { sendEvent: (type, path) => events.push(type + " " + path) });
+}
+
+// Fires click and input on every element under the container; the events sent, in order.
+function listenerPaths(container, events) {
+  events.length = 0;
+  for (const el of elements(container).slice(1)) { el.fire("click"); el.fire("input"); }
+  return events.join(", ");
+}
+""";
+
+    private const string Harness = FakeDom + """
+const cases = JSON.parse(fs.readFileSync(process.argv[3], "utf8"));
+const results = cases.map((c) => {
+  const events = [];
+  const dom = renderer(events);
+  const patched = fakeDocument.createElement("div");
+  let tree = JSON.parse(JSON.stringify(c.previous));
+  dom.renderInto(patched, tree);
+  tree = dom.applyPayload(patched, tree, { patches: c.patches });
+  const fresh = fakeDocument.createElement("div");
+  dom.renderInto(fresh, JSON.parse(c.expected));
+  return {
+    tree: JSON.stringify(tree),
+    patchedDom: serialize(patched),
+    freshDom: serialize(fresh),
+    patchedEvents: listenerPaths(patched, events),
+    freshEvents: listenerPaths(fresh, events)
+  };
+});
 process.stdout.write(JSON.stringify(results));
 """;
 
-    /// <summary>Each case's tree after <c>MaldaUiCore.applyPatches</c>, or null without Node.</summary>
-    private static List<string>? RunClientInNode(string casesJson)
+    /// <summary>Runs a Node script with the client path as its argument; skipped without Node.</summary>
+    private static void RunNodeScript(string script)
+    {
+        var folder = Path.Combine(Path.GetTempPath(), "malda_ui_fuzz", "script_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        try
+        {
+            var scriptPath = Path.Combine(folder, "script.js");
+            File.WriteAllText(scriptPath, script, NoBom);
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = System.Environment.GetEnvironmentVariable("MALDA_NODE_PATH") is { Length: > 0 } node ? node : "node",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            startInfo.ArgumentList.Add(scriptPath);
+            startInfo.ArgumentList.Add(Path.Combine(PlanningPaths.RepoRoot, "MaldaLang.UIHost", "wwwroot", "malda-ui-client.js"));
+
+            Process? process;
+            try
+            {
+                process = Process.Start(startInfo);
+            }
+            catch (Win32Exception)
+            {
+                return;
+            }
+
+            using (process!)
+            {
+                var stderr = process.StandardError.ReadToEndAsync();
+                process.StandardOutput.ReadToEnd();
+                Assert.True(process.WaitForExit(30_000), "Node script timed out.");
+                Assert.True(process.ExitCode == 0, "Node script failed: " + Truncate(stderr.Result));
+            }
+        }
+        finally
+        {
+            try { Directory.Delete(folder, recursive: true); } catch { }
+        }
+    }
+
+    /// <summary>Each case's tree and DOMs after the client applied the patches, or null without Node.</summary>
+    private static List<JsonObject>? RunClientInNode(string casesJson)
     {
         var folder = Path.Combine(Path.GetTempPath(), "malda_ui_fuzz", "run_" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(folder);
@@ -242,7 +440,7 @@ process.stdout.write(JSON.stringify(results));
                 }
 
                 Assert.True(process.ExitCode == 0, "malda-ui-client.js harness failed: " + Truncate(stderr.Result));
-                return JsonNode.Parse(stdout.Result)!.AsArray().Select(r => (string)r!).ToList();
+                return JsonNode.Parse(stdout.Result)!.AsArray().Select(r => r!.AsObject()).ToList();
             }
         }
         finally

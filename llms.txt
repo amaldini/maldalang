@@ -18,7 +18,7 @@ Canonical reading order for tools and agents working on this repository.
 - docs/roadmap-games.md — browser games kit (JS-only `game.*` / `three.*`; G0–G22 landed)
 - docs/roadmap-neural.md — neural-nets kit (`math.*` LA, `nn.*`, spatial host layers, AI_Theory track, OnnxModel; N0–N4 and N6–N15 landed, N5 partial)
 - docs/roadmap-improvements.md — engineering improvements (CLI split, nightly fuzz, fmt / lint, JS capability pre-check; I1–I2 landed)
-- docs/roadmap-ui-runtime.md — web UI runtime (protocol 1.1, one host, event bridge, DOM patching, secure-by-default host; U0–U3b landed, U4–U7 open)
+- docs/roadmap-ui-runtime.md — web UI runtime (protocol 1.1, one host, event bridge, DOM patching, secure-by-default host; U0–U4 landed, U5–U7 open)
 - docs/games-2d-gap-analysis.md — 2D kit gaps vs Love2D / Pico-8 / Phaser / Godot (evaluation, not a workstream plan)
 - docs/debugging-interpret.md — `malda debug-adapter` CLI notes (interpret DAP; VS Code F5 is D3)
 
