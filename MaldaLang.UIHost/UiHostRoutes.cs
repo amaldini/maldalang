@@ -63,7 +63,11 @@ public static class UiHostRoutes
             return Results.Unauthorized();
 
         using var reader = new StreamReader(context.Request.Body, Encoding.UTF8);
-        var error = hub.Publish(sessionId, kind, await reader.ReadToEndAsync());
+        var body = await reader.ReadToEndAsync();
+        if (Encoding.UTF8.GetByteCount(body) > UiHostHub.MaxInboundBytes)
+            return Results.BadRequest(new { error = $"envelope exceeds {UiHostHub.MaxInboundBytes} bytes" });
+
+        var error = hub.Publish(sessionId, kind, body);
         return error == null
             ? Results.Ok(new { delivered = true, protocolVersion = UiHostHub.ProtocolVersion })
             : Results.BadRequest(new { error });

@@ -21,6 +21,7 @@ public sealed class UiSession
     private int _expectedInSequence = 1;
     private readonly Dictionary<string, HashSet<string>> _lifecycleHooks = new(StringComparer.Ordinal);
     private int _maxEventQueueDepth = 2048;
+    private readonly Action<string, string, string>? _publish;
 
     public string SessionId { get; }
     public DateTime LastAccessUtc { get; private set; } = DateTime.UtcNow;
@@ -28,9 +29,15 @@ public sealed class UiSession
     public int MaxPayloadSizeBytes { get; set; } = 256 * 1024;
     public string ProtocolVersion => UiProtocol.Version;
 
-    public UiSession(string sessionId)
+    /// <param name="publish">
+    /// Called with (sessionId, "mount" | "patch", envelope JSON) for each mount and render, under
+    /// the session lock so publishes keep revision order. <see cref="UiSessionRegistry"/> passes
+    /// <see cref="UiHostLink.Publish"/>; a bare session publishes nothing.
+    /// </param>
+    public UiSession(string sessionId, Action<string, string, string>? publish = null)
     {
         SessionId = sessionId;
+        _publish = publish;
     }
 
     public RuntimeValue Mount(UiNode root)
@@ -273,7 +280,11 @@ public sealed class UiSession
         envelope.Set("patches", RuntimeValue.Array(patchValues));
         envelope.Set("treeHash", RuntimeValue.String(ComputeTreeHash(_currentTree)));
         var runtimeEnvelope = RuntimeValue.Object(envelope);
-        EnforcePayloadSizeLimit(runtimeEnvelope, messageType);
+        var json = EnforcePayloadSizeLimit(runtimeEnvelope, messageType);
+        if (messageType is "mount" or "patch")
+        {
+            _publish?.Invoke(SessionId, messageType, json);
+        }
         return runtimeEnvelope;
     }
 
@@ -358,14 +369,17 @@ public sealed class UiSession
         return root.ToRuntimeValue().ToString().GetHashCode().ToString("X8");
     }
 
-    private void EnforcePayloadSizeLimit(RuntimeValue envelope, string messageType)
+    private string EnforcePayloadSizeLimit(RuntimeValue envelope, string messageType)
     {
-        var payloadBytes = Encoding.UTF8.GetByteCount(RuntimeValueToJson(envelope));
+        var json = RuntimeValueToJson(envelope);
+        var payloadBytes = Encoding.UTF8.GetByteCount(json);
         if (payloadBytes > MaxPayloadSizeBytes)
         {
             throw new Exception(
                 $"UI {messageType} envelope exceeds maxPayloadBytes ({MaxPayloadSizeBytes} bytes). Actual: {payloadBytes} bytes.");
         }
+
+        return json;
     }
 
     private static string RuntimeValueToJson(RuntimeValue value)

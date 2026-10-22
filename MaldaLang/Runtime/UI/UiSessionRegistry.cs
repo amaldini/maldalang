@@ -13,7 +13,7 @@ public static class UiSessionRegistry
     public static UiSession GetOrCreate(string sessionId)
     {
         PruneExpiredSessions();
-        return Sessions.GetOrAdd(sessionId, static id => new UiSession(id));
+        return Sessions.GetOrAdd(sessionId, static id => new UiSession(id, UiHostLink.Publish));
     }
 
     public static void Remove(string sessionId)

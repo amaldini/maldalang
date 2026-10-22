@@ -109,6 +109,170 @@ public class UiHostProtocolTests : IClassFixture<UiHostProtocolTests.Hosts>
     }
 
     [Fact]
+    public async Task LinkedSession_BrowserEventReachesPullEvent_AndRenderReachesTheBrowser()
+    {
+        await using var scenario = await Scenario.StartAsync(_hosts, "embedded");
+        if (scenario == null) return;
+        Assert.True(await UiHostLink.StartAsync(), "UiHostLink did not attach to the embedded host");
+
+        // A registry session publishes by itself, as ui.mount / ui.render do in a program.
+        var session = UiSessionRegistry.GetOrCreate(scenario.SessionId);
+        try
+        {
+            var tab = await scenario.ConnectAsync();
+            session.Mount(Tree("one"));
+            await Scenario.AssertShowsAsync(tab, Tree("one"));
+
+            await tab.CommandAsync("""event {"eventType":"click","targetPath":"/1/","payload":{"action":"go"}}""");
+            var received = await PullEventAsync(session);
+            Assert.Equal("click", received.Type);
+            Assert.Equal("/1/", received.TargetPath);
+            Assert.Equal("go", received.Payload.AsObject().Get("action").AsString());
+
+            session.Render(Tree("two"));
+            await Scenario.AssertShowsAsync(tab, Tree("two"));
+        }
+        finally
+        {
+            UiSessionRegistry.Remove(scenario.SessionId);
+        }
+    }
+
+    public static IEnumerable<object[]> Backends() => new[] { new object[] { "interpret" }, new object[] { "transpile" } };
+
+    [Theory]
+    [MemberData(nameof(Backends))]
+    public async Task Program_AnswersBrowserClicks(string backend)
+    {
+        if (!NodeTab.NodeAvailable())
+            return;
+
+        const string sessionId = "counter";
+        var url = $"http://127.0.0.1:{Hosts.FreePort()}";
+        var folder = Path.Combine(Path.GetTempPath(), "malda_ui_host", "program_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        var programPath = Path.Combine(folder, "counter.malda");
+        File.WriteAllText(programPath, """
+var sid = "counter";
+
+function view(n) {
+    return ui.column({}, [
+        ui.text({"value": "count=" + string(n)}),
+        ui.button({"label": "Inc"})
+    ]);
+}
+
+var count = 0;
+ui.mount(view(count), sid);
+io.print("mounted");
+while (count < 2) {
+    var e = ui.pullEvent(sid);
+    if (e == null) {
+        sleep(20);
+    } else {
+        if (e["type"] == "click") {
+            count = count + 1;
+            ui.render(view(count), sid);
+        }
+    }
+}
+io.print("done");
+""");
+
+        var startInfo = new ProcessStartInfo(backend == "transpile" ? CompileTranspiled(programPath) : "dotnet")
+        {
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            WorkingDirectory = folder
+        };
+        if (backend == "interpret")
+        {
+            startInfo.ArgumentList.Add(Path.Combine(AppContext.BaseDirectory, "malda.dll"));
+            startInfo.ArgumentList.Add(programPath);
+        }
+        startInfo.Environment["MALDA_UI_HOST_URL"] = url;
+        startInfo.Environment.Remove("MALDA_UI_AUTH_TOKEN");
+        using var program = Process.Start(startInfo)!;
+        var stderr = program.StandardError.ReadToEndAsync();
+        await using var scenario = Scenario.At(url, sessionId);
+        try
+        {
+            Assert.Equal("mounted", await ReadLineAsync(program, stderr));
+            var tab = await scenario.ConnectAsync();
+            await WaitForTextAsync(tab, "count=0");
+
+            await tab.CommandAsync("""event {"eventType":"click","targetPath":"/1/","payload":{}}""");
+            await WaitForTextAsync(tab, "count=1");
+
+            await tab.CommandAsync("""event {"eventType":"click","targetPath":"/1/","payload":{}}""");
+            await WaitForTextAsync(tab, "count=2");
+            Assert.Equal("done", await ReadLineAsync(program, stderr));
+        }
+        finally
+        {
+            try { program.Kill(entireProcessTree: true); } catch { }
+            try { Directory.Delete(folder, recursive: true); } catch { }
+        }
+    }
+
+    private static string CompileTranspiled(string programPath)
+    {
+        var result = new MaldaLang.Compiler.Compiler().Compile(
+            programPath,
+            Path.ChangeExtension(programPath, ".exe"),
+            MaldaLang.Compiler.CompilationMode.TranspileToCSharp,
+            includeLLamaSharp: false,
+            includeUiHost: false,
+            profilingOptions: null,
+            typedTranspileLevel: 1,
+            includeOptionalPacks: false);
+        Assert.True(result.Success && File.Exists(result.OutputPath), "transpile failed: " + result.ErrorMessage);
+        return result.OutputPath!;
+    }
+
+    private static async Task<UiEvent> PullEventAsync(UiSession session)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (DateTime.UtcNow < deadline)
+        {
+            if (session.TryDequeueEvent(out var uiEvent) && uiEvent != null)
+                return uiEvent;
+            await Task.Delay(20);
+        }
+        throw new Xunit.Sdk.XunitException("the browser event never reached the session");
+    }
+
+    private static async Task<string?> ReadLineAsync(Process program, Task<string> stderr)
+    {
+        try
+        {
+            var line = await program.StandardOutput.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(60));
+            if (line == null)
+                throw new Xunit.Sdk.XunitException("the program exited early: " + await stderr);
+            return line.Trim();
+        }
+        catch (TimeoutException)
+        {
+            throw new Xunit.Sdk.XunitException("the program printed nothing for 60 s");
+        }
+    }
+
+    /// <summary>Dumps the tab until its tree contains <paramref name="text"/> (5 s at most).</summary>
+    private static async Task WaitForTextAsync(NodeTab tab, string text)
+    {
+        string? tree = null;
+        for (var attempt = 0; attempt < 10; attempt++)
+        {
+            tree = (await tab.CommandAsync("dump"))["tree"]?.ToJsonString();
+            if (tree != null && tree.Contains(text, StringComparison.Ordinal))
+                return;
+        }
+        throw new Xunit.Sdk.XunitException($"the tab never showed '{text}'; last tree: {tree ?? "null"}");
+    }
+
+    [Fact]
     public void ClientProtocol_HandlesStalePatchesGapsAndVersions()
     {
         if (!NodeTab.NodeAvailable())
@@ -161,16 +325,20 @@ assert.strictEqual(P.outbound(s, { type: "pong" }).sequence, 1);
         private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(10) };
 
         private readonly string _baseUrl;
-        private readonly string _sessionId = "proto-" + Guid.NewGuid().ToString("N")[..8];
+        private readonly string _sessionId;
         private readonly UiSession _session;
         private readonly List<NodeTab> _tabs = new();
         private UiNode? _current;
 
-        private Scenario(string baseUrl)
+        private Scenario(string baseUrl, string? sessionId = null)
         {
             _baseUrl = baseUrl.TrimEnd('/');
+            _sessionId = sessionId ?? "proto-" + Guid.NewGuid().ToString("N")[..8];
+            // A bare session: the scenario posts its envelopes over HTTP itself.
             _session = new UiSession(_sessionId);
         }
+
+        public string SessionId => _sessionId;
 
         /// <summary>Null when Node is not installed.</summary>
         public static async Task<Scenario?> StartAsync(Hosts hosts, string host)
@@ -179,6 +347,9 @@ assert.strictEqual(P.outbound(s, { type: "pong" }).sequence, 1);
                 return null;
             return new Scenario(await hosts.BaseUrlAsync(host));
         }
+
+        /// <summary>Tabs on <paramref name="sessionId"/> of a host someone else drives, such as a running program.</summary>
+        public static Scenario At(string baseUrl, string sessionId) => new(baseUrl, sessionId);
 
         public async Task<NodeTab> ConnectAsync()
         {
@@ -201,10 +372,12 @@ assert.strictEqual(P.outbound(s, { type: "pong" }).sequence, 1);
             return PostAsync("patch", _session.Render(next));
         }
 
-        public async Task AssertInSyncAsync(NodeTab tab)
+        public Task AssertInSyncAsync(NodeTab tab) => AssertShowsAsync(tab, _current);
+
+        public static async Task AssertShowsAsync(NodeTab tab, UiNode? tree)
         {
             var dump = await tab.CommandAsync("dump");
-            var expected = UiPatchApplier.Canonical(UiPatchApplier.ToJson(_current));
+            var expected = UiPatchApplier.Canonical(UiPatchApplier.ToJson(tree));
             var actual = UiPatchApplier.Canonical(dump["tree"]);
             var received = dump["received"]!.AsArray().Select(m => (string?)m).ToList();
             var trace = $"received [{string.Join(", ", received.Take(12))}{(received.Count > 12 ? $", … {received.Count} in all" : "")}], resyncs sent {(int)dump["resyncs"]!}";
@@ -229,8 +402,8 @@ assert.strictEqual(P.outbound(s, { type: "pong" }).sequence, 1);
     }
 
     /// <summary>
-    /// A Node process playing one browser tab: <c>connect</c>, <c>close</c> and <c>dump</c>
-    /// on stdin, one JSON line back per command. The protocol state survives reconnects,
+    /// A Node process playing one browser tab: <c>connect</c>, <c>close</c>, <c>dump</c> and
+    /// <c>event {json}</c> on stdin, one JSON line back per command. The protocol state survives reconnects,
     /// as in the browser.
     /// </summary>
     private sealed class NodeTab : IDisposable
@@ -293,6 +466,13 @@ const commands = {
 };
 
 require("readline").createInterface({ input: process.stdin }).on("line", (line) => {
+  // "event {json}" plays a browser event: { eventType, targetPath, payload }.
+  if (line.startsWith("event ")) {
+    const e = JSON.parse(line.slice(6));
+    run([{ send: MaldaUiProtocol.event(state, e.eventType, e.targetPath, e.payload) }]);
+    reply({ ok: true });
+    return;
+  }
   const command = commands[line.trim()];
   if (command) command();
   else reply({ ok: false, error: "unknown command " + line });
@@ -503,7 +683,7 @@ require("readline").createInterface({ input: process.stdin }).on("line", (line) 
             throw new Xunit.Sdk.XunitException("standalone MaldaLang.UIHost did not answer /health");
         }
 
-        private static int FreePort()
+        public static int FreePort()
         {
             var listener = new TcpListener(IPAddress.Loopback, 0);
             listener.Start();

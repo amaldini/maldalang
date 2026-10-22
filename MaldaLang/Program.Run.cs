@@ -21,7 +21,7 @@ using System.Diagnostics;
 using MaldaLang.Testing;
 using MaldaLang.Scaffolding;
 using MaldaLang.Deployment;
-using MaldaLang.UIHost;
+using MaldaLang.Runtime.UI;
 using MaldaLang.Runtime.Profiling;
 using MaldaLang.Runtime.Workflows;
 using MaldaLang.Cli;
@@ -207,7 +207,7 @@ partial class Program
     {
         if (UsesUiFramework(source))
         {
-            EmbeddedUiHostRuntime.TryStartAsync().GetAwaiter().GetResult();
+            UiHostLink.StartAsync().GetAwaiter().GetResult();
         }
 
         var lexer = new Lexer(source, sourceFileName);

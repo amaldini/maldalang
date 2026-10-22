@@ -20,21 +20,49 @@ Engine and host notes for MALDA’s Blazor-like server-driven UI. For the langua
 
 1. `ui.mount(root, sessionId)` stores the initial tree and returns a `mount` patch envelope.
 2. `ui.render(root, sessionId)` diffs against the prior tree and returns a `patch` envelope.
-3. The browser host receives the envelope and applies patches.
-4. Browser interactions are sent back as `event` messages.
-5. Server code calls `ui.dispatchEvent(...)` and `ui.pullEvent(...)` to drain event queues.
+3. When the host runs in process, both envelopes also go to every browser on
+   `/ui/ws/{sessionId}`, which applies the patches. The return value stays for tests and
+   offline programs.
+4. Browser interactions come back as `event` messages and land in the session's queue.
+5. Server code drains the queue with `ui.pullEvent(sessionId)`. `ui.dispatchEvent(...)`
+   queues an event by hand, for offline programs and tests.
+
+The link between sessions and host is `UiHostLink` (`MaldaLang/Runtime/UI/`). The CLI, the
+Desktop IDE and transpiled programs start the host through `UiHostLink.StartAsync()`; after
+that, every `UiSessionRegistry` session publishes its mount / patch envelopes to
+`UiHostHub.Publish`, and `UiHostHub.ClientEvent` feeds browser events to
+`UiSession.EnqueueEvent`. The link lives in `MaldaLang` because `MaldaLang` references the
+host, not the other way round. A `UiSession` built by hand publishes nothing.
 
 ## Event loop contract
 
 For interactive `ui.*` sessions, keep this order after each client event:
 
-1. `ui.dispatchEvent(event, sessionId?, sequence?)` (host/runtime enqueues; examples may simulate). `sessionId` is always the second argument.
-2. `ui.pullEvent(sessionId)` — drain before rebuilding
+1. The event arrives: from the browser through the host, or from
+   `ui.dispatchEvent(event, sessionId?, sequence?)` in offline examples. `sessionId` is always
+   the second argument.
+2. `ui.pullEvent(sessionId)` — drain before rebuilding. It returns `null` at once when the
+   queue is empty, so a live program polls with a short `sleep` between empty pulls.
 3. Update `ui.setState` / locals from the payload
 4. Rebuild the tree
 5. `ui.render(nextTree, sessionId)`
 
 Skipping `pullEvent` (or updating state) before `render` leaves the queue full and the UI looks stuck. IDE/LSP reports **UI1001** for linear `dispatchEvent` → `render`/`mount` without an intervening `pullEvent`.
+
+A live loop, as `UiHostProtocolTests.Program_AnswersBrowserClicks` runs it on both backends:
+
+```malda
+ui.mount(view(count), sid);
+while (running) {
+    var e = ui.pullEvent(sid);
+    if (e == null) {
+        sleep(20);
+    } else {
+        // update state from e["type"], e["targetPath"], e["payload"]
+        ui.render(view(count), sid);
+    }
+}
+```
 
 Canonical offline example: [`Examples/Web/ui_event_loop.malda`](../Examples/Web/ui_event_loop.malda)  
 Showcase: [`Examples/Web/ui_counter_dashboard.malda`](../Examples/Web/ui_counter_dashboard.malda)  
@@ -121,10 +149,13 @@ There is one host, `MaldaLang.UIHost`. `UiHostRoutes.MapUiHost` maps its surface
 - heartbeat ping/pong and stale-connection eviction
 - optional auth token (`MALDA_UI_AUTH_TOKEN`)
 
-Two ways to run it. `EmbeddedUiHostRuntime.TryStartAsync()` starts it in process
-(`MALDA_UI_HOST_URL`, default `http://localhost:50114`): the CLI does when a program uses
+Two ways to run it. `UiHostLink.StartAsync()` starts it in process through
+`EmbeddedUiHostRuntime.TryStartAsync()` (`MALDA_UI_HOST_URL`, default
+`http://localhost:50114`) and links the sessions to it: the CLI does when a program uses
 `ui.*`, the Desktop IDE for web preview, and transpiled programs through one emitted call —
-the compiler references `MaldaLang.UIHost.dll` and copies it from beside `malda.dll`. The
+the compiler references `MaldaLang.UIHost.dll` and copies it from beside `malda.dll`. Only
+the in-process host sees the program's sessions; a program talks to a standalone host by
+posting the envelopes itself. The
 `MaldaLang.UIHost` executable is the same routes plus a CORS policy
 (`MALDA_UI_ALLOWED_ORIGIN`) and a per-IP rate limit.
 
@@ -134,6 +165,7 @@ the compiler references `MaldaLang.UIHost.dll` and copies it from beside `malda.
 |---------|----------------|
 | Nodes / diff / sessions / control specs | `MaldaLang/Runtime/UI/` |
 | `ui.*` builtins | `MaldaLang/BuiltIns/BuiltInFunctions.Ui.cs`, `.UiCrud.cs`, `.UiGenerate.cs` |
+| Session ↔ host link (publish, browser events) | `MaldaLang/Runtime/UI/UiHostLink.cs` |
 | Host (routes, protocol hub, tree patcher) | `MaldaLang.UIHost/` (`UiHostRoutes`, `UiHostHub`, `UiTreePatcher`, `EmbeddedUiHostRuntime`) |
 | Browser client | `MaldaLang.UIHost/wwwroot/malda-ui-client.js` |
 | Language API (user docs) | `ReferenceManual/26-web-ui.html` |

@@ -1,6 +1,6 @@
 # MALDA web UI runtime roadmap
 
-**Status:** U0, U1 and U2 landed 2026-10-22; U3–U7 open  
+**Status:** U0–U3 landed 2026-10-22; U3b–U7 open  
 **Created:** 2026-10-22  
 **Audience:** maintainers working on `ui.*`, `MaldaLang.UIHost` and `malda-ui-client.js`
 
@@ -134,6 +134,20 @@ U7: any time (treeHash after U1)
 - Interpret / transpile parity: a UI case in `InterpretTranspilePairTests`.
 - Docs: `docs/ui-framework.md` (event loop contract), `ReferenceManual/26-web-ui.html`,
   `docs/llm/malda-gotchas.md`; review whether UI1001 still earns its place.
+
+**Landed:** no bridge interface was needed. Publishing goes the way the reference already
+points: `UiHostLink` (`MaldaLang/Runtime/UI/`) calls `UiHostHub.Publish` in process and
+subscribes to `UiHostHub.ClientEvent`; `UiHostLink.StartAsync()` replaces the direct
+`EmbeddedUiHostRuntime.TryStartAsync()` call in the CLI, the Desktop IDE and the transpiled
+startup. `UiSessionRegistry` sessions publish under the session lock, so publishes keep
+revision order; hand-built `UiSession`s publish nothing. The hub keeps its own tree since U1,
+so `GetSnapshot` was unnecessary. The 256 KB cap moved to the HTTP route; in-process publishes
+follow the session's `maxPayloadBytes`. Browser events and `ui.dispatchEvent` share
+`EnqueueUiEvent` (so `error` events fire `onError` either way). The parity case found that
+transpiled `ui.dispatchEvent` rejected dict literals (`DictionaryInstance`), now coerced.
+Tests: `UiHostProtocolTests` (in-process link round trip; a counter program answering two
+browser clicks on interpret and transpile) and `InterpretTranspilePairTests.UiEventLoop_SameStdout`.
+UI1001 stays: `ui.dispatchEvent` is still the offline and test path.
 
 ### U3b — `ui.run`
 

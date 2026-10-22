@@ -57,7 +57,7 @@ public static partial class BuiltInFunctions
         }
     }
     
-    private static RuntimeValue JsonToRuntimeValue(JsonElement element)
+    internal static RuntimeValue JsonToRuntimeValue(JsonElement element)
     {
         switch (element.ValueKind)
         {

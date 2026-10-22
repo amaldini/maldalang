@@ -18,7 +18,7 @@ public class TranspiledUiHostEmbeddingTests
         ";
 
         var generatedCode = CompileAndReadGeneratedProgram(source, includeUiHost: false);
-        Assert.Contains("EmbeddedUiHostRuntime", generatedCode);
+        Assert.Contains("UiHostLink.StartAsync()", generatedCode);
     }
 
     [Fact]
@@ -31,7 +31,7 @@ public class TranspiledUiHostEmbeddingTests
         ";
 
         var generatedCode = CompileAndReadGeneratedProgram(source, includeUiHost: false);
-        Assert.Contains("await global::MaldaLang.UIHost.EmbeddedUiHostRuntime.TryStartAsync();", generatedCode);
+        Assert.Contains("await global::MaldaLang.Runtime.UI.UiHostLink.StartAsync();", generatedCode);
         Assert.DoesNotContain("class EmbeddedUiHostRuntime", generatedCode);
         Assert.DoesNotContain("/ui/ws/", generatedCode);
     }
@@ -44,7 +44,7 @@ public class TranspiledUiHostEmbeddingTests
         ";
 
         var generatedCode = CompileAndReadGeneratedProgram(source, includeUiHost: true);
-        Assert.Contains("EmbeddedUiHostRuntime", generatedCode);
+        Assert.Contains("UiHostLink.StartAsync()", generatedCode);
     }
 
     [Fact]
@@ -55,7 +55,7 @@ public class TranspiledUiHostEmbeddingTests
         ";
 
         var generatedCode = CompileAndReadGeneratedProgram(source, includeUiHost: false);
-        Assert.DoesNotContain("EmbeddedUiHostRuntime", generatedCode);
+        Assert.DoesNotContain("UiHostLink", generatedCode);
     }
 
     [Fact]
@@ -68,7 +68,7 @@ public class TranspiledUiHostEmbeddingTests
         ";
 
         var generatedCode = CompileAndReadGeneratedProgram(source, includeUiHost: false);
-        Assert.DoesNotContain("EmbeddedUiHostRuntime", generatedCode);
+        Assert.DoesNotContain("UiHostLink", generatedCode);
     }
 
     private static string CompileAndReadGeneratedProgram(string source, bool includeUiHost)

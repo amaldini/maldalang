@@ -36,14 +36,15 @@ public partial class Compiler
     }
 
     /// <summary>
-    /// Starts the UI host at the top of the transpiled program. The host itself is
+    /// Starts the UI host and links the program's UI sessions to it (<c>UiHostLink</c> in
+    /// malda.dll) at the top of the transpiled program. The host itself is
     /// <c>MaldaLang.UIHost.dll</c>, referenced and copied next to <c>malda.dll</c>
     /// (<see cref="GenerateTranspiledCsprojContent"/>), so transpiled and interpreted programs run
     /// the same host.
     /// </summary>
     private static string AddUiHostStartToTranspiledCode(string csharpCode)
     {
-        const string startCall = "await global::MaldaLang.UIHost.EmbeddedUiHostRuntime.TryStartAsync();";
+        const string startCall = "await global::MaldaLang.Runtime.UI.UiHostLink.StartAsync();";
         if (csharpCode.Contains(EmbeddedUiHostStartMarker, StringComparison.Ordinal))
         {
             return csharpCode.Replace(EmbeddedUiHostStartMarker, $"{EmbeddedUiHostStartMarker}\n                    {startCall}", StringComparison.Ordinal);

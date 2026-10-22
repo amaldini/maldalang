@@ -11,7 +11,7 @@ using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Diagnostics;
 using Microsoft.Web.WebView2.Core;
-using MaldaLang.UIHost;
+using MaldaLang.Runtime.UI;
 
 namespace MaldaLang.DesktopIDE;
 
@@ -438,7 +438,7 @@ public partial class MainWindow
 
         try
         {
-            await EmbeddedUiHostRuntime.TryStartAsync();
+            await UiHostLink.StartAsync();
             await WaitForUiHostAsync(uiHostUrl);
         }
         catch

@@ -495,18 +495,31 @@ public static partial class BuiltInFunctions
         // the second argument when it is a string — including the three-argument form.
         var sessionId = args.Count >= 2 && args[1].Type == ValueType.String ? args[1].AsString() : "default";
         var session = UiSessionRegistry.GetOrCreate(sessionId);
-        var evtObject = args[0].AsObject() as JsonObject;
+        // Interpreted dict literals are JsonObject, transpiled ones DictionaryInstance.
+        var evtObject = CoerceRuntimeObjectToJsonObject(args[0]);
         if (evtObject == null)
             throw new Exception("uiDispatchEvent() event must be a json object");
 
-        var eventType = evtObject.Get("type", null).Type == ValueType.String ? evtObject.Get("type", null).AsString() : "event";
-        var targetPath = evtObject.Get("targetPath", null).Type == ValueType.String ? evtObject.Get("targetPath", null).AsString() : "/";
-        var payload = evtObject.Get("payload", null);
         var sequence = args.Count == 3 && args[2].Type == ValueType.Integer ? args[2].AsInteger() : 0;
         if (sequence > 0 && !session.TryAcceptInboundSequence(sequence, out var reason))
         {
             return session.BuildNack(sequence, "InvalidSequence", reason ?? "invalid sequence");
         }
+
+        EnqueueUiEvent(session, evtObject);
+        return sequence > 0 ? session.BuildAck(sequence) : RuntimeValue.Null();
+    }
+
+    /// <summary>
+    /// Queues one event (<c>type</c>, <c>targetPath</c>, <c>payload</c>) for <c>ui.pullEvent</c>; an
+    /// <c>error</c> event also fires the component's <c>onError</c> hook. Shared by
+    /// <c>ui.dispatchEvent</c> and browser events arriving through <see cref="UiHostLink"/>.
+    /// </summary>
+    internal static void EnqueueUiEvent(UiSession session, JsonObject evtObject)
+    {
+        var eventType = evtObject.Get("type", null).Type == ValueType.String ? evtObject.Get("type", null).AsString() : "event";
+        var targetPath = evtObject.Get("targetPath", null).Type == ValueType.String ? evtObject.Get("targetPath", null).AsString() : "/";
+        var payload = evtObject.Get("payload", null);
 
         session.EnqueueEvent(new UiEvent(eventType, targetPath, payload.Type == ValueType.Null ? RuntimeValue.Null() : payload));
         if (string.Equals(eventType, "error", StringComparison.OrdinalIgnoreCase))
@@ -517,8 +530,6 @@ public static partial class BuiltInFunctions
                 session.EmitLifecycleHook("onError", errorComponentId, payload);
             }
         }
-
-        return sequence > 0 ? session.BuildAck(sequence) : RuntimeValue.Null();
     }
 
     private static RuntimeValue BuiltInUiPullEvent(List<RuntimeValue> args)

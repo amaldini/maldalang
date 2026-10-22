@@ -69,6 +69,34 @@ public class InterpretTranspilePairTests
     }
 
     [Fact]
+    public void UiEventLoop_SameStdout()
+    {
+        // Both backends run the same UiSession: revisions, the event queue and the diff.
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            var sid = "pair-ui";
+
+            function view(n) {
+                return ui.column({}, [
+                    ui.text({"value": "count=" + string(n)}),
+                    ui.button({"label": "Inc"})
+                ]);
+            }
+
+            var mounted = ui.mount(view(0), sid);
+            io.print(mounted["type"] + " r" + string(mounted["revision"]) + " patches=" + string(mounted["patches"].length));
+            ui.dispatchEvent({"type": "click", "targetPath": "/1/", "payload": {"action": "inc"}}, sid);
+            var e = ui.pullEvent(sid);
+            io.print(e["type"] + " " + e["targetPath"] + " " + e["payload"]["action"]);
+            io.print(ui.pullEvent(sid) == null);
+            var patched = ui.render(view(1), sid);
+            io.print(patched["type"] + " r" + string(patched["revision"]) + " base" + string(patched["baseRevision"]));
+            io.print(toJSON(patched["patches"]));
+            """,
+            "ui_event_loop");
+    }
+
+    [Fact]
     public void Truthiness_SameStdout()
     {
         InterpretTranspilePair.AssertSameFromSource(TruthinessTests.Source, "truthiness");

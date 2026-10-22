@@ -319,10 +319,10 @@ componentStateSet("brain", "catalog", catalog, "ask-shared");
 componentStatePin("brain", "ask-shared");</code></pre>
         <h3>26.3.3 API di runtime e ciclo di vita della UI server</h3>
         <ul>
-            <li>Ciclo di vita del render: <code>ui.mount(rootNode, sessionId?)</code>, <code>ui.render(rootNode, sessionId?)</code></li>
+            <li>Ciclo di vita del render: <code>ui.mount(rootNode, sessionId?)</code>, <code>ui.render(rootNode, sessionId?)</code>. Entrambi restituiscono il loro envelope. Quando il programma esegue l'host UI in-process (la CLI e i programmi transpilati lo avviano per i programmi che usano <code>ui.mount</code> / <code>ui.render</code>), lo inviano anche a ogni browser aperto su quella sessione (<code>/ui/ws/{sessionId}</code>).</li>
             <li>Helper envelope: <code>ui.mountEnvelope(rootNode, sessionId?, options?)</code> per mount + snapshot + resync in una sola chiamata.</li>
             <li>Sottoscrizioni di ciclo di vita: <code>ui.onInit(componentId, sessionId?)</code>, <code>ui.onPreRender(componentId, sessionId?)</code>, <code>ui.onLoad(componentId, sessionId?)</code>, <code>ui.onDispose(componentId, sessionId?)</code>, <code>ui.onMount(componentId, sessionId?)</code>, <code>ui.onUpdate(componentId, sessionId?)</code>, <code>ui.onUnmount(componentId, sessionId?)</code>, <code>ui.onError(componentId, sessionId?)</code></li>
-            <li>Pipeline eventi: <code>ui.dispatchEvent(eventObj, sessionId?, sequence?)</code>, <code>ui.pullEvent(sessionId?)</code>. <code>sessionId</code> è sempre il secondo argomento (stringa); <code>sequence</code> è il terzo opzionale (intero). Non passare sequence come secondo argomento.</li>
+            <li>Pipeline eventi: <code>ui.dispatchEvent(eventObj, sessionId?, sequence?)</code>, <code>ui.pullEvent(sessionId?)</code>. <code>sessionId</code> è sempre il secondo argomento (stringa); <code>sequence</code> è il terzo opzionale (intero). Non passare sequence come secondo argomento. Gli eventi del browser arrivano nella stessa coda tramite l'host; <code>ui.dispatchEvent</code> ne accoda uno a mano, per programmi offline e test. <code>ui.pullEvent</code> restituisce subito <code>null</code> quando la coda è vuota, quindi un programma live interroga la coda con un breve <code>sleep</code> fra un pull vuoto e l'altro.</li>
             <li><strong>Loop corretto:</strong> <code>pullEvent</code> → aggiorna lo stato → ricostruisci l'albero → <code>ui.render</code>. Saltare pull lascia la coda piena (IDE <code>UI1001</code>). Golden offline: <code>Examples/Web/ui_event_loop.malda</code>. Note sul motore: <code>docs/ui-framework.md</code>.</li>
             <li>Stato: <code>ui.state(componentId, key, defaultValue, scope?)</code> (get-or-create — persiste il default), <code>ui.getState(componentId, key, defaultValue?, scope?)</code> (peek — non scrive), <code>ui.setState(componentId, key, value, scope?)</code>, <code>ui.pinState(componentId, scope?)</code>, <code>ui.unpinState(componentId, scope?)</code></li>
             <li>Invalidazione: <code>ui.invalidate(channel, payload?)</code></li>
@@ -365,7 +365,7 @@ ui.onUnmount("CounterRoot", sessionId);</code></pre>
         </ul>
         <p>Per provare un albero senza browser, esegui il loop offline sotto (o <code>Examples/Web/ui_event_loop.malda</code>). Gli alberi generati dall'AI usano <code>ui.generate</code> — vedi <a href="27-http-server-html-ui.html">27.8.5</a>.</p>
         <h4>26.3.3.2 Event loop (mount → pull → render)</h4>
-        <p>Dopo ogni evento client: <code>dispatchEvent</code> (l'host accoda; gli esempi possono simulare) → <code>pullEvent</code> → aggiorna lo stato → ricostruisci l'albero → <code>ui.render</code>. Saltare <code>pullEvent</code> lascia la coda piena e la UI sembra bloccata (IDE <code>UI1001</code>).</p>
+        <p>Dopo ogni evento client (accodato dall'host, o da <code>dispatchEvent</code> quando un esempio offline lo simula): <code>pullEvent</code> → aggiorna lo stato → ricostruisci l'albero → <code>ui.render</code>. Saltare <code>pullEvent</code> lascia la coda piena e la UI sembra bloccata (IDE <code>UI1001</code>).</p>
         <pre><code data-run="true" data-expect="mount\npatch\n1">var sessionId = "rm-event-loop";
 var count = ui.state("LoopRoot", "count", 0, sessionId);
 

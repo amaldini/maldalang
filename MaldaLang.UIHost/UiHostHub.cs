@@ -40,14 +40,13 @@ public sealed class UiHostHub
     /// <summary>
     /// Publishes a <c>mount</c> or <c>patch</c> session envelope (the JSON of <c>ui.mount</c> /
     /// <c>ui.render</c>) to every socket of the session. Returns an error message when the
-    /// envelope is rejected, null when it was published.
+    /// envelope is rejected, null when it was published. In-process callers (<c>UiHostLink</c>)
+    /// have no size limit here; the HTTP route caps posts at <see cref="MaxInboundBytes"/>.
     /// </summary>
     public string? Publish(string sessionId, string kind, string envelopeJson)
     {
         if (kind != "mount" && kind != "patch")
             return $"unknown envelope kind '{kind}'";
-        if (Encoding.UTF8.GetByteCount(envelopeJson) > MaxInboundBytes)
-            return $"envelope exceeds {MaxInboundBytes} bytes";
 
         JsonObject envelope;
         try
