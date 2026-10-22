@@ -22,6 +22,21 @@ public class TranspiledUiHostEmbeddingTests
     }
 
     [Fact]
+    public void Transpiled_StartsTheSharedUiHost_InsteadOfEmittingOne()
+    {
+        // The host is MaldaLang.UIHost.dll, the same one the interpreter starts; the compiler
+        // used to paste a stale copy of it into GeneratedProgram.cs as a string.
+        var source = @"
+            ui.mount(ui.text({""value"": ""ok""}), ""session-shared"");
+        ";
+
+        var generatedCode = CompileAndReadGeneratedProgram(source, includeUiHost: false);
+        Assert.Contains("await global::MaldaLang.UIHost.EmbeddedUiHostRuntime.TryStartAsync();", generatedCode);
+        Assert.DoesNotContain("class EmbeddedUiHostRuntime", generatedCode);
+        Assert.DoesNotContain("/ui/ws/", generatedCode);
+    }
+
+    [Fact]
     public void Transpiled_ForcedIncludesUiHost_WhenFlagIsEnabled()
     {
         var source = @"

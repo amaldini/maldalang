@@ -112,18 +112,21 @@ Canonical offline example: [`Examples/Web/ui_state_lifecycle.malda`](../Examples
 
 ## Host
 
-`MaldaLang.UIHost` is a minimal web host with:
+There is one host, `MaldaLang.UIHost`. `UiHostRoutes.MapUiHost` maps its surface and
+`UiHostHub` runs the protocol:
 
-- static browser runtime (`wwwroot/malda-ui-client.js`)
+- page and browser client from embedded resources (`/`, `/malda-ui-client.js`)
 - WebSocket endpoint (`/ui/ws/{sessionId}`)
-- mount/patch forwarding (`/ui/mount/{sessionId}`, `/ui/patch/{sessionId}`)
+- publishing (`POST /ui/mount/{sessionId}`, `POST /ui/patch/{sessionId}`)
 - heartbeat ping/pong and stale-connection eviction
 - optional auth token (`MALDA_UI_AUTH_TOKEN`)
-- CORS policy (`MALDA_UI_ALLOWED_ORIGIN`)
 
-The same host surface can be embedded from the CLI/Desktop when a program uses `ui.mount`
-(see `MaldaLang.UIHost/EmbeddedUiHostRuntime.cs`). Publish/transpile paths may also emit
-host wiring from `MaldaLang.Compiler`.
+Two ways to run it. `EmbeddedUiHostRuntime.TryStartAsync()` starts it in process
+(`MALDA_UI_HOST_URL`, default `http://localhost:50114`): the CLI does when a program uses
+`ui.*`, the Desktop IDE for web preview, and transpiled programs through one emitted call —
+the compiler references `MaldaLang.UIHost.dll` and copies it from beside `malda.dll`. The
+`MaldaLang.UIHost` executable is the same routes plus a CORS policy
+(`MALDA_UI_ALLOWED_ORIGIN`) and a per-IP rate limit.
 
 ## Code map
 
@@ -131,6 +134,6 @@ host wiring from `MaldaLang.Compiler`.
 |---------|----------------|
 | Nodes / diff / sessions / control specs | `MaldaLang/Runtime/UI/` |
 | `ui.*` builtins | `MaldaLang/BuiltIns/BuiltInFunctions.Ui.cs`, `.UiCrud.cs`, `.UiGenerate.cs` |
-| Standalone / embedded host | `MaldaLang.UIHost/` |
+| Host (routes, protocol hub, tree patcher) | `MaldaLang.UIHost/` (`UiHostRoutes`, `UiHostHub`, `UiTreePatcher`, `EmbeddedUiHostRuntime`) |
 | Browser client | `MaldaLang.UIHost/wwwroot/malda-ui-client.js` |
 | Language API (user docs) | `ReferenceManual/26-web-ui.html` |

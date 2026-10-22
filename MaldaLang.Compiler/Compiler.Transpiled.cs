@@ -136,7 +136,7 @@ public partial class Compiler
                 var shouldEmbedUiHost = includeUiHost || UsesUiFramework(source);
                 if (shouldEmbedUiHost)
                 {
-                    csharpCode = AddEmbeddedUiHostToTranspiledCode(csharpCode);
+                    csharpCode = AddUiHostStartToTranspiledCode(csharpCode);
                 }
 
                 // Write generated C# code to Examples/GeneratedProgram.cs for inspection
@@ -274,6 +274,11 @@ public partial class Compiler
             File.Copy(MaldaLangDllPath, dllDestPath, true);
         }
 
+        if (includeUiHost)
+        {
+            StageUiHostDll(tempDir, MaldaLangDllPath);
+        }
+
         StageEmbeddedFolders(tempDir, embedFolders ?? Array.Empty<EmbeddedFolderSpec>());
         StageTranspilePackReferences(tempDir, out var extraProjectReferences);
 
@@ -281,6 +286,21 @@ public partial class Compiler
         var csprojPath = Path.Combine(tempDir, "MaldaLang.Executable.csproj");
         var csprojContent = GenerateTranspiledCsprojContent(tempDir, MaldaLangDllPath, includeLLamaSharp, includeUiHost, extraProjectReferences);
         File.WriteAllText(csprojPath, csprojContent);
+    }
+
+    private const string UiHostDllName = "MaldaLang.UIHost.dll";
+
+    /// <summary>Copies the UI host (built beside malda.dll, which references it) into the transpile project.</summary>
+    private static void StageUiHostDll(string tempDir, string? maldaDllPath)
+    {
+        var source = maldaDllPath == null ? null : Path.Combine(Path.GetDirectoryName(maldaDllPath) ?? ".", UiHostDllName);
+        if (source == null || !File.Exists(source))
+        {
+            throw new Exception($"{UiHostDllName} not found next to malda.dll ({maldaDllPath ?? "malda.dll not found"}). " +
+                "Programs that use ui.mount / ui.render need it; rebuild MaldaLang.Compiler so the CLI output folder has both.");
+        }
+
+        File.Copy(source, Path.Combine(tempDir, UiHostDllName), true);
     }
 
     private void GenerateDllProjectFiles(string tempDir, string csharpCode, string outputPath, bool includeLLamaSharp = false)
@@ -362,8 +382,12 @@ public partial class Compiler
         packageReferences = WithOnnxRuntimePackage(packageReferences);
         
         var uiHostFrameworkReference = includeUiHost
-            ? @"  <ItemGroup>
+            ? $@"  <ItemGroup>
     <FrameworkReference Include=""Microsoft.AspNetCore.App"" />
+    <Reference Include=""MaldaLang.UIHost"">
+      <HintPath>{Path.Combine(tempDir, UiHostDllName)}</HintPath>
+      <Private>True</Private>
+    </Reference>
   </ItemGroup>"
             : string.Empty;
 

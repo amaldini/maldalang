@@ -21,8 +21,8 @@ do not.
    compiled program. It includes, without limitation:
 
      - the RuntimeHelpers class emitted into generated C# source;
-     - the embedded UI host runtime emitted into generated C# source for
-       programs that use UIHost;
+     - MaldaLang.UIHost.dll, the UI host runtime and its browser client
+       (malda-ui-client.js), copied alongside programs that use UIHost;
      - malda-js-runtime.js and any other runtime asset written next to
        generated JavaScript or PWA output;
      - project files and scaffolding produced by "malda new".

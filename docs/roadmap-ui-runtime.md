@@ -1,6 +1,6 @@
 # MALDA web UI runtime roadmap
 
-**Status:** U0 and U1 landed 2026-10-22; U2–U7 open  
+**Status:** U0, U1 and U2 landed 2026-10-22; U3–U7 open  
 **Created:** 2026-10-22  
 **Audience:** maintainers working on `ui.*`, `MaldaLang.UIHost` and `malda-ui-client.js`
 
@@ -102,9 +102,7 @@ U7: any time (treeHash after U1)
   U2 came early): per-socket send pump and sequence, inbound gap reported but accepted,
   session tree kept with `UiTreePatcher` (the fuzz test's applier, moved into the host) for
   snapshot resyncs, heartbeat, `ClientEvent` hook for U3. The client keeps one resync in
-  flight and never answers a version mismatch. Client `ack`s are gone. Still open for U2:
-  the compiler's string host speaks 1.0, so transpiled UI programs show a version warning
-  until it is deleted.
+  flight and never answers a version mismatch. Client `ack`s are gone.
 
 ### U2 — One host
 
@@ -117,6 +115,12 @@ U7: any time (treeHash after U1)
 - Update the "Runtime Material" list in `LICENSE-RUNTIME-EXCEPTION` (emitted code changes).
 - Tests: `TranspiledUiHostEmbeddingTests`, `UiHostProtocolTests`, `LicenseHeaderGuardTests`,
   `Tier0CsharpShipSmokeTests`.
+- **Landed:** `UiHostRoutes.MapUiHost` is the one route table; `EmbeddedUiHostRuntime` and the
+  standalone `Program.cs` (which adds CORS and the rate limit) both call it. Transpiled
+  programs emit one `await global::MaldaLang.UIHost.EmbeddedUiHostRuntime.TryStartAsync();`;
+  the transpile project references `MaldaLang.UIHost.dll`, staged from beside `malda.dll`,
+  with a clear error when it is missing. The standalone host no longer serves `wwwroot` as
+  static files; page and client come from the embedded resources like the in-process host.
 
 ### U3 — Event bridge and auto-publish
 
