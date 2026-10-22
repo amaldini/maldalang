@@ -1,6 +1,6 @@
 # MALDA web UI runtime roadmap
 
-**Status:** U0–U4 landed 2026-10-22; U5–U7 open  
+**Status:** U0–U5 landed 2026-10-22; U6–U7 open  
 **Created:** 2026-10-22  
 **Audience:** maintainers working on `ui.*`, `MaldaLang.UIHost` and `malda-ui-client.js`
 
@@ -197,6 +197,18 @@ focus, typed value and selection survive sibling patches, inserts, moves and cla
   answers the latest event sent.
 - Events carry the target node's `key`; the server drops an event whose path and key no
   longer match.
+- **Landed:** the debounce lives in `MaldaUiDom` (`hooks.setTimeout` so Node tests drive a
+  manual clock) and any non-input event flushes the waiting inputs first, so a click never
+  overtakes the typing before it. The edit counter became event ids: the session sets
+  `answersEventId` on each envelope to the last event pulled, and the client holds back a
+  `value` / `checked` patch to an element whose edits that envelope has not answered, then
+  applies it once they are. The rule holds whether or not the input has focus. Events carry
+  `targetType` as well as `targetKey`, so unkeyed nodes are checked too; the check runs when the
+  program pulls the event, against the tree at that moment, and counts drops in
+  `staleEventsDropped`. `treeView` items send no target (their paths are not tree paths).
+  Tests: `UiPatchFuzzTests.DomInput_*`, `UiSessionProtocolTests.Session_*Target*` /
+  `Session_RenderAnswersTheLastPulledEvent`, and the linked-session test in `UiHostProtocolTests`.
+  Not covered: a full render still replaces a focused input with the server value.
 
 ### U6 — Secure-by-default host
 

@@ -131,6 +131,16 @@ public class UiHostProtocolTests : IClassFixture<UiHostProtocolTests.Hosts>
 
             session.Render(Tree("two"));
             await Scenario.AssertShowsAsync(tab, Tree("two"));
+
+            // A click on the button at /1/ is kept and answered by the next render; one that names
+            // a node /1/ no longer holds is dropped.
+            await tab.CommandAsync("""event {"eventType":"click","targetPath":"/1/","payload":{},"target":{"key":"gone","type":"button"}}""");
+            var reply = await tab.CommandAsync("""event {"eventType":"click","targetPath":"/1/","payload":{},"target":{"key":null,"type":"button"}}""");
+            var kept = await PullEventAsync(session);
+            Assert.Equal("button", kept.TargetType);
+            var answered = Assert.IsType<MaldaLang.BuiltIns.JsonObject>(session.Render(Tree("three")).AsObject());
+            Assert.Equal((string)reply["id"]!, answered.Get("answersEventId", null).AsString());
+            Assert.Equal(1, Assert.IsType<MaldaLang.BuiltIns.JsonObject>(session.SnapshotAsRuntimeValue().AsObject()).Get("staleEventsDropped", null).AsInteger());
         }
         finally
         {
@@ -500,11 +510,13 @@ const commands = {
 };
 
 require("readline").createInterface({ input: process.stdin }).on("line", (line) => {
-  // "event {json}" plays a browser event: { eventType, targetPath, payload }.
+  // "event {json}" plays a browser event: { eventType, targetPath, payload, target? }; the
+  // reply carries its id.
   if (line.startsWith("event ")) {
     const e = JSON.parse(line.slice(6));
-    run([{ send: MaldaUiProtocol.event(state, e.eventType, e.targetPath, e.payload) }]);
-    reply({ ok: true });
+    const message = MaldaUiProtocol.event(state, e.eventType, e.targetPath, e.payload, e.target);
+    run([{ send: message }]);
+    reply({ ok: true, id: message.envelopeId });
     return;
   }
   const command = commands[line.trim()];

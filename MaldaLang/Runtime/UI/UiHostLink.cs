@@ -48,7 +48,10 @@ public static class UiHostLink
             throw new InvalidOperationException($"UI host refused the {kind} envelope of session '{sessionId}': {error}");
     }
 
-    /// <summary>A browser <c>event</c> message (<c>eventType</c>, <c>targetPath</c>, <c>payload</c>) becomes a queued <see cref="UiEvent"/>.</summary>
+    /// <summary>
+    /// A browser <c>event</c> message (<c>eventType</c>, <c>targetPath</c>, <c>payload</c>,
+    /// <c>envelopeId</c>, <c>targetType</c>, <c>targetKey</c>) becomes a queued <see cref="UiEvent"/>.
+    /// </summary>
     private static void OnClientEvent(string sessionId, System.Text.Json.Nodes.JsonObject message)
     {
         using var document = JsonDocument.Parse(message.ToJsonString());
@@ -59,6 +62,9 @@ public static class UiHostLink
         evtObject.Set("type", received.Get("eventType", null));
         evtObject.Set("targetPath", received.Get("targetPath", null));
         evtObject.Set("payload", received.Get("payload", null));
+        evtObject.Set("eventId", received.Get("envelopeId", null));
+        evtObject.Set("targetType", received.Get("targetType", null));
+        evtObject.Set("targetKey", received.Get("targetKey", null));
         BuiltInFunctions.EnqueueUiEvent(UiSessionRegistry.GetOrCreate(sessionId), evtObject);
     }
 }

@@ -511,17 +511,24 @@ public static partial class BuiltInFunctions
     }
 
     /// <summary>
-    /// Queues one event (<c>type</c>, <c>targetPath</c>, <c>payload</c>) for <c>ui.pullEvent</c>; an
-    /// <c>error</c> event also fires the component's <c>onError</c> hook. Shared by
-    /// <c>ui.dispatchEvent</c> and browser events arriving through <see cref="UiHostLink"/>.
+    /// Queues one event (<c>type</c>, <c>targetPath</c>, <c>payload</c>, and optionally <c>eventId</c>,
+    /// <c>targetType</c>, <c>targetKey</c>) for <c>ui.pullEvent</c>; an <c>error</c> event also fires
+    /// the component's <c>onError</c> hook. Shared by <c>ui.dispatchEvent</c> and browser events
+    /// arriving through <see cref="UiHostLink"/>.
     /// </summary>
     internal static void EnqueueUiEvent(UiSession session, JsonObject evtObject)
     {
-        var eventType = evtObject.Get("type", null).Type == ValueType.String ? evtObject.Get("type", null).AsString() : "event";
-        var targetPath = evtObject.Get("targetPath", null).Type == ValueType.String ? evtObject.Get("targetPath", null).AsString() : "/";
+        var eventType = OptionalString(evtObject, "type") ?? "event";
+        var targetPath = OptionalString(evtObject, "targetPath") ?? "/";
         var payload = evtObject.Get("payload", null);
 
-        session.EnqueueEvent(new UiEvent(eventType, targetPath, payload.Type == ValueType.Null ? RuntimeValue.Null() : payload));
+        session.EnqueueEvent(new UiEvent(
+            eventType,
+            targetPath,
+            payload.Type == ValueType.Null ? RuntimeValue.Null() : payload,
+            OptionalString(evtObject, "eventId"),
+            OptionalString(evtObject, "targetType"),
+            OptionalString(evtObject, "targetKey")));
         if (string.Equals(eventType, "error", StringComparison.OrdinalIgnoreCase))
         {
             var errorComponentId = ResolveUiErrorComponentId(evtObject, payload, targetPath);
@@ -530,6 +537,12 @@ public static partial class BuiltInFunctions
                 session.EmitLifecycleHook("onError", errorComponentId, payload);
             }
         }
+    }
+
+    private static string? OptionalString(JsonObject obj, string name)
+    {
+        var value = obj.Get(name, null);
+        return value.Type == ValueType.String ? value.AsString() : null;
     }
 
     private static RuntimeValue BuiltInUiPullEvent(List<RuntimeValue> args)

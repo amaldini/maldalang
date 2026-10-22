@@ -102,7 +102,8 @@ public class UiPatchFuzzTests
         RunNodeScript(FakeDom + """
 const assert = require("assert");
 const events = [];
-const dom = renderer(events);
+const sent = [];
+const dom = renderer(events, sent);
 const app = fakeDocument.createElement("div");
 const text = (value) => ({ type: "text", props: { value } });
 let tree = { type: "column", props: {}, children: [{ type: "textField", props: { value: "a" } }, text("x")] };
@@ -129,14 +130,106 @@ tree = dom.applyPayload(app, tree, { patches: [{ op: "SetProp", path: "/1/", pro
 assert.strictEqual(input.className, "wide");
 assert.strictEqual(input.value, "typed again");
 
-// Its own value from the server lands on the same element.
-tree = dom.applyPayload(app, tree, { patches: [{ op: "SetProp", path: "/1/", prop: "value", value: "b" }] });
+// Its own value from the server, answering the input event, lands on the same element.
+tree = dom.applyPayload(app, tree, { patches: [{ op: "SetProp", path: "/1/", prop: "value", value: "b" }], answersEventId: sent[0].id });
 assert.strictEqual(app.firstChild.childNodes[1], input);
 assert.strictEqual(input.value, "b");
 
 // A patch the DOM cannot follow falls back to a full render of the patched tree.
 tree = dom.applyPayload(app, tree, { patches: [{ op: "MoveChild", path: "/", from: 7, index: 0 }] });
 assert.strictEqual(serialize(app.firstChild), serialize((() => { const c = fakeDocument.createElement("div"); dom.renderInto(c, tree); return c.firstChild; })()));
+""");
+    }
+
+    [Fact]
+    public void DomInput_CoalescesKeystrokes_AndSendsThemBeforeOtherEvents()
+    {
+        RunNodeScript(FakeDom + """
+const assert = require("assert");
+const events = [];
+const sent = [];
+const clock = manualClock();
+const dom = renderer(events, sent, clock);
+const app = fakeDocument.createElement("div");
+const tree = { type: "column", props: {}, children: [
+  { type: "textField", key: "title", props: { value: "" } },
+  { type: "button", props: { label: "Save" } },
+  { type: "textField", props: { value: "", inputDebounceMs: 0 } }
+] };
+dom.renderInto(app, tree);
+const [input, button, instant] = app.firstChild.childNodes;
+assert.strictEqual(input.getAttribute("inputDebounceMs"), null);
+
+// Three keystrokes inside 150 ms: one event, sent 150 ms after the last, with the last value.
+for (const value of ["a", "ab", "abc"]) {
+  input.value = value;
+  input.fire("input");
+  clock.advance(100);
+}
+assert.deepStrictEqual(events, []);
+clock.advance(50);
+assert.deepStrictEqual(events, ["input /0/"]);
+assert.strictEqual(sent[0].payload.value, "abc");
+assert.deepStrictEqual(sent[0].target, { key: "title", type: "textField" });
+
+// A click while an input waits sends the input first.
+input.value = "abcd";
+input.fire("input");
+button.fire("click");
+assert.deepStrictEqual(events, ["input /0/", "input /0/", "click /1/"]);
+assert.strictEqual(sent[1].payload.value, "abcd");
+assert.deepStrictEqual(sent[2].target, { key: null, type: "button" });
+clock.advance(1000);
+assert.strictEqual(events.length, 3);
+
+// inputDebounceMs: 0 sends every keystroke.
+instant.fire("input");
+instant.fire("input");
+assert.deepStrictEqual(events.slice(3), ["input /2/", "input /2/"]);
+""");
+    }
+
+    [Fact]
+    public void DomInput_HoldsBackAServerValueThatPredatesTheTyping()
+    {
+        RunNodeScript(FakeDom + """
+const assert = require("assert");
+const events = [];
+const sent = [];
+const clock = manualClock();
+const dom = renderer(events, sent, clock);
+const app = fakeDocument.createElement("div");
+let tree = { type: "column", props: {}, children: [{ type: "textField", props: { value: "" } }] };
+dom.renderInto(app, tree);
+const input = app.firstChild.childNodes[0];
+const setValue = (value) => ({ op: "SetProp", path: "/0/", prop: "value", value });
+
+// Typing not sent yet: a server value would roll it back, so it waits.
+input.value = "ab";
+input.fire("input");
+tree = dom.applyPayload(app, tree, { patches: [setValue("a")] });
+assert.strictEqual(input.value, "ab");
+
+// Sent but not answered: still held back.
+clock.advance(150);
+const typed = sent[0].id;
+tree = dom.applyPayload(app, tree, { patches: [setValue("a")], answersEventId: "someone-else" });
+assert.strictEqual(input.value, "ab");
+
+// The render that answers the typing applies, and so does a held-back value once answered.
+tree = dom.applyPayload(app, tree, { patches: [setValue("AB")], answersEventId: typed });
+assert.strictEqual(input.value, "AB");
+input.value = "ABC";
+input.fire("input");
+clock.advance(150);
+tree = dom.applyPayload(app, tree, { patches: [setValue("trimmed")] });
+assert.strictEqual(input.value, "ABC");
+tree = dom.applyPayload(app, tree, { patches: [], answersEventId: sent[1].id });
+assert.strictEqual(input.value, "trimmed");
+
+// With nothing typed, a server value lands at once.
+tree = dom.applyPayload(app, tree, { patches: [setValue("server")] });
+assert.strictEqual(input.value, "server");
 """);
     }
 
@@ -315,9 +408,36 @@ function elements(node, out = []) {
   return out;
 }
 
-// A renderer whose UI events land in `events` as "type path".
-function renderer(events) {
-  return client.MaldaUiDom.create(fakeDocument, { sendEvent: (type, path) => events.push(type + " " + path) });
+// A renderer whose UI events land in `events` as "type path", and in `sent` in full; each gets
+// the id "e<N>". Timers fire at once unless `clock` (manualClock()) times them.
+let nextEventId = 1;
+function renderer(events, sent, clock) {
+  return client.MaldaUiDom.create(fakeDocument, {
+    sendEvent: (type, path, payload, target) => {
+      const id = "e" + nextEventId++;
+      events.push(type + " " + path);
+      if (sent) sent.push({ id, type, path, payload, target });
+      return id;
+    },
+    setTimeout: clock ? clock.setTimeout : (fn) => { fn(); return 0; },
+    clearTimeout: clock ? clock.clearTimeout : () => {}
+  });
+}
+
+function manualClock() {
+  let now = 0;
+  let nextId = 1;
+  const timers = new Map();
+  return {
+    setTimeout: (fn, ms) => { timers.set(nextId, { at: now + ms, fn }); return nextId++; },
+    clearTimeout: (id) => { timers.delete(id); },
+    advance(ms) {
+      now += ms;
+      for (const [id, timer] of Array.from(timers)) {
+        if (timer.at <= now) { timers.delete(id); timer.fn(); }
+      }
+    }
+  };
 }
 
 // Fires click and input on every element under the container; the events sent, in order.

@@ -21,6 +21,9 @@ public sealed class UiSession
     // Tree version: mount and render each add one; a patch envelope names the revision it applies to.
     private int _revision;
     private int _expectedInSequence = 1;
+    // EventId of the last browser event pulled (or dropped as stale): the next envelope answers it.
+    private string? _answersEventId;
+    private int _staleEventsDropped;
     private readonly Dictionary<string, HashSet<string>> _lifecycleHooks = new(StringComparer.Ordinal);
     private int _maxEventQueueDepth = 2048;
     private readonly Action<string, string, string>? _publish;
@@ -139,17 +142,55 @@ public sealed class UiSession
         await _eventSignal.WaitAsync(timeout, cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Takes the next event. An event that names its target node (<see cref="UiEvent.TargetType"/>)
+    /// is dropped when the current tree has no node of that type and key at its path: a render
+    /// since the click or keystroke moved another node there, and the event belongs to none of them.
+    /// </summary>
     public bool TryDequeueEvent(out UiEvent? uiEvent)
     {
         Touch();
-        if (_events.TryDequeue(out var ev))
+        lock (_lock)
         {
-            uiEvent = ev;
-            return true;
+            while (_events.TryDequeue(out var ev))
+            {
+                if (ev.EventId != null)
+                {
+                    _answersEventId = ev.EventId;
+                }
+
+                if (ev.TargetType != null && !TargetStillMatches(ev))
+                {
+                    _staleEventsDropped++;
+                    continue;
+                }
+
+                uiEvent = ev;
+                return true;
+            }
         }
 
         uiEvent = null;
         return false;
+    }
+
+    private bool TargetStillMatches(UiEvent ev)
+    {
+        var node = _currentTree;
+        foreach (var segment in ev.TargetPath.Split('/', StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (node == null || !int.TryParse(segment, out var index) || index < 0 || index >= node.Children.Count)
+            {
+                return false;
+            }
+
+            node = node.Children[index];
+        }
+
+        var key = string.IsNullOrWhiteSpace(node?.Key) ? null : node.Key;
+        return node != null
+            && string.Equals(node.Type, ev.TargetType, StringComparison.Ordinal)
+            && string.Equals(key, ev.TargetKey, StringComparison.Ordinal);
     }
 
     public void ConfigureQueueDepth(int maxQueueDepth)
@@ -251,6 +292,7 @@ public sealed class UiSession
         snapshot.Set("nextSequence", RuntimeValue.Integer(_nextOutSequence));
         snapshot.Set("revision", RuntimeValue.Integer(_revision));
         snapshot.Set("expectedInboundSequence", RuntimeValue.Integer(_expectedInSequence));
+        snapshot.Set("staleEventsDropped", RuntimeValue.Integer(_staleEventsDropped));
         snapshot.Set("hasTree", RuntimeValue.Boolean(_currentTree != null));
         snapshot.Set("tree", _currentTree?.ToRuntimeValue() ?? RuntimeValue.Null());
         snapshot.Set("lastAccessUtc", RuntimeValue.String(LastAccessUtc.ToString("O")));
@@ -296,6 +338,10 @@ public sealed class UiSession
         if (baseRevision is { } applyOn)
         {
             envelope.Set("baseRevision", RuntimeValue.Integer(applyOn));
+        }
+        if (_answersEventId != null)
+        {
+            envelope.Set("answersEventId", RuntimeValue.String(_answersEventId));
         }
         envelope.Set("patches", RuntimeValue.Array(patchValues));
         envelope.Set("treeHash", RuntimeValue.String(ComputeTreeHash(_currentTree)));

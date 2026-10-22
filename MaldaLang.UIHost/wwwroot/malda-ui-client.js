@@ -207,8 +207,10 @@ const MaldaUiProtocol = (function () {
     return typeof payload.revision === "number" ? payload.revision : fallback;
   }
 
-  function event(state, eventType, targetPath, payload) {
-    return {
+  // `target` ({ key, type } of the node at targetPath) lets the session drop the event when the
+  // node at that path is no longer the one the user acted on (UiSession.TryDequeueEvent).
+  function event(state, eventType, targetPath, payload, target) {
+    const message = {
       type: "event",
       eventType,
       targetPath,
@@ -217,6 +219,11 @@ const MaldaUiProtocol = (function () {
       version,
       envelopeId: randomId()
     };
+    if (target) {
+      message.targetKey = target.key != null ? String(target.key) : null;
+      message.targetType = target.type || null;
+    }
+    return message;
   }
 
   function control(state, type, payload) {
@@ -273,12 +280,118 @@ const MaldaUiProtocol = (function () {
 
 // DOM renderer and patcher, given a document: the browser's, or the fake DOM of
 // MaldaLang.Tests/Fuzz/UiPatchFuzzTests.cs, which requires the DOM after a patch to equal a
-// fresh render of the patched tree. hooks.sendEvent(type, path, payload) sends a UI event;
-// hooks.requestFrame(fn) runs fn before the next paint (requestAnimationFrame in the browser).
+// fresh render of the patched tree. hooks.sendEvent(type, path, payload, target) sends a UI
+// event and returns its id (target is { key, type } of the node, or null); hooks.requestFrame(fn)
+// runs fn before the next paint (requestAnimationFrame in the browser); hooks.setTimeout /
+// hooks.clearTimeout time the input debounce (the global ones by default).
 const MaldaUiDom = (function () {
   function create(doc, hooks) {
-    const sendEvent = hooks.sendEvent;
     const requestFrame = hooks.requestFrame || ((fn) => fn());
+    const setTimer = hooks.setTimeout || ((fn, ms) => setTimeout(fn, ms));
+    const clearTimer = hooks.clearTimeout || ((id) => clearTimeout(id));
+
+    // Input events: consecutive `input`s of one element coalesce into one event sent
+    // `inputDebounceMs` after the last keystroke (default 150 ms for textField / textArea, 0
+    // elsewhere). Any other event sends the pending inputs first, so the server sees the typed
+    // value before the click or submit that follows it.
+    const defaultInputDebounceMs = { textField: 150, textArea: 150 };
+    const pendingInputs = new Set();
+    // Ids of the events sent and not yet answered, oldest first. A session envelope's
+    // `answersEventId` names the last event the program had pulled when it rendered; that event
+    // and every one sent before it are answered.
+    const unansweredEvents = [];
+    // Element → { value, checked }: the server props held back because they predate an edit.
+    const heldBack = new Map();
+    const inputKey = "__maldaInput";
+
+    function inputState(el) {
+      return el[inputKey] || (el[inputKey] = { timer: null, lastEventId: null });
+    }
+
+    function sendEvent(type, path, payload, el) {
+      if (type !== "input") {
+        flushPendingInputs();
+      }
+      const node = el ? el[nodeKey] : null;
+      const id = hooks.sendEvent(type, path, payload, node ? { key: node.key ?? null, type: node.type || "div" } : null);
+      if (id != null) {
+        unansweredEvents.push(id);
+        if (el) {
+          inputState(el).lastEventId = id;
+        }
+      }
+      return id;
+    }
+
+    function scheduleInput(el, delay) {
+      const state = inputState(el);
+      if (state.timer != null) {
+        clearTimer(state.timer);
+      }
+      pendingInputs.add(el);
+      const timer = setTimer(() => sendInput(el), delay);
+      state.timer = pendingInputs.has(el) ? timer : null; // a synchronous timer already sent it
+    }
+
+    // The coalesced event reads path, props and value when it goes out, not when typing began.
+    function sendInput(el) {
+      const state = inputState(el);
+      if (state.timer != null) {
+        clearTimer(state.timer);
+        state.timer = null;
+      }
+      pendingInputs.delete(el);
+      const { type, props, path } = describe(el);
+      sendEvent("input", path, collectPayload(type, el, props), el);
+    }
+
+    function flushPendingInputs() {
+      for (const el of Array.from(pendingInputs)) {
+        sendInput(el);
+      }
+    }
+
+    function inputDebounceMs(type, props) {
+      const configured = Number(props.inputDebounceMs);
+      if (props.inputDebounceMs != null && Number.isFinite(configured) && configured >= 0) {
+        return configured;
+      }
+      return defaultInputDebounceMs[type] || 0;
+    }
+
+    function markAnswered(eventId) {
+      if (eventId == null) {
+        return;
+      }
+      const index = unansweredEvents.indexOf(eventId);
+      if (index >= 0) {
+        unansweredEvents.splice(0, index + 1);
+      }
+    }
+
+    // True while the element holds edits the server has not seen: a debounced input not sent
+    // yet, or an event sent and not answered. A server value then would roll back the typing.
+    function hasUnseenEdits(el) {
+      if (pendingInputs.has(el)) {
+        return true;
+      }
+      const state = el[inputKey];
+      return !!(state && state.lastEventId != null && unansweredEvents.includes(state.lastEventId));
+    }
+
+    // Once the server has seen the edits, a held-back value or checked state lands after all.
+    function releaseHeldBack() {
+      for (const [el, held] of Array.from(heldBack)) {
+        if (hasUnseenEdits(el)) {
+          continue;
+        }
+        heldBack.delete(el);
+        const node = el[nodeKey];
+        if (node && el.getAttribute("data-ui-path") != null) {
+          syncFormState(el, renderElement(node, el.getAttribute("data-ui-path")), held.value, held.checked);
+        }
+      }
+    }
     const richEventProps = new Set([
       "onClick", "onChange", "onInput", "onSubmit", "onClose", "onFocus", "onBlur",
       "onRowClick", "onSelectionChange", "onSort", "onFilter", "onPageChange", "onViewportChange",
@@ -308,6 +421,7 @@ const MaldaUiDom = (function () {
       if (!payload) {
         return tree;
       }
+      markAnswered(payload.answersEventId);
       if (!payload.patches || !tree || !container.firstChild) {
         const next = MaldaUiProtocol.applyPayload(tree, payload);
         renderInto(container, next);
@@ -324,6 +438,7 @@ const MaldaUiDom = (function () {
       if (!inSync) {
         renderInto(container, tree);
       }
+      releaseHeldBack();
       return tree;
     }
 
@@ -446,7 +561,8 @@ const MaldaUiDom = (function () {
 
     // Copies what a fresh render of the node would have onto the live element, which keeps its
     // identity, so focus, caret and listeners survive a prop change. The live value and checked
-    // state are the user's: only a patch to the prop that sets them overwrites them.
+    // state are the user's: only a patch to the prop that sets them overwrites them, and only
+    // once the server has seen the user's edits to that element (else it is held back).
     function syncElement(el, fresh, prop) {
       const freshNames = new Set(Array.from(fresh.attributes, (attr) => attr.name));
       for (const name of Array.from(el.attributes, (attr) => attr.name)) {
@@ -466,14 +582,24 @@ const MaldaUiDom = (function () {
       if (el.tagName === "INPUT" && el.type !== fresh.type) {
         el.type = fresh.type;
       }
-      if ((prop === "value" || prop === "defaultValue") &&
-          (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT") && el.value !== fresh.value) {
+      el[nodeKey] = fresh[nodeKey];
+      const syncValue = prop === "value" || prop === "defaultValue";
+      const syncChecked = prop === "checked" || prop === "defaultChecked";
+      if ((syncValue || syncChecked) && hasUnseenEdits(el)) {
+        const held = heldBack.get(el) || { value: false, checked: false };
+        heldBack.set(el, { value: held.value || syncValue, checked: held.checked || syncChecked });
+      } else {
+        syncFormState(el, fresh, syncValue, syncChecked);
+      }
+    }
+
+    function syncFormState(el, fresh, syncValue, syncChecked) {
+      if (syncValue && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT") && el.value !== fresh.value) {
         el.value = fresh.value;
       }
-      if ((prop === "checked" || prop === "defaultChecked") && el.tagName === "INPUT" && el.checked !== fresh.checked) {
+      if (syncChecked && el.tagName === "INPUT" && el.checked !== fresh.checked) {
         el.checked = fresh.checked;
       }
-      el[nodeKey] = fresh[nodeKey];
     }
 
     function renderNode(node, path) {
@@ -487,7 +613,7 @@ const MaldaUiDom = (function () {
         return doc.createTextNode(props.value != null ? String(props.value) : "");
       }
       if (type === "dataGrid") {
-        return renderDataGrid(path, props);
+        return renderDataGrid(path, props, node);
       }
       if (type === "treeView") {
         return renderTreeView(path, props);
@@ -511,7 +637,7 @@ const MaldaUiDom = (function () {
       applyInputTypeDefaults(type, el, props);
 
       for (const [key, value] of Object.entries(props)) {
-        if (richEventProps.has(key)) {
+        if (richEventProps.has(key) || key === "inputDebounceMs") {
           continue;
         }
         if (key === "className") {
@@ -541,47 +667,53 @@ const MaldaUiDom = (function () {
     // Every element gets the same listeners; each reads the element's node and path when the
     // event fires, so patches can change props or move the element without re-binding.
     function attachListeners(el) {
-      const current = () => {
-        const node = el[nodeKey] || {};
-        return { type: node.type || "div", props: node.props || {}, path: el.getAttribute("data-ui-path") };
-      };
       el.addEventListener("click", () => {
-        const { type, props, path } = current();
+        const { type, props, path } = describe(el);
         if (type === "button" || props.onClick) {
-          sendEvent("click", path, collectPayload(type, el, props));
+          sendEvent("click", path, collectPayload(type, el, props), el);
         }
       });
       el.addEventListener("change", () => {
-        const { type, props, path } = current();
+        const { type, props, path } = describe(el);
         if (changeTypes.has(type) || props.onChange) {
-          sendEvent("change", path, collectPayload(type, el, props));
+          sendEvent("change", path, collectPayload(type, el, props), el);
         }
       });
       el.addEventListener("input", () => {
-        const { type, props, path } = current();
+        const { type, props } = describe(el);
         if (inputTypes.has(type) || props.onInput) {
-          sendEvent("input", path, collectPayload(type, el, props));
+          const delay = inputDebounceMs(type, props);
+          if (delay > 0) {
+            scheduleInput(el, delay);
+          } else {
+            sendInput(el);
+          }
         }
       });
       el.addEventListener("submit", (evt) => {
-        const { type, props, path } = current();
+        const { type, props, path } = describe(el);
         if (type === "form" || props.onSubmit) {
           evt.preventDefault();
-          sendEvent("submit", path, collectPayload(type, el, props));
+          sendEvent("submit", path, collectPayload(type, el, props), el);
         }
       });
       el.addEventListener("focus", () => {
-        const { type, props, path } = current();
+        const { type, props, path } = describe(el);
         if (props.onFocus) {
-          sendEvent("focus", path, collectPayload(type, el, props));
+          sendEvent("focus", path, collectPayload(type, el, props), el);
         }
       });
       el.addEventListener("blur", () => {
-        const { type, props, path } = current();
+        const { type, props, path } = describe(el);
         if (props.onBlur) {
-          sendEvent("blur", path, collectPayload(type, el, props));
+          sendEvent("blur", path, collectPayload(type, el, props), el);
         }
       });
+    }
+
+    function describe(el) {
+      const node = el[nodeKey] || {};
+      return { type: node.type || "div", props: node.props || {}, path: el.getAttribute("data-ui-path") };
     }
 
     const changeTypes = new Set([
@@ -590,9 +722,11 @@ const MaldaUiDom = (function () {
     const inputTypes = new Set(["textField", "textArea", "slider", "datePicker"]);
 
 
-    function renderDataGrid(path, props) {
+    function renderDataGrid(path, props, node) {
       const root = doc.createElement("div");
       root.setAttribute("data-ui-path", path);
+      root[nodeKey] = node;
+      const emit = (type, payload) => sendEvent(type, path, payload, root);
       applyCommonProps(root, props, new Set(["columns", "rows", "selectedKeys", "sort", "filter", "rowKey"]));
       root.setAttribute("role", root.getAttribute("role") || "grid");
       root.classList.add("malda-data-grid");
@@ -675,12 +809,12 @@ const MaldaUiDom = (function () {
           cell.addEventListener("click", () => {
             const nextSort = getNextGridSort(sortKey, activeSort);
             if (props.onSort) {
-              sendEvent("sort", path, nextSort);
+              emit("sort", nextSort);
               return;
             }
             state.localSort = nextSort;
             if (root.parentNode) {
-              root.parentNode.replaceChild(renderDataGrid(path, props), root);
+              root.parentNode.replaceChild(renderDataGrid(path, props, node), root);
             }
           });
         }
@@ -703,7 +837,7 @@ const MaldaUiDom = (function () {
               doc.removeEventListener("mouseup", onMouseUp);
               if (props.onColumnResize) {
                 const resizedColumn = column && column.key != null ? String(column.key) : String(idx);
-                sendEvent("columnResize", path, {
+                emit("columnResize", {
                   columnKey: resizedColumn,
                   width: state.columnWidths[idx],
                   widths: columns.map((_, colIdx) => state.columnWidths[colIdx] || null)
@@ -730,7 +864,7 @@ const MaldaUiDom = (function () {
         filterBox.placeholder = "Filter";
         filterBox.value = props.filter != null ? String(props.filter) : "";
         filterBox.addEventListener("input", () => {
-          sendEvent("filter", path, { filter: filterBox.value });
+          emit("filter", { filter: filterBox.value });
         });
         root.appendChild(filterBox);
       }
@@ -788,8 +922,8 @@ const MaldaUiDom = (function () {
           const nextSelected = computeNextSelection(selectionMode, effectiveSelectedKeys, rowKey);
           state.localSelectedKeys = nextSelected;
           applyGridSelectionState(viewport, nextSelected);
-          sendEvent("rowClick", path, { rowIndex, rowKey, row });
-          sendEvent("selectionChange", path, { rowIndex, rowKey, selectedKeys: Array.from(nextSelected) });
+          emit("rowClick", { rowIndex, rowKey, row });
+          emit("selectionChange", { rowIndex, rowKey, selectedKeys: Array.from(nextSelected) });
         });
         if (dragEnabled) {
           rowEl.addEventListener("dragstart", (evt) => {
@@ -798,11 +932,11 @@ const MaldaUiDom = (function () {
               evt.dataTransfer.effectAllowed = "move";
               evt.dataTransfer.setData("text/plain", rowKey);
             }
-            sendEvent("dragStart", path, { rowIndex, rowKey, row });
+            emit("dragStart", { rowIndex, rowKey, row });
           });
           rowEl.addEventListener("dragover", (evt) => {
             evt.preventDefault();
-            sendEvent("dragOver", path, {
+            emit("dragOver", {
               rowIndex,
               rowKey,
               sourceRow: state.draggedRow || null
@@ -811,10 +945,10 @@ const MaldaUiDom = (function () {
           rowEl.addEventListener("drop", (evt) => {
             evt.preventDefault();
             const sourceRow = state.draggedRow || null;
-            sendEvent("drop", path, { rowIndex, rowKey, row, sourceRow });
+            emit("drop", { rowIndex, rowKey, row, sourceRow });
           });
           rowEl.addEventListener("dragend", () => {
-            sendEvent("dragEnd", path, { rowIndex, rowKey, row });
+            emit("dragEnd", { rowIndex, rowKey, row });
             state.draggedRow = null;
           });
         }
@@ -836,7 +970,7 @@ const MaldaUiDom = (function () {
           const signature = `${nextStart}:${nextEnd}:${totalRows}`;
           if (state.viewportSignature !== signature) {
             state.viewportSignature = signature;
-            sendEvent("viewportChange", path, { start: nextStart, end: nextEnd, totalRows });
+            emit("viewportChange", { start: nextStart, end: nextEnd, totalRows });
           }
         }
       });
@@ -848,7 +982,7 @@ const MaldaUiDom = (function () {
         viewport.addEventListener("drop", (evt) => {
           evt.preventDefault();
           const sourceRow = state.draggedRow || null;
-          sendEvent("drop", path, { rowIndex: null, rowKey: null, sourceRow });
+          emit("drop", { rowIndex: null, rowKey: null, sourceRow });
         });
       }
 
@@ -870,13 +1004,13 @@ const MaldaUiDom = (function () {
         prev.type = "button";
         prev.textContent = "Prev";
         prev.disabled = page <= 1;
-        prev.addEventListener("click", () => sendEvent("pageChange", path, { page: Math.max(1, page - 1), pageSize, totalItems }));
+        prev.addEventListener("click", () => emit("pageChange", { page: Math.max(1, page - 1), pageSize, totalItems }));
 
         const next = doc.createElement("button");
         next.type = "button";
         next.textContent = "Next";
         next.disabled = page >= totalPages;
-        next.addEventListener("click", () => sendEvent("pageChange", path, { page: Math.min(totalPages, page + 1), pageSize, totalItems }));
+        next.addEventListener("click", () => emit("pageChange", { page: Math.min(totalPages, page + 1), pageSize, totalItems }));
 
         const label = doc.createElement("span");
         label.textContent = `Page ${page} / ${totalPages}`;
@@ -1585,8 +1719,10 @@ if (typeof module !== "undefined" && module.exports) {
   };
 
 
-  function sendEvent(type, targetPath, payload) {
-    enqueueOrSend(MaldaUiProtocol.event(protocol, type, targetPath, payload));
+  function sendEvent(type, targetPath, payload, target) {
+    const message = MaldaUiProtocol.event(protocol, type, targetPath, payload, target);
+    enqueueOrSend(message);
+    return message.envelopeId;
   }
 
   function runProtocolActions(actions) {

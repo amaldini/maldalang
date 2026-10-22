@@ -156,4 +156,63 @@ public class UiSessionProtocolTests
         var ex = Assert.Throws<Exception>(() => session.Mount(root));
         Assert.Contains("maxPayloadBytes", ex.Message);
     }
+
+    private static UiNode Field(string key) =>
+        new("textField", new Dictionary<string, RuntimeValue> { ["value"] = RuntimeValue.String(key) }, key: key);
+
+    [Fact]
+    public void Session_DropsEventWhoseTargetNodeChanged()
+    {
+        var session = new UiSession("stale-target");
+        session.Mount(new UiNode("column", children: new List<UiNode> { Field("a"), Field("b") }));
+
+        // Typed into "b" at /1/, then a render removed "a": /1/ is gone, "b" is at /0/.
+        session.EnqueueEvent(new UiEvent("input", "/1/", RuntimeValue.Null(), "e1", "textField", "b"));
+        session.Render(new UiNode("column", children: new List<UiNode> { Field("b") }));
+        // Typed into "b" at /0/ on the new tree, but /0/ is now another node of the same type.
+        session.EnqueueEvent(new UiEvent("input", "/0/", RuntimeValue.Null(), "e2", "textField", "b"));
+        session.EnqueueEvent(new UiEvent("change", "/0/", RuntimeValue.Null(), "e3", "textField", "b"));
+        session.Render(new UiNode("column", children: new List<UiNode> { Field("c") }));
+        // No target named: kept, as for ui.dispatchEvent.
+        session.EnqueueEvent(new UiEvent("click", "/9/", RuntimeValue.Null()));
+
+        Assert.True(session.TryDequeueEvent(out var kept));
+        Assert.Equal("click", kept!.Type);
+        Assert.False(session.TryDequeueEvent(out _));
+        var snapshot = Assert.IsType<JsonObject>(session.SnapshotAsRuntimeValue().AsObject());
+        Assert.Equal(3, snapshot.Get("staleEventsDropped", null).AsInteger());
+    }
+
+    [Fact]
+    public void Session_KeepsEventWhoseTargetNodeMoved_OnlyWhenPathAndKeyMatch()
+    {
+        var session = new UiSession("moved-target");
+        session.Mount(new UiNode("column", children: new List<UiNode> { Field("a"), Field("b") }));
+        session.EnqueueEvent(new UiEvent("input", "/1/", RuntimeValue.Null(), "e1", "textField", "b"));
+        session.EnqueueEvent(new UiEvent("click", "/", RuntimeValue.Null(), "e2", "column", null));
+
+        Assert.True(session.TryDequeueEvent(out var input));
+        Assert.Equal("input", input!.Type);
+        Assert.Equal("b", Assert.IsType<JsonObject>(input.ToRuntimeValue().AsObject()).Get("targetKey", null).AsString());
+        Assert.True(session.TryDequeueEvent(out var click));
+        Assert.Equal("click", click!.Type);
+    }
+
+    [Fact]
+    public void Session_RenderAnswersTheLastPulledEvent()
+    {
+        var session = new UiSession("answers");
+        var mount = Assert.IsType<JsonObject>(session.Mount(Field("a")).AsObject());
+        Assert.False(mount.GetProperties().ContainsKey("answersEventId"));
+
+        session.EnqueueEvent(new UiEvent("input", "/", RuntimeValue.Null(), "e1", "textField", "a"));
+        session.EnqueueEvent(new UiEvent("input", "/", RuntimeValue.Null(), "e2", "textField", "a"));
+        Assert.True(session.TryDequeueEvent(out _));
+        var first = Assert.IsType<JsonObject>(session.Render(Field("a")).AsObject());
+        Assert.Equal("e1", first.Get("answersEventId", null).AsString());
+
+        Assert.True(session.TryDequeueEvent(out _));
+        var second = Assert.IsType<JsonObject>(session.Render(Field("a")).AsObject());
+        Assert.Equal("e2", second.Get("answersEventId", null).AsString());
+    }
 }

@@ -90,7 +90,8 @@ Do not pass HTML strings into `ui.mount`/`ui.render`, or treat a `@PAGE` return 
 Session envelopes (`ui.mount` → `mount`, `ui.render` → `patch`, `ui.resync` → `resync`) include
 `type`, `version`, `sessionId`, `envelopeId`, `revision`, `patches[]`, and on `patch` also
 `baseRevision`. `revision` versions the tree: mount and render each add one, and a patch
-applies only on top of `baseRevision`.
+applies only on top of `baseRevision`. `answersEventId`, once the program has pulled a browser
+event, is the `envelopeId` of the last one pulled (or dropped) before the envelope was built.
 
 The host (`MaldaLang.UIHost/UiHostHub.cs`, shared by the embedded and the standalone host)
 wraps each session envelope as the `payload` of a socket message. Two counters, two jobs:
@@ -140,6 +141,23 @@ element at `/1/0/` is child 0 of child 1 of the root, and `data-ui-path` names i
 `UiPatchFuzzTests` renders each fuzz case's first tree into a fake DOM, applies the patches
 with `MaldaUiDom`, and requires the result, and the paths its listeners report, to equal a
 fresh render of the second tree.
+
+### Input events
+
+- **Debounce.** Consecutive `input` events of one element coalesce into one, sent
+  `inputDebounceMs` after the last (prop on `textField`, `textArea`, `slider`, `datePicker`;
+  default 150 ms for `textField` / `textArea`, 0 for the others). Path, props and value are read
+  when the event goes out. Any other event first sends the inputs still waiting.
+- **Stale values.** The client keeps the ids of the events it sent and not yet answered; an
+  envelope's `answersEventId` answers that event and every earlier one. A `value` / `checked`
+  patch to an element with unseen edits (an input still waiting, or its last event unanswered)
+  is held back, and lands once a later envelope answers those edits. A full render (snapshot,
+  resync, `ReplaceNode` above the input) does not hold anything back.
+- **Key-checked targets.** Events from tree elements carry `targetType` and `targetKey` (null
+  for an unkeyed node). `UiSession.TryDequeueEvent` drops an event when the node at its
+  `targetPath` has another type or key; `ui.snapshot` reports `staleEventsDropped`. Events that
+  name no target (`ui.dispatchEvent` without `targetType`, `treeView` items, lifecycle events)
+  are never dropped. The pulled event exposes `targetKey` when the node has one.
 
 ## State model
 
