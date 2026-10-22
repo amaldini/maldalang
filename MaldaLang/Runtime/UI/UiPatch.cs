@@ -12,7 +12,9 @@ public enum UiPatchOperation
     SetProp,
     RemoveProp,
     InsertChild,
-    RemoveChild
+    RemoveChild,
+    /// <summary>Takes the child at <c>from</c> out, then inserts it at <c>index</c> of the shortened list.</summary>
+    MoveChild
 }
 
 public sealed class UiPatch
@@ -22,14 +24,16 @@ public sealed class UiPatch
     public string? PropertyName { get; }
     public RuntimeValue? Value { get; }
     public int? ChildIndex { get; }
+    public int? FromIndex { get; }
 
-    public UiPatch(UiPatchOperation operation, string path, string? propertyName = null, RuntimeValue? value = null, int? childIndex = null)
+    public UiPatch(UiPatchOperation operation, string path, string? propertyName = null, RuntimeValue? value = null, int? childIndex = null, int? fromIndex = null)
     {
         Operation = operation;
         Path = path;
         PropertyName = propertyName;
         Value = value;
         ChildIndex = childIndex;
+        FromIndex = fromIndex;
     }
 
     public RuntimeValue ToRuntimeValue()
@@ -51,6 +55,11 @@ public sealed class UiPatch
         if (ChildIndex.HasValue)
         {
             obj.Set("index", RuntimeValue.Integer(ChildIndex.Value));
+        }
+
+        if (FromIndex.HasValue)
+        {
+            obj.Set("from", RuntimeValue.Integer(FromIndex.Value));
         }
 
         return RuntimeValue.Object(obj);

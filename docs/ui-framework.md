@@ -62,7 +62,15 @@ Do not pass HTML strings into `ui.mount`/`ui.render`, or treat a `@PAGE` return 
 
 Control envelopes: `ack` / `nack`, `error`, `resync`.
 
-Patch operations: `ReplaceNode`, `SetProp`, `RemoveProp`, `InsertChild`, `RemoveChild`.
+Patch operations: `ReplaceNode`, `SetProp`, `RemoveProp`, `InsertChild`, `RemoveChild`,
+`MoveChild` (`from` → `index`: take the child out, then insert it into the shortened list).
+
+Patches apply in order and every index is the position at that moment. Children are matched
+by key when every child of both lists has a distinct non-empty `key`; otherwise by index.
+The keyed diff first removes vanished keys (highest index first), then walks the new order,
+moving or inserting each child into place before diffing it. `UiPatchFuzzTests` checks that
+the patches rebuild the new tree in both the C# test applier and `MaldaUiCore` (the pure
+patch core at the top of `malda-ui-client.js`, loadable from Node).
 
 ## State model
 

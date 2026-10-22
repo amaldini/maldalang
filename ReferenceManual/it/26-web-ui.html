@@ -119,7 +119,7 @@ componentLiveEmit("items", {"count": 8}, "item-added");</code></pre>
             <li><code>version</code> - stringa di versione del protocollo.</li>
             <li><code>sequence</code> - numero di sequenza monotono per l'ordinamento.</li>
             <li><code>envelopeId</code> - id usato per la correlazione ack/nack.</li>
-            <li><code>patches</code> - operazioni di patch incrementali (<code>ReplaceNode</code>, <code>SetProp</code>, <code>RemoveProp</code>, <code>InsertChild</code>, <code>RemoveChild</code>).</li>
+            <li><code>patches</code> - operazioni di patch incrementali (<code>ReplaceNode</code>, <code>SetProp</code>, <code>RemoveProp</code>, <code>InsertChild</code>, <code>RemoveChild</code>, <code>MoveChild</code>).</li>
         </ul>
         <p>I client dovrebbero confermare gli envelope elaborati e richiedere un resync quando rilevano buchi di sequenza.</p>
         <div class="info-box">

@@ -126,7 +126,7 @@ public class BackendDifferentialFuzzTests
         return folder;
     }
 
-    private static IEnumerable<int> ParseSeeds(string text)
+    internal static IEnumerable<int> ParseSeeds(string text)
     {
         foreach (var part in text.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
         {

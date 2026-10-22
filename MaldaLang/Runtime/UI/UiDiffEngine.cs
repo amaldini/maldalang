@@ -103,6 +103,10 @@ public static class UiDiffEngine
         }
     }
 
+    /// <summary>
+    /// Keyed diff needs a non-empty key on every child of both lists and no key twice in a
+    /// list; otherwise children are matched by index.
+    /// </summary>
     private static bool CanUseKeyedDiff(List<UiNode> previous, List<UiNode> current)
     {
         if (previous.Count == 0 || current.Count == 0)
@@ -110,17 +114,15 @@ public static class UiDiffEngine
             return false;
         }
 
-        foreach (var node in previous)
-        {
-            if (string.IsNullOrWhiteSpace(node.Key))
-            {
-                return false;
-            }
-        }
+        return HasUniqueKeys(previous) && HasUniqueKeys(current);
+    }
 
-        foreach (var node in current)
+    private static bool HasUniqueKeys(List<UiNode> nodes)
+    {
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var node in nodes)
         {
-            if (string.IsNullOrWhiteSpace(node.Key))
+            if (string.IsNullOrWhiteSpace(node.Key) || !seen.Add(node.Key))
             {
                 return false;
             }
@@ -129,35 +131,54 @@ public static class UiDiffEngine
         return true;
     }
 
+    /// <summary>
+    /// Patches apply in order, so every index is the child's position at that moment:
+    /// first remove the children whose key is gone (highest index first), then walk the new
+    /// order and, at each position, move the matching child there or insert a new one. A
+    /// child is diffed once it sits at its final index, and later moves only touch higher
+    /// indices, so the paths in its patches stay valid.
+    /// </summary>
     private static void DiffChildrenByKey(List<UiNode> previous, List<UiNode> current, string path, List<UiPatch> patches)
     {
-        var previousIndexByKey = new Dictionary<string, int>(StringComparer.Ordinal);
-        for (var i = 0; i < previous.Count; i++)
+        var currentKeys = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var node in current)
         {
-            previousIndexByKey[previous[i].Key!] = i;
+            currentKeys.Add(node.Key!);
         }
 
-        var matchedPrevious = new HashSet<int>();
-        for (var i = 0; i < current.Count; i++)
+        var working = new List<UiNode>(previous.Count);
+        for (var i = previous.Count - 1; i >= 0; i--)
         {
-            var key = current[i].Key!;
-            if (previousIndexByKey.TryGetValue(key, out var prevIndex))
+            if (currentKeys.Contains(previous[i].Key!))
             {
-                matchedPrevious.Add(prevIndex);
-                DiffInternal(previous[prevIndex], current[i], path + i + "/", patches);
+                working.Insert(0, previous[i]);
             }
             else
             {
-                patches.Add(new UiPatch(UiPatchOperation.InsertChild, path, value: current[i].ToRuntimeValue(), childIndex: i));
+                patches.Add(new UiPatch(UiPatchOperation.RemoveChild, path, childIndex: i));
             }
         }
 
-        for (var i = previous.Count - 1; i >= 0; i--)
+        for (var i = 0; i < current.Count; i++)
         {
-            if (!matchedPrevious.Contains(i))
+            var key = current[i].Key!;
+            var from = working.FindIndex(i, node => string.Equals(node.Key, key, StringComparison.Ordinal));
+            if (from < 0)
             {
-                patches.Add(new UiPatch(UiPatchOperation.RemoveChild, path, childIndex: i));
+                patches.Add(new UiPatch(UiPatchOperation.InsertChild, path, value: current[i].ToRuntimeValue(), childIndex: i));
+                working.Insert(i, current[i]);
+                continue;
             }
+
+            if (from != i)
+            {
+                patches.Add(new UiPatch(UiPatchOperation.MoveChild, path, childIndex: i, fromIndex: from));
+                var moved = working[from];
+                working.RemoveAt(from);
+                working.Insert(i, moved);
+            }
+
+            DiffInternal(working[i], current[i], path + i + "/", patches);
         }
     }
 

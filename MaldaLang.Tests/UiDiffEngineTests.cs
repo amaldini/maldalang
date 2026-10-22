@@ -3,6 +3,7 @@
 
 using MaldaLang.Interpreter;
 using MaldaLang.Runtime.UI;
+using MaldaLang.Tests.Fuzz;
 using Xunit;
 
 namespace MaldaLang.Tests;
@@ -35,25 +36,55 @@ public class UiDiffEngineTests
         Assert.Contains(patches, p => p.Operation == UiPatchOperation.ReplaceNode);
     }
 
-    [Fact]
-    public void Diff_KeyedChildren_PrefersInsertRemoveOverReplace()
+    [Theory]
+    [InlineData("ab", "cb")]
+    [InlineData("ab", "ba")]
+    [InlineData("abcde", "edcba")]
+    [InlineData("abc", "xabcy")]
+    [InlineData("abcd", "bd")]
+    [InlineData("abcd", "dxbz")]
+    [InlineData("abc", "cab")]
+    public void Diff_KeyedChildren_PatchesRebuildTheNewOrder(string before, string after)
     {
-        var previous = new UiNode("row", children: new List<UiNode>
-        {
-            new("text", key: "a"),
-            new("text", key: "b")
-        });
+        var previous = KeyedRow(before);
+        var current = KeyedRow(after);
 
-        var current = new UiNode("row", children: new List<UiNode>
-        {
-            new("text", key: "b"),
-            new("text", key: "c")
-        });
-
-        var patches = UiDiffEngine.Diff(previous, current);
-        Assert.Contains(patches, p => p.Operation == UiPatchOperation.InsertChild);
-        Assert.Contains(patches, p => p.Operation == UiPatchOperation.RemoveChild);
+        Assert.Equal(
+            UiPatchApplier.Canonical(UiPatchApplier.ToJson(current)),
+            UiPatchApplier.DiffAndApply(previous, current));
     }
+
+    [Fact]
+    public void Diff_KeyedChildren_MovesAChildInsteadOfReplacingIt()
+    {
+        var patches = UiDiffEngine.Diff(KeyedRow("ab"), KeyedRow("ba"));
+
+        var move = Assert.Single(patches);
+        Assert.Equal(UiPatchOperation.MoveChild, move.Operation);
+        Assert.Equal(1, move.FromIndex);
+        Assert.Equal(0, move.ChildIndex);
+    }
+
+    [Fact]
+    public void Diff_DuplicateKeys_FallBackToIndexDiff()
+    {
+        var previous = KeyedRow("aa");
+        var current = KeyedRow("aab");
+
+        Assert.Equal(
+            UiPatchApplier.Canonical(UiPatchApplier.ToJson(current)),
+            UiPatchApplier.DiffAndApply(previous, current));
+        Assert.DoesNotContain(UiDiffEngine.Diff(previous, current), p => p.Operation == UiPatchOperation.MoveChild);
+    }
+
+    /// <summary>A row of text children, one per character, keyed and labelled by it.</summary>
+    private static UiNode KeyedRow(string keys) =>
+        new("row", children: keys
+            .Select(k => new UiNode(
+                "text",
+                new Dictionary<string, RuntimeValue> { ["value"] = RuntimeValue.String(k.ToString().ToUpperInvariant()) },
+                key: k.ToString()))
+            .ToList());
 
     [Fact]
     public void Diff_WhenStyleChanges_EmitsSetPropPatch()

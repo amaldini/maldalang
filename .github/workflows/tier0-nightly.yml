@@ -62,12 +62,13 @@ jobs:
           day=$(( $(date -u +%s) / 86400 ))
           start=$(( 1000 + (day % 500) * 100 ))
           echo "MALDA_FUZZ_SEEDS=${start}-$(( start + 99 ))" >> "$GITHUB_ENV"
+          echo "MALDA_UI_FUZZ_SEEDS=${start}-$(( start + 99 ))" >> "$GITHUB_ENV"
           echo "Fuzz seeds: ${start}-$(( start + 99 ))"
 
       - name: Fuzz
         run: >
           dotnet test MaldaLang.Tests -c Release --no-build
-          --filter "FullyQualifiedName~BackendDifferentialFuzzTests"
+          --filter "FullyQualifiedName~BackendDifferentialFuzzTests|FullyQualifiedName~UiPatchFuzzTests"
           --verbosity minimal
 
       - name: Upload failing seeds
@@ -75,5 +76,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: malda-fuzz-repro
-          path: /tmp/malda_fuzz/
+          path: |
+            /tmp/malda_fuzz/
+            /tmp/malda_ui_fuzz/
           if-no-files-found: ignore

@@ -1,4 +1,128 @@
+// Pure tree-patch core: no DOM, so Node tests can load this file and apply the same patches
+// the browser does (MaldaLang.Tests/Fuzz/UiPatchFuzzTests.cs).
+const MaldaUiCore = (function () {
+  function applyPatches(root, patches) {
+    for (const patch of patches || []) {
+      if (!patch || !patch.op) {
+        continue;
+      }
+
+      if (patch.op === "ReplaceNode") {
+        root = applyReplaceNode(root, patch);
+      } else if (patch.op === "SetProp") {
+        applySetProp(root, patch);
+      } else if (patch.op === "RemoveProp") {
+        applyRemoveProp(root, patch);
+      } else if (patch.op === "InsertChild") {
+        applyInsertChild(root, patch);
+      } else if (patch.op === "RemoveChild") {
+        applyRemoveChild(root, patch);
+      } else if (patch.op === "MoveChild") {
+        applyMoveChild(root, patch);
+      }
+    }
+    return root;
+  }
+
+  function applyReplaceNode(root, patch) {
+    const path = patch.path || "/";
+    if (path === "/") {
+      return patch.value || null;
+    }
+
+    const parentNode = getNodeAtPath(root, parentOf(path));
+    if (!parentNode || !Array.isArray(parentNode.children)) {
+      return root;
+    }
+
+    parentNode.children[childIndexOf(path)] = patch.value || null;
+    return root;
+  }
+
+  function applySetProp(root, patch) {
+    const node = getNodeAtPath(root, patch.path || "/");
+    if (!node) return;
+    node.props = node.props || {};
+    node.props[patch.prop] = patch.value;
+  }
+
+  function applyRemoveProp(root, patch) {
+    const node = getNodeAtPath(root, patch.path || "/");
+    if (!node || !node.props) return;
+    delete node.props[patch.prop];
+  }
+
+  function applyInsertChild(root, patch) {
+    const node = getNodeAtPath(root, patch.path || "/");
+    if (!node) return;
+    node.children = node.children || [];
+    const index = Number.isInteger(patch.index) ? patch.index : node.children.length;
+    node.children.splice(index, 0, patch.value || null);
+  }
+
+  function applyRemoveChild(root, patch) {
+    const node = getNodeAtPath(root, patch.path || "/");
+    if (!node || !Array.isArray(node.children)) return;
+    if (!Number.isInteger(patch.index)) return;
+    node.children.splice(patch.index, 1);
+  }
+
+  // Takes the child at `from` out, then inserts it at `index` of the shortened list.
+  function applyMoveChild(root, patch) {
+    const node = getNodeAtPath(root, patch.path || "/");
+    if (!node || !Array.isArray(node.children)) return;
+    if (!Number.isInteger(patch.from) || !Number.isInteger(patch.index)) return;
+    if (patch.from < 0 || patch.from >= node.children.length) return;
+    const [moved] = node.children.splice(patch.from, 1);
+    node.children.splice(patch.index, 0, moved);
+  }
+
+  function getNodeAtPath(root, path) {
+    if (!path || path === "/") {
+      return root;
+    }
+
+    let current = root;
+    for (const idx of parsePath(path)) {
+      if (!current || !Array.isArray(current.children) || idx < 0 || idx >= current.children.length) {
+        return null;
+      }
+      current = current.children[idx];
+    }
+    return current;
+  }
+
+  function parsePath(path) {
+    return path
+      .split("/")
+      .filter(Boolean)
+      .map((segment) => Number.parseInt(segment, 10))
+      .filter((n) => Number.isInteger(n));
+  }
+
+  function parentOf(path) {
+    const segments = parsePath(path);
+    segments.pop();
+    return segments.length === 0 ? "/" : `/${segments.join("/")}/`;
+  }
+
+  function childIndexOf(path) {
+    const segments = parsePath(path);
+    return segments.length === 0 ? 0 : segments[segments.length - 1];
+  }
+
+  return { applyPatches, getNodeAtPath };
+})();
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = MaldaUiCore;
+}
+
 (function () {
+  if (typeof window === "undefined" || typeof document === "undefined") {
+    return;
+  }
+
   const protocolVersion = "1.0";
   const params = new URLSearchParams(window.location.search);
   const sessionId = params.get("session") || "default";
@@ -219,71 +343,6 @@
     applyInboundPayload(normalizePayload(payload));
   };
 
-  function applyPatches(patches) {
-    for (const patch of patches || []) {
-      if (!patch || !patch.op) {
-        continue;
-      }
-
-      if (patch.op === "ReplaceNode") {
-        applyReplaceNode(patch);
-      } else if (patch.op === "SetProp") {
-        applySetProp(patch);
-      } else if (patch.op === "RemoveProp") {
-        applyRemoveProp(patch);
-      } else if (patch.op === "InsertChild") {
-        applyInsertChild(patch);
-      } else if (patch.op === "RemoveChild") {
-        applyRemoveChild(patch);
-      }
-    }
-  }
-
-  function applyReplaceNode(patch) {
-    const path = patch.path || "/";
-    if (path === "/") {
-      tree = patch.value || null;
-      return;
-    }
-
-    const parentPath = parentOf(path);
-    const index = childIndexOf(path);
-    const parentNode = getNodeAtPath(parentPath);
-    if (!parentNode || !Array.isArray(parentNode.children)) {
-      return;
-    }
-
-    parentNode.children[index] = patch.value || null;
-  }
-
-  function applySetProp(patch) {
-    const node = getNodeAtPath(patch.path || "/");
-    if (!node) return;
-    node.props = node.props || {};
-    node.props[patch.prop] = patch.value;
-  }
-
-  function applyRemoveProp(patch) {
-    const node = getNodeAtPath(patch.path || "/");
-    if (!node || !node.props) return;
-    delete node.props[patch.prop];
-  }
-
-  function applyInsertChild(patch) {
-    const node = getNodeAtPath(patch.path || "/");
-    if (!node) return;
-    node.children = node.children || [];
-    const index = Number.isInteger(patch.index) ? patch.index : node.children.length;
-    node.children.splice(index, 0, patch.value || null);
-  }
-
-  function applyRemoveChild(patch) {
-    const node = getNodeAtPath(patch.path || "/");
-    if (!node || !Array.isArray(node.children)) return;
-    if (!Number.isInteger(patch.index)) return;
-    node.children.splice(patch.index, 1);
-  }
-
   function schedulePatchFlush() {
     if (patchFrameScheduled) return;
     patchFrameScheduled = true;
@@ -291,7 +350,7 @@
       patchFrameScheduled = false;
       const focusPath = document.activeElement ? document.activeElement.getAttribute("data-ui-path") : null;
       const patches = pendingPatches.splice(0, pendingPatches.length);
-      applyPatches(patches);
+      tree = MaldaUiCore.applyPatches(tree, patches);
       renderRoot();
       if (focusPath) {
         const focusEl = appRoot.querySelector(`[data-ui-path="${cssEscape(focusPath)}"]`);
@@ -1302,41 +1361,6 @@
     expectedServerSequence++;
     lastServerEnvelopeId = message.envelopeId || lastServerEnvelopeId;
     return true;
-  }
-
-  function getNodeAtPath(path) {
-    if (!path || path === "/") {
-      return tree;
-    }
-
-    const segments = parsePath(path);
-    let current = tree;
-    for (const idx of segments) {
-      if (!current || !Array.isArray(current.children) || idx < 0 || idx >= current.children.length) {
-        return null;
-      }
-      current = current.children[idx];
-    }
-    return current;
-  }
-
-  function parsePath(path) {
-    return path
-      .split("/")
-      .filter(Boolean)
-      .map((segment) => Number.parseInt(segment, 10))
-      .filter((n) => Number.isInteger(n));
-  }
-
-  function parentOf(path) {
-    const segments = parsePath(path);
-    segments.pop();
-    return segments.length === 0 ? "/" : `/${segments.join("/")}/`;
-  }
-
-  function childIndexOf(path) {
-    const segments = parsePath(path);
-    return segments.length === 0 ? 0 : segments[segments.length - 1];
   }
 
   function cryptoRandom() {
