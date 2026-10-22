@@ -1,0 +1,451 @@
+// Copyright (c) 2026 Andrea Maldini
+// SPDX-License-Identifier: MIT OR Apache-2.0
+
+using System.ComponentModel;
+using System.Diagnostics;
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
+using System.Text.Json.Nodes;
+using BuiltInFunctions = MaldaLang.BuiltIns.BuiltInFunctions;
+using MaldaLang.Interpreter;
+using MaldaLang.Runtime.UI;
+using MaldaLang.Tests.Fuzz;
+using MaldaLang.Tests.Planning;
+using MaldaLang.UIHost;
+using Xunit;
+
+namespace MaldaLang.Tests;
+
+/// <summary>
+/// Host ↔ browser protocol, end to end: a Node process runs <c>MaldaUiProtocol</c> from
+/// <c>malda-ui-client.js</c> over a real WebSocket against the embedded host
+/// (<see cref="EmbeddedUiHostRuntime"/>) and the standalone <c>MaldaLang.UIHost</c> process.
+/// Each scenario posts <see cref="UiSession"/> envelopes and requires the client's tree to
+/// equal the session's tree, without a resync storm. Skipped without Node.
+/// </summary>
+[Collection("Sequential")]
+public class UiHostProtocolTests : IClassFixture<UiHostProtocolTests.Hosts>
+{
+    private const string Pending = "U1 (docs/roadmap-ui-runtime.md): host and client sequence / resync handshake.";
+
+    private readonly Hosts _hosts;
+
+    public UiHostProtocolTests(Hosts hosts) => _hosts = hosts;
+
+    public static IEnumerable<object[]> HostKinds() => new[] { new object[] { "embedded" }, new object[] { "standalone" } };
+
+    [Theory(Skip = Pending)]
+    [MemberData(nameof(HostKinds))]
+    public async Task Mount_ReachesAConnectedClient(string host)
+    {
+        await using var scenario = await Scenario.StartAsync(_hosts, host);
+        if (scenario == null) return;
+
+        var tab = await scenario.ConnectAsync();
+        await scenario.MountAsync(Tree("one"));
+
+        await scenario.AssertInSyncAsync(tab);
+    }
+
+    [Theory(Skip = Pending)]
+    [MemberData(nameof(HostKinds))]
+    public async Task PatchAfterMount_UpdatesAConnectedClient(string host)
+    {
+        await using var scenario = await Scenario.StartAsync(_hosts, host);
+        if (scenario == null) return;
+
+        var tab = await scenario.ConnectAsync();
+        await scenario.MountAsync(Tree("one"));
+        await scenario.RenderAsync(Tree("two"));
+
+        await scenario.AssertInSyncAsync(tab);
+    }
+
+    [Theory(Skip = Pending)]
+    [MemberData(nameof(HostKinds))]
+    public async Task LateClient_GetsTheCurrentTree(string host)
+    {
+        await using var scenario = await Scenario.StartAsync(_hosts, host);
+        if (scenario == null) return;
+
+        await scenario.MountAsync(Tree("one"));
+        await scenario.RenderAsync(Tree("two"));
+        var tab = await scenario.ConnectAsync();
+
+        await scenario.AssertInSyncAsync(tab);
+    }
+
+    [Theory(Skip = Pending)]
+    [MemberData(nameof(HostKinds))]
+    public async Task Reconnect_CatchesUpOnAMissedPatch(string host)
+    {
+        await using var scenario = await Scenario.StartAsync(_hosts, host);
+        if (scenario == null) return;
+
+        var tab = await scenario.ConnectAsync();
+        await scenario.MountAsync(Tree("one"));
+        await tab.CommandAsync("close");
+        await scenario.RenderAsync(Tree("two"));
+        await tab.CommandAsync("connect");
+
+        await scenario.AssertInSyncAsync(tab);
+    }
+
+    [Theory(Skip = Pending)]
+    [MemberData(nameof(HostKinds))]
+    public async Task TwoTabs_BothFollowPatches(string host)
+    {
+        await using var scenario = await Scenario.StartAsync(_hosts, host);
+        if (scenario == null) return;
+
+        var first = await scenario.ConnectAsync();
+        var second = await scenario.ConnectAsync();
+        await scenario.MountAsync(Tree("one"));
+        await scenario.RenderAsync(Tree("two"));
+
+        await scenario.AssertInSyncAsync(first);
+        await scenario.AssertInSyncAsync(second);
+    }
+
+    private static UiNode Tree(string label) =>
+        new("column", children: new List<UiNode>
+        {
+            new("text", new Dictionary<string, RuntimeValue> { ["value"] = RuntimeValue.String(label) }),
+            new("button", new Dictionary<string, RuntimeValue> { ["label"] = RuntimeValue.String("go " + label) })
+        });
+
+    /// <summary>One session on one host, plus the Node tabs connected to it.</summary>
+    private sealed class Scenario : IAsyncDisposable
+    {
+        private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(10) };
+
+        private readonly string _baseUrl;
+        private readonly string _sessionId = "proto-" + Guid.NewGuid().ToString("N")[..8];
+        private readonly UiSession _session;
+        private readonly List<NodeTab> _tabs = new();
+        private UiNode? _current;
+
+        private Scenario(string baseUrl)
+        {
+            _baseUrl = baseUrl.TrimEnd('/');
+            _session = new UiSession(_sessionId);
+        }
+
+        /// <summary>Null when Node is not installed.</summary>
+        public static async Task<Scenario?> StartAsync(Hosts hosts, string host)
+        {
+            if (!NodeTab.NodeAvailable())
+                return null;
+            return new Scenario(await hosts.BaseUrlAsync(host));
+        }
+
+        public async Task<NodeTab> ConnectAsync()
+        {
+            var wsUrl = _baseUrl.Replace("http://", "ws://", StringComparison.Ordinal) + "/ui/ws/" + _sessionId;
+            var tab = NodeTab.Start(wsUrl, _sessionId);
+            _tabs.Add(tab);
+            await tab.CommandAsync("connect");
+            return tab;
+        }
+
+        public Task MountAsync(UiNode root)
+        {
+            _current = root;
+            return PostAsync("mount", _session.Mount(root));
+        }
+
+        public Task RenderAsync(UiNode next)
+        {
+            _current = next;
+            return PostAsync("patch", _session.Render(next));
+        }
+
+        public async Task AssertInSyncAsync(NodeTab tab)
+        {
+            var dump = await tab.CommandAsync("dump");
+            var expected = UiPatchApplier.Canonical(UiPatchApplier.ToJson(_current));
+            var actual = UiPatchApplier.Canonical(dump["tree"]);
+            var received = dump["received"]!.AsArray().Select(m => (string?)m).ToList();
+            var trace = $"received [{string.Join(", ", received.Take(12))}{(received.Count > 12 ? $", … {received.Count} in all" : "")}], resyncs sent {(int)dump["resyncs"]!}";
+
+            Assert.True((bool)dump["quiet"]!, "the client never went quiet (resync storm?): " + trace);
+            Assert.True(expected == actual, $"client tree {actual} != session tree {expected}; {trace}");
+        }
+
+        private async Task PostAsync(string kind, RuntimeValue envelope)
+        {
+            using var content = new StringContent(BuiltInFunctions.SerializeToJson(envelope), Encoding.UTF8, "application/json");
+            using var response = await Http.PostAsync($"{_baseUrl}/ui/{kind}/{_sessionId}", content);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
+
+        public ValueTask DisposeAsync()
+        {
+            foreach (var tab in _tabs)
+                tab.Dispose();
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    /// <summary>
+    /// A Node process playing one browser tab: <c>connect</c>, <c>close</c> and <c>dump</c>
+    /// on stdin, one JSON line back per command. The protocol state survives reconnects,
+    /// as in the browser.
+    /// </summary>
+    private sealed class NodeTab : IDisposable
+    {
+        private const string Harness = """
+const { MaldaUiProtocol } = require(process.argv[2]);
+const wsUrl = process.argv[3];
+const state = MaldaUiProtocol.createState(process.argv[4]);
+let tree = null;
+let ws = null;
+let resyncs = 0;
+let lastActivity = Date.now();
+const received = [];
+const reply = (obj) => process.stdout.write(JSON.stringify(obj) + "\n");
+
+function run(actions) {
+  for (const action of actions) {
+    if (action.apply !== undefined) {
+      tree = MaldaUiProtocol.applyPayload(tree, action.apply);
+    } else if (action.send) {
+      if (action.send.type === "resync") resyncs++;
+      if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(action.send));
+    }
+  }
+}
+
+const commands = {
+  connect() {
+    ws = new WebSocket(wsUrl);
+    let answered = false;
+    ws.onopen = () => {
+      lastActivity = Date.now();
+      run(MaldaUiProtocol.onOpen(state));
+      answered = true;
+      reply({ ok: true });
+    };
+    ws.onerror = () => {
+      if (!answered) { answered = true; reply({ ok: false, error: "websocket error" }); }
+    };
+    ws.onmessage = (evt) => {
+      lastActivity = Date.now();
+      const message = JSON.parse(evt.data);
+      received.push(message.type + ":" + message.sequence);
+      run(MaldaUiProtocol.receive(state, message));
+    };
+  },
+  close() {
+    ws.onclose = () => reply({ ok: true });
+    ws.close();
+  },
+  dump() {
+    const started = Date.now();
+    const tick = () => {
+      const quiet = Date.now() - lastActivity >= 300;
+      if (quiet || Date.now() - started > 3000) reply({ ok: true, tree, resyncs, received, quiet });
+      else setTimeout(tick, 50);
+    };
+    setTimeout(tick, 50);
+  }
+};
+
+require("readline").createInterface({ input: process.stdin }).on("line", (line) => {
+  const command = commands[line.trim()];
+  if (command) command();
+  else reply({ ok: false, error: "unknown command " + line });
+});
+""";
+
+        private static readonly UTF8Encoding NoBom = new(encoderShouldEmitUTF8Identifier: false);
+        private static bool? _nodeAvailable;
+
+        private readonly Process _process;
+        private readonly string _folder;
+
+        private NodeTab(Process process, string folder)
+        {
+            _process = process;
+            _folder = folder;
+        }
+
+        private static string NodePath =>
+            System.Environment.GetEnvironmentVariable("MALDA_NODE_PATH") is { Length: > 0 } node ? node : "node";
+
+        public static bool NodeAvailable()
+        {
+            if (_nodeAvailable is { } known)
+                return known;
+            try
+            {
+                using var probe = Process.Start(new ProcessStartInfo(NodePath, "--version")
+                {
+                    RedirectStandardOutput = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                });
+                probe!.WaitForExit(10_000);
+                _nodeAvailable = probe.ExitCode == 0;
+            }
+            catch (Win32Exception)
+            {
+                _nodeAvailable = false;
+            }
+            return _nodeAvailable.Value;
+        }
+
+        public static NodeTab Start(string wsUrl, string sessionId)
+        {
+            var folder = Path.Combine(Path.GetTempPath(), "malda_ui_host", "tab_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(folder);
+            var harnessPath = Path.Combine(folder, "tab.js");
+            File.WriteAllText(harnessPath, Harness, NoBom);
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = NodePath,
+                RedirectStandardInput = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            startInfo.ArgumentList.Add(harnessPath);
+            startInfo.ArgumentList.Add(Path.Combine(PlanningPaths.RepoRoot, "MaldaLang.UIHost", "wwwroot", "malda-ui-client.js"));
+            startInfo.ArgumentList.Add(wsUrl);
+            startInfo.ArgumentList.Add(sessionId);
+            return new NodeTab(Process.Start(startInfo)!, folder);
+        }
+
+        public async Task<JsonObject> CommandAsync(string command)
+        {
+            await _process.StandardInput.WriteLineAsync(command);
+            await _process.StandardInput.FlushAsync();
+            string? line;
+            try
+            {
+                line = await _process.StandardOutput.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(15));
+            }
+            catch (TimeoutException)
+            {
+                throw new Xunit.Sdk.XunitException($"Node tab did not answer '{command}'.");
+            }
+
+            if (line == null)
+                throw new Xunit.Sdk.XunitException($"Node tab exited on '{command}': " + await _process.StandardError.ReadToEndAsync());
+
+            var reply = JsonNode.Parse(line)!.AsObject();
+            Assert.True((bool)reply["ok"]!, $"'{command}' failed: {line}");
+            return reply;
+        }
+
+        public void Dispose()
+        {
+            try { _process.Kill(entireProcessTree: true); } catch { }
+            _process.Dispose();
+            try { Directory.Delete(_folder, recursive: true); } catch { }
+        }
+    }
+
+    /// <summary>Starts each host once per test class, on a free loopback port.</summary>
+    public sealed class Hosts : IDisposable
+    {
+        private readonly SemaphoreSlim _gate = new(1, 1);
+        private string? _embeddedUrl;
+        private string? _standaloneUrl;
+        private Process? _standalone;
+
+        public async Task<string> BaseUrlAsync(string host)
+        {
+            await _gate.WaitAsync();
+            try
+            {
+                return host == "embedded" ? _embeddedUrl ??= await StartEmbeddedAsync() : _standaloneUrl ??= await StartStandaloneAsync();
+            }
+            finally
+            {
+                _gate.Release();
+            }
+        }
+
+        private static async Task<string> StartEmbeddedAsync()
+        {
+            if (EmbeddedUiHostRuntime.BaseUrl is { } running)
+                return running;
+
+            var previous = System.Environment.GetEnvironmentVariable("MALDA_UI_HOST_URL");
+            System.Environment.SetEnvironmentVariable("MALDA_UI_HOST_URL", $"http://127.0.0.1:{FreePort()}");
+            try
+            {
+                Assert.True(await EmbeddedUiHostRuntime.TryStartAsync(), "embedded UI host did not start");
+            }
+            finally
+            {
+                System.Environment.SetEnvironmentVariable("MALDA_UI_HOST_URL", previous);
+            }
+            return EmbeddedUiHostRuntime.BaseUrl!;
+        }
+
+        private async Task<string> StartStandaloneAsync()
+        {
+            var url = $"http://127.0.0.1:{FreePort()}";
+            var startInfo = new ProcessStartInfo("dotnet")
+            {
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                WorkingDirectory = AppContext.BaseDirectory
+            };
+            startInfo.ArgumentList.Add(Path.Combine(AppContext.BaseDirectory, "MaldaLang.UIHost.dll"));
+            startInfo.ArgumentList.Add("--urls");
+            startInfo.ArgumentList.Add(url);
+            startInfo.Environment.Remove("MALDA_UI_AUTH_TOKEN");
+            _standalone = Process.Start(startInfo)!;
+            _standalone.OutputDataReceived += (_, _) => { };
+            _standalone.ErrorDataReceived += (_, _) => { };
+            _standalone.BeginOutputReadLine();
+            _standalone.BeginErrorReadLine();
+
+            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
+            for (var i = 0; i < 100; i++)
+            {
+                try
+                {
+                    if ((await http.GetAsync(url + "/health")).IsSuccessStatusCode)
+                        return url;
+                }
+                catch (HttpRequestException)
+                {
+                    // Still starting.
+                }
+                catch (TaskCanceledException)
+                {
+                    // Still starting.
+                }
+                await Task.Delay(100);
+            }
+            throw new Xunit.Sdk.XunitException("standalone MaldaLang.UIHost did not answer /health");
+        }
+
+        private static int FreePort()
+        {
+            var listener = new TcpListener(IPAddress.Loopback, 0);
+            listener.Start();
+            var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+            listener.Stop();
+            return port;
+        }
+
+        public void Dispose()
+        {
+            if (_standalone != null)
+            {
+                try { _standalone.Kill(entireProcessTree: true); } catch { }
+                _standalone.Dispose();
+            }
+        }
+    }
+}

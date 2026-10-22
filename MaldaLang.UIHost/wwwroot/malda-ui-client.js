@@ -114,8 +114,141 @@ const MaldaUiCore = (function () {
   return { applyPatches, getNodeAtPath };
 })();
 
+// Pure protocol state machine: no DOM or socket, so Node tests can drive it with the messages
+// a host sends (MaldaLang.Tests/UiHostProtocolTests.cs). onOpen() and receive() return the
+// actions the browser carries out: { apply: payload }, { send: message } and { warn: detail }.
+const MaldaUiProtocol = (function () {
+  const version = "1.0";
+
+  function createState(sessionId) {
+    return { sessionId, expectedServerSequence: 1, nextClientSequence: 1, lastServerEnvelopeId: null };
+  }
+
+  function onOpen(state) {
+    // Request the latest cached envelope so pages that mounted before websocket connect still render.
+    return [{ send: resync(state) }];
+  }
+
+  function receive(state, message) {
+    if (!message) {
+      return [];
+    }
+
+    if (message.type === "ping") {
+      return [{ send: control(state, "pong", {}) }];
+    }
+
+    if (message.type === "error") {
+      return [{ warn: { kind: "protocol_error", error: message.error || {} } }];
+    }
+
+    if (message.type === "mount" || message.type === "patch" || message.type === "resync") {
+      if (message.version && message.version !== version) {
+        return [{ warn: { kind: "version_mismatch", expected: version, got: message.version } }, { send: resync(state) }];
+      }
+
+      if (!acceptSequence(state, message)) {
+        return [{ send: resync(state) }];
+      }
+
+      return [{ apply: normalizePayload(message.payload) }, { send: ack(state, message) }];
+    }
+
+    return [];
+  }
+
+  function acceptSequence(state, message) {
+    if (typeof message.sequence !== "number") {
+      return true;
+    }
+
+    if (message.sequence !== state.expectedServerSequence) {
+      return false;
+    }
+
+    state.expectedServerSequence++;
+    state.lastServerEnvelopeId = message.envelopeId || state.lastServerEnvelopeId;
+    return true;
+  }
+
+  function event(state, eventType, targetPath, payload) {
+    return {
+      type: "event",
+      eventType,
+      targetPath,
+      payload,
+      sessionId: state.sessionId,
+      version,
+      sequence: state.nextClientSequence++,
+      envelopeId: randomId()
+    };
+  }
+
+  function control(state, type, payload) {
+    return {
+      type,
+      payload,
+      sessionId: state.sessionId,
+      version,
+      sequence: state.nextClientSequence++,
+      envelopeId: randomId()
+    };
+  }
+
+  function resync(state) {
+    return control(state, "resync", { reason: "client_sequence_mismatch" });
+  }
+
+  function ack(state, message) {
+    return {
+      type: "ack",
+      ackSequence: message.sequence,
+      sessionId: state.sessionId,
+      version,
+      sequence: state.nextClientSequence++,
+      envelopeId: message.envelopeId || randomId()
+    };
+  }
+
+  function normalizePayload(payload) {
+    if (!payload) return null;
+    if (payload.raw) {
+      try {
+        return JSON.parse(payload.raw);
+      } catch {
+        return null;
+      }
+    }
+    return payload;
+  }
+
+  // The tree after one inbound payload: a patch list, a { tree } snapshot, or a bare tree.
+  function applyPayload(tree, payload) {
+    if (!payload) {
+      return tree;
+    }
+    if (payload.patches) {
+      return MaldaUiCore.applyPatches(tree, payload.patches);
+    }
+    if (payload.tree) {
+      return payload.tree;
+    }
+    return payload;
+  }
+
+  function randomId() {
+    const cryptoApi = typeof crypto !== "undefined" ? crypto : null;
+    if (cryptoApi && typeof cryptoApi.randomUUID === "function") {
+      return cryptoApi.randomUUID().replace(/-/g, "");
+    }
+    return String(Date.now()) + String(Math.floor(Math.random() * 1e6));
+  }
+
+  return { version, createState, onOpen, receive, event, normalizePayload, applyPayload };
+})();
+
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = MaldaUiCore;
+  module.exports = Object.assign({}, MaldaUiCore, { MaldaUiCore, MaldaUiProtocol });
 }
 
 (function () {
@@ -123,18 +256,14 @@ if (typeof module !== "undefined" && module.exports) {
     return;
   }
 
-  const protocolVersion = "1.0";
   const params = new URLSearchParams(window.location.search);
   const sessionId = params.get("session") || "default";
   const appRoot = document.getElementById("app");
   const authToken = params.get("token");
 
   let tree = null;
-  let expectedServerSequence = 1;
-  let nextClientSequence = 1;
-  let lastServerEnvelopeId = null;
-  const pendingPatches = [];
-  let patchFrameScheduled = false;
+  const protocol = MaldaUiProtocol.createState(sessionId);
+  let renderFrameScheduled = false;
   const controlStateByPath = new Map();
   const richEventProps = new Set([
     "onClick", "onChange", "onInput", "onSubmit", "onClose", "onFocus", "onBlur",
@@ -165,18 +294,6 @@ if (typeof module !== "undefined" && module.exports) {
       socket.close(1000, "page_unload");
     }
   });
-
-  function normalizePayload(payload) {
-    if (!payload) return null;
-    if (payload.raw) {
-      try {
-        return JSON.parse(payload.raw);
-      } catch {
-        return null;
-      }
-    }
-    return payload;
-  }
 
   function ensureFrameworkStyles() {
     if (document.getElementById("malda-ui-framework-styles")) {
@@ -320,37 +437,24 @@ if (typeof module !== "undefined" && module.exports) {
   }
 
   function applyInboundPayload(payload) {
-    if (payload && payload.patches) {
-      pendingPatches.push(...payload.patches);
-      schedulePatchFlush();
-      return;
-    }
-    if (payload && payload.tree) {
-      tree = payload.tree;
-      renderRoot();
-      return;
-    }
-    if (payload) {
-      tree = payload;
-      renderRoot();
-    }
+    if (!payload) return;
+    tree = MaldaUiProtocol.applyPayload(tree, payload);
+    scheduleRender();
   }
 
   // Allows host pages to bootstrap rendering directly from a fetched envelope.
   window.maldaUiApplyEnvelope = function (envelopeOrPayload) {
     if (!envelopeOrPayload) return;
     const payload = envelopeOrPayload.payload != null ? envelopeOrPayload.payload : envelopeOrPayload;
-    applyInboundPayload(normalizePayload(payload));
+    applyInboundPayload(MaldaUiProtocol.normalizePayload(payload));
   };
 
-  function schedulePatchFlush() {
-    if (patchFrameScheduled) return;
-    patchFrameScheduled = true;
+  function scheduleRender() {
+    if (renderFrameScheduled) return;
+    renderFrameScheduled = true;
     requestAnimationFrame(() => {
-      patchFrameScheduled = false;
+      renderFrameScheduled = false;
       const focusPath = document.activeElement ? document.activeElement.getAttribute("data-ui-path") : null;
-      const patches = pendingPatches.splice(0, pendingPatches.length);
-      tree = MaldaUiCore.applyPatches(tree, patches);
       renderRoot();
       if (focusPath) {
         const focusEl = appRoot.querySelector(`[data-ui-path="${cssEscape(focusPath)}"]`);
@@ -1143,42 +1247,19 @@ if (typeof module !== "undefined" && module.exports) {
   }
 
   function sendEvent(type, targetPath, payload) {
-    enqueueOrSend({
-      type: "event",
-      eventType: type,
-      targetPath,
-      payload,
-      sessionId,
-      version: protocolVersion,
-      sequence: nextClientSequence++,
-      envelopeId: cryptoRandom()
-    });
+    enqueueOrSend(MaldaUiProtocol.event(protocol, type, targetPath, payload));
   }
 
-  function sendControlMessage(type, payload) {
-    enqueueOrSend({
-      type,
-      payload,
-      sessionId,
-      version: protocolVersion,
-      sequence: nextClientSequence++,
-      envelopeId: cryptoRandom()
-    });
-  }
-
-  function sendAck(message) {
-    enqueueOrSend({
-      type: "ack",
-      ackSequence: message.sequence,
-      sessionId,
-      version: protocolVersion,
-      sequence: nextClientSequence++,
-      envelopeId: message.envelopeId || cryptoRandom()
-    });
-  }
-
-  function requestResync() {
-    sendControlMessage("resync", { reason: "client_sequence_mismatch" });
+  function runProtocolActions(actions) {
+    for (const action of actions) {
+      if (action.apply !== undefined) {
+        applyInboundPayload(action.apply);
+      } else if (action.send) {
+        enqueueOrSend(action.send);
+      } else if (action.warn) {
+        console.warn("malda-ui protocol", action.warn);
+      }
+    }
   }
 
   function connectWebSocket() {
@@ -1203,38 +1284,12 @@ if (typeof module !== "undefined" && module.exports) {
       clearReconnectTimer();
       console.log("malda-ui connected", { sessionId });
       flushQueuedOutboundMessages();
-      // Request the latest cached envelope so pages that mounted before websocket connect still render.
-      requestResync();
+      runProtocolActions(MaldaUiProtocol.onOpen(protocol));
     });
 
     nextSocket.addEventListener("message", (evt) => {
       try {
-        const message = JSON.parse(evt.data);
-        if (message.type === "ping") {
-          sendControlMessage("pong", {});
-          return;
-        }
-
-        if (message.type === "ack" || message.type === "nack") {
-          return;
-        }
-
-        if (message.type === "error") {
-          console.warn("malda-ui protocol error", message.error || {});
-          return;
-        }
-
-        if (message.type === "mount" || message.type === "patch" || message.type === "resync") {
-          if (!validateInboundEnvelope(message)) {
-            requestResync();
-            return;
-          }
-
-          applyInboundPayload(normalizePayload(message.payload));
-
-          sendAck(message);
-          return;
-        }
+        runProtocolActions(MaldaUiProtocol.receive(protocol, JSON.parse(evt.data)));
       } catch (err) {
         console.warn("malda-ui message parse error", err);
       }
@@ -1339,35 +1394,6 @@ if (typeof module !== "undefined" && module.exports) {
       }
       return false;
     }
-  }
-
-  function validateInboundEnvelope(message) {
-    if (message.version && message.version !== protocolVersion) {
-      console.warn("Protocol version mismatch", { expected: protocolVersion, got: message.version });
-      return false;
-    }
-
-    if (typeof message.sequence !== "number") {
-      return true;
-    }
-
-    if (message.sequence < expectedServerSequence) {
-      return false;
-    }
-    if (message.sequence > expectedServerSequence) {
-      return false;
-    }
-
-    expectedServerSequence++;
-    lastServerEnvelopeId = message.envelopeId || lastServerEnvelopeId;
-    return true;
-  }
-
-  function cryptoRandom() {
-    if (window.crypto && typeof window.crypto.randomUUID === "function") {
-      return window.crypto.randomUUID().replace(/-/g, "");
-    }
-    return String(Date.now()) + String(Math.floor(Math.random() * 1e6));
   }
 
   function cssEscape(value) {

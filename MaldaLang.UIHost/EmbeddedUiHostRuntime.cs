@@ -32,6 +32,9 @@ public static class EmbeddedUiHostRuntime
     private static string? _indexHtml;
     private static string? _uiClientJs;
 
+    /// <summary>The URL the host listens on once <see cref="TryStartAsync"/> succeeded.</summary>
+    public static string? BaseUrl { get; private set; }
+
     /// <summary>
     /// Starts the embedded UI host if not already running. Uses MALDA_UI_HOST_URL or default http://localhost:50114.
     /// </summary>
@@ -66,6 +69,7 @@ public static class EmbeddedUiHostRuntime
 
             _ = app.RunAsync();
             await WaitForHealthAsync(baseUrl);
+            BaseUrl = baseUrl;
             return true;
         }
         catch

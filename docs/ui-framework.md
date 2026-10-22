@@ -70,7 +70,9 @@ by key when every child of both lists has a distinct non-empty `key`; otherwise 
 The keyed diff first removes vanished keys (highest index first), then walks the new order,
 moving or inserting each child into place before diffing it. `UiPatchFuzzTests` checks that
 the patches rebuild the new tree in both the C# test applier and `MaldaUiCore` (the pure
-patch core at the top of `malda-ui-client.js`, loadable from Node).
+patch core at the top of `malda-ui-client.js`, loadable from Node). `MaldaUiProtocol`, next to
+it, is the client's sequence / ack / resync state machine; `UiHostProtocolTests` drives it over a
+real WebSocket against the embedded and the standalone host.
 
 ## State model
 
