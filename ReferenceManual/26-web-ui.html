@@ -116,11 +116,12 @@ componentLiveEmit("items", {"count": 8}, "item-added");</code></pre>
         <p>The server UI host uses versioned envelopes for mount/patch/event transport. Important fields include:</p>
         <ul>
             <li><code>version</code> - protocol version string.</li>
-            <li><code>sequence</code> - monotonic sequence number for ordering.</li>
+            <li><code>revision</code> - tree version: <code>ui.mount</code> and <code>ui.render</code> each add one.</li>
+            <li><code>baseRevision</code> - on <code>patch</code> envelopes, the revision the patches apply to.</li>
             <li><code>envelopeId</code> - id used for ack/nack correlation.</li>
             <li><code>patches</code> - incremental patch operations (<code>ReplaceNode</code>, <code>SetProp</code>, <code>RemoveProp</code>, <code>InsertChild</code>, <code>RemoveChild</code>, <code>MoveChild</code>).</li>
         </ul>
-        <p>Clients should acknowledge processed envelopes and request resync when sequence gaps are detected.</p>
+        <p>On the WebSocket the host wraps each envelope in a message with its own <code>sequence</code>, numbered per connection. A browser whose revision does not match a patch's <code>baseRevision</code> asks for a resync and gets the whole current tree.</p>
         <div class="info-box">
             <strong>Implementation notes:</strong> Runtime kernel (<code>UiNode</code>, diff, sessions), host endpoints, and env vars are documented in <a href="../docs/ui-framework.md"><code>docs/ui-framework.md</code></a>. This chapter stays focused on the language API.
         </div>

@@ -1,6 +1,6 @@
 # MALDA web UI runtime roadmap
 
-**Status:** U0 landed 2026-10-22 (10 host scenarios reproduce problems 1–3, skipped until U1); U1–U7 open  
+**Status:** U0 and U1 landed 2026-10-22; U2–U7 open  
 **Created:** 2026-10-22  
 **Audience:** maintainers working on `ui.*`, `MaldaLang.UIHost` and `malda-ui-client.js`
 
@@ -98,6 +98,13 @@ U7: any time (treeHash after U1)
 - One payload shape: the host forwards the session envelope as is, never nested in `payload`.
 - Files: `UiSession.cs`, `UiProtocol.cs`, `malda-ui-client.js`, `MaldaLang.UIHost/Program.cs`.
 - Tests: U0 green; `UiSessionProtocolTests`, `UiPatchFuzzTests`.
+- **Landed:** `MaldaLang.UIHost/UiHostHub.cs` holds the host side for both hosts (so part of
+  U2 came early): per-socket send pump and sequence, inbound gap reported but accepted,
+  session tree kept with `UiTreePatcher` (the fuzz test's applier, moved into the host) for
+  snapshot resyncs, heartbeat, `ClientEvent` hook for U3. The client keeps one resync in
+  flight and never answers a version mismatch. Client `ack`s are gone. Still open for U2:
+  the compiler's string host speaks 1.0, so transpiled UI programs show a version warning
+  until it is deleted.
 
 ### U2 — One host
 

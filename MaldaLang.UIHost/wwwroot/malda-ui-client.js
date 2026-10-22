@@ -117,16 +117,22 @@ const MaldaUiCore = (function () {
 // Pure protocol state machine: no DOM or socket, so Node tests can drive it with the messages
 // a host sends (MaldaLang.Tests/UiHostProtocolTests.cs). onOpen() and receive() return the
 // actions the browser carries out: { apply: payload }, { send: message } and { warn: detail }.
+// Protocol 1.1 (MaldaLang.UIHost/UiHostHub.cs): `sequence` numbers the messages of one socket
+// in each direction and restarts at 1 on every connection; `revision` / `baseRevision` version
+// the tree, and a patch applies only on top of the revision the client holds.
 const MaldaUiProtocol = (function () {
-  const version = "1.0";
+  const version = "1.1";
 
   function createState(sessionId) {
-    return { sessionId, expectedServerSequence: 1, nextClientSequence: 1, lastServerEnvelopeId: null };
+    return { sessionId, revision: 0, expectedServerSequence: 1, nextClientSequence: 1, resyncPending: false };
   }
 
+  // A new socket: both sequences restart, then ask for the whole tree.
   function onOpen(state) {
-    // Request the latest cached envelope so pages that mounted before websocket connect still render.
-    return [{ send: resync(state) }];
+    state.expectedServerSequence = 1;
+    state.nextClientSequence = 1;
+    state.resyncPending = false;
+    return requestResync(state);
   }
 
   function receive(state, message) {
@@ -134,41 +140,71 @@ const MaldaUiProtocol = (function () {
       return [];
     }
 
-    if (message.type === "ping") {
-      return [{ send: control(state, "pong", {}) }];
+    if (message.version && message.version !== version) {
+      // Asking this host for a resync would get the same version back, so only report it.
+      return [{ warn: { kind: "version_mismatch", expected: version, got: message.version } }];
     }
 
-    if (message.type === "error") {
-      return [{ warn: { kind: "protocol_error", error: message.error || {} } }];
-    }
-
-    if (message.type === "mount" || message.type === "patch" || message.type === "resync") {
-      if (message.version && message.version !== version) {
-        return [{ warn: { kind: "version_mismatch", expected: version, got: message.version } }, { send: resync(state) }];
+    const actions = [];
+    if (typeof message.sequence === "number") {
+      if (message.sequence !== state.expectedServerSequence) {
+        actions.push({ warn: { kind: "sequence_gap", expected: state.expectedServerSequence, got: message.sequence } });
+        actions.push(...requestResync(state));
       }
-
-      if (!acceptSequence(state, message)) {
-        return [{ send: resync(state) }];
-      }
-
-      return [{ apply: normalizePayload(message.payload) }, { send: ack(state, message) }];
+      state.expectedServerSequence = message.sequence + 1;
     }
 
-    return [];
+    switch (message.type) {
+      case "ping":
+        actions.push({ send: control(state, "pong", {}) });
+        break;
+      case "error":
+      case "nack":
+        actions.push({ warn: { kind: message.type, error: message.error || {} } });
+        break;
+      case "mount":
+      case "resync": {
+        if (message.type === "resync") {
+          state.resyncPending = false;
+        }
+        const payload = normalizePayload(message.payload);
+        if (payload) {
+          actions.push({ apply: payload });
+          state.revision = revisionOf(payload, state.revision);
+        }
+        break;
+      }
+      case "patch": {
+        const payload = normalizePayload(message.payload);
+        if (!payload) {
+          break;
+        }
+        if (typeof payload.baseRevision === "number" && payload.baseRevision !== state.revision) {
+          actions.push(...requestResync(state));
+          break;
+        }
+        actions.push({ apply: payload });
+        state.revision = revisionOf(payload, state.revision);
+        break;
+      }
+      default:
+        break;
+    }
+
+    return actions;
   }
 
-  function acceptSequence(state, message) {
-    if (typeof message.sequence !== "number") {
-      return true;
+  // At most one resync in flight: the answer is the whole tree, so asking again adds nothing.
+  function requestResync(state) {
+    if (state.resyncPending) {
+      return [];
     }
+    state.resyncPending = true;
+    return [{ send: control(state, "resync", { reason: "client_out_of_sync" }) }];
+  }
 
-    if (message.sequence !== state.expectedServerSequence) {
-      return false;
-    }
-
-    state.expectedServerSequence++;
-    state.lastServerEnvelopeId = message.envelopeId || state.lastServerEnvelopeId;
-    return true;
+  function revisionOf(payload, fallback) {
+    return typeof payload.revision === "number" ? payload.revision : fallback;
   }
 
   function event(state, eventType, targetPath, payload) {
@@ -179,7 +215,6 @@ const MaldaUiProtocol = (function () {
       payload,
       sessionId: state.sessionId,
       version,
-      sequence: state.nextClientSequence++,
       envelopeId: randomId()
     };
   }
@@ -190,24 +225,13 @@ const MaldaUiProtocol = (function () {
       payload,
       sessionId: state.sessionId,
       version,
-      sequence: state.nextClientSequence++,
       envelopeId: randomId()
     };
   }
 
-  function resync(state) {
-    return control(state, "resync", { reason: "client_sequence_mismatch" });
-  }
-
-  function ack(state, message) {
-    return {
-      type: "ack",
-      ackSequence: message.sequence,
-      sessionId: state.sessionId,
-      version,
-      sequence: state.nextClientSequence++,
-      envelopeId: message.envelopeId || randomId()
-    };
+  // Numbers a message as it goes out on the current socket; queued messages get theirs on flush.
+  function outbound(state, message) {
+    return Object.assign({}, message, { sequence: state.nextClientSequence++ });
   }
 
   function normalizePayload(payload) {
@@ -244,7 +268,7 @@ const MaldaUiProtocol = (function () {
     return String(Date.now()) + String(Math.floor(Math.random() * 1e6));
   }
 
-  return { version, createState, onOpen, receive, event, normalizePayload, applyPayload };
+  return { version, createState, onOpen, receive, event, outbound, normalizePayload, applyPayload };
 })();
 
 if (typeof module !== "undefined" && module.exports) {
@@ -1283,8 +1307,10 @@ if (typeof module !== "undefined" && module.exports) {
       reconnectAttempts = 0;
       clearReconnectTimer();
       console.log("malda-ui connected", { sessionId });
+      // onOpen restarts the socket's sequence numbers, so it runs before queued messages go out.
+      const openActions = MaldaUiProtocol.onOpen(protocol);
       flushQueuedOutboundMessages();
-      runProtocolActions(MaldaUiProtocol.onOpen(protocol));
+      runProtocolActions(openActions);
     });
 
     nextSocket.addEventListener("message", (evt) => {
@@ -1377,7 +1403,7 @@ if (typeof module !== "undefined" && module.exports) {
       return false;
     }
     try {
-      socket.send(JSON.stringify(message));
+      socket.send(JSON.stringify(MaldaUiProtocol.outbound(protocol, message)));
       return true;
     } catch (err) {
       console.warn("malda-ui send failed", {

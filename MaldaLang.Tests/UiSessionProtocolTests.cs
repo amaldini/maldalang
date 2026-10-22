@@ -19,7 +19,7 @@ public class UiSessionProtocolTests
         var envelope = session.Mount(root);
         var obj = Assert.IsType<JsonObject>(envelope.AsObject());
         Assert.Equal("mount", obj.Get("type", null).AsString());
-        Assert.Equal("1.0", obj.Get("version", null).AsString());
+        Assert.Equal(UiProtocol.Version, obj.Get("version", null).AsString());
         Assert.Equal("s1", obj.Get("sessionId", null).AsString());
         Assert.True(obj.Get("sequence", null).AsInteger() >= 1);
     }

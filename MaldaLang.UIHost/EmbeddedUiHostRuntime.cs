@@ -1,14 +1,11 @@
 // Copyright (c) 2026 Andrea Maldini
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //
-// Embedded UI host runtime: same behavior as compiler-inlined UIHost for use by Desktop IDE and other in-process consumers.
+// Embedded UI host runtime for the CLI, the Desktop IDE and other in-process consumers.
 
-using System.Collections.Concurrent;
 using System.IO;
-using System.Net.WebSockets;
 using System.Reflection;
 using System.Text;
-using System.Text.Json;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -18,22 +15,21 @@ namespace MaldaLang.UIHost;
 
 /// <summary>
 /// In-process UI host runtime. Can be started by the Desktop IDE (or other hosts) instead of launching UIHost.exe.
-/// Matches the behavior of the compiler's inlined EmbeddedUiHostRuntime in transpiled apps.
+/// The protocol lives in <see cref="UiHostHub"/>.
 /// </summary>
 public static class EmbeddedUiHostRuntime
 {
-    private const string ProtocolVersion = "1.0";
     private static readonly object Gate = new();
     private static bool _started;
-    private static readonly ConcurrentDictionary<string, ConcurrentDictionary<Guid, WebSocket>> SocketsBySession = new(StringComparer.Ordinal);
-    private static readonly ConcurrentDictionary<string, object> LastEnvelopeBySession = new(StringComparer.Ordinal);
-    private static readonly ConcurrentDictionary<string, int> SequenceBySession = new(StringComparer.Ordinal);
 
     private static string? _indexHtml;
     private static string? _uiClientJs;
 
     /// <summary>The URL the host listens on once <see cref="TryStartAsync"/> succeeded.</summary>
     public static string? BaseUrl { get; private set; }
+
+    /// <summary>The protocol hub behind the host's routes.</summary>
+    public static UiHostHub Hub { get; } = new();
 
     /// <summary>
     /// Starts the embedded UI host if not already running. Uses MALDA_UI_HOST_URL or default http://localhost:50114.
@@ -58,7 +54,7 @@ public static class EmbeddedUiHostRuntime
             var app = builder.Build();
             app.UseWebSockets();
 
-            app.MapGet("/health", () => Results.Ok(new { ok = true, protocolVersion = ProtocolVersion }));
+            app.MapGet("/health", () => Results.Ok(new { ok = true, protocolVersion = UiHostHub.ProtocolVersion }));
             app.MapGet("/", () => Results.Text(_indexHtml ?? FallbackIndexHtml(), "text/html; charset=utf-8"));
             app.MapGet("/index.html", () => Results.Text(_indexHtml ?? FallbackIndexHtml(), "text/html; charset=utf-8"));
             app.MapGet("/malda-ui-client.js", () => Results.Text(_uiClientJs ?? FallbackClientJs(), "application/javascript; charset=utf-8"));
@@ -67,6 +63,7 @@ public static class EmbeddedUiHostRuntime
             app.MapPost("/ui/mount/{sessionId}", (string sessionId, HttpContext context) => HandleEnvelopeAsync(sessionId, "mount", context));
             app.MapPost("/ui/patch/{sessionId}", (string sessionId, HttpContext context) => HandleEnvelopeAsync(sessionId, "patch", context));
 
+            _ = Hub.RunHeartbeatAsync(app.Lifetime.ApplicationStopping);
             _ = app.RunAsync();
             await WaitForHealthAsync(baseUrl);
             BaseUrl = baseUrl;
@@ -131,50 +128,8 @@ public static class EmbeddedUiHostRuntime
         }
 
         var sessionId = context.Request.RouteValues.TryGetValue("sessionId", out var sessionValue) ? sessionValue?.ToString() ?? "default" : "default";
-        var socket = await context.WebSockets.AcceptWebSocketAsync();
-        var socketId = Guid.NewGuid();
-        var sessionSockets = SocketsBySession.GetOrAdd(sessionId, _ => new ConcurrentDictionary<Guid, WebSocket>());
-        sessionSockets[socketId] = socket;
-
-        await SendJsonAsync(socket, new
-        {
-            type = "connected",
-            sessionId,
-            version = ProtocolVersion,
-            envelopeId = Guid.NewGuid().ToString("N"),
-            sequence = 1,
-            serverTimeUtc = DateTime.UtcNow.ToString("O")
-        });
-
-        var buffer = new byte[8 * 1024];
-        try
-        {
-            while (socket.State == WebSocketState.Open && !context.RequestAborted.IsCancellationRequested)
-            {
-                var payload = await ReceiveTextMessageAsync(socket, buffer, context.RequestAborted);
-                if (payload == null)
-                    break;
-                if (string.IsNullOrWhiteSpace(payload))
-                    continue;
-
-                await BroadcastAsync(sessionId, new
-                {
-                    type = "event",
-                    version = ProtocolVersion,
-                    sessionId,
-                    sequence = NextServerSequence(sessionId),
-                    envelopeId = Guid.NewGuid().ToString("N"),
-                    serverTimeUtc = DateTime.UtcNow.ToString("O"),
-                    payload = ParseOrRaw(payload)
-                });
-            }
-        }
-        finally
-        {
-            sessionSockets.TryRemove(socketId, out _);
-            if (sessionSockets.IsEmpty)
-                SocketsBySession.TryRemove(sessionId, out _);
-        }
+        using var socket = await context.WebSockets.AcceptWebSocketAsync();
+        await Hub.AcceptAsync(socket, sessionId, context.RequestAborted);
     }
 
     private static async Task<IResult> HandleEnvelopeAsync(string sessionId, string envelopeType, HttpContext context)
@@ -183,21 +138,10 @@ public static class EmbeddedUiHostRuntime
             return Results.Unauthorized();
 
         using var reader = new StreamReader(context.Request.Body, Encoding.UTF8);
-        var payloadText = await reader.ReadToEndAsync();
-        var payload = ParseOrRaw(payloadText);
-        var envelope = new
-        {
-            type = envelopeType,
-            version = ProtocolVersion,
-            sessionId,
-            sequence = NextServerSequence(sessionId),
-            envelopeId = Guid.NewGuid().ToString("N"),
-            serverTimeUtc = DateTime.UtcNow.ToString("O"),
-            payload
-        };
-        LastEnvelopeBySession[sessionId] = envelope;
-        await BroadcastAsync(sessionId, envelope);
-        return Results.Ok(new { delivered = true, protocolVersion = ProtocolVersion });
+        var error = Hub.Publish(sessionId, envelopeType, await reader.ReadToEndAsync());
+        return error == null
+            ? Results.Ok(new { delivered = true, protocolVersion = UiHostHub.ProtocolVersion })
+            : Results.BadRequest(new { error });
     }
 
     private static bool AuthorizeRequest(HttpContext context)
@@ -208,71 +152,6 @@ public static class EmbeddedUiHostRuntime
         if (!context.Request.Headers.TryGetValue("X-Malda-UI-Auth", out var token))
             token = context.Request.Query["token"];
         return string.Equals(token.ToString(), authToken, StringComparison.Ordinal);
-    }
-
-    private static object ParseOrRaw(string text)
-    {
-        try
-        {
-            return JsonSerializer.Deserialize<object>(text) ?? new { raw = text };
-        }
-        catch
-        {
-            return new { raw = text };
-        }
-    }
-
-    private static int NextServerSequence(string sessionId) =>
-        SequenceBySession.AddOrUpdate(sessionId, 1, (_, current) => current + 1);
-
-    private static async Task BroadcastAsync(string sessionId, object message)
-    {
-        if (!SocketsBySession.TryGetValue(sessionId, out var sockets) || sockets.IsEmpty)
-            return;
-        var deadSockets = new List<Guid>();
-        foreach (var entry in sockets)
-        {
-            var socket = entry.Value;
-            if (socket.State != WebSocketState.Open)
-            {
-                deadSockets.Add(entry.Key);
-                continue;
-            }
-            try
-            {
-                await SendJsonAsync(socket, message);
-            }
-            catch
-            {
-                deadSockets.Add(entry.Key);
-            }
-        }
-        foreach (var deadSocket in deadSockets)
-            sockets.TryRemove(deadSocket, out _);
-    }
-
-    private static async Task SendJsonAsync(WebSocket socket, object message)
-    {
-        var json = JsonSerializer.Serialize(message);
-        var bytes = Encoding.UTF8.GetBytes(json);
-        await socket.SendAsync(bytes, WebSocketMessageType.Text, true, CancellationToken.None);
-    }
-
-    private static async Task<string?> ReceiveTextMessageAsync(WebSocket socket, byte[] buffer, CancellationToken cancellationToken)
-    {
-        using var stream = new MemoryStream();
-        while (true)
-        {
-            var result = await socket.ReceiveAsync(buffer, cancellationToken);
-            if (result.MessageType == WebSocketMessageType.Close)
-                return null;
-            if (result.MessageType != WebSocketMessageType.Text)
-                return null;
-            stream.Write(buffer, 0, result.Count);
-            if (result.EndOfMessage)
-                break;
-        }
-        return Encoding.UTF8.GetString(stream.ToArray());
     }
 
     private static async Task WaitForHealthAsync(string baseUrl)

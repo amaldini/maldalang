@@ -23,19 +23,19 @@ namespace MaldaLang.Tests;
 /// (<see cref="EmbeddedUiHostRuntime"/>) and the standalone <c>MaldaLang.UIHost</c> process.
 /// Each scenario posts <see cref="UiSession"/> envelopes and requires the client's tree to
 /// equal the session's tree, without a resync storm. Skipped without Node.
+/// <c>ClientProtocol_HandlesStalePatchesGapsAndVersions</c> covers the client cases a healthy
+/// host never produces.
 /// </summary>
 [Collection("Sequential")]
 public class UiHostProtocolTests : IClassFixture<UiHostProtocolTests.Hosts>
 {
-    private const string Pending = "U1 (docs/roadmap-ui-runtime.md): host and client sequence / resync handshake.";
-
     private readonly Hosts _hosts;
 
     public UiHostProtocolTests(Hosts hosts) => _hosts = hosts;
 
     public static IEnumerable<object[]> HostKinds() => new[] { new object[] { "embedded" }, new object[] { "standalone" } };
 
-    [Theory(Skip = Pending)]
+    [Theory]
     [MemberData(nameof(HostKinds))]
     public async Task Mount_ReachesAConnectedClient(string host)
     {
@@ -48,7 +48,7 @@ public class UiHostProtocolTests : IClassFixture<UiHostProtocolTests.Hosts>
         await scenario.AssertInSyncAsync(tab);
     }
 
-    [Theory(Skip = Pending)]
+    [Theory]
     [MemberData(nameof(HostKinds))]
     public async Task PatchAfterMount_UpdatesAConnectedClient(string host)
     {
@@ -62,7 +62,7 @@ public class UiHostProtocolTests : IClassFixture<UiHostProtocolTests.Hosts>
         await scenario.AssertInSyncAsync(tab);
     }
 
-    [Theory(Skip = Pending)]
+    [Theory]
     [MemberData(nameof(HostKinds))]
     public async Task LateClient_GetsTheCurrentTree(string host)
     {
@@ -76,7 +76,7 @@ public class UiHostProtocolTests : IClassFixture<UiHostProtocolTests.Hosts>
         await scenario.AssertInSyncAsync(tab);
     }
 
-    [Theory(Skip = Pending)]
+    [Theory]
     [MemberData(nameof(HostKinds))]
     public async Task Reconnect_CatchesUpOnAMissedPatch(string host)
     {
@@ -92,7 +92,7 @@ public class UiHostProtocolTests : IClassFixture<UiHostProtocolTests.Hosts>
         await scenario.AssertInSyncAsync(tab);
     }
 
-    [Theory(Skip = Pending)]
+    [Theory]
     [MemberData(nameof(HostKinds))]
     public async Task TwoTabs_BothFollowPatches(string host)
     {
@@ -106,6 +106,46 @@ public class UiHostProtocolTests : IClassFixture<UiHostProtocolTests.Hosts>
 
         await scenario.AssertInSyncAsync(first);
         await scenario.AssertInSyncAsync(second);
+    }
+
+    [Fact]
+    public void ClientProtocol_HandlesStalePatchesGapsAndVersions()
+    {
+        if (!NodeTab.NodeAvailable())
+            return;
+
+        NodeTab.RunScript("""
+const assert = require("assert");
+const { MaldaUiProtocol: P } = require(process.argv[2]);
+const kinds = (actions) => actions.map((a) => a.apply ? "apply" : a.send ? "send:" + a.send.type : "warn:" + a.warn.kind);
+const msg = (type, sequence, payload) => ({ type, version: P.version, sequence, payload });
+
+const s = P.createState("t");
+assert.deepStrictEqual(kinds(P.onOpen(s)), ["send:resync"]);
+assert.deepStrictEqual(kinds(P.receive(s, msg("connected", 1))), []);
+assert.deepStrictEqual(kinds(P.receive(s, msg("resync", 2, null))), []);
+assert.deepStrictEqual(kinds(P.receive(s, msg("mount", 3, { revision: 1, patches: [] }))), ["apply"]);
+assert.deepStrictEqual(kinds(P.receive(s, msg("patch", 4, { revision: 2, baseRevision: 1, patches: [] }))), ["apply"]);
+assert.strictEqual(s.revision, 2);
+
+// A patch on a revision the client never had asks for one resync, not one per patch.
+assert.deepStrictEqual(kinds(P.receive(s, msg("patch", 5, { revision: 4, baseRevision: 3, patches: [] }))), ["send:resync"]);
+assert.deepStrictEqual(kinds(P.receive(s, msg("patch", 6, { revision: 5, baseRevision: 4, patches: [] }))), []);
+assert.deepStrictEqual(kinds(P.receive(s, msg("resync", 7, { revision: 5, patches: [] }))), ["apply"]);
+assert.strictEqual(s.revision, 5);
+
+// A sequence gap is reported once and the count follows the host.
+assert.deepStrictEqual(kinds(P.receive(s, msg("ping", 9))), ["warn:sequence_gap", "send:resync", "send:pong"]);
+assert.deepStrictEqual(kinds(P.receive(s, msg("ping", 10))), ["send:pong"]);
+
+// Another protocol version is reported and never answered with a resync.
+assert.deepStrictEqual(kinds(P.receive(s, { type: "patch", version: "1.0", sequence: 11, payload: { patches: [] } })), ["warn:version_mismatch"]);
+
+// Outgoing sequence numbers restart with each socket.
+assert.strictEqual(P.outbound(s, { type: "pong" }).sequence, 1);
+P.onOpen(s);
+assert.strictEqual(P.outbound(s, { type: "pong" }).sequence, 1);
+""");
     }
 
     private static UiNode Tree(string label) =>
@@ -212,7 +252,7 @@ function run(actions) {
       tree = MaldaUiProtocol.applyPayload(tree, action.apply);
     } else if (action.send) {
       if (action.send.type === "resync") resyncs++;
-      if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(action.send));
+      if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(MaldaUiProtocol.outbound(state, action.send)));
     }
   }
 }
@@ -271,6 +311,8 @@ require("readline").createInterface({ input: process.stdin }).on("line", (line) 
             _folder = folder;
         }
 
+        private static string ClientPath => Path.Combine(PlanningPaths.RepoRoot, "MaldaLang.UIHost", "wwwroot", "malda-ui-client.js");
+
         private static string NodePath =>
             System.Environment.GetEnvironmentVariable("MALDA_NODE_PATH") is { Length: > 0 } node ? node : "node";
 
@@ -313,10 +355,41 @@ require("readline").createInterface({ input: process.stdin }).on("line", (line) 
                 CreateNoWindow = true
             };
             startInfo.ArgumentList.Add(harnessPath);
-            startInfo.ArgumentList.Add(Path.Combine(PlanningPaths.RepoRoot, "MaldaLang.UIHost", "wwwroot", "malda-ui-client.js"));
+            startInfo.ArgumentList.Add(ClientPath);
             startInfo.ArgumentList.Add(wsUrl);
             startInfo.ArgumentList.Add(sessionId);
             return new NodeTab(Process.Start(startInfo)!, folder);
+        }
+
+        /// <summary>Runs a Node script with the client path as its argument; fails the test on a non-zero exit.</summary>
+        public static void RunScript(string script)
+        {
+            var folder = Path.Combine(Path.GetTempPath(), "malda_ui_host", "script_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(folder);
+            try
+            {
+                var scriptPath = Path.Combine(folder, "script.js");
+                File.WriteAllText(scriptPath, script, NoBom);
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = NodePath,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+                startInfo.ArgumentList.Add(scriptPath);
+                startInfo.ArgumentList.Add(ClientPath);
+                using var process = Process.Start(startInfo)!;
+                var stderr = process.StandardError.ReadToEndAsync();
+                process.StandardOutput.ReadToEnd();
+                Assert.True(process.WaitForExit(30_000), "Node script timed out.");
+                Assert.True(process.ExitCode == 0, "Node script failed: " + stderr.Result);
+            }
+            finally
+            {
+                try { Directory.Delete(folder, recursive: true); } catch { }
+            }
         }
 
         public async Task<JsonObject> CommandAsync(string command)

@@ -16,6 +16,8 @@ public sealed class UiSession
     private readonly object _lock = new();
     private UiNode? _currentTree;
     private int _nextOutSequence = 1;
+    // Tree version: mount and render each add one; a patch envelope names the revision it applies to.
+    private int _revision;
     private int _expectedInSequence = 1;
     private readonly Dictionary<string, HashSet<string>> _lifecycleHooks = new(StringComparer.Ordinal);
     private int _maxEventQueueDepth = 2048;
@@ -37,6 +39,7 @@ public sealed class UiSession
         {
             Touch();
             _currentTree = root;
+            _revision++;
             var mountedComponents = OrderedComponentIds(CollectComponentIds(root));
             foreach (var componentId in mountedComponents)
             {
@@ -69,6 +72,7 @@ public sealed class UiSession
             }
 
             _currentTree = nextTree;
+            var baseRevision = _revision++;
 
             foreach (var componentId in OrderedComponentIds(newComponentIds))
             {
@@ -92,7 +96,7 @@ public sealed class UiSession
                 }
             }
 
-            return BuildPatchEnvelope("patch", patches);
+            return BuildPatchEnvelope("patch", patches, baseRevision);
         }
     }
 
@@ -218,6 +222,7 @@ public sealed class UiSession
         snapshot.Set("sessionId", RuntimeValue.String(SessionId));
         snapshot.Set("version", RuntimeValue.String(UiProtocol.Version));
         snapshot.Set("nextSequence", RuntimeValue.Integer(_nextOutSequence));
+        snapshot.Set("revision", RuntimeValue.Integer(_revision));
         snapshot.Set("expectedInboundSequence", RuntimeValue.Integer(_expectedInSequence));
         snapshot.Set("hasTree", RuntimeValue.Boolean(_currentTree != null));
         snapshot.Set("tree", _currentTree?.ToRuntimeValue() ?? RuntimeValue.Null());
@@ -240,7 +245,7 @@ public sealed class UiSession
         }
     }
 
-    private RuntimeValue BuildPatchEnvelope(string messageType, List<UiPatch> patches)
+    private RuntimeValue BuildPatchEnvelope(string messageType, List<UiPatch> patches, int? baseRevision = null)
     {
         var patchValues = new List<RuntimeValue>(patches.Count);
         foreach (var patch in patches)
@@ -248,10 +253,10 @@ public sealed class UiSession
             patchValues.Add(patch.ToRuntimeValue());
         }
 
-        return BuildPatchEnvelope(messageType, patchValues);
+        return BuildPatchEnvelope(messageType, patchValues, baseRevision);
     }
 
-    private RuntimeValue BuildPatchEnvelope(string messageType, List<RuntimeValue> patchValues)
+    private RuntimeValue BuildPatchEnvelope(string messageType, List<RuntimeValue> patchValues, int? baseRevision)
     {
         var envelope = new JsonObject();
         envelope.Set("type", RuntimeValue.String(messageType));
@@ -260,6 +265,11 @@ public sealed class UiSession
         envelope.Set("sequence", RuntimeValue.Integer(_nextOutSequence++));
         envelope.Set("envelopeId", RuntimeValue.String(Guid.NewGuid().ToString("N")));
         envelope.Set("serverTimeUtc", RuntimeValue.String(DateTime.UtcNow.ToString("O")));
+        envelope.Set("revision", RuntimeValue.Integer(_revision));
+        if (baseRevision is { } applyOn)
+        {
+            envelope.Set("baseRevision", RuntimeValue.Integer(applyOn));
+        }
         envelope.Set("patches", RuntimeValue.Array(patchValues));
         envelope.Set("treeHash", RuntimeValue.String(ComputeTreeHash(_currentTree)));
         var runtimeEnvelope = RuntimeValue.Object(envelope);

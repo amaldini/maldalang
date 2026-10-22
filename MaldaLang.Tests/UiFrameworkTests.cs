@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Andrea Maldini
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
+using MaldaLang.Runtime.UI;
 using Xunit;
 
 namespace MaldaLang.Tests;
@@ -123,7 +124,7 @@ public class UiFrameworkTests : TestBase
         Assert.Contains("patch", output);
         Assert.Contains("true", output);
         Assert.Contains("resync", output);
-        Assert.Contains("1.0", output);
+        Assert.Contains(UiProtocol.Version, output);
     }
 
     [Fact]
@@ -219,7 +220,7 @@ public class UiFrameworkTests : TestBase
 
         var result = TranspiledTestRunner.CompileAndRunFromSource(source);
         Assert.Equal(0, result.ExitCode);
-        Assert.Contains("1.0", result.StdOut);
+        Assert.Contains(UiProtocol.Version, result.StdOut);
         Assert.Contains("resync", result.StdOut);
     }
 
@@ -470,7 +471,7 @@ public class UiFrameworkTests : TestBase
         Assert.Contains("Add ticket", result.StdOut);
         Assert.Contains("200", result.StdOut);
         Assert.Contains("mount", result.StdOut);
-        Assert.Contains("1.0", result.StdOut);
+        Assert.Contains(UiProtocol.Version, result.StdOut);
         Assert.Contains("resync", result.StdOut);
     }
 

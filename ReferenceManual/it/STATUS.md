@@ -38,7 +38,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | 23-durable-workflows.html | df03cb41bb5689d064e9eda4dff13a6b792cf70305b01f804d468d43f2d3b2c9 |
 | 24-agentic-runs.html | 1000af3f95a36a05f760a4ae3dccd20d324645610ddd51a69ec4322d479bfa23 |
 | 25-web-ui-hub.html | 76e211825e324c24a54677e9f3b89fba7218d67d435986a84d3e2242ae258c1b |
-| 26-web-ui.html | 07ac03fc1c54724a165440cecf393b9832c4d781f210597889a6acb3d1d61ad0 |
+| 26-web-ui.html | e2f49795378f7d98062dbc3a691da1822e3c9f42a6295d1892ff4556aee04ff4 |
 | 27-http-server-html-ui.html | 6b735cd119bb36be0d74e77f837b3325e78925ef6f8d98d79e97fd853cee75d8 |
 | 28-browser-javascript-backend.html | 3efc454bc76686cabfff5e18df4182c7b4d86357b1d781c2abecc01353f28833 |
 | 29-rest-api.html | 402f049ea17fd83036171156e2f7175154b74bc427161fe477c0801cc693c4e1 |

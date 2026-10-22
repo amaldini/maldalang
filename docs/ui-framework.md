@@ -49,18 +49,28 @@ Agent-facing gotcha: [`docs/llm/malda-gotchas.md`](llm/malda-gotchas.md)
 
 Do not pass HTML strings into `ui.mount`/`ui.render`, or treat a `@PAGE` return value as a `UiNode` tree. Combining models in one product is fine when boundaries are explicit (e.g. marketing `@PAGE` + app shell `ui.*`). IDE reports **UI1002** (Info) when a file mixes `@PAGE`/`@AIPAGE` with `ui.mount`/`ui.render`. Chooser: [`ReferenceManual/25-web-ui-hub.html`](../ReferenceManual/25-web-ui-hub.html).
 
-## Protocol shape
+## Protocol shape (1.1)
 
-`mount` and `patch` envelopes include:
+Session envelopes (`ui.mount` → `mount`, `ui.render` → `patch`, `ui.resync` → `resync`) include
+`type`, `version`, `sessionId`, `envelopeId`, `revision`, `patches[]`, and on `patch` also
+`baseRevision`. `revision` versions the tree: mount and render each add one, and a patch
+applies only on top of `baseRevision`.
 
-- `type`
-- `version`
-- `sequence`
-- `envelopeId`
-- `sessionId`
-- `patches[]`
+The host (`MaldaLang.UIHost/UiHostHub.cs`, shared by the embedded and the standalone host)
+wraps each session envelope as the `payload` of a socket message. Two counters, two jobs:
 
-Control envelopes: `ack` / `nack`, `error`, `resync`.
+| Counter | Scope | Purpose |
+|---------|-------|---------|
+| `sequence` | one WebSocket, each direction | message order; restarts at 1 on every connection (`connected` = 1) |
+| `revision` / `baseRevision` | one session | tree version; the client asks for a resync when a patch's `baseRevision` is not the revision it holds |
+
+The hub keeps each session's tree by applying the published patches (`UiTreePatcher`), so
+`resync` always answers with one root `ReplaceNode` of the current tree (payload `null` before
+the first mount). The client keeps at most one resync in flight. Socket messages from the
+host: `connected`, `mount`, `patch`, `resync`, `ack` (for client `event`s), `nack`, `error`,
+`ping`. From the client: `event`, `resync`, `pong`. A version mismatch is reported, never
+answered with a resync. Publishing: `POST /ui/mount/{sessionId}` and `/ui/patch/{sessionId}`
+with the session envelope as the body; a body without `patches` or `revision` gets 400.
 
 Patch operations: `ReplaceNode`, `SetProp`, `RemoveProp`, `InsertChild`, `RemoveChild`,
 `MoveChild` (`from` → `index`: take the child out, then insert it into the shortened list).
@@ -69,7 +79,7 @@ Patches apply in order and every index is the position at that moment. Children 
 by key when every child of both lists has a distinct non-empty `key`; otherwise by index.
 The keyed diff first removes vanished keys (highest index first), then walks the new order,
 moving or inserting each child into place before diffing it. `UiPatchFuzzTests` checks that
-the patches rebuild the new tree in both the C# test applier and `MaldaUiCore` (the pure
+the patches rebuild the new tree in both the host's `UiTreePatcher` and `MaldaUiCore` (the pure
 patch core at the top of `malda-ui-client.js`, loadable from Node). `MaldaUiProtocol`, next to
 it, is the client's sequence / ack / resync state machine; `UiHostProtocolTests` drives it over a
 real WebSocket against the embedded and the standalone host.
