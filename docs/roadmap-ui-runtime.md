@@ -1,6 +1,6 @@
 # MALDA web UI runtime roadmap
 
-**Status:** U0–U3 landed 2026-10-22; U3b–U7 open  
+**Status:** U0–U3b landed 2026-10-22; U4–U7 open  
 **Created:** 2026-10-22  
 **Audience:** maintainers working on `ui.*`, `MaldaLang.UIHost` and `malda-ui-client.js`
 
@@ -156,6 +156,16 @@ UI1001 stays: `ui.dispatchEvent` is still the offline and test path.
 - Check first whether a blocking or timed `ui.pullEvent` exists; add one if `ui.run` needs it.
 - Full new built-in checklist (AGENTS.md): arity, dispatch, registry + inventory, manual,
   `sync-llm-builtins-tsv.ps1`, interpret + transpile smoke.
+
+**Landed:** the signature takes the initial state, `ui.run(state, view, update, sessionId?)`,
+and the stop marker is `update` returning `null`; `ui.run` returns the last state. There was no
+blocking pull, and none was added as a built-in: `ui.run` waits on `UiSession.WaitForEventAsync`
+(a semaphore released by `EnqueueEvent`). Without a linked host it returns on an empty queue.
+Transpiled callbacks were one-argument only (`TranspiledDelegate` passed the first argument),
+so `WrapTranspiledDelegate` now also sets `FunctionValue.TranspiledArgsDelegate` and
+`Interpreter.InvokeTranspiledFunctionAsync` calls it. The interpreter routes `ui.run` through
+its async built-in path like `AnsiConsole.status`. Tests: `InterpretTranspilePairTests.UiRun_SameStdout`
+and `UiHostProtocolTests.Program_AnswersBrowserClicks` (loop and `ui.run`, interpret and transpile).
 
 ### U4 — Patch the DOM
 

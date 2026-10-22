@@ -97,6 +97,42 @@ public class InterpretTranspilePairTests
     }
 
     [Fact]
+    public void UiRun_SameStdout()
+    {
+        // update(state, event) is a two-argument callback: transpiled, it goes through
+        // FunctionValue.TranspiledArgsDelegate. The close event ends the loop on both backends
+        // (the transpiled program links a host, so an empty queue alone would wait).
+        InterpretTranspilePair.AssertSameFromSource(
+            """
+            var sid = "pair-run";
+
+            function view(count) {
+                return ui.column({}, [
+                    ui.text({"value": "count=" + string(count)}),
+                    ui.button({"label": "Inc"})
+                ]);
+            }
+
+            function update(count, e) {
+                io.print("event " + e["type"] + " at " + string(count));
+                if (e["type"] == "close") {
+                    return null;
+                }
+                return count + 1;
+            }
+
+            ui.dispatchEvent({"type": "click", "targetPath": "/1/", "payload": {}}, sid);
+            ui.dispatchEvent({"type": "click", "targetPath": "/1/", "payload": {}}, sid);
+            ui.dispatchEvent({"type": "close", "targetPath": "/", "payload": {}}, sid);
+            ui.dispatchEvent({"type": "click", "targetPath": "/1/", "payload": {}}, sid);
+            io.print(ui.run(0, view, update, sid));
+            io.print(ui.snapshot(sid)["tree"]["children"][0]["props"]["value"]);
+            io.print(ui.pullEvent(sid)["type"]);
+            """,
+            "ui_run");
+    }
+
+    [Fact]
     public void Truthiness_SameStdout()
     {
         InterpretTranspilePair.AssertSameFromSource(TruthinessTests.Source, "truthiness");

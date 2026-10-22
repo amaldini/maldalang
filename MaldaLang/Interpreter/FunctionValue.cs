@@ -30,6 +30,11 @@ public class FunctionValue
     public List<Decorator>? ParameterDecorators { get; set; }
     /// <summary>When set, this function wraps a transpiled C# delegate (no interpreter required).</summary>
     public Func<object, Task<object>>? TranspiledDelegate { get; set; }
+    /// <summary>
+    /// The same transpiled delegate taking every argument, set for functions that do not have
+    /// exactly one parameter (<see cref="TranspiledDelegate"/> passes only the first).
+    /// </summary>
+    public Func<object?[], Task<object?>>? TranspiledArgsDelegate { get; set; }
     
     public FunctionValue(FunctionDeclaration? declaration = null, Environment? closure = null, bool isConstructor = false, string? className = null)
     {

@@ -483,7 +483,9 @@ public partial class CSharpTranspiler
                 var uiMethodName = memberAccess2.Member;
                 var builtInMethodName = "ui" + char.ToUpper(uiMethodName[0]) + uiMethodName.Substring(1);
                 _output.Append("RuntimeHelpers.UnwrapRuntimeValue(");
-                if (uiMethodName == "generate")
+                // generate and run await; every other ui.* call is synchronous.
+                var uiAsync = uiMethodName is "generate" or "run";
+                if (uiAsync)
                 {
                     if (_canAwait)
                         _output.Append("await MaldaLang.BuiltIns.BuiltInFunctions.CallBuiltInAsync(\"");
@@ -503,7 +505,7 @@ public partial class CSharpTranspiler
                     TranspileExpression(call.Arguments[i]);
                     _output.Append(")");
                 }
-                if (uiMethodName == "generate" && !_canAwait)
+                if (uiAsync && !_canAwait)
                     _output.Append(" }, null).GetAwaiter().GetResult())");
                 else
                     _output.Append(" }, null))");

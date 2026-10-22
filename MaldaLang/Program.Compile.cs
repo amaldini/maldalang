@@ -1089,6 +1089,7 @@ partial class Program
                source.Contains("ui.dispatchEvent(", StringComparison.Ordinal) ||
                source.Contains("uiDispatchEvent(", StringComparison.Ordinal) ||
                source.Contains("ui.pullEvent(", StringComparison.Ordinal) ||
-               source.Contains("uiPullEvent(", StringComparison.Ordinal);
+               source.Contains("uiPullEvent(", StringComparison.Ordinal) ||
+               source.Contains("ui.run(", StringComparison.Ordinal);
     }
 }

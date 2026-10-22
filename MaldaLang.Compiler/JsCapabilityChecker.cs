@@ -402,7 +402,7 @@ public static class JsCapabilityChecker
         "uiDrawer", "uiDataGrid", "uiTreeView", "uiPaginator", "uiEmptyState", "uiBadge", "uiToast", "uiSkeleton",
         "uiSpinner", "uiErrorBoundary", "uiSlot", "uiWithSlot", "uiWhen", "uiChoose", "uiEach", "uiTemplate", "uiPartial",
         "uiLayout", "uiRenderList", "uiCrudModel", "uiCrudControls", "uiCrudSchema", "uiMount", "uiMountEnvelope",
-        "uiRender", "uiDispatchEvent", "uiPullEvent", "uiState", "uiGetState", "uiSetState", "uiPinState", "uiUnpinState",
+        "uiRender", "uiDispatchEvent", "uiPullEvent", "uiRun", "uiState", "uiGetState", "uiSetState", "uiPinState", "uiUnpinState",
         "uiInvalidate", "uiOnInit", "uiOnPreRender", "uiOnLoad", "uiOnDispose", "uiOnMount", "uiOnUpdate", "uiOnUnmount",
         "uiOnError", "uiConfigure", "uiSnapshot", "uiResync", "uiSessionId", "uiRedirectWithSession"
     ];

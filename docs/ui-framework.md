@@ -49,20 +49,28 @@ For interactive `ui.*` sessions, keep this order after each client event:
 
 Skipping `pullEvent` (or updating state) before `render` leaves the queue full and the UI looks stuck. IDE/LSP reports **UI1001** for linear `dispatchEvent` → `render`/`mount` without an intervening `pullEvent`.
 
-A live loop, as `UiHostProtocolTests.Program_AnswersBrowserClicks` runs it on both backends:
+`ui.run(state, view, update, sessionId?)` is this loop as one call:
 
 ```malda
-ui.mount(view(count), sid);
-while (running) {
-    var e = ui.pullEvent(sid);
-    if (e == null) {
-        sleep(20);
-    } else {
-        // update state from e["type"], e["targetPath"], e["payload"]
-        ui.render(view(count), sid);
+function update(count, e) {
+    if (e["type"] == "close") {
+        return null;  // ends ui.run, which returns the last state
     }
+    return count + 1;
 }
+
+var last = ui.run(0, view, update, sid);
 ```
+
+It mounts `view(state)`, then for each event sets `state = update(state, event)` and renders
+`view(state)`. While `UiHostLink` is attached it waits on the session queue
+(`UiSession.WaitForEventAsync`, no polling) and stops only when `update` returns `null`; with
+no host it also stops on an empty queue, since nothing can arrive any more. The CLI and
+transpiled programs always attach, so offline programs end the loop with an event that
+`update` answers with `null`. In transpiled programs `update` is a two-argument delegate:
+`WrapTranspiledDelegate` sets `FunctionValue.TranspiledArgsDelegate`, and built-ins call it
+through `Interpreter.InvokeTranspiledFunctionAsync`. `UiHostProtocolTests.Program_AnswersBrowserClicks`
+runs the counter both ways (hand-written loop and `ui.run`) on both backends.
 
 Canonical offline example: [`Examples/Web/ui_event_loop.malda`](../Examples/Web/ui_event_loop.malda)  
 Showcase: [`Examples/Web/ui_counter_dashboard.malda`](../Examples/Web/ui_counter_dashboard.malda)  

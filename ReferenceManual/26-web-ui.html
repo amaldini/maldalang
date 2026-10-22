@@ -321,7 +321,8 @@ componentStatePin("brain", "ask-shared");</code></pre>
             <li>Render lifecycle: <code>ui.mount(rootNode, sessionId?)</code>, <code>ui.render(rootNode, sessionId?)</code>. Both return their envelope. When the program runs the in-process UI host (the CLI and transpiled programs start it for programs that use <code>ui.mount</code> / <code>ui.render</code>), both also send it to every browser open on that session (<code>/ui/ws/{sessionId}</code>).</li>
             <li>Envelope helper: <code>ui.mountEnvelope(rootNode, sessionId?, options?)</code> for mount + snapshot + resync in one call.</li>
             <li>Lifecycle subscriptions: <code>ui.onInit(componentId, sessionId?)</code>, <code>ui.onPreRender(componentId, sessionId?)</code>, <code>ui.onLoad(componentId, sessionId?)</code>, <code>ui.onDispose(componentId, sessionId?)</code>, <code>ui.onMount(componentId, sessionId?)</code>, <code>ui.onUpdate(componentId, sessionId?)</code>, <code>ui.onUnmount(componentId, sessionId?)</code>, <code>ui.onError(componentId, sessionId?)</code></li>
-            <li>Event pipeline: <code>ui.dispatchEvent(eventObj, sessionId?, sequence?)</code>, <code>ui.pullEvent(sessionId?)</code>. <code>sessionId</code> is always the second argument (string); <code>sequence</code> is the optional third (integer). Do not pass sequence as the second argument. Browser events reach the same queue through the host; <code>ui.dispatchEvent</code> queues one by hand, for offline programs and tests. <code>ui.pullEvent</code> returns <code>null</code> at once when the queue is empty, so a live program polls with a short <code>sleep</code> between empty pulls.</li>
+            <li>Event loop: <code>ui.run(state, view, update, sessionId?)</code> — see 26.3.3.3.</li>
+            <li>Event pipeline: <code>ui.dispatchEvent(eventObj, sessionId?, sequence?)</code>, <code>ui.pullEvent(sessionId?)</code>. <code>sessionId</code> is always the second argument (string); <code>sequence</code> is the optional third (integer). Do not pass sequence as the second argument. Browser events reach the same queue through the host; <code>ui.dispatchEvent</code> queues one by hand, for offline programs and tests. <code>ui.pullEvent</code> returns <code>null</code> at once when the queue is empty, so a hand-written live loop sleeps briefly between empty pulls; <code>ui.run</code> waits without polling.</li>
             <li><strong>Correct loop:</strong> <code>pullEvent</code> → update state → rebuild tree → <code>ui.render</code>. Skipping pull leaves the queue full (IDE <code>UI1001</code>). Offline golden: <code>Examples/Web/ui_event_loop.malda</code>. Engine notes: <code>docs/ui-framework.md</code>.</li>
             <li>State: <code>ui.state(componentId, key, defaultValue, scope?)</code> (get-or-create — persists default), <code>ui.getState(componentId, key, defaultValue?, scope?)</code> (peek — does not write), <code>ui.setState(componentId, key, value, scope?)</code>, <code>ui.pinState(componentId, scope?)</code>, <code>ui.unpinState(componentId, scope?)</code></li>
             <li>Invalidation: <code>ui.invalidate(channel, payload?)</code></li>
@@ -355,7 +356,7 @@ return ui.redirectWithSession("/web/items", body, "items-ui");</code></pre>
 ui.onUpdate("CounterRoot", sessionId);
 ui.onUnmount("CounterRoot", sessionId);</code></pre>
         <h4>26.3.3.1 How a ui.* session is hosted</h4>
-        <p>A program that calls <code>ui.mount</code> or <code>ui.mountEnvelope</code> can start the embedded UIHost (CLI and Desktop). That host is <em>not</em> <code>HttpServer</code> / <code>@PAGE</code> — those stay in <a href="27-http-server-html-ui.html">27. HttpServer &amp; HTML UI Generation</a>.</p>
+        <p>A program that calls <code>ui.mount</code>, <code>ui.mountEnvelope</code>, <code>ui.render</code> or <code>ui.run</code> starts the embedded UIHost (CLI, Desktop and transpiled programs). That host is <em>not</em> <code>HttpServer</code> / <code>@PAGE</code> — those stay in <a href="27-http-server-html-ui.html">27. HttpServer &amp; HTML UI Generation</a>.</p>
         <ul>
             <li>The browser client is <code>malda-ui-client.js</code>. The session key is the <code>sessionId</code> you pass to <code>ui.mount</code>.</li>
             <li>Typical endpoints: WebSocket <code>/ui/ws/{sessionId}</code>, plus HTTP mount/patch forwarding under <code>/ui/mount/{sessionId}</code> and <code>/ui/patch/{sessionId}</code>.</li>
@@ -395,6 +396,29 @@ if (evt != null) {
 var patched = ui.render(buildView(count), sessionId);
 print(patched.type);
 print(count);</code></pre>
+        <h4>26.3.3.3 ui.run (the loop, written for you)</h4>
+        <p><code>ui.run(state, view, update, sessionId?)</code> runs the loop above: it mounts <code>view(state)</code>, then for each event sets <code>state = update(state, event)</code> and renders <code>view(state)</code>. <code>view</code> and <code>update</code> are functions; the event is the object <code>ui.pullEvent</code> returns (<code>type</code>, <code>targetPath</code>, <code>payload</code>). With the UI host running (the CLI and transpiled programs start it), <code>ui.run</code> waits for browser events without polling and returns only when <code>update</code> returns <code>null</code>; it then returns the last state. Without a host (tests, embedded interpreters) it also returns once the queue is empty. An offline program therefore ends the loop with an event that <code>update</code> answers with <code>null</code>:</p>
+        <pre><code data-run="true" data-expect="2">var sid = "rm-ui-run";
+
+function view(count) {
+    return ui.column({}, [
+        ui.text({"value": "count=" + string(count)}),
+        ui.button({"label": "Inc"})
+    ]);
+}
+
+function update(count, e) {
+    if (e.type == "close") {
+        return null;
+    }
+    return count + 1;
+}
+
+// Offline: queue two clicks and a close. Live, events come from the browser.
+ui.dispatchEvent({"type": "click", "targetPath": "/1/", "payload": {}}, sid);
+ui.dispatchEvent({"type": "click", "targetPath": "/1/", "payload": {}}, sid);
+ui.dispatchEvent({"type": "close", "targetPath": "/", "payload": {}}, sid);
+print(ui.run(0, view, update, sid));</code></pre>
         <h3>26.3.4 UI control catalog</h3>
         <p>UI controls follow a consistent signature: <code>ui.control(props, children?, key?)</code>.</p>
         <ul>

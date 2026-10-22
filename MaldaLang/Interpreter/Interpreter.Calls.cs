@@ -98,8 +98,8 @@ public partial class Interpreter
         }
 
         // Transpiled callbacks (e.g. GraphMemory custom embedders) have no Declaration.
-        if (function.TranspiledDelegate != null)
-            return await InvokeTranspiledDelegateAsync(function.TranspiledDelegate, arguments);
+        if (function.TranspiledDelegate != null || function.TranspiledArgsDelegate != null)
+            return await InvokeTranspiledFunctionAsync(function, arguments);
         
         if (function.Declaration == null)
         {
@@ -358,32 +358,39 @@ public partial class Interpreter
         }
     }
 
-    private static async Task<RuntimeValue> InvokeTranspiledDelegateAsync(
-        Func<object, Task<object>> delegateFn,
-        List<RuntimeValue> arguments)
+    /// <summary>
+    /// Calls a transpiled C# function value with no interpreter: built-ins that take callbacks
+    /// (<c>ui.run</c>, GraphMemory embedders, …) use it in C# transpiled programs. Every argument
+    /// goes through <see cref="FunctionValue.TranspiledArgsDelegate"/> when the function has one.
+    /// </summary>
+    public static async Task<RuntimeValue> InvokeTranspiledFunctionAsync(FunctionValue function, List<RuntimeValue> arguments)
     {
-        // GraphMemory / VectorDB calculators are unary; multi-arg transpiled funcs are rare here.
-        object? input = null;
-        if (arguments.Count > 0)
+        if (function.TranspiledArgsDelegate != null)
         {
-            var arg = arguments[0];
-            input = arg.Type switch
-            {
-                ValueType.Integer => arg.AsInteger(),
-                ValueType.Float => arg.AsFloat(),
-                ValueType.String => arg.AsString(),
-                ValueType.Boolean => arg.AsBoolean(),
-                ValueType.Array => arg.AsArray(),
-                ValueType.Object => arg.AsObject(),
-                ValueType.Function => arg.AsFunction(),
-                ValueType.Null => null,
-                _ => arg
-            };
+            var inputs = arguments.Select(ToTranspiledArgument).ToArray();
+            return CoerceTranspiledDelegateResult(await function.TranspiledArgsDelegate(inputs).ConfigureAwait(false));
         }
 
-        var result = await delegateFn(input!).ConfigureAwait(false);
+        if (function.TranspiledDelegate == null)
+            throw new RuntimeException("Function value has no transpiled delegate.");
+
+        var input = arguments.Count > 0 ? ToTranspiledArgument(arguments[0]) : null;
+        var result = await function.TranspiledDelegate(input!).ConfigureAwait(false);
         return CoerceTranspiledDelegateResult(result);
     }
+
+    private static object? ToTranspiledArgument(RuntimeValue arg) => arg.Type switch
+    {
+        ValueType.Integer => arg.AsInteger(),
+        ValueType.Float => arg.AsFloat(),
+        ValueType.String => arg.AsString(),
+        ValueType.Boolean => arg.AsBoolean(),
+        ValueType.Array => arg.AsArray(),
+        ValueType.Object => arg.AsObject(),
+        ValueType.Function => arg.AsFunction(),
+        ValueType.Null => null,
+        _ => arg
+    };
 
     private static RuntimeValue CoerceTranspiledDelegateResult(object? result)
     {

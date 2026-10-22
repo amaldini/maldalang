@@ -527,6 +527,11 @@ public partial class Interpreter
         {
             return await stdLibModule.CallMethodAsync(methodName, arguments, this);
         }
+        if (instance is BuiltIns.UiFrameworkInstance uiFramework && methodName == "run")
+        {
+            // ui.run awaits browser events and calls back into the program.
+            return await uiFramework.CallMethodAsync(methodName, arguments, this);
+        }
         // For other instances, try sync method
         return CallBuiltInMethod(instance, methodName, arguments);
     }

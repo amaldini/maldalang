@@ -238,8 +238,9 @@ public partial class Interpreter
                             return WrapCallAsTask(() => CallBuiltInMethodAsync(func.BuiltInInstance, methodName, arguments));
                         return await CallBuiltInMethodAsync(func.BuiltInInstance, methodName, arguments);
                     }
-                    if (func.BuiltInInstance is StdLibModuleInstance &&
-                        StdLibModuleInstance.RequiresAsyncCall(methodName))
+                    if ((func.BuiltInInstance is StdLibModuleInstance &&
+                         StdLibModuleInstance.RequiresAsyncCall(methodName)) ||
+                        (func.BuiltInInstance is UiFrameworkInstance && methodName == "run"))
                     {
                         if (returnTask)
                             return WrapCallAsTask(() => CallBuiltInMethodAsync(func.BuiltInInstance, methodName, arguments));

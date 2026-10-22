@@ -138,21 +138,13 @@ public class UiHostProtocolTests : IClassFixture<UiHostProtocolTests.Hosts>
         }
     }
 
-    public static IEnumerable<object[]> Backends() => new[] { new object[] { "interpret" }, new object[] { "transpile" } };
+    public static IEnumerable<object[]> Programs() =>
+        from backend in new[] { "interpret", "transpile" }
+        from style in new[] { "loop", "run" }
+        select new object[] { backend, style };
 
-    [Theory]
-    [MemberData(nameof(Backends))]
-    public async Task Program_AnswersBrowserClicks(string backend)
-    {
-        if (!NodeTab.NodeAvailable())
-            return;
-
-        const string sessionId = "counter";
-        var url = $"http://127.0.0.1:{Hosts.FreePort()}";
-        var folder = Path.Combine(Path.GetTempPath(), "malda_ui_host", "program_" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(folder);
-        var programPath = Path.Combine(folder, "counter.malda");
-        File.WriteAllText(programPath, """
+    /// <summary>The counter as a hand-written pull loop, ending at count 2.</summary>
+    private const string LoopCounter = """
 var sid = "counter";
 
 function view(n) {
@@ -177,7 +169,47 @@ while (count < 2) {
     }
 }
 io.print("done");
-""");
+""";
+
+    /// <summary>The counter on <c>ui.run</c>, ending on a close event.</summary>
+    private const string RunCounter = """
+var sid = "counter";
+
+function view(n) {
+    return ui.column({}, [
+        ui.text({"value": "count=" + string(n)}),
+        ui.button({"label": "Inc"})
+    ]);
+}
+
+function update(n, e) {
+    if (e["type"] == "close") {
+        return null;
+    }
+    if (e["type"] == "click") {
+        return n + 1;
+    }
+    return n;
+}
+
+io.print("mounted");
+var last = ui.run(0, view, update, sid);
+io.print("done");
+""";
+
+    [Theory]
+    [MemberData(nameof(Programs))]
+    public async Task Program_AnswersBrowserClicks(string backend, string style)
+    {
+        if (!NodeTab.NodeAvailable())
+            return;
+
+        const string sessionId = "counter";
+        var url = $"http://127.0.0.1:{Hosts.FreePort()}";
+        var folder = Path.Combine(Path.GetTempPath(), "malda_ui_host", "program_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        var programPath = Path.Combine(folder, "counter.malda");
+        File.WriteAllText(programPath, style == "run" ? RunCounter : LoopCounter);
 
         var startInfo = new ProcessStartInfo(backend == "transpile" ? CompileTranspiled(programPath) : "dotnet")
         {
@@ -208,6 +240,8 @@ io.print("done");
 
             await tab.CommandAsync("""event {"eventType":"click","targetPath":"/1/","payload":{}}""");
             await WaitForTextAsync(tab, "count=2");
+            // Ends ui.run; the loop program has already stopped by itself.
+            await tab.CommandAsync("""event {"eventType":"close","targetPath":"/","payload":{}}""");
             Assert.Equal("done", await ReadLineAsync(program, stderr));
         }
         finally

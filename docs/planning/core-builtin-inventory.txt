@@ -4,7 +4,7 @@
 # Format: symbol -> tier | note
 # Optional-pack / vertical symbols must NOT appear here (enforced by OptionalPackRegistryGuardTests)
 
-# count: 375
+# count: 376
 
 abs -> tier1-core | BuiltInRegistry
 acos -> stdlib-general | BuiltInRegistry
@@ -344,6 +344,7 @@ uiRender -> platform-ui | BuiltInRegistry
 uiRenderList -> platform-ui | BuiltInRegistry
 uiResync -> platform-ui | BuiltInRegistry
 uiRow -> platform-ui | BuiltInRegistry
+uiRun -> platform-ui | BuiltInRegistry
 uiSelect -> platform-ui | BuiltInRegistry
 uiSessionId -> platform-ui | BuiltInRegistry
 uiSetState -> platform-ui | BuiltInRegistry

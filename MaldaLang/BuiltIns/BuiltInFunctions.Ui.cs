@@ -547,6 +547,51 @@ public static partial class BuiltInFunctions
         return RuntimeValue.Null();
     }
 
+    /// <summary>
+    /// <c>ui.run(state, view, update, sessionId?)</c>: mounts <c>view(state)</c>, then for each queued
+    /// event sets <c>state = update(state, event)</c> and renders <c>view(state)</c>. <c>update</c>
+    /// returning <c>null</c> ends the loop. Without a linked host (offline programs, tests) the loop
+    /// also ends once the queue is empty, because no event can arrive any more; with one it waits
+    /// for browser events. Returns the last state.
+    /// </summary>
+    private static async Task<RuntimeValue> BuiltInUiRunAsync(List<RuntimeValue> args, Interpreter? interpreter)
+    {
+        BuiltInArity.Require("uiRun", args, 3, 4, "state, view, update, sessionId?");
+        if (args[1].Type != ValueType.Function || args[2].Type != ValueType.Function)
+            throw new Exception("ui.run() expects view and update to be functions: ui.run(state, view, update, sessionId?)");
+
+        var view = args[1].AsFunction();
+        var update = args[2].AsFunction();
+        var sessionId = args.Count == 4 && args[3].Type == ValueType.String ? args[3].AsString() : "default";
+        var session = UiSessionRegistry.GetOrCreate(sessionId);
+        var state = args[0];
+
+        session.Mount(UiNode.FromRuntimeValue(await CallUiCallbackAsync(view, new List<RuntimeValue> { state }, interpreter)));
+        while (true)
+        {
+            if (!session.TryDequeueEvent(out var uiEvent) || uiEvent == null)
+            {
+                if (!UiHostLink.IsAttached)
+                    return state;
+                await session.WaitForEventAsync(TimeSpan.FromSeconds(1));
+                continue;
+            }
+
+            var next = await CallUiCallbackAsync(update, new List<RuntimeValue> { state, uiEvent.ToRuntimeValue() }, interpreter);
+            if (next.Type == ValueType.Null)
+                return state;
+
+            state = next;
+            session.Render(UiNode.FromRuntimeValue(await CallUiCallbackAsync(view, new List<RuntimeValue> { state }, interpreter)));
+        }
+    }
+
+    /// <summary>Calls a <c>ui.run</c> callback: through the interpreter, or as a transpiled delegate when there is none.</summary>
+    private static Task<RuntimeValue> CallUiCallbackAsync(FunctionValue callback, List<RuntimeValue> args, Interpreter? interpreter) =>
+        interpreter != null
+            ? interpreter.CallFunctionAsync(callback, args)
+            : MaldaLang.Interpreter.Interpreter.InvokeTranspiledFunctionAsync(callback, args);
+
     private static RuntimeValue BuiltInUiState(List<RuntimeValue> args)
     {
         if (args.Count < 3 || args.Count > 4 || args[0].Type != ValueType.String || args[1].Type != ValueType.String)

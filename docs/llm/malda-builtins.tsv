@@ -374,6 +374,7 @@ uiRender	uiRender	rootNode and optional sessionId
 uiRenderList	uiRenderList	items array, source string, optional itemName		
 uiResync	uiResync	optional sessionId		
 uiRow	uiRow			
+uiRun	uiRun	3-4 arguments: (state, view, update, sessionId?)		
 uiSelect	uiSelect			
 uiSessionId	uiSessionId	source and optional defaultSessionId		
 uiSetState	uiSetState	componentId, key, value, optional scope		

@@ -13,6 +13,8 @@ using MaldaLang.Interpreter;
 public sealed class UiSession
 {
     private readonly ConcurrentQueue<UiEvent> _events = new();
+    // Released when an event is queued, so WaitForEventAsync wakes without polling.
+    private readonly SemaphoreSlim _eventSignal = new(0);
     private readonly object _lock = new();
     private UiNode? _currentTree;
     private int _nextOutSequence = 1;
@@ -117,6 +119,24 @@ public sealed class UiSession
         }
 
         _events.Enqueue(uiEvent);
+        if (_eventSignal.CurrentCount == 0)
+        {
+            _eventSignal.Release();
+        }
+    }
+
+    /// <summary>
+    /// Waits until an event may be queued or <paramref name="timeout"/> passes. A wake-up can be
+    /// spurious, so callers dequeue again and wait again on an empty queue.
+    /// </summary>
+    public async Task WaitForEventAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
+    {
+        if (!_events.IsEmpty)
+        {
+            return;
+        }
+
+        await _eventSignal.WaitAsync(timeout, cancellationToken).ConfigureAwait(false);
     }
 
     public bool TryDequeueEvent(out UiEvent? uiEvent)

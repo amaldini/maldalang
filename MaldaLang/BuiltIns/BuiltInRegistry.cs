@@ -320,6 +320,7 @@ public static class BuiltInRegistry
             "uiRender" or
             "uiDispatchEvent" or
             "uiPullEvent" or
+            "uiRun" or
             "uiState" or
             "uiGetState" or
             "uiSetState" or
@@ -501,6 +502,6 @@ public static class BuiltInRegistry
 
     private static bool IsAsyncOnly(string name)
     {
-        return name is "input" or "sleep" or "startWorkflow" or "runWorkflowInstance";
+        return name is "input" or "sleep" or "startWorkflow" or "runWorkflowInstance" or "uiRun";
     }
 }
