@@ -507,4 +507,71 @@ public class UiFrameworkTests : TestBase
         Assert.Equal("inc", lines[1]);
         Assert.Equal("true", lines[2]);
     }
+
+    public static IEnumerable<object[]> PropSafetyCases() => new[]
+    {
+        // control, prop, value, kept
+        new object[] { "image", "src", "https://example.com/a.png", true },
+        new object[] { "image", "src", "/img/a.png", true },
+        new object[] { "image", "src", "a/b:c.png", true },
+        new object[] { "image", "src", "javascript:alert(1)", false },
+        new object[] { "image", "src", " JaVaScRiPt:alert(1)", false },
+        new object[] { "image", "src", "java\tscript:alert(1)", false },
+        new object[] { "image", "src", "\u0001javascript:alert(1)", false },
+        new object[] { "image", "src", "data:text/html,<script>alert(1)</script>", false },
+        new object[] { "image", "src", "vbscript:msgbox(1)", false },
+        new object[] { "image", "srcset", "a.png 1x, javascript:alert(1) 2x", false },
+        new object[] { "form", "action", "https://example.com/submit", true },
+        new object[] { "form", "action", "javascript:alert(1)", false },
+        new object[] { "panel", "href", "https://example.com", false },
+        new object[] { "button", "src", "https://example.com/a.png", false },
+        new object[] { "custom", "src", "https://example.com/a.png", false },
+        new object[] { "panel", "srcdoc", "<p>hi</p>", false },
+        new object[] { "button", "formaction", "https://example.com", false },
+        new object[] { "button", "FormAction", "https://example.com", false },
+        new object[] { "button", "onClick", "save", true },
+        new object[] { "button", "onclick", "alert(1)", false },
+        new object[] { "panel", "onMouseOver", "alert(1)", false },
+        new object[] { "panel", "data x", "1", false },
+        new object[] { "panel", "style", "padding: 8px; color: red", true },
+        new object[] { "panel", "style", "background: url(https://evil.example/x)", false },
+        new object[] { "panel", "style", "background: URL (x)", false },
+        new object[] { "panel", "style", "width: expression(alert(1))", false },
+        new object[] { "panel", "style", "background: u\\72l(x)", false },
+        new object[] { "panel", "style", "@import \"x.css\"", false },
+        new object[] { "panel", "style", "back/**/ground: url(x)", false },
+        new object[] { "panel", "data-row", "3", true },
+        new object[] { "text", "value", "<script>alert(1)</script>", true }
+    };
+
+    [Theory]
+    [MemberData(nameof(PropSafetyCases))]
+    public void UiNode_KeepsOnlySafeProps(string control, string prop, string value, bool kept)
+    {
+        var props = new MaldaLang.BuiltIns.JsonObject();
+        props.Set(prop, MaldaLang.Interpreter.RuntimeValue.String(value));
+        if (control == "text" && prop != "value")
+            props.Set("value", MaldaLang.Interpreter.RuntimeValue.String("x"));
+        var node = new MaldaLang.BuiltIns.JsonObject();
+        node.Set("type", MaldaLang.Interpreter.RuntimeValue.String(control));
+        node.Set("props", MaldaLang.Interpreter.RuntimeValue.Object(props));
+
+        var parsed = UiNode.FromRuntimeValue(MaldaLang.Interpreter.RuntimeValue.Object(node));
+
+        Assert.Equal(kept, parsed.Props.ContainsKey(prop));
+    }
+
+    [Fact]
+    public void UiNode_DropsAStyleObjectThatLoadsAUrl()
+    {
+        var style = new MaldaLang.BuiltIns.JsonObject();
+        style.Set("backgroundImage", MaldaLang.Interpreter.RuntimeValue.String("url(https://evil.example/x)"));
+        var props = new MaldaLang.BuiltIns.JsonObject();
+        props.Set("style", MaldaLang.Interpreter.RuntimeValue.Object(style));
+        var node = new MaldaLang.BuiltIns.JsonObject();
+        node.Set("type", MaldaLang.Interpreter.RuntimeValue.String("panel"));
+        node.Set("props", MaldaLang.Interpreter.RuntimeValue.Object(props));
+
+        Assert.False(UiNode.FromRuntimeValue(MaldaLang.Interpreter.RuntimeValue.Object(node)).Props.ContainsKey("style"));
+    }
 }

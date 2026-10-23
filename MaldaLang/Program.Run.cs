@@ -207,7 +207,8 @@ partial class Program
     {
         if (UsesUiFramework(source))
         {
-            UiHostLink.StartAsync().GetAwaiter().GetResult();
+            if (!UiHostLink.StartAsync().GetAwaiter().GetResult() && MaldaLang.UIHost.EmbeddedUiHostRuntime.StartError is { } hostError)
+                Console.Error.WriteLine("UI host not started: " + hostError);
         }
 
         var lexer = new Lexer(source, sourceFileName);

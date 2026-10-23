@@ -19,22 +19,31 @@ builder.Services.AddRateLimiter(options =>
 });
 builder.Services.AddCors(options =>
 {
+    // Loopback origins and MALDA_UI_ALLOWED_ORIGIN, the same rule as the Origin check.
     options.AddPolicy("MaldaUiCors", policy =>
-    {
-        var allowedOrigin = System.Environment.GetEnvironmentVariable("MALDA_UI_ALLOWED_ORIGIN");
-        if (string.IsNullOrWhiteSpace(allowedOrigin) || allowedOrigin == "*")
-        {
-            policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
-        }
-        else
-        {
-            policy.WithOrigins(allowedOrigin).AllowAnyHeader().AllowAnyMethod();
-        }
-    });
+        policy.SetIsOriginAllowed(UiHostSecurity.IsCrossOriginAllowed).AllowAnyHeader().AllowAnyMethod());
 });
+
+// Refuse before listening when the configured URLs are off loopback without a token...
+if (UiHostSecurity.CheckListenUrls(builder.WebHost.GetSetting(WebHostDefaults.ServerUrlsKey) ?? "http://localhost:5000") is { } urlError)
+{
+    Console.Error.WriteLine(urlError);
+    return 1;
+}
 
 var app = builder.Build();
 app.UseCors("MaldaUiCors");
 app.UseRateLimiter();
 app.MapUiHost(new UiHostHub());
-app.Run();
+await app.StartAsync();
+
+// ...and after, on the addresses actually bound (Kestrel endpoints, ASPNETCORE_HTTP_PORTS).
+if (UiHostSecurity.CheckListenUrls(string.Join(';', app.Urls)) is { } boundError)
+{
+    Console.Error.WriteLine(boundError);
+    await app.StopAsync();
+    return 1;
+}
+
+await app.WaitForShutdownAsync();
+return 0;

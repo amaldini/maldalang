@@ -194,7 +194,29 @@ There is one host, `MaldaLang.UIHost`. `UiHostRoutes.MapUiHost` maps its surface
 - WebSocket endpoint (`/ui/ws/{sessionId}`)
 - publishing (`POST /ui/mount/{sessionId}`, `POST /ui/patch/{sessionId}`)
 - heartbeat ping/pong and stale-connection eviction
-- optional auth token (`MALDA_UI_AUTH_TOKEN`)
+- WebSocket tickets (`POST /ui/ticket`)
+
+Security is on by default (`UiHostSecurity`):
+
+- **Origin.** A request with an `Origin` header (any browser page) must come from the host's
+  own origin, a loopback origin, or one listed in `MALDA_UI_ALLOWED_ORIGIN` (comma-separated;
+  `*` allows any). This covers the WebSocket and the `POST` routes, since a page on another
+  origin can send a `text/plain` POST without a CORS preflight. Requests without `Origin` are
+  not from a page and pass.
+- **Token.** With `MALDA_UI_AUTH_TOKEN` set, HTTP calls send it in `X-Malda-UI-Auth`. A
+  browser cannot set WebSocket headers, so the client trades the token for a single-use ticket
+  (30 s) at `POST /ui/ticket` and connects with `?ticket=`, a fresh one per reconnect. The
+  token never goes in a query string: open the page as `/?session=app#token=…`; the client
+  moves the fragment to `sessionStorage` and removes it from the address bar.
+- **Listening.** A host bound off loopback (`0.0.0.0`, `*`, a LAN address or hostname)
+  without a token refuses to start: the embedded host reports it in
+  `EmbeddedUiHostRuntime.StartError` (the CLI prints it), the standalone host exits with code 1.
+- **Props.** `UiNode` keeps a prop only when it is safe as a DOM attribute
+  (`UiPropSanitizer`): `on*` only for the known event props; no `srcdoc` / `formaction`;
+  URL props (`src`, `href`, `action`, …) only on a control whose spec lists them
+  (`image.src`, `form.action`) and only with `http`, `https`, `mailto`, `tel` or a
+  relative URL; `style` without `url(`, `expression(`, `@import` or escapes. The browser
+  client applies the same attribute rules to whatever a host sends it.
 
 Two ways to run it. `UiHostLink.StartAsync()` starts it in process through
 `EmbeddedUiHostRuntime.TryStartAsync()` (`MALDA_UI_HOST_URL`, default
@@ -203,8 +225,8 @@ Two ways to run it. `UiHostLink.StartAsync()` starts it in process through
 the compiler references `MaldaLang.UIHost.dll` and copies it from beside `malda.dll`. Only
 the in-process host sees the program's sessions; a program talks to a standalone host by
 posting the envelopes itself. The
-`MaldaLang.UIHost` executable is the same routes plus a CORS policy
-(`MALDA_UI_ALLOWED_ORIGIN`) and a per-IP rate limit.
+`MaldaLang.UIHost` executable is the same routes plus a CORS policy (the Origin rule above)
+and a per-IP rate limit.
 
 ## Code map
 

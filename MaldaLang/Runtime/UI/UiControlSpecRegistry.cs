@@ -87,6 +87,10 @@ public static class UiControlSpecRegistry
         ["each"] = Layout("each")
     };
 
+    /// <summary>True when <paramref name="type"/> is a known control whose spec lists <paramref name="prop"/>.</summary>
+    public static bool ListsProp(string type, string prop)
+        => Specs.TryGetValue(type, out var spec) && spec.AllowedProps.Contains(prop);
+
     public static void Validate(UiNode node)
     {
         if (!Specs.TryGetValue(node.Type, out var spec))
@@ -115,7 +119,7 @@ public static class UiControlSpecRegistry
 
             if (spec.AllowedProps.Count > 0 && !spec.AllowedProps.Contains(prop.Key))
             {
-                // Keep permissive mode for custom attrs but reject clearly dangerous values in UiNode.
+                // Other attributes stay permitted; URL props must be listed (UiPropSanitizer).
                 continue;
             }
         }

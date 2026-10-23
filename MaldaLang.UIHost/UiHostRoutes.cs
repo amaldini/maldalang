@@ -12,7 +12,8 @@ namespace MaldaLang.UIHost;
 /// The UI host's HTTP surface, the same for the embedded host (<see cref="EmbeddedUiHostRuntime"/>,
 /// used by the CLI, the Desktop IDE and transpiled programs) and the standalone
 /// <c>MaldaLang.UIHost</c> process: <c>/health</c>, the page and browser client from embedded
-/// resources, <c>/ui/ws/{sessionId}</c>, and <c>POST /ui/mount|patch/{sessionId}</c>.
+/// resources, <c>/ui/ws/{sessionId}</c>, <c>POST /ui/mount|patch/{sessionId}</c> and
+/// <c>POST /ui/ticket</c>. Origin, token and ticket rules are <see cref="UiHostSecurity"/>.
 /// </summary>
 public static class UiHostRoutes
 {
@@ -42,7 +43,13 @@ public static class UiHostRoutes
                 return;
             }
 
-            if (!Authorize(context))
+            if (!UiHostSecurity.IsOriginAllowed(context))
+            {
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                return;
+            }
+
+            if (!UiHostSecurity.IsWebSocketAuthorized(context))
             {
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                 return;
@@ -50,6 +57,14 @@ public static class UiHostRoutes
 
             using var socket = await context.WebSockets.AcceptWebSocketAsync();
             await hub.AcceptAsync(socket, sessionId, context.RequestAborted);
+        });
+        app.MapPost("/ui/ticket", (HttpContext context) =>
+        {
+            if (!UiHostSecurity.IsOriginAllowed(context))
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+            if (!UiHostSecurity.IsAuthorized(context))
+                return Results.Unauthorized();
+            return Results.Ok(new { ticket = UiHostSecurity.Tickets.Issue(), expiresInMs = (int)UiHostSecurity.Tickets.Lifetime.TotalMilliseconds });
         });
         app.MapPost("/ui/mount/{sessionId}", (string sessionId, HttpContext context) => PublishAsync(hub, sessionId, "mount", context));
         app.MapPost("/ui/patch/{sessionId}", (string sessionId, HttpContext context) => PublishAsync(hub, sessionId, "patch", context));
@@ -59,7 +74,10 @@ public static class UiHostRoutes
 
     private static async Task<IResult> PublishAsync(UiHostHub hub, string sessionId, string kind, HttpContext context)
     {
-        if (!Authorize(context))
+        // A page on another origin can POST a text/plain body without a CORS preflight.
+        if (!UiHostSecurity.IsOriginAllowed(context))
+            return Results.StatusCode(StatusCodes.Status403Forbidden);
+        if (!UiHostSecurity.IsAuthorized(context))
             return Results.Unauthorized();
 
         using var reader = new StreamReader(context.Request.Body, Encoding.UTF8);
@@ -71,17 +89,6 @@ public static class UiHostRoutes
         return error == null
             ? Results.Ok(new { delivered = true, protocolVersion = UiHostHub.ProtocolVersion })
             : Results.BadRequest(new { error });
-    }
-
-    /// <summary>Open when <c>MALDA_UI_AUTH_TOKEN</c> is unset; otherwise the header or <c>?token=</c> must match.</summary>
-    private static bool Authorize(HttpContext context)
-    {
-        var authToken = System.Environment.GetEnvironmentVariable("MALDA_UI_AUTH_TOKEN");
-        if (string.IsNullOrWhiteSpace(authToken))
-            return true;
-        if (!context.Request.Headers.TryGetValue("X-Malda-UI-Auth", out var token))
-            token = context.Request.Query["token"];
-        return string.Equals(token.ToString(), authToken, StringComparison.Ordinal);
     }
 
     private static string? ReadResource(string name)

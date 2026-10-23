@@ -360,7 +360,7 @@ ui.onUnmount("CounterRoot", sessionId);</code></pre>
         <ul>
             <li>The browser client is <code>malda-ui-client.js</code>. The session key is the <code>sessionId</code> you pass to <code>ui.mount</code>.</li>
             <li>Typical endpoints: WebSocket <code>/ui/ws/{sessionId}</code>, plus HTTP mount/patch forwarding under <code>/ui/mount/{sessionId}</code> and <code>/ui/patch/{sessionId}</code>.</li>
-            <li>Optional environment: <code>MALDA_UI_AUTH_TOKEN</code> (shared secret) and <code>MALDA_UI_ALLOWED_ORIGIN</code> (CORS).</li>
+            <li>Secure by default: only the host's own and loopback origins may connect (<code>MALDA_UI_ALLOWED_ORIGIN</code> adds more, comma-separated). <code>MALDA_UI_AUTH_TOKEN</code> sets a shared secret: open the page as <code>/?session=app#token=…</code> (a fragment, never sent to a server) and the client trades it for a single-use WebSocket ticket. A host bound off loopback refuses to start without a token.</li>
             <li>Patch protocol, envelope fields, and host internals: <a href="../docs/ui-framework.md"><code>docs/ui-framework.md</code></a>.</li>
         </ul>
         <p>To try a tree without a browser, run the offline loop below (or <code>Examples/Web/ui_event_loop.malda</code>). AI-generated trees use <code>ui.generate</code> — see <a href="27-http-server-html-ui.html">27.8.5</a>.</p>

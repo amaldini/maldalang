@@ -21,11 +21,15 @@ public static class EmbeddedUiHostRuntime
     /// <summary>The URL the host listens on once <see cref="TryStartAsync"/> succeeded.</summary>
     public static string? BaseUrl { get; private set; }
 
+    /// <summary>Why the last <see cref="TryStartAsync"/> failed, such as an off-loopback URL without a token.</summary>
+    public static string? StartError { get; private set; }
+
     /// <summary>The protocol hub behind the host's routes.</summary>
     public static UiHostHub Hub { get; } = new();
 
     /// <summary>
     /// Starts the embedded UI host if not already running. Uses MALDA_UI_HOST_URL or default http://localhost:50114.
+    /// An off-loopback URL needs <c>MALDA_UI_AUTH_TOKEN</c> (<see cref="UiHostSecurity.CheckListenUrls(string)"/>).
     /// </summary>
     public static async Task<bool> TryStartAsync()
     {
@@ -36,9 +40,17 @@ public static class EmbeddedUiHostRuntime
             _started = true;
         }
 
+        var baseUrl = ResolveBaseUrl();
+        StartError = UiHostSecurity.CheckListenUrls(baseUrl);
+        if (StartError != null)
+        {
+            lock (Gate)
+                _started = false;
+            return false;
+        }
+
         try
         {
-            var baseUrl = ResolveBaseUrl();
             var builder = WebApplication.CreateBuilder();
             // Embedded host must not spam the MALDA console (e.g. secondbrain --help).
             builder.Logging.ClearProviders();
@@ -50,8 +62,9 @@ public static class EmbeddedUiHostRuntime
             BaseUrl = baseUrl;
             return true;
         }
-        catch
+        catch (Exception ex)
         {
+            StartError = ex.Message;
             lock (Gate)
                 _started = false;
             return false;

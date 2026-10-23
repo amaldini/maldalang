@@ -407,6 +407,33 @@ const MaldaUiDom = (function () {
     const preservedAttributes = new Set(["data-ui-dirty", "data-ui-touched"]);
     const nodeKey = "__maldaNode";
 
+    // The attribute rules of UiPropSanitizer (C#), for trees from any host: no on* attributes,
+    // srcdoc or formaction; URL attributes only where the control takes one, with a safe scheme;
+    // no style that loads URLs or runs script.
+    const urlAttributesByType = { image: ["src"], icon: ["src"], form: ["action"] };
+    const urlAttributes = new Set(["href", "src", "srcset", "action", "poster", "background", "cite", "data", "codebase", "ping", "manifest", "xlink:href"]);
+    function isSafeUrl(value) {
+      const normalized = String(value).replace(/[\t\n\r]/g, "").replace(/^[\x00-\x20]+|[\x00-\x20]+$/g, "");
+      const scheme = /^([A-Za-z][A-Za-z0-9+.-]*):/.exec(normalized);
+      return !scheme || ["http", "https", "mailto", "tel"].includes(scheme[1].toLowerCase());
+    }
+    function isSafeCss(value) {
+      const compact = String(value).replace(/\/\*[\s\S]*?\*\//g, "").replace(/\s+/g, "").toLowerCase();
+      return !["\\", "url(", "image-set(", "expression(", "javascript:", "vbscript:", "@import", "behavior:", "-moz-binding"].some((t) => compact.includes(t));
+    }
+    function isSafeAttribute(type, name, value) {
+      if (!/^[A-Za-z][A-Za-z0-9_:.-]*$/.test(name) || /^on/i.test(name) || /^(srcdoc|formaction)$/i.test(name)) {
+        return false;
+      }
+      const lower = name.toLowerCase();
+      if (urlAttributes.has(lower)) {
+        return (urlAttributesByType[type] || []).includes(lower) && (lower === "srcset"
+          ? String(value).split(",").every((c) => isSafeUrl(c.trim().split(" ")[0]))
+          : isSafeUrl(value));
+      }
+      return true;
+    }
+
     function renderInto(container, tree) {
       while (container.firstChild) {
         container.removeChild(container.firstChild);
@@ -654,7 +681,7 @@ const MaldaUiDom = (function () {
           el.checked = !!value;
         } else if (key === "ariaLabel") {
           el.setAttribute("aria-label", String(value));
-        } else if (value != null && (typeof value === "string" || typeof value === "number" || typeof value === "boolean")) {
+        } else if (value != null && (typeof value === "string" || typeof value === "number" || typeof value === "boolean") && isSafeAttribute(type, key, value)) {
           el.setAttribute(key, String(value));
         }
       }
@@ -1184,7 +1211,7 @@ const MaldaUiDom = (function () {
           el.setAttribute("aria-label", String(value));
           continue;
         }
-        if (value != null && (typeof value === "string" || typeof value === "number" || typeof value === "boolean")) {
+        if (value != null && (typeof value === "string" || typeof value === "number" || typeof value === "boolean") && isSafeAttribute("", key, value)) {
           el.setAttribute(key, String(value));
         }
       }
@@ -1198,7 +1225,7 @@ const MaldaUiDom = (function () {
       }
 
       if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
-        el.style.cssText = String(value);
+        el.style.cssText = isSafeCss(value) ? String(value) : "";
         return;
       }
 
@@ -1209,7 +1236,7 @@ const MaldaUiDom = (function () {
 
       el.style.cssText = "";
       for (const [propName, propValue] of Object.entries(value)) {
-        if (propValue == null) {
+        if (propValue == null || !isSafeCss(propName) || !isSafeCss(propValue)) {
           continue;
         }
 
@@ -1525,7 +1552,7 @@ if (typeof module !== "undefined" && module.exports) {
   const params = new URLSearchParams(window.location.search);
   const sessionId = params.get("session") || "default";
   const appRoot = document.getElementById("app");
-  const authToken = params.get("token");
+  const authToken = readAuthToken();
 
   let tree = null;
   const protocol = MaldaUiProtocol.createState(sessionId);
@@ -1536,7 +1563,6 @@ if (typeof module !== "undefined" && module.exports) {
 
   const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
   const wsUrl = `${wsProtocol}://${window.location.host}/ui/ws/${encodeURIComponent(sessionId)}`;
-  const headers = authToken ? { "X-Malda-UI-Auth": authToken } : undefined;
   const reconnectBaseDelayMs = 500;
   const reconnectMaxDelayMs = 10000;
   const reconnectJitterMs = 250;
@@ -1547,7 +1573,6 @@ if (typeof module !== "undefined" && module.exports) {
   let reconnectTimerId = null;
   let manualDisconnect = false;
   const queuedOutboundMessages = [];
-  void headers; // WebSocket browser API does not support custom headers; token query param is used for now.
   connectWebSocket();
   window.addEventListener("beforeunload", () => {
     manualDisconnect = true;
@@ -1737,7 +1762,39 @@ if (typeof module !== "undefined" && module.exports) {
     }
   }
 
-  function connectWebSocket() {
+  // The host's token (MALDA_UI_AUTH_TOKEN) arrives in the fragment, #token=…, which the
+  // browser never sends to a server. It moves to sessionStorage so reloads and reconnects keep it.
+  function readAuthToken() {
+    const storageKey = "malda-ui-token";
+    const fragment = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const fromFragment = fragment.get("token");
+    if (fromFragment) {
+      fragment.delete("token");
+      const rest = fragment.toString();
+      history.replaceState(null, "", window.location.pathname + window.location.search + (rest ? "#" + rest : ""));
+      try { sessionStorage.setItem(storageKey, fromFragment); } catch (_) { /* storage blocked */ }
+      return fromFragment;
+    }
+    try { return sessionStorage.getItem(storageKey); } catch (_) { return null; }
+  }
+
+  // With a token, each connection uses a fresh single-use ticket from POST /ui/ticket.
+  async function socketUrl() {
+    if (!authToken) {
+      return wsUrl;
+    }
+    const response = await fetch("/ui/ticket", { method: "POST", headers: { "X-Malda-UI-Auth": authToken } });
+    if (response.status === 401 || response.status === 403) {
+      throw Object.assign(new Error(`ticket refused (${response.status})`), { fatal: true });
+    }
+    if (!response.ok) {
+      throw new Error(`ticket request failed (${response.status})`);
+    }
+    const { ticket } = await response.json();
+    return `${wsUrl}?ticket=${encodeURIComponent(ticket)}`;
+  }
+
+  async function connectWebSocket() {
     clearReconnectTimer();
     if (manualDisconnect) {
       return;
@@ -1745,10 +1802,16 @@ if (typeof module !== "undefined" && module.exports) {
 
     let nextSocket = null;
     try {
-      nextSocket = new WebSocket(wsUrl);
+      const url = await socketUrl();
+      if (manualDisconnect) {
+        return;
+      }
+      nextSocket = new WebSocket(url);
     } catch (err) {
-      console.error("malda-ui websocket construction failed", err);
-      scheduleReconnect();
+      console.error("malda-ui connect failed", err);
+      if (!err.fatal) {
+        scheduleReconnect();
+      }
       return;
     }
 

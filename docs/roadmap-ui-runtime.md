@@ -1,6 +1,6 @@
 # MALDA web UI runtime roadmap
 
-**Status:** U0–U5 landed 2026-10-22; U6–U7 open  
+**Status:** U0–U6 landed 2026-10-22; U7 open  
 **Created:** 2026-10-22  
 **Audience:** maintainers working on `ui.*`, `MaldaLang.UIHost` and `malda-ui-client.js`
 
@@ -222,6 +222,22 @@ focus, typed value and selection survive sibling patches, inserts, moves and cla
   `expression(`; per-control attributes from `UiControlSpecRegistry`.
 - Tests: an XSS payload table in `UiFrameworkTests`; host tests for foreign Origin and
   expired ticket.
+- **Landed:** `UiHostSecurity` (`MaldaLang.UIHost`) holds the rules for both hosts. The Origin
+  check covers the `POST` routes too (a cross-origin `text/plain` POST needs no preflight);
+  requests without `Origin` pass, as they come from no page. Tickets live 30 s and are not bound
+  to a session (the token opens every session anyway). The browser takes the token from
+  `#token=`, keeps it in `sessionStorage` and asks for a ticket before every connect; a 401 /
+  403 stops the reconnect loop. The standalone host checks the configured URLs before
+  listening and the bound addresses after (`ASPNETCORE_HTTP_PORTS`, Kestrel endpoints). Props
+  went to `UiPropSanitizer`; per-control rules apply to URL props only (`image.src`,
+  `form.action`), because examples pass props the specs do not list (`gap`, `level`,
+  `required`, …) and the client renders them as attributes. The old `<script` value check is
+  gone: the client never uses `innerHTML`, and it dropped legitimate text. The client applies the
+  same attribute and style rules, since a standalone host forwards posted trees as they are.
+  Tests: `UiHostSecurityTests` (Origin table, listed origin, foreign-origin POST, token / ticket
+  flow on a standalone host with a token, expiry, listen URLs, refusal off loopback) and
+  `UiFrameworkTests.UiNode_KeepsOnlySafeProps`. Checked in headless Edge: the fragment leaves
+  the address bar, the ticket opens the socket, a wrong token stops after one 401.
 
 ### U7 — Robustness and cleanup
 

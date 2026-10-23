@@ -43,18 +43,10 @@ public sealed class UiNode
         {
             foreach (var kvp in propsObject.GetProperties())
             {
-                var propName = kvp.Key;
-                if (IsUnsafePropName(propName))
+                if (UiPropSanitizer.IsSafe(type.AsString(), kvp.Key, kvp.Value))
                 {
-                    continue;
+                    props[kvp.Key] = kvp.Value;
                 }
-
-                if (kvp.Value.Type == ValueType.String && IsUnsafePropValue(propName, kvp.Value.AsString()))
-                {
-                    continue;
-                }
-
-                props[propName] = kvp.Value;
             }
         }
 
@@ -98,61 +90,5 @@ public sealed class UiNode
         nodeObj.Set("children", RuntimeValue.Array(childrenList));
 
         return RuntimeValue.Object(nodeObj);
-    }
-
-    private static bool IsUnsafePropName(string name)
-    {
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            return true;
-        }
-
-        if (!name.StartsWith("on", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        return name != "onClick" &&
-               name != "onChange" &&
-               name != "onInput" &&
-               name != "onSubmit" &&
-               name != "onClose" &&
-               name != "onFocus" &&
-               name != "onBlur" &&
-               name != "onRowClick" &&
-               name != "onSelectionChange" &&
-               name != "onSort" &&
-               name != "onFilter" &&
-               name != "onPageChange" &&
-               name != "onViewportChange" &&
-               name != "onNodeSelect" &&
-               name != "onNodeToggle" &&
-               name != "onNodeExpand" &&
-               name != "onNodeCollapse" &&
-               name != "onNodeActivate" &&
-               name != "onLoadChildren" &&
-               name != "onDragStart" &&
-               name != "onDragOver" &&
-               name != "onDrop" &&
-               name != "onDragEnd";
-    }
-
-    private static bool IsUnsafePropValue(string propName, string value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return false;
-        }
-
-        if (propName.Equals("href", StringComparison.OrdinalIgnoreCase) || propName.Equals("src", StringComparison.OrdinalIgnoreCase))
-        {
-            var trimmed = value.Trim();
-            if (trimmed.StartsWith("javascript:", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-        }
-
-        return value.Contains("<script", StringComparison.OrdinalIgnoreCase);
     }
 }
