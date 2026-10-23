@@ -107,6 +107,14 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — JavaScript interop, `import js`)
+
+- `import js NAME = "module";`, `import js { a, b } from "module";` and `import js global a, b;` bind JavaScript modules (npm packages, local `.js` / `.mjs` / `.cjs` files, WASM through its glue module) and `globalThis` properties on the JavaScript backend. Modules load through `import()` written into the generated file (a relative specifier resolves against it) before the first statement of `main()`; a missing module or export stops the program naming the specifier. Calls on a chain rooted at an imported name are plain JavaScript; MALDA functions pass as JavaScript callbacks, JavaScript Promises can be awaited, and a rejection is a MALDA error. `new` accepts a dotted path (`new THREE.Vector3(…)`). `js` / `global` are contextual words (`import js;` is still a package import). The interpreter and C# transpile reject `import js` with a hint to `--mode js`; the target partitioner sends it to the JavaScript half of a full-stack source; the JavaScript pre-check treats imported names as the program's own. Narrative: [`28-browser-javascript-backend.html`](../../ReferenceManual/28-browser-javascript-backend.html#js-interop), spec §14.1.
+
+#### Added (tooling — `malda test --target js`)
+
+- `malda test --target js` compiles each test file with the JavaScript backend and runs it in Node (`MALDA_NODE_PATH` overrides `node`). The program is written next to the test file for the run (`.malda-test-*.cjs`, removed afterwards) so relative `import js` specifiers and `node_modules` resolve; failures report the error's first line, the value of a MALDA `throw`, and the `.malda` location from the source map. `property` tests are reported as interpreter-only. JavaScript source maps are now written without a UTF-8 BOM, which Node's `--enable-source-maps` could not read. `scripts/run-runtime-benchmarks.ps1` gains a `js-hand` column (hand-written JavaScript twins in `benchmarks/runtime/js-baseline/`) and an `arrays` benchmark; numbers in [`docs/benchmarks.md`](../benchmarks.md). Tooling only; no Tier 0 change.
+
 #### Fixed (PATCH — C# transpile of prompts with `tools:` / `gather:`)
 
 - Building a prompt instance whose body lists `tools:` (Mode B) or `gather:` (Mode C) no longer throws `NullReferenceException` in a C#-transpiled program. The emitted tool-list loop cast the array to `List<RuntimeValue>`, which is `null` for an `ArrayInstance`; it now reads the elements with `RuntimeValue.AsArray()`. `prompt_tools_then_structured.malda` and `prompt_tools_mode.malda` are ship `pair` rows.

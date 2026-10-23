@@ -2816,8 +2816,38 @@
   {
     "file": "28-browser-javascript-backend.html",
     "level": 2,
+    "id": "js-interop",
+    "title": "28.11 JavaScript Interop (import js)"
+  },
+  {
+    "file": "28-browser-javascript-backend.html",
+    "level": 3,
     "id": "",
-    "title": "28.11 Common Pitfalls and Guidance"
+    "title": "28.11.1 What each form binds"
+  },
+  {
+    "file": "28-browser-javascript-backend.html",
+    "level": 3,
+    "id": "",
+    "title": "28.11.2 Loading and module specifiers"
+  },
+  {
+    "file": "28-browser-javascript-backend.html",
+    "level": 3,
+    "id": "",
+    "title": "28.11.3 Values across the boundary"
+  },
+  {
+    "file": "28-browser-javascript-backend.html",
+    "level": 3,
+    "id": "",
+    "title": "28.11.4 Testing on JavaScript"
+  },
+  {
+    "file": "28-browser-javascript-backend.html",
+    "level": 2,
+    "id": "",
+    "title": "28.12 Common Pitfalls and Guidance"
   },
   {
     "file": "29-rest-api.html",

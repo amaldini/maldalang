@@ -8,6 +8,7 @@ using MaldaLang.Interpreter;
 using MaldaLang.Parser;
 using MaldaLang.Parser.AST.Declarations;
 using MaldaLang.Parser.AST.Statements;
+using MaldaLang.Scaffolding;
 
 public sealed class TestCommandRunner
 {
@@ -21,6 +22,15 @@ public sealed class TestCommandRunner
         public int Seed { get; set; } = PropertyRunOptions.DefaultSeed;
         public bool WriteRegression { get; set; }
         public string? RegressionDirectory { get; set; }
+        /// <summary><c>--target js</c>: run each file on the JavaScript backend in Node.</summary>
+        public bool JavaScriptTarget { get; set; }
+    }
+
+    private readonly Func<string, string, JavaScriptCompileResult>? _compileJavaScript;
+
+    public TestCommandRunner(Func<string, string, JavaScriptCompileResult>? compileJavaScript = null)
+    {
+        _compileJavaScript = compileJavaScript;
     }
 
     public int Run(string[] args, TextWriter output, TextWriter error)
@@ -47,12 +57,15 @@ public sealed class TestCommandRunner
 
         var results = new List<TestExecutionResult>(tests.Count);
         var regressionWriter = new RegressionArtifactWriter();
+        var javaScriptRunner = options.JavaScriptTarget ? new JavaScriptTestRunner(_compileJavaScript) : null;
 
         foreach (var testPath in tests)
         {
             try
             {
-                var testResults = RunSingleTest(testPath, options, regressionWriter);
+                var testResults = javaScriptRunner != null
+                    ? RunSingleJavaScriptTest(testPath, javaScriptRunner)
+                    : RunSingleTest(testPath, options, regressionWriter);
                 results.AddRange(testResults);
             }
             catch (Exception ex)
@@ -95,6 +108,26 @@ public sealed class TestCommandRunner
         }
 
         return RunProperties(path, statements, properties, options, regressionWriter);
+    }
+
+    private static IReadOnlyList<TestExecutionResult> RunSingleJavaScriptTest(string path, JavaScriptTestRunner runner)
+    {
+        var source = File.ReadAllText(path);
+        var parser = new Parser(new Lexer(source, path).Tokenize(), path);
+        var properties = parser.Parse().OfType<PropertyDeclaration>().ToList();
+        if (properties.Count > 0)
+        {
+            return properties
+                .Select(property => new TestExecutionResult(
+                    $"{path}::{property.Name}",
+                    passed: false,
+                    "@property tests run on the interpreter only; run this file without --target js.",
+                    isProperty: true,
+                    propertyName: property.Name))
+                .ToList();
+        }
+
+        return new List<TestExecutionResult> { runner.Run(path) };
     }
 
     private static IReadOnlyList<TestExecutionResult> RunProperties(
@@ -222,6 +255,27 @@ public sealed class TestCommandRunner
                 }
 
                 options.Seed = seed;
+                continue;
+            }
+            if (arg == "--target")
+            {
+                if (i + 1 >= args.Length)
+                {
+                    error.WriteLine("malda test: --target requires a value.");
+                    return null;
+                }
+
+                var target = args[++i].Trim().ToLowerInvariant();
+                if (target is "js" or "javascript")
+                {
+                    options.JavaScriptTarget = true;
+                }
+                else if (target is not ("interpret" or "interpreter"))
+                {
+                    error.WriteLine($"malda test: unsupported --target '{target}'. Use 'interpret' or 'js'.");
+                    return null;
+                }
+
                 continue;
             }
             if (arg == "--write-regression")

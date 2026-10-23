@@ -159,6 +159,9 @@ internal static class TargetPartitioner
                     : null;
             case ClassDeclaration classDeclaration:
                 return PartitionClass(classDeclaration, backend, diagnostics);
+            case JsImportStatement:
+                // JavaScript modules exist only on the client half of a full-stack source.
+                return backend == TargetBackend.JavaScript ? statement : null;
             default:
                 return statement;
         }

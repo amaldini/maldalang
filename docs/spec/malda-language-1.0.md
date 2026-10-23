@@ -399,6 +399,11 @@ Tier 0 includes structured exception statements. Catch clauses are **type-agnost
 | `import package;` | Load installed package entry (same resolver as `using`) |
 | `import alias = package;` | Merge exports into a single namespace object bound to `alias` (not combinable with `{ … } from`) |
 | `using package;` | **Deprecated alias** of `import package;` for packages (unchanged behavior) |
+| `import js NAME = "module";` | JavaScript backend only: bind the JavaScript module namespace (npm name, relative path or URL) to `NAME` |
+| `import js { a, b } from "module";` | JavaScript backend only: bind named exports of a JavaScript module (error at load if a name is absent) |
+| `import js global a, b;` | JavaScript backend only: bind properties of `globalThis` (a missing global is `null`) |
+
+`js` and `global` are contextual words in these forms, not reserved. The interpreter and C# transpile reject `import js`; a full-stack source keeps it for its JavaScript half. JavaScript modules load before the first statement of `main()`; a relative specifier resolves against the generated `.js` file. `new` accepts a dotted path (`new THREE.Vector3(1, 2, 3)`), which interop uses to reach a constructor through a module. Narrative: [`28-browser-javascript-backend.html`](../../ReferenceManual/28-browser-javascript-backend.html#js-interop).
 
 Design note: [selective-imports.md](../selective-imports.md).
 

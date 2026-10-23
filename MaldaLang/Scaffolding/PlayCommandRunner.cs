@@ -580,6 +580,8 @@ public sealed class PlayPreviewServer : IDisposable
         [".css"] = "text/css; charset=utf-8",
         [".json"] = "application/json; charset=utf-8",
         [".map"] = "application/json; charset=utf-8",
+        // WebAssembly.instantiateStreaming refuses any other type (import js WASM glue modules).
+        [".wasm"] = "application/wasm",
         [".png"] = "image/png",
         [".jpg"] = "image/jpeg",
         [".jpeg"] = "image/jpeg",

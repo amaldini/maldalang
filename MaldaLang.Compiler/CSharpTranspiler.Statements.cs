@@ -279,6 +279,8 @@ public partial class CSharpTranspiler
             case UsingStatement:
                 // Resolved at runtime or inlined via ExpandFileImportsForTranspile
                 break;
+            case JsImportStatement:
+                throw new NotSupportedException(JsImportStatement.HostBackendMessage);
             case UsingResourceStatement usingResource:
                 TranspileProfiledStructuredStatement(statement, () => TranspileUsingResource(usingResource));
                 break;

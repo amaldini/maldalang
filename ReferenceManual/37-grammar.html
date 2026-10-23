@@ -35,7 +35,12 @@ ImportStmt  ::= "import" (
                   "{" Identifier ("," Identifier)* "}" "from" ( StringLiteral | QualifiedName )
                 | (Identifier "=")? StringLiteral
                 | (Identifier "=")? QualifiedName
+                | JsImport
                 ) ";"
+JsImport    ::= "js" ( Identifier "=" StringLiteral
+                     | "{" Identifier ("," Identifier)* "}" "from" StringLiteral
+                     | "global" Identifier ("," Identifier)*
+                     )   /* contextual "js" / "global"; JavaScript backend only */
 ExportableDecl ::= "export"? ( FunctionDecl | ClassDecl | TypeDecl | SchemaDecl
                 | "var" Identifier TypeHint? "=" Expression ";" )
 QualifiedName ::= Identifier ("." Identifier)*</code></pre>
@@ -191,7 +196,7 @@ PostfixSuffix ::= "(" ArgList? ")" | "[" Expression "]" | "." Identifier
               | "++" | "--"
 Primary     ::= Literal | Identifier | "(" Expression ")"
               | "this" | "super" | "self" | "null"
-              | "new" Identifier "(" ArgList? ")"
+              | "new" QualifiedName "(" ArgList? ")"
               | "spawn" Identifier "(" ArgList? ")"
               | "receive" "(" ")"
               | ArrayLiteral | DictLiteral | GraphLiteral | ObjectLiteral

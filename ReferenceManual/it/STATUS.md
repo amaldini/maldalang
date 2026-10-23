@@ -40,7 +40,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | 25-web-ui-hub.html | 76e211825e324c24a54677e9f3b89fba7218d67d435986a84d3e2242ae258c1b |
 | 26-web-ui.html | 6c665759559d437551490e8e4d27e7f6f53d1fc62745530cb02e73691c2fcc02 |
 | 27-http-server-html-ui.html | 6b735cd119bb36be0d74e77f837b3325e78925ef6f8d98d79e97fd853cee75d8 |
-| 28-browser-javascript-backend.html | 3efc454bc76686cabfff5e18df4182c7b4d86357b1d781c2abecc01353f28833 |
+| 28-browser-javascript-backend.html | 00267922a971979f261cc214eb2bbe131c749db2d6120462429fe07d6194486b |
 | 29-rest-api.html | 402f049ea17fd83036171156e2f7175154b74bc427161fe477c0801cc693c4e1 |
 | 30-rest-web-client.html | f5d0ae7875b6674be2b76ca56f81f9bc1d07d46aa457304a5877fe4c9d3cde83 |
 | 31-full-stack-development.html | 8bbb0756a472059508b0f0b417442f82304419ee0ae3890ea7b5351c02ef64bf |
@@ -49,6 +49,6 @@ python3 scripts/sync-reference-manual-it-status.py
 | 34-personal-assistant.html | 3ddb2a1132bde983b747bb47e7488a7d34e2602b834b8e99e9209e2d922f3cc4 |
 | 35-examples.html | bb3696f1eb22c630fd71e2db9d2f944792b9987109e10892b16a36c248125c69 |
 | 36-property-testing.html | 9ad258b88df3cfdcb2f2cee32e126fbc14f895f2e5c5b9e3ea5b23d6e9c38df9 |
-| 37-grammar.html | 6926eeb4acd7aca3702f4495bcda1b6cdccefa8f17ed32d8ed31a214ee6f38df |
+| 37-grammar.html | 5dd4e9e2db34d3828d6aa0a5f350a0c0523a3411b67a5fe6e77be45eb22a8539 |
 | 38-appendix.html | 838563eb8e07ab04a29c670af82b118baa62da469c2f9fcd9b788060515c49ee |
 | 39-appendix-gpu-billiards.html | 118bbd78f3fe96f287f1921a70c962e6d32bf0f3ea4f3591e0f0d1c22745b3ea |

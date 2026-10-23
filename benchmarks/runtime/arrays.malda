@@ -1,0 +1,21 @@
+// Numeric kernel over float arrays: indexed reads and writes in nested loops.
+var n = 2000;
+var grid = [];
+var next = [];
+for (var i = 0; i < n; i = i + 1) {
+    grid.append(math.sin(i * 0.01));
+    next.append(0.0);
+}
+for (var pass = 0; pass < 500; pass = pass + 1) {
+    for (var k = 1; k < n - 1; k = k + 1) {
+        next[k] = (grid[k - 1] + grid[k] * 2.0 + grid[k + 1]) * 0.25;
+    }
+    var swap = grid;
+    grid = next;
+    next = swap;
+}
+var sum = 0.0;
+for (var j = 0; j < n; j = j + 1) {
+    sum = sum + grid[j] * grid[j];
+}
+io.print(math.round(sum * 1000));

@@ -55,7 +55,8 @@ This document captures the current JavaScript backend design in code and the nea
   - `class Dog extends Animal` / `super(...)` -> JS `class … extends` / `super`
   - `schema Name { … }` -> `mlRuntime.schema.register(...)`
   - `@within(ms)` on functions -> `mlRuntime.within.run(ms, name, …)`
-  - file `import` / selective import are inlined before JS emit (`ModuleSymbolResolver.ExpandFileImportsForTranspile`)
+  - file `import` / selective import are inlined before JS emit (`ModuleSymbolResolver.ExpandFileImportsForTranspile`); a selective import keeps the imported file's `import js` statements
+  - `import js NAME = "m";` / `import js { a } from "m";` / `import js global g;` -> module-scope `let` bindings (`JsTranspiler.Interop.cs`). Globals are read from `globalThis` when the script loads; modules load in `__maldaJsReady` through `mlRuntime.js.importModule(() => import("m"), "m")` (the `import()` is in the generated file, so relative specifiers resolve against it) and named exports through `mlRuntime.js.requireExport`. `main()` is `async` and awaits `__maldaJsReady` first. Calls on a chain rooted at a binding are emitted plain (no `arrayAppend` / `callArrayMethod` / `callDictMethod` rewrite); a binding named like a runtime module (`math`, `three`, …) shadows it. `new A.B(…)` emits the dotted path. Reference: [Reference Manual 28.11](../ReferenceManual/28-browser-javascript-backend.html#js-interop)
 - Actor mapping (local JS runtime):
   - `spawn ActorName(...)` -> `mlRuntime.actors.spawn(new ActorName(...))`
   - `send target.handler(args...)` -> `mlRuntime.actors.send(...)`
@@ -104,6 +105,7 @@ Validation rules currently enforced:
   - Date/env: `now`, `formatDate`, `parseDate`, `addDays`, `addHours`, `getEnv`, `getEnvOr`, `hasEnv`
   - HTTP client: `http.get|post|put|delete|patch` (`fetch`; not `HttpServer`)
   - Bounds: `within.run` / `within.check`
+  - JavaScript interop: `js.importModule(load, specifier)` (adds the specifier to a load failure), `js.requireExport(namespace, name, specifier)` (falls back to `module.exports` for CommonJS)
   - Actor runtime:
     - `actors.spawn(actorInstanceOrFactory, ...args)`
     - `actors.send(targetRef, handlerNameOrNull, ...args)`
@@ -607,6 +609,12 @@ Audio Spec v1 adds a browser-hosted game audio API in JavaScript mode. The goal 
 
 - Test file: `MaldaLang.Tests/JavaScriptBackendTests.cs`
 - Interpret/JS stdout pairs: `MaldaLang.Tests/InterpretJsPairTests.cs` (skip if Node or the runtime is missing)
+- `import js` against real ES / CommonJS / WASM-glue modules in Node: `MaldaLang.Tests/JsInteropTests.cs`
+- `malda test --target js` (`MaldaLang/Testing/JavaScriptTestRunner.cs`): runs each test file compiled to
+  JavaScript in Node, with `.malda` locations through the source map. Tests:
+  `MaldaLang.Tests/TestCommandJavaScriptTargetTests.cs`
+- Generated-code speed against hand-written JavaScript: `js` / `js-hand` columns of
+  `scripts/run-runtime-benchmarks.ps1` ([`docs/benchmarks.md`](benchmarks.md))
 - Covered today:
   - Module shape and runtime dependency assumptions.
   - Built-in function mappings (`print`, `println`, `sleep`, `math.*`, `str.*`, JSON, dates, env, HTTP client).

@@ -349,6 +349,23 @@ import { add, VERSION } from "helpers/math_lib.malda";
 
 See `Examples/Modules/selective_import.malda`, `Examples/Basics/modules_import.malda`, and `Examples/Basics/modules_include.malda`.
 
+JavaScript modules (`--mode js` only; the interpreter and C# transpile stop with an error):
+
+```malda
+import js THREE = "three";                    // module namespace (npm name, "./file.mjs", URL)
+import js { Vector3 } from "three";          // named exports
+import js global document, window;          // globalThis properties (missing -> null)
+
+var v = new THREE.Vector3(1, 2, 3);           // `new` takes a dotted path
+var response = await window.fetch("/data.json");   // await any JS Promise; a rejection is catchable
+document.body.addEventListener("click", e => io.print(e.clientX));   // MALDA functions are JS callbacks
+```
+
+`js` / `global` are contextual (`import js;` is a package import). Relative specifiers resolve
+against the compiled `.js` file: keep local modules under `assets/` and import
+`"./assets/lib.mjs"` so `malda play`, `malda compile` next to the source, and
+`malda test --target js` all find them. CommonJS `module.exports` is `NAME.default`.
+
 Tooling treats the quoted path as a file reference: **F12 / `textDocument/definition` on `include "lib.malda";` or `import "lib.malda";` jumps to that file**, and the Outline lists the modules a file pulls in. A missing target is a `malda-import` **warning** in `malda check --json` / the IDE (the program still fails at run time), so check that field rather than assuming an unresolved `import` was quiet.
 
 ## Null-safe boundaries

@@ -14,16 +14,28 @@ internal static class StdLibNamespaceDiagnostics
     /// <summary>Source of the info diagnostic for a function that shadows a flat built-in.</summary>
     public const string ShadowSource = "malda-shadow";
 
+    /// <summary>Names bound by top-level <c>import js</c>: <c>Math.max</c> there is JavaScript's <c>Math</c>.</summary>
+    [ThreadStatic]
+    private static HashSet<string>? _jsImportNames;
+
     public static void Validate(List<Statement> statements, List<Diagnostic> diagnostics)
     {
         // A call whose name a user binding shadows is the user's function, not a deprecated alias.
         BuiltInShadowAnalysis.Analyze(statements);
-        foreach (var statement in statements)
+        _jsImportNames = statements.OfType<JsImportStatement>().SelectMany(jsImport => jsImport.Names).ToHashSet(StringComparer.Ordinal);
+        try
         {
-            var start = diagnostics.Count;
-            VisitStatement(statement, diagnostics);
-            ReportShadowingFunctions(statement, diagnostics);
-            DiagnosticSourceFiles.Stamp(diagnostics, start, statement);
+            foreach (var statement in statements)
+            {
+                var start = diagnostics.Count;
+                VisitStatement(statement, diagnostics);
+                ReportShadowingFunctions(statement, diagnostics);
+                DiagnosticSourceFiles.Stamp(diagnostics, start, statement);
+            }
+        }
+        finally
+        {
+            _jsImportNames = null;
         }
     }
 
@@ -160,6 +172,7 @@ internal static class StdLibNamespaceDiagnostics
                 else if (call.Callee is MemberAccessExpression memberAccess &&
                          memberAccess.Object is IdentifierExpression moduleId &&
                          moduleId.Name == StdLibNamespaces.DeprecatedMathModuleAlias &&
+                         _jsImportNames?.Contains(moduleId.Name) != true &&
                          StdLibNamespaces.IsStdLibModuleMethod(moduleId.Name, memberAccess.Member))
                 {
                     AddStyleWarning(

@@ -245,6 +245,9 @@ public static class BuiltInShadowAnalysis
                     if (import.SelectedNames != null)
                         foreach (var n in import.SelectedNames) yield return n;
                     break;
+                case JsImportStatement jsImport:
+                    foreach (var n in jsImport.Names) yield return n;
+                    break;
                 case TypeDeclaration type:
                     foreach (var c in type.Constructors) yield return c.Name;
                     break;
@@ -290,6 +293,10 @@ public static class BuiltInShadowAnalysis
                             foreach (var name in import.SelectedNames)
                                 scope.Add(name, IsBuiltIn);
                         }
+                        break;
+                    case JsImportStatement jsImport:
+                        foreach (var name in jsImport.Names)
+                            scope.Add(name, IsBuiltIn);
                         break;
                     case TypeDeclaration type:
                         foreach (var ctor in type.Constructors)

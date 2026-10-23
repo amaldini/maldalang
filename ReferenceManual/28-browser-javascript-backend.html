@@ -38,7 +38,8 @@
             <li><strong>28.6</strong> Sum types and pattern matching in JS mode</li>
             <li><strong>28.7</strong> Actors in JS mode</li>
             <li><strong>28.8</strong> Template mode syntax</li>
-            <li><strong>28.11</strong> Common pitfalls and practical guidance</li>
+            <li><strong><a href="#js-interop">28.11</a></strong> JavaScript interop: <code>import js</code> for npm packages, local modules, WASM and globals</li>
+            <li><strong>28.12</strong> Common pitfalls and practical guidance</li>
         </ul>
 
         <h2>28.2 What This Mode Provides</h2>
@@ -333,7 +334,48 @@ malda compile Examples/Games/three_shader_path_tunnel.malda --mode js -o Example
 malda compile Examples/Games/three_shader_mandelbrot.malda --mode js -o Examples/Games/three_shader_mandelbrot.js</code></pre>
         <p>Load <code>three.min.js</code> first, same as other <code>three.*</code> demos. Samples live under <code>Examples/Games/</code> — see <a href="35-examples.html#game">35.3</a>. Working notes: <code>docs/javascript-backend.md</code>. The billiards sample is playable: host MALDA steps 2D physics (zoom, orbit stop, and sliders for cushion/ball restitution and felt friction) and the kernel traces ball/cue uniforms. The compiled table is an appendix: <a href="39-appendix-gpu-billiards.html">39. Appendix: GPU Billiards</a>. The path-tunnel sample is CC-BY-NC-SA-4.0 (Frostbyte). The Mandelbrot sample is an infinite Seahorse Valley zoom: the host builds a BigInt reference orbit (<code>three.mandelbrotOrbit</code>) and the kernel applies scaled perturbation so the dive stays sharp past float32 ulp. Page sliders set iterate budget and wrap decades.</p>
 
-        <h2>28.11 Common Pitfalls and Guidance</h2>
+        <h2 id="js-interop">28.11 JavaScript Interop (<code>import js</code>)</h2>
+        <p><code>import js</code> binds JavaScript modules and globals so a MALDA program can call any library: an npm package, a local <code>.js</code> / <code>.mjs</code> / <code>.cjs</code> file, a WASM module through its JavaScript glue, or a browser API. It is JavaScript-only: the interpreter and C# transpile stop with an error that points to <code>--mode js</code>. In a full-stack source it belongs to the client half.</p>
+        <pre><code>import js THREE = "three";                       // the module namespace
+import js { Vector3, Mesh } from "three";       // named exports
+import js geom = "./geom.wasm.js";             // a local module (here a WASM wrapper)
+import js global document, window;             // properties of globalThis
+
+var v = new THREE.Vector3(1, 2, 3);              // new accepts a dotted path
+v.normalize();
+var lib = await geom.init();                     // await a JavaScript Promise
+var button = document.createElement("button");
+button.addEventListener("click", function (e) { io.print(e.clientX); });
+document.body.append(button);</code></pre>
+        <h3>28.11.1 What each form binds</h3>
+        <ul>
+            <li><code>import js NAME = "module";</code> binds the module namespace. A CommonJS module's <code>module.exports</code> is <code>NAME.default</code>.</li>
+            <li><code>import js { a, b } from "module";</code> binds named exports. A name the module does not export stops the program with <code>import js "module" has no export 'a'.</code> CommonJS exports that Node cannot list statically are read from <code>module.exports</code>.</li>
+            <li><code>import js global a, b;</code> reads <code>globalThis.a</code>, <code>globalThis.b</code> when the program loads. A missing global is <code>null</code>.</li>
+            <li><code>js</code> and <code>global</code> are contextual words, not reserved: <code>import js;</code> is still a package import, and a variable may be called <code>js</code>. Imports are top-level only, like every <code>import</code>.</li>
+        </ul>
+        <h3>28.11.2 Loading and module specifiers</h3>
+        <ul>
+            <li>Modules load with JavaScript <code>import()</code> written into the generated file, so a relative specifier (<code>"./geom.mjs"</code>) resolves against the compiled <code>.js</code> file, in Node and in the browser. Keep the module next to the output, or compile next to it.</li>
+            <li>Loading starts when the script loads; <code>main()</code> waits for every module before the first statement runs. A program with modules always has an <code>async</code> <code>main()</code>. A module that fails to load stops <code>main()</code> with <code>import js "module" failed: …</code>.</li>
+            <li>Bare specifiers (<code>"three"</code>) resolve from <code>node_modules</code> in Node. In the browser they need an <a href="https://developer.mozilla.org/docs/Web/HTML/Element/script/type/importmap">import map</a> or a full URL (<code>"https://…/three.module.js"</code>).</li>
+            <li>WASM loads through the JavaScript module its toolchain generates (Emscripten, wasm-bindgen): import that module and call its init function.</li>
+            <li>The same module imported by several <code>.malda</code> files is loaded once. One name bound to two different modules or exports is a compile error.</li>
+        </ul>
+        <h3>28.11.3 Values across the boundary</h3>
+        <ul>
+            <li>MALDA arrays and dictionaries are JavaScript arrays and objects, so they pass to JavaScript and back unchanged. <code>null</code> and <code>undefined</code> both read as <code>null</code>.</li>
+            <li>A MALDA function or lambda passed to JavaScript is a plain JavaScript function. A function that uses <code>await</code> returns a Promise to its JavaScript caller.</li>
+            <li><code>await</code> works on any JavaScript Promise. A rejected Promise, or an error thrown by JavaScript, is a MALDA error: <code>catch (e)</code> receives its message.</li>
+            <li>Calls on a chain that starts at an imported name (<code>document.body.append(x)</code>) are emitted as plain JavaScript. On any other value, a method that a JavaScript object defines itself wins over the MALDA method of the same name: <code>vec.set(1, 2)</code> or <code>list.append(x)</code> on a JavaScript object calls the object's own method.</li>
+            <li><code>==</code> on two JavaScript objects is identity. Truthiness stays MALDA's: <code>0</code> and <code>""</code> returned by JavaScript are truthy; compare explicitly.</li>
+            <li>Names a binding cannot take: JavaScript reserved words (<code>default</code>, <code>new</code>, …) and the generated code's own names (<code>mlRuntime</code>, <code>main</code>, <code>MaldaApp</code>, <code>__malda…</code>). Import the module as a namespace and read the member instead.</li>
+        </ul>
+        <h3>28.11.4 Testing on JavaScript</h3>
+        <p><code>malda test --target js</code> compiles each test file to JavaScript and runs it in Node (set <code>MALDA_NODE_PATH</code> if <code>node</code> is not on <code>PATH</code>). The compiled program is written next to the test file for the run, so relative <code>import js</code> specifiers and <code>node_modules</code> resolve as they will for the compiled program. A failing <code>assert</code> or <code>throw</code> reports its message and its <code>.malda</code> line through the source map. <code>property</code> tests run on the interpreter only.</p>
+        <pre><code>malda test tests/ --target js</code></pre>
+
+        <h2>28.12 Common Pitfalls and Guidance</h2>
         <ul>
             <li>Do not edit generated JavaScript directly when there is a matching <code>.malda</code> source. Change the MALDA file and recompile.</li>
             <li>Load <code>malda-js-runtime.js</code> before the compiled script or the generated app will fail at runtime.</li>

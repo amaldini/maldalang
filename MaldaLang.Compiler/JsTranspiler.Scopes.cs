@@ -185,7 +185,7 @@ public partial class JsTranspiler
         IsUnshadowedRuntimeModule(gameName.Name);
 
     private bool IsUnshadowedRuntimeModule(string name) =>
-        JsRuntimeModules.Contains(name) && !IsLocalName(name);
+        JsRuntimeModules.Contains(name) && !IsLocalName(name) && !_jsImportNames.Contains(name);
 
     /// <summary>
     /// Emits a loop whose <c>continue</c> is a plain JS <c>continue</c>, so it does not also

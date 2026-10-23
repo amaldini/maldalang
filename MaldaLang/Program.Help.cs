@@ -229,13 +229,14 @@ partial class Program
 
     static void ShowTestHelp()
     {
-        Console.WriteLine("Usage: malda test [path] [--list] [--filter text] [--format human|ci] [--iterations N] [--seed S] [--write-regression] [--regression-dir <path>]");
+        Console.WriteLine("Usage: malda test [path] [--list] [--filter text] [--format human|ci] [--iterations N] [--seed S] [--target interpret|js] [--write-regression] [--regression-dir <path>]");
         Console.WriteLine("  path                          Root directory or test file to discover from (default: current directory)");
         Console.WriteLine("  --list                        Print discovered tests without executing them");
         Console.WriteLine("  --filter <text>               Restrict discovery to matching file names");
         Console.WriteLine("  --format <human|ci>           Human-readable or CI-oriented output");
         Console.WriteLine("  --iterations <N>              Property-test iterations");
         Console.WriteLine("  --seed <S>                    Property-test seed");
+        Console.WriteLine("  --target <interpret|js>       Backend to run on (default interpret). js compiles each file and runs it in Node");
         Console.WriteLine("  --write-regression            Write regression artifacts for failing properties");
         Console.WriteLine("  --regression-dir <path>       Output directory for regression artifacts");
     }

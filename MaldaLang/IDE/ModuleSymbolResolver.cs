@@ -178,6 +178,8 @@ public static class ModuleSymbolResolver
                         var selected = new HashSet<string>(
                             ModuleExports.ExpandSelectedNames(importStmt.SelectedNames!, moduleStatements),
                             StringComparer.Ordinal);
+                        // The selected functions may call the JavaScript modules the file binds.
+                        result.AddRange(moduleStatements.OfType<JsImportStatement>());
                         foreach (var exported in GetExportedStatements(moduleStatements))
                         {
                             var name = GetDeclarationName(exported);

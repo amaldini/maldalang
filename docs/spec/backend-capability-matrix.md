@@ -63,11 +63,14 @@ These strings are what `@property` / `runProperty` use via `GetRequiredCapabilit
 | Jobs (`enqueueJob` / `claimJob` / `completeJob` / `failJob`) | yes | yes | no |
 | Browser `dom.*` / `three.*` / game canvas | n/a | n/a | yes |
 | `@shader()` / `glsl.compile` → GLSL (JS compile-time) | n/a | n/a | yes |
+| JavaScript interop (`import js` modules / globals, dotted `new`) | no§ | no§ | yes |
 | .NET interop | yes | yes | no |
 
 \* OpenAI-compatible chat APIs receive `response_format` (and the host appends a `MALDA_OUTPUT_SCHEMA` appendix) when `await prompt(…) -> Type` has **no `gather:`**. Mode B (`tools:` listed) sends format + appendix with tools; if the backend rejects tools+`json_schema`, the host retries once without format (keeps tools) and remembers that backend. Mode C: `gather:` + `-> Type` runs a tool round, then a fresh typed prompt without tools. In-process llama.cpp / LLamaSharp converts the same schema to a GBNF grammar and constrains Mode A / extract sampling (not Mode B tool rounds). Closed `api` / `program(Api)` / `runProgram` is the same host surface (interpreter + C#); JS transpile rejects `api` declarations. Prompt `attachments:` (image/pdf) become OpenAI content parts on HTTP clients; in-process GGUF throws if attachments are present. `@MCPTool` / `@Tool` third argument may be a registered schema or sum-type name (or a JSON schema object string); an attached schema is host-validated on `callTool` / `tools/call` / `execute` / agent invoke; JS: n/a (MCP is host-only).
 
 † Host embed on interpret/transpile via `MaldaLang.UIHost` when the program uses `ui.mount` / related APIs — see [`docs/ui-framework.md`](../ui-framework.md). Not available on the JS backend.
+
+§ `import js` stops the interpreter at the statement and C# transpile at compile time, with a hint to `--mode js`. In a full-stack source it goes to the JavaScript half only. See [Reference Manual 28.11](../../ReferenceManual/28-browser-javascript-backend.html#js-interop).
 
 ‡ JavaScript runs every pure `math.*` / `str.*` built-in and the flat collection, JSON, encoding and
 conversion helpers (`sort` / `reverse` / `includes` / `range` / `toCsv`, `toJSON` / `parseJSON`,

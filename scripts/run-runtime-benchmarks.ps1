@@ -6,6 +6,8 @@
   Compiles each benchmarks/runtime/*.malda once per backend, then times the run (best of
   -Runs). Compile time is not included. The "hello" row is the startup baseline of each
   backend; subtract it mentally when a benchmark is short.
+  The "js-hand" column runs benchmarks/runtime/js-baseline/<name>.js, a hand-written JavaScript
+  twin of the program, when one exists: the js / js-hand ratio is the cost of the generated code.
   Numbers are machine-local; compare deltas on the same machine. See docs/benchmarks.md.
 #>
 param(
@@ -13,7 +15,7 @@ param(
     [string]$CliOut = "",
     [string]$OutJson = "",
     [string[]]$Only = @(),
-    [string[]]$Backends = @("interpret", "csharp", "js"),
+    [string[]]$Backends = @("interpret", "csharp", "js", "js-hand"),
     [int]$Runs = 3,
     [switch]$NoBuild
 )
@@ -39,12 +41,13 @@ if (-not (Test-Path $malda)) { $malda = Join-Path $CliOut "malda" }
 if (-not (Test-Path $malda)) { throw "CLI binary not found under $CliOut" }
 
 $node = Get-Command node -ErrorAction SilentlyContinue
-if ($Backends -contains "js" -and -not $node) {
-    Write-Warning "node not found; skipping the js backend."
-    $Backends = $Backends | Where-Object { $_ -ne "js" }
+if (($Backends -contains "js" -or $Backends -contains "js-hand") -and -not $node) {
+    Write-Warning "node not found; skipping the js and js-hand backends."
+    $Backends = $Backends | Where-Object { $_ -ne "js" -and $_ -ne "js-hand" }
 }
 
 $benchDir = Join-Path $RepoRoot "benchmarks/runtime"
+$baselineDir = Join-Path $benchDir "js-baseline"
 $workDir = Join-Path $RepoRoot "artifacts/perf"
 New-Item -ItemType Directory -Force -Path $workDir | Out-Null
 
@@ -98,10 +101,15 @@ foreach ($src in $sources) {
                     $run = Invoke-Best { & $node.Source -r $runtime $js }
                 }
             }
+            "js-hand" {
+                $baseline = Join-Path $baselineDir "$name.js"
+                if (Test-Path $baseline) { $run = Invoke-Best { & $node.Source $baseline } }
+                else { $run = @{ Seconds = $null; Output = $null; Missing = $true } }
+            }
         }
         $row[$backend] = $run.Seconds
         $outputs[$backend] = $run.Output
-        if ($null -eq $run.Seconds) { Write-Warning "${name}/${backend} failed: $($run.Output)" }
+        if ($null -eq $run.Seconds -and -not $run.Missing) { Write-Warning "${name}/${backend} failed: $($run.Output)" }
     }
 
     $distinct = @($outputs.Values | Where-Object { $_ } | Select-Object -Unique)

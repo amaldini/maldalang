@@ -563,6 +563,10 @@ public partial class Parser
             Advance();
             var token = Previous();
             var className = ConsumeIdentifierLike("Expect class name.");
+            // `new THREE.Vector3(…)`: a constructor reached through a module or object
+            // (JavaScript interop). ClassName keeps the dotted path.
+            while (Match(TokenType.Dot))
+                className += "." + ConsumeIdentifierLike("Expect a name after '.' in 'new'.");
             Consume(TokenType.LeftParen, "Expect '(' after class name.");
             var arguments = new List<Expression>();
             ParseArgumentList(arguments);

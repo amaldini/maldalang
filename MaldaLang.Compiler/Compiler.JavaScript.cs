@@ -111,7 +111,7 @@ public partial class Compiler
             if (!string.IsNullOrWhiteSpace(transpileResult.SourceMapJson))
             {
                 var mapPath = finalOutputPath + ".map";
-                File.WriteAllText(mapPath, transpileResult.SourceMapJson, Encoding.UTF8);
+                File.WriteAllText(mapPath, transpileResult.SourceMapJson, new UTF8Encoding(false));
             }
 
             var mainScriptFileName = Path.GetFileName(finalOutputPath);
@@ -153,7 +153,7 @@ public partial class Compiler
             File.WriteAllText(jsOutputPath, jsWithSourceMap, Encoding.UTF8);
             if (!string.IsNullOrWhiteSpace(transpileResult.SourceMapJson))
             {
-                File.WriteAllText(jsOutputPath + ".map", transpileResult.SourceMapJson, Encoding.UTF8);
+                File.WriteAllText(jsOutputPath + ".map", transpileResult.SourceMapJson, new UTF8Encoding(false));
             }
 
             File.WriteAllText(Path.Combine(outputDirectory, "malda-js-runtime.js"), GetJavaScriptRuntimeAssetContent(), Encoding.UTF8);

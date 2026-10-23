@@ -18,6 +18,11 @@ public partial class JsTranspiler
 {
     private string TranspileFunctionCall(FunctionCallExpression functionCall)
     {
+        if (IsJsImportRooted(functionCall.Callee))
+        {
+            return $"{TranspileExpression(functionCall.Callee)}({JoinArguments(functionCall.Arguments)})";
+        }
+
         if (functionCall.Callee is MemberAccessExpression stopCall &&
             stopCall.Member == "stop" &&
             functionCall.Arguments.Count == 0 &&

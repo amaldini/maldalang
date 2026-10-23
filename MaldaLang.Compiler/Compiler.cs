@@ -446,6 +446,7 @@ public partial class Compiler
                 throw new Exception($"Parse errors: {string.Join(", ", parser.Errors.Select(e => e.Message))}");
             }
 
+            ThrowIfJsImportOnHost(source, statements);
             var partitionResult = TargetPartitioner.Partition(statements);
             ThrowIfTargetPartitionDiagnostics(partitionResult.Diagnostics);
             
@@ -456,9 +457,27 @@ public partial class Compiler
         {
             throw new Exception($"Syntax error: {ex.Message}");
         }
+        catch (NotSupportedException ex) when (ex.Message == JsImportStatement.HostBackendMessage)
+        {
+            throw new Exception($"Transpilation error: {ex.Message}");
+        }
         catch (Exception ex)
         {
             throw new Exception($"Transpilation error: {ex}");
+        }
+    }
+
+    /// <summary>
+    /// <c>import js</c> needs the JavaScript backend. A full-stack source keeps it for its client
+    /// half (<see cref="TargetPartitioner"/> sends it to JavaScript only); any other program
+    /// compiled to C# is refused up front instead of failing on the names it binds.
+    /// </summary>
+    private static void ThrowIfJsImportOnHost(string source, List<Statement> statements)
+    {
+        if (statements.Any(statement => statement is JsImportStatement) &&
+            !FullStackSourceInspector.IsFullStackSource(source))
+        {
+            throw new NotSupportedException(JsImportStatement.HostBackendMessage);
         }
     }
 
@@ -486,6 +505,7 @@ public partial class Compiler
                 throw new Exception($"Parse errors: {string.Join(", ", parser.Errors.Select(e => e.Message))}");
             }
 
+            ThrowIfJsImportOnHost(source, statements);
             var partitionResult = TargetPartitioner.Partition(statements);
             ThrowIfTargetPartitionDiagnostics(partitionResult.Diagnostics);
             
@@ -495,6 +515,10 @@ public partial class Compiler
         catch (ParseException ex)
         {
             throw new Exception($"Syntax error: {ex.Message}");
+        }
+        catch (NotSupportedException ex) when (ex.Message == JsImportStatement.HostBackendMessage)
+        {
+            throw new Exception($"Transpilation error: {ex.Message}");
         }
         catch (Exception ex)
         {

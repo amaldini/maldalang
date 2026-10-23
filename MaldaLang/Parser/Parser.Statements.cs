@@ -580,6 +580,9 @@ public partial class Parser
         if (_blockDepth > 0)
             throw Error(token, "'import' is only allowed at top-level scope.");
 
+        if (IsJsImportStart())
+            return ParseJsImport(token);
+
         // Selective: import { a, b } from "…" | package
         if (Check(TokenType.LeftBrace))
             return ParseSelectiveImport(token);
@@ -616,6 +619,81 @@ public partial class Parser
         Consume(TokenType.Semicolon, "Expect ';' after import statement.");
 
         return new ImportStatement(null, packageName, subModule, alias, token.Line, token.Column);
+    }
+
+    /// <summary>
+    /// <c>import js</c> followed by a name or <c>{</c>. <c>import js;</c>, <c>import js.sub;</c> and
+    /// <c>import js = "…";</c> stay package / file imports of something named <c>js</c>.
+    /// </summary>
+    private bool IsJsImportStart() =>
+        Check(TokenType.Identifier) &&
+        string.Equals(Peek().Lexeme, "js", StringComparison.Ordinal) &&
+        Peek(1)?.Type is TokenType.Identifier or TokenType.LeftBrace;
+
+    /// <summary>
+    /// <c>import js NAME = "module";</c>, <c>import js { a, b } from "module";</c> or
+    /// <c>import js global a, b;</c>.
+    /// </summary>
+    private Statement ParseJsImport(Token importToken)
+    {
+        Advance(); // contextual 'js'
+
+        if (Match(TokenType.LeftBrace))
+        {
+            var selected = ParseJsImportNames(TokenType.RightBrace);
+            Consume(TokenType.RightBrace, "Expect '}' after the names in 'import js { … } from \"module\";'.");
+            if (!Check(TokenType.Identifier) || !string.Equals(Peek().Lexeme, "from", StringComparison.Ordinal))
+                throw Error(Peek(), "Expect 'from' after the names in 'import js { … } from \"module\";'.");
+            Advance();
+            var specifier = ConsumeJsModuleSpecifier();
+            Consume(TokenType.Semicolon, "Expect ';' after import statement.");
+            return new JsImportStatement(JsImportKind.Named, specifier, selected, importToken.Line, importToken.Column);
+        }
+
+        if (Check(TokenType.Identifier) &&
+            string.Equals(Peek().Lexeme, "global", StringComparison.Ordinal) &&
+            Peek(1)?.Type != TokenType.Assign)
+        {
+            Advance(); // contextual 'global'
+            var globals = ParseJsImportNames(TokenType.Semicolon);
+            Consume(TokenType.Semicolon, "Expect ';' after import statement.");
+            return new JsImportStatement(JsImportKind.Global, null, globals, importToken.Line, importToken.Column);
+        }
+
+        var name = ConsumeIdentifierLike("Expect a name after 'import js'.");
+        Consume(TokenType.Assign, "Expect '=' after the name in 'import js NAME = \"module\";'.");
+        var moduleSpecifier = ConsumeJsModuleSpecifier();
+        Consume(TokenType.Semicolon, "Expect ';' after import statement.");
+        return new JsImportStatement(JsImportKind.Namespace, moduleSpecifier, new[] { name }, importToken.Line, importToken.Column);
+    }
+
+    private List<string> ParseJsImportNames(TokenType terminator)
+    {
+        var names = new List<string>();
+        if (!Check(terminator))
+        {
+            do
+            {
+                var nameToken = Peek();
+                var name = ConsumeIdentifierLike("Expect a name in 'import js'.");
+                if (names.Contains(name))
+                    throw Error(nameToken, $"'{name}' is imported twice in this 'import js'.");
+                names.Add(name);
+            } while (Match(TokenType.Comma));
+        }
+
+        if (names.Count == 0)
+            throw Error(Peek(), "'import js' must name at least one binding.");
+        return names;
+    }
+
+    private string ConsumeJsModuleSpecifier()
+    {
+        var token = Consume(TokenType.String, "Expect the JavaScript module as a string, e.g. \"three\" or \"./lib.js\".");
+        var specifier = token.Literal as string ?? token.Lexeme.Trim('"');
+        if (string.IsNullOrWhiteSpace(specifier))
+            throw Error(token, "The JavaScript module specifier cannot be empty.");
+        return specifier;
     }
 
     private Statement ParseSelectiveImport(Token importToken)

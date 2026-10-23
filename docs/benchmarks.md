@@ -64,6 +64,34 @@ row is each backend's startup cost. JavaScript needs `node` on `PATH`.
 | `collections` | array append/index, dict reads/writes, `for in` |
 | `methods` | method calls with numeric arguments: recursion via `this`, helpers, static methods |
 | `objects` | `new`, method calls, field access |
+| `arrays` | float arrays: indexed reads and writes in nested loops (stencil passes) |
+
+### JavaScript against hand-written JavaScript
+
+`benchmarks/runtime/js-baseline/<name>.js` is a hand-written JavaScript twin of `<name>.malda`
+that prints the same output. The `js-hand` column runs it (it is in the default `-Backends`);
+the ratio between `js` and `js-hand` is the cost of the code the JavaScript transpiler
+generates. Programs without a twin leave the column empty.
+
+```powershell
+powershell -File scripts/run-runtime-benchmarks.ps1 -Backends js,js-hand -Runs 5
+```
+
+One local run (2026-10-24, Windows 11, Node 24, best of 5, seconds). Subtract startup to compare
+work: bare `node -e 0` takes 0.055 s here, and `hello` on `js` (Node + runtime load) 0.072 s.
+
+| Program | `js` | `js-hand` | Work ratio (startup removed) |
+|---------|-----:|----------:|-----------------------------:|
+| `arrays` | 0.170 | 0.070 | ~6.5× |
+| `floats` | 0.285 | 0.080 | ~8.5× |
+| `loops` | 0.133 | 0.077 | ~2.8× |
+| `objects` | 0.104 | 0.071 | ~2× |
+| `collections` | 0.127 | 0.093 | ~1.4× |
+| `fib` | 0.092 | 0.072 | ~1.2× |
+
+The gap is in numeric code: comparisons and index reads go through `coerceToFloat` /
+`getIndex` on every iteration. Typed JavaScript emit is J3 in
+[`docs/roadmap-js-platform.md`](roadmap-js-platform.md).
 
 The C# fast paths these numbers track (conditional defer frames, primitive operator paths,
 direct `this.field`, `__Sync` / `__Typed` function and method twins, direct method dispatch, inferred `int` and

@@ -98,6 +98,8 @@ public partial class JsTranspiler
         _asyncActorMethods.UnionWith(other._asyncActorMethods);
         _currentMemberIsStatic = other._currentMemberIsStatic;
         _rewriteImplicitMembers = other._rewriteImplicitMembers;
+        _jsImportNames.Clear();
+        _jsImportNames.UnionWith(other._jsImportNames);
     }
 
     public string Transpile(List<Statement> statements, bool isLibrary = false, string? sourceFilePath = null)
@@ -128,6 +130,7 @@ public partial class JsTranspiler
         _currentActor = null;
         _currentMemberIsStatic = false;
         _rewriteImplicitMembers = false;
+        _jsImportNames.Clear();
         _generatedLine = 1;
         _currentSourceLine = null;
         _currentSourceColumn = null;
@@ -142,6 +145,7 @@ public partial class JsTranspiler
         var actorDeclarations = new List<ActorDeclaration>();
         var classDeclarations = new List<ClassDeclaration>();
         var propertyDeclarations = new List<PropertyDeclaration>();
+        var jsImportStatements = new List<JsImportStatement>();
         var topLevelStatements = new List<Statement>();
 
         foreach (var statement in statements)
@@ -173,6 +177,10 @@ public partial class JsTranspiler
             {
                 propertyDeclarations.Add(propertyDeclaration);
             }
+            else if (statement is JsImportStatement jsImport)
+            {
+                jsImportStatements.Add(jsImport);
+            }
             else if (statement is ImportStatement or UsingStatement)
             {
                 // File imports are inlined before transpile; leftover import/using are no-ops.
@@ -186,6 +194,7 @@ public partial class JsTranspiler
         }
 
         CollectShaderFunctions(statements);
+        var jsImports = CollectJsImports(jsImportStatements);
 
         EmitLine("const MaldaApp = (() => {");
         _indentLevel++;
@@ -222,6 +231,8 @@ public partial class JsTranspiler
             EmitLine(string.Empty);
         }
 
+        var mainAwaitsJsModules = EmitJsImports(jsImports);
+
         // A script-level var that a top-level function, class or actor uses must live beside
         // them, not as a local of main(), or the reference throws ReferenceError (the
         // interpreter and C# both share it). The others stay main() locals.
@@ -234,7 +245,7 @@ public partial class JsTranspiler
         var moduleVarNames = topLevelStatements
             .OfType<VarDeclStatement>()
             .Select(v => v.Name)
-            .Where(name => namesUsedByDeclarations.Contains(name) && name != "main" && name != "mlRuntime")
+            .Where(name => namesUsedByDeclarations.Contains(name) && name != "main" && name != "mlRuntime" && !_jsImportNames.Contains(name))
             .Distinct(StringComparer.Ordinal)
             .ToList();
         if (moduleVarNames.Count > 0)
@@ -297,9 +308,13 @@ public partial class JsTranspiler
             EmitLine(string.Empty);
         }
 
-        var mainNeedsAsync = topLevelStatements.Any(StatementRequiresAsync);
+        var mainNeedsAsync = mainAwaitsJsModules || topLevelStatements.Any(StatementRequiresAsync);
         EmitLine(mainNeedsAsync ? "async function main() {" : "function main() {");
         _indentLevel++;
+        if (mainAwaitsJsModules)
+        {
+            EmitLine($"await {JsReadyName};");
+        }
         InLocalScope(Array.Empty<string>(), () =>
         {
             var hoisted = new HashSet<string>(moduleVarNames, StringComparer.Ordinal);
@@ -545,6 +560,7 @@ public partial class JsTranspiler
                     break;
                 case ImportStatement:
                 case UsingStatement:
+                case JsImportStatement:
                     break;
                 case PromptDeclaration:
                     throw new NotSupportedException(
@@ -668,7 +684,7 @@ public partial class JsTranspiler
             case InterpolatedStringExpression interpolated:
                 return TranspileInterpolatedString(interpolated);
             case NewExpression newExpression:
-                return $"new {EscapeIdentifier(newExpression.ClassName)}({JoinArguments(newExpression.Arguments)})";
+                return $"new {TranspileConstructorPath(newExpression.ClassName)}({JoinArguments(newExpression.Arguments)})";
             case LambdaExpression lambda:
                 return TranspileLambdaExpression(lambda);
             case PipeExpression pipe:

@@ -4855,6 +4855,35 @@
     }
   };
 
+  // `import js …` (JavaScript interop). The generated program calls import() itself, so a
+  // relative specifier resolves against the program file, not this runtime; these helpers
+  // name the specifier in failures and check named exports.
+  const jsInteropRuntime = {
+    async importModule(load, specifier) {
+      try {
+        return await load();
+      } catch (error) {
+        const detail = error && error.message ? error.message : String(error);
+        throw new Error(`import js "${specifier}" failed: ${detail}`);
+      }
+    },
+    requireExport(moduleNamespace, name, specifier) {
+      if (moduleNamespace !== null && typeof moduleNamespace === "object") {
+        if (name in moduleNamespace) {
+          return moduleNamespace[name];
+        }
+        // A CommonJS module whose exports Node could not list statically: the names are
+        // still on module.exports, which import() exposes as `default`.
+        const exportsObject = moduleNamespace.default;
+        if (exportsObject !== null && (typeof exportsObject === "object" || typeof exportsObject === "function") &&
+            name in exportsObject) {
+          return exportsObject[name];
+        }
+      }
+      throw new Error(`import js "${specifier}" has no export '${name}'.`);
+    }
+  };
+
   const runtime = {
     coerceToInt,
     coerceToFloat,
@@ -4925,6 +4954,7 @@
     io: ioStdLib,
     schema: schemaStdLib,
     within: withinStdLib,
+    js: jsInteropRuntime,
     http: httpStdLib,
     result: resultStdLib,
     option: optionStdLib,

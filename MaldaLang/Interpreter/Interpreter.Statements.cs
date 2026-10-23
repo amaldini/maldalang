@@ -82,6 +82,7 @@ public partial class Interpreter
                 UsingResourceStatement usingResource => await ExecuteUsingResourceAsync(usingResource),
                 DeferStatement deferStmt => ExecuteDefer(deferStmt),
                 ImportStatement importStmt => await ExecuteImportAsync(importStmt),
+                JsImportStatement => throw new RuntimeException(JsImportStatement.HostBackendMessage, stmt.Line, _currentFile),
                 FunctionDeclaration funcDecl => BindLocalFunction(funcDecl),
                 ClassDeclaration classDecl => null, // Already handled
                 ActorDeclaration actorDecl => null, // Already handled

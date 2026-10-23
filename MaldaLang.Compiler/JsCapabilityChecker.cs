@@ -321,6 +321,10 @@ public static class JsCapabilityChecker
                 case CatchClause { ExceptionVariable: { } exceptionVariable }:
                     names.Add(exceptionVariable);
                     break;
+                case JsImportStatement jsImport:
+                    // `import js { readFile } from "./fs-shim.js"` is the program's own binding.
+                    names.UnionWith(jsImport.Names);
+                    break;
             }
         }
 
