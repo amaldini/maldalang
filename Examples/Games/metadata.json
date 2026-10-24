@@ -238,6 +238,30 @@
       "documentationTitle": "Browser Track"
     },
     {
+      "name": "JS three.js SDF Interpreter",
+      "description": "A raymarching shader compiled once that runs the scene as bytecode from a float data texture: smooth unions, cuts, bounding-sphere skips, and click-to-place shapes picked by the same bytecode on the host",
+      "file": "three_sdf_interpreter.malda",
+      "track": "showcase",
+      "difficulty": "advanced",
+      "minutes": 15,
+      "concepts": [
+        "three.*",
+        "GLSL",
+        "@shader() stack arrays",
+        "data texture",
+        "signed distance fields",
+        "JavaScript target"
+      ],
+      "prerequisites": [
+        "Games/three_shader_raytracer.malda"
+      ],
+      "learningGoal": "Show a scene that changes shape without recompiling its shader: the kernel is a stack machine over instructions in a data texture, and edits only rewrite the texture.",
+      "expectedOutput": "Renders a grid of blended shapes on a checker floor. Clicks drop new shapes or cuts; the status line counts texture uploads while the shader stays compiled once.",
+      "next": "Games/three_shader_billiards.malda",
+      "documentationPath": "/?lesson=browser-track#lesson-browser-track",
+      "documentationTitle": "Browser Track"
+    },
+    {
       "name": "JS three.js GPU Billiards",
       "description": "Playable GPU billiards: cue locked to the white ball, mouse-on-table aim, hold-to-charge power, zoom/orbit stop, configurable cushion/ball restitution and felt friction, and a numbered rack traced through three.createShaderMaterial uniforms",
       "file": "three_shader_billiards.malda",

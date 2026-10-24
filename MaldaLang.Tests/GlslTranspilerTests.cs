@@ -142,6 +142,60 @@ public class GlslTranspilerTests : TestBase
         Assert.DoesNotContain("mlRuntime.math.sqrt", js, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void TranspileFunction_FixedArrayLocalsAndTypedFor_EmitGlslStackLoop()
+    {
+        var source = """
+            @shader()
+            function runStack(n: int) -> float {
+                var stack: float[8];
+                var points: vec3[STACK] = uPoints;
+                var sp: int = 0;
+                for (var i: int = 0; i < 64; i++) {
+                    if (i >= n) {
+                        continue;
+                    }
+                    stack[sp] = length(points[i]);
+                    sp++;
+                }
+                return stack[0];
+            }
+            """;
+        var func = Assert.IsType<FunctionDeclaration>(Assert.Single(Parse(source)));
+        var glsl = GlslTranspiler.TranspileFunction(func);
+
+        Assert.Contains("float stack[8];", glsl, StringComparison.Ordinal);
+        Assert.Contains("vec3 points[STACK] = uPoints;", glsl, StringComparison.Ordinal);
+        // A real `for`, so `continue` still runs the increment (not the parser's desugared while).
+        Assert.Contains("for (int i = 0; (i < 64); i++)", glsl, StringComparison.Ordinal);
+        Assert.DoesNotContain("while", glsl, StringComparison.Ordinal);
+        Assert.Contains("sp++;", glsl, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Parse_FixedArrayHintOutsideShader_IsAnError()
+    {
+        var parser = new Parser.Parser(new Lexer("var stack: float[8];").Tokenize());
+        parser.Parse();
+        Assert.Contains(parser.Errors, e => e.Message.Contains("only valid inside @shader() functions", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void TypedForInitializer_RunsOnTheHost()
+    {
+        var output = RunProgram("""
+            var total = 0;
+            for (var i: int = 0; i < 4; i++) {
+                if (i == 1) {
+                    continue;
+                }
+                total += i;
+            }
+            io.print(total);
+            """);
+        Assert.Equal("5", output.Trim());
+    }
+
     private static List<MaldaLang.Parser.AST.Statements.Statement> Parse(string source)
     {
         var parser = new Parser.Parser(new Lexer(source).Tokenize());

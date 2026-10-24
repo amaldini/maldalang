@@ -137,7 +137,7 @@ The pure stdlib (`math.*`, `str.*`, `sort` / `reverse` / `toCsv`, `toJSON` / `pa
 
 ## Half-truths
 
-**`@shader()` is a JavaScript compile-time GLSL kernel, not a host function.** `malda compile --mode js` inlines those functions through `glsl.compile({ ... })` and does not emit JS. Calling `hitSphere(...)` from the MALDA host, or running the file in the interpreter / C# transpile, will not execute GPU code. Keep uniforms and the `three.*` loop in host MALDA; keep rays in `@shader()` functions. Raw triple-quoted GLSL strings still work. *Lint: docs-only.*
+**`@shader()` is a JavaScript compile-time GLSL kernel, not a host function.** `malda compile --mode js` inlines those functions through `glsl.compile({ ... })` and does not emit JS. Calling `hitSphere(...)` from the MALDA host, or running the file in the interpreter / C# transpile, will not execute GPU code. Keep uniforms and the `three.*` loop in host MALDA; keep rays in `@shader()` functions. Raw triple-quoted GLSL strings still work. Kernel locals may be fixed-size arrays (`var stack: float[8];`, initializer optional) and loops may type their variable (`for (var i: int = 0; i < n; i++)`); `float[8]` outside `@shader()` is a parse error. *Lint: docs-only.*
 
 **Top-level `function`s see top-level `var`s on every backend**, including `--mode js` (script `var`s are module-scoped beside the functions, not locals of `main()`). A `function` inside a block is local on the interpreter, C# transpile, and JavaScript: the name disappears when the block ends, and the body sees that block's variables. Call it after the declaration. *Lint: docs-only.*
 

@@ -73,6 +73,11 @@ fresh render, and `MaldaUiCore.diff` (the port `ui.*` local mode runs in the bro
 same patches. After touching the diff engine or the client's patch
 code, run it with `MALDA_UI_FUZZ_SEEDS=1-200`; failures land in `%TEMP%/malda_ui_fuzz/seed<N>/`.
 
+Shaders: do not try `@shader()` / `three.*` raymarching examples in a headless browser with
+SwiftShader (`--use-angle=swiftshader`). A frame takes seconds, so the fps are meaningless and key /
+click edges between frames merge into one. Check the GLSL with `GlslTranspilerTests` and
+`malda compile --mode js`, then ask the user to run `malda play <file>` on a real GPU.
+
 CI smoke filter (see `.github/workflows/ci.yml`): `BuiltInRegistryTests`, `CompilerPackDecouplingGuardTests`, `OptionalPackTranspileEmitTests`, `LicenseHeaderGuardTests`, `ReleaseVersionGuardTests`, `ReferenceManual`, `BackendCapabilityMatrixGuardTests`, `ShipContractGuardTests`, `TranspileSmokeTests`, `InterpretTranspilePairTests`, `InterpretJsPairTests`, `WorkflowTranspilerParityTests`, `HttpTraceParityTests`, `JobTraceParityTests`, `Tier0CsharpShipSmokeTests`, `BackendDifferentialFuzzTests`, `UiPatchFuzzTests`, `UiLocalModeTests`, `JsBuildSizeTests`, `BuiltInSurfaceGuardTests`, `ExamplesParseGuardTests`, `ExamplesStyleGuardTests` (Windows job).
 
 ## IDE roles (not interchangeable)

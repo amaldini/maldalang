@@ -229,10 +229,14 @@ public partial class Parser
                 return new ForInStatement(name, collection, forInBody, token.Line, token.Column);
             }
             
-            // Otherwise, it's a regular for loop with var declaration
+            // Otherwise, it's a regular for loop with var declaration (optionally typed:
+            // `for (var i: int = 0; …)`, which @shader() loops need)
+            var loopTypeHint = Match(TokenType.Colon)
+                ? Consume(TokenType.Identifier, "Expect type name after ':'.").Lexeme
+                : null;
             Consume(TokenType.Assign, "Expect '=' after variable name.");
             var initializerExpr = Expression();
-            var varInitializer = new VarDeclStatement(name, initializerExpr, null, false, false, varToken.Line, varToken.Column);
+            var varInitializer = new VarDeclStatement(name, initializerExpr, loopTypeHint, false, false, varToken.Line, varToken.Column);
             
             // Continue with regular for loop parsing
             Consume(TokenType.Semicolon, "Expect ';' after loop initializer.");
@@ -501,7 +505,11 @@ public partial class Parser
         var name = nameToken.Lexeme;
         typeHint = null;
         if (Match(TokenType.Colon))
-            typeHint = Consume(TokenType.Identifier, "Expect type name after ':'.").Lexeme;
+            typeHint = ParseLocalTypeHint();
+
+        // A shader array local may go without an initializer: GLSL `float s[8];`.
+        if (_inShaderBody && !isConst && typeHint != null && typeHint.EndsWith(']') && Match(TokenType.Semicolon))
+            return new VarDeclStatement(name, new LiteralExpression(null, nameToken.Line, nameToken.Column), typeHint, isExported, isConst, token?.Line ?? 0, token?.Column ?? 0);
 
         if (Match(TokenType.Assign))
         {

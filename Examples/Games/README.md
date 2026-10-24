@@ -41,6 +41,7 @@ malda compile Examples/Games/three_terrain.malda --mode js -o Examples/Games/thr
 malda compile Examples/Games/three_shader_billiards.malda --mode js -o Examples/Games/three_shader_billiards.js
 malda compile Examples/Games/three_shader_path_tunnel.malda --mode js -o Examples/Games/three_shader_path_tunnel.js
 malda compile Examples/Games/three_shader_mandelbrot.malda --mode js -o Examples/Games/three_shader_mandelbrot.js
+malda compile Examples/Games/three_sdf_interpreter.malda --mode js -o Examples/Games/three_sdf_interpreter.js
 ```
 
 Then open the sibling host page (for example `Examples/Games/maldadash_runtime_smoke_test.html`).
@@ -58,3 +59,5 @@ JS / PWA samples need `malda compile … --mode js` (or the Desktop/Web IDE brow
 Games kit G0–G17 is landed. Contracts: [`docs/roadmap-games.md`](../../docs/roadmap-games.md). Peer comparison (what the kit still lacks vs Love2D / Pico-8 / Phaser): [`docs/games-2d-gap-analysis.md`](../../docs/games-2d-gap-analysis.md).
 
 Catalog fields: [`metadata.json`](metadata.json).
+
+`three_sdf_interpreter.malda` raymarches signed distance fields with one shader that is compiled once. The host writes the scene as bytecode into a float data texture (`three.createDataTexture`), and the kernel is a stack machine: `var dist: float[STACK];` and `var tint: vec3[STACK];` hold distances and colors, and SHAPE / UNION / CUT / SKIP instructions push and combine them. SKIP tests a bounding sphere and jumps past an object that is farther than the distance found so far, so a long program stays cheap. Adding, cutting, undoing or animating shapes only calls `three.updateDataTexture`; the status line counts those uploads. The same bytecode also runs on the host (`cpuSceneDistance`) to find the surface under the mouse. Click drops the tool, 1-4 pick the shape, X toggles add / cut, Backspace undoes, `[` `]` change the blend, B toggles the bounding skip, M toggles motion.

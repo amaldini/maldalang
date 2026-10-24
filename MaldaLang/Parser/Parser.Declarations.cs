@@ -201,7 +201,28 @@ public partial class Parser
             return "out " + Advance().Lexeme;
         return first;
     }
-    
+
+    /// <summary>
+    /// A local's type hint: one identifier, or inside an @shader() body a fixed-size GLSL array
+    /// (<c>float[8]</c>, <c>vec3[STACK]</c>; the size is an int literal or a const name).
+    /// </summary>
+    private string ParseLocalTypeHint()
+    {
+        var name = Consume(TokenType.Identifier, "Expect type name after ':'.").Lexeme;
+        if (!Check(TokenType.LeftBracket))
+            return name;
+        if (!_inShaderBody)
+            throw Error(Peek(), "Fixed-size array type hints (float[8]) are only valid inside @shader() functions.");
+        Advance();
+        var size = Peek();
+        if (size?.Type == TokenType.Integer && int.TryParse(size.Lexeme, out var count) && count > 0)
+            Advance();
+        else
+            size = Consume(TokenType.Identifier, "Expect an int literal or a const name as the array size.");
+        Consume(TokenType.RightBracket, "Expect ']' after the array size.");
+        return $"{name}[{size.Lexeme}]";
+    }
+
     private Statement FunctionDeclaration(bool isExported = false)
     {
         // This is called when there's no decorator before function keyword
@@ -261,7 +282,17 @@ public partial class Parser
             Advance();
             returnType = Consume(TokenType.Identifier, "Expect return type name after '->'.").Lexeme;
         }
-        var body = ParseFunctionOrMethodBody("function");
+        var wasInShaderBody = _inShaderBody;
+        _inShaderBody = decorators.Any(d => string.Equals(d.Name, ShaderFunction.DecoratorName, StringComparison.OrdinalIgnoreCase));
+        BlockStatement body;
+        try
+        {
+            body = ParseFunctionOrMethodBody("function");
+        }
+        finally
+        {
+            _inShaderBody = wasInShaderBody;
+        }
         return new FunctionDeclaration(name, parameters, body, decorators, parameterDecorators, parameterTypeHints, returnType, isExported, nameToken.Line, nameToken.Column);
     }
 

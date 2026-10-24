@@ -1,0 +1,645 @@
+// SDF interpreter: one raymarching shader, compiled once, runs a scene stored as bytecode.
+//
+// A shader generated from the scene must be compiled again whenever the scene changes shape,
+// and a big shader can take seconds to compile. Here the shader is a small stack machine instead:
+// the host writes the scene as instructions into a float data texture, and the fragment shader
+// reads them with texelFetch and runs them for every raymarching step. Adding, removing or moving
+// a shape only rewrites the texture (three.updateDataTexture); the shader never changes.
+//
+// Instruction = two RGBA texels:
+//   SKIP   (4, -, jump, -)   (cx, cy, cz, r)   if the bounding sphere is farther than the distance
+//                                             found so far (plus the blend), jump past the object
+//   SHAPE  (1, kind, -, -)   (x, y, z, size)   push the shape's distance and color
+//   UNION  (2, -, -, k)                       pop two, push their smooth union (blend k)
+//   CUT    (3, -, -, k)                       pop two, push the first minus the second
+//
+// The bounding-sphere SKIP is what keeps a long program cheap: far from an object, the shader
+// checks one sphere instead of running the object's instructions.
+// The same bytecode also runs on the host (cpuSceneDistance) to find the surface under the mouse.
+//
+// Controls: click drops the current tool on the surface. 1-4 pick sphere / box / torus / cylinder,
+// X toggles add / cut, Backspace undoes, [ ] change the blend, B toggles the bounding skip,
+// M toggles motion (the texture is rewritten every frame), R resets, arrows orbit, + / - zoom.
+//
+// Build: malda compile Examples/Games/three_sdf_interpreter.malda --mode js -o three_sdf_interpreter.js
+
+@shader()
+function vertexMain() {
+    vUv = uv;
+    gl_Position = vec4(position.xy, 0.0, 1.0);
+}
+
+@shader()
+function sdBox(q: vec3, s: float) -> float {
+    var d: vec3 = abs(q) - vec3(s, s, s);
+    return length(max(d, vec3(0.0, 0.0, 0.0))) + min(max(d.x, max(d.y, d.z)), 0.0);
+}
+
+@shader()
+function sdTorus(q: vec3, s: float) -> float {
+    var t: vec2 = vec2(length(q.xz) - s, q.y);
+    return length(t) - s * 0.35;
+}
+
+@shader()
+function sdCylinder(q: vec3, s: float) -> float {
+    var d: vec2 = abs(vec2(length(q.xz), q.y)) - vec2(s * 0.7, s);
+    return min(max(d.x, d.y), 0.0) + length(max(d, vec2(0.0, 0.0)));
+}
+
+@shader()
+function sdShape(kind: int, q: vec3, s: float) -> float {
+    if (kind == 0) {
+        return length(q) - s;
+    }
+    if (kind == 1) {
+        return sdBox(q, s);
+    }
+    if (kind == 2) {
+        return sdTorus(q, s);
+    }
+    return sdCylinder(q, s);
+}
+
+@shader()
+function shapeColor(kind: int) -> vec3 {
+    if (kind == 0) {
+        return vec3(0.95, 0.45, 0.35);
+    }
+    if (kind == 1) {
+        return vec3(0.25, 0.7, 0.75);
+    }
+    if (kind == 2) {
+        return vec3(0.95, 0.75, 0.3);
+    }
+    return vec3(0.6, 0.45, 0.9);
+}
+
+// The interpreter: two stacks (distances and colors), one instruction per iteration.
+@shader()
+function runProgram(p: vec3, color: out vec3) -> float {
+    var dist: float[STACK];
+    var tint: vec3[STACK];
+    dist[0] = FAR;
+    tint[0] = vec3(0.5, 0.5, 0.5);
+    var sp: int = 1;
+    var i: int = 0;
+    while (i < uCount) {
+        var head: vec4 = texelFetch(uProgram, ivec2(i * 2, 0), 0);
+        var data: vec4 = texelFetch(uProgram, ivec2(i * 2 + 1, 0), 0);
+        var op: int = int(head.x + 0.5);
+        if (op == OP_SKIP) {
+            var bound: float = length(p - data.xyz) - data.w;
+            if (uSkip > 0.5 && bound > dist[sp - 1] + uBlend) {
+                i = int(head.z + 0.5);
+                continue;
+            }
+        } else if (op == OP_SHAPE) {
+            var kind: int = int(head.y + 0.5);
+            dist[sp] = sdShape(kind, p - data.xyz, data.w);
+            tint[sp] = shapeColor(kind);
+            sp++;
+        } else if (op == OP_UNION) {
+            sp--;
+            var k: float = max(head.w, 0.0001);
+            var h: float = clamp(0.5 + 0.5 * (dist[sp] - dist[sp - 1]) / k, 0.0, 1.0);
+            dist[sp - 1] = mix(dist[sp], dist[sp - 1], h) - k * h * (1.0 - h);
+            tint[sp - 1] = mix(tint[sp], tint[sp - 1], h);
+        } else if (op == OP_CUT) {
+            sp--;
+            var kc: float = max(head.w, 0.0001);
+            var hc: float = clamp(0.5 + 0.5 * (dist[sp] + dist[sp - 1]) / kc, 0.0, 1.0);
+            dist[sp - 1] = mix(0.0 - dist[sp], dist[sp - 1], hc) + kc * hc * (1.0 - hc);
+            tint[sp - 1] = mix(tint[sp] * 0.6, tint[sp - 1], hc);
+        }
+        i++;
+    }
+    color = tint[0];
+    return dist[0];
+}
+
+@shader()
+function sceneColor(p: vec3, color: out vec3) -> float {
+    var d: float = runProgram(p, color);
+    if (p.y < d) {
+        var cell: float = mod(floor(p.x) + floor(p.z), 2.0);
+        color = mix(vec3(0.16, 0.18, 0.22), vec3(0.22, 0.24, 0.29), cell);
+        d = p.y;
+    }
+    return d;
+}
+
+@shader()
+function sceneDistance(p: vec3) -> float {
+    var unused: vec3 = vec3(0.0, 0.0, 0.0);
+    return sceneColor(p, unused);
+}
+
+@shader()
+function normalAt(p: vec3) -> vec3 {
+    var e: vec2 = vec2(0.001, -0.001);
+    return normalize(
+        e.xyy * sceneDistance(p + e.xyy)
+        + e.yyx * sceneDistance(p + e.yyx)
+        + e.yxy * sceneDistance(p + e.yxy)
+        + e.xxx * sceneDistance(p + e.xxx)
+    );
+}
+
+@shader()
+function softShadow(origin: vec3, dir: vec3) -> float {
+    var light: float = 1.0;
+    var t: float = 0.03;
+    for (var i: int = 0; i < 32; i++) {
+        var h: float = sceneDistance(origin + dir * t);
+        light = min(light, 8.0 * h / t);
+        t += clamp(h, 0.03, 0.6);
+        if (light < 0.01 or t > 20.0) {
+            break;
+        }
+    }
+    return clamp(light, 0.0, 1.0);
+}
+
+@shader()
+function fragmentMain() {
+    var ndc: vec2 = vUv * 2.0 - 1.0;
+    var dir: vec3 = normalize(
+        uCamForward
+        + uCamRight * (ndc.x * uAspect * uTanHalf)
+        + uCamUp * (ndc.y * uTanHalf)
+    );
+    var sky: vec3 = mix(vec3(0.05, 0.07, 0.12), vec3(0.32, 0.42, 0.58), clamp(dir.y * 1.5 + 0.35, 0.0, 1.0));
+    var t: float = 0.0;
+    var hit: bool = false;
+    for (var i: int = 0; i < 128; i++) {
+        var d: float = sceneDistance(uCamPos + dir * t);
+        if (d < 0.0005 + 0.0008 * t) {
+            hit = true;
+            break;
+        }
+        t += d;
+        if (t > 60.0) {
+            break;
+        }
+    }
+    var color: vec3 = sky;
+    if (hit) {
+        var p: vec3 = uCamPos + dir * t;
+        var albedo: vec3 = vec3(0.0, 0.0, 0.0);
+        sceneColor(p, albedo);
+        var n: vec3 = normalAt(p);
+        var lightDir: vec3 = normalize(vec3(0.55, 0.9, 0.35));
+        var diffuse: float = max(dot(n, lightDir), 0.0) * softShadow(p + n * 0.003, lightDir);
+        var ambient: float = 0.22 + 0.18 * n.y;
+        var spec: float = pow(max(dot(reflect(dir, n), lightDir), 0.0), 32.0) * diffuse;
+        color = albedo * (ambient + diffuse * 0.95) + vec3(spec * 0.35, spec * 0.35, spec * 0.35);
+        color = mix(color, sky, clamp((t - 18.0) / 30.0, 0.0, 1.0));
+    }
+    gl_FragColor = vec4(sqrt(color), 1.0);
+}
+
+var vertexShader = glsl.compile({
+    varyings: ["vec2 vUv"],
+    functions: ["vertexMain"],
+    main: "vertexMain"
+});
+
+var fragmentShader = glsl.compile({
+    varyings: ["vec2 vUv"],
+    uniforms: [
+        "sampler2D uProgram",
+        "int uCount",
+        "float uBlend",
+        "float uSkip",
+        "vec3 uCamPos",
+        "vec3 uCamForward",
+        "vec3 uCamRight",
+        "vec3 uCamUp",
+        "float uTanHalf",
+        "float uAspect"
+    ],
+    consts: [
+        "int STACK = 8",
+        "int OP_SHAPE = 1",
+        "int OP_UNION = 2",
+        "int OP_CUT = 3",
+        "int OP_SKIP = 4",
+        "float FAR = 100000.0"
+    ],
+    functions: [
+        "sdBox",
+        "sdTorus",
+        "sdCylinder",
+        "sdShape",
+        "shapeColor",
+        "runProgram",
+        "sceneColor",
+        "sceneDistance",
+        "normalAt",
+        "softShadow",
+        "fragmentMain"
+    ],
+    main: "fragmentMain"
+});
+
+const OP_SHAPE = 1;
+const OP_UNION = 2;
+const OP_CUT = 3;
+const OP_SKIP = 4;
+const MAX_OPS = 384;
+const SHAPE_NAMES = ["sphere", "box", "torus", "cylinder"];
+
+var root = dom.query("#app");
+
+if (root == null) {
+    io.print("No #app container found.");
+} else {
+    dom.clear(root);
+
+    var heading = dom.create("h1");
+    dom.setText(heading, "MALDA SDF Interpreter");
+    dom.append(root, heading);
+
+    var hint = dom.create("p");
+    dom.setText(hint, "One shader, compiled once, runs the scene as bytecode from a data texture. Click to drop the tool on the surface. 1-4 sphere / box / torus / cylinder, X add or cut, Backspace undo, [ ] blend, B bounding skip, M motion, R reset, arrows orbit, + / - zoom.");
+    dom.append(root, hint);
+
+    var status = dom.create("p");
+    dom.append(root, status);
+
+    var width = 960;
+    var height = 540;
+    var aspect = width / height;
+    var tanHalf = math.tan(math.degToRad(30));
+
+    // The program the shader runs: MAX_OPS instructions, 8 floats each.
+    var program = buf.float32(MAX_OPS * 8);
+    var opCount = 0;
+    var objects = [];
+    var blend = 0.25;
+    var skipOn = true;
+    var motionOn = false;
+    var tool = 0;
+    var cutMode = false;
+    var uploads = 0;
+    var dirty = true;
+    var timeSec = 0.0;
+
+    var camAngle = 0.7;
+    var camPitch = 0.42;
+    var camDist = 11.0;
+    var camX = 0.0;
+    var camY = 0.0;
+    var camZ = 0.0;
+    var fwdX = 0.0;
+    var fwdY = 0.0;
+    var fwdZ = 1.0;
+    var rightX = 1.0;
+    var rightY = 0.0;
+    var rightZ = 0.0;
+    var upX = 0.0;
+    var upY = 1.0;
+    var upZ = 0.0;
+
+    // Radius of a sphere around the shape: the SKIP test needs a distance that is never larger
+    // than the shape's own.
+    function boundRadius(kind, size) {
+        if (kind == 0) {
+            return size;
+        }
+        if (kind == 1) {
+            return size * 1.74;
+        }
+        if (kind == 2) {
+            return size * 1.35;
+        }
+        return size * 1.23;
+    }
+
+    function opsFor(obj) {
+        if (obj.cut) {
+            return 2;
+        }
+        return 3;
+    }
+
+    function writeOp(index, op, kind, jump, k, x, y, z, w) {
+        var base = index * 8;
+        program[base] = op;
+        program[base + 1] = kind;
+        program[base + 2] = jump;
+        program[base + 3] = k;
+        program[base + 4] = x;
+        program[base + 5] = y;
+        program[base + 6] = z;
+        program[base + 7] = w;
+    }
+
+    function buildProgram() {
+        var n = 0;
+        for (var obj in objects) {
+            var y = obj.y;
+            if (motionOn) {
+                y = y + math.sin(timeSec * 1.6 + obj.phase) * 0.3;
+            }
+            if (obj.cut) {
+                writeOp(n, OP_SHAPE, obj.kind, 0, 0, obj.x, y, obj.z, obj.size);
+                writeOp(n + 1, OP_CUT, 0, 0, blend * 0.5, 0, 0, 0, 0);
+                n = n + 2;
+            } else {
+                writeOp(n, OP_SKIP, 0, n + 3, 0, obj.x, y, obj.z, boundRadius(obj.kind, obj.size));
+                writeOp(n + 1, OP_SHAPE, obj.kind, 0, 0, obj.x, y, obj.z, obj.size);
+                writeOp(n + 2, OP_UNION, 0, 0, blend, 0, 0, 0, 0);
+                n = n + 3;
+            }
+        }
+        opCount = n;
+    }
+
+    function addObject(kind, x, y, z, size, cut) {
+        var obj = { kind: kind, x: x, y: y, z: z, size: size, cut: cut, phase: objects.length * 0.7 };
+        if (opCount + opsFor(obj) > MAX_OPS) {
+            return false;
+        }
+        objects.append(obj);
+        opCount = opCount + opsFor(obj);
+        dirty = true;
+        return true;
+    }
+
+    function resetScene() {
+        objects = [];
+        opCount = 0;
+        for (var row = 0; row < 6; row++) {
+            for (var col = 0; col < 6; col++) {
+                var kind = (row + col) % 4;
+                var size = 0.38 + ((row * 7 + col * 3) % 5) * 0.04;
+                addObject(kind, -4.0 + col * 1.6, size, -4.0 + row * 1.6, size, false);
+            }
+        }
+        addObject(0, 0.0, 0.2, 0.0, 1.5, true);
+        addObject(1, 3.2, 0.9, -3.2, 0.55, true);
+    }
+
+    // ---- the same bytecode on the host (reference interpreter, used for picking) ----
+
+    function cpuShape(kind, qx, qy, qz, s) {
+        if (kind == 0) {
+            return math.sqrt(qx * qx + qy * qy + qz * qz) - s;
+        }
+        if (kind == 1) {
+            var dx = math.abs(qx) - s;
+            var dy = math.abs(qy) - s;
+            var dz = math.abs(qz) - s;
+            var ox = math.max(dx, 0.0);
+            var oy = math.max(dy, 0.0);
+            var oz = math.max(dz, 0.0);
+            return math.sqrt(ox * ox + oy * oy + oz * oz) + math.min(math.max(dx, math.max(dy, dz)), 0.0);
+        }
+        if (kind == 2) {
+            var ring = math.sqrt(qx * qx + qz * qz) - s;
+            return math.sqrt(ring * ring + qy * qy) - s * 0.35;
+        }
+        var cx = math.sqrt(qx * qx + qz * qz) - s * 0.7;
+        var cy = math.abs(qy) - s;
+        var px = math.max(cx, 0.0);
+        var py = math.max(cy, 0.0);
+        return math.min(math.max(cx, cy), 0.0) + math.sqrt(px * px + py * py);
+    }
+
+    function cpuSceneDistance(x, y, z) {
+        var stack = [100000.0];
+        var i = 0;
+        while (i < opCount) {
+            var base = i * 8;
+            var op = int(program[base]);
+            if (op == OP_SKIP) {
+                var bx = x - program[base + 4];
+                var by = y - program[base + 5];
+                var bz = z - program[base + 6];
+                var bound = math.sqrt(bx * bx + by * by + bz * bz) - program[base + 7];
+                if (skipOn && bound > stack[stack.length - 1] + blend) {
+                    i = int(program[base + 2]);
+                    continue;
+                }
+            } else if (op == OP_SHAPE) {
+                stack.append(cpuShape(int(program[base + 1]), x - program[base + 4], y - program[base + 5], z - program[base + 6], program[base + 7]));
+            } else {
+                var b = stack.pop();
+                var a = stack.pop();
+                var k = math.max(program[base + 3], 0.0001);
+                if (op == OP_UNION) {
+                    var h = math.clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);
+                    stack.append(b + (a - b) * h - k * h * (1.0 - h));
+                } else {
+                    var hc = math.clamp(0.5 + 0.5 * (b + a) / k, 0.0, 1.0);
+                    stack.append(0.0 - b + (a + b) * hc + k * hc * (1.0 - hc));
+                }
+            }
+            i = i + 1;
+        }
+        return math.min(stack[0], y);
+    }
+
+    // March the mouse ray on the host; returns [x, y, z] of the hit, or null.
+    function pickSurface(mx, my) {
+        var ndcX = (mx / width) * 2.0 - 1.0;
+        var ndcY = 1.0 - (my / height) * 2.0;
+        var dx = fwdX + rightX * ndcX * aspect * tanHalf + upX * ndcY * tanHalf;
+        var dy = fwdY + rightY * ndcX * aspect * tanHalf + upY * ndcY * tanHalf;
+        var dz = fwdZ + rightZ * ndcX * aspect * tanHalf + upZ * ndcY * tanHalf;
+        var dl = math.sqrt(dx * dx + dy * dy + dz * dz);
+        dx = dx / dl;
+        dy = dy / dl;
+        dz = dz / dl;
+        // Same stop rule as the shader: a hit when the distance is below a tolerance that grows
+        // with t. A ray that grazes a surface may run out of steps close to it: still a hit.
+        var t = 0.0;
+        for (var step = 0; step < 128; step++) {
+            var d = cpuSceneDistance(camX + dx * t, camY + dy * t, camZ + dz * t);
+            if (d < 0.0005 + 0.0008 * t) {
+                break;
+            }
+            t = t + d;
+            if (t > 60.0) {
+                return null;
+            }
+        }
+        return [camX + dx * t, camY + dy * t, camZ + dz * t];
+    }
+
+    // ---- camera, renderer, material ----
+
+    function updateCamera() {
+        camX = math.sin(camAngle) * math.cos(camPitch) * camDist;
+        camY = math.sin(camPitch) * camDist;
+        camZ = math.cos(camAngle) * math.cos(camPitch) * camDist;
+        var fx = 0.0 - camX;
+        var fy = 0.4 - camY;
+        var fz = 0.0 - camZ;
+        var fl = math.sqrt(fx * fx + fy * fy + fz * fz);
+        fwdX = fx / fl;
+        fwdY = fy / fl;
+        fwdZ = fz / fl;
+        var rl = math.sqrt(fwdZ * fwdZ + fwdX * fwdX);
+        rightX = (0.0 - fwdZ) / rl;
+        rightY = 0.0;
+        rightZ = fwdX / rl;
+        upX = rightY * fwdZ - rightZ * fwdY;
+        upY = rightZ * fwdX - rightX * fwdZ;
+        upZ = rightX * fwdY - rightY * fwdX;
+    }
+
+    var renderer = three.createRenderer(width, height, "#app");
+    three.setClearColor(renderer, "#0b1120");
+    three.setRendererSize(renderer, width, height);
+    three.setAutoRenderScale(renderer, 60, 0.5, 1);
+
+    var scene = three.createScene();
+    var camera = three.createOrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+    resetScene();
+    buildProgram();
+    var programTexture = three.createDataTexture(MAX_OPS * 2, 1, program, { "type": "float" });
+
+    var material = three.createShaderMaterial({
+        "vertexShader": vertexShader,
+        "fragmentShader": fragmentShader,
+        "depthWrite": false,
+        "uniforms": {
+            "uProgram": programTexture,
+            "uCount": opCount,
+            "uBlend": blend,
+            "uSkip": 1.0,
+            "uCamPos": [0, 4, 10],
+            "uCamForward": [0, 0, -1],
+            "uCamRight": [1, 0, 0],
+            "uCamUp": [0, 1, 0],
+            "uTanHalf": tanHalf,
+            "uAspect": aspect
+        }
+    });
+    three.add(scene, three.createMesh(three.createPlaneGeometry(2, 2), material));
+
+    var statusMs = 0.0;
+
+    function showStatus() {
+        var stats = three.getStats();
+        var mode = "add";
+        if (cutMode) {
+            mode = "cut";
+        }
+        var skipText = "off";
+        if (skipOn) {
+            skipText = "on";
+        }
+        dom.setText(status, "Tool: " + SHAPE_NAMES[tool] + " (" + mode + ")   Objects " + string(objects.length)
+            + "   Instructions " + string(opCount) + " / " + string(MAX_OPS)
+            + "   Blend " + string(math.round(blend * 100) / 100) + "   Bounding skip " + skipText
+            + "   Texture uploads " + string(uploads) + "   Shader compiles 1   "
+            + string(math.round(stats.fps)) + " fps");
+    }
+
+    function update(dtMs) {
+        var dt = math.min(dtMs, 50) / 1000;
+        timeSec = timeSec + dt;
+
+        if (three.isKeyDown("arrowleft")) {
+            camAngle = camAngle - dt * 1.2;
+        }
+        if (three.isKeyDown("arrowright")) {
+            camAngle = camAngle + dt * 1.2;
+        }
+        if (three.isKeyDown("arrowup")) {
+            camPitch = math.min(camPitch + dt * 0.8, 1.35);
+        }
+        if (three.isKeyDown("arrowdown")) {
+            camPitch = math.max(camPitch - dt * 0.8, 0.08);
+        }
+        if (three.isKeyDown("+") || three.isKeyDown("=")) {
+            camDist = math.max(camDist - dt * 6, 4);
+        }
+        if (three.isKeyDown("-")) {
+            camDist = math.min(camDist + dt * 6, 24);
+        }
+
+        for (var k = 0; k < 4; k++) {
+            if (three.wasKeyPressed(string(k + 1))) {
+                tool = k;
+            }
+        }
+        if (three.wasKeyPressed("x")) {
+            cutMode = !cutMode;
+        }
+        if (three.wasKeyPressed("b")) {
+            skipOn = !skipOn;
+            three.setUniform(material, "uSkip", skipOn ? 1.0 : 0.0);
+        }
+        if (three.wasKeyPressed("m")) {
+            motionOn = !motionOn;
+            dirty = true;
+        }
+        if (three.wasKeyPressed("r")) {
+            resetScene();
+        }
+        if (three.wasKeyPressed("backspace") && objects.length > 0) {
+            var removed = objects.pop();
+            opCount = opCount - opsFor(removed);
+            dirty = true;
+        }
+        if (three.wasKeyPressed("[")) {
+            blend = math.max(blend - 0.05, 0.0);
+            dirty = true;
+        }
+        if (three.wasKeyPressed("]")) {
+            blend = math.min(blend + 0.05, 1.0);
+            dirty = true;
+        }
+
+        updateCamera();
+
+        if (three.wasMousePressed(0)) {
+            var mx = three.getMouseX();
+            var my = three.getMouseY();
+            if (mx >= 0 && my >= 0 && mx < width && my < height) {
+                var hitPoint = pickSurface(mx, my);
+                if (hitPoint != null) {
+                    var size = 0.45;
+                    if (cutMode) {
+                        size = 0.6;
+                    }
+                    addObject(tool, hitPoint[0], hitPoint[1], hitPoint[2], size, cutMode);
+                }
+            }
+        }
+
+        // Only data changes: rewrite the program texture, never the shader.
+        if (dirty || motionOn) {
+            buildProgram();
+            three.updateDataTexture(programTexture, program);
+            three.setUniform(material, "uCount", opCount);
+            three.setUniform(material, "uBlend", blend);
+            uploads = uploads + 1;
+            dirty = false;
+        }
+
+        three.setUniform(material, "uCamPos", [camX, camY, camZ]);
+        three.setUniform(material, "uCamForward", [fwdX, fwdY, fwdZ]);
+        three.setUniform(material, "uCamRight", [rightX, rightY, rightZ]);
+        three.setUniform(material, "uCamUp", [upX, upY, upZ]);
+
+        statusMs = statusMs + dtMs;
+        if (statusMs > 250) {
+            statusMs = 0.0;
+            showStatus();
+        }
+    }
+
+    function render() {
+        three.render(renderer, scene, camera);
+    }
+
+    showStatus();
+    three.start(update, render);
+}

@@ -141,6 +141,22 @@ public static class GlslTranspiler
     {
         switch (statement)
         {
+            case BlockStatement { Statements: [VarDeclStatement loopVar, WhileStatement { IsDesugaredFor: true } loop] }
+                when loop.Body is BlockStatement { Statements: [var loopBody, var increment] }:
+                // The parser desugars `for (var i: int = 0; c; i++)` into { var; while { body; i++ } }.
+                // Emit a real GLSL `for` again, so `continue` still runs the increment.
+                WriteIndent(output, indent);
+                output.Append("for (");
+                output.Append(FormatLocalDeclaration(loopVar));
+                output.Append(" = ");
+                output.Append(TranspileExpression(loopVar.Initializer));
+                output.Append("; ");
+                output.Append(TranspileExpression(loop.Condition));
+                output.Append("; ");
+                output.Append(TranspileForIncrement(increment));
+                output.AppendLine(")");
+                TranspileEmbedded(loopBody, output, indent);
+                break;
             case BlockStatement block:
                 WriteIndent(output, indent);
                 output.AppendLine("{");
@@ -151,8 +167,12 @@ public static class GlslTranspiler
             case VarDeclStatement varDecl:
                 WriteIndent(output, indent);
                 output.Append(FormatLocalDeclaration(varDecl));
-                output.Append(" = ");
-                output.Append(TranspileExpression(varDecl.Initializer));
+                // `var s: float[8];` has no initializer: the parser stores a null literal.
+                if (varDecl.Initializer is not LiteralExpression { Value: null })
+                {
+                    output.Append(" = ");
+                    output.Append(TranspileExpression(varDecl.Initializer));
+                }
                 output.AppendLine(";");
                 break;
             case AssignmentStatement assignment:
@@ -249,8 +269,19 @@ public static class GlslTranspiler
         }
 
         var type = varDecl.TypeHint.Trim();
-        return varDecl.IsConst ? $"const {type} {varDecl.Name}" : $"{type} {varDecl.Name}";
+        // `float[8]` → `float s[8]`: the array suffix goes after the name, valid in GLSL ES 1.0 and 3.0.
+        var bracket = type.IndexOf('[');
+        var declarator = bracket < 0 ? $"{type} {varDecl.Name}" : $"{type[..bracket]} {varDecl.Name}{type[bracket..]}";
+        return varDecl.IsConst ? $"const {declarator}" : declarator;
     }
+
+    private static string TranspileForIncrement(Statement increment) => increment switch
+    {
+        AssignmentStatement assignment =>
+            $"{TranspileExpression(assignment.Target)} {MapAssignmentOperator(assignment.Operator, assignment)} {TranspileExpression(assignment.Value)}",
+        ExpressionStatement expressionStatement => TranspileExpression(expressionStatement.Expression),
+        _ => throw Unsupported(increment, $"for-increment '{increment.GetType().Name}' is not part of the GLSL shader subset.")
+    };
 
     private static string TranspileForInitializer(Statement? initializer)
     {
@@ -277,7 +308,16 @@ public static class GlslTranspiler
                     TokenType.Not => $"(!{TranspileExpression(unary.Right)})",
                     TokenType.Minus => $"(-{TranspileExpression(unary.Right)})",
                     TokenType.Plus => TranspileExpression(unary.Right),
+                    TokenType.Increment => $"++{TranspileExpression(unary.Right)}",
+                    TokenType.Decrement => $"--{TranspileExpression(unary.Right)}",
                     _ => throw Unsupported(unary, $"unary operator '{unary.Operator}' is not supported in GLSL.")
+                };
+            case PostfixExpression postfix:
+                return postfix.Operator switch
+                {
+                    TokenType.Increment => $"{TranspileExpression(postfix.Left)}++",
+                    TokenType.Decrement => $"{TranspileExpression(postfix.Left)}--",
+                    _ => throw Unsupported(postfix, $"postfix operator '{postfix.Operator}' is not supported in GLSL.")
                 };
             case BinaryExpression binary:
                 return $"({TranspileExpression(binary.Left)} {MapBinaryOperator(binary)} {TranspileExpression(binary.Right)})";

@@ -23,6 +23,8 @@ public partial class Parser
     private readonly HashSet<string> _includeResolutionStack;
     private int _blockDepth = 0;
     private bool _inWorkflowBlock;
+    // Inside an @shader() body: locals may be fixed-size GLSL arrays (`var s: float[8];`).
+    private bool _inShaderBody;
     private HashSet<string>? _workflowStepIds;
     
     public Parser(List<Token> tokens, string? sourceFileName = null, HashSet<string>? includeResolutionStack = null)
