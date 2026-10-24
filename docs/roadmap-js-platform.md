@@ -1,6 +1,6 @@
 # MALDA JavaScript platform roadmap
 
-**Status:** J0–J2 landed 2026-10-24; J3–J8 open  
+**Status:** J0–J3 landed 2026-10-24; J4–J8 open  
 **Created:** 2026-10-23  
 **Audience:** maintainers working on `JsTranspiler`, `malda-js-runtime.js`, `JsCapabilityChecker`
 and the browser-facing built-ins
@@ -170,6 +170,19 @@ emitted for a `core`-only program is a fraction of today's file.
 
 ## J3 — Typed JS emit, typed buffers and bytes
 
+**Typed emit landed 2026-10-24** (`JsTranspiler.NumericInference.cs`): numeric variables found by
+name over the whole program, operators on them plain, `__maldaFloat` alias for the rest. In-process,
+`floats` / `loops` went from 200 / 47 ms to 10 / 4 ms, the same as hand-written JavaScript; `arrays`
+from 78 to 4.4 ms, 2.5× hand-written, because array elements are of unknown type. Fuzz seeds
+100–160 pass.
+
+**Typed buffers and bytes landed 2026-10-24** as the `buf` namespace (decision 2): `buf.float64 /
+float32 / int32 / bytes`, `from`, `toArray`, `kind`, `slice`, `fill`, little-endian `readAt` /
+`writeAt`, UTF-8 and base64. One `TypedBufferInstance` for the interpreter and C#, typed arrays on
+JavaScript, buffer variables read through `__maldaBufGet` / `__maldaBufSet`: the `buffers`
+benchmark runs at 3.3 ms against 1.7 ms hand-written. Tests: `BufStdLibTests` (same output on the
+three backends). Not done: reinterpreting views (a float32 view over bytes) and big-endian I/O.
+
 - **Typed emit.** When the type is provable (number literals, typed locals, `for` counters,
   `length` of an array), emit plain JS operators and indexing: no `coerceToFloat`, `getIndex` or `str.length` call per iteration.
   Reuse the levels and the type environment of the C# native numeric work
@@ -277,7 +290,7 @@ reloads; tests cover the store on Node with a fake IndexedDB.
 ## Open decisions
 
 1. ~~Syntax for interop and exports~~ (decided: `import js …` in J1, the existing `export` keyword in J2).
-2. Name and namespace for typed buffers and bytes (`math`, a new `buf`, or literal types).
+2. ~~Name and namespace for typed buffers and bytes~~ (decided: a new `buf` namespace).
 3. Worker marker: decorator on the actor or a `spawn` variant.
 4. Whether `ui.*` local mode ports the diff to JS by hand or generates it from the C# engine.
 5. Whether host backends implement `io` storage / files (J7) or reject them.

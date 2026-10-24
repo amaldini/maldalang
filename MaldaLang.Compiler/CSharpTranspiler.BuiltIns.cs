@@ -1314,6 +1314,35 @@ public partial class CSharpTranspiler
         return true;
     }
 
+    /// <summary>
+    /// <c>buf.*</c>: <see cref="BufStdLib"/> on RuntimeValues. A buffer is a
+    /// <c>TypedBufferInstance</c> object on both sides, so it crosses unchanged (no copy) and
+    /// <c>buf.writeAt</c> changes the buffer the program holds.
+    /// </summary>
+    private bool TryTranspileBufStdLibCall(MemberAccessExpression memberAccess, FunctionCallExpression call)
+    {
+        if (memberAccess.Object is not IdentifierExpression moduleId)
+            return false;
+        if (moduleId.Name != StdLibNamespaces.BufModule
+            || !StdLibNamespaces.BufMethodNames.Contains(memberAccess.Member))
+            return false;
+
+        _output.Append("RuntimeHelpers.UnwrapRuntimeValue(MaldaLang.BuiltIns.BufStdLib.Call(\"");
+        _output.Append(memberAccess.Member);
+        _output.Append("\", new List<MaldaLang.Interpreter.RuntimeValue> { ");
+        for (int i = 0; i < call.Arguments.Count; i++)
+        {
+            if (i > 0)
+                _output.Append(", ");
+            _output.Append("RuntimeHelpers.ToRuntimeValue(");
+            TranspileExpression(call.Arguments[i]);
+            _output.Append(")");
+        }
+
+        _output.Append(" }))");
+        return true;
+    }
+
     private bool TryTranspileTraceStdLibCall(MemberAccessExpression memberAccess, FunctionCallExpression call)
     {
         if (memberAccess.Object is not IdentifierExpression moduleId)

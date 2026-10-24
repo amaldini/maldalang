@@ -145,6 +145,10 @@ public static partial class BuiltInFunctions
             case MaldaLang.Interpreter.ValueType.Null:
                 return "null";
             
+            case MaldaLang.Interpreter.ValueType.Object when value.AsObject() is TypedBufferInstance buffer:
+                // A buffer serializes as the array of its numbers.
+                return RuntimeValueToJson(RuntimeValue.Array(buffer.ToList()), seen);
+
             case MaldaLang.Interpreter.ValueType.Array:
                 var arr = value.AsArray();
                 if (!seen.Add(arr))

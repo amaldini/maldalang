@@ -357,6 +357,9 @@ public partial class Interpreter
             return RuntimeValue.Null();
 
         var index = await EvaluateAsync(expr.Index);
+
+        if (TryBufferIndex(array, index, expr.Line, out var buffer, out var bufferIndex))
+            return buffer.GetAt(bufferIndex);
         
         // Support array indexing with integer
         if (array.Type == ValueType.Array)

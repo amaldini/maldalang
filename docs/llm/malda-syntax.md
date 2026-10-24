@@ -366,6 +366,12 @@ against the compiled `.js` file: keep local modules under `assets/` and import
 `"./assets/lib.mjs"` so `malda play`, `malda compile` next to the source, and
 `malda test --target js` all find them. CommonJS `module.exports` is `NAME.default`.
 
+Numeric buffers (every backend): `var g = buf.float64(n);` then `g[i]`, `g[i] = v`, `g.length`,
+`for (var x in g)`; fixed length, out-of-range write is an error, no array methods
+(`buf.toArray(g)`). Binary: `buf.bytes(n)`, `buf.readAt(b, offset, "uint32")`,
+`buf.writeAt(b, offset, "float32", v)` (little-endian), `buf.fromUtf8` / `toUtf8` / `toBase64`.
+Prefer buffers for numeric loops compiled to JavaScript: they run as typed arrays.
+
 To call MALDA from JavaScript, compile with `--mode esm`: the `.mjs` exports the `export`-marked
 declarations (all top-level ones when the file has no `export`) and runs top-level code on import.
 

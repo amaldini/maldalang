@@ -107,6 +107,7 @@ Malda 1.0 is **dynamically typed** by default. Optional type hints (`var x: Some
 | actor / actor reference | `"actor"` |
 | variant (sum type) | `"variant"` |
 | task (`async` handle) | `"task"` |
+| fixed-size numeric buffer (`buf.float64(n)` …) | `"buffer"` |
 
 **Deprecation:** legacy tags `"integer"`, `"boolean"`, and `"dictionary"` are accepted only by `isTag(value, tag)` during the one-release deprecation window; `typeOf` returns canonical tags only.
 

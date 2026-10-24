@@ -362,9 +362,10 @@ public class JavaScriptBackendTests : TestBase
     [Fact]
     public void JsTranspiler_MapsDomCallsAndTruthinessEqualityHelpers()
     {
+        // Strings: two numeric variables would compare with === instead of equals().
         var source = """
-            var a = 1;
-            var b = 2;
+            var a = "1";
+            var b = "2";
             dom.setText("#title", "hello");
             var same = a == b;
             var diff = a != b;
@@ -385,28 +386,79 @@ public class JavaScriptBackendTests : TestBase
     }
 
     [Fact]
-    public void JsTranspiler_UsesFloatCoercion_ForNumericOperators()
+    public void JsTranspiler_UsesFloatCoercion_ForOperandsNotKnownToBeNumbers()
     {
+        // Parameters may hold anything: their operands go through coerceToFloat.
         var source = """
-            var a = 5;
-            var b = 2;
-            var c = a / b;
-            var d = a * 0.5;
-            var e = a - 0.25;
-            var f = a % b;
-            var g = -d;
-            var lt = a < 2.5;
+            function ops(a, b) {
+                var c = a / b;
+                var d = a * 0.5;
+                var e = a - 0.25;
+                var f = a % b;
+                var lt = a < 2.5;
+                return [c, d, e, f, lt];
+            }
             """;
         var compiler = new Compiler.Compiler();
 
         var js = compiler.TranspileToJavaScriptFromSource(source);
 
-        Assert.Contains("let c = __maldaDivide(mlRuntime.coerceToFloat(a), mlRuntime.coerceToFloat(b));", js, StringComparison.Ordinal);
-        Assert.Contains("let d = (mlRuntime.coerceToFloat(a) * 0.5);", js, StringComparison.Ordinal);
-        Assert.Contains("let e = (mlRuntime.coerceToFloat(a) - 0.25);", js, StringComparison.Ordinal);
-        Assert.Contains("let f = __maldaModulo(mlRuntime.coerceToFloat(a), mlRuntime.coerceToFloat(b));", js, StringComparison.Ordinal);
-        Assert.Contains("let g = (-mlRuntime.coerceToFloat(d));", js, StringComparison.Ordinal);
-        Assert.Contains("let lt = (mlRuntime.coerceToFloat(a) < 2.5);", js, StringComparison.Ordinal);
+        Assert.Contains("let c = __maldaDivide(__maldaFloat(a), __maldaFloat(b));", js, StringComparison.Ordinal);
+        Assert.Contains("let d = (__maldaFloat(a) * 0.5);", js, StringComparison.Ordinal);
+        Assert.Contains("let e = (__maldaFloat(a) - 0.25);", js, StringComparison.Ordinal);
+        Assert.Contains("let f = __maldaModulo(__maldaFloat(a), __maldaFloat(b));", js, StringComparison.Ordinal);
+        Assert.Contains("let lt = (__maldaFloat(a) < 2.5);", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void JsTranspiler_NumericVariables_UsePlainOperators()
+    {
+        // Every var and assignment of these names is a number by construction (J3).
+        var source = """
+            var a = 5;
+            var b = 2;
+            var c = a / b;
+            var d = a * 0.5;
+            var g = -d;
+            var lt = a < 2.5;
+            var s = a + b;
+            var same = a == b;
+            var i = 0;
+            while (i < 10) {
+                i = i + 1;
+            }
+            """;
+        var compiler = new Compiler.Compiler();
+
+        var js = compiler.TranspileToJavaScriptFromSource(source);
+
+        Assert.Contains("let c = __maldaDivide(a, b);", js, StringComparison.Ordinal);
+        Assert.Contains("let d = (a * 0.5);", js, StringComparison.Ordinal);
+        Assert.Contains("let g = (-d);", js, StringComparison.Ordinal);
+        Assert.Contains("let lt = (a < 2.5);", js, StringComparison.Ordinal);
+        Assert.Contains("let s = (a + b);", js, StringComparison.Ordinal);
+        Assert.Contains("let same = (a === b);", js, StringComparison.Ordinal);
+        Assert.Contains("while ((i < 10))", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("coerceToFloat", js.Replace("__maldaFloat = mlRuntime.coerceToFloat", string.Empty), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void JsTranspiler_NameAssignedANonNumber_KeepsCoercion()
+    {
+        var source = """
+            var x = 1;
+            x = "text";
+            var y = x * 2;
+            var z = 1;
+            z = z + "a";
+            var w = z * 2;
+            """;
+        var compiler = new Compiler.Compiler();
+
+        var js = compiler.TranspileToJavaScriptFromSource(source);
+
+        Assert.Contains("let y = (__maldaFloat(x) * 2);", js, StringComparison.Ordinal);
+        Assert.Contains("let w = (__maldaFloat(z) * 2);", js, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -6010,7 +6062,7 @@ const missingModel = three.loadGLTF("missing.gltf");
         var js = compiler.TranspileToJavaScriptFromSource(source);
 
         // A comparison guard is already a JS boolean, so it is not wrapped in isTruthy.
-        Assert.Contains("if ((mlRuntime.coerceToFloat(x) > 10))", js, StringComparison.Ordinal);
+        Assert.Contains("if ((__maldaFloat(x) > 10))", js, StringComparison.Ordinal);
         Assert.Contains("mlRuntime.matchPattern", js, StringComparison.Ordinal);
     }
 

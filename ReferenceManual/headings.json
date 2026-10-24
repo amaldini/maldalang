@@ -366,6 +366,12 @@
     "title": "6.6 Array Length"
   },
   {
+    "file": "06-arrays.html",
+    "level": 2,
+    "id": "buffers",
+    "title": "6.7 Fixed-Size Numeric Buffers (buf.*)"
+  },
+  {
     "file": "07-expressions.html",
     "level": 2,
     "id": "",

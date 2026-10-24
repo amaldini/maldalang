@@ -296,30 +296,52 @@ public partial class JsTranspiler
     }
 
     /// <summary>
-    /// Coerces an arithmetic/comparison operand to a number. <c>mlRuntime.coerceToFloat</c>
-    /// returns a JS number unchanged, so operands that are numbers by construction (numeric
-    /// literals, <c>- * / %</c> results, unary minus/plus) are emitted bare. <c>+</c> is not
-    /// one of them: it concatenates strings.
+    /// Coerces an arithmetic/comparison operand to a number. <c>coerceToFloat</c> (bound to the
+    /// local <c>__maldaFloat</c>) returns a JS number unchanged, so operands that are numbers by
+    /// construction are emitted bare: numeric literals, <c>- * / %</c> results, unary
+    /// minus/plus, and numeric variables (<see cref="InferNumericNames"/>), with <c>+</c> of two
+    /// of them. <c>+</c> of anything else may concatenate strings.
     /// </summary>
-    private static string Number(Expression expression, string transpiled)
+    private string Number(Expression expression, string transpiled)
     {
-        return IsStaticallyNumber(expression) ? transpiled : $"mlRuntime.coerceToFloat({transpiled})";
+        return IsStaticallyNumber(expression) ? transpiled : $"__maldaFloat({transpiled})";
     }
 
-    private static bool IsStaticallyNumber(Expression expression)
+    private bool IsStaticallyNumber(Expression expression)
     {
         return expression switch
         {
             LiteralExpression { Value: int or long or double } => true,
             UnaryExpression { Operator: TokenType.Minus or TokenType.Plus } => true,
+            IdentifierExpression identifier => IsNumericName(identifier.Name),
+            // An element of a buffer variable: getIndex returns a number or throws.
+            ArrayAccessExpression { IsNullConditional: false, Array: IdentifierExpression buffer } => _bufferNames.Contains(buffer.Name),
+            BinaryExpression { Operator: TokenType.Plus } plus => IsStaticallyNumber(plus.Left) && IsStaticallyNumber(plus.Right),
             BinaryExpression binary => binary.Operator is
                 TokenType.Minus or TokenType.Multiply or TokenType.Divide or TokenType.Modulo,
             _ => false
         };
     }
 
+    /// <summary>
+    /// A numeric variable. Parameters, fields and imports never are (the analysis excludes the
+    /// name everywhere), so a name that shadows one cannot be mistaken for it.
+    /// </summary>
+    private bool IsNumericName(string name) => _numericNames.Contains(name);
+
+    /// <summary><c>a[i]++</c> / <c>++a[i]</c>: through getIndex and setIndex, so range checks and buffers apply.</summary>
+    private string TranspileIndexIncrement(ArrayAccessExpression element, int delta, bool returnOld) =>
+        $"mlRuntime.incrementIndex({TranspileExpression(element.Array)}, {TranspileExpression(element.Index)}, {delta}, {(returnOld ? "true" : "false")})";
+
+    /// <summary><c>b[i]</c> where <c>b</c> always holds a <c>buf.*</c> buffer (<see cref="InferNumericNames"/>).</summary>
+    private bool IsBufferVariable(ArrayAccessExpression access) =>
+        !access.IsNullConditional && access.Array is IdentifierExpression identifier && _bufferNames.Contains(identifier.Name);
+
     private string TranspileUnaryExpression(UnaryExpression unary)
     {
+        if (unary.Operator is TokenType.Increment or TokenType.Decrement && unary.Right is ArrayAccessExpression element)
+            return TranspileIndexIncrement(element, unary.Operator == TokenType.Increment ? 1 : -1, returnOld: false);
+
         var right = TranspileExpression(unary.Right);
         return unary.Operator switch
         {
@@ -339,7 +361,7 @@ public partial class JsTranspiler
     /// is an error on the interpreter), so hot loops such as <c>i + 1</c> stay plain. Next to
     /// a known string only the other side needs formatting; otherwise the runtime decides.
     /// </summary>
-    private static string Plus(BinaryExpression binary, string left, string right)
+    private string Plus(BinaryExpression binary, string left, string right)
     {
         if (IsStaticallyNumber(binary.Left) || IsStaticallyNumber(binary.Right))
             return $"({left} + {right})";
@@ -416,10 +438,11 @@ public partial class JsTranspiler
         {
             var array = TranspileExpression(access.Array);
             var index = TranspileExpression(access.Index);
+            var (getter, setter) = IsBufferVariable(access) ? ("__maldaBufGet", "__maldaBufSet") : ("__maldaGetIndex", "__maldaSetIndex");
             if (assignment.Operator == TokenType.Assign)
-                return $"__maldaSetIndex({array}, {index}, {value});";
-            var current = $"__maldaGetIndex({array}, {index})";
-            return $"__maldaSetIndex({array}, {index}, {CompoundValue(assignment, current, value)});";
+                return $"{setter}({array}, {index}, {value});";
+            var current = $"{getter}({array}, {index})";
+            return $"{setter}({array}, {index}, {CompoundValue(assignment, current, value)});";
         }
 
         var target = TranspileAssignmentTarget(assignment.Target);
@@ -428,10 +451,10 @@ public partial class JsTranspiler
         return $"{target} {MapAssignmentOperator(assignment.Operator)} {value};";
     }
 
-    private static string CompoundValue(AssignmentStatement assignment, string current, string value)
+    private string CompoundValue(AssignmentStatement assignment, string current, string value)
     {
         return assignment.Operator == TokenType.DivideAssign
-            ? Division("/", "__maldaDivide", assignment.Value, $"mlRuntime.coerceToFloat({current})", Number(assignment.Value, value))
+            ? Division("/", "__maldaDivide", assignment.Value, $"__maldaFloat({current})", Number(assignment.Value, value))
             : $"({current} {MapAssignmentOperator(assignment.Operator)[..1]} {value})";
     }
 
@@ -439,8 +462,14 @@ public partial class JsTranspiler
     /// <c>mlRuntime.equals</c> is strict equality that also treats null and undefined as equal.
     /// Against a literal that reduces to plain JS: <c>=== literal</c>, or <c>== null</c>.
     /// </summary>
-    private static string Equality(BinaryExpression binary, string left, string right)
+    private string Equality(BinaryExpression binary, string left, string right)
     {
+        // Two numbers: equals() is === for them (NaN differs from itself either way).
+        if (IsStaticallyNumber(binary.Left) && IsStaticallyNumber(binary.Right))
+        {
+            return $"({left} === {right})";
+        }
+
         if (binary.Right is LiteralExpression rightLiteral)
         {
             return rightLiteral.Value == null ? $"({left} == null)" : $"({left} === {right})";

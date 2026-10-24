@@ -50,6 +50,7 @@ public sealed class DebugSession : IDebuggerHook
         StdLibNamespaces.CapModule,
         StdLibNamespaces.AgentsModule,
         StdLibNamespaces.NnModule,
+        StdLibNamespaces.BufModule,
         StdLibNamespaces.DeprecatedMathModuleAlias,
         "ui",
         "AnsiConsole",

@@ -18,14 +18,14 @@ python3 scripts/sync-reference-manual-it-status.py
 | 03-lexical-structure.html | 128dbe2e723b7d8260079709c08253d19efc7d4e1b263c3459a435e359da4b57 |
 | 04-data-types.html | 8fac006fd3c2ffca16e533d5fd32841164fb04afc82ed0a9067e5337c3f4cc52 |
 | 05-variables.html | f071ce860879a61c8d957091a4e10e9ae8b4f253a08f0c95dfd1af9a8eaa494f |
-| 06-arrays.html | 79694ee187841941f1e8342fcfa1d8ba066ffa315cf85aca145cde951140768a |
+| 06-arrays.html | d8b62a930d9da79b6349b83e9fb6cfeb0b52c5500e4d11d046b0bc9cc34f5ca1 |
 | 07-expressions.html | 27265aca23aa4f1369f4b9c91810d47d25e105e927cc52dc1ec7f303029b3793 |
 | 08-control-structures.html | 2d717c98e142dc45f43563d31200ab5ced9871c86069185ad0d8386fc7ee4ce1 |
 | 09-functions.html | 1ba603d6b236878766faf341990bad2030c3fdf247be4f23dcaa3f99080991c1 |
 | 10-prompts.html | ee7b37d3f8b4ecb26ce0a6cd714ef7bd4831703b88cc0e48fd8c4738d2a56cb2 |
 | 11-classes-objects.html | 4cf0a64ed5546ccc3af449b41d8f87e2b6a6e4a263b7ee7a1bf0ea0af6ed87c1 |
 | 12-input-output.html | 238c4342525321cc5f641fcfdd7676dcf213a87c7252fb8fccbb2e3d10d5b5db |
-| 13-built-in-functions.html | f783601abba816cd64d70d6a81ea2f89d8c33b99b6a9ac1668765c89d0cd0ced |
+| 13-built-in-functions.html | b9ab5cd867e5520b9d4bd835b442e8bbc21de5466281dc36bc0a98bbcc5b7fd6 |
 | 14-neural-nets.html | 6f2fce1b4f0ff961e05f2ce8f261de9202db981b8f9d0a0522cd028243d9f841 |
 | 15-graphs.html | 405568a4d176fda11393c4cef7ccfa3f53df28bcadf54001400d224c89d699b5 |
 | 16-vectordb.html | f8b8d297b3f0c3fac61891f3ae5f321975ad0a5fdd28dad33a60fc60f4405454 |

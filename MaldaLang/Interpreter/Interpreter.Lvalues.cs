@@ -165,6 +165,8 @@ public partial class Interpreter
         {
             var array = await EvaluateAsync(arrayExpr.Array);
             var index = await EvaluateAsync(arrayExpr.Index);
+            if (TryBufferIndex(array, index, arrayExpr.Line, out var buffer, out var bufferIndex))
+                return buffer.GetAt(bufferIndex);
             // Support object and dictionary indexing with string keys
             if (array.Type == ValueType.Object && index.Type == ValueType.String)
             {
@@ -215,6 +217,22 @@ public partial class Interpreter
         }
     }
     
+    /// <summary>
+    /// <c>b[i]</c> on a <c>buf.*</c> buffer: true with the buffer and an integer index (the range
+    /// is checked by the buffer on read and on write).
+    /// </summary>
+    private bool TryBufferIndex(RuntimeValue target, RuntimeValue index, int line, out BuiltIns.TypedBufferInstance buffer, out int bufferIndex)
+    {
+        buffer = null!;
+        bufferIndex = 0;
+        if (target.Type != ValueType.Object || target.AsObject() is not BuiltIns.TypedBufferInstance typed)
+            return false;
+        if (!NumericCoercion.TryAsInteger(index, out bufferIndex))
+            throw new RuntimeException("Array index must be an integer.", line, _currentFile);
+        buffer = typed;
+        return true;
+    }
+
     private void AssignIdentifier(IdentifierExpression idExpr, RuntimeValue value)
     {
         var memberFrame = CurrentClassMemberFrame();
@@ -280,6 +298,11 @@ public partial class Interpreter
         {
             var array = await EvaluateAsync(arrayExpr.Array);
             var index = await EvaluateAsync(arrayExpr.Index);
+            if (TryBufferIndex(array, index, arrayExpr.Line, out var buffer, out var bufferIndex))
+            {
+                buffer.SetAt(bufferIndex, value);
+                return;
+            }
             // Support object and dictionary indexing with string keys
             if (array.Type == ValueType.Object && index.Type == ValueType.String)
             {

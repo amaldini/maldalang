@@ -64,6 +64,7 @@ public class LlmBuiltinsTsvGuardTests
         symbols.UnionWith(StdLibNamespaces.IoMethodNames);
         symbols.UnionWith(StdLibNamespaces.TraceMethodNames);
         symbols.UnionWith(StdLibNamespaces.NnMethodNames);
+        symbols.UnionWith(StdLibNamespaces.BufMethodNames);
         symbols.UnionWith(AnsiConsoleMethodNames());
         return symbols;
     }
@@ -109,6 +110,7 @@ public class LlmBuiltinsTsvGuardTests
                 : StdLibNamespaces.IoMethodNames.Contains(row.Name) ? $"io.{row.Name}"
                 : StdLibNamespaces.TraceMethodNames.Contains(row.Name) ? $"trace.{row.Name}"
                 : StdLibNamespaces.NnMethodNames.Contains(row.Name) ? $"nn.{row.Name}"
+                : StdLibNamespaces.BufMethodNames.Contains(row.Name) ? $"buf.{row.Name}"
                 : ansiNames.Contains(row.Name) ? $"AnsiConsole.{row.Name}"
                 : ArrayMethodNames.Contains(row.Name) ? $"<array>.{row.Name}"
                 : row.Name;

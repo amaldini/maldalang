@@ -175,6 +175,34 @@ var largest2 = scores.max();   // 30</code></pre>
         <p>The <code>length</code> property returns the number of elements in the array:</p>
         <pre><code>var arr = [1, 2, 3, 4, 5];
 print(arr.length);  // Prints 5</code></pre>
+        <h2 id="buffers">6.7 Fixed-Size Numeric Buffers (<code>buf.*</code>)</h2>
+        <p>A buffer is a fixed-length run of numbers of one type, for numeric work and binary data. <code>buf.float64(n)</code>, <code>buf.float32(n)</code>, <code>buf.int32(n)</code> and <code>buf.bytes(n)</code> (unsigned 8-bit) make one filled with zeros; <code>buf.from(array, kind?)</code> copies an array or another buffer (<code>kind</code> is <code>"float64"</code>, the default, <code>"float32"</code>, <code>"int32"</code> or <code>"uint8"</code>). On JavaScript a buffer is a typed array (<code>Float64Array</code>, …), which makes numeric loops much faster there; the interpreter and C# transpile behave the same.</p>
+        <pre><code>var grid = buf.float64(2000);         // 2000 zeros, fixed length
+for (var i = 0; i < grid.length; i = i + 1) {
+    grid[i] = math.sin(i * 0.01);
+}
+var total = 0.0;
+for (var x in grid) {
+    total = total + x;
+}
+var counts = buf.int32(10);
+counts[3] += 1;
+print(counts);                        // [0, 0, 0, 1, 0, 0, 0, 0, 0, 0]
+print(buf.toArray(grid).length);      // 2000: a plain array for map / filter / append</code></pre>
+        <ul>
+            <li><strong>Like an array:</strong> <code>b[i]</code>, <code>b[i] = v</code>, <code>b[i] += v</code>, <code>b[i]++</code>, <code>b.length</code>, <code>for (var x in b)</code>, <code>print</code> / <code>string</code> as <code>[1, 2]</code>, <code>toJSON</code> as a JSON array, <code>length(b)</code>. <code>typeOf(b)</code> is <code>"buffer"</code>; <code>==</code> compares identity.</li>
+            <li><strong>Unlike an array:</strong> the length never changes. An index out of range is an error on read <em>and on write</em> (an array pads a write past the end with <code>null</code>). A written value must be a number. There are no array methods: <code>b.append</code>, <code>b.map</code> … are errors; <code>buf.toArray(b)</code> gives a plain array.</li>
+            <li><strong>Element types:</strong> <code>float32</code> rounds what you store (<code>0.1</code> reads back as <code>0.10000000149011612</code>); <code>int32</code> and <code>uint8</code> truncate toward zero and wrap (modulo 2<sup>32</sup> and 2<sup>8</sup>, so <code>bytes[0] = 257</code> stores 1), like JavaScript typed arrays.</li>
+            <li><strong>Helpers:</strong> <code>buf.kind(b)</code>, <code>buf.slice(b, start, end?)</code> (a copy), <code>buf.fill(b, value)</code> (returns <code>b</code>).</li>
+        </ul>
+        <h3>Binary data</h3>
+        <p>On a <code>buf.bytes</code> buffer, <code>buf.readAt(bytes, offset, type)</code> and <code>buf.writeAt(bytes, offset, type, value)</code> read and write a little-endian <code>int8</code>, <code>uint8</code>, <code>int16</code>, <code>uint16</code>, <code>int32</code>, <code>uint32</code>, <code>float32</code> or <code>float64</code>; a range outside the buffer is an error. <code>buf.fromUtf8(text)</code> / <code>buf.toUtf8(bytes)</code> and <code>buf.fromBase64(text)</code> / <code>buf.toBase64(bytes)</code> convert to and from text.</p>
+        <pre><code>var header = buf.bytes(8);
+buf.writeAt(header, 0, "uint32", 1179011410);
+buf.writeAt(header, 4, "float32", 1.5);
+print(buf.toBase64(header));            // UklGRgAAwD8=
+print(buf.readAt(header, 4, "float32"));  // 1.5
+print(buf.toUtf8(buf.fromUtf8("ciao")));  // ciao</code></pre>
         <div class="see-also">
             <h3>See Also</h3>
             <ul>

@@ -134,6 +134,7 @@ public static partial class BuiltInFunctions
         env.Define(StdLibNamespaces.AgentsModule, RuntimeValue.Object(new AgentsInstance()));
         env.Define(StdLibNamespaces.TraceModule, RuntimeValue.Object(new TraceInstance()));
         env.Define(StdLibNamespaces.NnModule, RuntimeValue.Object(new NnInstance()));
+        env.Define(StdLibNamespaces.BufModule, RuntimeValue.Object(new BufInstance()));
         AgentErrorStdLib.BindGlobals(env);
     }
 

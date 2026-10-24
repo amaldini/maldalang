@@ -176,6 +176,34 @@ var largest2 = scores.max();   // 30</code></pre>
         <p>La proprietà <code>length</code> restituisce il numero di elementi dell'array:</p>
         <pre><code>var arr = [1, 2, 3, 4, 5];
 print(arr.length);  // Prints 5</code></pre>
+        <h2 id="buffers">6.7 Buffer numerici a dimensione fissa (<code>buf.*</code>)</h2>
+        <p>Un buffer è una sequenza di numeri di un solo tipo, di lunghezza fissa, per il calcolo numerico e i dati binari. <code>buf.float64(n)</code>, <code>buf.float32(n)</code>, <code>buf.int32(n)</code> e <code>buf.bytes(n)</code> (8 bit senza segno) ne creano uno pieno di zeri; <code>buf.from(array, kind?)</code> copia un array o un altro buffer (<code>kind</code> è <code>"float64"</code>, il default, <code>"float32"</code>, <code>"int32"</code> o <code>"uint8"</code>). In JavaScript un buffer è un typed array (<code>Float64Array</code>, …), e lì i cicli numerici diventano molto più veloci; l'interprete e il transpile C# si comportano allo stesso modo.</p>
+        <pre><code>var grid = buf.float64(2000);         // 2000 zeros, fixed length
+for (var i = 0; i < grid.length; i = i + 1) {
+    grid[i] = math.sin(i * 0.01);
+}
+var total = 0.0;
+for (var x in grid) {
+    total = total + x;
+}
+var counts = buf.int32(10);
+counts[3] += 1;
+print(counts);                        // [0, 0, 0, 1, 0, 0, 0, 0, 0, 0]
+print(buf.toArray(grid).length);      // 2000: a plain array for map / filter / append</code></pre>
+        <ul>
+            <li><strong>Come un array:</strong> <code>b[i]</code>, <code>b[i] = v</code>, <code>b[i] += v</code>, <code>b[i]++</code>, <code>b.length</code>, <code>for (var x in b)</code>, <code>print</code> / <code>string</code> come <code>[1, 2]</code>, <code>toJSON</code> come array JSON, <code>length(b)</code>. <code>typeOf(b)</code> è <code>"buffer"</code>; <code>==</code> confronta l'identità.</li>
+            <li><strong>Diversamente da un array:</strong> la lunghezza non cambia mai. Un indice fuori dai limiti è un errore in lettura <em>e in scrittura</em> (un array completa con <code>null</code> una scrittura oltre la fine). Un valore scritto deve essere un numero. Non ci sono metodi degli array: <code>b.append</code>, <code>b.map</code> … sono errori; <code>buf.toArray(b)</code> restituisce un normale array.</li>
+            <li><strong>Tipi degli elementi:</strong> <code>float32</code> arrotonda ciò che memorizzi (<code>0.1</code> si rilegge come <code>0.10000000149011612</code>); <code>int32</code> e <code>uint8</code> troncano verso lo zero e ricominciano da capo (modulo 2<sup>32</sup> e 2<sup>8</sup>, quindi <code>bytes[0] = 257</code> memorizza 1), come i typed array di JavaScript.</li>
+            <li><strong>Funzioni di supporto:</strong> <code>buf.kind(b)</code>, <code>buf.slice(b, start, end?)</code> (una copia), <code>buf.fill(b, value)</code> (restituisce <code>b</code>).</li>
+        </ul>
+        <h3>Dati binari</h3>
+        <p>Su un buffer <code>buf.bytes</code>, <code>buf.readAt(bytes, offset, type)</code> e <code>buf.writeAt(bytes, offset, type, value)</code> leggono e scrivono in little-endian un <code>int8</code>, <code>uint8</code>, <code>int16</code>, <code>uint16</code>, <code>int32</code>, <code>uint32</code>, <code>float32</code> o <code>float64</code>; un intervallo fuori dal buffer è un errore. <code>buf.fromUtf8(text)</code> / <code>buf.toUtf8(bytes)</code> e <code>buf.fromBase64(text)</code> / <code>buf.toBase64(bytes)</code> convertono da e verso il testo.</p>
+        <pre><code>var header = buf.bytes(8);
+buf.writeAt(header, 0, "uint32", 1179011410);
+buf.writeAt(header, 4, "float32", 1.5);
+print(buf.toBase64(header));            // UklGRgAAwD8=
+print(buf.readAt(header, 4, "float32"));  // 1.5
+print(buf.toUtf8(buf.fromUtf8("ciao")));  // ciao</code></pre>
         <div class="see-also">
             <h3>Vedi anche</h3>
             <ul>

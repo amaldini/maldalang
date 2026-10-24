@@ -642,7 +642,7 @@ public partial class CSharpTranspiler
     {
         _output.Append("foreach (object ");
         _output.Append(EscapeIdentifier(forInStmt.VariableName));
-        _output.Append(" in RuntimeHelpers.GetArray(");
+        _output.Append(" in RuntimeHelpers.GetForInItems(");
         TranspileExpression(forInStmt.Collection);
         _output.Append("))");
         AppendComment(nameof(TranspileForIn));

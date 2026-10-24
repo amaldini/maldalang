@@ -622,6 +622,11 @@ public partial class CSharpTranspiler
             TranspileExpression(unary.Right);
             _output.Append(")");
         }
+        else if ((unary.Operator == TokenType.Increment || unary.Operator == TokenType.Decrement) &&
+                 unary.Right is ArrayAccessExpression element)
+        {
+            TranspileIndexIncrement(element, unary.Operator, returnOld: false);
+        }
         else if (unary.Operator == TokenType.Increment || unary.Operator == TokenType.Decrement)
         {
             // Prefix ++x / --x: assign checked result and use as expression value
@@ -640,8 +645,26 @@ public partial class CSharpTranspiler
     }
 
     
+    /// <summary><c>a[i]++</c> / <c>++a[i]</c>: an element is not a C# variable, so go through the indexed helpers.</summary>
+    private void TranspileIndexIncrement(ArrayAccessExpression element, TokenType op, bool returnOld)
+    {
+        _output.Append("RuntimeHelpers.IncrementIndexed(");
+        TranspileExpression(element.Array);
+        _output.Append(", ");
+        TranspileExpression(element.Index);
+        _output.Append(op == TokenType.Increment ? ", 1, " : ", -1, ");
+        _output.Append(returnOld ? "true)" : "false)");
+    }
+
     private void TranspilePostfix(PostfixExpression postfix)
     {
+        if (postfix.Left is ArrayAccessExpression element &&
+            postfix.Operator is TokenType.Increment or TokenType.Decrement)
+        {
+            TranspileIndexIncrement(element, postfix.Operator, returnOld: true);
+            return;
+        }
+
         // Static members cannot be the left-hand side of a plain C# assignment
         // (`typeof(Counter).count = ...` is invalid), so expand them through the
         // static helpers explicitly.
@@ -762,9 +785,9 @@ public partial class CSharpTranspiler
             }
             else
             {
-                _output.Append("RuntimeHelpers.GetArray(");
+                _output.Append("RuntimeHelpers.GetLengthMember(");
                 TranspileExpression(member.Object);
-                _output.Append(").Count");
+                _output.Append(")");
             }
             return;
         }

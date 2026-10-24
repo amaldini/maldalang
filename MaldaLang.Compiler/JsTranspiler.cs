@@ -51,7 +51,7 @@ public partial class JsTranspiler
 
     private static readonly HashSet<string> JsRuntimeModules = new(StringComparer.Ordinal)
     {
-        "dom", "game", "three", "math", "Math", "str", "io", "nn",
+        "dom", "game", "three", "math", "Math", "str", "io", "nn", "buf",
         "result", "option", "grounded", "cap", "agents", "schema"
     };
 
@@ -100,6 +100,10 @@ public partial class JsTranspiler
         _rewriteImplicitMembers = other._rewriteImplicitMembers;
         _jsImportNames.Clear();
         _jsImportNames.UnionWith(other._jsImportNames);
+        _numericNames.Clear();
+        _numericNames.UnionWith(other._numericNames);
+        _bufferNames.Clear();
+        _bufferNames.UnionWith(other._bufferNames);
     }
 
     public string Transpile(List<Statement> statements, bool isLibrary = false, string? sourceFilePath = null)
@@ -195,6 +199,7 @@ public partial class JsTranspiler
 
         CollectShaderFunctions(statements);
         var jsImports = CollectJsImports(jsImportStatements);
+        InferNumericNames(statements);
 
         var isEsModule = ModuleFormat == JsModuleFormat.EsModule;
         if (isEsModule)
@@ -216,8 +221,9 @@ public partial class JsTranspiler
         EmitLine("const mlRuntime = globalThis.mlRuntime;");
         // Hot helpers behind +, $"{…}", string(), a[i], / and %: a local binding keeps V8 from a
         // property lookup on the large runtime object at every call.
-        EmitLine("const __maldaAdd = mlRuntime.add, __maldaFormat = mlRuntime.formatValue;");
+        EmitLine("const __maldaAdd = mlRuntime.add, __maldaFormat = mlRuntime.formatValue, __maldaFloat = mlRuntime.coerceToFloat;");
         EmitLine("const __maldaGetIndex = mlRuntime.getIndex, __maldaSetIndex = mlRuntime.setIndex, __maldaDivide = mlRuntime.divide, __maldaModulo = mlRuntime.modulo;");
+        EmitLine("const __maldaBufGet = mlRuntime.bufGet, __maldaBufSet = mlRuntime.bufSet;");
         EmitLine(string.Empty);
 
         foreach (var typeDeclaration in typeDeclarations)
@@ -656,6 +662,9 @@ public partial class JsTranspiler
                 return TranspileBinaryExpression(binary);
             case UnaryExpression unary:
                 return TranspileUnaryExpression(unary);
+            case PostfixExpression { Left: ArrayAccessExpression element } postfix:
+                // `a[i]++` cannot apply ++ to the getIndex call: read, write back, return the old value.
+                return TranspileIndexIncrement(element, postfix.Operator == TokenType.Increment ? 1 : -1, returnOld: true);
             case PostfixExpression postfix:
                 return $"({TranspileExpression(postfix.Left)}{MapPostfixOperator(postfix.Operator)})";
             case TernaryExpression ternary:
@@ -680,7 +689,9 @@ public partial class JsTranspiler
                 {
                     return $"mlRuntime.getIndexNullSafe({TranspileExpression(arrayAccess.Array)}, {TranspileExpression(arrayAccess.Index)})";
                 }
-                return $"__maldaGetIndex({TranspileExpression(arrayAccess.Array)}, {TranspileExpression(arrayAccess.Index)})";
+                return IsBufferVariable(arrayAccess)
+                    ? $"__maldaBufGet({TranspileExpression(arrayAccess.Array)}, {TranspileExpression(arrayAccess.Index)})"
+                    : $"__maldaGetIndex({TranspileExpression(arrayAccess.Array)}, {TranspileExpression(arrayAccess.Index)})";
             case ArrayLiteralExpression arrayLiteral:
                 return $"[{string.Join(", ", arrayLiteral.Elements.Select(TranspileExpression))}]";
             case ObjectLiteralExpression objectLiteral:

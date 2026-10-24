@@ -402,7 +402,11 @@ public partial class Interpreter
     private async Task<RuntimeValue?> ExecuteForInAsync(ForInStatement stmt)
     {
         var collection = await EvaluateAsync(stmt.Collection);
-        
+
+        // A buffer iterates its elements (a snapshot, like the array copy below).
+        if (collection.Type == ValueType.Object && collection.AsObject() is BuiltIns.TypedBufferInstance buffer)
+            collection = RuntimeValue.Array(buffer.ToList());
+
         if (collection.Type != ValueType.Array)
             throw new RuntimeException("for-in loop requires an array.");
         

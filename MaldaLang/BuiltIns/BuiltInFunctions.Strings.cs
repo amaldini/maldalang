@@ -46,6 +46,8 @@ public static partial class BuiltInFunctions
             return RuntimeValue.Integer(arg.AsString().Length);
         if (arg.Type == MaldaLang.Interpreter.ValueType.Array)
             return RuntimeValue.Integer(arg.AsArray().Count);
+        if (arg.Type == MaldaLang.Interpreter.ValueType.Object && arg.AsObject() is TypedBufferInstance buffer)
+            return RuntimeValue.Integer(buffer.Length);
         throw new Exception("length() expects a string or array");
     }
     

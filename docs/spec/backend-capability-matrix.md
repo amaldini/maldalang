@@ -37,6 +37,7 @@ These strings are what `@property` / `runProperty` use via `GetRequiredCapabilit
 |---------|:-----------:|:------------:|:----------:|
 | Core language (vars, functions, classes, match, async/await) | yes | yes | yes (Tier 0 subset) |
 | Standard library (`math` / `str` / collections / JSON / encodings / conversions, `io.print` / `io.input`) | yes | yes | yes‡ |
+| Fixed-size numeric buffers and binary data (`buf.*`) | yes | yes | yes (typed arrays) |
 | Host-only stdlib helpers (`markdownToHtml` / `extractHTML` / `hashPassword` / JWT / `race` / `firstOk` / `stream` / `AnsiConsole`) | yes | yes | no |
 | File I/O | yes | yes | no |
 | Actors (`spawn` / `send` / `on`) | yes | yes | yes (process-local) |

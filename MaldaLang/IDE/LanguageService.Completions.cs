@@ -581,7 +581,8 @@ public partial class LanguageService
         (StdLibNamespaces.CapModule, "cap.fileRead(path) — unforgeable file / HTTP / MCP / shell capability tokens"),
         (StdLibNamespaces.AgentsModule, "agents.define / agents.team — role specs plus a relation graph"),
         (StdLibNamespaces.TraceModule, "trace.span / journal / lastUsage — run observability"),
-        (StdLibNamespaces.NnModule, "nn.dense / sequential / activations — neural-net helpers")
+        (StdLibNamespaces.NnModule, "nn.dense / sequential / activations — neural-net helpers"),
+        (StdLibNamespaces.BufModule, "buf.float64(n) / bytes(n) / readAt / writeAt — fixed-size numeric buffers, binary data")
     };
 
     private static bool TryAddStdLibNamespaceMembers(string moduleName, List<CompletionItem> members)
@@ -599,6 +600,7 @@ public partial class LanguageService
             StdLibNamespaces.CapModule => StdLibNamespaces.CapMethodNames,
             StdLibNamespaces.AgentsModule => StdLibNamespaces.AgentsMethodNames,
             StdLibNamespaces.NnModule => StdLibNamespaces.NnMethodNames,
+            StdLibNamespaces.BufModule => StdLibNamespaces.BufMethodNames,
             _ => null
         };
         if (methods == null)

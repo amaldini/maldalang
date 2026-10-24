@@ -23,6 +23,7 @@ average	math.average	1 argument: (array)		float; throws on an empty array
 base64Decode	str.base64Decode	1 argument		string; throws on invalid base64
 base64Encode	str.base64Encode	1 argument		string
 bindForm	bindForm	body and fields array		
+bytes	buf.bytes	1 argument: (length)	fixed-size uint8 buffer, zero-filled; writes wrap modulo 256	buffer
 cancelThink	cancelThink	1 argument: (channel)		
 cancelWorkflow	cancelWorkflow	at least 1 argument: (instanceId, reason?)		
 ceil	math.ceil	1 argument	returns a float even when whole-valued; integer sinks coerce whole floats; wrap with int() if you need an Integer-tagged value	float (whole-valued)
@@ -124,13 +125,19 @@ extractHTML	extractHTML	1 string argument
 extractNumbers	str.extractNumbers	1 argument		array of numbers
 extractPdfText	extractPdfText	1-2 arguments: (path, password?)		
 failJob	failJob	1-3 arguments: (jobId, error?, retry?)		
+fill	buf.fill	2 arguments: (buffer, value)	returns the same buffer	buffer
 firstOk	firstOk	at least 1 argument: (tasks...)	first branch that is not a Timeout variant	
 float	float	1 argument		
+float32	buf.float32	1 argument: (length)	writes round to float32 (0.1 does not read back as 0.1)	buffer
+float64	buf.float64	1 argument: (length)	fixed-size float64 buffer, zero-filled; b[i] out of range is an error (no padding)	buffer
 floor	math.floor	1 argument	returns a float even when whole-valued (print shows 1, not 1.0); integer sinks coerce whole floats, so str.repeat("-", math.floor(n)) works; fractional floats still fail	float (whole-valued)
 formatDate	formatDate	1-2 arguments: (timestamp, format?)		
 formatNumber	formatNumber	2 arguments (number, decimalPlaces)		
 formatRetrievedDocs	formatRetrievedDocs	a document array		
 formErrors	formErrors	1 argument (array of strings or {field,message} objects)		
+from	buf.from	1-2 arguments: (values, kind?)	kind float64 (default) / float32 / int32 / uint8; elements must be numbers	buffer
+fromBase64	buf.fromBase64	1 argument: (text)	invalid text is an error	buffer (bytes)
+fromUtf8	buf.fromUtf8	1 argument: (text)		buffer (bytes)
 gelu	nn.gelu	1 argument: (x)		
 generateCsrfToken	generateCsrfToken	secret and optional ttlSeconds		
 generateUI	generateUI	at least 1 string argument		
@@ -185,6 +192,7 @@ indexOf	str.indexOf	(string, string)		int; -1 when not found
 input	io.input	0-1 arguments: (prompt?)	reads one line from stdin; pipe a scripted transcript to test without a human	string; "" at end of input
 insertAtLine	insertAtLine	at least 3 arguments: (filePath, lineNumber, content, ...)		
 int	int	1 argument	throws when the value will not parse; use toIntOr or toIntOrNull to supply a fallback	
+int32	buf.int32	1 argument: (length)	writes truncate and wrap modulo 2^32	buffer
 isArray	isArray	1 argument		
 isNumber	isNumber	1 argument		
 isObject	isObject	1 argument		
@@ -193,6 +201,7 @@ isString	isString	1 argument
 isTag	isTag	2 arguments: (value, tag)		
 join	str.join	1-2 arguments: (array, separator?)		string
 journal	trace.journal	0 arguments	in-process run events (prompt/tool/cap/hop/step); not malda trace session files	
+kind	buf.kind	1 argument: (buffer)		"float64" | "float32" | "int32" | "uint8"
 lastUsage	trace.lastUsage	0 arguments	last token/cost/ms object, or null	
 leakyRelu	nn.leakyRelu	1-2 arguments: (x, alpha?)	alpha defaults to 0.01; scalar or elementwise 1D/2D	float or array
 length	str.length	1 argument	accepts a string or an array	int
@@ -248,6 +257,7 @@ randomChoiceWeighted	math.randomChoiceWeighted	1 argument: (weights)		int index 
 randomFloat	math.randomFloat	2 arguments: (min, max)	min included, max excluded	float
 randomInt	math.randomInt	2 arguments: (min, max)	min and max are BOTH included, unlike half-open ranges elsewhere; math.seed(n) pins the sequence	int
 range	range	1-3 arguments: (end) or (start, end) or (start, end, step)		
+readAt	buf.readAt	3 arguments: (bytes, offset, type)	bytes buffer only; little-endian; type int8/uint8/int16/uint16/int32/uint32/float32/float64	number
 readFile	io.readFile	(string, int?, int?)		string, or null when the file is missing
 readFileBase64	io.readFileBase64	1 argument		string, or null when the file is missing
 readPng	io.readPng	1 argument: (path)	8-bit non-interlaced gray, gray+alpha, RGB, or RGBA; indexed, 16-bit, and interlaced files are null; interpreter and C# transpile only	{ width, height, pixels } flat RGBA 0-255, or null if missing or not decodable
@@ -291,6 +301,7 @@ silu	nn.silu	1 argument: (x)
 similarity	str.similarity	(string, string, method?, options?)		float in [0, 1]
 sin	math.sin	1 argument		float
 sleep	sleep	1 argument: (milliseconds)	real-time delay; prefer it over busy-wait loops	
+slice	buf.slice	2-3 arguments: (buffer, start, end?)	copy of [start, end); out-of-range bounds are an error	buffer
 softmax	math.softmax	1-2 arguments: (array, temperature?)		array of floats summing to 1
 softmaxGrad	nn.softmaxGrad	2 arguments: (logits, target)	softmax(logits) minus a class index or a same-length vector	array
 softplus	nn.softplus	1 argument: (x)		
@@ -310,12 +321,15 @@ table	AnsiConsole.table	at least 1 argument: (data, title?, columns?)	data must 
 tan	math.tan	1 argument		float
 tanh	math.tanh	1 argument: (x)		float or array (element-wise)
 text	str.text	1 argument: (value)	null → empty string (unlike string(null) → "null"); use at env/JSON/CLI boundaries	string (never null)
+toArray	buf.toArray	1 argument: (buffer)	a plain array copy; use it for map / filter / append (buffers have no array methods)	array
+toBase64	buf.toBase64	1 argument: (bytes)		string
 toCsv	toCsv	1-3 arguments: (rows, columns?, options?)		
 toIntOr	toIntOr	2 arguments: (value, fallback)	returns the fallback instead of throwing	
 toIntOrNull	toIntOrNull	1 argument	returns null instead of throwing	
 toJSON	toJSON	1 argument		
 tokenize	str.tokenize	(string, options?)		array of strings
 tokenOverlap	str.tokenOverlap	(string, string, options?)		{ sharedCount, leftCount, rightCount, jaccard, sharedTokens }
+toUtf8	buf.toUtf8	1 argument: (bytes)	invalid sequences decode as U+FFFD	string
 transpose	math.transpose	1 argument: (matrix)		array of arrays (matrix)
 tree	AnsiConsole.tree	at least 1 string argument: (label, items?)	items is an array of strings or { label, children? }; children may be strings (nested objects are skipped)	null
 trim	str.trim	1 argument		string
@@ -408,6 +422,7 @@ verifyPassword	verifyPassword	2 arguments: (password, passwordHash)
 webFetch	webFetch	1-4 arguments: (urlOrToken, pathOrMaxBytes?, maxBytes?, timeoutMs?)		
 webSearch	webSearch	at least 1 string argument: (query, apiKey?)		
 withExamples	withExamples	(prompt, examples, options?)		
+writeAt	buf.writeAt	4 arguments: (bytes, offset, type, value)	bytes buffer only; little-endian; returns the same bytes	buffer
 writeFile	io.writeFile	2 arguments		bool
 writeFileBase64	io.writeFileBase64	(path, base64Content)		bool
 writePng	io.writePng	4 arguments: (path, width, height, rgba)	rgba length is width*height*4; channels are rounded and clamped to 0-255; throws when the buffer does not match or the image exceeds 16 megapixels; rejects embed: paths; interpreter and C# transpile only	bool; false on I/O failure

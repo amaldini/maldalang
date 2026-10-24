@@ -65,6 +65,7 @@ row is each backend's startup cost. JavaScript needs `node` on `PATH`.
 | `methods` | method calls with numeric arguments: recursion via `this`, helpers, static methods |
 | `objects` | `new`, method calls, field access |
 | `arrays` | float arrays: indexed reads and writes in nested loops (stencil passes) |
+| `buffers` | the `arrays` kernel on `buf.float64` buffers |
 
 ### JavaScript against hand-written JavaScript
 
@@ -89,9 +90,28 @@ work: bare `node -e 0` takes 0.055 s here, and `hello` on `js` (Node + runtime l
 | `collections` | 0.127 | 0.093 | ~1.4× |
 | `fib` | 0.092 | 0.072 | ~1.2× |
 
-The gap is in numeric code: comparisons and index reads go through `coerceToFloat` /
-`getIndex` on every iteration. Typed JavaScript emit is J3 in
-[`docs/roadmap-js-platform.md`](roadmap-js-platform.md).
+The gap was in numeric code: every operand of a comparison or an arithmetic operator went
+through `mlRuntime.coerceToFloat`, looked up on the large runtime object.
+
+**After numeric variables (J3, 2026-10-24).** The JavaScript emitter now leaves operators plain
+for variables that only ever hold numbers, and binds `coerceToFloat` to a local for the rest.
+At this size process timings are mostly Node startup, so this table times `main()` of the
+generated program against the same hand-written code inside one Node process (warmed up, best
+of 9):
+
+| Program | Before | Generated | Hand-written | Ratio |
+|---------|-------:|----------:|-------------:|------:|
+| `floats` | 199.8 ms | 10.0 ms | 9.6 ms | 1.0× |
+| `loops` | 47.0 ms | 4.0 ms | 4.0 ms | 1.0× |
+| `objects` | — | 3.0 ms | 3.4 ms | 0.9× |
+| `collections` | — | 25.9 ms | 19.9 ms | 1.3× |
+| `fib` | — | 4.7 ms | 2.9 ms | 1.6× |
+| `arrays` | 78.2 ms | 4.4 ms | 1.8 ms | 2.5× |
+| `buffers` | — | 3.3 ms | 1.7 ms | 1.9× |
+
+What is left: elements of a plain array are of unknown type, so `a[i] + b[j]` still goes through
+`getIndex` and `mlRuntime.add` (`buf.float64` buffers avoid it: `buffers` row), and a call
+result (`fib(n - 1) + fib(n - 2)`) through `mlRuntime.add`.
 
 The C# fast paths these numbers track (conditional defer frames, primitive operator paths,
 direct `this.field`, `__Sync` / `__Typed` function and method twins, direct method dispatch, inferred `int` and

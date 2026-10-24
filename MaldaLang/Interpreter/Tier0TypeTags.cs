@@ -12,7 +12,7 @@ public static class Tier0TypeTags
     public static readonly string[] Canonical =
     {
         "int", "float", "string", "bool", "array", "dict", "object", "null",
-        "variant", "task", "function", "class", "actor"
+        "variant", "task", "function", "class", "actor", "buffer"
     };
 
     private static readonly HashSet<string> CanonicalSet = new(Canonical, StringComparer.Ordinal);
@@ -37,7 +37,12 @@ public static class Tier0TypeTags
             ValueType.Boolean => "bool",
             ValueType.Null => "null",
             ValueType.Array => "array",
-            ValueType.Object => value.AsObject() is DictionaryInstance ? "dict" : "object",
+            ValueType.Object => value.AsObject() switch
+            {
+                DictionaryInstance => "dict",
+                BuiltIns.TypedBufferInstance => "buffer",
+                _ => "object"
+            },
             ValueType.Function => "function",
             ValueType.Class => "class",
             ValueType.ActorReference or ValueType.Actor => "actor",

@@ -107,6 +107,18 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — `buf.*` fixed-size numeric buffers and binary data)
+
+- New `buf` namespace on all three backends: `buf.float64(n)` / `float32(n)` / `int32(n)` / `bytes(n)` (zero-filled, fixed length), `buf.from(values, kind?)`, `toArray`, `kind`, `slice`, `fill`, little-endian `buf.readAt(bytes, offset, type)` / `buf.writeAt(bytes, offset, type, value)` (`int8` … `float64`), and `fromUtf8` / `toUtf8` / `fromBase64` / `toBase64`. A buffer indexes like an array (`b[i]`, `b[i] = v`, `+=`, `++`, `.length`, `for in`, printing, `toJSON`), but an index out of range is an error on write too, a written value must be a number, the element type converts it (float32 rounds, int32 / uint8 truncate and wrap like JavaScript typed arrays), and array methods are an error (`buf.toArray`). New `typeOf` tag `"buffer"`. The interpreter and C# share one `TypedBufferInstance`; JavaScript uses `Float64Array` / `Float32Array` / `Int32Array` / `Uint8Array`, and the emitter reads and writes buffer variables through small fast helpers, so the `buffers` benchmark runs about 2× hand-written JavaScript. Narrative: [`06-arrays.html`](../../ReferenceManual/06-arrays.html#buffers).
+
+#### Fixed (PATCH — `a[i]++` on an array element)
+
+- `a[i]++` / `++a[i]` / `a[i]--` emitted invalid code on C# transpile (CS0131) and on JavaScript (`getIndex(…)++`). Both now read and write through the indexed helpers (`RuntimeHelpers.IncrementIndexed`, `mlRuntime.incrementIndex`) with the interpreter's result: an int stays an int, a float adds 1, the postfix form returns the old value.
+
+#### Changed (PATCH — faster numeric JavaScript)
+
+- The JavaScript emitter leaves arithmetic, comparisons and `==` plain for variables that only ever hold numbers (every `var` and assignment of the name is a number by construction; parameters, loop / pattern variables, fields and imports never qualify), and binds `coerceToFloat` to a local for the remaining operands. Output is unchanged; the `floats` / `loops` benchmarks run 12–20× faster and match hand-written JavaScript ([`docs/benchmarks.md`](../benchmarks.md)). JavaScript backend only; no Tier 0 change.
+
 #### Added (tooling — `malda compile --mode esm`)
 
 - `--mode esm` (alias `--target esm`) compiles to an ES module (`.mjs` by default) that imports `./malda-js-runtime.js`, runs the program's top-level code when evaluated (`await main()`) and exports its declarations with the MALDA `import` rule: the `export`-marked functions, classes, variables and types (variant constructors) if any, otherwise every top-level declaration; declarations inlined from imported `.malda` files are not re-exported. JavaScript calls them with plain values (`import { area } from "./geometry.mjs"`); modules compiled into one folder share one runtime instance. The generated `index.html` imports the module. The target partitioner now keeps `SourceFile` on the functions and classes it clones, so C# `#line` directives of included / imported declarations point at their own file. The `malda-js-runtime.js` written beside `--mode js` / `esm` / `pwa` output now keeps the `game.*` / `three.*` areas only when a program compiled into that folder uses them (a core program ships about 57% of the file); its first line lists the kept areas, and a call into a dropped area throws an error that names it. Narrative: [`28-browser-javascript-backend.html`](../../ReferenceManual/28-browser-javascript-backend.html#es-modules). No Tier 0 change.

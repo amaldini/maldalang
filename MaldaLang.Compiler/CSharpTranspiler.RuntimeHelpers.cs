@@ -508,6 +508,8 @@ public partial class CSharpTranspiler
         WriteIndent();
         _output.AppendLine("if (unwrapped is MaldaLang.Interpreter.DictionaryInstance or System.Collections.Generic.Dictionary<string, object?>) return \"dict\";");
         WriteIndent();
+        _output.AppendLine("if (unwrapped is MaldaLang.BuiltIns.TypedBufferInstance) return \"buffer\";");
+        WriteIndent();
         _output.AppendLine("if (unwrapped is MaldaLang.Interpreter.ObjectInstance) return \"object\";");
         WriteIndent();
         _output.AppendLine("if (unwrapped is Delegate) return \"function\";");

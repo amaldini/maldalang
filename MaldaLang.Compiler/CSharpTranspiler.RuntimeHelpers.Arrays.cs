@@ -208,6 +208,10 @@ public partial class CSharpTranspiler
         _output.AppendLine("{");
         _indentLevel++;
         WriteIndent();
+        _output.AppendLine("if (UnwrapRuntimeValue(value) is MaldaLang.BuiltIns.TypedBufferInstance)");
+        WriteIndent();
+        _output.AppendLine("    throw new MaldaLang.Interpreter.RuntimeException(MaldaLang.BuiltIns.TypedBufferInstance.NoArrayMethodsMessage);");
+        WriteIndent();
         // Unwrap Array via AsArray first — UnwrapRuntimeValue(Array) calls GetArray (bridge).
         WriteIndent();
         _output.AppendLine("if (value is MaldaLang.Interpreter.RuntimeValue arrayRv && arrayRv.Type == MaldaLang.Interpreter.ValueType.Array)");

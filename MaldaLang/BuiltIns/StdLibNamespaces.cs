@@ -20,6 +20,7 @@ public static class StdLibNamespaces
     public const string AgentsModule = "agents";
     public const string TraceModule = "trace";
     public const string NnModule = "nn";
+    public const string BufModule = "buf";
     public const string DeprecatedMathModuleAlias = "Math";
 
     public static readonly IReadOnlySet<string> MathMethodNames = new HashSet<string>(StringComparer.Ordinal)
@@ -87,6 +88,15 @@ public static class StdLibNamespaces
         "leakyRelu", "elu", "gelu", "silu", "softplus",
         "dRelu", "dLeakyRelu", "dElu", "dGelu", "dSilu", "dSoftplus", "dSigmoid", "dTanh",
         "dense", "denseBackward", "mseGrad", "softmaxGrad", "sequential"
+    };
+
+    /// <summary>
+    /// Fixed-size numeric buffers and binary data (<see cref="BufStdLib"/>). No flat aliases.
+    /// </summary>
+    public static readonly IReadOnlySet<string> BufMethodNames = new HashSet<string>(StringComparer.Ordinal)
+    {
+        "float64", "float32", "int32", "bytes", "from", "toArray", "kind", "slice", "fill",
+        "readAt", "writeAt", "fromUtf8", "toUtf8", "fromBase64", "toBase64"
     };
 
     public static readonly IReadOnlySet<string> IoMethodNames = new HashSet<string>(StringComparer.Ordinal)
@@ -176,6 +186,7 @@ public static class StdLibNamespaces
             AgentsModule => AgentsMethodNames.Contains(methodName),
             TraceModule => TraceMethodNames.Contains(methodName),
             NnModule => NnMethodNames.Contains(methodName),
+            BufModule => BufMethodNames.Contains(methodName),
             _ => false
         };
 }

@@ -52,6 +52,7 @@
       case "function": return "<function>";
     }
     if (Array.isArray(value)) return "[" + value.map(formatValue).join(", ") + "]";
+    if (isBuffer(value)) return "[" + Array.from(value, formatValue).join(", ") + "]";
     if (isVariant(value)) return value.tag + "(" + variantPayload(value).map(formatValue).join(", ") + ")";
     if (typeof value.then === "function") return "<task>";
     const proto = Object.getPrototypeOf(value);
@@ -154,7 +155,7 @@
 
   function lengthBuiltin(value) {
     if (value === null || value === undefined) return 0;
-    if (typeof value === "string" || Array.isArray(value)) return value.length;
+    if (typeof value === "string" || Array.isArray(value) || isBuffer(value)) return value.length;
     if (typeof value === "object") return Object.keys(value).length;
     return coerceToString(value).length;
   }
@@ -256,6 +257,7 @@
     if (isVariant(value)) return "variant";
     if (value && typeof value.then === "function") return "task";
     if (Array.isArray(value)) return "array";
+    if (isBuffer(value)) return "buffer";
     if (typeof value === "object") {
       return isMaldaDict(value) ? "dict" : "object";
     }
@@ -473,6 +475,7 @@
   // Dictionary methods (`d.keys()`, ...) on the plain objects that dict literals become.
   // A receiver that defines the method itself (class instance, Map wrapper) keeps it.
   function callDictMethod(receiver, methodName, args) {
+    if (isBuffer(receiver)) throw bufNoMember();
     const callArgs = Array.isArray(args) ? args : [];
     const entryResult = callMemberEntry(receiver, methodName, callArgs);
     if (entryResult !== noMemberEntry) {
@@ -533,6 +536,7 @@
   }
 
   function callArrayMethod(arrayValue, methodName, args) {
+    if (isBuffer(arrayValue)) throw bufNoMember();
     const callArgs = Array.isArray(args) ? args : [];
     const entryResult = callMemberEntry(arrayValue, methodName, callArgs);
     if (entryResult !== noMemberEntry) {
@@ -1228,6 +1232,7 @@
   }
 
   function arrayAppend(array, value) {
+    if (isBuffer(array)) throw bufNoMember();
     const entryResult = callMemberEntry(array, "append", [value]);
     if (entryResult !== noMemberEntry) {
       return entryResult;
@@ -1270,6 +1275,8 @@
     return index;
   }
 
+  // getIndex / setIndex stay small so V8 inlines them into hot loops; buffers and objects take
+  // the second function.
   function getIndex(object, index) {
     if (Array.isArray(object)) {
       const i = arrayIndex(index);
@@ -1277,6 +1284,13 @@
         throw new Error("Array index out of bounds.");
       }
       return object[i];
+    }
+    return getIndexOther(object, index);
+  }
+
+  function getIndexOther(object, index) {
+    if (isBuffer(object)) {
+      return object[bufIndex(object, index)];
     }
     return object[index];
   }
@@ -1290,8 +1304,42 @@
       while (object.length < i) {
         object.push(null);
       }
+      object[index] = value;
+      return;
+    }
+    setIndexOther(object, index, value);
+  }
+
+  function setIndexOther(object, index, value) {
+    if (isBuffer(object)) {
+      const i = bufIndex(object, index);
+      object[i] = bufRequireNumber(object, value);
+      return;
     }
     object[index] = value;
+  }
+
+  // b[i] on a variable the compiler knows holds a buffer: an in-range integer index (and a
+  // number on write) takes the fast path; anything else gets the full check and its error.
+  // A typed array reads undefined exactly when a numeric index is out of range or not an integer.
+  function bufGet(buffer, index) {
+    const value = typeof index === "number" ? buffer[index] : undefined;
+    return value !== undefined ? value : getIndexOther(buffer, index);
+  }
+
+  function bufSet(buffer, index, value) {
+    if ((index >>> 0) === index && index < buffer.length && typeof value === "number") {
+      buffer[index] = value;
+      return;
+    }
+    setIndexOther(buffer, index, value);
+  }
+
+  // `a[i]++` / `--a[i]`: read and write through getIndex / setIndex (range checks, buffers).
+  function incrementIndex(object, index, delta, returnOld) {
+    const old = coerceToFloat(getIndex(object, index));
+    setIndex(object, index, old + delta);
+    return returnOld ? old : old + delta;
   }
 
   // MALDA `/` and `%` throw on a zero divisor instead of giving Infinity or NaN.
@@ -4373,6 +4421,9 @@
       if (Array.isArray(value)) {
         return "[" + value.map((item) => toJsonText(item, seen)).join(",") + "]";
       }
+      if (isBuffer(value)) {
+        return "[" + Array.from(value, (item) => toJsonText(item, seen)).join(",") + "]";
+      }
       if (isVariant(value)) {
         return "{\"tag\":" + jsonQuote(coerceToString(value.tag)) + ",\"payload\":" + toJsonText(variantPayload(value), seen) + "}";
       }
@@ -4867,6 +4918,206 @@
     });
   }
 
+  // buf.*: fixed-size numeric buffers are typed arrays (float64 / float32 / int32 / uint8), with
+  // the interpreter's rules (MaldaLang/BuiltIns/TypedBufferInstance.cs): an index out of range is
+  // an error on read and on write, a written value must be a number, and binary reads and writes
+  // are little-endian. Messages match the interpreter word for word.
+  const BUF_MAX_LENGTH = 268435456;
+  const BUF_BINARY_TYPES = "int8, uint8, int16, uint16, int32, uint32, float32, or float64";
+
+  function bufArity(name, args, min, max, signature) {
+    if (args.length >= min && args.length <= max) return;
+    const plural = (count) => (count === 1 ? "argument" : "arguments");
+    const suffix = signature ? ": (" + signature + ")" : "";
+    const described = min === max ? min + " " + plural(min) + suffix : min + "-" + max + " arguments" + suffix;
+    throw new Error(name + "() expects " + described);
+  }
+
+  function bufKindName(value) {
+    if (value instanceof Float64Array) return "float64";
+    if (value instanceof Float32Array) return "float32";
+    if (value instanceof Int32Array) return "int32";
+    if (value instanceof Uint8Array) return "uint8";
+    return null;
+  }
+
+  function isBuffer(value) {
+    // isView first: one cheap test for every non-buffer value on the getIndex / setIndex paths.
+    return ArrayBuffer.isView(value) && bufKindName(value) !== null;
+  }
+
+  function bufValueLabel(value) {
+    if (typeof value === "string") return "a string";
+    if (typeof value === "boolean") return "a bool";
+    if (value === null || value === undefined) return "null";
+    if (Array.isArray(value)) return "an array";
+    return "an object";
+  }
+
+  function bufRequireNumber(buffer, value) {
+    if (typeof value !== "number") {
+      throw new Error("A " + bufKindName(buffer) + " buffer holds numbers, not " + bufValueLabel(value) + ".");
+    }
+    return value;
+  }
+
+  function bufIndex(buffer, index) {
+    const i = arrayIndex(index);
+    if (i < 0 || i >= buffer.length) {
+      throw new Error("Buffer index " + i + " is out of range (length " + buffer.length + ").");
+    }
+    return i;
+  }
+
+  function bufNoMember() {
+    return new Error("A buffer has a fixed length and no array methods (append, map, ...). Use buf.toArray(b) for an array.");
+  }
+
+  function bufRequire(name, value) {
+    if (!isBuffer(value)) throw new Error("buf." + name + "() expects a buffer.");
+    return value;
+  }
+
+  function bufRequireBytes(value) {
+    if (!(value instanceof Uint8Array)) {
+      throw new Error("Expected a bytes buffer (buf.bytes), got a " + bufKindName(value) + " buffer.");
+    }
+    return value;
+  }
+
+  function bufInteger(name, value) {
+    if (typeof value !== "number" || !Number.isInteger(value)) {
+      throw new Error("buf." + name + "() expects an integer offset.");
+    }
+    return value;
+  }
+
+  const BUF_CONSTRUCTORS = { float64: Float64Array, float32: Float32Array, int32: Int32Array, uint8: Uint8Array, bytes: Uint8Array };
+
+  function bufCreate(name, Ctor) {
+    return (...args) => {
+      bufArity(name, args, 1, 1, "length");
+      const length = args[0];
+      if (typeof length !== "number" || !Number.isInteger(length) || length < 0 || length > BUF_MAX_LENGTH) {
+        throw new Error("buf." + name + "() length must be an integer from 0 to " + BUF_MAX_LENGTH + ".");
+      }
+      return new Ctor(length);
+    };
+  }
+
+  function bufBinary(name, args) {
+    const bytes = bufRequireBytes(bufRequire(name, args[0]));
+    const offset = bufInteger(name, args[1]);
+    const type = typeof args[2] === "string" ? args[2] : "";
+    const sizes = { int8: 1, uint8: 1, int16: 2, uint16: 2, int32: 4, uint32: 4, float32: 4, float64: 8 };
+    const size = sizes[type];
+    if (size === undefined) throw new Error("buf binary type must be " + BUF_BINARY_TYPES + ".");
+    if (offset < 0 || offset + size > bytes.length) {
+      throw new Error("buf." + name + "() of " + type + " at offset " + offset + " is outside the buffer (length " + bytes.length + ").");
+    }
+    return { view: new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength), offset, type };
+  }
+
+  const bufStdLib = {
+    float64: bufCreate("float64", Float64Array),
+    float32: bufCreate("float32", Float32Array),
+    int32: bufCreate("int32", Int32Array),
+    bytes: bufCreate("bytes", Uint8Array),
+    from(...args) {
+      bufArity("from", args, 1, 2, "values, kind?");
+      const kind = args.length > 1 ? args[1] : "float64";
+      const Ctor = typeof kind === "string" && Object.prototype.hasOwnProperty.call(BUF_CONSTRUCTORS, kind) ? BUF_CONSTRUCTORS[kind] : null;
+      if (!Ctor) throw new Error("buf.from() kind must be \"float64\", \"float32\", \"int32\" or \"uint8\".");
+      const source = args[0];
+      if (isBuffer(source)) return Ctor.from(source);
+      if (!Array.isArray(source)) throw new Error("buf.from() expects an array or a buffer.");
+      const result = new Ctor(source.length);
+      for (let i = 0; i < source.length; i++) result[i] = bufRequireNumber(result, source[i]);
+      return result;
+    },
+    toArray(...args) {
+      bufArity("toArray", args, 1, 1, "buffer");
+      return Array.from(bufRequire("toArray", args[0]));
+    },
+    kind(...args) {
+      bufArity("kind", args, 1, 1, "buffer");
+      return bufKindName(bufRequire("kind", args[0]));
+    },
+    slice(...args) {
+      bufArity("slice", args, 2, 3, "buffer, start, end?");
+      const buffer = bufRequire("slice", args[0]);
+      const start = bufInteger("slice", args[1]);
+      const end = args.length > 2 && args[2] !== null && args[2] !== undefined ? bufInteger("slice", args[2]) : buffer.length;
+      if (start < 0 || end < start || end > buffer.length) {
+        throw new Error("buf.slice range " + start + ".." + end + " is outside the buffer (length " + buffer.length + ").");
+      }
+      return buffer.slice(start, end);
+    },
+    fill(...args) {
+      bufArity("fill", args, 2, 2, "buffer, value");
+      const buffer = bufRequire("fill", args[0]);
+      return buffer.fill(bufRequireNumber(buffer, args[1]));
+    },
+    readAt(...args) {
+      bufArity("readAt", args, 3, 3, "bytes, offset, type");
+      const { view, offset, type } = bufBinary("readAt", args);
+      switch (type) {
+        case "int8": return view.getInt8(offset);
+        case "uint8": return view.getUint8(offset);
+        case "int16": return view.getInt16(offset, true);
+        case "uint16": return view.getUint16(offset, true);
+        case "int32": return view.getInt32(offset, true);
+        case "uint32": return view.getUint32(offset, true);
+        case "float32": return view.getFloat32(offset, true);
+        default: return view.getFloat64(offset, true);
+      }
+    },
+    writeAt(...args) {
+      bufArity("writeAt", args, 4, 4, "bytes, offset, type, value");
+      const { view, offset, type } = bufBinary("writeAt", args);
+      const value = args[3];
+      if (typeof value !== "number") throw new Error("buf.writeAt() value must be a number.");
+      switch (type) {
+        case "int8": case "uint8": view.setUint8(offset, value); break;
+        case "int16": case "uint16": view.setUint16(offset, value, true); break;
+        case "int32": case "uint32": view.setUint32(offset, value, true); break;
+        case "float32": view.setFloat32(offset, value, true); break;
+        default: view.setFloat64(offset, value, true); break;
+      }
+      return args[0];
+    },
+    fromUtf8(...args) {
+      bufArity("fromUtf8", args, 1, 1, "text");
+      if (typeof args[0] !== "string") throw new Error("buf.fromUtf8() expects a string.");
+      return new TextEncoder().encode(args[0]);
+    },
+    toUtf8(...args) {
+      bufArity("toUtf8", args, 1, 1, "bytes");
+      return new TextDecoder().decode(bufRequireBytes(bufRequire("toUtf8", args[0])));
+    },
+    fromBase64(...args) {
+      bufArity("fromBase64", args, 1, 1, "text");
+      const text = args[0];
+      if (typeof text !== "string") throw new Error("buf.fromBase64() expects a string.");
+      if (!/^[A-Za-z0-9+/]*={0,2}$/.test(text) || text.length % 4 !== 0) {
+        throw new Error("buf.fromBase64() text is not valid base64.");
+      }
+      const binary = atob(text);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      return bytes;
+    },
+    toBase64(...args) {
+      bufArity("toBase64", args, 1, 1, "bytes");
+      const bytes = bufRequireBytes(bufRequire("toBase64", args[0]));
+      let binary = "";
+      for (let i = 0; i < bytes.length; i += 0x8000) {
+        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+      }
+      return btoa(binary);
+    }
+  };
+
   // `import js …` (JavaScript interop). The generated program calls import() itself, so a
   // relative specifier resolves against the program file, not this runtime; these helpers
   // name the specifier in failures and check named exports.
@@ -4920,6 +5171,9 @@
     getMemberNullSafe,
     getIndexNullSafe,
     getIndex,
+    bufGet,
+    bufSet,
+    incrementIndex,
     setIndex,
     divide,
     modulo,
@@ -4967,6 +5221,7 @@
     schema: schemaStdLib,
     within: withinStdLib,
     js: jsInteropRuntime,
+    buf: bufStdLib,
     http: httpStdLib,
     result: resultStdLib,
     option: optionStdLib,

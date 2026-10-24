@@ -85,6 +85,30 @@ This document captures the current JavaScript backend design in code and the nea
 - `index.html` imports the module with `<script type="module">` and reports the outcome; there is no
   `MaldaApp.main()` call. `import js` uses the same `__maldaJsReady` loader as the script output.
 
+## Numeric Variables (operator emit)
+
+- `JsTranspiler.NumericInference.cs` finds the names that hold a JavaScript number wherever they are
+  visible: every `var` and every assignment of the name anywhere in the program has a value that is a
+  number by construction (numeric literal, `- * / %`, `+` of two numbers, `int()` / `float()`, a `math`
+  function that always returns a number, another numeric name), and the name is never a parameter,
+  loop / catch / pattern variable, field, declaration or import. By name over the whole program, to a
+  fixpoint: conservative, no flow analysis.
+- Operands that are numbers that way are emitted bare (`i < n`, `a + b`, `a === b`); the others go
+  through `__maldaFloat` (the local alias of `mlRuntime.coerceToFloat`). Semantics do not change:
+  `coerceToFloat` returns a number unchanged. `BackendDifferentialFuzzTests` covers it.
+
+## Buffers (`buf.*`)
+
+- `mlRuntime.buf` (`bufStdLib`) creates `Float64Array` / `Float32Array` / `Int32Array` / `Uint8Array`; the rules
+  and messages match `MaldaLang/BuiltIns/TypedBufferInstance.cs` and `BufStdLib.cs` word for word.
+  `getIndex` / `setIndex` keep the array path small (V8 inlines them) and send buffers to
+  `getIndexOther` / `setIndexOther`; `formatValue`, `typeOf`, `length`, `toJSON` and the array / dict
+  method entry points know buffers.
+- `JsTranspiler.NumericInference.cs` also finds buffer variables (every definition is a buffer constructor,
+  `buf.from` / `slice` / `fill` / `fromUtf8` / `fromBase64`, or another buffer variable). `b[i]` on them is
+  emitted as `__maldaBufGet` / `__maldaBufSet` (`mlRuntime.bufGet` / `bufSet`: a typed array reads
+  `undefined` exactly when a numeric index is out of range or not an integer) and counts as a number.
+
 ## Runtime Areas (trimmed runtime)
 
 - `malda-js-runtime.js` marks optional members of the runtime object with

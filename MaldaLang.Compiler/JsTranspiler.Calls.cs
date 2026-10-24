@@ -62,6 +62,7 @@ public partial class JsTranspiler
                     memberObjectIdentifier.Name == StdLibNamespaces.StrModule ||
                     memberObjectIdentifier.Name == StdLibNamespaces.IoModule ||
                     memberObjectIdentifier.Name == StdLibNamespaces.NnModule ||
+                    memberObjectIdentifier.Name == StdLibNamespaces.BufModule ||
                     memberObjectIdentifier.Name == "schema")
                 {
                     return $"mlRuntime.{MapRuntimeModuleName(memberObjectIdentifier.Name)}.{EscapeIdentifier(memberCall.Member)}({JoinArguments(functionCall.Arguments)})";

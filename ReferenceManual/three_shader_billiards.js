@@ -3,8 +3,9 @@
         throw new Error("mlRuntime is not available. Include malda-js-runtime.js before running generated MALDA JavaScript.");
     }
     const mlRuntime = globalThis.mlRuntime;
-    const __maldaAdd = mlRuntime.add, __maldaFormat = mlRuntime.formatValue;
+    const __maldaAdd = mlRuntime.add, __maldaFormat = mlRuntime.formatValue, __maldaFloat = mlRuntime.coerceToFloat;
     const __maldaGetIndex = mlRuntime.getIndex, __maldaSetIndex = mlRuntime.setIndex, __maldaDivide = mlRuntime.divide, __maldaModulo = mlRuntime.modulo;
+    const __maldaBufGet = mlRuntime.bufGet, __maldaBufSet = mlRuntime.bufSet;
 
     function main() {
         let vertexShader = "varying vec2 vUv;\n\nvoid main() {\n    vUv = uv;\n    gl_Position = vec4(position.xy, 0.0, 1.0);\n}\n";
@@ -48,7 +49,7 @@
             let frictionRange = mlRuntime.dom.query("#frictionRange");
             let width = 960;
             let height = 540;
-            let aspect = __maldaDivide(mlRuntime.coerceToFloat(width), mlRuntime.coerceToFloat(height));
+            let aspect = __maldaDivide(width, height);
             let tanHalf = mlRuntime.math.tan(mlRuntime.math.degToRad(26));
             let camRadius = 4.85;
             let camAngle = 0.72;
@@ -106,11 +107,11 @@
                 {
                     return;
                 }
-                if ((mlRuntime.coerceToFloat(n) < mlRuntime.coerceToFloat(lo)))
+                if ((__maldaFloat(n) < __maldaFloat(lo)))
                 {
                     n = lo;
                 }
-                if ((mlRuntime.coerceToFloat(n) > mlRuntime.coerceToFloat(hi)))
+                if ((__maldaFloat(n) > __maldaFloat(hi)))
                 {
                     n = hi;
                 }
@@ -120,39 +121,39 @@
                 setRangeInt(el, __maldaAdd(rangeInt(el, lo), delta), lo, hi);
             }
             function syncPlaySettings() {
-                camRadius = (mlRuntime.coerceToFloat(rangeInt(zoomRange, 48)) / 10);
-                if ((mlRuntime.coerceToFloat(camRadius) < 2.4))
+                camRadius = (__maldaFloat(rangeInt(zoomRange, 48)) / 10);
+                if ((camRadius < 2.4))
                 {
                     camRadius = 2.4;
                 }
-                if ((mlRuntime.coerceToFloat(camRadius) > 8))
+                if ((camRadius > 8))
                 {
                     camRadius = 8;
                 }
-                railRest = (mlRuntime.coerceToFloat(rangeInt(railRange, 88)) / 100);
-                ballRest = (mlRuntime.coerceToFloat(rangeInt(ballRange, 98)) / 100);
-                feltFriction = (mlRuntime.coerceToFloat(rangeInt(frictionRange, 70)) / 100);
-                if ((mlRuntime.coerceToFloat(railRest) < 0.05))
+                railRest = (__maldaFloat(rangeInt(railRange, 88)) / 100);
+                ballRest = (__maldaFloat(rangeInt(ballRange, 98)) / 100);
+                feltFriction = (__maldaFloat(rangeInt(frictionRange, 70)) / 100);
+                if ((railRest < 0.05))
                 {
                     railRest = 0.05;
                 }
-                if ((mlRuntime.coerceToFloat(railRest) > 1))
+                if ((railRest > 1))
                 {
                     railRest = 1;
                 }
-                if ((mlRuntime.coerceToFloat(ballRest) < 0.05))
+                if ((ballRest < 0.05))
                 {
                     ballRest = 0.05;
                 }
-                if ((mlRuntime.coerceToFloat(ballRest) > 1))
+                if ((ballRest > 1))
                 {
                     ballRest = 1;
                 }
-                if ((mlRuntime.coerceToFloat(feltFriction) < 0.05))
+                if ((feltFriction < 0.05))
                 {
                     feltFriction = 0.05;
                 }
-                if ((mlRuntime.coerceToFloat(feltFriction) > 4))
+                if ((feltFriction > 4))
                 {
                     feltFriction = 4;
                 }
@@ -169,17 +170,17 @@
                 {
                     return (-1.08);
                 }
-                let n = (mlRuntime.coerceToFloat(index) - 1);
+                let n = (__maldaFloat(index) - 1);
                 let row = 0;
                 let start = 0;
                 let count = 1;
-                while ((mlRuntime.coerceToFloat(row) < 5))
+                while ((row < 5))
                 {
-                    if ((mlRuntime.coerceToFloat(n) < mlRuntime.coerceToFloat(__maldaAdd(start, count))))
+                    if ((__maldaFloat(n) < (start + count)))
                     {
-                        return (0.58 + ((mlRuntime.coerceToFloat(row) * mlRuntime.coerceToFloat(ballR)) * 1.7320508));
+                        return (0.58 + ((row * ballR) * 1.7320508));
                     }
-                    start = __maldaAdd(start, count);
+                    start = (start + count);
                     count = (count + 1);
                     row = (row + 1);
                 }
@@ -190,18 +191,18 @@
                 {
                     return 0;
                 }
-                let n = (mlRuntime.coerceToFloat(index) - 1);
+                let n = (__maldaFloat(index) - 1);
                 let row = 0;
                 let start = 0;
                 let count = 1;
-                while ((mlRuntime.coerceToFloat(row) < 5))
+                while ((row < 5))
                 {
-                    if ((mlRuntime.coerceToFloat(n) < mlRuntime.coerceToFloat(__maldaAdd(start, count))))
+                    if ((__maldaFloat(n) < (start + count)))
                     {
-                        let col = (mlRuntime.coerceToFloat(n) - mlRuntime.coerceToFloat(start));
-                        return ((mlRuntime.coerceToFloat(col) - (mlRuntime.coerceToFloat(row) * 0.5)) * (mlRuntime.coerceToFloat(ballR) * 2.02));
+                        let col = (__maldaFloat(n) - start);
+                        return ((col - (row * 0.5)) * (ballR * 2.02));
                     }
-                    start = __maldaAdd(start, count);
+                    start = (start + count);
                     count = (count + 1);
                     row = (row + 1);
                 }
@@ -209,7 +210,7 @@
             }
             function resetRack() {
                 let i = 0;
-                while ((mlRuntime.coerceToFloat(i) < 16))
+                while ((__maldaFloat(i) < 16))
                 {
                     __maldaSetIndex(ballX, i, rackX(i));
                     __maldaSetIndex(ballZ, i, rackZ(i));
@@ -225,13 +226,13 @@
                 pottedCount = 0;
             }
             function pocketHit(x, z) {
-                let spots = [[(-mlRuntime.coerceToFloat(tableHX)), (-mlRuntime.coerceToFloat(tableHZ))], [(-mlRuntime.coerceToFloat(tableHX)), tableHZ], [tableHX, (-mlRuntime.coerceToFloat(tableHZ))], [tableHX, tableHZ], [0, (-mlRuntime.coerceToFloat(tableHZ))], [0, tableHZ]];
+                let spots = [[(-tableHX), (-tableHZ)], [(-tableHX), tableHZ], [tableHX, (-tableHZ)], [tableHX, tableHZ], [0, (-tableHZ)], [0, tableHZ]];
                 let p = 0;
-                while ((mlRuntime.coerceToFloat(p) < 6))
+                while ((__maldaFloat(p) < 6))
                 {
-                    let dx = (mlRuntime.coerceToFloat(x) - mlRuntime.coerceToFloat(__maldaGetIndex(__maldaGetIndex(spots, p), 0)));
-                    let dz = (mlRuntime.coerceToFloat(z) - mlRuntime.coerceToFloat(__maldaGetIndex(__maldaGetIndex(spots, p), 1)));
-                    if ((mlRuntime.coerceToFloat(((mlRuntime.coerceToFloat(dx) * mlRuntime.coerceToFloat(dx)) + (mlRuntime.coerceToFloat(dz) * mlRuntime.coerceToFloat(dz)))) < (mlRuntime.coerceToFloat((pocketR + 0.02)) * mlRuntime.coerceToFloat((pocketR + 0.02)))))
+                    let dx = (__maldaFloat(x) - __maldaFloat(__maldaGetIndex(__maldaGetIndex(spots, p), 0)));
+                    let dz = (__maldaFloat(z) - __maldaFloat(__maldaGetIndex(__maldaGetIndex(spots, p), 1)));
+                    if ((((dx * dx) + (dz * dz)) < ((pocketR + 0.02) * (pocketR + 0.02))))
                     {
                         return true;
                     }
@@ -241,12 +242,12 @@
             }
             function ballsAreStill() {
                 let i = 0;
-                while ((mlRuntime.coerceToFloat(i) < 16))
+                while ((__maldaFloat(i) < 16))
                 {
                     if ((__maldaGetIndex(ballLive, i) === 1))
                     {
-                        let speed = mlRuntime.math.sqrt(((mlRuntime.coerceToFloat(__maldaGetIndex(ballVx, i)) * mlRuntime.coerceToFloat(__maldaGetIndex(ballVx, i))) + (mlRuntime.coerceToFloat(__maldaGetIndex(ballVz, i)) * mlRuntime.coerceToFloat(__maldaGetIndex(ballVz, i)))));
-                        if ((mlRuntime.coerceToFloat(speed) > 0.04))
+                        let speed = mlRuntime.math.sqrt(((__maldaFloat(__maldaGetIndex(ballVx, i)) * __maldaFloat(__maldaGetIndex(ballVx, i))) + (__maldaFloat(__maldaGetIndex(ballVz, i)) * __maldaFloat(__maldaGetIndex(ballVz, i)))));
+                        if ((speed > 0.04))
                         {
                             return false;
                         }
@@ -263,7 +264,7 @@
                 __maldaSetIndex(ballLive, i, 0);
                 __maldaSetIndex(ballVx, i, 0);
                 __maldaSetIndex(ballVz, i, 0);
-                if ((mlRuntime.coerceToFloat(i) > 0))
+                if ((__maldaFloat(i) > 0))
                 {
                     pottedCount = (pottedCount + 1);
                 }
@@ -277,13 +278,13 @@
                 let cz = 0;
                 let blocked = false;
                 let i = 1;
-                while ((mlRuntime.coerceToFloat(i) < 16))
+                while ((__maldaFloat(i) < 16))
                 {
                     if ((__maldaGetIndex(ballLive, i) === 1))
                     {
-                        let dx = (mlRuntime.coerceToFloat(__maldaGetIndex(ballX, i)) - mlRuntime.coerceToFloat(cx));
-                        let dz = (mlRuntime.coerceToFloat(__maldaGetIndex(ballZ, i)) - mlRuntime.coerceToFloat(cz));
-                        if ((mlRuntime.coerceToFloat(((mlRuntime.coerceToFloat(dx) * mlRuntime.coerceToFloat(dx)) + (mlRuntime.coerceToFloat(dz) * mlRuntime.coerceToFloat(dz)))) < ((mlRuntime.coerceToFloat(ballR) * 2.2) * (mlRuntime.coerceToFloat(ballR) * 2.2))))
+                        let dx = (__maldaFloat(__maldaGetIndex(ballX, i)) - cx);
+                        let dz = (__maldaFloat(__maldaGetIndex(ballZ, i)) - cz);
+                        if ((((dx * dx) + (dz * dz)) < ((ballR * 2.2) * (ballR * 2.2))))
                         {
                             blocked = true;
                         }
@@ -302,36 +303,36 @@
             }
             function collideBalls() {
                 let i = 0;
-                while ((mlRuntime.coerceToFloat(i) < 16))
+                while ((__maldaFloat(i) < 16))
                 {
                     if ((__maldaGetIndex(ballLive, i) === 1))
                     {
                         let j = (i + 1);
-                        while ((mlRuntime.coerceToFloat(j) < 16))
+                        while ((__maldaFloat(j) < 16))
                         {
                             if ((__maldaGetIndex(ballLive, j) === 1))
                             {
-                                let dx = (mlRuntime.coerceToFloat(__maldaGetIndex(ballX, j)) - mlRuntime.coerceToFloat(__maldaGetIndex(ballX, i)));
-                                let dz = (mlRuntime.coerceToFloat(__maldaGetIndex(ballZ, j)) - mlRuntime.coerceToFloat(__maldaGetIndex(ballZ, i)));
-                                let dist = mlRuntime.math.sqrt(((mlRuntime.coerceToFloat(dx) * mlRuntime.coerceToFloat(dx)) + (mlRuntime.coerceToFloat(dz) * mlRuntime.coerceToFloat(dz))));
-                                let minDist = (mlRuntime.coerceToFloat(ballR) * 2);
-                                if (((mlRuntime.coerceToFloat(dist) < mlRuntime.coerceToFloat(minDist)) && (mlRuntime.coerceToFloat(dist) > 0.0001)))
+                                let dx = (__maldaFloat(__maldaGetIndex(ballX, j)) - __maldaFloat(__maldaGetIndex(ballX, i)));
+                                let dz = (__maldaFloat(__maldaGetIndex(ballZ, j)) - __maldaFloat(__maldaGetIndex(ballZ, i)));
+                                let dist = mlRuntime.math.sqrt(((dx * dx) + (dz * dz)));
+                                let minDist = (ballR * 2);
+                                if (((__maldaFloat(dist) < minDist) && (__maldaFloat(dist) > 0.0001)))
                                 {
-                                    let nx = __maldaDivide(mlRuntime.coerceToFloat(dx), mlRuntime.coerceToFloat(dist));
-                                    let nz = __maldaDivide(mlRuntime.coerceToFloat(dz), mlRuntime.coerceToFloat(dist));
-                                    let overlap = (mlRuntime.coerceToFloat(minDist) - mlRuntime.coerceToFloat(dist));
-                                    __maldaSetIndex(ballX, i, (mlRuntime.coerceToFloat(__maldaGetIndex(ballX, i)) - ((mlRuntime.coerceToFloat(nx) * mlRuntime.coerceToFloat(overlap)) * 0.5)));
-                                    __maldaSetIndex(ballZ, i, (mlRuntime.coerceToFloat(__maldaGetIndex(ballZ, i)) - ((mlRuntime.coerceToFloat(nz) * mlRuntime.coerceToFloat(overlap)) * 0.5)));
-                                    __maldaSetIndex(ballX, j, (__maldaGetIndex(ballX, j) + ((mlRuntime.coerceToFloat(nx) * mlRuntime.coerceToFloat(overlap)) * 0.5)));
-                                    __maldaSetIndex(ballZ, j, (__maldaGetIndex(ballZ, j) + ((mlRuntime.coerceToFloat(nz) * mlRuntime.coerceToFloat(overlap)) * 0.5)));
-                                    let rel = (((mlRuntime.coerceToFloat(__maldaGetIndex(ballVx, i)) - mlRuntime.coerceToFloat(__maldaGetIndex(ballVx, j))) * mlRuntime.coerceToFloat(nx)) + ((mlRuntime.coerceToFloat(__maldaGetIndex(ballVz, i)) - mlRuntime.coerceToFloat(__maldaGetIndex(ballVz, j))) * mlRuntime.coerceToFloat(nz)));
-                                    if ((mlRuntime.coerceToFloat(rel) > 0))
+                                    let nx = __maldaDivide(dx, __maldaFloat(dist));
+                                    let nz = __maldaDivide(dz, __maldaFloat(dist));
+                                    let overlap = (minDist - __maldaFloat(dist));
+                                    __maldaSetIndex(ballX, i, (__maldaFloat(__maldaGetIndex(ballX, i)) - ((nx * overlap) * 0.5)));
+                                    __maldaSetIndex(ballZ, i, (__maldaFloat(__maldaGetIndex(ballZ, i)) - ((nz * overlap) * 0.5)));
+                                    __maldaSetIndex(ballX, j, (__maldaGetIndex(ballX, j) + ((nx * overlap) * 0.5)));
+                                    __maldaSetIndex(ballZ, j, (__maldaGetIndex(ballZ, j) + ((nz * overlap) * 0.5)));
+                                    let rel = (((__maldaFloat(__maldaGetIndex(ballVx, i)) - __maldaFloat(__maldaGetIndex(ballVx, j))) * nx) + ((__maldaFloat(__maldaGetIndex(ballVz, i)) - __maldaFloat(__maldaGetIndex(ballVz, j))) * nz));
+                                    if ((rel > 0))
                                     {
-                                        let impulse = (((-mlRuntime.coerceToFloat((1 + ballRest))) * mlRuntime.coerceToFloat(rel)) * 0.5);
-                                        __maldaSetIndex(ballVx, i, (__maldaGetIndex(ballVx, i) + (mlRuntime.coerceToFloat(nx) * mlRuntime.coerceToFloat(impulse))));
-                                        __maldaSetIndex(ballVz, i, (__maldaGetIndex(ballVz, i) + (mlRuntime.coerceToFloat(nz) * mlRuntime.coerceToFloat(impulse))));
-                                        __maldaSetIndex(ballVx, j, (mlRuntime.coerceToFloat(__maldaGetIndex(ballVx, j)) - (mlRuntime.coerceToFloat(nx) * mlRuntime.coerceToFloat(impulse))));
-                                        __maldaSetIndex(ballVz, j, (mlRuntime.coerceToFloat(__maldaGetIndex(ballVz, j)) - (mlRuntime.coerceToFloat(nz) * mlRuntime.coerceToFloat(impulse))));
+                                        let impulse = (((-(1 + ballRest)) * rel) * 0.5);
+                                        __maldaSetIndex(ballVx, i, (__maldaGetIndex(ballVx, i) + (nx * impulse)));
+                                        __maldaSetIndex(ballVz, i, (__maldaGetIndex(ballVz, i) + (nz * impulse)));
+                                        __maldaSetIndex(ballVx, j, (__maldaFloat(__maldaGetIndex(ballVx, j)) - (nx * impulse)));
+                                        __maldaSetIndex(ballVz, j, (__maldaFloat(__maldaGetIndex(ballVz, j)) - (nz * impulse)));
                                     }
                                 }
                             }
@@ -343,39 +344,39 @@
             }
             function physicsStep(dt) {
                 let i = 0;
-                while ((mlRuntime.coerceToFloat(i) < 16))
+                while ((__maldaFloat(i) < 16))
                 {
                     if ((__maldaGetIndex(ballLive, i) === 1))
                     {
-                        __maldaSetIndex(ballX, i, (__maldaGetIndex(ballX, i) + (mlRuntime.coerceToFloat(__maldaGetIndex(ballVx, i)) * mlRuntime.coerceToFloat(dt))));
-                        __maldaSetIndex(ballZ, i, (__maldaGetIndex(ballZ, i) + (mlRuntime.coerceToFloat(__maldaGetIndex(ballVz, i)) * mlRuntime.coerceToFloat(dt))));
-                        let damp = (1 - (mlRuntime.coerceToFloat(feltFriction) * mlRuntime.coerceToFloat(dt)));
-                        if ((mlRuntime.coerceToFloat(damp) < 0))
+                        __maldaSetIndex(ballX, i, (__maldaGetIndex(ballX, i) + (__maldaFloat(__maldaGetIndex(ballVx, i)) * __maldaFloat(dt))));
+                        __maldaSetIndex(ballZ, i, (__maldaGetIndex(ballZ, i) + (__maldaFloat(__maldaGetIndex(ballVz, i)) * __maldaFloat(dt))));
+                        let damp = (1 - (feltFriction * __maldaFloat(dt)));
+                        if ((damp < 0))
                         {
                             damp = 0;
                         }
-                        __maldaSetIndex(ballVx, i, (mlRuntime.coerceToFloat(__maldaGetIndex(ballVx, i)) * mlRuntime.coerceToFloat(damp)));
-                        __maldaSetIndex(ballVz, i, (mlRuntime.coerceToFloat(__maldaGetIndex(ballVz, i)) * mlRuntime.coerceToFloat(damp)));
-                        let speed = mlRuntime.math.sqrt(((mlRuntime.coerceToFloat(__maldaGetIndex(ballVx, i)) * mlRuntime.coerceToFloat(__maldaGetIndex(ballVx, i))) + (mlRuntime.coerceToFloat(__maldaGetIndex(ballVz, i)) * mlRuntime.coerceToFloat(__maldaGetIndex(ballVz, i)))));
-                        if ((mlRuntime.coerceToFloat(speed) < 0.035))
+                        __maldaSetIndex(ballVx, i, (__maldaFloat(__maldaGetIndex(ballVx, i)) * damp));
+                        __maldaSetIndex(ballVz, i, (__maldaFloat(__maldaGetIndex(ballVz, i)) * damp));
+                        let speed = mlRuntime.math.sqrt(((__maldaFloat(__maldaGetIndex(ballVx, i)) * __maldaFloat(__maldaGetIndex(ballVx, i))) + (__maldaFloat(__maldaGetIndex(ballVz, i)) * __maldaFloat(__maldaGetIndex(ballVz, i)))));
+                        if ((speed < 0.035))
                         {
                             __maldaSetIndex(ballVx, i, 0);
                             __maldaSetIndex(ballVz, i, 0);
                         }
-                        if ((mlRuntime.coerceToFloat(speed) > 9.6))
+                        if ((speed > 9.6))
                         {
-                            __maldaSetIndex(ballVx, i, (mlRuntime.coerceToFloat(__maldaGetIndex(ballVx, i)) * __maldaDivide(9.6, mlRuntime.coerceToFloat(speed))));
-                            __maldaSetIndex(ballVz, i, (mlRuntime.coerceToFloat(__maldaGetIndex(ballVz, i)) * __maldaDivide(9.6, mlRuntime.coerceToFloat(speed))));
+                            __maldaSetIndex(ballVx, i, (__maldaFloat(__maldaGetIndex(ballVx, i)) * __maldaDivide(9.6, speed)));
+                            __maldaSetIndex(ballVz, i, (__maldaFloat(__maldaGetIndex(ballVz, i)) * __maldaDivide(9.6, speed)));
                         }
                         if (mlRuntime.isTruthy(pocketHit(__maldaGetIndex(ballX, i), __maldaGetIndex(ballZ, i))))
                         {
-                            let spots = [[(-mlRuntime.coerceToFloat(tableHX)), (-mlRuntime.coerceToFloat(tableHZ))], [(-mlRuntime.coerceToFloat(tableHX)), tableHZ], [tableHX, (-mlRuntime.coerceToFloat(tableHZ))], [tableHX, tableHZ], [0, (-mlRuntime.coerceToFloat(tableHZ))], [0, tableHZ]];
+                            let spots = [[(-tableHX), (-tableHZ)], [(-tableHX), tableHZ], [tableHX, (-tableHZ)], [tableHX, tableHZ], [0, (-tableHZ)], [0, tableHZ]];
                             let p = 0;
-                            while ((mlRuntime.coerceToFloat(p) < 6))
+                            while ((__maldaFloat(p) < 6))
                             {
-                                let pdx = (mlRuntime.coerceToFloat(__maldaGetIndex(ballX, i)) - mlRuntime.coerceToFloat(__maldaGetIndex(__maldaGetIndex(spots, p), 0)));
-                                let pdz = (mlRuntime.coerceToFloat(__maldaGetIndex(ballZ, i)) - mlRuntime.coerceToFloat(__maldaGetIndex(__maldaGetIndex(spots, p), 1)));
-                                if ((mlRuntime.coerceToFloat(((mlRuntime.coerceToFloat(pdx) * mlRuntime.coerceToFloat(pdx)) + (mlRuntime.coerceToFloat(pdz) * mlRuntime.coerceToFloat(pdz)))) < ((mlRuntime.coerceToFloat(pocketR) - 0.01) * (mlRuntime.coerceToFloat(pocketR) - 0.01))))
+                                let pdx = (__maldaFloat(__maldaGetIndex(ballX, i)) - __maldaFloat(__maldaGetIndex(__maldaGetIndex(spots, p), 0)));
+                                let pdz = (__maldaFloat(__maldaGetIndex(ballZ, i)) - __maldaFloat(__maldaGetIndex(__maldaGetIndex(spots, p), 1)));
+                                if ((((pdx * pdx) + (pdz * pdz)) < ((pocketR - 0.01) * (pocketR - 0.01))))
                                 {
                                     potBall(i);
                                     p = 6;
@@ -385,38 +386,38 @@
                         }
                         if (((__maldaGetIndex(ballLive, i) === 1) && (!mlRuntime.isTruthy(pocketHit(__maldaGetIndex(ballX, i), __maldaGetIndex(ballZ, i))))))
                         {
-                            let limitX = (mlRuntime.coerceToFloat(tableHX) - mlRuntime.coerceToFloat(ballR));
-                            let limitZ = (mlRuntime.coerceToFloat(tableHZ) - mlRuntime.coerceToFloat(ballR));
-                            if ((mlRuntime.coerceToFloat(__maldaGetIndex(ballX, i)) > mlRuntime.coerceToFloat(limitX)))
+                            let limitX = (tableHX - ballR);
+                            let limitZ = (tableHZ - ballR);
+                            if ((__maldaFloat(__maldaGetIndex(ballX, i)) > limitX))
                             {
                                 __maldaSetIndex(ballX, i, limitX);
-                                if ((mlRuntime.coerceToFloat(__maldaGetIndex(ballVx, i)) > 0))
+                                if ((__maldaFloat(__maldaGetIndex(ballVx, i)) > 0))
                                 {
-                                    __maldaSetIndex(ballVx, i, (0 - (mlRuntime.coerceToFloat(__maldaGetIndex(ballVx, i)) * mlRuntime.coerceToFloat(railRest))));
+                                    __maldaSetIndex(ballVx, i, (0 - (__maldaFloat(__maldaGetIndex(ballVx, i)) * railRest)));
                                 }
                             }
-                            if ((mlRuntime.coerceToFloat(__maldaGetIndex(ballX, i)) < (0 - mlRuntime.coerceToFloat(limitX))))
+                            if ((__maldaFloat(__maldaGetIndex(ballX, i)) < (0 - limitX)))
                             {
-                                __maldaSetIndex(ballX, i, (0 - mlRuntime.coerceToFloat(limitX)));
-                                if ((mlRuntime.coerceToFloat(__maldaGetIndex(ballVx, i)) < 0))
+                                __maldaSetIndex(ballX, i, (0 - limitX));
+                                if ((__maldaFloat(__maldaGetIndex(ballVx, i)) < 0))
                                 {
-                                    __maldaSetIndex(ballVx, i, (0 - (mlRuntime.coerceToFloat(__maldaGetIndex(ballVx, i)) * mlRuntime.coerceToFloat(railRest))));
+                                    __maldaSetIndex(ballVx, i, (0 - (__maldaFloat(__maldaGetIndex(ballVx, i)) * railRest)));
                                 }
                             }
-                            if ((mlRuntime.coerceToFloat(__maldaGetIndex(ballZ, i)) > mlRuntime.coerceToFloat(limitZ)))
+                            if ((__maldaFloat(__maldaGetIndex(ballZ, i)) > limitZ))
                             {
                                 __maldaSetIndex(ballZ, i, limitZ);
-                                if ((mlRuntime.coerceToFloat(__maldaGetIndex(ballVz, i)) > 0))
+                                if ((__maldaFloat(__maldaGetIndex(ballVz, i)) > 0))
                                 {
-                                    __maldaSetIndex(ballVz, i, (0 - (mlRuntime.coerceToFloat(__maldaGetIndex(ballVz, i)) * mlRuntime.coerceToFloat(railRest))));
+                                    __maldaSetIndex(ballVz, i, (0 - (__maldaFloat(__maldaGetIndex(ballVz, i)) * railRest)));
                                 }
                             }
-                            if ((mlRuntime.coerceToFloat(__maldaGetIndex(ballZ, i)) < (0 - mlRuntime.coerceToFloat(limitZ))))
+                            if ((__maldaFloat(__maldaGetIndex(ballZ, i)) < (0 - limitZ)))
                             {
-                                __maldaSetIndex(ballZ, i, (0 - mlRuntime.coerceToFloat(limitZ)));
-                                if ((mlRuntime.coerceToFloat(__maldaGetIndex(ballVz, i)) < 0))
+                                __maldaSetIndex(ballZ, i, (0 - limitZ));
+                                if ((__maldaFloat(__maldaGetIndex(ballVz, i)) < 0))
                                 {
-                                    __maldaSetIndex(ballVz, i, (0 - (mlRuntime.coerceToFloat(__maldaGetIndex(ballVz, i)) * mlRuntime.coerceToFloat(railRest))));
+                                    __maldaSetIndex(ballVz, i, (0 - (__maldaFloat(__maldaGetIndex(ballVz, i)) * railRest)));
                                 }
                             }
                         }
@@ -434,27 +435,27 @@
                 {
                     respawnCueIfNeeded();
                 }
-                let speed = (1.6 + (mlRuntime.coerceToFloat(shotPower) * 7.6));
-                __maldaSetIndex(ballVx, 0, (mlRuntime.coerceToFloat(mlRuntime.math.cos(aimAngle)) * mlRuntime.coerceToFloat(speed)));
-                __maldaSetIndex(ballVz, 0, (mlRuntime.coerceToFloat(mlRuntime.math.sin(aimAngle)) * mlRuntime.coerceToFloat(speed)));
+                let speed = (1.6 + (shotPower * 7.6));
+                __maldaSetIndex(ballVx, 0, (__maldaFloat(mlRuntime.math.cos(aimAngle)) * speed));
+                __maldaSetIndex(ballVz, 0, (__maldaFloat(mlRuntime.math.sin(aimAngle)) * speed));
                 charging = false;
                 shotPower = 0.12;
             }
             function powerBarText() {
-                let filled = mlRuntime.coerceToInt((mlRuntime.coerceToFloat(shotPower) * 16));
-                if ((mlRuntime.coerceToFloat(filled) < 0))
+                let filled = mlRuntime.coerceToInt((shotPower * 16));
+                if ((filled < 0))
                 {
                     filled = 0;
                 }
-                if ((mlRuntime.coerceToFloat(filled) > 16))
+                if ((filled > 16))
                 {
                     filled = 16;
                 }
                 let bar = "";
                 let i = 0;
-                while ((mlRuntime.coerceToFloat(i) < 16))
+                while ((__maldaFloat(i) < 16))
                 {
-                    if ((mlRuntime.coerceToFloat(i) < mlRuntime.coerceToFloat(filled)))
+                    if ((__maldaFloat(i) < filled))
                     {
                         bar = (__maldaFormat(bar) + "#");
                     }
@@ -464,41 +465,41 @@
                     }
                     i = (i + 1);
                 }
-                return (((("[" + __maldaFormat(bar)) + "]   ") + __maldaFormat(mlRuntime.coerceToInt((mlRuntime.coerceToFloat(shotPower) * 100)))) + "%");
+                return (((("[" + __maldaFormat(bar)) + "]   ") + __maldaFormat(mlRuntime.coerceToInt((shotPower * 100)))) + "%");
             }
             function aimFromMouse() {
                 let mx = mlRuntime.three.getMouseX();
                 let my = mlRuntime.three.getMouseY();
-                let ndcX = ((__maldaDivide(mlRuntime.coerceToFloat(mx), mlRuntime.coerceToFloat(width)) * 2) - 1);
-                let ndcY = (1 - (__maldaDivide(mlRuntime.coerceToFloat(my), mlRuntime.coerceToFloat(height)) * 2));
-                let hx = ((mlRuntime.coerceToFloat(ndcX) * mlRuntime.coerceToFloat(aspect)) * mlRuntime.coerceToFloat(tanHalf));
-                let hy = (mlRuntime.coerceToFloat(ndcY) * mlRuntime.coerceToFloat(tanHalf));
-                let dx = ((forwardX + (mlRuntime.coerceToFloat(rightX) * mlRuntime.coerceToFloat(hx))) + (mlRuntime.coerceToFloat(upX) * mlRuntime.coerceToFloat(hy)));
-                let dy = ((forwardY + (mlRuntime.coerceToFloat(rightY) * mlRuntime.coerceToFloat(hx))) + (mlRuntime.coerceToFloat(upY) * mlRuntime.coerceToFloat(hy)));
-                let dz = ((forwardZ + (mlRuntime.coerceToFloat(rightZ) * mlRuntime.coerceToFloat(hx))) + (mlRuntime.coerceToFloat(upZ) * mlRuntime.coerceToFloat(hy)));
-                let dl = mlRuntime.math.sqrt((((mlRuntime.coerceToFloat(dx) * mlRuntime.coerceToFloat(dx)) + (mlRuntime.coerceToFloat(dy) * mlRuntime.coerceToFloat(dy))) + (mlRuntime.coerceToFloat(dz) * mlRuntime.coerceToFloat(dz))));
-                if ((mlRuntime.coerceToFloat(dl) < 0.0001))
+                let ndcX = ((__maldaDivide(__maldaFloat(mx), width) * 2) - 1);
+                let ndcY = (1 - (__maldaDivide(__maldaFloat(my), height) * 2));
+                let hx = ((ndcX * aspect) * tanHalf);
+                let hy = (ndcY * tanHalf);
+                let dx = ((forwardX + (rightX * __maldaFloat(hx))) + (upX * hy));
+                let dy = ((forwardY + (rightY * __maldaFloat(hx))) + (upY * hy));
+                let dz = ((forwardZ + (rightZ * __maldaFloat(hx))) + (upZ * hy));
+                let dl = mlRuntime.math.sqrt((((dx * dx) + (dy * dy)) + (dz * dz)));
+                if ((dl < 0.0001))
                 {
                     return false;
                 }
-                dx = __maldaDivide(mlRuntime.coerceToFloat(dx), mlRuntime.coerceToFloat(dl));
-                dy = __maldaDivide(mlRuntime.coerceToFloat(dy), mlRuntime.coerceToFloat(dl));
-                dz = __maldaDivide(mlRuntime.coerceToFloat(dz), mlRuntime.coerceToFloat(dl));
-                if ((mlRuntime.coerceToFloat(mlRuntime.math.abs(dy)) < 0.0008))
+                dx = __maldaDivide(dx, dl);
+                dy = __maldaDivide(dy, dl);
+                dz = __maldaDivide(dz, dl);
+                if ((__maldaFloat(mlRuntime.math.abs(dy)) < 0.0008))
                 {
                     return false;
                 }
-                let tHit = __maldaDivide((0 - mlRuntime.coerceToFloat(camY)), mlRuntime.coerceToFloat(dy));
-                if ((mlRuntime.coerceToFloat(tHit) < 0.15))
+                let tHit = __maldaDivide((0 - camY), dy);
+                if ((__maldaFloat(tHit) < 0.15))
                 {
                     return false;
                 }
-                let hitX = (camX + (mlRuntime.coerceToFloat(dx) * mlRuntime.coerceToFloat(tHit)));
-                let hitZ = (camZ + (mlRuntime.coerceToFloat(dz) * mlRuntime.coerceToFloat(tHit)));
-                let ax = (mlRuntime.coerceToFloat(__maldaGetIndex(ballX, 0)) - mlRuntime.coerceToFloat(hitX));
-                let az = (mlRuntime.coerceToFloat(__maldaGetIndex(ballZ, 0)) - mlRuntime.coerceToFloat(hitZ));
-                let al = mlRuntime.math.sqrt(((mlRuntime.coerceToFloat(ax) * mlRuntime.coerceToFloat(ax)) + (mlRuntime.coerceToFloat(az) * mlRuntime.coerceToFloat(az))));
-                if ((mlRuntime.coerceToFloat(al) < 0.05))
+                let hitX = (camX + (dx * __maldaFloat(tHit)));
+                let hitZ = (camZ + (dz * __maldaFloat(tHit)));
+                let ax = (__maldaFloat(__maldaGetIndex(ballX, 0)) - hitX);
+                let az = (__maldaFloat(__maldaGetIndex(ballZ, 0)) - hitZ);
+                let al = mlRuntime.math.sqrt(((ax * ax) + (az * az)));
+                if ((al < 0.05))
                 {
                     return false;
                 }
@@ -510,32 +511,32 @@
             }
             resetRack();
             function updateCamera() {
-                camX = (mlRuntime.coerceToFloat(mlRuntime.math.sin(camAngle)) * mlRuntime.coerceToFloat(camRadius));
-                camY = (mlRuntime.coerceToFloat(camRadius) * 0.629);
-                camZ = (mlRuntime.coerceToFloat(mlRuntime.math.cos(camAngle)) * mlRuntime.coerceToFloat(camRadius));
-                let fx = (0 - mlRuntime.coerceToFloat(camX));
-                let fy = (0.12 - mlRuntime.coerceToFloat(camY));
-                let fz = (0 - mlRuntime.coerceToFloat(camZ));
-                let fl = mlRuntime.math.sqrt((((mlRuntime.coerceToFloat(fx) * mlRuntime.coerceToFloat(fx)) + (mlRuntime.coerceToFloat(fy) * mlRuntime.coerceToFloat(fy))) + (mlRuntime.coerceToFloat(fz) * mlRuntime.coerceToFloat(fz))));
-                fx = __maldaDivide(mlRuntime.coerceToFloat(fx), mlRuntime.coerceToFloat(fl));
-                fy = __maldaDivide(mlRuntime.coerceToFloat(fy), mlRuntime.coerceToFloat(fl));
-                fz = __maldaDivide(mlRuntime.coerceToFloat(fz), mlRuntime.coerceToFloat(fl));
-                let rx = (0 - mlRuntime.coerceToFloat(fz));
+                camX = (__maldaFloat(mlRuntime.math.sin(camAngle)) * camRadius);
+                camY = (camRadius * 0.629);
+                camZ = (__maldaFloat(mlRuntime.math.cos(camAngle)) * camRadius);
+                let fx = (0 - camX);
+                let fy = (0.12 - camY);
+                let fz = (0 - camZ);
+                let fl = mlRuntime.math.sqrt((((fx * fx) + (fy * fy)) + (fz * fz)));
+                fx = __maldaDivide(fx, fl);
+                fy = __maldaDivide(fy, fl);
+                fz = __maldaDivide(fz, fl);
+                let rx = (0 - fz);
                 let ry = 0;
                 let rz = fx;
-                let rl = mlRuntime.math.sqrt((((mlRuntime.coerceToFloat(rx) * mlRuntime.coerceToFloat(rx)) + (mlRuntime.coerceToFloat(ry) * mlRuntime.coerceToFloat(ry))) + (mlRuntime.coerceToFloat(rz) * mlRuntime.coerceToFloat(rz))));
-                rx = __maldaDivide(mlRuntime.coerceToFloat(rx), mlRuntime.coerceToFloat(rl));
-                ry = __maldaDivide(mlRuntime.coerceToFloat(ry), mlRuntime.coerceToFloat(rl));
-                rz = __maldaDivide(mlRuntime.coerceToFloat(rz), mlRuntime.coerceToFloat(rl));
+                let rl = mlRuntime.math.sqrt((((rx * rx) + (ry * ry)) + (rz * rz)));
+                rx = __maldaDivide(rx, rl);
+                ry = __maldaDivide(ry, rl);
+                rz = __maldaDivide(rz, rl);
                 forwardX = fx;
                 forwardY = fy;
                 forwardZ = fz;
                 rightX = rx;
                 rightY = ry;
                 rightZ = rz;
-                upX = ((mlRuntime.coerceToFloat(ry) * mlRuntime.coerceToFloat(fz)) - (mlRuntime.coerceToFloat(rz) * mlRuntime.coerceToFloat(fy)));
-                upY = ((mlRuntime.coerceToFloat(rz) * mlRuntime.coerceToFloat(fx)) - (mlRuntime.coerceToFloat(rx) * mlRuntime.coerceToFloat(fz)));
-                upZ = ((mlRuntime.coerceToFloat(rx) * mlRuntime.coerceToFloat(fy)) - (mlRuntime.coerceToFloat(ry) * mlRuntime.coerceToFloat(fx)));
+                upX = ((ry * fz) - (rz * fy));
+                upY = ((rz * fx) - (rx * fz));
+                upZ = ((rx * fy) - (ry * fx));
             }
             let renderer = mlRuntime.three.createRenderer(width, height, "#app");
             mlRuntime.three.setClearColor(renderer, "#0b0a09");
@@ -580,11 +581,11 @@
                     let tipGap = 0.08;
                     if (mlRuntime.isTruthy(charging))
                     {
-                        tipGap = (0.08 + (mlRuntime.coerceToFloat(shotPower) * 0.5));
+                        tipGap = (0.08 + (shotPower * 0.5));
                     }
                     let back = (0.55 + tipGap);
-                    let cx = (mlRuntime.coerceToFloat(__maldaGetIndex(ballX, 0)) - (mlRuntime.coerceToFloat(mlRuntime.math.cos(aimAngle)) * mlRuntime.coerceToFloat(back)));
-                    let cz = (mlRuntime.coerceToFloat(__maldaGetIndex(ballZ, 0)) - (mlRuntime.coerceToFloat(mlRuntime.math.sin(aimAngle)) * mlRuntime.coerceToFloat(back)));
+                    let cx = (__maldaFloat(__maldaGetIndex(ballX, 0)) - (__maldaFloat(mlRuntime.math.cos(aimAngle)) * back));
+                    let cz = (__maldaFloat(__maldaGetIndex(ballZ, 0)) - (__maldaFloat(mlRuntime.math.sin(aimAngle)) * back));
                     mlRuntime.three.setUniform(material, "uCueCenter", [cx, 0.075, cz]);
                     mlRuntime.three.setUniform(material, "uCueHalf", [0.55, 0.012, 0.012]);
                     mlRuntime.three.setUniform(material, "uCueAngle", aimAngle);
@@ -610,24 +611,24 @@
             pushPlayUniforms();
             function update(dtMs) {
                 let dt = dtMs;
-                if ((mlRuntime.coerceToFloat(dt) > 50))
+                if ((__maldaFloat(dt) > 50))
                 {
                     dt = 50;
                 }
-                let dtSec = (mlRuntime.coerceToFloat(dt) / 1000);
+                let dtSec = (__maldaFloat(dt) / 1000);
                 if (mlRuntime.isTruthy(mlRuntime.three.isKeyDown("arrowleft")))
                 {
-                    camSpeed = (mlRuntime.coerceToFloat(camSpeed) - (1.2 * mlRuntime.coerceToFloat(dtSec)));
+                    camSpeed = (camSpeed - (1.2 * dtSec));
                 }
                 if (mlRuntime.isTruthy(mlRuntime.three.isKeyDown("arrowright")))
                 {
-                    camSpeed = (camSpeed + (1.2 * mlRuntime.coerceToFloat(dtSec)));
+                    camSpeed = (camSpeed + (1.2 * dtSec));
                 }
-                if ((mlRuntime.coerceToFloat(camSpeed) < (-2.4)))
+                if ((camSpeed < (-2.4)))
                 {
                     camSpeed = (-2.4);
                 }
-                if ((mlRuntime.coerceToFloat(camSpeed) > 2.4))
+                if ((camSpeed > 2.4))
                 {
                     camSpeed = 2.4;
                 }
@@ -637,32 +638,32 @@
                     camSpeed = 0;
                 }
                 cWasDown = cDown;
-                camAngle = (camAngle + (mlRuntime.coerceToFloat(camSpeed) * mlRuntime.coerceToFloat(dtSec)));
+                camAngle = (camAngle + (camSpeed * dtSec));
                 if (((mlRuntime.isTruthy(mlRuntime.three.isKeyDown("]")) || mlRuntime.isTruthy(mlRuntime.three.isKeyDown("="))) || mlRuntime.isTruthy(mlRuntime.three.isKeyDown("+"))))
                 {
-                    zoomAcc = (mlRuntime.coerceToFloat(zoomAcc) - (18 * mlRuntime.coerceToFloat(dtSec)));
+                    zoomAcc = (zoomAcc - (18 * dtSec));
                 }
                 if ((mlRuntime.isTruthy(mlRuntime.three.isKeyDown("[")) || mlRuntime.isTruthy(mlRuntime.three.isKeyDown("-"))))
                 {
-                    zoomAcc = (zoomAcc + (18 * mlRuntime.coerceToFloat(dtSec)));
+                    zoomAcc = (zoomAcc + (18 * dtSec));
                 }
-                if (((mlRuntime.coerceToFloat(zoomAcc) <= (-1)) || (mlRuntime.coerceToFloat(zoomAcc) >= 1)))
+                if (((zoomAcc <= (-1)) || (zoomAcc >= 1)))
                 {
                     let zoomStep = mlRuntime.coerceToInt(zoomAcc);
                     nudgeRange(zoomRange, zoomStep, 24, 80);
-                    zoomAcc = (mlRuntime.coerceToFloat(zoomAcc) - mlRuntime.coerceToFloat(zoomStep));
+                    zoomAcc = (zoomAcc - zoomStep);
                 }
                 syncPlaySettings();
                 let mx = mlRuntime.coerceToInt(mlRuntime.three.getMouseX());
                 let my = mlRuntime.coerceToInt(mlRuntime.three.getMouseY());
-                if ((mlRuntime.coerceToFloat(lastMouseX) < 0))
+                if ((__maldaFloat(lastMouseX) < 0))
                 {
                     lastMouseX = mx;
                     lastMouseY = my;
                 }
                 let still = ballsAreStill();
                 let mouseMoved = ((!mlRuntime.equals(mx, lastMouseX)) || (!mlRuntime.equals(my, lastMouseY)));
-                let mouseOnTable = ((((mlRuntime.coerceToFloat(mx) >= 0) && (mlRuntime.coerceToFloat(mx) < mlRuntime.coerceToFloat(width))) && (mlRuntime.coerceToFloat(my) >= 0)) && (mlRuntime.coerceToFloat(my) < mlRuntime.coerceToFloat(height)));
+                let mouseOnTable = ((((__maldaFloat(mx) >= 0) && (__maldaFloat(mx) < width)) && (__maldaFloat(my) >= 0)) && (__maldaFloat(my) < height));
                 if ((mlRuntime.isTruthy(autoplay) && (((mlRuntime.isTruthy(mlRuntime.three.isKeyDown(" ")) || mlRuntime.isTruthy(mlRuntime.three.isMouseDown(0))) || mlRuntime.isTruthy(mlRuntime.three.isKeyDown("a"))) || mlRuntime.isTruthy(mlRuntime.three.isKeyDown("d")))))
                 {
                     autoplay = false;
@@ -678,16 +679,16 @@
                     {
                         if ((__maldaGetIndex(ballLive, 0) === 1))
                         {
-                            demoClock = __maldaAdd(demoClock, dtSec);
+                            demoClock = (demoClock + dtSec);
                             aimAngle = 0;
-                            if (((mlRuntime.coerceToFloat(demoClock) > 0.25) && (mlRuntime.coerceToFloat(demoClock) < 0.7)))
+                            if (((demoClock > 0.25) && (demoClock < 0.7)))
                             {
                                 charging = true;
                                 shotPower = 1;
                             }
                             else
                             {
-                                if ((mlRuntime.coerceToFloat(demoClock) >= 0.7))
+                                if ((demoClock >= 0.7))
                                 {
                                     demoShot = true;
                                 }
@@ -703,11 +704,11 @@
                     }
                     if (((!mlRuntime.isTruthy(autoplay)) && mlRuntime.isTruthy(mlRuntime.three.isKeyDown("a"))))
                     {
-                        aimAngle = (mlRuntime.coerceToFloat(aimAngle) - (1.6 * mlRuntime.coerceToFloat(dtSec)));
+                        aimAngle = (aimAngle - (1.6 * dtSec));
                     }
                     if (((!mlRuntime.isTruthy(autoplay)) && mlRuntime.isTruthy(mlRuntime.three.isKeyDown("d"))))
                     {
-                        aimAngle = (aimAngle + (1.6 * mlRuntime.coerceToFloat(dtSec)));
+                        aimAngle = (aimAngle + (1.6 * dtSec));
                     }
                     if (mlRuntime.isTruthy(demoShot))
                     {
@@ -727,8 +728,8 @@
                             }
                             else
                             {
-                                shotPower = (shotPower + (0.85 * mlRuntime.coerceToFloat(dtSec)));
-                                if ((mlRuntime.coerceToFloat(shotPower) > 1))
+                                shotPower = (shotPower + (0.85 * dtSec));
+                                if ((shotPower > 1))
                                 {
                                     shotPower = 1;
                                 }
@@ -748,8 +749,8 @@
                     charging = false;
                     if (mlRuntime.isTruthy(mouseMoved))
                     {
-                        lightX = ((__maldaDivide(mlRuntime.coerceToFloat(mx), mlRuntime.coerceToFloat(width)) - 0.5) * 4.2);
-                        lightZ = (0.4 - ((__maldaDivide(mlRuntime.coerceToFloat(my), mlRuntime.coerceToFloat(height)) - 0.5) * 3.2));
+                        lightX = ((__maldaDivide(__maldaFloat(mx), width) - 0.5) * 4.2);
+                        lightZ = (0.4 - ((__maldaDivide(__maldaFloat(my), height) - 0.5) * 3.2));
                     }
                 }
                 lastMouseX = mx;
@@ -761,9 +762,9 @@
                 }
                 rWasDown = rDown;
                 let step = 0;
-                while ((mlRuntime.coerceToFloat(step) < 3))
+                while ((step < 3))
                 {
-                    physicsStep((mlRuntime.coerceToFloat(dtSec) / 3));
+                    physicsStep((dtSec / 3));
                     step = (step + 1);
                 }
                 if (mlRuntime.isTruthy(ballsAreStill()))
@@ -771,15 +772,15 @@
                     respawnCueIfNeeded();
                 }
                 still = ballsAreStill();
-                let orbitTxt = __maldaFormat((mlRuntime.coerceToFloat(mlRuntime.coerceToInt((mlRuntime.coerceToFloat(camSpeed) * 100))) / 100));
-                let zoomTxt = __maldaFormat((mlRuntime.coerceToFloat(mlRuntime.coerceToInt((mlRuntime.coerceToFloat(camRadius) * 10))) / 10));
-                let railTxt = __maldaFormat((mlRuntime.coerceToFloat(mlRuntime.coerceToInt((mlRuntime.coerceToFloat(railRest) * 100))) / 100));
-                let ballTxt = __maldaFormat((mlRuntime.coerceToFloat(mlRuntime.coerceToInt((mlRuntime.coerceToFloat(ballRest) * 100))) / 100));
-                let fricTxt = __maldaFormat((mlRuntime.coerceToFloat(mlRuntime.coerceToInt((mlRuntime.coerceToFloat(feltFriction) * 100))) / 100));
+                let orbitTxt = __maldaFormat((__maldaFloat(mlRuntime.coerceToInt((camSpeed * 100))) / 100));
+                let zoomTxt = __maldaFormat((__maldaFloat(mlRuntime.coerceToInt((camRadius * 10))) / 10));
+                let railTxt = __maldaFormat((__maldaFloat(mlRuntime.coerceToInt((railRest * 100))) / 100));
+                let ballTxt = __maldaFormat((__maldaFloat(mlRuntime.coerceToInt((ballRest * 100))) / 100));
+                let fricTxt = __maldaFormat((__maldaFloat(mlRuntime.coerceToInt((feltFriction * 100))) / 100));
                 mlRuntime.dom.setText(physLine, ((((((((("Zoom " + __maldaFormat(zoomTxt)) + "   Cushion e ") + __maldaFormat(railTxt)) + "   Ball e ") + __maldaFormat(ballTxt)) + "   Friction ") + __maldaFormat(fricTxt)) + "   Orbit ") + __maldaFormat(orbitTxt)));
                 if (mlRuntime.isTruthy(still))
                 {
-                    let deg = mlRuntime.coerceToInt(((mlRuntime.coerceToFloat(aimAngle) * 180) / 3.14159265));
+                    let deg = mlRuntime.coerceToInt(((aimAngle * 180) / 3.14159265));
                     if (mlRuntime.isTruthy(charging))
                     {
                         mlRuntime.dom.setText(status, (((("Charging… release to shoot   Aim " + __maldaFormat(deg)) + " deg   Potted ") + __maldaFormat(pottedCount)) + "   C stop orbit   R reset"));
