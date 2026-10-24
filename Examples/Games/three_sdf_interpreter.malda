@@ -1,24 +1,27 @@
 // SDF interpreter: one raymarching shader, compiled once, runs a scene stored as bytecode.
 //
 // A shader generated from the scene must be compiled again whenever the scene changes shape,
-// and a big shader can take seconds to compile. Here the shader is a small stack machine instead:
+// and a big shader can take seconds to compile. Here the shader is a small interpreter instead:
 // the host writes the scene as instructions into a float data texture, and the fragment shader
 // reads them with texelFetch and runs them for every raymarching step. Adding, removing or moving
 // a shape only rewrites the texture (three.updateDataTexture); the shader never changes.
 //
 // Instruction = two RGBA texels:
-//   SKIP   (4, -, jump, -)   (cx, cy, cz, r)   if the bounding sphere is farther than the distance
-//                                             found so far (plus the blend), jump past the object
-//   SHAPE  (1, kind, -, -)   (x, y, z, size)   push the shape's distance and color
-//   UNION  (2, -, -, k)                       pop two, push their smooth union (blend k)
-//   CUT    (3, -, -, k)                       pop two, push the first minus the second
+//   UNION  (1, kind, -, k)   (x, y, z, size)   smooth-union the shape into the distance so far
+//   CUT    (2, kind, -, k)   (x, y, z, size)   subtract the shape from the distance so far
+//   GROUP  (3, -, jump, -)   (cx, cy, cz, r)   what follows, up to `jump`, lies in this sphere
 //
-// The bounding-sphere SKIP is what keeps a long program cheap: far from an object, the shader
-// checks one sphere instead of running the object's instructions.
-// The same bytecode also runs on the host (cpuSceneDistance) to find the surface under the mouse.
+// The host sorts the shapes into a tree of GROUPs by position. One pixel takes up to ~180 distance
+// evaluations (march, normal, shadow), so running the whole program for each would be far too
+// slow. Instead each ray first walks the program once, skipping every group whose sphere it
+// misses, and keeps in a local array (`var cand: int[MAX_CAND];`) the shapes it passes near.
+// Shapes away from the ray can neither be hit nor bend the surface where it is hit, so every
+// march step then runs only those few. B turns the culling off to compare. Rays also march only
+// inside the box around the shapes, and the floor is hit analytically.
+// The same bytecode runs on the host (cpuSceneDistance) to find the surface under the mouse.
 //
 // Controls: click drops the current tool on the surface. 1-4 pick sphere / box / torus / cylinder,
-// X toggles add / cut, Backspace undoes, [ ] change the blend, B toggles the bounding skip,
+// X toggles add / cut, Backspace undoes, [ ] change the blend, B toggles the ray culling,
 // M toggles motion (the texture is rewritten every frame), R resets, arrows orbit, + / - zoom.
 //
 // Build: malda compile Examples/Games/three_sdf_interpreter.malda --mode js -o three_sdf_interpreter.js
@@ -75,90 +78,230 @@ function shapeColor(kind: int) -> vec3 {
     return vec3(0.6, 0.45, 0.9);
 }
 
-// The interpreter: two stacks (distances and colors), one instruction per iteration.
+// Radius of a sphere around the shape (mirrors boundRadius on the host).
+@shader()
+function shapeRadius(kind: int, s: float) -> float {
+    if (kind == 0) {
+        return s;
+    }
+    if (kind == 1) {
+        return s * 1.74;
+    }
+    if (kind == 2) {
+        return s * 1.35;
+    }
+    return s * 1.23;
+}
+
+// The whole program at one point, for a ray that passes near more than MAX_CAND shapes (or with
+// the culling off). One instruction per iteration, the distance and color so far in registers.
+// With the culling on, a shape or group farther than the distance so far plus the blend is
+// skipped: it cannot change the result.
 @shader()
 function runProgram(p: vec3, color: out vec3) -> float {
-    var dist: float[STACK];
-    var tint: vec3[STACK];
-    dist[0] = FAR;
-    tint[0] = vec3(0.5, 0.5, 0.5);
-    var sp: int = 1;
+    var acc: float = FAR;
+    var tint: vec3 = vec3(0.5, 0.5, 0.5);
+    var skip: bool = uSkip > 0.5;
     var i: int = 0;
     while (i < uCount) {
         var head: vec4 = texelFetch(uProgram, ivec2(i * 2, 0), 0);
         var data: vec4 = texelFetch(uProgram, ivec2(i * 2 + 1, 0), 0);
         var op: int = int(head.x + 0.5);
-        if (op == OP_SKIP) {
-            var bound: float = length(p - data.xyz) - data.w;
-            if (uSkip > 0.5 && bound > dist[sp - 1] + uBlend) {
+        if (op == OP_GROUP) {
+            if (skip && length(p - data.xyz) - data.w > acc + uBlend) {
                 i = int(head.z + 0.5);
                 continue;
             }
-        } else if (op == OP_SHAPE) {
+        } else {
             var kind: int = int(head.y + 0.5);
-            dist[sp] = sdShape(kind, p - data.xyz, data.w);
-            tint[sp] = shapeColor(kind);
-            sp++;
-        } else if (op == OP_UNION) {
-            sp--;
             var k: float = max(head.w, 0.0001);
-            var h: float = clamp(0.5 + 0.5 * (dist[sp] - dist[sp - 1]) / k, 0.0, 1.0);
-            dist[sp - 1] = mix(dist[sp], dist[sp - 1], h) - k * h * (1.0 - h);
-            tint[sp - 1] = mix(tint[sp], tint[sp - 1], h);
-        } else if (op == OP_CUT) {
-            sp--;
-            var kc: float = max(head.w, 0.0001);
-            var hc: float = clamp(0.5 + 0.5 * (dist[sp] + dist[sp - 1]) / kc, 0.0, 1.0);
-            dist[sp - 1] = mix(0.0 - dist[sp], dist[sp - 1], hc) + kc * hc * (1.0 - hc);
-            tint[sp - 1] = mix(tint[sp] * 0.6, tint[sp - 1], hc);
+            var bound: float = length(p - data.xyz) - shapeRadius(kind, data.w);
+            if (op == OP_UNION) {
+                if (!skip || bound < acc + k) {
+                    var d: float = sdShape(kind, p - data.xyz, data.w);
+                    var h: float = clamp(0.5 + 0.5 * (d - acc) / k, 0.0, 1.0);
+                    acc = mix(d, acc, h) - k * h * (1.0 - h);
+                    tint = mix(shapeColor(kind), tint, h);
+                }
+            } else if (!skip || bound < k - acc) {
+                var c: float = sdShape(kind, p - data.xyz, data.w);
+                var hc: float = clamp(0.5 + 0.5 * (c + acc) / k, 0.0, 1.0);
+                acc = mix(0.0 - c, acc, hc) + k * hc * (1.0 - hc);
+                tint = mix(shapeColor(kind) * 0.6, tint, hc);
+            }
         }
         i++;
     }
-    color = tint[0];
-    return dist[0];
+    color = tint;
+    return acc;
 }
 
+// The box around every shape (from the host): rays march only inside it.
 @shader()
-function sceneColor(p: vec3, color: out vec3) -> float {
-    var d: float = runProgram(p, color);
-    if (p.y < d) {
-        var cell: float = mod(floor(p.x) + floor(p.z), 2.0);
-        color = mix(vec3(0.16, 0.18, 0.22), vec3(0.22, 0.24, 0.29), cell);
-        d = p.y;
+function rayBox(origin: vec3, dir: vec3, tNear: out float, tFar: out float) -> bool {
+    var inv: vec3 = 1.0 / (dir + vec3(0.0000001, 0.0000001, 0.0000001));
+    var t0: vec3 = (uBoxMin - origin) * inv;
+    var t1: vec3 = (uBoxMax - origin) * inv;
+    var lo: vec3 = min(t0, t1);
+    var hi: vec3 = max(t0, t1);
+    tNear = max(max(lo.x, lo.y), lo.z);
+    tFar = min(min(hi.x, hi.y), hi.z);
+    return tFar > max(tNear, 0.0);
+}
+
+// March one ray from tStart to tEnd. First walk the program once and keep, in program order, the
+// shapes whose bounding sphere (grown by the blend, or the penumbra for a shadow ray) comes near
+// the ray: the others can neither be hit nor bend the surface where it is hit. Then every march
+// step runs only those few. More than MAX_CAND near shapes: every step runs the whole program.
+// A primary ray returns 1.0 on a hit (with tHit, normal and albedo); a shadow ray returns how
+// much light gets through.
+@shader()
+function traceRay(origin: vec3, dir: vec3, tStart: float, tEnd: float, shadowRay: bool, tHit: out float, normal: out vec3, albedo: out vec3) -> float {
+    var cand: int[MAX_CAND];
+    var count: int = 0;
+    var overflow: bool = uSkip < 0.5;
+    var margin: float = 0.0;
+    if (shadowRay) {
+        margin = 0.25;
     }
-    return d;
-}
+    var i: int = 0;
+    while (i < uCount && !overflow) {
+        var head: vec4 = texelFetch(uProgram, ivec2(i * 2, 0), 0);
+        var data: vec4 = texelFetch(uProgram, ivec2(i * 2 + 1, 0), 0);
+        var op: int = int(head.x + 0.5);
+        var reach: float = data.w + uBlend + margin;
+        if (op != OP_GROUP) {
+            reach = shapeRadius(int(head.y + 0.5), data.w) + max(head.w, 0.0001) + margin;
+        }
+        var along: float = clamp(dot(data.xyz - origin, dir), tStart, tEnd);
+        var close: bool = length(origin + dir * along - data.xyz) <= reach;
+        if (op == OP_GROUP) {
+            if (!close) {
+                i = int(head.z + 0.5);
+                continue;
+            }
+        } else if (close) {
+            if (count < MAX_CAND) {
+                cand[count] = i;
+                count++;
+            } else {
+                overflow = true;
+            }
+        }
+        i++;
+    }
+    tHit = tEnd;
+    normal = vec3(0.0, 1.0, 0.0);
+    albedo = vec3(0.5, 0.5, 0.5);
+    if (count == 0 && !overflow) {
+        if (shadowRay) {
+            return 1.0;
+        }
+        return 0.0;
+    }
 
-@shader()
-function sceneDistance(p: vec3) -> float {
-    var unused: vec3 = vec3(0.0, 0.0, 0.0);
-    return sceneColor(p, unused);
-}
-
-@shader()
-function normalAt(p: vec3) -> vec3 {
+    // March. After a hit, four more samples around the hit point give the normal.
     var e: vec2 = vec2(0.001, -0.001);
-    return normalize(
-        e.xyy * sceneDistance(p + e.xyy)
-        + e.yyx * sceneDistance(p + e.yyx)
-        + e.yxy * sceneDistance(p + e.yxy)
-        + e.xxx * sceneDistance(p + e.xxx)
-    );
+    var t: float = tStart;
+    var light: float = 1.0;
+    var hit: bool = false;
+    var normalSample: int = 0;
+    var grad: vec3 = vec3(0.0, 0.0, 0.0);
+    for (var step: int = 0; step < 132; step++) {
+        var offset: vec3 = vec3(0.0, 0.0, 0.0);
+        if (hit) {
+            if (normalSample == 0) {
+                offset = e.xyy;
+            } else if (normalSample == 1) {
+                offset = e.yyx;
+            } else if (normalSample == 2) {
+                offset = e.yxy;
+            } else {
+                offset = e.xxx;
+            }
+        } else if (t > tEnd || (shadowRay && step >= 40)) {
+            break;
+        }
+        var p: vec3 = origin + dir * t + offset;
+        var acc: float = FAR;
+        var tint: vec3 = vec3(0.5, 0.5, 0.5);
+        if (overflow) {
+            acc = runProgram(p, tint);
+        } else {
+            for (var c: int = 0; c < MAX_CAND; c++) {
+                if (c >= count) {
+                    break;
+                }
+                var at: int = cand[c];
+                var head: vec4 = texelFetch(uProgram, ivec2(at * 2, 0), 0);
+                var data: vec4 = texelFetch(uProgram, ivec2(at * 2 + 1, 0), 0);
+                var kind: int = int(head.y + 0.5);
+                var k: float = max(head.w, 0.0001);
+                var d: float = sdShape(kind, p - data.xyz, data.w);
+                if (int(head.x + 0.5) == OP_UNION) {
+                    var h: float = clamp(0.5 + 0.5 * (d - acc) / k, 0.0, 1.0);
+                    acc = mix(d, acc, h) - k * h * (1.0 - h);
+                    tint = mix(shapeColor(kind), tint, h);
+                } else {
+                    var hc: float = clamp(0.5 + 0.5 * (d + acc) / k, 0.0, 1.0);
+                    acc = mix(0.0 - d, acc, hc) + k * hc * (1.0 - hc);
+                    tint = mix(shapeColor(kind) * 0.6, tint, hc);
+                }
+            }
+        }
+        if (hit) {
+            grad += offset * acc;
+            normalSample++;
+            if (normalSample == 4) {
+                break;
+            }
+        } else if (shadowRay) {
+            light = min(light, 8.0 * acc / t);
+            if (light < 0.01) {
+                break;
+            }
+            t += clamp(acc, 0.03, 0.6);
+        } else if (acc < 0.0005 + 0.0008 * t) {
+            hit = true;
+            tHit = t;
+            albedo = tint;
+        } else {
+            t += acc;
+        }
+    }
+    if (shadowRay) {
+        return clamp(light, 0.0, 1.0);
+    }
+    if (hit) {
+        normal = normalize(grad);
+        return 1.0;
+    }
+    return 0.0;
 }
 
 @shader()
 function softShadow(origin: vec3, dir: vec3) -> float {
-    var light: float = 1.0;
-    var t: float = 0.03;
-    for (var i: int = 0; i < 32; i++) {
-        var h: float = sceneDistance(origin + dir * t);
-        light = min(light, 8.0 * h / t);
-        t += clamp(h, 0.03, 0.6);
-        if (light < 0.01 or t > 20.0) {
-            break;
-        }
+    var tNear: float = 0.0;
+    var tFar: float = 0.0;
+    if (!rayBox(origin, dir, tNear, tFar)) {
+        return 1.0;
     }
-    return clamp(light, 0.0, 1.0);
+    var tHit: float = 0.0;
+    var normal: vec3 = vec3(0.0, 0.0, 0.0);
+    var albedo: vec3 = vec3(0.0, 0.0, 0.0);
+    return traceRay(origin, dir, max(tNear, 0.03), tFar, true, tHit, normal, albedo);
+}
+
+@shader()
+function shade(p: vec3, n: vec3, albedo: vec3, dir: vec3) -> vec3 {
+    var lightDir: vec3 = normalize(vec3(0.55, 0.9, 0.35));
+    var diffuse: float = max(dot(n, lightDir), 0.0);
+    if (diffuse > 0.0) {
+        diffuse = diffuse * softShadow(p + n * 0.003, lightDir);
+    }
+    var ambient: float = 0.22 + 0.18 * n.y;
+    var spec: float = pow(max(dot(reflect(dir, n), lightDir), 0.0), 32.0) * diffuse;
+    return albedo * (ambient + diffuse * 0.95) + vec3(spec * 0.35, spec * 0.35, spec * 0.35);
 }
 
 @shader()
@@ -170,32 +313,32 @@ function fragmentMain() {
         + uCamUp * (ndc.y * uTanHalf)
     );
     var sky: vec3 = mix(vec3(0.05, 0.07, 0.12), vec3(0.32, 0.42, 0.58), clamp(dir.y * 1.5 + 0.35, 0.0, 1.0));
+    var tFloor: float = FAR;
+    if (dir.y < -0.0001) {
+        tFloor = (0.0 - uCamPos.y) / dir.y;
+    }
     var t: float = 0.0;
     var hit: bool = false;
-    for (var i: int = 0; i < 128; i++) {
-        var d: float = sceneDistance(uCamPos + dir * t);
-        if (d < 0.0005 + 0.0008 * t) {
-            hit = true;
-            break;
-        }
-        t += d;
-        if (t > 60.0) {
-            break;
-        }
+    var normal: vec3 = vec3(0.0, 1.0, 0.0);
+    var albedo: vec3 = vec3(0.0, 0.0, 0.0);
+    var tNear: float = 0.0;
+    var tFar: float = 0.0;
+    if (rayBox(uCamPos, dir, tNear, tFar)) {
+        hit = traceRay(uCamPos, dir, max(tNear, 0.0), min(tFar, tFloor), false, t, normal, albedo) > 0.5;
     }
     var color: vec3 = sky;
     if (hit) {
-        var p: vec3 = uCamPos + dir * t;
-        var albedo: vec3 = vec3(0.0, 0.0, 0.0);
-        sceneColor(p, albedo);
-        var n: vec3 = normalAt(p);
-        var lightDir: vec3 = normalize(vec3(0.55, 0.9, 0.35));
-        var diffuse: float = max(dot(n, lightDir), 0.0) * softShadow(p + n * 0.003, lightDir);
-        var ambient: float = 0.22 + 0.18 * n.y;
-        var spec: float = pow(max(dot(reflect(dir, n), lightDir), 0.0), 32.0) * diffuse;
-        color = albedo * (ambient + diffuse * 0.95) + vec3(spec * 0.35, spec * 0.35, spec * 0.35);
-        color = mix(color, sky, clamp((t - 18.0) / 30.0, 0.0, 1.0));
+        color = shade(uCamPos + dir * t, normal, albedo, dir);
+    } else if (tFloor < FAR) {
+        t = tFloor;
+        var q: vec3 = uCamPos + dir * t;
+        var cell: float = mod(floor(q.x) + floor(q.z), 2.0);
+        var floorColor: vec3 = mix(vec3(0.16, 0.18, 0.22), vec3(0.22, 0.24, 0.29), cell);
+        color = shade(q, vec3(0.0, 1.0, 0.0), floorColor, dir);
+    } else {
+        t = 0.0;
     }
+    color = mix(color, sky, clamp((t - 18.0) / 30.0, 0.0, 1.0));
     gl_FragColor = vec4(sqrt(color), 1.0);
 }
 
@@ -212,6 +355,8 @@ var fragmentShader = glsl.compile({
         "int uCount",
         "float uBlend",
         "float uSkip",
+        "vec3 uBoxMin",
+        "vec3 uBoxMax",
         "vec3 uCamPos",
         "vec3 uCamForward",
         "vec3 uCamRight",
@@ -220,11 +365,10 @@ var fragmentShader = glsl.compile({
         "float uAspect"
     ],
     consts: [
-        "int STACK = 8",
-        "int OP_SHAPE = 1",
-        "int OP_UNION = 2",
-        "int OP_CUT = 3",
-        "int OP_SKIP = 4",
+        "int OP_UNION = 1",
+        "int OP_CUT = 2",
+        "int OP_GROUP = 3",
+        "int MAX_CAND = 24",
         "float FAR = 100000.0"
     ],
     functions: [
@@ -233,20 +377,22 @@ var fragmentShader = glsl.compile({
         "sdCylinder",
         "sdShape",
         "shapeColor",
+        "shapeRadius",
         "runProgram",
-        "sceneColor",
-        "sceneDistance",
-        "normalAt",
+        "rayBox",
+        "traceRay",
         "softShadow",
+        "shade",
         "fragmentMain"
     ],
     main: "fragmentMain"
 });
 
-const OP_SHAPE = 1;
-const OP_UNION = 2;
-const OP_CUT = 3;
-const OP_SKIP = 4;
+const OP_UNION = 1;
+const OP_CUT = 2;
+const OP_GROUP = 3;
+// A group with this many shapes or fewer lists them; a bigger one splits in two.
+const GROUP_LEAF = 4;
 const MAX_OPS = 384;
 const SHAPE_NAMES = ["sphere", "box", "torus", "cylinder"];
 
@@ -262,7 +408,7 @@ if (root == null) {
     dom.append(root, heading);
 
     var hint = dom.create("p");
-    dom.setText(hint, "One shader, compiled once, runs the scene as bytecode from a data texture. Click to drop the tool on the surface. 1-4 sphere / box / torus / cylinder, X add or cut, Backspace undo, [ ] blend, B bounding skip, M motion, R reset, arrows orbit, + / - zoom.");
+    dom.setText(hint, "One shader, compiled once, runs the scene as bytecode from a data texture. Click to drop the tool on the surface. 1-4 sphere / box / torus / cylinder, X add or cut, Backspace undo, [ ] blend, B ray culling, M motion, R reset, arrows orbit, + / - zoom.");
     dom.append(root, hint);
 
     var status = dom.create("p");
@@ -317,11 +463,13 @@ if (root == null) {
         return size * 1.23;
     }
 
+    // Room an object can take in the program: its own instruction, plus at most one group
+    // (a tree over n shapes in leaves of two or more has fewer than n groups).
     function opsFor(obj) {
         if (obj.cut) {
-            return 2;
+            return 1;
         }
-        return 3;
+        return 2;
     }
 
     function writeOp(index, op, kind, jump, k, x, y, z, w) {
@@ -336,25 +484,122 @@ if (root == null) {
         program[base + 7] = w;
     }
 
+    // The box around every added shape, grown by the blend (a smooth union bulges by up to k).
+    // Cuts only remove material, so they do not grow it. An empty scene gets an inverted box.
+    var boxMin = [1, 1, 1];
+    var boxMax = [-1, -1, -1];
+
+    function growBox(x, y, z, r) {
+        if (boxMin[0] > boxMax[0]) {
+            boxMin = [x - r, y - r, z - r];
+            boxMax = [x + r, y + r, z + r];
+            return;
+        }
+        boxMin = [math.min(boxMin[0], x - r), math.min(boxMin[1], y - r), math.min(boxMin[2], z - r)];
+        boxMax = [math.max(boxMax[0], x + r), math.max(boxMax[1], y + r), math.max(boxMax[2], z + r)];
+    }
+
+    function sphereAround(items) {
+        var minX = items[0].x;
+        var maxX = items[0].x;
+        var minY = items[0].y;
+        var maxY = items[0].y;
+        var minZ = items[0].z;
+        var maxZ = items[0].z;
+        for (var it in items) {
+            minX = math.min(minX, it.x - it.r);
+            maxX = math.max(maxX, it.x + it.r);
+            minY = math.min(minY, it.y - it.r);
+            maxY = math.max(maxY, it.y + it.r);
+            minZ = math.min(minZ, it.z - it.r);
+            maxZ = math.max(maxZ, it.z + it.r);
+        }
+        var cx = (minX + maxX) * 0.5;
+        var cy = (minY + maxY) * 0.5;
+        var cz = (minZ + maxZ) * 0.5;
+        var radius = 0.0;
+        for (var it in items) {
+            var dx = it.x - cx;
+            var dy = it.y - cy;
+            var dz = it.z - cz;
+            radius = math.max(radius, math.sqrt(dx * dx + dy * dy + dz * dz) + it.r);
+        }
+        return { x: cx, y: cy, z: cz, r: radius, alongX: maxX - minX >= maxZ - minZ };
+    }
+
+    // Writes a tree of GROUPs over `items` (union shapes: { obj, x, y, z, r }) at opCount: a group
+    // with the sphere around its members and a jump past them, then either its shapes or its
+    // two halves, split at the middle of the longer side.
+    function emitGroup(items) {
+        if (items.length == 0) {
+            return;
+        }
+        var sphere = sphereAround(items);
+        var groupAt = opCount;
+        opCount = opCount + 1;
+        if (items.length <= GROUP_LEAF) {
+            for (var it in items) {
+                writeOp(opCount, OP_UNION, it.obj.kind, 0, blend, it.x, it.y, it.z, it.obj.size);
+                opCount = opCount + 1;
+            }
+        } else {
+            var low = [];
+            var high = [];
+            for (var it in items) {
+                var coord = it.z;
+                var middle = sphere.z;
+                if (sphere.alongX) {
+                    coord = it.x;
+                    middle = sphere.x;
+                }
+                if (coord < middle) {
+                    low.append(it);
+                } else {
+                    high.append(it);
+                }
+            }
+            if (low.length == 0 || high.length == 0) {
+                // All on one side of the middle (stacked shapes): split the list in two instead.
+                low = [];
+                high = [];
+                for (var j = 0; j < items.length; j++) {
+                    if (j * 2 < items.length) {
+                        low.append(items[j]);
+                    } else {
+                        high.append(items[j]);
+                    }
+                }
+            }
+            emitGroup(low);
+            emitGroup(high);
+        }
+        writeOp(groupAt, OP_GROUP, 0, opCount, 0, sphere.x, sphere.y, sphere.z, sphere.r);
+    }
+
+    // A cut subtracts from everything before it, so the order is kept: each run of added
+    // shapes between two cuts becomes one tree of groups, then the cut follows.
     function buildProgram() {
-        var n = 0;
+        opCount = 0;
+        boxMin = [1, 1, 1];
+        boxMax = [-1, -1, -1];
+        var run = [];
         for (var obj in objects) {
             var y = obj.y;
             if (motionOn) {
                 y = y + math.sin(timeSec * 1.6 + obj.phase) * 0.3;
             }
             if (obj.cut) {
-                writeOp(n, OP_SHAPE, obj.kind, 0, 0, obj.x, y, obj.z, obj.size);
-                writeOp(n + 1, OP_CUT, 0, 0, blend * 0.5, 0, 0, 0, 0);
-                n = n + 2;
+                emitGroup(run);
+                run = [];
+                writeOp(opCount, OP_CUT, obj.kind, 0, blend * 0.5, obj.x, y, obj.z, obj.size);
+                opCount = opCount + 1;
             } else {
-                writeOp(n, OP_SKIP, 0, n + 3, 0, obj.x, y, obj.z, boundRadius(obj.kind, obj.size));
-                writeOp(n + 1, OP_SHAPE, obj.kind, 0, 0, obj.x, y, obj.z, obj.size);
-                writeOp(n + 2, OP_UNION, 0, 0, blend, 0, 0, 0, 0);
-                n = n + 3;
+                var r = boundRadius(obj.kind, obj.size);
+                growBox(obj.x, y, obj.z, r + blend + 0.01);
+                run.append({ obj: obj, x: obj.x, y: y, z: obj.z, r: r });
             }
         }
-        opCount = n;
+        emitGroup(run);
     }
 
     function addObject(kind, x, y, z, size, cut) {
@@ -409,37 +654,39 @@ if (root == null) {
     }
 
     function cpuSceneDistance(x, y, z) {
-        var stack = [100000.0];
+        var acc = 100000.0;
         var i = 0;
         while (i < opCount) {
             var base = i * 8;
             var op = int(program[base]);
-            if (op == OP_SKIP) {
-                var bx = x - program[base + 4];
-                var by = y - program[base + 5];
-                var bz = z - program[base + 6];
-                var bound = math.sqrt(bx * bx + by * by + bz * bz) - program[base + 7];
-                if (skipOn && bound > stack[stack.length - 1] + blend) {
+            var qx = x - program[base + 4];
+            var qy = y - program[base + 5];
+            var qz = z - program[base + 6];
+            var centerDistance = math.sqrt(qx * qx + qy * qy + qz * qz);
+            if (op == OP_GROUP) {
+                if (skipOn && centerDistance - program[base + 7] > acc + blend) {
                     i = int(program[base + 2]);
                     continue;
                 }
-            } else if (op == OP_SHAPE) {
-                stack.append(cpuShape(int(program[base + 1]), x - program[base + 4], y - program[base + 5], z - program[base + 6], program[base + 7]));
             } else {
-                var b = stack.pop();
-                var a = stack.pop();
+                var kind = int(program[base + 1]);
                 var k = math.max(program[base + 3], 0.0001);
+                var bound = centerDistance - boundRadius(kind, program[base + 7]);
                 if (op == OP_UNION) {
-                    var h = math.clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);
-                    stack.append(b + (a - b) * h - k * h * (1.0 - h));
-                } else {
-                    var hc = math.clamp(0.5 + 0.5 * (b + a) / k, 0.0, 1.0);
-                    stack.append(0.0 - b + (a + b) * hc + k * hc * (1.0 - hc));
+                    if (!skipOn || bound < acc + k) {
+                        var d = cpuShape(kind, qx, qy, qz, program[base + 7]);
+                        var h = math.clamp(0.5 + 0.5 * (d - acc) / k, 0.0, 1.0);
+                        acc = d + (acc - d) * h - k * h * (1.0 - h);
+                    }
+                } else if (!skipOn || bound < k - acc) {
+                    var c = cpuShape(kind, qx, qy, qz, program[base + 7]);
+                    var hc = math.clamp(0.5 + 0.5 * (c + acc) / k, 0.0, 1.0);
+                    acc = 0.0 - c + (acc + c) * hc + k * hc * (1.0 - hc);
                 }
             }
             i = i + 1;
         }
-        return math.min(stack[0], y);
+        return math.min(acc, y);
     }
 
     // March the mouse ray on the host; returns [x, y, z] of the hit, or null.
@@ -512,6 +759,8 @@ if (root == null) {
             "uCount": opCount,
             "uBlend": blend,
             "uSkip": 1.0,
+            "uBoxMin": boxMin,
+            "uBoxMax": boxMax,
             "uCamPos": [0, 4, 10],
             "uCamForward": [0, 0, -1],
             "uCamRight": [1, 0, 0],
@@ -536,7 +785,7 @@ if (root == null) {
         }
         dom.setText(status, "Tool: " + SHAPE_NAMES[tool] + " (" + mode + ")   Objects " + string(objects.length)
             + "   Instructions " + string(opCount) + " / " + string(MAX_OPS)
-            + "   Blend " + string(math.round(blend * 100) / 100) + "   Bounding skip " + skipText
+            + "   Blend " + string(math.round(blend * 100) / 100) + "   Ray culling " + skipText
             + "   Texture uploads " + string(uploads) + "   Shader compiles 1   "
             + string(math.round(stats.fps)) + " fps");
     }
@@ -620,6 +869,8 @@ if (root == null) {
             three.updateDataTexture(programTexture, program);
             three.setUniform(material, "uCount", opCount);
             three.setUniform(material, "uBlend", blend);
+            three.setUniform(material, "uBoxMin", boxMin);
+            three.setUniform(material, "uBoxMax", boxMax);
             uploads = uploads + 1;
             dirty = false;
         }
