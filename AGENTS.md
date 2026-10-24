@@ -195,5 +195,5 @@ See [`ReferenceManual/README-print.md`](ReferenceManual/README-print.md). Short 
 - [`docs/roadmap-neural.md`](docs/roadmap-neural.md) — neural-nets kit (`math.matmul`, `nn.*` activations and dense forward/backward, spatial host layers, AI_Theory, `OnnxModel`; N0–N4 and N6–N15 landed, N5 partial)
 - [`docs/roadmap-improvements.md`](docs/roadmap-improvements.md) — engineering improvements (CLI split, nightly fuzz, `malda fmt` / `lint`, JS capability pre-check, file splits; I1–I2 landed)
 - [`docs/roadmap-ui-runtime.md`](docs/roadmap-ui-runtime.md) — web UI runtime (protocol 1.1, one host, event bridge, DOM patching, secure-by-default host; U0–U4 landed, U5–U7 open)
-- [`docs/roadmap-js-platform.md`](docs/roadmap-js-platform.md) — JavaScript platform for large browser apps (JS interop, ESM output, typed emit/buffers, workers, graphics, client-side `ui.*`, storage/files; J0–J5 landed, J6–J8 open)
+- [`docs/roadmap-js-platform.md`](docs/roadmap-js-platform.md) — JavaScript platform for large browser apps (JS interop, ESM output, typed emit/buffers, workers, graphics, client-side `ui.*`, storage/files; J0–J5 and J7 landed, J6 and J8 open)
 - [`llms.txt`](llms.txt) — compact doc index for LLM tools

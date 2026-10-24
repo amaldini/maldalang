@@ -99,6 +99,16 @@ public static class StdLibNamespaces
         "readAt", "writeAt", "fromUtf8", "toUtf8", "fromBase64", "toBase64", "transfer"
     };
 
+    /// <summary>
+    /// <c>io</c> members served by <see cref="IoStore"/>, not the flat built-in registry (no flat
+    /// aliases): the persistent store, and the browser file calls (JavaScript only).
+    /// </summary>
+    public static readonly IReadOnlySet<string> IoStoreMethodNames = new HashSet<string>(StringComparer.Ordinal)
+    {
+        "storeGet", "storeSet", "storeRemove", "storeKeys",
+        "openFile", "saveFile", "downloadFile", "onFileDrop"
+    };
+
     public static readonly IReadOnlySet<string> IoMethodNames = new HashSet<string>(StringComparer.Ordinal)
     {
         "print", "input",
@@ -176,7 +186,7 @@ public static class StdLibNamespaces
         {
             MathModule or DeprecatedMathModuleAlias => MathMethodNames.Contains(methodName),
             StrModule => StrMethodNames.Contains(methodName),
-            IoModule => IoMethodNames.Contains(methodName),
+            IoModule => IoMethodNames.Contains(methodName) || IoStoreMethodNames.Contains(methodName),
             PdfModule => PdfMethodNames.Contains(methodName),
             DocModule => DocMethodNames.Contains(methodName),
             ResultModule => ResultMethodNames.Contains(methodName),

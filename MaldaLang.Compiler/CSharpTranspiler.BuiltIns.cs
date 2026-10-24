@@ -1343,6 +1343,31 @@ public partial class CSharpTranspiler
         return true;
     }
 
+    /// <summary><c>io.store*</c> and the browser file calls: <see cref="IoStore"/> on RuntimeValues.</summary>
+    private bool TryTranspileIoStoreCall(MemberAccessExpression memberAccess, FunctionCallExpression call)
+    {
+        if (memberAccess.Object is not IdentifierExpression moduleId)
+            return false;
+        if (moduleId.Name != StdLibNamespaces.IoModule
+            || !StdLibNamespaces.IoStoreMethodNames.Contains(memberAccess.Member))
+            return false;
+
+        _output.Append("RuntimeHelpers.UnwrapRuntimeValue(MaldaLang.BuiltIns.IoStore.Call(\"");
+        _output.Append(memberAccess.Member);
+        _output.Append("\", new List<MaldaLang.Interpreter.RuntimeValue> { ");
+        for (int i = 0; i < call.Arguments.Count; i++)
+        {
+            if (i > 0)
+                _output.Append(", ");
+            _output.Append("RuntimeHelpers.ToRuntimeValue(");
+            TranspileExpression(call.Arguments[i]);
+            _output.Append(")");
+        }
+
+        _output.Append(" }))");
+        return true;
+    }
+
     private bool TryTranspileTraceStdLibCall(MemberAccessExpression memberAccess, FunctionCallExpression call)
     {
         if (memberAccess.Object is not IdentifierExpression moduleId)

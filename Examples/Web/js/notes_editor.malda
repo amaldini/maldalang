@@ -1,0 +1,130 @@
+// Notes editor: open, edit, save back, autosave across reloads
+// Compile: malda compile Examples/Web/js/notes_editor.malda --mode js -o Examples/Web/js/notes_editor.js
+//
+// Open picks a text file (or drop one on the editor). Save writes it back to
+// the same file where the browser allows it (File System Access, in Chrome and
+// Edge), asks where to save otherwise, and downloads as a last resort. Every
+// keystroke is kept in io.store*, so a reload brings back the text, the file
+// name and the cursor; Discard forgets the draft.
+
+var root = dom.query("#app");
+
+if (root == null) {
+    println("No #app container found.");
+} else {
+    dom.clear(root);
+
+    var title = dom.create("h1");
+    dom.setText(title, "Notes");
+    dom.append(root, title);
+
+    var toolbar = dom.create("div");
+    dom.append(root, toolbar);
+
+    function button(label, handler) {
+        var b = dom.create("button");
+        dom.setText(b, label);
+        dom.append(toolbar, b);
+        dom.on(b, "click", handler);
+        return b;
+    }
+
+    var editor = dom.create("textarea");
+    editor.rows = 18;
+    editor.cols = 80;
+    editor.placeholder = "Type, or drop a text file here.";
+    dom.append(root, editor);
+
+    var status = dom.create("p");
+    dom.append(root, status);
+
+    // The open file: its name, and the record io.openFile returned (it can be written back).
+    var current = null;
+    var fileName = "notes.txt";
+
+    function show(message) {
+        dom.setText(status, message);
+    }
+
+    function keepDraft() {
+        io.storeSet("notes.draft", {
+            "text": editor.value,
+            "name": fileName,
+            "cursor": editor.selectionStart
+        });
+    }
+
+    function load(file, how) {
+        current = file;
+        fileName = file["name"];
+        editor.value = file["text"];
+        keepDraft();
+        show(how + " " + fileName + " (" + string(file["size"]) + " bytes).");
+    }
+
+    function onOpen() {
+        var file = io.openFile({ "accept": ".txt,.md,.json,.csv,.malda" });
+        if (file != null) {
+            load(file, "Opened");
+        }
+    }
+
+    function onSave() {
+        var target = current;
+        if (target == null) {
+            target = fileName;
+        }
+        var saved = io.saveFile(target, editor.value);
+        if (saved == null) {
+            show("Not saved.");
+            return;
+        }
+        fileName = saved["name"];
+        if (saved["handle"] != null) {
+            current = { "name": saved["name"], "handle": saved["handle"] };
+        }
+        keepDraft();
+        if (saved["method"] == "overwrite") {
+            show("Saved back to " + fileName + ".");
+        } else if (saved["method"] == "saveAs") {
+            show("Saved as " + fileName + ".");
+        } else {
+            show("Downloaded " + fileName + ".");
+        }
+    }
+
+    function onDownload() {
+        io.downloadFile(fileName, editor.value);
+        show("Downloaded " + fileName + ".");
+    }
+
+    function onDiscard() {
+        io.storeRemove("notes.draft");
+        current = null;
+        fileName = "notes.txt";
+        editor.value = "";
+        show("Draft discarded.");
+    }
+
+    function onDrop(files) {
+        load(files[0], "Dropped");
+    }
+
+    button("Open…", onOpen);
+    button("Save", onSave);
+    button("Download", onDownload);
+    button("Discard draft", onDiscard);
+    dom.on(editor, "input", keepDraft);
+    io.onFileDrop(editor, onDrop, { "hoverClass": "dropping" });
+
+    var draft = io.storeGet("notes.draft");
+    if (draft == null) {
+        show("New note. Your typing is kept across reloads.");
+    } else {
+        fileName = draft["name"];
+        editor.value = draft["text"];
+        editor.selectionStart = draft["cursor"];
+        editor.selectionEnd = draft["cursor"];
+        show("Restored the draft of " + fileName + " (" + string(str.length(draft["text"])) + " characters).");
+    }
+}

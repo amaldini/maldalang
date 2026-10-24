@@ -349,6 +349,41 @@ print(page.truncated);</code></pre>
                 <li><code>Examples/Tools/file_operations.malda</code>, <code>Examples/Tools/capability_tokens.malda</code></li>
             </ul>
         </div>
+        <h2 id="store-and-files">12.11 Archivio persistente e file del browser</h2>
+        <p><code>io.storeGet(key, fallback?)</code>, <code>io.storeSet(key, value)</code>, <code>io.storeRemove(key)</code> e <code>io.storeKeys()</code> conservano valori tra un'esecuzione e l'altra e tra un ricaricamento della pagina e l'altro, su ogni backend. Una chiave è una stringa non vuota fino a 256 caratteri. Un valore è qualsiasi cosa fatta di null, bool, numeri, stringhe, array, dict, object literal, varianti e buffer; viene riletto con lo stesso tipo, come copia nuova (modificare ciò che <code>storeGet</code> ha restituito non cambia l'archivio finché non chiami di nuovo <code>storeSet</code>). Una funzione, un riferimento ad actor, un'istanza di classe o un valore che contiene se stesso sono un errore. <code>storeRemove</code> restituisce se la chiave c'era; <code>storeKeys</code> elenca le chiavi in ordine.</p>
+        <pre><code>var visits = io.storeGet("visits", 0) + 1;      // fallback when the key is missing
+io.storeSet("visits", visits);
+io.storeSet("draft", { "text": "Notes", "tags": ["a", "b"], "thumb": buf.bytes(16) });
+print(io.storeGet("draft")["tags"]);             // [a, b]: a copy, not the stored value
+print(io.storeKeys());                           // [draft, visits]
+io.storeRemove("draft");                         // true when the key was there</code></pre>
+        <p>Dove stanno i valori: nell'interprete e in C#, un file JSON per chiave sotto <code>.malda/store/</code> nella directory corrente (la variabile d'ambiente <code>MALDA_STORE_DIR</code> lo sposta). In un browser, in IndexedDB per l'origine della pagina (localStorage quando IndexedDB non c'è); il programma compilato carica l'archivio prima della sua prima riga, così le letture non aspettano mai, e le scritture vengono salvate in background in ordine. Un actor <code>@worker()</code> non può usare l'archivio. <code>game.save</code> / <code>game.load</code> tengono le proprie voci in localStorage.</p>
+        <p><strong>File del browser.</strong> Funzionano solo sul backend JavaScript; l'interprete e C# si fermano con un errore che rimanda a <code>io.readFile</code> / <code>io.writeFile</code>.</p>
+        <ul>
+            <li><code>io.openFile(options?)</code> mostra il selettore di file e restituisce <code>{ "name", "size", "type", "lastModified", "text", "handle" }</code>, oppure <code>null</code> se annullato. Opzioni: <code>"accept"</code> (<code>".txt,.md"</code> o una lista come <code>["image/*"]</code>), <code>"as": "bytes"</code> (un buffer <code>buf.bytes</code> in <code>"bytes"</code> invece di <code>"text"</code>), <code>"multiple": true</code> (una lista). Chiamala da un handler di clic o di tasto: i browser aprono i selettori solo in risposta all'utente.</li>
+            <li><code>io.saveFile(fileOrName, data, options?)</code> scrive una stringa o un buffer. Con un record di <code>openFile</code> che ha un <code>"handle"</code> (File System Access, in Chrome ed Edge) riscrive quel file; altrimenti mostra la finestra di salvataggio dove il browser ce l'ha, e scarica dove non ce l'ha. Restituisce <code>{ "name", "handle", "method" }</code> con <code>"method"</code> <code>"overwrite"</code>, <code>"saveAs"</code> o <code>"download"</code>, oppure <code>null</code> se la finestra viene annullata. Opzioni: <code>"saveAs": true</code> (chiedi sempre), <code>"download": true</code> (non chiedere mai), <code>"type"</code>.</li>
+            <li><code>io.downloadFile(name, data, type?)</code> scarica una stringa o un buffer come file.</li>
+            <li><code>io.onFileDrop(target, callback, options?)</code> chiama <code>callback(files)</code> con i file trascinati su un elemento (o un selettore), letti come con <code>openFile</code>; <code>"hoverClass"</code> indica una classe impostata mentre i file ci passano sopra.</li>
+        </ul>
+        <pre><code>var current = null;
+
+function onOpen() {                       // a click handler: the picker needs a user gesture
+    current = io.openFile({ "accept": ".txt,.md" });
+    if (current != null) {
+        editor.value = current["text"];
+    }
+}
+
+function onSave() {
+    var saved = io.saveFile(current, editor.value);   // back to the same file where possible
+    if (saved != null) {
+        print(saved["method"]);           // overwrite, saveAs or download
+    }
+}
+
+io.onFileDrop("#editor", function (files) { editor.value = files[0]["text"]; });</code></pre>
+        <p>Vedi <code>Examples/Web/js/notes_editor.malda</code>: apri, modifica, salva sullo stesso file, e una bozza conservata tra i ricaricamenti.</p>
+
         <div class="nav-footer">
             <a href="11-classes-objects.html">← Precedente: 11. Classi e oggetti</a>
             <a href="13-built-in-functions.html">Successivo: 13. Funzioni built-in→</a>

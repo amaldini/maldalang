@@ -589,7 +589,7 @@ public partial class LanguageService
     {
         IReadOnlySet<string>? methods = moduleName switch
         {
-            StdLibNamespaces.IoModule => StdLibNamespaces.IoMethodNames,
+            StdLibNamespaces.IoModule => StdLibNamespaces.IoMethodNames.Concat(StdLibNamespaces.IoStoreMethodNames).ToHashSet(StringComparer.Ordinal),
             StdLibNamespaces.MathModule or StdLibNamespaces.DeprecatedMathModuleAlias => StdLibNamespaces.MathMethodNames,
             StdLibNamespaces.StrModule => StdLibNamespaces.StrMethodNames,
             StdLibNamespaces.PdfModule => StdLibNamespaces.PdfMethodNames,

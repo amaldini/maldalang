@@ -834,6 +834,12 @@
     "title": "12.10 Cosa non copre questo capitolo"
   },
   {
+    "file": "12-input-output.html",
+    "level": 2,
+    "id": "store-and-files",
+    "title": "12.11 Archivio persistente e file del browser"
+  },
+  {
     "file": "13-built-in-functions.html",
     "level": 2,
     "id": "chapter-map",

@@ -348,6 +348,41 @@ print(page.truncated);</code></pre>
                 <li><code>Examples/Tools/file_operations.malda</code>, <code>Examples/Tools/capability_tokens.malda</code></li>
             </ul>
         </div>
+        <h2 id="store-and-files">12.11 Persistent Store and Browser Files</h2>
+        <p><code>io.storeGet(key, fallback?)</code>, <code>io.storeSet(key, value)</code>, <code>io.storeRemove(key)</code> and <code>io.storeKeys()</code> keep values across runs and page reloads, on every backend. A key is a non-empty string of up to 256 characters. A value is anything made of null, bools, numbers, strings, arrays, dicts, object literals, variants and buffers; it reads back as the same type, as a new copy (changing what <code>storeGet</code> returned does not change the store until you call <code>storeSet</code> again). A function, an actor reference, a class instance or a value that contains itself is an error. <code>storeRemove</code> returns whether the key was there; <code>storeKeys</code> lists the keys sorted.</p>
+        <pre><code>var visits = io.storeGet("visits", 0) + 1;      // fallback when the key is missing
+io.storeSet("visits", visits);
+io.storeSet("draft", { "text": "Notes", "tags": ["a", "b"], "thumb": buf.bytes(16) });
+print(io.storeGet("draft")["tags"]);             // [a, b]: a copy, not the stored value
+print(io.storeKeys());                           // [draft, visits]
+io.storeRemove("draft");                         // true when the key was there</code></pre>
+        <p>Where the values live: on the interpreter and C#, one JSON file per key under <code>.malda/store/</code> in the current directory (the environment variable <code>MALDA_STORE_DIR</code> moves it). In a browser, in IndexedDB for the page's origin (localStorage when IndexedDB is not available); the compiled program loads the store before its first line runs, so reads never wait, and writes are saved in the background in order. A <code>@worker()</code> actor cannot use the store. <code>game.save</code> / <code>game.load</code> keep their own localStorage entries.</p>
+        <p><strong>Browser files.</strong> These run only on the JavaScript backend; the interpreter and C# stop with an error that points to <code>io.readFile</code> / <code>io.writeFile</code>.</p>
+        <ul>
+            <li><code>io.openFile(options?)</code> shows the file picker and returns <code>{ "name", "size", "type", "lastModified", "text", "handle" }</code>, or <code>null</code> when cancelled. Options: <code>"accept"</code> (<code>".txt,.md"</code> or a list such as <code>["image/*"]</code>), <code>"as": "bytes"</code> (a <code>buf.bytes</code> buffer in <code>"bytes"</code> instead of <code>"text"</code>), <code>"multiple": true</code> (a list). Call it from a click or key handler: browsers open pickers only in answer to the user.</li>
+            <li><code>io.saveFile(fileOrName, data, options?)</code> writes a string or a buffer. Given a record from <code>openFile</code> with a <code>"handle"</code> (File System Access, in Chrome and Edge), it writes back to that file; otherwise it shows the save dialog where the browser has one, and downloads where it does not. It returns <code>{ "name", "handle", "method" }</code> with <code>"method"</code> <code>"overwrite"</code>, <code>"saveAs"</code> or <code>"download"</code>, or <code>null</code> when the dialog is cancelled. Options: <code>"saveAs": true</code> (always ask), <code>"download": true</code> (never ask), <code>"type"</code>.</li>
+            <li><code>io.downloadFile(name, data, type?)</code> downloads a string or a buffer as a file.</li>
+            <li><code>io.onFileDrop(target, callback, options?)</code> calls <code>callback(files)</code> with the files dropped on an element (or a selector), read like <code>openFile</code>; <code>"hoverClass"</code> names a class set while files are dragged over it.</li>
+        </ul>
+        <pre><code>var current = null;
+
+function onOpen() {                       // a click handler: the picker needs a user gesture
+    current = io.openFile({ "accept": ".txt,.md" });
+    if (current != null) {
+        editor.value = current["text"];
+    }
+}
+
+function onSave() {
+    var saved = io.saveFile(current, editor.value);   // back to the same file where possible
+    if (saved != null) {
+        print(saved["method"]);           // overwrite, saveAs or download
+    }
+}
+
+io.onFileDrop("#editor", function (files) { editor.value = files[0]["text"]; });</code></pre>
+        <p>See <code>Examples/Web/js/notes_editor.malda</code>: open, edit, save back, and a draft kept across reloads.</p>
+
         <div class="nav-footer">
             <a href="11-classes-objects.html">← Previous: 11. Classes & Objects</a>
             <a href="13-built-in-functions.html">Next: 13. Built-in Functions→</a>

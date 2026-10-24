@@ -130,7 +130,9 @@ public static class JsCapabilityChecker
     /// <summary><c>io.*</c> members the JavaScript runtime provides; the other io members are file I/O.</summary>
     private static readonly HashSet<string> JsIoMembers = new(StringComparer.Ordinal)
     {
-        "print", "input", "getEnv", "getEnvOr", "hasEnv"
+        "print", "input", "getEnv", "getEnvOr", "hasEnv",
+        "storeGet", "storeSet", "storeRemove", "storeKeys",
+        "openFile", "saveFile", "downloadFile", "onFileDrop"
     };
 
     /// <summary>Property-test capability tags the JavaScript backend runs (see BackendCapabilityMatrix).</summary>

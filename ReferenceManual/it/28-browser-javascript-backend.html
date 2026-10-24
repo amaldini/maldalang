@@ -204,6 +204,7 @@ println(text);</code></pre>
             <li><code>send target.stop();</code> passa dal comportamento di stop consapevole degli actor.</li>
         </ul>
         <p><strong>Confine:</strong> è solo supporto al runtime actor locale. La comunicazione trasparente diretta tra actor JS nel browser e actor lato server non è abilitata di default.</p>
+        <p><strong>Archivio e file:</strong> <code>io.store*</code> conserva valori in IndexedDB tra i ricaricamenti, e <code>io.openFile</code> / <code>io.saveFile</code> / <code>io.downloadFile</code> / <code>io.onFileDrop</code> leggono e scrivono i file dell'utente. Vedi <a href="12-input-output.html#store-and-files">12.11</a>.</p>
         <p><strong>Fuori dal thread principale:</strong> un actor marcato <code>@worker()</code> gira in un Web Worker che il runtime avvia dal proprio sorgente (nessun file in più; una pagina aperta da <code>file://</code> funziona), con i messaggi copiati via structured clone e <code>buf.transfer</code> per spostare i buffer. Vedi <a href="18-actors.html#worker-actors">18.13 Actor worker</a>.</p>
 
         <h2>28.8 Sintassi del template mode</h2>

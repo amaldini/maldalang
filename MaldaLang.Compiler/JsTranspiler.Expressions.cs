@@ -231,6 +231,13 @@ public partial class JsTranspiler
             }
         }
 
+        if (functionCall.Callee is MemberAccessExpression { Object: IdentifierExpression { Name: "io", ShadowsBuiltIn: false } } ioCall
+            && AsyncIoMembers.Contains(ioCall.Member)
+            && !IsLocalName("io"))
+        {
+            return true;
+        }
+
         return ExpressionProducesPromise(functionCall.Callee) ||
                functionCall.Arguments.Any(ExpressionProducesPromise);
     }

@@ -24,7 +24,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | 09-functions.html | 1ba603d6b236878766faf341990bad2030c3fdf247be4f23dcaa3f99080991c1 |
 | 10-prompts.html | ee7b37d3f8b4ecb26ce0a6cd714ef7bd4831703b88cc0e48fd8c4738d2a56cb2 |
 | 11-classes-objects.html | 4cf0a64ed5546ccc3af449b41d8f87e2b6a6e4a263b7ee7a1bf0ea0af6ed87c1 |
-| 12-input-output.html | 238c4342525321cc5f641fcfdd7676dcf213a87c7252fb8fccbb2e3d10d5b5db |
+| 12-input-output.html | 3796df37b1258d2f5c9df9e6cc11a99e3ac36eaefa494687c1610167a00c1ad6 |
 | 13-built-in-functions.html | b9ab5cd867e5520b9d4bd835b442e8bbc21de5466281dc36bc0a98bbcc5b7fd6 |
 | 14-neural-nets.html | 6f2fce1b4f0ff961e05f2ce8f261de9202db981b8f9d0a0522cd028243d9f841 |
 | 15-graphs.html | 405568a4d176fda11393c4cef7ccfa3f53df28bcadf54001400d224c89d699b5 |
@@ -40,7 +40,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | 25-web-ui-hub.html | 76e211825e324c24a54677e9f3b89fba7218d67d435986a84d3e2242ae258c1b |
 | 26-web-ui.html | 6db2b996f2a0ebfb1a8e8e91b96b1f55cafbc5a1fca6de8d4a805892e5365f7f |
 | 27-http-server-html-ui.html | 6b735cd119bb36be0d74e77f837b3325e78925ef6f8d98d79e97fd853cee75d8 |
-| 28-browser-javascript-backend.html | bc32cd8fa1add90cee7bfecbc7a0d6b663e00bf36aa8f360bed016abf4a5c0d4 |
+| 28-browser-javascript-backend.html | a3dcbafc0e9237b64c4ea4e60a1031f25b1b3e12b2e7488778154a85f19886ea |
 | 29-rest-api.html | 402f049ea17fd83036171156e2f7175154b74bc427161fe477c0801cc693c4e1 |
 | 30-rest-web-client.html | f5d0ae7875b6674be2b76ca56f81f9bc1d07d46aa457304a5877fe4c9d3cde83 |
 | 31-full-stack-development.html | 8bbb0756a472059508b0f0b417442f82304419ee0ae3890ea7b5351c02ef64bf |

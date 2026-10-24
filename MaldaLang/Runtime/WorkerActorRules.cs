@@ -3,6 +3,7 @@
 
 namespace MaldaLang.Runtime.Actors;
 
+using MaldaLang.BuiltIns;
 using MaldaLang.Parser.AST;
 using MaldaLang.Parser.AST.Declarations;
 using MaldaLang.Parser.AST.Expressions;
@@ -54,6 +55,17 @@ public static class WorkerActorRules
                 var bound = BoundNames(node);
                 foreach (var used in AstNodeWalker.Descendants(node))
                 {
+                    if (used is MemberAccessExpression { Object: IdentifierExpression { Name: "io" } } ioMember
+                        && StdLibNamespaces.IoStoreMethodNames.Contains(ioMember.Member)
+                        && !bound.Contains("io")
+                        && reported.Add("io." + ioMember.Member))
+                    {
+                        violations.Add(new Violation(
+                            $"Worker actor '{worker.Name}' calls io.{ioMember.Member}(). The store and the browser files belong to the main thread: send the value to an actor on the main thread instead.",
+                            used.Line > 0 ? used.Line : worker.Line));
+                        continue;
+                    }
+
                     var name = used switch
                     {
                         IdentifierExpression identifier => identifier.Name,

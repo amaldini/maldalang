@@ -2197,7 +2197,8 @@
       callActorOrVoidStop,
       spawnWorker,
       runWorker,
-      markTransfer
+      markTransfer,
+      isActorRef
     };
   })();
 
@@ -4389,12 +4390,399 @@
     return "";
   }
 
+  // ---- io.store*: a persistent key-value store ----
+  // The store lives in IndexedDB (database "malda", object store "store"; localStorage under
+  // "malda.store." when IndexedDB is missing, memory as a last resort). Reads must not wait, so
+  // the whole store is loaded into a mirror before main() runs (the compiler emits
+  // `await mlRuntime.io.storeReady()`) and every change is written through in order. Values are
+  // the JSON the interpreter and C# write under ./.malda/store/ (IoStore.cs): dicts, object
+  // literals, variants and buffers are tagged so they read back as what was stored.
+  const STORE_MAX_KEY = 256;
+  const storeState = { backend: null, loaded: false, loading: null, data: new Map(), db: null, writes: Promise.resolve() };
+
+  function storeKey(name, key) {
+    if (typeof key !== "string" || key.length === 0 || key.length > STORE_MAX_KEY) {
+      throw new Error("io." + name + "() key must be a non-empty string of at most " + STORE_MAX_KEY + " characters.");
+    }
+    return key;
+  }
+
+  function cannotStore(what) {
+    return new Error(what + " cannot be stored: io.storeSet() takes null, bools, numbers, strings, arrays, dicts, variants and buffers.");
+  }
+
+  function toStoreJson(value, open) {
+    if (value === null || value === undefined) return null;
+    const type = typeof value;
+    if (type === "string" || type === "boolean") return value;
+    if (type === "number") {
+      if (Number.isFinite(value)) return value;
+      return { $t: "number", v: Number.isNaN(value) ? "NaN" : (value > 0 ? "Infinity" : "-Infinity") };
+    }
+    if (type === "function") throw cannotStore("A function");
+    if (type !== "object") throw cannotStore("A class instance or host object");
+    if (actorsRuntime.isActorRef(value)) throw cannotStore("An actor reference");
+    if (open.has(value)) throw new Error("io.storeSet() cannot store a value that contains itself.");
+    open.add(value);
+    try {
+      if (isBuffer(value)) {
+        return { $t: "buffer", kind: bufKindName(value), b64: base64FromBytes(new Uint8Array(value.buffer, value.byteOffset, value.byteLength)) };
+      }
+      if (Array.isArray(value)) return value.map((item) => toStoreJson(item, open));
+      if (isVariant(value)) return { $t: "variant", tag: value.tag, v: value.payload.map((item) => toStoreJson(item, open)) };
+      const proto = Object.getPrototypeOf(value);
+      if (proto !== Object.prototype && proto !== null) throw cannotStore("A class instance or host object");
+      const entries = {};
+      Object.keys(value).forEach((key) => { entries[key] = toStoreJson(value[key], open); });
+      return { $t: isMaldaDict(value) ? "dict" : "object", v: entries };
+    } finally {
+      open.delete(value);
+    }
+  }
+
+  function fromStoreJson(json) {
+    if (json === null || typeof json !== "object") return json;
+    if (Array.isArray(json)) return json.map(fromStoreJson);
+    switch (json.$t) {
+      case "dict": {
+        const dict = markDict({});
+        Object.keys(json.v).forEach((key) => { dict[key] = fromStoreJson(json.v[key]); });
+        return dict;
+      }
+      case "object": {
+        const literal = {};
+        Object.keys(json.v).forEach((key) => { literal[key] = fromStoreJson(json.v[key]); });
+        return literal;
+      }
+      case "variant":
+        return variant(json.tag, json.v.map(fromStoreJson));
+      case "number":
+        return json.v === "NaN" ? NaN : (json.v === "Infinity" ? Infinity : -Infinity);
+      case "buffer": {
+        const bytes = Uint8Array.from(bytesFromBase64(json.b64));
+        if (json.kind === "uint8") return bytes;
+        const Kind = json.kind === "float64" ? Float64Array : (json.kind === "float32" ? Float32Array : Int32Array);
+        return new Kind(bytes.buffer, 0, bytes.byteLength / Kind.BYTES_PER_ELEMENT);
+      }
+      default:
+        throw new Error("io.storeGet() found a stored value it cannot read.");
+    }
+  }
+
+  function storeLocalStorage() {
+    try {
+      return typeof localStorage !== "undefined" && localStorage ? localStorage : null;
+    } catch (_error) {
+      return null; // access denied (sandboxed frame, privacy mode)
+    }
+  }
+
+  function loadSyncBackend() {
+    const local = storeLocalStorage();
+    storeState.backend = local ? "localStorage" : "memory";
+    if (local) {
+      for (let i = 0; i < local.length; i++) {
+        const name = local.key(i);
+        if (name && name.indexOf("malda.store.") === 0) storeState.data.set(name.slice(12), local.getItem(name));
+      }
+    }
+    storeState.loaded = true;
+  }
+
+  function idbRequest(request) {
+    return new Promise((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error || new Error("IndexedDB request failed"));
+    });
+  }
+
+  // Loads the store before main(); safe to call more than once.
+  function storeReady() {
+    if (storeState.loaded) return Promise.resolve(null);
+    if (storeState.loading) return storeState.loading;
+    const idb = typeof indexedDB !== "undefined" ? indexedDB : null;
+    if (!idb) {
+      loadSyncBackend();
+      return Promise.resolve(null);
+    }
+    storeState.loading = (async () => {
+      try {
+        const open = idb.open("malda", 1);
+        open.onupgradeneeded = () => {
+          if (!open.result.objectStoreNames.contains("store")) open.result.createObjectStore("store");
+        };
+        const db = await idbRequest(open);
+        const tx = db.transaction("store", "readonly");
+        const store = tx.objectStore("store");
+        const [keys, values] = await Promise.all([idbRequest(store.getAllKeys()), idbRequest(store.getAll())]);
+        keys.forEach((key, i) => storeState.data.set(String(key), values[i]));
+        storeState.db = db;
+        storeState.backend = "indexedDB";
+        storeState.loaded = true;
+      } catch (_error) {
+        // IndexedDB blocked (some file:// and private modes): fall back to localStorage.
+        storeState.data.clear();
+        loadSyncBackend();
+      }
+      return null;
+    })();
+    return storeState.loading;
+  }
+
+  function storeLoaded(name) {
+    if (storeState.loaded) return;
+    if (typeof indexedDB === "undefined") {
+      loadSyncBackend();
+      return;
+    }
+    throw new Error("io." + name + "() ran before the store finished loading. Call it from main() or later (the compiled program waits for io.storeReady()), not from a worker.");
+  }
+
+  function persist(key, text) {
+    if (storeState.backend === "localStorage") {
+      const local = storeLocalStorage();
+      if (text === null) local.removeItem("malda.store." + key);
+      else local.setItem("malda.store." + key, text);
+      return;
+    }
+    if (storeState.backend !== "indexedDB") return;
+    const db = storeState.db;
+    storeState.writes = storeState.writes.then(() => new Promise((resolve) => {
+      const tx = db.transaction("store", "readwrite");
+      const store = tx.objectStore("store");
+      if (text === null) store.delete(key);
+      else store.put(text, key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = tx.onabort = () => {
+        if (typeof console !== "undefined") console.error("io.storeSet(\"" + key + "\") was not saved: " + (tx.error && tx.error.message));
+        resolve();
+      };
+    }));
+  }
+
+  function storeGet(key, fallback) {
+    const name = storeKey("storeGet", key);
+    storeLoaded("storeGet");
+    if (!storeState.data.has(name)) return fallback === undefined ? null : fallback;
+    return fromStoreJson(JSON.parse(storeState.data.get(name)).value);
+  }
+
+  function storeSet(key, value) {
+    const name = storeKey("storeSet", key);
+    const text = JSON.stringify({ key: name, value: toStoreJson(value, new Set()) });
+    storeLoaded("storeSet");
+    storeState.data.set(name, text);
+    persist(name, text);
+    return null;
+  }
+
+  function storeRemove(key) {
+    const name = storeKey("storeRemove", key);
+    storeLoaded("storeRemove");
+    if (!storeState.data.has(name)) return false;
+    storeState.data.delete(name);
+    persist(name, null);
+    return true;
+  }
+
+  function storeKeys() {
+    storeLoaded("storeKeys");
+    return Array.from(storeState.data.keys()).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  }
+
+  // Resolves when every write so far has reached IndexedDB (tests, and before leaving a page).
+  function storeFlush() {
+    return storeState.writes.then(() => null);
+  }
+
+  // ---- Browser files: open, save, download, drop ----
+  function fileOptions(options) {
+    return options && typeof options === "object" && !Array.isArray(options) ? options : {};
+  }
+
+  function readAs(options) {
+    const as = options.as === undefined || options.as === null ? "text" : coerceToString(options.as);
+    if (as !== "text" && as !== "bytes") throw new Error("io file option \"as\" must be \"text\" or \"bytes\".");
+    return as;
+  }
+
+  async function fileRecord(file, as, handle) {
+    const record = { name: file.name, size: file.size, type: file.type || "", lastModified: file.lastModified || 0, handle: handle || null };
+    if (as === "bytes") record.bytes = new Uint8Array(await file.arrayBuffer());
+    else record.text = await file.text();
+    return markDict(record);
+  }
+
+  function acceptList(accept) {
+    if (accept === undefined || accept === null) return [];
+    const items = Array.isArray(accept) ? accept : coerceToString(accept).split(",");
+    return items.map((item) => coerceToString(item).trim()).filter((item) => item.length > 0);
+  }
+
+  function pickerTypes(accept) {
+    const items = acceptList(accept);
+    if (items.length === 0) return undefined;
+    const map = {};
+    items.forEach((item) => {
+      if (item.charAt(0) === ".") (map["application/octet-stream"] = map["application/octet-stream"] || []).push(item);
+      else map[item] = map[item] || [];
+    });
+    return [{ description: "Files", accept: map }];
+  }
+
+  // The input element route (every browser): must start inside a click / key handler.
+  function pickWithInput(accept, multiple) {
+    return new Promise((resolve) => {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.multiple = multiple;
+      const list = acceptList(accept);
+      if (list.length > 0) input.accept = list.join(",");
+      input.style.display = "none";
+      let settled = false;
+      const finish = (files) => {
+        if (settled) return;
+        settled = true;
+        if (input.parentNode) input.parentNode.removeChild(input);
+        resolve(files);
+      };
+      input.addEventListener("change", () => finish(input.files && input.files.length > 0 ? Array.from(input.files) : null));
+      input.addEventListener("cancel", () => finish(null));
+      (document.body || document.documentElement).appendChild(input);
+      input.click();
+    });
+  }
+
+  // { name, size, type, lastModified, text | bytes, handle } or null when the picker is cancelled;
+  // an array with "multiple": true. options: accept (".txt,.md" or ["image/*"]), as ("text" / "bytes").
+  async function openFile(options) {
+    requireBrowserApi("io.openFile");
+    const opts = fileOptions(options);
+    const as = readAs(opts);
+    const multiple = opts.multiple === true;
+    let records;
+    if (typeof window.showOpenFilePicker === "function" && opts.picker !== "input") {
+      let handles;
+      try {
+        handles = await window.showOpenFilePicker({ multiple, types: pickerTypes(opts.accept) });
+      } catch (error) {
+        if (error && error.name === "AbortError") return multiple ? [] : null;
+        throw error;
+      }
+      records = await Promise.all(handles.map(async (handle) => fileRecord(await handle.getFile(), as, handle)));
+    } else {
+      const files = await pickWithInput(opts.accept, multiple);
+      if (!files) return multiple ? [] : null;
+      records = await Promise.all(files.map((file) => fileRecord(file, as, null)));
+    }
+    return multiple ? records : records[0];
+  }
+
+  function toBlob(data, type, apiName) {
+    if (typeof data === "string") return new Blob([data], { type: type || "text/plain;charset=utf-8" });
+    if (ArrayBuffer.isView(data)) return new Blob([data], { type: type || "application/octet-stream" });
+    throw new Error("io." + apiName + "() data must be a string or a buffer (buf.bytes, ...).");
+  }
+
+  // Saves through a link download (any browser); returns null.
+  function downloadFile(name, data, type) {
+    requireBrowserApi("io.downloadFile");
+    const blob = toBlob(data, type === undefined || type === null ? "" : coerceToString(type), "downloadFile");
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = coerceToString(name) || "download";
+    link.style.display = "none";
+    (document.body || document.documentElement).appendChild(link);
+    link.click();
+    link.parentNode.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return null;
+  }
+
+  // Writes back to a file from io.openFile when the browser gave a handle (File System Access),
+  // else asks where with the save dialog where there is one, else downloads.
+  // Returns { name, handle, method: "overwrite" | "saveAs" | "download" }, or null when cancelled.
+  async function saveFile(fileOrName, data, options) {
+    requireBrowserApi("io.saveFile");
+    const opts = fileOptions(options);
+    const type = opts.type === undefined || opts.type === null ? "" : coerceToString(opts.type);
+    const blob = toBlob(data, type, "saveFile");
+    const handle = fileOrName && typeof fileOrName === "object" ? fileOrName.handle : null;
+    const name = fileOrName && typeof fileOrName === "object" ? coerceToString(fileOrName.name) : coerceToString(fileOrName);
+    const write = async (target) => {
+      const writable = await target.createWritable();
+      await writable.write(blob);
+      await writable.close();
+    };
+    if (handle && typeof handle.createWritable === "function" && opts.saveAs !== true) {
+      await write(handle);
+      return markDict({ name: handle.name || name, handle, method: "overwrite" });
+    }
+    if (typeof window.showSaveFilePicker === "function" && opts.download !== true) {
+      let target;
+      try {
+        target = await window.showSaveFilePicker({ suggestedName: name || undefined, types: pickerTypes(opts.accept) });
+      } catch (error) {
+        if (error && error.name === "AbortError") return null;
+        throw error;
+      }
+      await write(target);
+      return markDict({ name: target.name, handle: target, method: "saveAs" });
+    }
+    downloadFile(name, data, type);
+    return markDict({ name: name || "download", handle: null, method: "download" });
+  }
+
+  // Calls callback(files) with the files dropped on target (a selector or an element), read like
+  // io.openFile. options: as, hoverClass (a class set while files are dragged over).
+  function onFileDrop(target, callback, options) {
+    requireBrowserApi("io.onFileDrop");
+    const element = typeof target === "string" ? document.querySelector(target) : target;
+    if (!element || typeof element.addEventListener !== "function") {
+      throw new Error("io.onFileDrop() could not find the drop target " + coerceToString(target) + ".");
+    }
+    if (typeof callback !== "function") throw new Error("io.onFileDrop() needs a function to call with the dropped files.");
+    const opts = fileOptions(options);
+    const as = readAs(opts);
+    const hoverClass = opts.hoverClass ? coerceToString(opts.hoverClass) : "";
+    const hover = (on) => {
+      if (hoverClass && element.classList) element.classList[on ? "add" : "remove"](hoverClass);
+    };
+    element.addEventListener("dragover", (event) => {
+      event.preventDefault();
+      if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+      hover(true);
+    });
+    element.addEventListener("dragleave", () => hover(false));
+    element.addEventListener("drop", (event) => {
+      event.preventDefault();
+      hover(false);
+      const files = event.dataTransfer && event.dataTransfer.files ? Array.from(event.dataTransfer.files) : [];
+      if (files.length === 0) return;
+      Promise.all(files.map((file) => fileRecord(file, as, null)))
+        .then((records) => callback(records))
+        .catch((error) => { if (typeof console !== "undefined") console.error(error); });
+    });
+    return null;
+  }
+
   const ioStdLib = {
     print: ioPrint,
     input: ioInput,
     getEnv: getEnvBuiltin,
     getEnvOr: getEnvOrBuiltin,
-    hasEnv: hasEnvBuiltin
+    hasEnv: hasEnvBuiltin,
+    storeGet,
+    storeSet,
+    storeRemove,
+    storeKeys,
+    storeReady,
+    storeFlush,
+    openFile,
+    saveFile,
+    downloadFile,
+    onFileDrop
   };
 
   // ---- Conversion, type tests, arrays, assertions (interpreter semantics) ----

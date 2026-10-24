@@ -109,6 +109,22 @@ This document captures the current JavaScript backend design in code and the nea
   emitted as `__maldaBufGet` / `__maldaBufSet` (`mlRuntime.bufGet` / `bufSet`: a typed array reads
   `undefined` exactly when a numeric index is out of range or not an integer) and counts as a number.
 
+## Store and Files (`io.store*`, `io.openFile` …)
+
+- `io.store*`: IndexedDB database `malda`, object store `store`, one JSON string per key (the format of
+  `MaldaLang/BuiltIns/IoStore.cs`: tagged `dict` / `object` / `variant` / `buffer` / non-finite `number`).
+  `storeReady()` loads everything into a `Map` mirror; the compiler emits `await mlRuntime.io.storeReady()` at
+  the top of `main()` when the program names an `io.store*` member, so `storeGet` is synchronous. Writes queue
+  in `storeState.writes` (one transaction each, in order); `mlRuntime.io.storeFlush()` resolves when they are
+  done (tests). No IndexedDB, or opening it fails: localStorage under `malda.store.`, else memory. A call before
+  the load with IndexedDB present throws (a worker, a callback that runs before `main`).
+- Files: `openFile` uses `showOpenFilePicker` when present (the record keeps the `FileSystemFileHandle` as
+  `handle`), else a hidden `<input type=file>` with a `cancel` listener; both start synchronously, so the user
+  gesture of the calling click handler carries. `saveFile` writes through `handle.createWritable()`, else
+  `showSaveFilePicker`, else `downloadFile` (blob URL + `<a download>`, revoked after a second). `openFile` and
+  `saveFile` are auto-awaited (`AsyncIoMembers`). `onFileDrop` handles `dragover` / `dragleave` / `drop` and
+  reads the files before calling back.
+
 ## Worker Actors (`@worker()`)
 
 - `spawn W(…)` of a `@worker()` actor emits `mlRuntime.actors.spawnWorker(__maldaWorkerScope, "W", [args])`.

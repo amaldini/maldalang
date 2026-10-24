@@ -349,6 +349,28 @@
                                            ],
                          "learningGoal":  "Show that MALDA\u0027s concurrency model can also appear in browser-delivered experiences.",
                          "expectedOutput":  "Runs a browser counter driven by local actor messages.",
+                         "next":  "Web/js/notes_editor.malda",
+                         "documentationPath":  "/?lesson=browser-track#lesson-browser-track",
+                         "documentationTitle":  "Browser Track"
+                     },
+                     {
+                         "name":  "JS Notes Editor",
+                         "description":  "Open a text file, edit it, save it back (or download), drop files on the editor, and keep a draft across reloads with io.store*",
+                         "file":  "js/notes_editor.malda",
+                         "track":  "showcase",
+                         "difficulty":  "intermediate",
+                         "minutes":  12,
+                         "concepts":  [
+                                          "io.store*",
+                                          "file picker",
+                                          "drag and drop",
+                                          "browser storage"
+                                      ],
+                         "prerequisites":  [
+                                               "Web/js/counter.malda"
+                                           ],
+                         "learningGoal":  "Read and write the user's files from the browser and keep state across reloads.",
+                         "expectedOutput":  "Shows a text editor whose draft survives a reload; Open and Save use the browser's file dialogs.",
                          "next":  "Games/game_bounce.malda",
                          "documentationPath":  "/?lesson=browser-track#lesson-browser-track",
                          "documentationTitle":  "Browser Track"

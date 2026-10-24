@@ -149,7 +149,7 @@ function Get-ExistingHandWrittenColumn([int]$index) {
 $registryNames = Get-RegistryNames
 $mathNames = Get-ModuleNames "MathMethodNames"
 $strNames = Get-ModuleNames "StrMethodNames"
-$ioNames = Get-ModuleNames "IoMethodNames"
+$ioNames = @(Get-ModuleNames "IoMethodNames") + @(Get-ModuleNames "IoStoreMethodNames")
 $traceNames = Get-ModuleNames "TraceMethodNames"
 $nnNames = Get-ModuleNames "NnMethodNames"
 $bufNames = Get-ModuleNames "BufMethodNames"

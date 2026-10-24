@@ -203,6 +203,7 @@ println(text);</code></pre>
             <li><code>send target.stop();</code> routes through actor-aware stop behavior.</li>
         </ul>
         <p><strong>Boundary:</strong> this is local actor runtime support only. Direct transparent communication between browser JS actors and server-side actors is not enabled by default.</p>
+        <p><strong>Storage and files:</strong> <code>io.store*</code> keeps values in IndexedDB across reloads, and <code>io.openFile</code> / <code>io.saveFile</code> / <code>io.downloadFile</code> / <code>io.onFileDrop</code> read and write the user's files. See <a href="12-input-output.html#store-and-files">12.11</a>.</p>
         <p><strong>Off the main thread:</strong> an actor marked <code>@worker()</code> runs in a Web Worker that the runtime starts from its own source (no extra file; a page opened from <code>file://</code> works), with messages copied by structured clone and <code>buf.transfer</code> to move buffers. See <a href="18-actors.html#worker-actors">18.13 Worker Actors</a>.</p>
 
         <h2>28.8 Template Mode Syntax</h2>

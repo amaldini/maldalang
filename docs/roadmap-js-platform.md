@@ -1,6 +1,6 @@
 # MALDA JavaScript platform roadmap
 
-**Status:** J0–J5 landed 2026-10-24; J6–J8 open  
+**Status:** J0–J5 and J7 landed 2026-10-24; J6 and J8 open  
 **Created:** 2026-10-23  
 **Audience:** maintainers working on `JsTranspiler`, `malda-js-runtime.js`, `JsCapabilityChecker`
 and the browser-facing built-ins
@@ -290,6 +290,19 @@ host, with the same source as its UIHost version; `JS0008` is lifted for local m
 
 ## J7 — Browser storage and files
 
+**Landed 2026-10-24** (decision 5: the host backends implement the store and reject the browser file calls).
+`io.storeGet` / `storeSet` / `storeRemove` / `storeKeys` on all three backends with one value format
+(`IoStore.cs`, JSON with tagged dicts, object literals, variants and buffers): `./.malda/store/` one file per key
+on the host, IndexedDB on JavaScript (localStorage, then memory, as fallbacks) loaded before `main()` so the API
+stays synchronous. `io.openFile` (picker or `<input type=file>`, text or bytes, File System Access handle),
+`io.saveFile` (overwrite through the handle, save dialog, or download), `io.downloadFile`, `io.onFileDrop` on
+JavaScript; the interpreter and C# stop with a message pointing to `io.readFile` / `io.writeFile`. No flat
+aliases (`StdLibNamespaces.IoStoreMethodNames`). Tests: `IoStoreTests` (same output on the three backends, host
+persistence, a file-backed fake IndexedDB across two Node runs, localStorage fallback, every file route on fake
+browser objects). Example `Examples/Web/js/notes_editor.malda`, checked in headless Chrome from `file://`
+(draft restored after reload, open through the picker, save as download). Reference 12.11. Not done: a store per
+program (keys share the origin), change events between tabs, reading the File System Access permission state.
+
 Extend `io` (soft freeze) with browser-safe, async operations:
 
 - **Key-value storage:** a small persistent store (localStorage for small values, IndexedDB for
@@ -322,7 +335,7 @@ reloads; tests cover the store on Node with a fake IndexedDB.
 2. ~~Name and namespace for typed buffers and bytes~~ (decided: a new `buf` namespace).
 3. ~~Worker marker~~ (decided: the `@worker()` decorator on the actor declaration).
 4. Whether `ui.*` local mode ports the diff to JS by hand or generates it from the C# engine.
-5. Whether host backends implement `io` storage / files (J7) or reject them.
+5. ~~Host backends and J7~~ (decided: the store runs everywhere; the browser file calls are rejected on the host).
 
 ## Out of scope
 

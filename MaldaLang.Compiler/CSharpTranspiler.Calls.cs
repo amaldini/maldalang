@@ -310,6 +310,11 @@ public partial class CSharpTranspiler
                 return;
             }
 
+            if (TryTranspileIoStoreCall(memberAccess2, call))
+            {
+                return;
+            }
+
             // math.* / Math.* (deprecated alias) — map to existing built-ins
             if (memberAccess2.Object is IdentifierExpression mathIdExpr &&
                 (mathIdExpr.Name == StdLibNamespaces.MathModule || mathIdExpr.Name == StdLibNamespaces.DeprecatedMathModuleAlias) &&

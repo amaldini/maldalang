@@ -279,6 +279,17 @@ var g = greet("Ada");
 io.print(g.user);
 ```
 
+## Persistent store and browser files
+
+`io.storeGet(key, fallback?)` / `io.storeSet(key, value)` / `io.storeRemove(key)` / `io.storeKeys()` keep
+values across runs on every backend. `io.openFile` / `io.saveFile` / `io.downloadFile` / `io.onFileDrop` are
+browser-only (`--mode js`).
+
+```malda
+var draft = io.storeGet("notes.draft", { "text": "" });
+io.storeSet("notes.draft", { "text": draft["text"] + "!" });
+```
+
 ## Actors (concurrency)
 
 Actor handlers do not see the `io` / `math` / `str` namespaces — use the flat `print`

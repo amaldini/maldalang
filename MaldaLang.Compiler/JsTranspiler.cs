@@ -57,6 +57,9 @@ public partial class JsTranspiler
         "result", "option", "grounded", "cap", "agents", "schema"
     };
 
+    /// <summary><c>io</c> members that return a Promise on JavaScript (the browser file dialogs).</summary>
+    private static readonly HashSet<string> AsyncIoMembers = new(StringComparer.Ordinal) { "openFile", "saveFile" };
+
     private static readonly HashSet<string> AsyncBuiltInNames = new(StringComparer.Ordinal)
     {
         "sleep", "runProperty", "receive",
@@ -352,12 +355,19 @@ public partial class JsTranspiler
                 actorDeclarations.Where(a => a.IsWorker).ToList());
         }
 
-        var mainNeedsAsync = mainAwaitsJsModules || topLevelStatements.Any(StatementRequiresAsync);
+        // io.store* reads must not wait, so the store is loaded before the program's own code.
+        var usesStore = AstNodeWalker.Descendants(statements).OfType<MemberAccessExpression>()
+            .Any(member => member.Object is IdentifierExpression { Name: "io" } && member.Member.StartsWith("store", StringComparison.Ordinal));
+        var mainNeedsAsync = mainAwaitsJsModules || usesStore || topLevelStatements.Any(StatementRequiresAsync);
         EmitLine(mainNeedsAsync ? "async function main() {" : "function main() {");
         _indentLevel++;
         if (mainAwaitsJsModules)
         {
             EmitLine($"await {JsReadyName};");
+        }
+        if (usesStore)
+        {
+            EmitLine("await mlRuntime.io.storeReady();");
         }
         InLocalScope(Array.Empty<string>(), () =>
         {

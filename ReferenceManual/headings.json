@@ -834,6 +834,12 @@
     "title": "12.10 What This Chapter Is Not"
   },
   {
+    "file": "12-input-output.html",
+    "level": 2,
+    "id": "store-and-files",
+    "title": "12.11 Persistent Store and Browser Files"
+  },
+  {
     "file": "13-built-in-functions.html",
     "level": 2,
     "id": "chapter-map",
