@@ -46,6 +46,8 @@ public partial class JsTranspiler
     private ActorDeclaration? _currentActor;
     /// <summary>Methods of <see cref="_currentActor"/> that must be emitted <c>async</c>.</summary>
     private readonly HashSet<string> _asyncActorMethods = new(StringComparer.Ordinal);
+    /// <summary><c>@worker()</c> actors: spawned into a Web Worker built from <c>__maldaWorkerScope</c>.</summary>
+    private readonly HashSet<string> _workerActorNames = new(StringComparer.Ordinal);
     private bool _currentMemberIsStatic;
     private bool _rewriteImplicitMembers;
 
@@ -100,6 +102,8 @@ public partial class JsTranspiler
         _rewriteImplicitMembers = other._rewriteImplicitMembers;
         _jsImportNames.Clear();
         _jsImportNames.UnionWith(other._jsImportNames);
+        _workerActorNames.Clear();
+        _workerActorNames.UnionWith(other._workerActorNames);
         _numericNames.Clear();
         _numericNames.UnionWith(other._numericNames);
         _bufferNames.Clear();
@@ -142,6 +146,12 @@ public partial class JsTranspiler
         // User bindings shadow flat built-ins of the same name (same rule as the interpreter):
         // marks IdentifierExpression.ShadowsBuiltIn, read by the call emitters.
         BuiltInShadowAnalysis.Analyze(statements);
+
+        var workerViolation = MaldaLang.Runtime.Actors.WorkerActorRules.Check(statements).FirstOrDefault();
+        if (workerViolation != null)
+            throw new NotSupportedException($"line {workerViolation.Line}: {workerViolation.Message}");
+        _workerActorNames.Clear();
+        _workerActorNames.UnionWith(statements.OfType<ActorDeclaration>().Where(a => a.IsWorker).Select(a => a.Name));
 
         var functions = new List<FunctionDeclaration>();
         var typeDeclarations = new List<TypeDeclaration>();
@@ -226,6 +236,8 @@ public partial class JsTranspiler
         EmitLine("const __maldaBufGet = mlRuntime.bufGet, __maldaBufSet = mlRuntime.bufSet;");
         EmitLine(string.Empty);
 
+        // The declarations between these marks are copied into __maldaWorkerScope.
+        var workerTypesStart = _output.Length;
         foreach (var typeDeclaration in typeDeclarations)
         {
             EmitVariantConstructors(typeDeclaration);
@@ -246,6 +258,7 @@ public partial class JsTranspiler
             EmitLine(string.Empty);
         }
 
+        var workerTypesEnd = _output.Length;
         var mainAwaitsJsModules = EmitJsImports(jsImports);
 
         // A script-level var that a top-level function, class or actor uses must live beside
@@ -272,6 +285,8 @@ public partial class JsTranspiler
             EmitLine($"let {string.Join(", ", moduleVarNames.Select(EscapeIdentifier))};");
             EmitLine(string.Empty);
         }
+
+        var workerDeclarationsStart = _output.Length;
 
         foreach (var function in functions)
         {
@@ -325,6 +340,16 @@ public partial class JsTranspiler
             _indentLevel--;
             EmitLine("};");
             EmitLine(string.Empty);
+        }
+
+        if (_workerActorNames.Count > 0)
+        {
+            EmitWorkerScope(
+                _output.ToString(workerTypesStart, workerTypesEnd - workerTypesStart),
+                _output.ToString(workerDeclarationsStart, _output.Length - workerDeclarationsStart),
+                moduleVarNames,
+                topLevelStatements.OfType<VarDeclStatement>().Where(v => v.IsConst && moduleVarNames.Contains(v.Name)).ToList(),
+                actorDeclarations.Where(a => a.IsWorker).ToList());
         }
 
         var mainNeedsAsync = mainAwaitsJsModules || topLevelStatements.Any(StatementRequiresAsync);

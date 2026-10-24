@@ -27,7 +27,7 @@ public partial class Interpreter
 {
     private async Task DefineActorAsync(ActorDeclaration decl)
     {
-        var actorDef = new ActorDefinition(decl.Name);
+        var actorDef = new ActorDefinition(decl.Name) { IsWorker = decl.IsWorker };
         
         // Process members (fields, constructors, methods/handlers)
         foreach (var member in decl.Members)
@@ -92,6 +92,9 @@ public partial class Interpreter
         {
             constructorArgs.Add(await EvaluateAsync(argExpr));
         }
+
+        if (actorDef.IsWorker)
+            constructorArgs = WorkerBoundary.Cross(constructorArgs, actorName);
         
         // Spawn actor via ActorRuntime
         var actorRef = ActorRuntime.Instance.SpawnActor(actorDef, this, constructorArgs);
@@ -144,6 +147,9 @@ public partial class Interpreter
         {
             argValues.Add(await EvaluateAsync(argExpr));
         }
+
+        if (targetRef.Instance.Home != _currentActor?.Home)
+            argValues = WorkerBoundary.Cross(argValues, (targetRef.Instance.Home ?? _currentActor!.Home!).Actor.Name);
 
         if (stmt.HandlerName != null)
         {
@@ -226,30 +232,20 @@ public partial class Interpreter
                                     var errorMessage = RuntimeValue.String(
                                         $"Request to {callbackInfo.TargetRef}.{callbackInfo.HandlerName} timed out after {timeoutMs.Value}ms");
                                     
-                                    // Create error message to invoke timeout error handler
-                                    var errorMsg = new Message(
-                                        errorMessage,
-                                        null,
-                                        null,
-                                        null,
-                                        new List<RuntimeValue> { errorMessage });
-                                    
-                                    // Invoke timeout error handler in sender's actor context
-                                    var previousActor = _currentActor;
-                                    SetCurrentActor(senderInstance);
-                                    
-                                    try
+                                    // Run the timeout error handler in the sender's own loop, after
+                                    // the message it is handling: running it from this task would
+                                    // share the sender's interpreter with that message.
+                                    senderInstance.Mailbox.Send(new Message(RuntimeValue.Null())
                                     {
-                                        var errorHandlerEnv = new Environment(callbackInfo.Environment);
-                                        errorHandlerEnv.Define(
-                                            callbackInfo.TimeoutErrorHandler.ParameterName, 
-                                            errorMessage);
-                                        await ExecuteBlockAsync(callbackInfo.TimeoutErrorHandler.Body, errorHandlerEnv);
-                                    }
-                                    finally
-                                    {
-                                        SetCurrentActor(previousActor);
-                                    }
+                                        Action = async () =>
+                                        {
+                                            var errorHandlerEnv = new Environment(callbackInfo.Environment);
+                                            errorHandlerEnv.Define(
+                                                callbackInfo.TimeoutErrorHandler.ParameterName,
+                                                errorMessage);
+                                            await ExecuteBlockAsync(callbackInfo.TimeoutErrorHandler.Body, errorHandlerEnv);
+                                        }
+                                    });
                                 }
                             }
                         }

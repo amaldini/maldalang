@@ -12,6 +12,12 @@ public class Message
     public Guid? CorrelationId { get; }
     public List<RuntimeValue>? Arguments { get; }
     public bool ReceiveConsumed { get; set; }
+
+    /// <summary>
+    /// Work the receiving actor runs in its own loop instead of a handler (a send's timeout
+    /// handler), so it never runs concurrently with the actor's other messages.
+    /// </summary>
+    public Func<Task>? Action { get; init; }
     
     public Message(
         RuntimeValue payload,

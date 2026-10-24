@@ -37,7 +37,11 @@ public class ActorRuntime
     public ActorReference SpawnActor(ActorDefinition actorDef, Interpreter parentInterpreter, List<RuntimeValue>? constructorArgs = null)
     {
         var id = $"{actorDef.Name}_{Interlocked.Increment(ref _actorCounter)}";
-        var instance = new ActorInstance(actorDef, id, parentInterpreter.GlobalsEnvironment);
+        // An actor spawned inside another actor still sees the program's globals, not the
+        // spawning actor interpreter's own (empty) ones.
+        var programGlobals = parentInterpreter.ActorProgramGlobals ?? parentInterpreter.GlobalsEnvironment;
+        var instance = new ActorInstance(actorDef, id, programGlobals);
+        instance.Home = actorDef.IsWorker ? instance : parentInterpreter.GetCurrentActor()?.Home;
         _actors[id] = instance;
         
         // v1: spawned actors are not stepped. Sharing the parent hook across
@@ -48,6 +52,7 @@ public class ActorRuntime
             currentFile: parentInterpreter.GetCurrentFile(),
             inputProvider: parentInterpreter.GetInputProvider()
         );
+        actorInterpreter.ActorProgramGlobals = programGlobals;
         
         // Copy class definitions from parent (actors can use classes)
         foreach (var kvp in parentInterpreter._classes)
@@ -131,6 +136,10 @@ public class ActorRuntime
                     // Route message to appropriate handler
                     await ProcessMessage(instance, interpreter, message);
                 }
+                catch (Exception ex) when (instance.IsRunning && instance.Actor.IsWorker)
+                {
+                    Console.Error.WriteLine(WorkerBoundary.ErrorLine(instance.Actor.Name, ex.Message));
+                }
                 catch (Exception ex)
                 {
                     if (instance.IsRunning)
@@ -176,6 +185,13 @@ public class ActorRuntime
             throw new RuntimeException("Failed to set current actor before calling handler");
         }
         
+        if (message.Action != null)
+        {
+            await message.Action();
+            interpreter.SetCurrentMessage(null);
+            return;
+        }
+
         // FIRST: Check if this is a reply message for a pending callback
         // This must happen BEFORE trying to find handlers, because reply messages
         // don't have handler names and would fail handler lookup

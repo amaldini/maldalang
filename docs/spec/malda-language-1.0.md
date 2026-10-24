@@ -353,6 +353,7 @@ var ref = spawn Counter(arg1, arg2);
 ```
 
 - `spawn ActorName` requires a prior `actor ActorName` declaration.
+- An actor declared `@worker() actor Name { … }` runs off the main thread; arguments and replies crossing to or from it are copied (structured-clone rules, `buf.transfer` moves a buffer), and it may not use top-level `var`s. Reference Manual ch. Actors §18.13.
 - Evaluates constructor arguments left-to-right.
 - Returns an **actor reference** value.
 

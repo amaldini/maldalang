@@ -1,4 +1,5 @@
-(function (global) {
+// Named so a @worker() actor can start a Web Worker from this function's own source.
+(function maldaJsRuntime(global) {
   "use strict";
 
   function coerceToInt(value) {
@@ -1677,6 +1678,7 @@
           self: cell.ref,
           sender: invocation.sender,
           correlationId: invocation.correlationId,
+          remoteCorrelationId: invocation.remoteCorrelationId || null,
           cell
         };
 
@@ -1703,6 +1705,12 @@
           if (maybePromise && typeof maybePromise.then === "function") {
             await maybePromise;
           }
+        } catch (error) {
+          // A worker actor reports a failed message and keeps going (like host actors).
+          if (!cell.onError) {
+            throw error;
+          }
+          cell.onError(error);
         } finally {
           currentContext = previousContext;
         }
@@ -1746,6 +1754,11 @@
         return null;
       }
 
+      if (cell.port) {
+        postToWorker(cell, handlerNameOrNull, args || [], null);
+        return null;
+      }
+
       cell.queue.push({
         handlerName: handlerNameOrNull,
         args: args || [],
@@ -1768,6 +1781,8 @@
         return null;
       }
 
+      // Checked before the callback is registered: a value that cannot cross throws here.
+      const wire = targetCell.port ? wireMessage(targetCell.workerName, args || []) : null;
       const correlationId = "corr_" + nextCorrelationId++;
       const callbackRecord = {
         senderCell,
@@ -1805,6 +1820,11 @@
         }, timeoutMs);
       }
 
+      if (targetCell.port) {
+        targetCell.port.post({ t: "send", handler: handlerName(handlerNameOrNull), args: wire.value, corr: correlationId }, wire.transfers);
+        return null;
+      }
+
       targetCell.queue.push({
         handlerName: handlerNameOrNull,
         args: args || [],
@@ -1823,16 +1843,29 @@
     }
 
     function reply(value) {
+      if (currentContext && currentContext.remoteCorrelationId) {
+        // A worker actor answering a send from another thread.
+        const wire = wireMessage(workerHomeName, value);
+        workerPort.post({ t: "reply", corr: currentContext.remoteCorrelationId, value: wire.value }, wire.transfers);
+        currentContext.remoteCorrelationId = null;
+        return null;
+      }
+
       if (!currentContext || !currentContext.correlationId) {
         throw new Error("reply() must be called while handling a callback-enabled send.");
       }
 
-      const record = callbacks.get(currentContext.correlationId);
+      deliverReply(currentContext.correlationId, value);
+      return null;
+    }
+
+    function deliverReply(correlationId, value) {
+      const record = callbacks.get(correlationId);
       if (!record) {
         return null;
       }
 
-      callbacks.delete(currentContext.correlationId);
+      callbacks.delete(correlationId);
       if (record.timeoutHandle !== null) {
         clearTimeout(record.timeoutHandle);
       }
@@ -1874,6 +1907,9 @@
 
     function stop(actorRef) {
       const cell = getCellOrThrow(actorRef);
+      if (cell.port && !cell.stopped) {
+        cell.port.terminate();
+      }
       cell.stopped = true;
       cell.queue.length = 0;
       while (cell.receiveResolvers.length > 0) {
@@ -1885,7 +1921,11 @@
 
     async function shutdownAsync() {
       const values = Array.from(cells.values());
+      const terminating = [];
       for (let i = 0; i < values.length; i++) {
+        if (values[i].port && !values[i].stopped) {
+          terminating.push(values[i].port.terminate());
+        }
         values[i].stopped = true;
         values[i].queue.length = 0;
         while (values[i].receiveResolvers.length > 0) {
@@ -1895,7 +1935,241 @@
       }
 
       callbacks.clear();
-      await Promise.resolve();
+      await Promise.all(terminating);
+      return null;
+    }
+
+    // ---- @worker() actors ----
+    // A worker actor runs in a Web Worker (worker_threads on Node) started from this runtime's
+    // own source plus the program's __maldaWorkerScope function, so no extra file is needed and a
+    // page opened from file:// works. The spawning thread keeps a proxy cell with a port: sends
+    // and spawn arguments are posted to the worker, replies come back to the sender's callback.
+    // What crosses follows structured clone, checked first so an error names the value (same
+    // rules and wording as WorkerBoundary on the interpreter and C#).
+    const transferMarks = new WeakSet();
+    const workerUrls = new Map();
+    let workerPort = null;
+    let workerHomeName = null;
+
+    function markTransfer(buffer) {
+      transferMarks.add(buffer);
+      return buffer;
+    }
+
+    function crossError(what, actorName) {
+      return new Error(what + " cannot cross the boundary of worker actor '" + actorName + "': only null, bools, numbers, strings, arrays, dicts, variants and buffers can.");
+    }
+
+    function handlerName(handlerNameOrNull) {
+      return handlerNameOrNull === null || handlerNameOrNull === undefined ? null : coerceToString(handlerNameOrNull);
+    }
+
+    // A copy structured clone carries intact (the hidden dict marker becomes a visible field),
+    // plus the ArrayBuffers of the buffers marked by buf.transfer.
+    function wireMessage(actorName, value) {
+      const transfers = [];
+      return { value: toWire(value, actorName, transfers, new Map()), transfers };
+    }
+
+    function toWire(value, actorName, transfers, copies) {
+      if (value === null || value === undefined) return null;
+      const type = typeof value;
+      if (type === "number" || type === "string" || type === "boolean") return value;
+      if (type === "function") throw crossError("A function", actorName);
+      if (type !== "object") throw crossError("A class instance or host object", actorName);
+      if (copies.has(value)) return copies.get(value);
+      if (isActorRef(value)) throw crossError("An actor reference", actorName);
+      if (isBuffer(value)) {
+        if (transferMarks.has(value)) {
+          transferMarks.delete(value);
+          if (transfers.indexOf(value.buffer) < 0) transfers.push(value.buffer);
+        }
+        copies.set(value, value);
+        return value;
+      }
+      if (Array.isArray(value)) {
+        const copy = [];
+        copies.set(value, copy);
+        for (let i = 0; i < value.length; i++) copy.push(toWire(value[i], actorName, transfers, copies));
+        return copy;
+      }
+      const proto = Object.getPrototypeOf(value);
+      if (proto !== Object.prototype && proto !== null) throw crossError("A class instance or host object", actorName);
+      const copy = {};
+      copies.set(value, copy);
+      if (isMaldaDict(value)) copy.__maldaWireDict = true;
+      const keys = Object.keys(value);
+      for (let i = 0; i < keys.length; i++) copy[keys[i]] = toWire(value[keys[i]], actorName, transfers, copies);
+      return copy;
+    }
+
+    function fromWire(value, seen) {
+      if (value === null || typeof value !== "object" || isBuffer(value)) return value;
+      seen = seen || new Set();
+      if (seen.has(value)) return value;
+      seen.add(value);
+      if (Array.isArray(value)) {
+        for (let i = 0; i < value.length; i++) value[i] = fromWire(value[i], seen);
+        return value;
+      }
+      const isDict = value.__maldaWireDict === true;
+      delete value.__maldaWireDict;
+      const keys = Object.keys(value);
+      for (let i = 0; i < keys.length; i++) value[keys[i]] = fromWire(value[keys[i]], seen);
+      return isDict ? markDict(value) : value;
+    }
+
+    function nodeWorkerThreads() {
+      if (typeof process === "undefined" || !process.versions || !process.versions.node) return null;
+      if (typeof process.getBuiltinModule === "function") return process.getBuiltinModule("worker_threads");
+      return typeof require === "function" ? require("worker_threads") : null;
+    }
+
+    function errorText(error) {
+      return error && typeof error.message === "string" ? coerceToString(unwrapMaldaException(error)) : String(error);
+    }
+
+    function createWorkerPort(scope) {
+      const source = "(" + maldaJsRuntime.toString() + ")(globalThis);\n" +
+        "const __maldaWorkerScope = " + scope.toString() + ";\n" +
+        "globalThis.mlRuntime.actors.runWorker(__maldaWorkerScope);\n";
+      if (typeof Worker === "function" && typeof Blob === "function" && typeof URL !== "undefined" && typeof URL.createObjectURL === "function") {
+        let url = workerUrls.get(scope);
+        if (!url) {
+          url = URL.createObjectURL(new Blob([source], { type: "text/javascript" }));
+          workerUrls.set(scope, url);
+        }
+        const worker = new Worker(url);
+        return {
+          post(message, transfers) { worker.postMessage(message, transfers || []); },
+          listen(handler) {
+            worker.onmessage = (event) => handler(event.data);
+            worker.onerror = (event) => {
+              if (event && typeof event.preventDefault === "function") event.preventDefault();
+              handler({ t: "error", message: event && event.message ? event.message : "the worker failed to start" });
+            };
+          },
+          terminate() { worker.terminate(); return null; }
+        };
+      }
+      const threads = nodeWorkerThreads();
+      if (threads) {
+        const worker = new threads.Worker(source, { eval: true });
+        return {
+          post(message, transfers) { worker.postMessage(message, transfers || []); },
+          listen(handler) {
+            worker.on("message", handler);
+            worker.on("error", (error) => handler({ t: "error", message: errorText(error) }));
+          },
+          terminate() { return worker.terminate(); }
+        };
+      }
+      throw new Error("@worker() actors need Web Workers (or worker_threads on Node).");
+    }
+
+    function postToWorker(cell, handlerNameOrNull, args, correlationId) {
+      const wire = wireMessage(cell.workerName, args);
+      cell.port.post({ t: "send", handler: handlerName(handlerNameOrNull), args: wire.value, corr: correlationId }, wire.transfers);
+    }
+
+    function reportWorkerError(actorName, text) {
+      const line = "Worker actor '" + actorName + "' error: " + text;
+      if (workerPort) {
+        workerPort.post({ t: "error", message: line });
+      } else if (typeof console !== "undefined") {
+        console.error(line);
+      }
+    }
+
+    function onWorkerMessage(cell, message) {
+      if (!message || cell.stopped) return;
+      if (message.t === "print") {
+        printText(message.text);
+      } else if (message.t === "reply") {
+        deliverReply(message.corr, fromWire(message.value));
+      } else if (message.t === "error") {
+        // A line from a nested worker already names its actor.
+        if (/^Worker actor '/.test(message.message)) {
+          if (workerPort) {
+            workerPort.post(message);
+          } else if (typeof console !== "undefined") {
+            console.error(message.message);
+          }
+        } else {
+          reportWorkerError(cell.workerName, message.message);
+        }
+      }
+    }
+
+    function spawnWorker(scope, actorName, args) {
+      const wire = wireMessage(actorName, args || []);
+      const port = createWorkerPort(scope);
+      const id = nextActorId++;
+      const ref = { __maldaActorRef: true, id };
+      const cell = {
+        id,
+        ref,
+        actor: null,
+        port,
+        workerName: actorName,
+        queue: [],
+        receiveQueue: [],
+        receiveResolvers: [],
+        processing: false,
+        stopped: false
+      };
+      cells.set(id, cell);
+      port.listen((message) => onWorkerMessage(cell, message));
+      port.post({ t: "spawn", actor: actorName, args: wire.value }, wire.transfers);
+      return ref;
+    }
+
+    // Runs inside the worker: builds the actor from the spawn message, then feeds it the sends.
+    function runWorker(scope) {
+      let port;
+      const threads = nodeWorkerThreads();
+      if (threads && threads.parentPort) {
+        const parent = threads.parentPort;
+        port = { post: (message, transfers) => parent.postMessage(message, transfers || []), listen: (handler) => parent.on("message", handler) };
+      } else if (typeof self !== "undefined" && typeof self.postMessage === "function") {
+        port = { post: (message, transfers) => self.postMessage(message, transfers || []), listen: (handler) => { self.onmessage = (event) => handler(event.data); } };
+      } else {
+        throw new Error("runWorker() runs only inside a worker.");
+      }
+
+      workerPort = port;
+      printSink = (text) => port.post({ t: "print", text });
+      let cell = null;
+      let starting = null;
+      const deliver = (message) => {
+        cell.queue.push({
+          handlerName: message.handler,
+          args: fromWire(message.args),
+          sender: null,
+          correlationId: null,
+          remoteCorrelationId: message.corr || null
+        });
+        schedule(cell);
+      };
+      port.listen((message) => {
+        if (message.t === "spawn") {
+          workerHomeName = message.actor;
+          starting = Promise.resolve(scope()).then((classes) => {
+            const Actor = classes[message.actor];
+            const ref = spawn(new Actor(...fromWire(message.args)));
+            cell = cells.get(ref.id);
+            cell.onError = (error) => reportWorkerError(message.actor, errorText(error));
+          }).catch((error) => {
+            reportWorkerError(message.actor, errorText(error));
+          });
+        } else if (message.t === "send") {
+          if (cell) {
+            deliver(message);
+          } else if (starting) {
+            starting = starting.then(() => { if (cell) deliver(message); });
+          }
+        }
+      });
       return null;
     }
 
@@ -1920,7 +2194,10 @@
       getSelf,
       stop,
       shutdownAsync,
-      callActorOrVoidStop
+      callActorOrVoidStop,
+      spawnWorker,
+      runWorker,
+      markTransfer
     };
   })();
 
@@ -4084,10 +4361,20 @@
     sha256: sha256Builtin
   };
 
-  function ioPrint(value) {
-    if (typeof console !== "undefined") {
-      console.log(formatValue(value));
+  // Inside a @worker() actor, printed lines go to the page (or parent worker) in order with the
+  // worker's replies instead of to the worker's own console.
+  let printSink = null;
+
+  function printText(text) {
+    if (printSink) {
+      printSink(text);
+    } else if (typeof console !== "undefined") {
+      console.log(text);
     }
+  }
+
+  function ioPrint(value) {
+    printText(formatValue(value));
     return null;
   }
 
@@ -5057,6 +5344,11 @@
       bufArity("fill", args, 2, 2, "buffer, value");
       const buffer = bufRequire("fill", args[0]);
       return buffer.fill(bufRequireNumber(buffer, args[1]));
+    },
+    // Moved, not copied, the next time it crosses a @worker() actor boundary.
+    transfer(...args) {
+      bufArity("transfer", args, 1, 1, "buffer");
+      return actorsRuntime.markTransfer(bufRequire("transfer", args[0]));
     },
     readAt(...args) {
       bufArity("readAt", args, 3, 3, "bytes, offset, type");

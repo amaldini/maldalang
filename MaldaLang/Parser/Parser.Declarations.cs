@@ -93,9 +93,16 @@ public partial class Parser
             {
                 // Parse decorators first
                 var decorators = ParseDecorators();
-                // Decorators currently support function and property declarations.
+                // Decorators currently support function, property, prompt and actor declarations.
                 if (Match(TokenType.Prompt))
                     return PromptDeclaration(decorators);
+                if (Match(TokenType.Actor))
+                {
+                    var unknown = decorators.FirstOrDefault(d => d.Name != MaldaLang.Parser.AST.Declarations.ActorDeclaration.WorkerDecorator);
+                    if (unknown != null)
+                        throw Error(Previous(), $"'@{unknown.Name}' is not an actor decorator. An actor takes only '@worker()'.");
+                    return ActorDeclaration(decorators);
+                }
                 if (!Match(TokenType.Function))
                 {
                     if (Match(TokenType.Property))
@@ -103,7 +110,7 @@ public partial class Parser
 
                     var token = Current() ?? new Token(TokenType.EOF, "", null, 0, 0);
                     RejectRemovedFunctionAlias();
-                    throw Error(token, "Decorators must be followed by 'function', 'property', or 'prompt' keyword");
+                    throw Error(token, "Decorators must be followed by 'function', 'property', 'prompt', or 'actor' keyword");
                 }
                 // Parse function declaration with the decorators we already parsed
                 return FunctionDeclarationWithDecorators(decorators, false);

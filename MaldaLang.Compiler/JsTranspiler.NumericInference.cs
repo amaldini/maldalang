@@ -28,13 +28,13 @@ public partial class JsTranspiler
 
     /// <summary>
     /// Names that always hold a <c>buf.*</c> buffer (every definition is a buffer constructor,
-    /// <c>buf.from</c>, <c>buf.slice</c> or <c>buf.fill</c>): <c>b[i]</c> on them is a number.
+    /// <c>buf.from</c>, <c>buf.slice</c>, <c>buf.fill</c> or <c>buf.transfer</c>): <c>b[i]</c> on them is a number.
     /// </summary>
     private readonly HashSet<string> _bufferNames = new(StringComparer.Ordinal);
 
     private static readonly HashSet<string> BufferProducingMembers = new(StringComparer.Ordinal)
     {
-        "float64", "float32", "int32", "bytes", "from", "slice", "fill", "fromUtf8", "fromBase64"
+        "float64", "float32", "int32", "bytes", "from", "slice", "fill", "transfer", "fromUtf8", "fromBase64"
     };
 
     /// <summary><c>math.*</c> members that return a number for any argument (they coerce first).</summary>

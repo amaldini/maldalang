@@ -545,6 +545,10 @@ public partial class Interpreter
             _executionStack.Clear();
             GetActivation().CurrentFunctionFrame = null;
             
+            var workerViolation = MaldaLang.Runtime.Actors.WorkerActorRules.Check(statements).FirstOrDefault();
+            if (workerViolation != null)
+                throw new RuntimeException(workerViolation.Message, workerViolation.Line, _currentFile);
+
             // First pass: collect class, actor, function, prompt, workflow, and property declarations
             foreach (var stmt in statements)
             {

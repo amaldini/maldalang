@@ -78,7 +78,8 @@ ApiDecl       ::= "api" Identifier "{" ApiMethodSig* "}"
 ApiMethodSig  ::= "function" Identifier "(" CtorParamList? ")" ";"
                   /* optional SchemaType per param, same as CtorParam; impl = top-level function of the same name */
 
-ActorDecl     ::= "actor" Identifier "{" ActorBodyItem* "}"
+ActorDecl     ::= Decorator? "actor" Identifier "{" ActorBodyItem* "}"
+                  /* the only actor decorator is @worker(): run the actor off the main thread */
 ActorBodyItem ::= MessageDecl | ActorMember
 MessageDecl   ::= "message" Identifier "(" ParamList? ")" ReturnType? ";"
 ActorMember   ::= AccessModifier? ( FieldDecl | "on" Identifier "(" ParamList? ")" ReturnType? Block

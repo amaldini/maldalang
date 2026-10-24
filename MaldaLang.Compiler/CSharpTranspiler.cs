@@ -47,6 +47,8 @@ public partial class CSharpTranspiler
     private bool _isInActorHandler;
     /// <summary>Instance methods of the actor being emitted; bare calls to them are direct sync calls.</summary>
     private HashSet<string>? _currentActorMethodNames;
+    /// <summary><c>@worker()</c> actors of the program: spawned through <c>ActorsRuntime.SpawnWorker</c>.</summary>
+    private readonly HashSet<string> _workerActorNames = new(StringComparer.Ordinal);
     private bool _transpileCallAsTask;
     private bool _canAwait;
     private bool _emitLineDirectives;
@@ -218,6 +220,12 @@ public partial class CSharpTranspiler
         _currentMemberIsStatic = false;
 
         statements = ModuleSymbolResolver.ExpandFileImportsForTranspile(statements, _sourceFilePath);
+
+        var workerViolation = MaldaLang.Runtime.Actors.WorkerActorRules.Check(statements).FirstOrDefault();
+        if (workerViolation != null)
+            throw new NotSupportedException($"line {workerViolation.Line}: {workerViolation.Message}");
+        _workerActorNames.Clear();
+        _workerActorNames.UnionWith(statements.OfType<ActorDeclaration>().Where(a => a.IsWorker).Select(a => a.Name));
 
         // User bindings shadow flat built-ins of the same name (same rule as the interpreter):
         // marks IdentifierExpression.ShadowsBuiltIn, read by the call emitters.

@@ -1632,6 +1632,12 @@
     "title": "18.12 Usare gli actor con gli agenti"
   },
   {
+    "file": "18-actors.html",
+    "level": 2,
+    "id": "worker-actors",
+    "title": "18.13 Actor worker (@worker())"
+  },
+  {
     "file": "19-agent-orchestration.html",
     "level": 2,
     "id": "first-read",

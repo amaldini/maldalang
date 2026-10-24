@@ -330,6 +330,7 @@ toJSON	toJSON	1 argument
 tokenize	str.tokenize	(string, options?)		array of strings
 tokenOverlap	str.tokenOverlap	(string, string, options?)		{ sharedCount, leftCount, rightCount, jaccard, sharedTokens }
 toUtf8	buf.toUtf8	1 argument: (bytes)	invalid sequences decode as U+FFFD	string
+transfer	buf.transfer	1 argument: (buffer)	returns the same buffer, moved (not copied) the next time it crosses a @worker() actor boundary; the sender keeps a length-0 buffer	buffer
 transpose	math.transpose	1 argument: (matrix)		array of arrays (matrix)
 tree	AnsiConsole.tree	at least 1 string argument: (label, items?)	items is an array of strings or { label, children? }; children may be strings (nested objects are skipped)	null
 trim	str.trim	1 argument		string

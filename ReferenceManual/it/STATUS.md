@@ -18,7 +18,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | 03-lexical-structure.html | 128dbe2e723b7d8260079709c08253d19efc7d4e1b263c3459a435e359da4b57 |
 | 04-data-types.html | 8fac006fd3c2ffca16e533d5fd32841164fb04afc82ed0a9067e5337c3f4cc52 |
 | 05-variables.html | f071ce860879a61c8d957091a4e10e9ae8b4f253a08f0c95dfd1af9a8eaa494f |
-| 06-arrays.html | d8b62a930d9da79b6349b83e9fb6cfeb0b52c5500e4d11d046b0bc9cc34f5ca1 |
+| 06-arrays.html | e16c100d196c6811ed407e899363215cf5c46419a12efcfe88c8147ab52719dd |
 | 07-expressions.html | 27265aca23aa4f1369f4b9c91810d47d25e105e927cc52dc1ec7f303029b3793 |
 | 08-control-structures.html | 2d717c98e142dc45f43563d31200ab5ced9871c86069185ad0d8386fc7ee4ce1 |
 | 09-functions.html | 1ba603d6b236878766faf341990bad2030c3fdf247be4f23dcaa3f99080991c1 |
@@ -30,7 +30,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | 15-graphs.html | 405568a4d176fda11393c4cef7ccfa3f53df28bcadf54001400d224c89d699b5 |
 | 16-vectordb.html | f8b8d297b3f0c3fac61891f3ae5f321975ad0a5fdd28dad33a60fc60f4405454 |
 | 17-database.html | 56cc7c7204c851928ff9aca0d928fa314766bacc3fba5fb66cb53e77c6e4211f |
-| 18-actors.html | 130c071fdb01aeb42bbd5b82c7aa3863758e9b428a72bf33bb4f9fc39b9723b8 |
+| 18-actors.html | 6b564b9232ee327fe112e31f69995df9aaaaffb9904f5284773c713193b1486c |
 | 19-agent-orchestration.html | 7ae4f26fe8e4e5fe7d905d1b5dd9f5a994a73e01161bf5cad455074c476fe35a |
 | 20-graph-memory.html | 2d62a295b50ba6b37b701b46759cac3dba27a32a587332f47afc943fbb40c7b6 |
 | 21-mcp-server.html | d7199207e18dbf816f9f27926199c1db019c6684ffc8f6b4f61ee9dc9427bf21 |
@@ -40,7 +40,7 @@ python3 scripts/sync-reference-manual-it-status.py
 | 25-web-ui-hub.html | 76e211825e324c24a54677e9f3b89fba7218d67d435986a84d3e2242ae258c1b |
 | 26-web-ui.html | 6db2b996f2a0ebfb1a8e8e91b96b1f55cafbc5a1fca6de8d4a805892e5365f7f |
 | 27-http-server-html-ui.html | 6b735cd119bb36be0d74e77f837b3325e78925ef6f8d98d79e97fd853cee75d8 |
-| 28-browser-javascript-backend.html | 271fcfd22edc49265605e207f3c94c976007ef6ed95b6667d58c536e1d407b80 |
+| 28-browser-javascript-backend.html | 70d02d2c435a48a343a9b4afe8aacce48215951c2122daa6c86b4e33a7d2e453 |
 | 29-rest-api.html | 402f049ea17fd83036171156e2f7175154b74bc427161fe477c0801cc693c4e1 |
 | 30-rest-web-client.html | f5d0ae7875b6674be2b76ca56f81f9bc1d07d46aa457304a5877fe4c9d3cde83 |
 | 31-full-stack-development.html | 8bbb0756a472059508b0f0b417442f82304419ee0ae3890ea7b5351c02ef64bf |
@@ -49,6 +49,6 @@ python3 scripts/sync-reference-manual-it-status.py
 | 34-personal-assistant.html | 3ddb2a1132bde983b747bb47e7488a7d34e2602b834b8e99e9209e2d922f3cc4 |
 | 35-examples.html | bb3696f1eb22c630fd71e2db9d2f944792b9987109e10892b16a36c248125c69 |
 | 36-property-testing.html | 9ad258b88df3cfdcb2f2cee32e126fbc14f895f2e5c5b9e3ea5b23d6e9c38df9 |
-| 37-grammar.html | 5dd4e9e2db34d3828d6aa0a5f350a0c0523a3411b67a5fe6e77be45eb22a8539 |
+| 37-grammar.html | dd512b948711f5d3c6aef3cd971364b3c8d6d3f8aa6b68935c2975411cd07ddb |
 | 38-appendix.html | 838563eb8e07ab04a29c670af82b118baa62da469c2f9fcd9b788060515c49ee |
 | 39-appendix-gpu-billiards.html | 118bbd78f3fe96f287f1921a70c962e6d32bf0f3ea4f3591e0f0d1c22745b3ea |

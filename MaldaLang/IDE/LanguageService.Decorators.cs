@@ -251,6 +251,16 @@ public partial class LanguageService
             MaxArgs = 0,
             ArgDescriptions = new List<string>()
         },
+        ["worker"] = new DecoratorInfo
+        {
+            Name = "worker",
+            Description = "Worker actor decorator",
+            Format = "@worker()",
+            Documentation = "Placed before 'actor': runs the actor off the main thread (a Web Worker on JavaScript, a thread on the interpreter and C#). Spawn arguments, message arguments and replies are copied (structured clone); buf.transfer(b) moves a buffer instead. Functions, actor references and class instances cannot cross. The actor may use the program's functions, classes and consts, not its top-level vars.",
+            MinArgs = 0,
+            MaxArgs = 0,
+            ArgDescriptions = new List<string>()
+        },
         ["within"] = new DecoratorInfo
         {
             Name = "within",

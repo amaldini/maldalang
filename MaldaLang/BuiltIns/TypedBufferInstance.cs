@@ -24,17 +24,25 @@ public enum TypedBufferKind
 /// </summary>
 public sealed class TypedBufferInstance : ObjectInstance
 {
-    private readonly double[]? _float64;
-    private readonly float[]? _float32;
-    private readonly int[]? _int32;
-    private readonly byte[]? _bytes;
+    // Not readonly: a buffer moved to a worker actor (buf.transfer) gives its storage away.
+    private double[]? _float64;
+    private float[]? _float32;
+    private int[]? _int32;
+    private byte[]? _bytes;
 
     /// <summary>The error for any member but <c>length</c>, on every backend.</summary>
     public const string NoArrayMethodsMessage =
         "A buffer has a fixed length and no array methods (append, map, ...). Use buf.toArray(b) for an array.";
 
     public TypedBufferKind Kind { get; }
-    public int Length { get; }
+    public int Length { get; private set; }
+
+    /// <summary>
+    /// Set by <c>buf.transfer(b)</c>: the next time the buffer crosses a worker actor boundary it
+    /// is moved, not copied, and this instance is left empty (length 0), like a transferred
+    /// JavaScript typed array.
+    /// </summary>
+    public bool TransferRequested { get; set; }
 
     public TypedBufferInstance(TypedBufferKind kind, int length) : base(null)
     {
@@ -55,6 +63,35 @@ public sealed class TypedBufferInstance : ObjectInstance
         Kind = TypedBufferKind.Uint8;
         Length = bytes.Length;
         _bytes = bytes;
+    }
+
+    private TypedBufferInstance(TypedBufferInstance owner) : base(null)
+    {
+        Kind = owner.Kind;
+        Length = owner.Length;
+        _float64 = owner._float64;
+        _float32 = owner._float32;
+        _int32 = owner._int32;
+        _bytes = owner._bytes;
+    }
+
+    /// <summary>
+    /// The buffer as it arrives on the other side of a worker actor boundary: a copy, or this
+    /// buffer's storage when <see cref="TransferRequested"/> (this instance is then emptied).
+    /// </summary>
+    public TypedBufferInstance CrossWorkerBoundary()
+    {
+        if (!TransferRequested)
+            return Slice(0, Length);
+
+        TransferRequested = false;
+        var moved = new TypedBufferInstance(this);
+        Length = 0;
+        _float64 = _float64 == null ? null : Array.Empty<double>();
+        _float32 = _float32 == null ? null : Array.Empty<float>();
+        _int32 = _int32 == null ? null : Array.Empty<int>();
+        _bytes = _bytes == null ? null : Array.Empty<byte>();
+        return moved;
     }
 
     /// <summary>The backing bytes of a <c>buf.bytes</c> buffer.</summary>

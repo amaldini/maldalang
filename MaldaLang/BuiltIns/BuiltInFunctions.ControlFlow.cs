@@ -123,6 +123,8 @@ public static partial class BuiltInFunctions
 
         var replyTo = currentMessage.Sender;
         var payload = args[0];
+        if (replyTo.Instance.Home != currentActor.Home)
+            payload = WorkerBoundary.Cross(payload, (currentActor.Home ?? replyTo.Instance.Home!).Actor.Name);
 
         // Create reply message with correlation id pointing back to the original request
         var replyMessage = new Message(

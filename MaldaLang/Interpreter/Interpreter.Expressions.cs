@@ -50,6 +50,9 @@ public partial class Interpreter
     }
 
     internal Environment GlobalsEnvironment => _globals;
+
+    /// <summary>For an actor's interpreter: the globals of the program that spawned it.</summary>
+    internal Environment? ActorProgramGlobals { get; set; }
     internal IReadOnlyDictionary<string, ActorDefinition> DefinedActors => _actors;
     internal IReadOnlyDictionary<string, WorkflowDeclaration> DefinedWorkflows => _workflows;
     internal Environment CurrentEnvironment => _environment;

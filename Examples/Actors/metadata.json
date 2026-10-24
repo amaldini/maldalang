@@ -34,6 +34,11 @@
       "name": "Concurrent Counter",
       "description": "Multiple actors incrementing counters concurrently",
       "file": "concurrent_counter.malda"
+    },
+    {
+      "name": "Worker Offload",
+      "description": "A @worker() actor counts primes off the main thread while the page keeps drawing frames",
+      "file": "worker_offload.malda"
     }
   ]
 }

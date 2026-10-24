@@ -11,6 +11,13 @@ public class ActorInstance
     public ActorMailbox Mailbox { get; }
     public Environment State { get; } // Isolated actor state
     public string Id { get; }
+
+    /// <summary>
+    /// The worker actor this actor runs inside: itself for a <c>@worker</c> actor, the spawner's
+    /// home for an actor spawned by code running in a worker, null on the main thread. A value
+    /// crosses a worker boundary (and is copied) when it moves between two different homes.
+    /// </summary>
+    public ActorInstance? Home { get; internal set; }
     private bool _isRunning = false;
     
     /// <param name="globals">

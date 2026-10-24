@@ -109,6 +109,25 @@ This document captures the current JavaScript backend design in code and the nea
   emitted as `__maldaBufGet` / `__maldaBufSet` (`mlRuntime.bufGet` / `bufSet`: a typed array reads
   `undefined` exactly when a numeric index is out of range or not an integer) and counts as a number.
 
+## Worker Actors (`@worker()`)
+
+- `spawn W(…)` of a `@worker()` actor emits `mlRuntime.actors.spawnWorker(__maldaWorkerScope, "W", [args])`.
+  `__maldaWorkerScope` (`JsTranspiler.Actors.cs`, `EmitWorkerScope`) is a self-contained function: the runtime
+  aliases, a copy of the emitted types, functions, actors and classes, `let` for the hoisted top-level names,
+  the top-level const initializers, and `return { "W": W, … }`. It must reach nothing but `globalThis`, since
+  the runtime ships its source text to the worker.
+- The runtime wrapper is the named function `maldaJsRuntime`; `createWorkerPort` builds the worker source as
+  `(maldaJsRuntime source)(globalThis)` + the scope + `mlRuntime.actors.runWorker(__maldaWorkerScope)`, and starts
+  it from a blob URL (`new Worker`, works from `file://`) or `worker_threads` with `eval: true` under Node.
+- Protocol: main → worker `{ t: "spawn", actor, args }`, `{ t: "send", handler, args, corr }`; worker → main
+  `{ t: "reply", corr, value }`, `{ t: "print", text }` (`io.print` goes through `printSink` in a worker),
+  `{ t: "error", message }`. The main thread keeps a proxy cell (`cell.port`) for the worker; callbacks and
+  timeouts stay on the sender's side exactly as for local actors. `toWire` checks and copies a message
+  (dict markers become a visible `__maldaWireDict` field, `buf.transfer` buffers go into the transfer list),
+  `fromWire` restores it; the rules and wording match `WorkerBoundary` (interpreter) and
+  `ActorsRuntime.CrossWorkerBoundary` (C#). `WorkerActorRules` (`MaldaLang/Runtime/`) is the shared pre-check.
+- `stop` / `shutdownAsync` terminate workers, so Node exits after `main`.
+
 ## Runtime Areas (trimmed runtime)
 
 - `malda-js-runtime.js` marks optional members of the runtime object with

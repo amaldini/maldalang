@@ -14,6 +14,9 @@ public class ActorDefinition
     public FunctionValue? Constructor { get; set; }
     public Dictionary<string, RuntimeValue> StaticFields { get; }
     public Dictionary<string, FunctionValue> StaticMethods { get; }
+
+    /// <summary><c>@worker actor</c>: values crossing into or out of it are copied (<see cref="WorkerBoundary"/>).</summary>
+    public bool IsWorker { get; init; }
     
     public ActorDefinition(string name)
     {

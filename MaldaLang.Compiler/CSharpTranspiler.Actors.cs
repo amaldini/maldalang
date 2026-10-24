@@ -275,14 +275,20 @@ public partial class CSharpTranspiler
     
     private void TranspileSpawn(SpawnExpression spawn)
     {
-        // Spawn expression: returns an ActorRef boxed as object
-        _output.Append("(object)ActorsRuntime.Spawn(new ");
+        // Spawn expression: returns an ActorRef boxed as object. A worker actor's constructor
+        // arguments cross its boundary, so they are copied before the constructor sees them.
+        var isWorker = _workerActorNames.Contains(spawn.ActorName);
+        _output.Append(isWorker ? "(object)ActorsRuntime.SpawnWorker(new " : "(object)ActorsRuntime.Spawn(new ");
         _output.Append(EscapeIdentifier(spawn.ActorName));
         _output.Append("(");
         for (int i = 0; i < spawn.Arguments.Count; i++)
         {
             if (i > 0) _output.Append(", ");
+            if (isWorker)
+                _output.Append("ActorsRuntime.CrossWorkerBoundary(\"").Append(spawn.ActorName).Append("\", ");
             TranspileExpression(spawn.Arguments[i]);
+            if (isWorker)
+                _output.Append(")");
         }
         _output.Append("))");
     }

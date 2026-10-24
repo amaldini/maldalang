@@ -223,7 +223,7 @@ public partial class Parser
         return new MessageDeclaration(name, parameters, returnType);
     }
     
-    private Statement ActorDeclaration()
+    private Statement ActorDeclaration(List<Decorator>? decorators = null)
     {
         var nameToken = ConsumeIdentifierTokenLike("Expect actor name.");
         var name = nameToken.Lexeme;
@@ -245,7 +245,7 @@ public partial class Parser
         }
         
         Consume(TokenType.RightBrace, "Expect '}' after actor body.");
-        return new ActorDeclaration(name, members, messages, nameToken.Line, nameToken.Column);
+        return new ActorDeclaration(name, members, messages, nameToken.Line, nameToken.Column, decorators);
     }
     
     private ClassMember ActorMember(string actorName)

@@ -96,7 +96,7 @@ public static class StdLibNamespaces
     public static readonly IReadOnlySet<string> BufMethodNames = new HashSet<string>(StringComparer.Ordinal)
     {
         "float64", "float32", "int32", "bytes", "from", "toArray", "kind", "slice", "fill",
-        "readAt", "writeAt", "fromUtf8", "toUtf8", "fromBase64", "toBase64"
+        "readAt", "writeAt", "fromUtf8", "toUtf8", "fromBase64", "toBase64", "transfer"
     };
 
     public static readonly IReadOnlySet<string> IoMethodNames = new HashSet<string>(StringComparer.Ordinal)

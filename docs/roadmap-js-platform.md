@@ -1,6 +1,6 @@
 # MALDA JavaScript platform roadmap
 
-**Status:** J0–J3 landed 2026-10-24; J4–J8 open  
+**Status:** J0–J4 landed 2026-10-24; J5–J8 open  
 **Created:** 2026-10-23  
 **Audience:** maintainers working on `JsTranspiler`, `malda-js-runtime.js`, `JsCapabilityChecker`
 and the browser-facing built-ins
@@ -204,6 +204,21 @@ backends.
 
 ## J4 — Workers: actors off the main thread
 
+**Landed 2026-10-24** as a decorator (decision 3): `@worker() actor W { … }`, since the compiler must know
+which actors to bundle. No extra file: the program carries a self-contained `__maldaWorkerScope` function
+and the runtime starts the worker from a blob of its own source plus that function (`file://` works;
+`worker_threads` under Node). Messages, spawn arguments and replies are copied with structured-clone rules on
+all three backends (`WorkerBoundary`, `ActorsRuntime.CrossWorkerBoundary`, `toWire`), `buf.transfer(b)` moves a
+buffer (the sender's is left empty, as a transferred typed array), and a function / actor reference / class
+instance is an error at send time. `WorkerActorRules` rejects a worker that uses a top-level `var` or an
+`import js` binding on every backend. Host actors already run on the thread pool; a worker actor adds the copy
+boundary and keeps running after a failing message. Fixed on the way: an actor spawned inside an actor could
+not call top-level functions on the interpreter, and interpreter timeout handlers raced the sender's handler.
+Tests: `WorkerActorTests` (same output on the three backends, transfer, errors, stop, ESM, page responsiveness
+in Node); example `Examples/Actors/worker_offload.malda`, checked in headless Chrome from `file://`.
+Reference: 18.13. Not done: the pool helper (the actor API was enough for the example), actor references
+across a worker boundary, `import js` inside a worker.
+
 - `@worker` on an actor (or `spawn worker Actor(...)`, to decide) runs it in a Web Worker on JS
   and on a thread on the host backends, where actors already exist. Code that does not use it
   is unchanged.
@@ -291,7 +306,7 @@ reloads; tests cover the store on Node with a fake IndexedDB.
 
 1. ~~Syntax for interop and exports~~ (decided: `import js …` in J1, the existing `export` keyword in J2).
 2. ~~Name and namespace for typed buffers and bytes~~ (decided: a new `buf` namespace).
-3. Worker marker: decorator on the actor or a `spawn` variant.
+3. ~~Worker marker~~ (decided: the `@worker()` decorator on the actor declaration).
 4. Whether `ui.*` local mode ports the diff to JS by hand or generates it from the C# engine.
 5. Whether host backends implement `io` storage / files (J7) or reject them.
 

@@ -20,12 +20,74 @@ public partial class JsTranspiler
     {
         var args = string.Join(", ", spawn.Arguments.Select(TranspileExpression));
         var actorName = EscapeIdentifier(spawn.ActorName);
+        if (_workerActorNames.Contains(spawn.ActorName))
+        {
+            return $"mlRuntime.actors.spawnWorker({WorkerScopeName}, {TranspileLiteral(spawn.ActorName)}, [{args}])";
+        }
+
         if (args.Length == 0)
         {
             return $"mlRuntime.actors.spawn(new {actorName}())";
         }
 
         return $"mlRuntime.actors.spawn(new {actorName}({args}))";
+    }
+
+    private const string WorkerScopeName = "__maldaWorkerScope";
+
+    /// <summary>
+    /// A self-contained function a Web Worker runs to get the program's declarations: the runtime
+    /// aliases, a copy of the emitted types, functions, actors and classes, the top-level consts
+    /// they use, and the worker actor classes as its result. The runtime ships its source text
+    /// (<c>Function.prototype.toString</c>) to the worker, so it must not reach anything outside
+    /// itself but <c>globalThis</c>; top-level variables stay null there, which
+    /// <c>WorkerActorRules</c> already rejects for code a worker runs.
+    /// </summary>
+    private void EmitWorkerScope(
+        string typeDeclarations,
+        string declarations,
+        IReadOnlyList<string> moduleVarNames,
+        IReadOnlyList<VarDeclStatement> constants,
+        IReadOnlyList<ActorDeclaration> workers)
+    {
+        var isAsync = constants.Any(c => ExpressionProducesPromise(c.Initializer));
+        EmitLine($"{(isAsync ? "async " : string.Empty)}function {WorkerScopeName}() {{");
+        _indentLevel++;
+        EmitLine("const mlRuntime = globalThis.mlRuntime;");
+        EmitLine("const __maldaAdd = mlRuntime.add, __maldaFormat = mlRuntime.formatValue, __maldaFloat = mlRuntime.coerceToFloat;");
+        EmitLine("const __maldaGetIndex = mlRuntime.getIndex, __maldaSetIndex = mlRuntime.setIndex, __maldaDivide = mlRuntime.divide, __maldaModulo = mlRuntime.modulo;");
+        EmitLine("const __maldaBufGet = mlRuntime.bufGet, __maldaBufSet = mlRuntime.bufSet;");
+        if (moduleVarNames.Count > 0)
+            EmitLine($"let {string.Join(", ", moduleVarNames.Select(EscapeIdentifier))};");
+        EmitIndentedCopy(typeDeclarations);
+        EmitIndentedCopy(declarations);
+        foreach (var constant in constants)
+            EmitLine($"{EscapeIdentifier(constant.Name)} = {(isAsync ? TranspileExpressionAwaited(constant.Initializer) : TranspileExpression(constant.Initializer))};");
+        EmitLine($"return {{ {string.Join(", ", workers.Select(w => $"{TranspileLiteral(w.Name)}: {EscapeIdentifier(w.Name)}"))} }};");
+        _indentLevel--;
+        EmitLine("}");
+        EmitLine(string.Empty);
+    }
+
+    /// <summary>
+    /// Appends already-emitted text one level deeper. Text with a template literal is copied as
+    /// it is, since a literal spanning lines must not gain spaces.
+    /// </summary>
+    private void EmitIndentedCopy(string text)
+    {
+        if (text.Contains('`'))
+        {
+            _output.Append(text);
+            _generatedLine += text.Count(c => c == '\n');
+            return;
+        }
+
+        foreach (var line in text.Split('\n').SkipLast(1))
+        {
+            var content = line.TrimEnd('\r');
+            _output.Append(content.Length == 0 ? string.Empty : "    ").AppendLine(content);
+            _generatedLine++;
+        }
     }
 
     private void TranspileActorDeclaration(ActorDeclaration actor)

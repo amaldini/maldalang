@@ -306,6 +306,28 @@ sleep(500);
 
 Prefer `sleep(...)` for timing in examples/tests (not busy-wait loops). Copy actor patterns from `Examples/Actors/`.
 
+`@worker()` before `actor` runs it off the main thread (a Web Worker on `--mode js`, a thread
+elsewhere). Arguments and replies are copied; `buf.transfer(b)` moves a buffer. The worker may use
+the program's functions, classes and consts, not its top-level `var`s:
+
+```malda
+@worker()
+actor Crunch {
+    on sum(values) {
+        var total = 0;
+        for (var v in values) { total = total + v; }
+        reply(total);
+    }
+}
+
+actor Page {
+    on start() {
+        var crunch = spawn Crunch();
+        send crunch.sum([1, 2, 3]) then (total) { io.print(total); };
+    }
+}
+```
+
 ## Web / REST (server)
 
 ```malda

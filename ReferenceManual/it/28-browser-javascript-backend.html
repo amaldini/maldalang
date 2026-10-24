@@ -204,6 +204,7 @@ println(text);</code></pre>
             <li><code>send target.stop();</code> passa dal comportamento di stop consapevole degli actor.</li>
         </ul>
         <p><strong>Confine:</strong> è solo supporto al runtime actor locale. La comunicazione trasparente diretta tra actor JS nel browser e actor lato server non è abilitata di default.</p>
+        <p><strong>Fuori dal thread principale:</strong> un actor marcato <code>@worker()</code> gira in un Web Worker che il runtime avvia dal proprio sorgente (nessun file in più; una pagina aperta da <code>file://</code> funziona), con i messaggi copiati via structured clone e <code>buf.transfer</code> per spostare i buffer. Vedi <a href="18-actors.html#worker-actors">18.13 Actor worker</a>.</p>
 
         <h2>28.8 Sintassi del template mode</h2>
         <p>Il template mode usa file <code>.malda.html</code>. Usa <code>{{ ... }}</code> per l'interpolazione e <code>{% ... %}</code> per le istruzioni.</p>

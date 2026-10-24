@@ -107,6 +107,15 @@ Optional packs and platform hosts are versioned **separately** from Tier 0. Pack
 
 ### [Unreleased]
 
+#### Added (MINOR — `@worker()` actors)
+
+- `@worker() actor Name { … }` runs an actor off the main thread: a Web Worker on JavaScript (`worker_threads` under Node), a thread on the interpreter and C# as every host actor. Spawn arguments, message arguments and replies cross by copy with structured-clone rules on all three backends (scalars as they are; arrays, dicts, object literals and variants deep-copied with sharing kept inside one message; buffers copied). New `buf.transfer(b)` marks a buffer to be moved instead: the receiver gets its storage and the sender's buffer is left with length 0. A function, an actor reference or a class instance / host object is an error at the `send` / `spawn` / `reply` (`A function cannot cross the boundary of worker actor 'W': …`). A worker actor that uses a top-level `var` (directly or through a function or class) or an `import js` binding is rejected before the program runs; consts, functions, classes and types are copied into the worker. A failing message prints `Worker actor 'W' error: …` on stderr and the worker goes on. `@worker()` is the only actor decorator. Narrative: [`18-actors.html`](../../ReferenceManual/18-actors.html#worker-actors).
+
+#### Fixed (PATCH — actors on the interpreter)
+
+- An actor spawned inside another actor could not call top-level functions (`Undefined variable 'helper'`): it looked them up in the spawning actor's interpreter instead of the program's globals.
+- A `send … then … timeout ms catch (e) { … }` timeout handler ran on a pool thread on the sender's interpreter while the sender was still in a handler, which could lose that handler's locals; it now runs in the sender's own loop after the current message, as on C# and JavaScript.
+
 #### Added (MINOR — `buf.*` fixed-size numeric buffers and binary data)
 
 - New `buf` namespace on all three backends: `buf.float64(n)` / `float32(n)` / `int32(n)` / `bytes(n)` (zero-filled, fixed length), `buf.from(values, kind?)`, `toArray`, `kind`, `slice`, `fill`, little-endian `buf.readAt(bytes, offset, type)` / `buf.writeAt(bytes, offset, type, value)` (`int8` … `float64`), and `fromUtf8` / `toUtf8` / `fromBase64` / `toBase64`. A buffer indexes like an array (`b[i]`, `b[i] = v`, `+=`, `++`, `.length`, `for in`, printing, `toJSON`), but an index out of range is an error on write too, a written value must be a number, the element type converts it (float32 rounds, int32 / uint8 truncate and wrap like JavaScript typed arrays), and array methods are an error (`buf.toArray`). New `typeOf` tag `"buffer"`. The interpreter and C# share one `TypedBufferInstance`; JavaScript uses `Float64Array` / `Float32Array` / `Int32Array` / `Uint8Array`, and the emitter reads and writes buffer variables through small fast helpers, so the `buffers` benchmark runs about 2× hand-written JavaScript. Narrative: [`06-arrays.html`](../../ReferenceManual/06-arrays.html#buffers).

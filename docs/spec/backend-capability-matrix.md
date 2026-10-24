@@ -41,6 +41,7 @@ These strings are what `@property` / `runProperty` use via `GetRequiredCapabilit
 | Host-only stdlib helpers (`markdownToHtml` / `extractHTML` / `hashPassword` / JWT / `race` / `firstOk` / `stream` / `AnsiConsole`) | yes | yes | no |
 | File I/O | yes | yes | no |
 | Actors (`spawn` / `send` / `on`) | yes | yes | yes (process-local) |
+| Worker actors (`@worker() actor`, copied messages, `buf.transfer`) | yes (thread) | yes (thread) | yes (Web Worker / `worker_threads`) |
 | Durable workflows (`workflow` / `step`) | yes | yes | no |
 | Workflow call-graph determinism (WF1001/WF1002 via in-file helpers) | yes | yes | n/a |
 | Agents / prompts / MCP / ACP | yes | yes | no |

@@ -1,0 +1,68 @@
+// Worker actor: move a heavy computation off the main thread
+// @worker() runs the actor in a Web Worker when compiled with --mode js, and on its own
+// thread on the interpreter and C#. The page keeps drawing frames while the worker counts.
+// Arguments and replies are copied; buf.transfer(b) moves a buffer instead of copying it.
+
+const LIMIT = 30000;
+
+function isPrime(n) {
+    if (n < 2) {
+        return false;
+    }
+    for (var d = 2; d * d <= n; d = d + 1) {
+        if (n % d == 0) {
+            return false;
+        }
+    }
+    return true;
+}
+
+@worker()
+actor Primes {
+    // Counts primes below limit; gaps[k] is how many consecutive primes differ by 2 * k.
+    on count(limit) {
+        var found = 0;
+        var previous = 2;
+        var gaps = buf.int32(10);
+        for (var n = 2; n < limit; n = n + 1) {
+            if (isPrime(n)) {
+                found = found + 1;
+                var gap = int((n - previous) / 2);
+                if (gap > 0 && gap < gaps.length) {
+                    gaps[gap] = gaps[gap] + 1;
+                }
+                previous = n;
+            }
+        }
+        reply({ "found": found, "gaps": buf.transfer(gaps) });
+    }
+}
+
+actor Page {
+    var frames = 0;
+    var counting = true;
+
+    on start() {
+        var primes = spawn Primes();
+        send primes.count(LIMIT) then (result) {
+            counting = false;
+            io.print($"{result["found"]} primes below {LIMIT}");
+            io.print($"twin primes: {result["gaps"][1]}");
+            io.print(frames > 0 ? "the page kept drawing frames meanwhile" : "the count finished before the first frame");
+        };
+        send self.frame();
+    }
+
+    // One frame every 16 ms while the worker counts.
+    on frame() {
+        if (counting) {
+            frames = frames + 1;
+            sleep(16);
+            send self.frame();
+        }
+    }
+}
+
+var page = spawn Page();
+send page.start();
+sleep(3000);

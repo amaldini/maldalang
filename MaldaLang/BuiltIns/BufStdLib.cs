@@ -38,6 +38,7 @@ public static class BufStdLib
             "toUtf8" => ToUtf8(args),
             "fromBase64" => FromBase64(args),
             "toBase64" => ToBase64(args),
+            "transfer" => Transfer(args),
             _ => throw new RuntimeException($"Unknown buf method: {methodName}")
         };
 
@@ -142,6 +143,17 @@ public static class BufStdLib
         var value = buffer.RequireNumber(args[1]);
         for (var i = 0; i < buffer.Length; i++)
             buffer.SetNumber(i, value);
+        return args[0];
+    }
+
+    /// <summary>
+    /// Marks a buffer to be moved, not copied, the next time it crosses a <c>@worker</c> actor
+    /// boundary (a send or spawn argument, or a reply); the sender's buffer is then empty.
+    /// </summary>
+    private static RuntimeValue Transfer(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("transfer", args, 1, 1, "buffer");
+        RequireBuffer("transfer", args[0]).TransferRequested = true;
         return args[0];
     }
 

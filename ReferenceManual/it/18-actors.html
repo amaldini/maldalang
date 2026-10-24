@@ -580,6 +580,76 @@ var assistant = spawn AIAssistant(client);
 send assistant.ask("What is MALDA?");</code></pre>
         <p>Per informazioni dettagliate su come combinare agenti e actor, inclusi i pattern per l'elaborazione concorrente di agenti e l'orchestrazione multi-agente, vedi <a href="19-agent-orchestration.html#using-agents-with-actors">Usare gli agenti con gli actor</a> nel capitolo Orchestrazione di agenti.</p>
 
+        <h2 id="worker-actors">18.13 Actor worker (<code>@worker()</code>)</h2>
+        <p>Un actor marcato <code>@worker()</code> gira fuori dal thread principale: in un Web Worker quando il programma è compilato con <code>--mode js</code> o <code>--mode esm</code>, e su un proprio thread nell'interprete e nel transpile C#, come ogni actor host. Serve a spostare un calcolo pesante fuori da una pagina, che così continua a rispondere. <code>spawn</code>, <code>send</code>, <code>send … then</code>, <code>reply()</code>, i timeout e <code>stop()</code> funzionano come con ogni actor, e il codice che non usa il decoratore non cambia.</p>
+        <pre><code>function isPrime(n) {
+    for (var d = 2; d * d &lt;= n; d = d + 1) {
+        if (n % d == 0) {
+            return false;
+        }
+    }
+    return n &gt; 1;
+}
+
+@worker()
+actor Primes {
+    on count(limit) {
+        var found = 0;
+        for (var n = 2; n &lt; limit; n = n + 1) {
+            if (isPrime(n)) {
+                found = found + 1;
+            }
+        }
+        reply(found);
+    }
+}
+
+actor Page {
+    on start() {
+        var primes = spawn Primes();
+        send primes.count(1000000) then (found) {
+            io.print($"{found} primes");    // 78498 primes
+        };
+        // ... the page keeps handling input and drawing frames meanwhile
+    }
+}
+
+var page = spawn Page();
+send page.start();</code></pre>
+        <p>Il programma completo è <code>Examples/Actors/worker_offload.malda</code>.</p>
+
+        <h3>Cosa attraversa il confine</h3>
+        <p>Gli argomenti di spawn, gli argomenti dei messaggi e le risposte vengono copiati con le regole dello structured clone del browser, su tutti e tre i backend:</p>
+        <ul>
+            <li>null, bool, numeri e stringhe così come sono;</li>
+            <li>array, dict, object literal e varianti come copie profonde: una modifica da una parte non si vede dall'altra, e un valore che compare due volte nello stesso messaggio (o contiene se stesso) resta condiviso dentro la copia;</li>
+            <li>i buffer (<a href="06-arrays.html#buffers"><code>buf.*</code></a>) vengono copiati, e <code>buf.transfer(b)</code> marca un buffer da <em>spostare</em> la prossima volta che attraversa: chi riceve ottiene la sua memoria senza copia e il buffer del mittente resta vuoto (lunghezza 0);</li>
+            <li>una funzione, un riferimento ad actor, un'istanza di classe o un oggetto host (un oggetto JavaScript o DOM) non possono attraversare: <code>send</code>, <code>spawn</code> o <code>reply</code> lanciano un errore, che un <code>try</code> intorno intercetta.</li>
+        </ul>
+        <pre><code>var samples = buf.float64(1000000);
+send analyzer.process(buf.transfer(samples));   // moved: no copy
+print(samples.length);                          // 0
+
+try {
+    send analyzer.process(function (x) { return x; });
+} catch (e) {
+    print(e);   // A function cannot cross the boundary of worker actor 'Analyzer': ...
+}</code></pre>
+
+        <h3>Cosa può usare un worker</h3>
+        <p>Un worker ha la propria copia delle funzioni, classi, tipi e costanti del programma, e nessuna delle sue variabili: in JavaScript il worker non esegue mai il codice top-level. Un actor <code>@worker()</code> che legge o scrive una <code>var</code> top-level, direttamente o tramite una funzione o classe che usa, viene rifiutato prima che il programma parta, su ogni backend: passa il valore in un messaggio o come argomento di spawn, oppure dichiaralo con <code>const</code>. I binding <code>import js</code> non vengono caricati in un worker.</p>
+
+        <h3>Errori, stampa e chiusura</h3>
+        <ul>
+            <li>Un messaggio che lancia un errore dentro un worker viene segnalato su stderr come <code>Worker actor 'Name' error: …</code>, e il worker passa al messaggio successivo. Un <code>send … then</code> in attesa non riceve risposta: dagli un <code>timeout</code> quando l'handler può fallire.</li>
+            <li><code>io.print</code> in un worker stampa dove stampa la pagina, in ordine con le risposte del worker.</li>
+            <li><code>send w.stop()</code> termina il worker; i send successivi vengono ignorati. Quando <code>main</code> di un programma compilato in JavaScript finisce sotto Node, ogni actor viene fermato e ogni worker terminato; una pagina mantiene i propri worker.</li>
+            <li>Gli actor creati da un worker girano dentro quel worker, e i messaggi tra loro non vengono copiati.</li>
+        </ul>
+
+        <h3>Bundling</h3>
+        <p>Non viene scritto alcun file in più. Il programma compilato contiene una funzione <code>__maldaWorkerScope</code> con le dichiarazioni che servono a un worker, e il runtime avvia il Web Worker da un blob fatto del proprio sorgente e di quella funzione, così una pagina aperta da <code>file://</code> funziona come una servita via HTTP. Sotto Node il worker è un thread <code>worker_threads</code>.</p>
+
         <div class="nav-footer">
             <a href="17-database.html">← Precedente: 17. Supporto database</a>
             <a href="19-agent-orchestration.html">Successivo: 19. Orchestrazione di agenti→</a>

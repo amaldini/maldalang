@@ -54,9 +54,20 @@ internal sealed class ActorCell
     public CancellationTokenSource Cancellation { get; }
     public Task LoopTask { get; }
 
-    public ActorCell(object instance)
+    /// <summary>
+    /// The worker actor this actor runs inside (its own id for a <c>@worker()</c> actor), null on
+    /// the main thread. Values moving between two homes are copied by
+    /// <see cref="ActorsRuntime.CrossWorkerBoundary"/>.
+    /// </summary>
+    public Guid? Home { get; set; }
+
+    /// <summary>Set for a <c>@worker()</c> actor: a failing message is reported and the loop goes on.</summary>
+    private readonly string? _workerName;
+
+    public ActorCell(object instance, string? workerName = null)
     {
         Instance = instance;
+        _workerName = workerName;
         Cancellation = new CancellationTokenSource();
 
         var options = new UnboundedChannelOptions
@@ -82,7 +93,22 @@ internal sealed class ActorCell
                 // This allows self.stop() to stop the actor after the current message
                 while (reader.TryRead(out var action))
                 {
-                    action();
+                    if (_workerName == null)
+                    {
+                        action();
+                    }
+                    else
+                    {
+                        try
+                        {
+                            action();
+                        }
+                        catch (Exception ex) when (ex is not OperationCanceledException)
+                        {
+                            var cause = ex is TargetInvocationException { InnerException: { } inner } ? inner : ex;
+                            Console.Error.WriteLine(MaldaLang.Interpreter.WorkerBoundary.ErrorLine(_workerName, cause.Message));
+                        }
+                    }
                     
                     // Check for cancellation after processing each message
                     // This allows self.stop() to stop after the current message handler
@@ -190,7 +216,15 @@ public static class ActorsRuntime
     /// </summary>
     /// <param name="actorInstance">The actor object created from a MALDA <c>actor</c> declaration.</param>
     /// <returns>An opaque <see cref="ActorRef"/> that can be used with <see cref="Send"/>.</returns>
-    public static ActorRef Spawn(object actorInstance)
+    public static ActorRef Spawn(object actorInstance) => SpawnCore(actorInstance, isWorker: false);
+
+    /// <summary>
+    /// Spawn a <c>@worker()</c> actor: like <see cref="Spawn"/> (every actor already has its own
+    /// loop on the thread pool), and every value sent to it or replied by it is copied.
+    /// </summary>
+    public static ActorRef SpawnWorker(object actorInstance) => SpawnCore(actorInstance, isWorker: true);
+
+    private static ActorRef SpawnCore(object actorInstance, bool isWorker)
     {
         if (actorInstance is null)
         {
@@ -203,7 +237,7 @@ public static class ActorsRuntime
             id = reserved.Value;
             _reservedIds.Remove(actorInstance);
         }
-        var cell = new ActorCell(actorInstance);
+        var cell = new ActorCell(actorInstance, isWorker ? actorInstance.GetType().Name : null) { Home = isWorker ? id : CurrentHome() };
 
         if (!_actors.TryAdd(id, cell))
         {
@@ -226,7 +260,79 @@ public static class ActorsRuntime
             throw new InvalidOperationException("Target actor not found.");
         }
 
-        EnqueueInvocation(target, cell, handlerName, arguments ?? Array.Empty<object?>(), sender: null, correlationId: null);
+        EnqueueInvocation(target, cell, handlerName, CrossIfNeeded(cell, arguments ?? Array.Empty<object?>()), sender: null, correlationId: null);
+    }
+
+    /// <summary>The home (<see cref="ActorCell.Home"/>) of the code running now.</summary>
+    private static Guid? CurrentHome() =>
+        _currentActor.Value is ActorRef current && _actors.TryGetValue(current.Id, out var cell) ? cell.Home : null;
+
+    private static string WorkerName(Guid home) =>
+        _actors.TryGetValue(home, out var cell) ? cell.Instance.GetType().Name : "worker";
+
+    private static object?[] CrossIfNeeded(ActorCell target, object?[] arguments)
+    {
+        var home = CurrentHome();
+        if (target.Home == home)
+            return arguments;
+        var name = WorkerName((target.Home ?? home)!.Value);
+        var copies = new Dictionary<object, object?>(ReferenceEqualityComparer.Instance);
+        return arguments.Select(argument => Cross(name, argument, copies)).ToArray();
+    }
+
+    /// <summary>
+    /// A value as it arrives on the other side of a worker actor boundary, with the rules of
+    /// <see cref="MaldaLang.Interpreter.WorkerBoundary"/>: scalars as they are, arrays, dicts and
+    /// variants deep-copied, buffers copied or moved (<c>buf.transfer</c>), anything else an error.
+    /// </summary>
+    public static object? CrossWorkerBoundary(string actorName, object? value) =>
+        Cross(actorName, value, new Dictionary<object, object?>(ReferenceEqualityComparer.Instance));
+
+    private static object? Cross(string actorName, object? value, Dictionary<object, object?> copies)
+    {
+        switch (value)
+        {
+            case null or bool or int or long or double or float or decimal or string:
+                return value;
+            case Delegate:
+                throw new InvalidOperationException(MaldaLang.Interpreter.WorkerBoundary.CannotCrossMessage(MaldaLang.Interpreter.WorkerBoundary.Function, actorName));
+            case ActorRef:
+            case IActor:
+                throw new InvalidOperationException(MaldaLang.Interpreter.WorkerBoundary.CannotCrossMessage(MaldaLang.Interpreter.WorkerBoundary.ActorReference, actorName));
+            case MaldaLang.Interpreter.RuntimeValue runtimeValue:
+                return MaldaLang.Interpreter.WorkerBoundary.Cross(runtimeValue, actorName);
+        }
+
+        if (copies.TryGetValue(value, out var existing))
+            return existing;
+
+        switch (value)
+        {
+            case MaldaLang.BuiltIns.TypedBufferInstance buffer:
+            {
+                var copy = buffer.CrossWorkerBoundary();
+                copies[value] = copy;
+                return copy;
+            }
+            case IDictionary<string, object?> dict:
+            {
+                var copy = new Dictionary<string, object?>();
+                copies[value] = copy;
+                foreach (var (key, item) in dict.ToList())
+                    copy[key] = Cross(actorName, item, copies);
+                return copy;
+            }
+            case System.Collections.IList list when value.GetType().IsGenericType && value.GetType().GetGenericTypeDefinition() == typeof(List<>):
+            {
+                var copy = (System.Collections.IList)Activator.CreateInstance(value.GetType(), list.Count)!;
+                copies[value] = copy;
+                foreach (var item in list.Cast<object?>().ToList())
+                    copy.Add(Cross(actorName, item, copies));
+                return copy;
+            }
+            default:
+                throw new InvalidOperationException(MaldaLang.Interpreter.WorkerBoundary.CannotCrossMessage(MaldaLang.Interpreter.WorkerBoundary.ObjectWithMethods, actorName));
+        }
     }
 
     /// <summary>
@@ -373,7 +479,7 @@ public static class ActorsRuntime
             throw new InvalidOperationException("Failed to register actor callback.");
         }
 
-        EnqueueInvocation(target, cell, handlerName, arguments ?? Array.Empty<object?>(), sender, correlationId);
+        EnqueueInvocation(target, cell, handlerName, CrossIfNeeded(cell, arguments ?? Array.Empty<object?>()), sender, correlationId);
     }
 
     private static void EnqueueInvocation(ActorRef actor, ActorCell cell, string? handlerName, object?[] arguments, ActorRef? sender, Guid? correlationId)
@@ -530,6 +636,13 @@ public static class ActorsRuntime
     {
         if (_currentCorrelationId.Value is not Guid correlationId)
             throw new InvalidOperationException("reply() can only be used when handling a message sent with a callback.");
+
+        if (_callbacks.TryGetValue(correlationId, out var pending) && _actors.TryGetValue(pending.Sender.Id, out var replyTo))
+        {
+            var home = CurrentHome();
+            if (replyTo.Home != home)
+                value = CrossWorkerBoundary(WorkerName((home ?? replyTo.Home)!.Value), value);
+        }
 
         if (!_callbacks.TryRemove(correlationId, out var registration))
             throw new InvalidOperationException("No callback found for this reply.");
