@@ -644,6 +644,7 @@ try {
             <li><code>io.print</code> in a worker prints where the page prints, in order with the worker's replies.</li>
             <li><code>send w.stop()</code> terminates the worker; later sends to it are ignored. When <code>main</code> of a program compiled to JavaScript ends under Node, every actor is stopped and every worker terminated; a page keeps its workers.</li>
             <li>Actors spawned by a worker run inside that worker, and messages between them are not copied.</li>
+            <li>On JavaScript a worker takes a moment to start (a few hundred milliseconds: it loads the runtime again); messages sent meanwhile wait for it. Spawn long-lived workers early and keep them, and set a <code>timeout</code> longer than that start.</li>
         </ul>
 
         <h3>Bundling</h3>

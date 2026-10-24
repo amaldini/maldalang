@@ -1,6 +1,6 @@
 # MALDA JavaScript platform roadmap
 
-**Status:** J0–J4 landed 2026-10-24; J5–J8 open  
+**Status:** J0–J5 landed 2026-10-24; J6–J8 open  
 **Created:** 2026-10-23  
 **Audience:** maintainers working on `JsTranspiler`, `malda-js-runtime.js`, `JsCapabilityChecker`
 and the browser-facing built-ins
@@ -236,6 +236,20 @@ and the same program runs on the interpreter with a thread; tests cover transfer
 shutdown.
 
 ## J5 — Graphics
+
+**Landed 2026-10-24** in the `three` runtime area (no new namespace; `glsl` stays compile-time):
+`createBufferGeometry` / `updateGeometry` / `getAttribute` / `setDrawRange` / `createLines` / `createPoints`
+(a `buf.float32` buffer is the attribute's storage, so writes plus `updateGeometry` update in place);
+`pick` / `raycast` (hit object, point, normal, face and its vertices, line/point index, instance) and `pickId`
+(one 1x1 ID-buffer draw, per-instance ids); orbit controls written in the runtime (no three.js add-on) with
+programmatic `orbitControls` / `panControls` / `zoomControls`, `controlsMoved` to tell clicks from drags,
+`fitToBounds`, and `setProjection` (ortho / perspective at the same size); `createRenderTarget` /
+`renderToTarget` / `getTargetTexture` / `readPixels` (top-down rows, sRGB by default) / `screenshot`;
+`glsl.source(...)` / `glsl.functions()` for runtime shaders. Tests: `ThreeGraphicsTests` (real three.js r160 in
+Node, only `WebGLRenderer` faked). Example `Examples/Games/three_terrain.malda` (computed terrain, painted
+faces, raise brush, minimap render target, runtime water shader, ID-buffer mode), checked in headless Chrome.
+Reference: 28.10.2. Not done: damping / keyboard for the controls, readback of the canvas itself (use a
+render target), float render targets.
 
 Extend `three.*` where a MALDA API is simpler than calling three.js through J1:
 

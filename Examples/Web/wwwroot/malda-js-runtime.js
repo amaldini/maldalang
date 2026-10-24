@@ -8492,7 +8492,9 @@
         statsVisible: false,
         materialsDirty: false,
         instanceScratch: null,
-        colorScratch: null
+        colorScratch: null,
+        raycaster: null,
+        pickTarget: null
       };
 
       function normalizeKey(key) {
@@ -10396,6 +10398,714 @@
         return state.mouseButtonsReleased.has(mouseButton);
       }
 
+      // ---- Geometry from buffers ----
+      // Attributes come from buf.float32 buffers (kept as the attribute's own storage, so writing the
+      // buffer and calling updateGeometry changes the mesh in place) or from float64 buffers / arrays
+      // (copied). position, normal and color hold 3 numbers per vertex, uv 2, other names 1 unless
+      // options.itemSizes says otherwise.
+      const attributeItemSizes = { position: 3, normal: 3, color: 3, uv: 2 };
+
+      function plainOptions(value) {
+        return value && typeof value === "object" && !Array.isArray(value) && !ArrayBuffer.isView(value) ? value : {};
+      }
+
+      function toFloat32Attribute(name, value, apiName) {
+        if (value instanceof Float32Array) return value;
+        if (ArrayBuffer.isView(value) || Array.isArray(value)) {
+          return Float32Array.from(value, (item) => toFiniteNumber(item, 0));
+        }
+        throw new Error("mlRuntime.three." + apiName + " attribute '" + name + "' must be a buffer (buf.float32 / buf.float64) or an array of numbers.");
+      }
+
+      function toIndexArray(value, vertexCount, apiName) {
+        if (!ArrayBuffer.isView(value) && !Array.isArray(value)) {
+          throw new Error("mlRuntime.three." + apiName + " index must be a buffer (buf.int32) or an array of vertex numbers.");
+        }
+        const indices = new Uint32Array(value.length);
+        for (let i = 0; i < value.length; i++) {
+          const index = Number(value[i]);
+          if (!Number.isInteger(index) || index < 0 || index >= vertexCount) {
+            throw new Error("mlRuntime.three." + apiName + " index " + i + " is " + value[i] + ", outside the " + vertexCount + " vertices.");
+          }
+          indices[i] = index;
+        }
+        return indices;
+      }
+
+      function itemSizeOf(name, options) {
+        const sizes = plainOptions(options.itemSizes);
+        if (sizes[name] !== undefined) return Math.max(1, Math.min(4, coerceToInt(sizes[name])));
+        return attributeItemSizes[name] || 1;
+      }
+
+      function makeAttribute(THREE, name, values, itemSize, dynamic, apiName) {
+        const array = toFloat32Attribute(name, values, apiName);
+        if (array.length % itemSize !== 0) {
+          throw new Error("mlRuntime.three." + apiName + " attribute '" + name + "' has " + array.length + " numbers, not a multiple of " + itemSize + ".");
+        }
+        const attribute = new THREE.BufferAttribute(array, itemSize);
+        if (dynamic && typeof attribute.setUsage === "function") attribute.setUsage(THREE.DynamicDrawUsage);
+        return attribute;
+      }
+
+      function refreshGeometry(geometry) {
+        if (geometry.__maldaAutoNormals && geometry.getAttribute("position")) geometry.computeVertexNormals();
+        geometry.computeBoundingBox();
+        geometry.computeBoundingSphere();
+      }
+
+      // attributes: { "position": buf, "normal"?: buf, "color"?: buf, "uv"?: buf, "index"?: buf or array, other names }
+      // options: { "computeNormals": true (when no normal is given), "dynamic": false, "itemSizes": { name: n } }
+      function createBufferGeometry(attributes, options) {
+        const THREE = ensureThree("createBufferGeometry");
+        const source = plainOptions(attributes);
+        const opts = plainOptions(options);
+        if (source.position === undefined || source.position === null) {
+          throw new Error("mlRuntime.three.createBufferGeometry requires a \"position\" buffer (3 numbers per vertex).");
+        }
+        const geometry = new THREE.BufferGeometry();
+        const dynamic = opts.dynamic === true;
+        Object.keys(source).forEach((name) => {
+          if (name === "index" || source[name] === null || source[name] === undefined) return;
+          geometry.setAttribute(name, makeAttribute(THREE, name, source[name], itemSizeOf(name, opts), dynamic, "createBufferGeometry"));
+        });
+        const vertexCount = geometry.getAttribute("position").count;
+        if (source.index !== undefined && source.index !== null) {
+          geometry.setIndex(new THREE.BufferAttribute(toIndexArray(source.index, vertexCount, "createBufferGeometry"), 1));
+        }
+        geometry.__maldaAutoNormals = !source.normal && opts.computeNormals !== false;
+        geometry.__maldaItemSizes = plainOptions(opts.itemSizes);
+        geometry.__maldaDynamic = dynamic;
+        refreshGeometry(geometry);
+        return geometry;
+      }
+
+      function requireGeometry(geometry, apiName) {
+        if (!geometry || typeof geometry !== "object" || typeof geometry.getAttribute !== "function") {
+          throw new Error("mlRuntime.three." + apiName + " expects a geometry (three.createBufferGeometry, or a mesh's geometry).");
+        }
+        return geometry;
+      }
+
+      // Marks an attribute changed after its buffer was written in place, or copies new values in
+      // (a different length replaces the attribute). "index" takes a new index array.
+      function updateGeometry(geometry, name, values) {
+        const THREE = ensureThree("updateGeometry");
+        requireGeometry(geometry, "updateGeometry");
+        const key = coerceToString(name);
+        if (key === "index") {
+          if (values === undefined || values === null) {
+            if (!geometry.index) throw new Error("mlRuntime.three.updateGeometry: the geometry has no index.");
+            geometry.index.needsUpdate = true;
+          } else {
+            geometry.setIndex(new THREE.BufferAttribute(toIndexArray(values, geometry.getAttribute("position").count, "updateGeometry"), 1));
+          }
+          refreshGeometry(geometry);
+          return null;
+        }
+        const attribute = geometry.getAttribute(key);
+        if (values !== undefined && values !== null) {
+          const array = toFloat32Attribute(key, values, "updateGeometry");
+          if (attribute && attribute.array.length === array.length) {
+            if (attribute.array !== array) attribute.array.set(array);
+            attribute.needsUpdate = true;
+          } else {
+            const itemSize = attribute ? attribute.itemSize : itemSizeOf(key, { itemSizes: geometry.__maldaItemSizes });
+            geometry.setAttribute(key, makeAttribute(THREE, key, array, itemSize, geometry.__maldaDynamic, "updateGeometry"));
+          }
+        } else if (attribute) {
+          attribute.needsUpdate = true;
+        } else {
+          throw new Error("mlRuntime.three.updateGeometry: the geometry has no '" + key + "' attribute.");
+        }
+        if (key === "normal") geometry.__maldaAutoNormals = false;
+        if (key === "position" || key === "normal") refreshGeometry(geometry);
+        return null;
+      }
+
+      // The attribute's own storage as a float32 buffer: write it, then call updateGeometry.
+      function getAttribute(geometry, name) {
+        requireGeometry(geometry, "getAttribute");
+        const attribute = geometry.getAttribute(coerceToString(name));
+        if (!attribute) return null;
+        if (!(attribute.array instanceof Float32Array)) {
+          throw new Error("mlRuntime.three.getAttribute: '" + coerceToString(name) + "' is not stored as float32.");
+        }
+        return attribute.array;
+      }
+
+      // Draws only vertices (or indices) start .. start + count - 1; count null draws to the end.
+      function setDrawRange(geometry, start, count) {
+        requireGeometry(geometry, "setDrawRange");
+        const first = Math.max(0, coerceToInt(start));
+        geometry.setDrawRange(first, count === null || count === undefined ? Infinity : Math.max(0, coerceToInt(count)));
+        return null;
+      }
+
+      function lineOrPointColor(THREE, geometry, opts, params) {
+        if (opts.color !== undefined && opts.color !== null) params.color = new THREE.Color(coerceToString(opts.color));
+        params.vertexColors = opts.vertexColors !== undefined ? opts.vertexColors === true : !!geometry.getAttribute("color");
+        if (opts.opacity !== undefined) {
+          params.opacity = clampFiniteNumber(opts.opacity, 0, 1, 1);
+          params.transparent = params.opacity < 1;
+        }
+        return params;
+      }
+
+      // Pairs of vertices as segments; options.strip joins every vertex to the next instead.
+      function createLines(geometry, options) {
+        const THREE = ensureThree("createLines");
+        requireGeometry(geometry, "createLines");
+        const opts = plainOptions(options);
+        const material = new THREE.LineBasicMaterial(lineOrPointColor(THREE, geometry, opts, {}));
+        return opts.strip === true ? new THREE.Line(geometry, material) : new THREE.LineSegments(geometry, material);
+      }
+
+      // options: size (world units, or pixels with "sizeAttenuation": false), color, vertexColors, opacity
+      function createPoints(geometry, options) {
+        const THREE = ensureThree("createPoints");
+        requireGeometry(geometry, "createPoints");
+        const opts = plainOptions(options);
+        const params = lineOrPointColor(THREE, geometry, opts, {
+          size: Math.max(0, toFiniteNumber(opts.size, 1)),
+          sizeAttenuation: opts.sizeAttenuation !== false
+        });
+        return new THREE.Points(geometry, new THREE.PointsMaterial(params));
+      }
+
+      // ---- Picking ----
+      function vectorArray(vector) {
+        return vector ? [vector.x, vector.y, vector.z] : null;
+      }
+
+      function hitRecord(hit) {
+        let normal = null;
+        if (hit.face && hit.face.normal) {
+          normal = hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
+        }
+        return markDict({
+          object: hit.object,
+          distance: hit.distance,
+          point: vectorArray(hit.point),
+          normal: vectorArray(normal),
+          faceIndex: hit.faceIndex === undefined || hit.faceIndex === null ? null : hit.faceIndex,
+          vertices: hit.face ? [hit.face.a, hit.face.b, hit.face.c] : null,
+          index: hit.index === undefined || hit.index === null ? null : hit.index,
+          instanceId: hit.instanceId === undefined || hit.instanceId === null ? null : hit.instanceId,
+          uv: hit.uv ? [hit.uv.x, hit.uv.y] : null
+        });
+      }
+
+      function intersect(THREE, raycaster, target, opts, apiName) {
+        const objects = Array.isArray(target) ? target : [target];
+        objects.forEach((object) => {
+          if (!object || typeof object.updateMatrixWorld !== "function") {
+            throw new Error("mlRuntime.three." + apiName + " expects a scene, an object or an array of objects to test.");
+          }
+          object.updateMatrixWorld(true);
+        });
+        raycaster.params.Line = Object.assign({}, raycaster.params.Line, { threshold: Math.max(0, toFiniteNumber(opts.lineThreshold, 0.1)) });
+        raycaster.params.Points = Object.assign({}, raycaster.params.Points, { threshold: Math.max(0, toFiniteNumber(opts.pointThreshold, 0.1)) });
+        raycaster.far = opts.far === undefined ? Infinity : Math.max(0, toFiniteNumber(opts.far, Infinity));
+        const hits = raycaster.intersectObjects(objects, true).filter((hit) => isVisibleChain(hit.object));
+        if (opts.all === true) return hits.map(hitRecord);
+        return hits.length > 0 ? hitRecord(hits[0]) : null;
+      }
+
+      function isVisibleChain(object) {
+        for (let node = object; node; node = node.parent) {
+          if (node.visible === false) return false;
+        }
+        return true;
+      }
+
+      function raycasterFor(THREE) {
+        if (!state.raycaster) state.raycaster = new THREE.Raycaster();
+        return state.raycaster;
+      }
+
+      // The nearest object under renderer pixel (x, y) (the coordinates getMouseX / getMouseY give):
+      // { object, distance, point, normal, faceIndex, vertices, index, instanceId, uv } or null.
+      // options: all (every hit, nearest first), lineThreshold / pointThreshold (world units), far,
+      // width / height (the pixel size x and y refer to; default the renderer's).
+      function pick(camera, target, x, y, options) {
+        const THREE = ensureThree("pick");
+        if (!camera || !camera.isCamera) throw new Error("mlRuntime.three.pick expects a camera first.");
+        const opts = plainOptions(options);
+        const width = Math.max(1, toFiniteNumber(opts.width, state.logicalWidth));
+        const height = Math.max(1, toFiniteNumber(opts.height, state.logicalHeight));
+        const ndc = new THREE.Vector2((toFiniteNumber(x, 0) / width) * 2 - 1, 1 - (toFiniteNumber(y, 0) / height) * 2);
+        camera.updateMatrixWorld(true);
+        const raycaster = raycasterFor(THREE);
+        raycaster.setFromCamera(ndc, camera);
+        return intersect(THREE, raycaster, target, opts, "pick");
+      }
+
+      // Same hit record for a world-space ray from origin [x, y, z] along direction [x, y, z].
+      function raycast(target, origin, direction, options) {
+        const THREE = ensureThree("raycast");
+        if (!Array.isArray(origin) || !Array.isArray(direction)) {
+          throw new Error("mlRuntime.three.raycast expects origin and direction as [x, y, z] arrays.");
+        }
+        const dir = new THREE.Vector3(toFiniteNumber(direction[0], 0), toFiniteNumber(direction[1], 0), toFiniteNumber(direction[2], 0));
+        if (dir.lengthSq() === 0) throw new Error("mlRuntime.three.raycast direction must not be zero.");
+        const raycaster = raycasterFor(THREE);
+        raycaster.set(new THREE.Vector3(toFiniteNumber(origin[0], 0), toFiniteNumber(origin[1], 0), toFiniteNumber(origin[2], 0)), dir.normalize());
+        return intersect(THREE, raycaster, target, plainOptions(options), "raycast");
+      }
+
+      // ID-buffer pick: draws the scene once into a 1×1 target with each mesh, line, points object
+      // (and each instance of an instanced mesh) in its own flat color and reads that pixel back.
+      // Costs one draw of the scene whatever its size, and gives { object, instanceId } or null.
+      function pickId(renderer, camera, scene, x, y) {
+        const THREE = ensureThree("pickId");
+        const targetRenderer = renderer || ensureRenderer("pickId");
+        if (!scene || typeof scene.traverse !== "function") throw new Error("mlRuntime.three.pickId requires a scene.");
+        if (!camera || !camera.isCamera) throw new Error("mlRuntime.three.pickId requires a camera.");
+        const entries = [];
+        const restore = [];
+        let nextId = 1;
+        const idColor = (id) => new THREE.Color().setRGB(((id >> 16) & 255) / 255, ((id >> 8) & 255) / 255, (id & 255) / 255, THREE.LinearSRGBColorSpace);
+        scene.traverse((object) => {
+          if (!(object.isMesh || object.isLine || object.isPoints) || !isVisibleChain(object)) return;
+          const count = object.isInstancedMesh ? object.count : 1;
+          const base = nextId;
+          nextId += count;
+          entries.push({ object, base, count });
+          const flat = { toneMapped: false, fog: false };
+          let material;
+          if (object.isPoints) {
+            const source = Array.isArray(object.material) ? object.material[0] : object.material;
+            material = new THREE.PointsMaterial(Object.assign(flat, { size: source ? source.size : 1, sizeAttenuation: source ? source.sizeAttenuation : true }));
+          } else if (object.isLine) {
+            material = new THREE.LineBasicMaterial(flat);
+          } else {
+            material = new THREE.MeshBasicMaterial(Object.assign(flat, { side: THREE.DoubleSide }));
+          }
+          restore.push({ object, material: object.material, instanceColor: object.instanceColor });
+          if (object.isInstancedMesh) {
+            const colors = new Float32Array(Math.max(1, object.count) * 3);
+            for (let i = 0; i < object.count; i++) {
+              const c = idColor(base + i);
+              colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
+            }
+            object.instanceColor = new THREE.InstancedBufferAttribute(colors, 3);
+            material.color = new THREE.Color(1, 1, 1);
+          } else {
+            material.color = idColor(base);
+          }
+          object.material = material;
+        });
+        const target = state.pickTarget || (state.pickTarget = new THREE.WebGLRenderTarget(1, 1));
+        const size = new THREE.Vector2();
+        targetRenderer.getSize(size);
+        const savedTarget = targetRenderer.getRenderTarget();
+        const savedClear = targetRenderer.getClearColor(new THREE.Color());
+        const savedAlpha = targetRenderer.getClearAlpha();
+        const savedBackground = scene.background;
+        const savedOverride = scene.overrideMaterial;
+        const pixel = new Uint8Array(4);
+        try {
+          scene.background = null;
+          scene.overrideMaterial = null;
+          camera.setViewOffset(size.x, size.y, Math.floor(toFiniteNumber(x, 0)), Math.floor(toFiniteNumber(y, 0)), 1, 1);
+          targetRenderer.setRenderTarget(target);
+          targetRenderer.setClearColor(0x000000, 1);
+          targetRenderer.clear();
+          targetRenderer.render(scene, camera);
+          targetRenderer.readRenderTargetPixels(target, 0, 0, 1, 1, pixel);
+        } finally {
+          camera.clearViewOffset();
+          targetRenderer.setRenderTarget(savedTarget);
+          targetRenderer.setClearColor(savedClear, savedAlpha);
+          scene.background = savedBackground;
+          scene.overrideMaterial = savedOverride;
+          restore.forEach((item) => {
+            if (item.object.material && typeof item.object.material.dispose === "function") item.object.material.dispose();
+            item.object.material = item.material;
+            if (item.object.isInstancedMesh) item.object.instanceColor = item.instanceColor;
+          });
+        }
+        const id = (pixel[0] << 16) | (pixel[1] << 8) | pixel[2];
+        if (id === 0) return null;
+        const entry = entries.find((item) => id >= item.base && id < item.base + item.count);
+        if (!entry) return null;
+        return markDict({ object: entry.object, instanceId: entry.object.isInstancedMesh ? id - entry.base : null });
+      }
+
+      // ---- Camera controls ----
+      // Orbit around a target: left drag orbits, right drag / shift + drag / two fingers pan, the wheel
+      // and a pinch zoom. Programs can drive the same moves (orbitControls, panControls, zoomControls).
+      function requireControls(controls, apiName) {
+        if (!controls || !controls.__maldaOrbitControls) {
+          throw new Error("mlRuntime.three." + apiName + " expects controls made by three.createOrbitControls.");
+        }
+        return controls;
+      }
+
+      function applyControls(controls) {
+        const THREE = ensureThree("orbitControls");
+        const s = controls.spherical;
+        s.radius = Math.min(controls.maxDistance, Math.max(controls.minDistance, s.radius));
+        s.phi = Math.min(controls.maxPolarAngle, Math.max(controls.minPolarAngle, s.phi));
+        s.makeSafe();
+        const offset = new THREE.Vector3().setFromSpherical(s);
+        const camera = controls.camera;
+        camera.position.copy(controls.target).add(offset);
+        camera.lookAt(controls.target);
+        camera.updateMatrixWorld(true);
+      }
+
+      function viewHeightAt(camera, distance) {
+        return 2 * distance * Math.tan((camera.fov * Math.PI / 180) / 2);
+      }
+
+      function createOrbitControls(camera, options) {
+        const THREE = ensureThree("createOrbitControls");
+        if (!camera || !camera.isCamera) throw new Error("mlRuntime.three.createOrbitControls expects a camera.");
+        const opts = plainOptions(options);
+        const t = Array.isArray(opts.target) ? opts.target : [0, 0, 0];
+        const target = new THREE.Vector3(toFiniteNumber(t[0], 0), toFiniteNumber(t[1], 0), toFiniteNumber(t[2], 0));
+        const spherical = new THREE.Spherical().setFromVector3(camera.position.clone().sub(target));
+        if (spherical.radius === 0) spherical.radius = 1;
+        const controls = {
+          __maldaOrbitControls: true,
+          camera,
+          perspective: camera.isPerspectiveCamera ? camera : null,
+          orthographic: camera.isOrthographicCamera ? camera : null,
+          target,
+          spherical,
+          enabled: opts.enabled !== false,
+          rotateSpeed: toFiniteNumber(opts.rotateSpeed, 1),
+          panSpeed: toFiniteNumber(opts.panSpeed, 1),
+          zoomSpeed: toFiniteNumber(opts.zoomSpeed, 1),
+          minDistance: Math.max(0.000001, toFiniteNumber(opts.minDistance, 0.01)),
+          maxDistance: Math.max(0.000001, toFiniteNumber(opts.maxDistance, Infinity)),
+          minPolarAngle: clampFiniteNumber(opts.minPolarAngle, 0, Math.PI, 0),
+          maxPolarAngle: clampFiniteNumber(opts.maxPolarAngle, 0, Math.PI, Math.PI),
+          pointers: new Map(),
+          mode: null,
+          moved: false,
+          element: null,
+          listeners: null
+        };
+        applyControls(controls);
+        if (state.domElement && typeof state.domElement.addEventListener === "function") {
+          attachControls(controls, state.domElement);
+        }
+        return controls;
+      }
+
+      function controlsViewHeight(controls) {
+        const camera = controls.camera;
+        if (camera.isOrthographicCamera) return (camera.top - camera.bottom) / camera.zoom;
+        return viewHeightAt(camera, controls.spherical.radius);
+      }
+
+      function attachControls(controls, element) {
+        const onPointerDown = (event) => {
+          if (!controls.enabled) return;
+          controls.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+          if (typeof element.setPointerCapture === "function") {
+            try { element.setPointerCapture(event.pointerId); } catch (_error) { /* not capturable */ }
+          }
+          if (controls.pointers.size === 1) {
+            controls.moved = false;
+            controls.mode = event.button === 2 || event.button === 1 || event.shiftKey || event.ctrlKey || event.metaKey ? "pan" : "orbit";
+          } else {
+            controls.mode = "pinch";
+          }
+        };
+        const onPointerMove = (event) => {
+          const last = controls.pointers.get(event.pointerId);
+          if (!controls.enabled || !last) return;
+          const before = Array.from(controls.pointers.values()).map((p) => ({ x: p.x, y: p.y }));
+          const dx = event.clientX - last.x;
+          const dy = event.clientY - last.y;
+          controls.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+          if (Math.abs(dx) + Math.abs(dy) > 0) controls.moved = true;
+          const rect = typeof element.getBoundingClientRect === "function" ? element.getBoundingClientRect() : { height: state.logicalHeight };
+          const pixels = Math.max(1, rect.height || state.logicalHeight);
+          if (controls.mode === "orbit") {
+            orbitControls(controls, -2 * Math.PI * dx / pixels * controls.rotateSpeed, -2 * Math.PI * dy / pixels * controls.rotateSpeed);
+          } else if (controls.mode === "pan") {
+            const perPixel = controlsViewHeight(controls) / pixels * controls.panSpeed;
+            panControls(controls, -dx * perPixel, dy * perPixel);
+          } else if (controls.mode === "pinch" && before.length >= 2) {
+            const after = Array.from(controls.pointers.values());
+            const spread = (points) => Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
+            const oldSpread = spread(before);
+            if (oldSpread > 0) zoomControls(controls, spread(after) / oldSpread);
+            const perPixel = controlsViewHeight(controls) / pixels * controls.panSpeed;
+            panControls(controls, -dx / 2 * perPixel, dy / 2 * perPixel);
+          }
+        };
+        const onPointerUp = (event) => {
+          controls.pointers.delete(event.pointerId);
+          if (typeof element.releasePointerCapture === "function") {
+            try { element.releasePointerCapture(event.pointerId); } catch (_error) { /* already released */ }
+          }
+          controls.mode = controls.pointers.size === 0 ? null : (controls.pointers.size === 1 ? "orbit" : "pinch");
+        };
+        const onWheel = (event) => {
+          if (!controls.enabled) return;
+          if (typeof event.preventDefault === "function") event.preventDefault();
+          zoomControls(controls, Math.pow(0.95, toFiniteNumber(event.deltaY, 0) / 100 * controls.zoomSpeed * 4));
+        };
+        const onContextMenu = (event) => {
+          if (typeof event.preventDefault === "function") event.preventDefault();
+        };
+        element.addEventListener("pointerdown", onPointerDown);
+        element.addEventListener("pointermove", onPointerMove);
+        element.addEventListener("pointerup", onPointerUp);
+        element.addEventListener("pointercancel", onPointerUp);
+        element.addEventListener("wheel", onWheel, { passive: false });
+        element.addEventListener("contextmenu", onContextMenu);
+        controls.element = element;
+        controls.listeners = { onPointerDown, onPointerMove, onPointerUp, onWheel, onContextMenu };
+      }
+
+      // Turns the camera around the target: azimuth (left/right) and polar (up/down) in radians.
+      function orbitControls(controls, azimuth, polar) {
+        requireControls(controls, "orbitControls");
+        controls.spherical.theta += toFiniteNumber(azimuth, 0);
+        controls.spherical.phi += toFiniteNumber(polar, 0);
+        applyControls(controls);
+        return null;
+      }
+
+      // Moves camera and target together, dx along the view's right and dy along its up, in world units.
+      function panControls(controls, dx, dy) {
+        const THREE = ensureThree("panControls");
+        requireControls(controls, "panControls");
+        const camera = controls.camera;
+        camera.updateMatrixWorld(true);
+        const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0);
+        const up = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1);
+        controls.target.addScaledVector(right, toFiniteNumber(dx, 0)).addScaledVector(up, toFiniteNumber(dy, 0));
+        applyControls(controls);
+        return null;
+      }
+
+      // factor > 1 zooms in (2 halves the distance, or doubles an orthographic zoom).
+      function zoomControls(controls, factor) {
+        requireControls(controls, "zoomControls");
+        const amount = toFiniteNumber(factor, 1);
+        if (amount <= 0) throw new Error("mlRuntime.three.zoomControls factor must be greater than 0.");
+        if (controls.camera.isOrthographicCamera) {
+          controls.camera.zoom = Math.max(0.000001, controls.camera.zoom * amount);
+          controls.camera.updateProjectionMatrix();
+        } else {
+          controls.spherical.radius /= amount;
+        }
+        applyControls(controls);
+        return null;
+      }
+
+      function setControlsTarget(controls, x, y, z) {
+        requireControls(controls, "setControlsTarget");
+        const position = controls.camera.position.clone();
+        controls.target.set(toFiniteNumber(x, 0), toFiniteNumber(y, 0), toFiniteNumber(z, 0));
+        controls.spherical.setFromVector3(position.sub(controls.target));
+        if (controls.spherical.radius === 0) controls.spherical.radius = controls.minDistance;
+        applyControls(controls);
+        return null;
+      }
+
+      function setControlsEnabled(controls, enabled) {
+        requireControls(controls, "setControlsEnabled").enabled = enabled !== false;
+        if (!controls.enabled) {
+          controls.pointers.clear();
+          controls.mode = null;
+        }
+        return null;
+      }
+
+      // True when the latest press dragged the view: a click that ended a drag is not a pick.
+      function controlsMoved(controls) {
+        return !!requireControls(controls, "controlsMoved").moved;
+      }
+
+      function getControlsCamera(controls) {
+        return requireControls(controls, "getControlsCamera").camera;
+      }
+
+      function disposeControls(controls) {
+        requireControls(controls, "disposeControls");
+        const element = controls.element;
+        const l = controls.listeners;
+        if (element && l && typeof element.removeEventListener === "function") {
+          element.removeEventListener("pointerdown", l.onPointerDown);
+          element.removeEventListener("pointermove", l.onPointerMove);
+          element.removeEventListener("pointerup", l.onPointerUp);
+          element.removeEventListener("pointercancel", l.onPointerUp);
+          element.removeEventListener("wheel", l.onWheel);
+          element.removeEventListener("contextmenu", l.onContextMenu);
+        }
+        controls.element = null;
+        controls.listeners = null;
+        return null;
+      }
+
+      // Aims controls (or a bare camera) at an object's bounds so it fills the view; margin 1.2 leaves 20%.
+      function fitToBounds(controlsOrCamera, object, margin) {
+        const THREE = ensureThree("fitToBounds");
+        if (!object || typeof object.updateMatrixWorld !== "function") throw new Error("mlRuntime.three.fitToBounds expects an object to frame.");
+        object.updateMatrixWorld(true);
+        const box = new THREE.Box3().setFromObject(object);
+        if (box.isEmpty()) return null;
+        const sphere = box.getBoundingSphere(new THREE.Sphere());
+        const radius = Math.max(sphere.radius, 0.000001) * Math.max(0.01, toFiniteNumber(margin, 1.2));
+        const controls = controlsOrCamera && controlsOrCamera.__maldaOrbitControls ? controlsOrCamera : null;
+        const camera = controls ? controls.camera : controlsOrCamera;
+        if (!camera || !camera.isCamera) throw new Error("mlRuntime.three.fitToBounds expects orbit controls or a camera.");
+        let distance;
+        if (camera.isPerspectiveCamera) {
+          const vertical = (camera.fov * Math.PI / 180) / 2;
+          const horizontal = Math.atan(Math.tan(vertical) * camera.aspect);
+          distance = radius / Math.sin(Math.min(vertical, horizontal));
+        } else {
+          distance = radius * 3;
+          const width = camera.right - camera.left;
+          const height = camera.top - camera.bottom;
+          camera.zoom = Math.min(width, height) / (2 * radius);
+        }
+        camera.near = Math.min(camera.near, Math.max(distance - radius * 2, distance / 1000));
+        camera.far = Math.max(camera.far, distance + radius * 2);
+        camera.updateProjectionMatrix();
+        if (controls) {
+          controls.target.copy(sphere.center);
+          controls.spherical.radius = Math.max(controls.minDistance, Math.min(controls.maxDistance, distance));
+          applyControls(controls);
+        } else {
+          const direction = new THREE.Vector3();
+          camera.getWorldDirection(direction);
+          camera.position.copy(sphere.center).addScaledVector(direction, -distance);
+          camera.lookAt(sphere.center);
+          camera.updateMatrixWorld(true);
+        }
+        return null;
+      }
+
+      // Switches the controls' camera between "perspective" and "orthographic", keeping what is seen at
+      // the target the same size. Returns the camera to render with now.
+      function setProjection(controls, kind) {
+        const THREE = ensureThree("setProjection");
+        requireControls(controls, "setProjection");
+        const wanted = coerceToString(kind).toLowerCase();
+        if (wanted !== "perspective" && wanted !== "orthographic") {
+          throw new Error("mlRuntime.three.setProjection kind must be \"perspective\" or \"orthographic\".");
+        }
+        const current = controls.camera;
+        if ((wanted === "perspective") === !!current.isPerspectiveCamera) return current;
+        let next;
+        if (wanted === "orthographic") {
+          const height = viewHeightAt(current, controls.spherical.radius);
+          const aspect = current.aspect || 1;
+          next = controls.orthographic || new THREE.OrthographicCamera(-1, 1, 1, -1, 0.01, 1000);
+          next.left = -height * aspect / 2;
+          next.right = height * aspect / 2;
+          next.top = height / 2;
+          next.bottom = -height / 2;
+          next.zoom = 1;
+          next.near = current.near;
+          next.far = current.far;
+          controls.orthographic = next;
+        } else {
+          next = controls.perspective || new THREE.PerspectiveCamera(50, (current.right - current.left) / (current.top - current.bottom), current.near, current.far);
+          const height = (current.top - current.bottom) / current.zoom;
+          controls.spherical.radius = height / (2 * Math.tan((next.fov * Math.PI / 180) / 2));
+          next.near = Math.min(next.near, current.near > 0 ? current.near : next.near);
+          next.far = Math.max(next.far, current.far);
+          controls.perspective = next;
+        }
+        next.up.copy(current.up);
+        next.updateProjectionMatrix();
+        controls.camera = next;
+        applyControls(controls);
+        return next;
+      }
+
+      // ---- Render targets and readback ----
+      function createRenderTarget(width, height, options) {
+        const THREE = ensureThree("createRenderTarget");
+        const opts = plainOptions(options);
+        const target = new THREE.WebGLRenderTarget(Math.max(1, coerceToInt(width)), Math.max(1, coerceToInt(height)), {
+          depthBuffer: opts.depth !== false,
+          samples: Math.max(0, coerceToInt(opts.samples))
+        });
+        // sRGB like the canvas, so readPixels gives the colors seen on screen and the texture
+        // looks the same when it maps a material; "linear": true keeps the raw linear values.
+        if (opts.linear !== true && THREE.SRGBColorSpace !== undefined) {
+          target.texture.colorSpace = THREE.SRGBColorSpace;
+        }
+        target.__maldaRenderTarget = true;
+        return target;
+      }
+
+      function requireTarget(target, apiName) {
+        if (!target || !target.isWebGLRenderTarget) {
+          throw new Error("mlRuntime.three." + apiName + " expects a render target from three.createRenderTarget.");
+        }
+        return target;
+      }
+
+      function setTargetSize(target, width, height) {
+        requireTarget(target, "setTargetSize").setSize(Math.max(1, coerceToInt(width)), Math.max(1, coerceToInt(height)));
+        return null;
+      }
+
+      // Draws into the target instead of the canvas; its texture can then map a material or feed a uniform.
+      function renderToTarget(renderer, target, scene, camera, options) {
+        const targetRenderer = renderer || ensureRenderer("renderToTarget");
+        requireTarget(target, "renderToTarget");
+        const previous = targetRenderer.getRenderTarget();
+        targetRenderer.setRenderTarget(target);
+        try {
+          render(targetRenderer, scene, camera, options);
+        } finally {
+          targetRenderer.setRenderTarget(previous);
+        }
+        return null;
+      }
+
+      function getTargetTexture(target) {
+        return requireTarget(target, "getTargetTexture").texture;
+      }
+
+      // RGBA bytes of a rectangle of the target (default all of it), rows from the top, as buf.bytes.
+      function readPixels(renderer, target, x, y, width, height) {
+        const targetRenderer = renderer || ensureRenderer("readPixels");
+        requireTarget(target, "readPixels");
+        const left = x === undefined || x === null ? 0 : coerceToInt(x);
+        const top = y === undefined || y === null ? 0 : coerceToInt(y);
+        const w = width === undefined || width === null ? target.width - left : coerceToInt(width);
+        const h = height === undefined || height === null ? target.height - top : coerceToInt(height);
+        if (left < 0 || top < 0 || w <= 0 || h <= 0 || left + w > target.width || top + h > target.height) {
+          throw new Error("mlRuntime.three.readPixels rectangle " + left + "," + top + " " + w + "x" + h + " is outside the " + target.width + "x" + target.height + " target.");
+        }
+        const raw = new Uint8Array(w * h * 4);
+        targetRenderer.readRenderTargetPixels(target, left, target.height - top - h, w, h, raw);
+        // WebGL reads rows from the bottom; flip so row 0 is the top, like an image.
+        const pixels = new Uint8Array(raw.length);
+        const row = w * 4;
+        for (let r = 0; r < h; r++) {
+          pixels.set(raw.subarray((h - 1 - r) * row, (h - r) * row), r * row);
+        }
+        return pixels;
+      }
+
+      // Renders a frame and returns the canvas as a data URL ("image/png" by default, or "image/jpeg").
+      function screenshot(renderer, scene, camera, type) {
+        const targetRenderer = renderer || ensureRenderer("screenshot");
+        render(targetRenderer, scene, camera);
+        const canvas = targetRenderer.domElement;
+        if (!canvas || typeof canvas.toDataURL !== "function") {
+          throw new Error("mlRuntime.three.screenshot needs a renderer drawing to a canvas.");
+        }
+        return canvas.toDataURL(type === undefined || type === null ? "image/png" : coerceToString(type));
+      }
+
       return {
         createRenderer,
         setClearColor,
@@ -10452,6 +11162,32 @@
         isMouseDown,
         wasMousePressed,
         wasMouseReleased,
+        createBufferGeometry,
+        updateGeometry,
+        getAttribute,
+        setDrawRange,
+        createLines,
+        createPoints,
+        pick,
+        raycast,
+        pickId,
+        createOrbitControls,
+        orbitControls,
+        panControls,
+        zoomControls,
+        setControlsTarget,
+        setControlsEnabled,
+        controlsMoved,
+        getControlsCamera,
+        disposeControls,
+        fitToBounds,
+        setProjection,
+        createRenderTarget,
+        setTargetSize,
+        renderToTarget,
+        getTargetTexture,
+        readPixels,
+        screenshot,
         isGamepadConnected: (index) => state.gamepad.isConnected(index),
         getGamepadAxis: (index, axis, deadzone) => state.gamepad.getAxis(index, axis, deadzone),
         isGamepadButtonDown: (index, button) => state.gamepad.isButtonDown(index, button),

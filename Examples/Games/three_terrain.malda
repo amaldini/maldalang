@@ -1,0 +1,308 @@
+// Terrain from computed buffers: picking, orbit controls, render to texture
+// Run: malda play Examples/Games/three_terrain.malda
+//
+// The terrain is one mesh built from buf.float32 buffers (positions and
+// vertex colors) and a buf.int32 index, all computed here. Clicking a face
+// picks it with three.pick and paints it in place: the color buffer is the
+// mesh's own storage, so writing it and calling three.updateGeometry is the
+// whole update. Shift + click raises the ground under the pointer the same
+// way through the position buffer (normals follow).
+//
+// Drag orbits, right drag or shift + drag pans, the wheel zooms. F frames the
+// terrain, O switches orthographic / perspective, T reads back the center of
+// the minimap. The minimap is the scene drawn from above into a render
+// target and shown on a panel. The water shader is put together at runtime
+// from glsl.source and a tint that changes with W. I switches clicks to
+// ID-buffer picking: one 1x1 draw of the scene names the object under the
+// pointer, however many objects there are.
+
+@shader()
+function ripple(uv: vec2, time: float) -> float {
+    var a: float = sin(uv.x * 40.0 + time * 1.7);
+    var b: float = sin(uv.y * 31.0 - time * 1.3);
+    return 0.5 + 0.25 * (a + b);
+}
+
+@shader()
+function waterVertex() {
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}
+
+var root = dom.query("#app");
+
+if (root == null) {
+    println("No #app container found.");
+} else {
+    dom.clear(root);
+
+    var heading = dom.create("h1");
+    dom.setText(heading, "MALDA three.js Terrain");
+    dom.append(root, heading);
+
+    var hint = dom.create("p");
+    dom.setText(hint, "Click paints a face, shift + click raises the ground. Drag orbits, right drag pans, wheel zooms. F frame, O ortho / perspective, T minimap pixel, W water tint, I ID-buffer picking.");
+    dom.append(root, hint);
+
+    var status = dom.create("p");
+    dom.setText(status, "Shaping the land…");
+    dom.append(root, status);
+
+    var width = 900;
+    var height = 520;
+    var aspect = width / height;
+
+    var renderer = three.createRenderer(width, height, "#app");
+    three.setClearColor(renderer, "#a9c8e0");
+    three.setRendererSize(renderer, width, height);
+
+    var scene = three.createScene();
+    var camera = three.createPerspectiveCamera(55, aspect, 0.1, 400.0);
+    three.setCameraAspect(camera, aspect);
+    three.setPosition(camera, 0.0, 30.0, 45.0);
+
+    // A side x side grid of vertices over [-half, half] in x and z.
+    var side = 72;
+    var size = 48.0;
+    var half = size / 2.0;
+    var step = size / (side - 1);
+
+    function heightAt(x, z) -> float {
+        var h = math.sin(x * 0.21) * 2.4 + math.cos(z * 0.17) * 2.1;
+        h = h + math.sin((x + z) * 0.09) * 3.2;
+        var d = math.sqrt(x * x + z * z);
+        return h + 7.0 * math.exp(-d * d / 90.0);
+    }
+
+    var vertexCount = side * side;
+    var positions = buf.float32(vertexCount * 3);
+    var colors = buf.float32(vertexCount * 3);
+
+    function shadeVertex(v) {
+        var y = positions[v * 3 + 1];
+        var t = math.max(0.0, math.min(1.0, (y + 4.0) / 14.0));
+        colors[v * 3] = 0.25 + 0.55 * t;
+        colors[v * 3 + 1] = 0.5 + 0.25 * t;
+        colors[v * 3 + 2] = 0.22 + 0.5 * t * t;
+    }
+
+    for (var row = 0; row < side; row = row + 1) {
+        for (var col = 0; col < side; col = col + 1) {
+            var v = row * side + col;
+            var x = -half + col * step;
+            var z = -half + row * step;
+            positions[v * 3] = x;
+            positions[v * 3 + 1] = heightAt(x, z);
+            positions[v * 3 + 2] = z;
+            shadeVertex(v);
+        }
+    }
+
+    // Two triangles per grid cell, counter-clockwise seen from above.
+    var cells = (side - 1) * (side - 1);
+    var indices = buf.int32(cells * 6);
+    var k = 0;
+    for (var row = 0; row < side - 1; row = row + 1) {
+        for (var col = 0; col < side - 1; col = col + 1) {
+            var a = row * side + col;
+            var b = a + 1;
+            var c = a + side;
+            var d = c + 1;
+            indices[k] = a;
+            indices[k + 1] = c;
+            indices[k + 2] = b;
+            indices[k + 3] = b;
+            indices[k + 4] = c;
+            indices[k + 5] = d;
+            k = k + 6;
+        }
+    }
+
+    var ground = three.createBufferGeometry(
+        { "position": positions, "color": colors, "index": indices },
+        { "dynamic": true }
+    );
+    var terrain = three.createMesh(ground, three.createStandardMaterial({ "vertexColors": true, "roughness": 0.9 }));
+    three.add(scene, terrain);
+
+    // Grid lines every eighth row, from one more computed buffer.
+    var lineCount = 0;
+    var linePositions = buf.float32((int((side - 1) / 8) + 1) * (side - 1) * 6);
+    for (var row = 0; row < side; row = row + 8) {
+        for (var col = 0; col < side - 1; col = col + 1) {
+            var p = row * side + col;
+            for (var e = 0; e < 2; e = e + 1) {
+                var q = (p + e) * 3;
+                linePositions[lineCount * 3] = positions[q];
+                linePositions[lineCount * 3 + 1] = positions[q + 1] + 0.05;
+                linePositions[lineCount * 3 + 2] = positions[q + 2];
+                lineCount = lineCount + 1;
+            }
+        }
+    }
+    var contours = three.createLines(three.createBufferGeometry({ "position": linePositions }, { "computeNormals": false }), { "color": "#2f4a2a", "opacity": 0.5 });
+    three.add(scene, contours);
+
+    // Markers where faces were painted: a point cloud that grows with setDrawRange.
+    var maxMarks = 256;
+    var markPositions = buf.float32(maxMarks * 3);
+    var markGeometry = three.createBufferGeometry({ "position": markPositions }, { "computeNormals": false, "dynamic": true });
+    three.setDrawRange(markGeometry, 0, 0);
+    three.add(scene, three.createPoints(markGeometry, { "size": 7, "sizeAttenuation": false, "color": "#ffef6a" }));
+    var marks = 0;
+
+    // Water: the fragment shader is assembled at runtime around an @shader() function.
+    var tints = ["vec3(0.15, 0.35, 0.65)", "vec3(0.1, 0.5, 0.45)", "vec3(0.45, 0.3, 0.6)"];
+    var tint = 0;
+
+    function waterShader(index) -> string {
+        return "varying vec2 vUv;\nuniform float uTime;\n" + glsl.source("ripple")
+            + "void main() {\n  float r = ripple(vUv, uTime);\n  gl_FragColor = vec4(" + tints[index] + " * (0.8 + 0.3 * r), 0.72);\n}\n";
+    }
+
+    var waterVertexShader = glsl.compile({ varyings: ["vec2 vUv"], functions: ["waterVertex"], main: "waterVertex" });
+
+    function makeWater(index) {
+        return three.createShaderMaterial({
+            "vertexShader": waterVertexShader,
+            "fragmentShader": waterShader(index),
+            "transparent": true,
+            "uniforms": { "uTime": 0.0 }
+        });
+    }
+
+    var water = three.createMesh(three.createPlaneGeometry(size, size), makeWater(tint));
+    three.setRotation(water, -1.5708, 0.0, 0.0);
+    three.setPosition(water, 0.0, -1.5, 0.0);
+    three.add(scene, water);
+
+    var sun = three.createDirectionalLight("#fff6e0", 2.0);
+    three.setPosition(sun, 30.0, 50.0, 20.0);
+    three.add(scene, sun);
+    three.add(scene, three.createAmbientLight("#c8dcff", 0.7));
+
+    // Minimap: the scene from straight above, drawn into a render target and shown on a panel.
+    var mapSize = 256;
+    var minimap = three.createRenderTarget(mapSize, mapSize);
+    var topCamera = three.createOrthographicCamera(-half, half, half, -half, 0.1, 200.0);
+    three.setPosition(topCamera, 0.0, 80.0, 0.0);
+    three.lookAt(topCamera, 0.0, 0.0, 0.0, [0.0, 0.0, -1.0]);
+    var panel = three.createMesh(
+        three.createPlaneGeometry(10.0, 10.0),
+        three.createStandardMaterial({ "map": three.getTargetTexture(minimap), "emissive": "#ffffff", "emissiveMap": three.getTargetTexture(minimap) })
+    );
+    three.setPosition(panel, half + 8.0, 6.0, -half + 6.0);
+    three.add(scene, panel);
+
+    var controls = three.createOrbitControls(camera, { "target": [0.0, 0.0, 0.0], "minDistance": 5.0, "maxDistance": 160.0, "maxPolarAngle": 1.5 });
+    three.fitToBounds(controls, terrain);
+    var view = camera;
+    var painted = 0;
+    var time = 0.0;
+    var idPicking = false;
+
+    function nameOf(object) -> string {
+        if (object == terrain) {
+            return "the terrain";
+        }
+        if (object == water) {
+            return "the water";
+        }
+        if (object == panel) {
+            return "the minimap";
+        }
+        return "the grid lines";
+    }
+
+    function paintFace(hit) {
+        var vertices = hit["vertices"];
+        for (var i = 0; i < 3; i = i + 1) {
+            var v = vertices[i];
+            colors[v * 3] = 0.85;
+            colors[v * 3 + 1] = 0.2;
+            colors[v * 3 + 2] = 0.15;
+        }
+        three.updateGeometry(ground, "color");
+        if (marks < maxMarks) {
+            var point = hit["point"];
+            markPositions[marks * 3] = point[0];
+            markPositions[marks * 3 + 1] = point[1] + 0.3;
+            markPositions[marks * 3 + 2] = point[2];
+            marks = marks + 1;
+            three.updateGeometry(markGeometry, "position");
+            three.setDrawRange(markGeometry, 0, marks);
+        }
+        painted = painted + 1;
+    }
+
+    // Lifts every vertex near the hit point; the mesh keeps the same buffers.
+    function raise(hit) {
+        var point = hit["point"];
+        for (var v = 0; v < vertexCount; v = v + 1) {
+            var dx = positions[v * 3] - point[0];
+            var dz = positions[v * 3 + 2] - point[2];
+            var d2 = dx * dx + dz * dz;
+            if (d2 < 16.0) {
+                positions[v * 3 + 1] = positions[v * 3 + 1] + 0.8 * math.exp(-d2 / 6.0);
+                shadeVertex(v);
+            }
+        }
+        three.updateGeometry(ground, "position");
+        three.updateGeometry(ground, "color");
+    }
+
+    function update(dtMs) {
+        time = time + dtMs / 1000.0;
+        three.setUniform(water.material, "uTime", time);
+
+        // A click is a press and release without dragging the view.
+        if (idPicking && three.wasMouseReleased(0) && !three.controlsMoved(controls)) {
+            var found = three.pickId(renderer, view, scene, three.getMouseX(), three.getMouseY());
+            if (found == null) {
+                dom.setText(status, "ID buffer: nothing under the pointer.");
+            } else {
+                dom.setText(status, "ID buffer: " + nameOf(found["object"]) + ".");
+            }
+        } else if (three.wasMouseReleased(0) && !three.controlsMoved(controls)) {
+            var hit = three.pick(view, terrain, three.getMouseX(), three.getMouseY());
+            if (hit != null) {
+                if (three.isKeyDown("shift")) {
+                    raise(hit);
+                } else {
+                    paintFace(hit);
+                }
+                dom.setText(status, "Face " + string(hit["faceIndex"]) + " at height " + string(math.round(hit["point"][1] * 10.0) / 10.0)
+                    + ", " + string(painted) + " painted.");
+            }
+        }
+        if (three.wasKeyPressed("i")) {
+            idPicking = !idPicking;
+        }
+        if (three.wasKeyPressed("f")) {
+            three.fitToBounds(controls, terrain);
+        }
+        if (three.wasKeyPressed("o")) {
+            if (view == camera) {
+                view = three.setProjection(controls, "orthographic");
+            } else {
+                view = three.setProjection(controls, "perspective");
+            }
+        }
+        if (three.wasKeyPressed("w")) {
+            tint = (tint + 1) % tints.length;
+            water.material = makeWater(tint);
+        }
+        if (three.wasKeyPressed("t")) {
+            var pixel = three.readPixels(renderer, minimap, mapSize / 2, mapSize / 2, 1, 1);
+            dom.setText(status, "Minimap center: rgb(" + string(pixel[0]) + ", " + string(pixel[1]) + ", " + string(pixel[2]) + ").");
+        }
+    }
+
+    function render() {
+        three.renderToTarget(renderer, minimap, scene, topCamera);
+        three.render(renderer, scene, view);
+    }
+
+    dom.setText(status, string(vertexCount) + " vertices, " + string(cells * 2) + " triangles from computed buffers.");
+    three.startFixed(update, render);
+}

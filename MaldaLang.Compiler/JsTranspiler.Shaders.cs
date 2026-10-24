@@ -132,12 +132,7 @@ public partial class JsTranspiler
         var functions = new List<FunctionDeclaration>();
         foreach (var name in functionNames)
         {
-            if (!_shaderFunctions.TryGetValue(name, out var shaderFunction))
-            {
-                throw new NotSupportedException($"glsl.compile references '{name}', which is not an @shader() function in this file.");
-            }
-
-            functions.Add(shaderFunction);
+            functions.Add(RequireShaderFunction(name, "glsl.compile"));
         }
 
         var glsl = GlslTranspiler.Compile(new GlslCompileRequest
@@ -150,6 +145,43 @@ public partial class JsTranspiler
             MainFunctionName = mainName
         });
         return TranspileLiteral(glsl);
+    }
+
+    /// <summary>
+    /// <c>glsl.source("a", "b")</c>: the GLSL of those <c>@shader()</c> functions, in that order
+    /// (callees first), as a string to compose at runtime with generated code.
+    /// </summary>
+    private string TranspileGlslSource(FunctionCallExpression functionCall)
+    {
+        if (functionCall.Arguments.Count == 0)
+            throw new NotSupportedException("glsl.source expects the names of @shader() functions: glsl.source(\"shade\", ...).");
+
+        var functions = functionCall.Arguments
+            .Select(argument => RequireShaderFunction(RequireString(argument, "source"), "glsl.source"))
+            .ToList();
+        return TranspileLiteral(GlslTranspiler.Compile(new GlslCompileRequest { Functions = functions }));
+    }
+
+    /// <summary>
+    /// <c>glsl.functions()</c>: a dict from each <c>@shader()</c> function name in the file to its GLSL,
+    /// for shaders picked or assembled at runtime.
+    /// </summary>
+    private string TranspileGlslFunctions(FunctionCallExpression functionCall)
+    {
+        if (functionCall.Arguments.Count != 0)
+            throw new NotSupportedException("glsl.functions() takes no arguments.");
+
+        var entries = _shaderFunctions
+            .OrderBy(entry => entry.Key, StringComparer.Ordinal)
+            .Select(entry => $"{TranspileLiteral(entry.Key)}: {TranspileLiteral(GlslTranspiler.TranspileFunction(entry.Value).Replace("\r\n", "\n"))}");
+        return $"mlRuntime.markDict({{ {string.Join(", ", entries)} }})";
+    }
+
+    private FunctionDeclaration RequireShaderFunction(string name, string helper)
+    {
+        if (!_shaderFunctions.TryGetValue(name, out var shaderFunction))
+            throw new NotSupportedException($"{helper} references '{name}', which is not an @shader() function in this file.");
+        return shaderFunction;
     }
 
     private static List<string> RequireStringList(Expression expression, string field)

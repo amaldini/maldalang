@@ -645,6 +645,7 @@ try {
             <li><code>io.print</code> in un worker stampa dove stampa la pagina, in ordine con le risposte del worker.</li>
             <li><code>send w.stop()</code> termina il worker; i send successivi vengono ignorati. Quando <code>main</code> di un programma compilato in JavaScript finisce sotto Node, ogni actor viene fermato e ogni worker terminato; una pagina mantiene i propri worker.</li>
             <li>Gli actor creati da un worker girano dentro quel worker, e i messaggi tra loro non vengono copiati.</li>
+            <li>In JavaScript un worker impiega un momento ad avviarsi (qualche centinaio di millisecondi: ricarica il runtime); i messaggi inviati nel frattempo lo aspettano. Crea presto i worker di lunga durata e tienili, e usa un <code>timeout</code> più lungo di quell'avvio.</li>
         </ul>
 
         <h3>Bundling</h3>

@@ -478,6 +478,29 @@
       ],
       "learningGoal": "Draw thousands of copies with createInstancedMesh / setInstance, light them with setLightShadow, and fade the distance with setFog.",
       "expectedOutput": "Flies around a lit forest; F toggles fog, H toggles shadows, + / - change the tree count.",
+      "next": "Games/three_terrain.malda",
+      "documentationPath": "/?lesson=browser-track#lesson-browser-track",
+      "documentationTitle": "Browser Track"
+    },
+    {
+      "name": "JS three.js Terrain Picking",
+      "description": "A terrain mesh from computed buffers with orbit controls, click-to-paint faces, a raise brush, a render-target minimap, and a water shader composed at runtime",
+      "file": "three_terrain.malda",
+      "track": "showcase",
+      "difficulty": "intermediate",
+      "minutes": 15,
+      "concepts": [
+        "three.*",
+        "buffers",
+        "picking",
+        "orbit controls",
+        "render targets"
+      ],
+      "prerequisites": [
+        "Games/three_forest.malda"
+      ],
+      "learningGoal": "Build geometry from buf.* buffers, update it in place, pick faces with the mouse, orbit the view, and read pixels back from a render target.",
+      "expectedOutput": "Shows a lit terrain; clicks paint faces, shift + click raises the ground, drag orbits, F frames, O switches projection, T reads the minimap.",
       "next": "Games/maldanoid3d.malda",
       "documentationPath": "/?lesson=browser-track#lesson-browser-track",
       "documentationTitle": "Browser Track"

@@ -44,8 +44,12 @@ public partial class JsTranspiler
             {
                 if (memberCall.Member == "compile")
                     return TranspileGlslCompile(functionCall);
+                if (memberCall.Member == "source")
+                    return TranspileGlslSource(functionCall);
+                if (memberCall.Member == "functions")
+                    return TranspileGlslFunctions(functionCall);
 
-                throw new NotSupportedException($"Unknown glsl helper 'glsl.{memberCall.Member}'. Use glsl.compile({{ ... }}) in JavaScript mode.");
+                throw new NotSupportedException($"Unknown glsl helper 'glsl.{memberCall.Member}'. Use glsl.compile({{ ... }}), glsl.source(\"name\", ...) or glsl.functions() in JavaScript mode.");
             }
 
             if (memberCall.Member == "append" && functionCall.Arguments.Count == 1)

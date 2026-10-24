@@ -294,7 +294,7 @@ three.start(update, render);</code></pre>
             <li><code>MaldaApp.main()</code></li>
         </ol>
         <p><strong>Indicazioni sul resize:</strong> se la pagina host cambia il viewport di render dopo il setup, aggiorna sia il renderer sia la camera: <code>three.setRendererSize(renderer, width, height)</code> e <code>three.setCameraAspect(camera, width / height)</code>.</p>
-        <p><strong>Scope MVP:</strong> orbit control e interop JS grezzo generico restano fuori da questa API. Texture e caricamento glTF ci sono: vedi <code>Examples/Games/three_textured.malda</code>. Le mesh illuminate usano <code>three.createStandardMaterial</code>. Il GLSL custom usa <code>three.createShaderMaterial</code> e <code>three.setUniform</code> — vedi <a href="#shader-kernels">28.10.1</a>.</p>
+        <p><strong>Scope:</strong> geometria da buffer, picking, orbit control e render target sono in <a href="#three-graphics">28.10.2</a>; il WebGL grezzo e le altre classi di three.js passano da <a href="#js-interop"><code>import js</code></a>. Texture e caricamento glTF ci sono: vedi <code>Examples/Games/three_textured.malda</code>. Le mesh illuminate usano <code>three.createStandardMaterial</code>. Il GLSL custom usa <code>three.createShaderMaterial</code> e <code>three.setUniform</code> — vedi <a href="#shader-kernels">28.10.1</a>.</p>
         <p>Compila il demo del cubo con:</p>
         <pre><code>malda compile Examples/Games/three_cube.malda --mode js -o Examples/Games/three_cube.js</code></pre>
         <p>Vedi <code>Examples/Games/three_cube.malda</code> e <code>Examples/Games/three_runtime_smoke_test.html</code> per la pagina host end-to-end. Per una <code>map</code> PNG, un cubo glTF e <code>lookAt</code>, vedi <code>Examples/Games/three_textured.malda</code>. Indice cartella: <a href="35-examples.html#game">35.3 Game</a>. Note operative: <code>docs/javascript-backend.md</code>.</p>
@@ -352,12 +352,56 @@ three.setUniform(material, "uAngles", carH);</code></pre>
 
         <h4>GLSL grezzo</h4>
         <p>Le stringhe GLSL tra triple quotes restano valide quando ti serve sintassi che il sottoinsieme non emette. Usa <code>"""</code>, non <code>$"""</code>, così le graffe restano letterali. Preferisci <code>@shader()</code> quando il kernel sta nel sottoinsieme, così rename e outline possono vederlo.</p>
+        <h4>Shader composti a runtime</h4>
+        <p><code>glsl.compile</code> richiede opzioni letterali. Per costruire uno shader mentre il programma gira, prendi il GLSL delle funzioni <code>@shader()</code> come stringhe e uniscile a codice generato: <code>glsl.source("a", "b", ...)</code> è il GLSL di quelle funzioni in quell'ordine (prima le funzioni chiamate), e <code>glsl.functions()</code> è un dict dal nome di ogni funzione <code>@shader()</code> del file al suo GLSL. Entrambi si risolvono in compilazione; il risultato è una stringa normale per <code>three.createShaderMaterial</code>.</p>
+        <pre><code>@shader()
+function ripple(uv: vec2, time: float) -&gt; float {
+    return 0.5 + 0.25 * (sin(uv.x * 40.0 + time) + sin(uv.y * 31.0 - time));
+}
+
+var tint = "vec3(0.15, 0.35, 0.65)";         // chosen at runtime
+var fragment = "varying vec2 vUv;\nuniform float uTime;\n" + glsl.source("ripple")
+    + "void main() { gl_FragColor = vec4(" + tint + " * ripple(vUv, uTime), 0.7); }";
+
+var library = glsl.functions();              // { "ripple": "float ripple(...) { ... }" }</code></pre>
         <p>Compila il tracer GPU in tempo reale con:</p>
         <pre><code>malda compile Examples/Games/three_shader_raytracer.malda --mode js -o Examples/Games/three_shader_raytracer.js
 malda compile Examples/Games/three_shader_billiards.malda --mode js -o Examples/Games/three_shader_billiards.js
 malda compile Examples/Games/three_shader_path_tunnel.malda --mode js -o Examples/Games/three_shader_path_tunnel.js
 malda compile Examples/Games/three_shader_mandelbrot.malda --mode js -o Examples/Games/three_shader_mandelbrot.js</code></pre>
         <p>Carica <code>three.min.js</code> per primo, come negli altri demo <code>three.*</code>. I sample stanno in <code>Examples/Games/</code> — vedi <a href="35-examples.html#game">35.3</a>. Note operative: <code>docs/javascript-backend.md</code>. Il sample biliardo è giocabile: il MALDA host fa la fisica 2D (zoom, stop orbita e slider di restituzione sponde/palle e attrito feltro) e il kernel traccia le uniform di palle e stecca. Il tavolo compilato è in appendice: <a href="39-appendix-gpu-billiards.html">39. Appendice: biliardo GPU</a>. Il sample path-tunnel è CC-BY-NC-SA-4.0 (Frostbyte). Il sample Mandelbrot è uno zoom infinito nella Seahorse Valley: l'host costruisce un'orbita di riferimento BigInt (<code>three.mandelbrotOrbit</code>) e il kernel applica perturbazione scalata così l'immersione resta nitida oltre l'ulp float33. Slider in pagina impostano il budget di iterate e le decadi di wrap.</p>
+
+        <h3 id="three-graphics">28.10.2 Geometria da buffer, picking, controlli e render target</h3>
+        <p>Queste chiamate coprono ciò che serve a strumenti di modellazione, CAD e dati sopra lo scene graph. Il WebGL2 grezzo resta a <a href="#js-interop"><code>import js</code></a>.</p>
+        <pre><code>var positions = buf.float32(vertexCount * 3);   // computed by the program
+var colors = buf.float32(vertexCount * 3);
+var ground = three.createBufferGeometry({ "position": positions, "color": colors, "index": indices });
+var terrain = three.createMesh(ground, three.createStandardMaterial({ "vertexColors": true }));
+
+var controls = three.createOrbitControls(camera, { "target": [0, 0, 0], "maxPolarAngle": 1.5 });
+three.fitToBounds(controls, terrain);
+
+// in update(): a click that did not drag the view picks a face and paints it in place
+if (three.wasMouseReleased(0) &amp;&amp; !three.controlsMoved(controls)) {
+    var hit = three.pick(camera, terrain, three.getMouseX(), three.getMouseY());
+    if (hit != null) {
+        for (var v in hit["vertices"]) {
+            colors[v * 3] = 0.85;
+            colors[v * 3 + 1] = 0.2;
+            colors[v * 3 + 2] = 0.15;
+        }
+        three.updateGeometry(ground, "color");
+    }
+}
+
+var minimap = three.createRenderTarget(256, 256);
+three.renderToTarget(renderer, minimap, scene, topCamera);
+var panel = three.createStandardMaterial({ "map": three.getTargetTexture(minimap) });
+var pixel = three.readPixels(renderer, minimap, 128, 128, 1, 1);   // buf.bytes: r, g, b, a</code></pre>
+        <p><strong>Geometria da buffer.</strong> <code>three.createBufferGeometry(attributes, options?)</code> costruisce una geometria da buffer <a href="06-arrays.html#buffers"><code>buf.*</code></a> o array: <code>"position"</code> (obbligatorio), <code>"normal"</code> e <code>"color"</code> hanno 3 numeri per vertice, <code>"uv"</code> 2, ogni altro nome 1 salvo <code>"itemSizes": { "name": n }</code>, e <code>"index"</code> elenca tre numeri di vertice per triangolo. Un buffer <code>buf.float32</code> diventa la memoria dell'attributo: scrivilo, poi chiama <code>three.updateGeometry(geometry, name)</code> e la mesh cambia sul posto. Gli altri buffer e gli array vengono copiati; <code>three.updateGeometry(geometry, name, values)</code> copia dentro valori nuovi (una lunghezza diversa sostituisce l'attributo, <code>"index"</code> prende un indice nuovo) e <code>three.getAttribute(geometry, name)</code> restituisce la memoria da scrivere. Le normali vengono calcolate quando non sono date (<code>"computeNormals": false</code> le salta) e ricalcolate dopo un aggiornamento delle posizioni; <code>"dynamic": true</code> marca i buffer per aggiornamenti frequenti. <code>three.setDrawRange(geometry, start, count)</code> ne disegna una parte. La stessa geometria si disegna come mesh (<code>createMesh</code>, con <code>"vertexColors": true</code> sul materiale per usare i colori), come linee con <code>three.createLines(geometry, options?)</code> (coppie di vertici, o una spezzata con <code>"strip": true</code>) o come punti con <code>three.createPoints(geometry, options?)</code> (<code>"size"</code>, <code>"sizeAttenuation"</code>). Entrambe accettano <code>"color"</code>, <code>"vertexColors"</code> (attivo di default quando c'è un buffer di colori) e <code>"opacity"</code>.</p>
+        <p><strong>Picking.</strong> <code>three.pick(camera, target, x, y, options?)</code> lancia un raggio dal pixel <code>(x, y)</code> del renderer, le coordinate che danno <code>getMouseX</code> / <code>getMouseY</code>, contro una scena, un oggetto o un array di oggetti (figli inclusi, oggetti nascosti esclusi). Restituisce il colpo più vicino come dict, oppure <code>null</code>: <code>"object"</code>, <code>"distance"</code>, <code>"point"</code> e <code>"normal"</code> (<code>[x, y, z]</code> nel mondo), <code>"faceIndex"</code> e <code>"vertices"</code> (i tre numeri di vertice della faccia) per le mesh, <code>"index"</code> per linee e punti, <code>"instanceId"</code> per le mesh instanziate, e <code>"uv"</code>. Opzioni: <code>"all": true</code> (tutti i colpi, dal più vicino), <code>"lineThreshold"</code> / <code>"pointThreshold"</code> (quanto vicino deve passare il raggio, in unità mondo, default 0.1), <code>"far"</code>, e <code>"width"</code> / <code>"height"</code> quando <code>x</code> e <code>y</code> non sono pixel del renderer. <code>three.raycast(target, origin, direction, options?)</code> fa lo stesso per un raggio nello spazio mondo. Per una scena grande, <code>three.pickId(renderer, camera, scene, x, y)</code> disegna la scena una volta in un target 1×1 con ogni mesh, linea e nuvola di punti (e ogni istanza di una mesh instanziata) in un proprio colore piatto e rilegge il pixel: il costo non cresce con il numero di oggetti, e restituisce <code>{ "object", "instanceId" }</code> senza punto.</p>
+        <p><strong>Controlli della camera.</strong> <code>three.createOrbitControls(camera, options?)</code> fa ruotare la camera attorno a un target: il trascinamento sinistro orbita, il destro, il centrale o shift + trascinamento spostano, la rotella e il pinch a due dita zoomano. Opzioni: <code>"target"</code>, <code>"minDistance"</code> / <code>"maxDistance"</code>, <code>"minPolarAngle"</code> / <code>"maxPolarAngle"</code> (radianti dalla verticale), <code>"rotateSpeed"</code>, <code>"panSpeed"</code>, <code>"zoomSpeed"</code>, <code>"enabled"</code>. Il programma può fare le stesse mosse: <code>three.orbitControls(controls, azimuth, polar)</code> in radianti, <code>three.panControls(controls, dx, dy)</code> in unità mondo, <code>three.zoomControls(controls, factor)</code> (2 dimezza la distanza), <code>three.setControlsTarget(controls, x, y, z)</code>, e <code>three.setControlsEnabled(controls, false)</code> mentre un altro strumento usa il puntatore. <code>three.controlsMoved(controls)</code> è vero quando l'ultima pressione ha trascinato la vista, così un clic che chiude un trascinamento non viene preso per un pick. <code>three.fitToBounds(controls or camera, object, margin?)</code> inquadra un oggetto (margin 1.2 lascia il 20%). <code>three.setProjection(controls, "orthographic" or "perspective")</code> cambia camera tenendo della stessa dimensione ciò che sta al target, e restituisce la camera con cui disegnare (<code>three.getControlsCamera(controls)</code> la dà anche dopo). <code>three.disposeControls(controls)</code> toglie i listener.</p>
+        <p><strong>Render target e lettura dei pixel.</strong> <code>three.createRenderTarget(width, height, options?)</code> crea un'immagine fuori schermo (<code>"samples"</code> per l'antialiasing, <code>"depth": false</code>, <code>"linear": true</code> per tenere i colori lineari invece dello sRGB dello schermo). <code>three.renderToTarget(renderer, target, scene, camera)</code> ci disegna dentro; <code>three.getTargetTexture(target)</code> fa da mappa a un materiale (<code>"map"</code>) o alimenta una uniform <code>sampler2D</code>. <code>three.readPixels(renderer, target, x?, y?, width?, height?)</code> restituisce i byte RGBA come buffer <code>buf.bytes</code>, righe dall'alto come un'immagine; <code>three.setTargetSize</code> ridimensiona. <code>three.screenshot(renderer, scene, camera, type?)</code> disegna un frame e restituisce il canvas come data URL (<code>"image/png"</code> di default). Vedi <code>Examples/Games/three_terrain.malda</code>.</p>
 
         <h2 id="js-interop">28.11 Interop JavaScript (<code>import js</code>)</h2>
         <p><code>import js</code> lega moduli e globali JavaScript, così un programma MALDA può chiamare qualsiasi libreria: un pacchetto npm, un file locale <code>.js</code> / <code>.mjs</code> / <code>.cjs</code>, un modulo WASM tramite il suo glue JavaScript, o un'API del browser. Funziona solo in JavaScript: l'interprete e il transpile C# si fermano con un errore che rimanda a <code>--mode js</code>. In un sorgente full-stack appartiene alla metà client.</p>

@@ -22,7 +22,9 @@ public class WorkerActorTests
 
     /// <summary>
     /// Every crossing rule in one run. The page's callbacks queue behind <c>start</c>, so they print
-    /// after "stopped"; the worker's own print arrives while <c>start</c> sleeps.
+    /// after "stopped"; the worker's own print arrives while <c>start</c> sleeps. A Web Worker /
+    /// worker_threads worker needs about half a second to parse the runtime, so the timeouts and
+    /// the sleep leave a wide margin past that.
     /// </summary>
     private const string Program = """
         const SCALE = 2;
@@ -87,10 +89,10 @@ public class WorkerActorTests
                 try { send crunch.sum([self]); } catch (e) { io.print(e); }
                 try { send crunch.sum(new Point(1)); } catch (e) { io.print(e); }
                 send crunch.viaEcho(21);
-                send crunch.fail(-1) then (r) { io.print("unexpected"); } timeout 300 catch (e) { io.print("fail timed out"); };
+                send crunch.fail(-1) then (r) { io.print("unexpected"); } timeout 2400 catch (e) { io.print("fail timed out"); };
                 send crunch.fail(5) then (r) { io.print($"still alive {r}"); };
-                send crunch.silent() then (r) { io.print("never"); } timeout 200 catch (e) { io.print("silent timed out"); };
-                sleep(500);
+                send crunch.silent() then (r) { io.print("never"); } timeout 2200 catch (e) { io.print("silent timed out"); };
+                sleep(2600);
                 send crunch.stop();
                 send crunch.sum([1]) then (r) { io.print("after stop"); };
                 io.print("stopped");
@@ -99,7 +101,7 @@ public class WorkerActorTests
 
         var page = spawn Page();
         send page.start();
-        sleep(900);
+        sleep(3200);
         io.print("done");
         """;
 
