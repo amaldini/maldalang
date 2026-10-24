@@ -249,7 +249,8 @@ public sealed class UiHostHub
             ["version"] = ProtocolVersion,
             ["sessionId"] = sessionId,
             ["revision"] = session.Revision,
-            ["patches"] = new JsonArray(replace)
+            ["patches"] = new JsonArray(replace),
+            ["treeHash"] = UiTreeHash.Of(session.Tree)
         }.ToJsonString();
     }
 

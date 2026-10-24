@@ -111,7 +111,32 @@ const MaldaUiCore = (function () {
     return segments.length === 0 ? 0 : segments[segments.length - 1];
   }
 
-  return { applyPatches, getNodeAtPath, parsePath, parentOf, childIndexOf };
+  // The envelopes' `treeHash` (MaldaLang.UIHost/UiTreeHash.cs): 32-bit FNV-1a over the UTF-8
+  // bytes of the tree's JSON with object keys sorted, as 8 lowercase hex digits.
+  function treeHash(tree) {
+    const bytes = new TextEncoder().encode(canonicalJson(tree));
+    let hash = 0x811c9dc5;
+    for (const b of bytes) {
+      hash = Math.imul(hash ^ b, 0x01000193) >>> 0;
+    }
+    return hash.toString(16).padStart(8, "0");
+  }
+
+  function canonicalJson(value) {
+    if (value === null || typeof value !== "object") {
+      const text = JSON.stringify(value);
+      return text === undefined ? "null" : text;
+    }
+    if (Array.isArray(value)) {
+      return "[" + value.map(canonicalJson).join(",") + "]";
+    }
+    const names = Object.keys(value)
+      .filter((name) => value[name] !== undefined && typeof value[name] !== "function")
+      .sort();
+    return "{" + names.map((name) => JSON.stringify(name) + ":" + canonicalJson(value[name])).join(",") + "}";
+  }
+
+  return { applyPatches, getNodeAtPath, parsePath, parentOf, childIndexOf, treeHash, canonicalJson };
 })();
 
 // Pure protocol state machine: no DOM or socket, so Node tests can drive it with the messages
@@ -119,7 +144,8 @@ const MaldaUiCore = (function () {
 // actions the browser carries out: { apply: payload }, { send: message } and { warn: detail }.
 // Protocol 1.1 (MaldaLang.UIHost/UiHostHub.cs): `sequence` numbers the messages of one socket
 // in each direction and restarts at 1 on every connection; `revision` / `baseRevision` version
-// the tree, and a patch applies only on top of the revision the client holds.
+// the tree, and a patch applies only on top of the revision the client holds. After applying,
+// verifyTree() compares the tree with the envelope's `treeHash`.
 const MaldaUiProtocol = (function () {
   const version = "1.1";
 
@@ -191,6 +217,24 @@ const MaldaUiProtocol = (function () {
         break;
     }
 
+    return actions;
+  }
+
+  // Called with the tree after an { apply: payload } action. A tree that does not hash to the
+  // payload's `treeHash` has drifted from the server's, so ask for the whole tree; a mismatch
+  // right after a resync would recur on every resync, so that one is only reported.
+  function verifyTree(state, tree, payload) {
+    if (!payload || typeof payload.treeHash !== "string") {
+      return [];
+    }
+    const actual = MaldaUiCore.treeHash(tree);
+    if (actual === payload.treeHash) {
+      return [];
+    }
+    const actions = [{ warn: { kind: "tree_hash_mismatch", expected: payload.treeHash, got: actual, revision: state.revision } }];
+    if (payload.type !== "resync") {
+      actions.push(...requestResync(state));
+    }
     return actions;
   }
 
@@ -275,7 +319,7 @@ const MaldaUiProtocol = (function () {
     return String(Date.now()) + String(Math.floor(Math.random() * 1e6));
   }
 
-  return { version, createState, onOpen, receive, event, outbound, normalizePayload, applyPayload };
+  return { version, createState, onOpen, receive, verifyTree, event, outbound, normalizePayload, applyPayload };
 })();
 
 // DOM renderer and patcher, given a document: the browser's, or the fake DOM of
@@ -1553,6 +1597,8 @@ if (typeof module !== "undefined" && module.exports) {
   const sessionId = params.get("session") || "default";
   const appRoot = document.getElementById("app");
   const authToken = readAuthToken();
+  // ?debug=1 logs every protocol message in and out.
+  const debug = params.get("debug") === "1";
 
   let tree = null;
   const protocol = MaldaUiProtocol.createState(sessionId);
@@ -1573,14 +1619,26 @@ if (typeof module !== "undefined" && module.exports) {
   let reconnectTimerId = null;
   let manualDisconnect = false;
   const queuedOutboundMessages = [];
+  setConnectionState("connecting");
   connectWebSocket();
   window.addEventListener("beforeunload", () => {
     manualDisconnect = true;
+    setConnectionState("closed");
     clearReconnectTimer();
     if (socket && socket.readyState === WebSocket.OPEN) {
       socket.close(1000, "page_unload");
     }
   });
+
+  // data-ui-connection on #app: connecting (first connect), open, reconnecting (connection lost,
+  // retrying) or closed (page unloading, or the host refused the token). The default style
+  // shows a badge while reconnecting or closed; pages can restyle it with the attribute.
+  function setConnectionState(state) {
+    if (appRoot && appRoot.getAttribute("data-ui-connection") !== state) {
+      appRoot.setAttribute("data-ui-connection", state);
+      if (debug) console.debug("malda-ui connection", state);
+    }
+  }
 
   function ensureFrameworkStyles() {
     if (document.getElementById("malda-ui-framework-styles")) {
@@ -1589,6 +1647,26 @@ if (typeof module !== "undefined" && module.exports) {
     const style = document.createElement("style");
     style.id = "malda-ui-framework-styles";
     style.textContent = `
+      [data-ui-connection="reconnecting"]::after,
+      [data-ui-connection="closed"]::after {
+        position: fixed;
+        top: 8px;
+        right: 8px;
+        z-index: 2147483647;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font: 12px/1.5 Inter, Segoe UI, Arial, sans-serif;
+        color: #fff;
+        background: #b45309;
+        pointer-events: none;
+      }
+      [data-ui-connection="reconnecting"]::after {
+        content: "Reconnecting…";
+      }
+      [data-ui-connection="closed"]::after {
+        content: "Disconnected";
+        background: #b91c1c;
+      }
       .malda-data-grid {
         border: 1px solid var(--line, #2d3a63);
         border-radius: 8px;
@@ -1754,6 +1832,7 @@ if (typeof module !== "undefined" && module.exports) {
     for (const action of actions) {
       if (action.apply !== undefined) {
         applyInboundPayload(action.apply);
+        runProtocolActions(MaldaUiProtocol.verifyTree(protocol, tree, action.apply));
       } else if (action.send) {
         enqueueOrSend(action.send);
       } else if (action.warn) {
@@ -1809,7 +1888,9 @@ if (typeof module !== "undefined" && module.exports) {
       nextSocket = new WebSocket(url);
     } catch (err) {
       console.error("malda-ui connect failed", err);
-      if (!err.fatal) {
+      if (err.fatal) {
+        setConnectionState("closed");
+      } else {
         scheduleReconnect();
       }
       return;
@@ -1820,6 +1901,7 @@ if (typeof module !== "undefined" && module.exports) {
     nextSocket.addEventListener("open", () => {
       reconnectAttempts = 0;
       clearReconnectTimer();
+      setConnectionState("open");
       console.log("malda-ui connected", { sessionId });
       // onOpen restarts the socket's sequence numbers, so it runs before queued messages go out.
       const openActions = MaldaUiProtocol.onOpen(protocol);
@@ -1829,7 +1911,9 @@ if (typeof module !== "undefined" && module.exports) {
 
     nextSocket.addEventListener("message", (evt) => {
       try {
-        runProtocolActions(MaldaUiProtocol.receive(protocol, JSON.parse(evt.data)));
+        const message = JSON.parse(evt.data);
+        if (debug) console.debug("malda-ui ←", message);
+        runProtocolActions(MaldaUiProtocol.receive(protocol, message));
       } catch (err) {
         console.warn("malda-ui message parse error", err);
       }
@@ -1860,6 +1944,7 @@ if (typeof module !== "undefined" && module.exports) {
       return;
     }
 
+    setConnectionState("reconnecting");
     reconnectAttempts += 1;
     const baseDelay = Math.min(reconnectMaxDelayMs, reconnectBaseDelayMs * (2 ** Math.max(0, reconnectAttempts - 1)));
     const jitter = Math.floor(Math.random() * reconnectJitterMs);
@@ -1917,7 +2002,9 @@ if (typeof module !== "undefined" && module.exports) {
       return false;
     }
     try {
-      socket.send(JSON.stringify(MaldaUiProtocol.outbound(protocol, message)));
+      const outbound = MaldaUiProtocol.outbound(protocol, message);
+      if (debug) console.debug("malda-ui →", outbound);
+      socket.send(JSON.stringify(outbound));
       return true;
     } catch (err) {
       console.warn("malda-ui send failed", {

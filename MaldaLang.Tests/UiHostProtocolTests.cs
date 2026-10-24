@@ -324,7 +324,7 @@ io.print("done");
 
         NodeTab.RunScript("""
 const assert = require("assert");
-const { MaldaUiProtocol: P } = require(process.argv[2]);
+const { MaldaUiProtocol: P, MaldaUiCore } = require(process.argv[2]);
 const kinds = (actions) => actions.map((a) => a.apply ? "apply" : a.send ? "send:" + a.send.type : "warn:" + a.warn.kind);
 const msg = (type, sequence, payload) => ({ type, version: P.version, sequence, payload });
 
@@ -348,6 +348,18 @@ assert.deepStrictEqual(kinds(P.receive(s, msg("ping", 10))), ["send:pong"]);
 
 // Another protocol version is reported and never answered with a resync.
 assert.deepStrictEqual(kinds(P.receive(s, { type: "patch", version: "1.0", sequence: 11, payload: { patches: [] } })), ["warn:version_mismatch"]);
+
+// treeHash: a tree that hashes otherwise asks for one resync; after a resync it is only reported.
+P.receive(s, msg("resync", 11, { revision: 6, patches: [] }));
+const tree = { type: "text", props: { value: "x" }, children: [] };
+const hashed = { type: "patch", revision: 6, treeHash: MaldaUiCore.treeHash(tree) };
+assert.deepStrictEqual(kinds(P.verifyTree(s, tree, hashed)), []);
+assert.deepStrictEqual(kinds(P.verifyTree(s, tree, { type: "mount", revision: 6 })), []);
+const drifted = { type: "text", props: { value: "other" }, children: [] };
+assert.deepStrictEqual(kinds(P.verifyTree(s, drifted, hashed)), ["warn:tree_hash_mismatch", "send:resync"]);
+assert.deepStrictEqual(kinds(P.verifyTree(s, drifted, hashed)), ["warn:tree_hash_mismatch"]);
+P.receive(s, msg("resync", 12, { revision: 6, patches: [] }));
+assert.deepStrictEqual(kinds(P.verifyTree(s, drifted, Object.assign({}, hashed, { type: "resync" }))), ["warn:tree_hash_mismatch"]);
 
 // Outgoing sequence numbers restart with each socket.
 assert.strictEqual(P.outbound(s, { type: "pong" }).sequence, 1);
@@ -428,6 +440,7 @@ assert.strictEqual(P.outbound(s, { type: "pong" }).sequence, 1);
 
             Assert.True((bool)dump["quiet"]!, "the client never went quiet (resync storm?): " + trace);
             Assert.True(expected == actual, $"client tree {actual} != session tree {expected}; {trace}");
+            Assert.True((int)dump["hashMismatches"]! == 0, $"the client's treeHash disagreed with the host's {(int)dump["hashMismatches"]!} time(s); {trace}");
         }
 
         private async Task PostAsync(string kind, RuntimeValue envelope)
@@ -459,6 +472,7 @@ const state = MaldaUiProtocol.createState(process.argv[4]);
 let tree = null;
 let ws = null;
 let resyncs = 0;
+let hashMismatches = 0;
 let lastActivity = Date.now();
 const received = [];
 const reply = (obj) => process.stdout.write(JSON.stringify(obj) + "\n");
@@ -467,6 +481,9 @@ function run(actions) {
   for (const action of actions) {
     if (action.apply !== undefined) {
       tree = MaldaUiProtocol.applyPayload(tree, action.apply);
+      run(MaldaUiProtocol.verifyTree(state, tree, action.apply));
+    } else if (action.warn) {
+      if (action.warn.kind === "tree_hash_mismatch") hashMismatches++;
     } else if (action.send) {
       if (action.send.type === "resync") resyncs++;
       if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(MaldaUiProtocol.outbound(state, action.send)));
@@ -502,7 +519,7 @@ const commands = {
     const started = Date.now();
     const tick = () => {
       const quiet = Date.now() - lastActivity >= 300;
-      if (quiet || Date.now() - started > 3000) reply({ ok: true, tree, resyncs, received, quiet });
+      if (quiet || Date.now() - started > 3000) reply({ ok: true, tree, resyncs, hashMismatches, received, quiet });
       else setTimeout(tick, 50);
     };
     setTimeout(tick, 50);

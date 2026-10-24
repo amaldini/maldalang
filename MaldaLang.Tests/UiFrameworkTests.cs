@@ -9,6 +9,26 @@ namespace MaldaLang.Tests;
 [Collection("Sequential")]
 public class UiFrameworkTests : TestBase
 {
+    /// <summary>
+    /// The browser client lives in <c>MaldaLang.UIHost/wwwroot</c> and the hosts serve it from
+    /// there. A copy elsewhere in the repo drifts (the one in <c>Examples/Web/wwwroot</c> missed
+    /// two protocol versions), so any copy must equal the canonical file.
+    /// </summary>
+    [Fact]
+    public void UiClient_HasNoStaleCopies()
+    {
+        var root = MaldaLang.Tests.Planning.PlanningPaths.RepoRoot;
+        var canonical = Path.Combine(root, "MaldaLang.UIHost", "wwwroot", "malda-ui-client.js");
+        var skipped = new[] { "bin", "obj", "artifacts", "node_modules", ".git" };
+        var stale = Directory.EnumerateFiles(root, "malda-ui-client.js", SearchOption.AllDirectories)
+            .Where(path => !Path.GetRelativePath(root, path).Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).Any(skipped.Contains))
+            .Where(path => !string.Equals(Path.GetFullPath(path), Path.GetFullPath(canonical), StringComparison.OrdinalIgnoreCase))
+            .Where(path => File.ReadAllText(path) != File.ReadAllText(canonical))
+            .Select(path => Path.GetRelativePath(root, path))
+            .ToList();
+        Assert.True(stale.Count == 0, "Copies of malda-ui-client.js differ from MaldaLang.UIHost/wwwroot: " + string.Join(", ", stale));
+    }
+
     [Fact]
     public void Interpreter_UiMountAndRender_ReturnsProtocolEnvelope()
     {

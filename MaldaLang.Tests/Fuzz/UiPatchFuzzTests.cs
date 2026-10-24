@@ -8,6 +8,7 @@ using System.Text.Json.Nodes;
 using MaldaLang.Interpreter;
 using MaldaLang.Runtime.UI;
 using MaldaLang.Tests.Planning;
+using MaldaLang.UIHost;
 using Xunit;
 
 namespace MaldaLang.Tests.Fuzz;
@@ -19,7 +20,8 @@ namespace MaldaLang.Tests.Fuzz;
 /// <see cref="UiPatchApplier"/> and by <c>MaldaUiCore</c> from <c>malda-ui-client.js</c> under
 /// Node, must give the second tree. Under Node, <c>MaldaUiDom</c> also applies them to a fake
 /// DOM rendered from the first tree: the result, and the paths its listeners report, must equal
-/// a fresh render of the second tree. Set <c>MALDA_UI_FUZZ_SEEDS</c> (e.g. <c>1-200</c>) to
+/// a fresh render of the second tree. The second tree's <c>treeHash</c> must be the same from
+/// the session's <see cref="UiNode"/>, the host's JSON tree and the client's tree. Set <c>MALDA_UI_FUZZ_SEEDS</c> (e.g. <c>1-200</c>) to
 /// explore more locally; a failure writes the trees and patches to
 /// <c>%TEMP%/malda_ui_fuzz/seed&lt;N&gt;/</c>. Without Node only the C# applier runs.
 /// </summary>
@@ -58,12 +60,17 @@ public class UiPatchFuzzTests
             var applied = UiPatchApplier.Canonical(UiPatchApplier.Apply(UiPatchApplier.ToJson(previous), patches));
             if (applied != expected)
                 failures.Add($"case {i} (C# applier)");
+            var hash = UiNode.Hash(current);
+            var jsonHash = UiTreeHash.Of(JsonNode.Parse(expected));
+            if (jsonHash != hash)
+                failures.Add($"case {i} (treeHash: UiNode {hash} != JSON tree {jsonHash})");
 
             cases.Add(new JsonObject
             {
                 ["previous"] = UiPatchApplier.ToJson(previous),
                 ["patches"] = patches.DeepClone(),
-                ["expected"] = expected
+                ["expected"] = expected,
+                ["hash"] = hash
             });
         }
 
@@ -78,6 +85,8 @@ public class UiPatchFuzzTests
                 var actual = UiPatchApplier.Canonical(JsonNode.Parse((string)result["tree"]!));
                 if (actual != expected)
                     failures.Add($"case {i} (malda-ui-client.js)");
+                if ((string?)result["hash"] != (string?)cases[i]!["hash"])
+                    failures.Add($"case {i} (treeHash: client {result["hash"]} != server {cases[i]!["hash"]})");
                 if ((string?)result["patchedDom"] != (string?)result["freshDom"])
                     failures.Add($"case {i} (DOM patch): {Truncate((string?)result["patchedDom"] ?? "")} != fresh {Truncate((string?)result["freshDom"] ?? "")}");
                 else if ((string?)result["patchedEvents"] != (string?)result["freshEvents"])
@@ -94,6 +103,51 @@ public class UiPatchFuzzTests
         Assert.Fail(
             $"Seed {seed}: patches do not rebuild the new tree. Cases: {Path.Combine(folder, "cases.json")}"
             + System.Environment.NewLine + string.Join(System.Environment.NewLine, failures));
+    }
+
+    /// <summary>
+    /// The values where a hash of JSON text could drift between C# and JavaScript: number forms,
+    /// escapes, non-ASCII and lone surrogates, prop order, nested objects. The session's published
+    /// mount envelope carries the hash; the host's JSON tree and the client's tree must hash to it.
+    /// </summary>
+    [Fact]
+    public void TreeHash_IsTheSameOnSessionHostAndClient()
+    {
+        var nested = new MaldaLang.BuiltIns.JsonObject();
+        nested.Set("z", RuntimeValue.Float(1e21));
+        nested.Set("a", RuntimeValue.Array(new List<RuntimeValue> { RuntimeValue.Null(), RuntimeValue.Boolean(false), RuntimeValue.Float(-0.0) }));
+        nested.Set("é", RuntimeValue.Integer(int.MinValue));
+        var props = new Dictionary<string, RuntimeValue>(StringComparer.Ordinal)
+        {
+            ["value"] = RuntimeValue.String("é 😀 \u0001 \u007f \u2028 a\"b\\c\n\t</script>"),
+            ["lone"] = RuntimeValue.String("x\ud800y"),
+            ["Upper"] = RuntimeValue.Integer(-1),
+            ["floats"] = RuntimeValue.Array(new[] { 0.1, 1.5, 100.0, 1e-7, 1.5e-6, 123456789012345680000.0, 1e300, -2.5e-300, 5e-324, double.MaxValue }
+                .Select(RuntimeValue.Float).ToList()),
+            ["meta"] = RuntimeValue.Object(nested)
+        };
+        var root = new UiNode("column", new Dictionary<string, RuntimeValue>(StringComparer.Ordinal) { ["gap"] = RuntimeValue.Integer(4) },
+            new List<UiNode> { new("text", props, key: "ké"), new("button", key: " ") });
+
+        string? published = null;
+        new UiSession("hash", (_, _, json) => published = json).Mount(root);
+        var envelope = JsonNode.Parse(published!)!;
+        var hash = (string)envelope["treeHash"]!;
+        Assert.Equal(UiNode.Hash(root), hash);
+        Assert.Equal(hash, UiTreeHash.Of(envelope["patches"]![0]!["value"]));
+        Assert.Equal("1e+21", UiTreeHash.JavaScriptNumber(1e21));
+        Assert.Equal("1.5e-7", UiTreeHash.JavaScriptNumber(1.5e-7));
+        Assert.Equal("0.0000015", UiTreeHash.JavaScriptNumber(1.5e-6));
+        Assert.Equal("123456789012345680000", UiTreeHash.JavaScriptNumber(123456789012345680000.0));
+        Assert.Equal("5e-324", UiTreeHash.JavaScriptNumber(5e-324));
+
+        RunNodeScript($$"""
+const assert = require("assert");
+const client = require(process.argv[2]);
+const envelope = JSON.parse({{System.Text.Json.JsonSerializer.Serialize(published)}});
+const tree = client.applyPatches(null, envelope.patches);
+assert.strictEqual(client.treeHash(tree), envelope.treeHash);
+""");
     }
 
     [Fact]
@@ -461,6 +515,7 @@ const results = cases.map((c) => {
   dom.renderInto(fresh, JSON.parse(c.expected));
   return {
     tree: JSON.stringify(tree),
+    hash: client.treeHash(tree),
     patchedDom: serialize(patched),
     freshDom: serialize(fresh),
     patchedEvents: listenerPaths(patched, events),

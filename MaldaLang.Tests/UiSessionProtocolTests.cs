@@ -215,4 +215,38 @@ public class UiSessionProtocolTests
         var second = Assert.IsType<JsonObject>(session.Render(Field("a")).AsObject());
         Assert.Equal("e2", second.Get("answersEventId", null).AsString());
     }
+
+    [Fact]
+    public void Session_FullQueueReportsDroppedEvents()
+    {
+        var session = new UiSession("overflow");
+        session.ConfigureQueueDepth(32);
+        for (var i = 0; i < 35; i++)
+            session.EnqueueEvent(new UiEvent("click", "/", RuntimeValue.Integer(i)));
+
+        // The oldest three were dropped: an overflow event says so before the remaining ones.
+        Assert.True(session.TryDequeueEvent(out var overflow));
+        Assert.Equal("overflow", overflow!.Type);
+        Assert.Equal(3, Assert.IsType<JsonObject>(overflow.Payload.AsObject()).Get("dropped", null).AsInteger());
+        Assert.True(session.TryDequeueEvent(out var next));
+        Assert.Equal(3, next!.Payload.AsInteger());
+
+        session.EnqueueEvent(new UiEvent("click", "/", RuntimeValue.Integer(35)));
+        Assert.True(session.TryDequeueEvent(out var notOverflow));
+        Assert.Equal("click", notOverflow!.Type);
+        var snapshot = Assert.IsType<JsonObject>(session.SnapshotAsRuntimeValue().AsObject());
+        Assert.Equal(3, snapshot.Get("droppedEvents", null).AsInteger());
+    }
+
+    [Fact]
+    public void Session_TreeHashIsStableAndFollowsTheTree()
+    {
+        var first = Assert.IsType<JsonObject>(new UiSession("h1").Mount(Field("a")).AsObject());
+        var again = Assert.IsType<JsonObject>(new UiSession("h2").Mount(Field("a")).AsObject());
+        var other = Assert.IsType<JsonObject>(new UiSession("h3").Mount(Field("b")).AsObject());
+        var hash = first.Get("treeHash", null).AsString();
+        Assert.Matches("^[0-9a-f]{8}$", hash);
+        Assert.Equal(hash, again.Get("treeHash", null).AsString());
+        Assert.NotEqual(hash, other.Get("treeHash", null).AsString());
+    }
 }

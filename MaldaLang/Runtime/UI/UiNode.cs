@@ -5,6 +5,7 @@ namespace MaldaLang.Runtime.UI;
 
 using MaldaLang.BuiltIns;
 using MaldaLang.Interpreter;
+using MaldaLang.UIHost;
 
 public sealed class UiNode
 {
@@ -90,5 +91,92 @@ public sealed class UiNode
         nodeObj.Set("children", RuntimeValue.Array(childrenList));
 
         return RuntimeValue.Object(nodeObj);
+    }
+
+    /// <summary>
+    /// The <c>treeHash</c> of <paramref name="root"/>: <see cref="UiTreeHash"/> over the JSON
+    /// <see cref="ToRuntimeValue"/> would give, written straight from the tree.
+    /// </summary>
+    public static string Hash(UiNode? root)
+    {
+        var writer = new UiTreeHash.Writer();
+        if (root == null)
+            writer.Null();
+        else
+            root.WriteCanonical(writer);
+        return writer.Hash;
+    }
+
+    // Members in ordinal order: children, key, props, type.
+    private void WriteCanonical(UiTreeHash.Writer writer)
+    {
+        writer.BeginObject();
+        writer.Name("children");
+        writer.BeginArray();
+        foreach (var child in Children)
+            child.WriteCanonical(writer);
+        writer.EndArray();
+        if (!string.IsNullOrWhiteSpace(Key))
+        {
+            writer.Name("key");
+            writer.String(Key);
+        }
+        writer.Name("props");
+        WriteMembers(writer, Props);
+        writer.Name("type");
+        writer.String(Type);
+        writer.EndObject();
+    }
+
+    private static void WriteMembers(UiTreeHash.Writer writer, IEnumerable<KeyValuePair<string, RuntimeValue>> members)
+    {
+        writer.BeginObject();
+        foreach (var (name, value) in members.OrderBy(kv => kv.Key, StringComparer.Ordinal))
+        {
+            writer.Name(name);
+            WriteValue(writer, value);
+        }
+        writer.EndObject();
+    }
+
+    // The same cases as the session's envelope serializer, so the hash covers what the client receives.
+    private static void WriteValue(UiTreeHash.Writer writer, RuntimeValue value)
+    {
+        switch (value.Type)
+        {
+            case ValueType.Integer:
+                writer.Number(value.AsInteger());
+                break;
+            case ValueType.Float:
+                writer.Number(value.AsFloat());
+                break;
+            case ValueType.String:
+                writer.String(value.AsString());
+                break;
+            case ValueType.Boolean:
+                writer.Boolean(value.AsBoolean());
+                break;
+            case ValueType.Null:
+                writer.Null();
+                break;
+            case ValueType.Array:
+                writer.BeginArray();
+                foreach (var item in value.AsArray())
+                    WriteValue(writer, item);
+                writer.EndArray();
+                break;
+            case ValueType.Object when value.AsObject() is JsonObject obj:
+                WriteMembers(writer, obj.GetProperties());
+                break;
+            case ValueType.Object when value.AsObject() is DictionaryInstance dict:
+                WriteMembers(writer, dict.GetEntries());
+                break;
+            case ValueType.Object:
+                writer.String(value.AsObject().ToString() ?? "");
+                break;
+            default:
+                writer.String(value.ToString());
+                break;
+        }
     }
 }

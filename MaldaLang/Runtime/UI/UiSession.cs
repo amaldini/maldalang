@@ -26,6 +26,9 @@ public sealed class UiSession
     private int _staleEventsDropped;
     private readonly Dictionary<string, HashSet<string>> _lifecycleHooks = new(StringComparer.Ordinal);
     private int _maxEventQueueDepth = 2048;
+    // Events dropped because the queue was full: in all, and since the last `overflow` event.
+    private int _droppedEvents;
+    private int _unreportedDrops;
     private readonly Action<string, string, string>? _publish;
 
     public string SessionId { get; }
@@ -115,10 +118,11 @@ public sealed class UiSession
     public void EnqueueEvent(UiEvent uiEvent)
     {
         Touch();
-        if (_events.Count >= _maxEventQueueDepth)
+        if (_events.Count >= _maxEventQueueDepth && _events.TryDequeue(out _))
         {
-            // Backpressure: drop oldest event to keep memory bounded.
-            _events.TryDequeue(out _);
+            // Backpressure: drop the oldest event to keep memory bounded; the next pull reports it.
+            Interlocked.Increment(ref _droppedEvents);
+            Interlocked.Increment(ref _unreportedDrops);
         }
 
         _events.Enqueue(uiEvent);
@@ -146,12 +150,23 @@ public sealed class UiSession
     /// Takes the next event. An event that names its target node (<see cref="UiEvent.TargetType"/>)
     /// is dropped when the current tree has no node of that type and key at its path: a render
     /// since the click or keystroke moved another node there, and the event belongs to none of them.
+    /// After a full queue dropped events, the next event is an <c>overflow</c> event whose payload
+    /// says how many (<c>{ dropped }</c>); the dropped ones were the oldest, so it comes first.
     /// </summary>
     public bool TryDequeueEvent(out UiEvent? uiEvent)
     {
         Touch();
         lock (_lock)
         {
+            var dropped = Interlocked.Exchange(ref _unreportedDrops, 0);
+            if (dropped > 0)
+            {
+                var payload = new JsonObject();
+                payload.Set("dropped", RuntimeValue.Integer(dropped));
+                uiEvent = new UiEvent("overflow", "/", RuntimeValue.Object(payload));
+                return true;
+            }
+
             while (_events.TryDequeue(out var ev))
             {
                 if (ev.EventId != null)
@@ -293,6 +308,7 @@ public sealed class UiSession
         snapshot.Set("revision", RuntimeValue.Integer(_revision));
         snapshot.Set("expectedInboundSequence", RuntimeValue.Integer(_expectedInSequence));
         snapshot.Set("staleEventsDropped", RuntimeValue.Integer(_staleEventsDropped));
+        snapshot.Set("droppedEvents", RuntimeValue.Integer(Volatile.Read(ref _droppedEvents)));
         snapshot.Set("hasTree", RuntimeValue.Boolean(_currentTree != null));
         snapshot.Set("tree", _currentTree?.ToRuntimeValue() ?? RuntimeValue.Null());
         snapshot.Set("lastAccessUtc", RuntimeValue.String(LastAccessUtc.ToString("O")));
@@ -344,7 +360,7 @@ public sealed class UiSession
             envelope.Set("answersEventId", RuntimeValue.String(_answersEventId));
         }
         envelope.Set("patches", RuntimeValue.Array(patchValues));
-        envelope.Set("treeHash", RuntimeValue.String(ComputeTreeHash(_currentTree)));
+        envelope.Set("treeHash", RuntimeValue.String(UiNode.Hash(_currentTree)));
         var runtimeEnvelope = RuntimeValue.Object(envelope);
         var json = EnforcePayloadSizeLimit(runtimeEnvelope, messageType);
         if (messageType is "mount" or "patch")
@@ -425,16 +441,7 @@ public sealed class UiSession
         }
     }
 
-    private static string ComputeTreeHash(UiNode? root)
-    {
-        if (root == null)
-        {
-            return "null";
-        }
-
-        return root.ToRuntimeValue().ToString().GetHashCode().ToString("X8");
-    }
-
+    // Serializes the envelope once: the size check and the publish use the same JSON.
     private string EnforcePayloadSizeLimit(RuntimeValue envelope, string messageType)
     {
         var json = RuntimeValueToJson(envelope);

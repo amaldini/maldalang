@@ -1,6 +1,6 @@
 # MALDA web UI runtime roadmap
 
-**Status:** U0–U6 landed 2026-10-22; U7 open  
+**Status:** U0–U6 landed 2026-10-22; U7 landed 2026-10-24 (complete)  
 **Created:** 2026-10-22  
 **Audience:** maintainers working on `ui.*`, `MaldaLang.UIHost` and `malda-ui-client.js`
 
@@ -249,6 +249,18 @@ focus, typed value and selection survive sibling patches, inserts, moves and cla
   canonical file.
 - Client: connection state on `#app` (`data-ui-connection` + default CSS) and `?debug=1`
   protocol logging.
+- **Landed:** `UiTreeHash` (`MaldaLang.UIHost`) hashes for the session (`UiNode.Hash`, written
+  straight from the tree, no reserialization) and for the hub's resync; `MaldaUiCore.treeHash`
+  matches it (JavaScript number forms, `JSON.stringify` escapes; a lone surrogate counts as
+  U+FFFD, as the envelope serializer sends it). `MaldaUiProtocol.verifyTree` asks for a resync on
+  a mismatch, and after a resync only reports it. The envelope is serialized once, for the size
+  check and the publish. A full queue drops the oldest event; the next pull is an `overflow`
+  event (`{ dropped }`) and `ui.snapshot` reports `droppedEvents`. The stale Examples copy is
+  deleted and `UiFrameworkTests.UiClient_HasNoStaleCopies` guards against new ones. `#app` carries
+  `data-ui-connection` (`connecting` / `open` / `reconnecting` / `closed`, badge for the last
+  two); `?debug=1` logs messages with `console.debug`. Tests: `UiPatchFuzzTests` (hash on every
+  case, `TreeHash_IsTheSameOnSessionHostAndClient`), `UiSessionProtocolTests.Session_FullQueue*` /
+  `Session_TreeHash*`, `UiHostProtocolTests` (tabs verify every envelope's hash).
 
 ---
 

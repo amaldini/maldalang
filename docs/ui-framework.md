@@ -106,7 +106,13 @@ The hub keeps each session's tree by applying the published patches (`UiTreePatc
 the first mount). The client keeps at most one resync in flight. Socket messages from the
 host: `connected`, `mount`, `patch`, `resync`, `ack` (for client `event`s), `nack`, `error`,
 `ping`. From the client: `event`, `resync`, `pong`. A version mismatch is reported, never
-answered with a resync. Publishing: `POST /ui/mount/{sessionId}` and `/ui/patch/{sessionId}`
+answered with a resync.
+
+Each session envelope (and the hub's resync) carries `treeHash`: 32-bit FNV-1a over the UTF-8
+bytes of the tree's JSON with object keys sorted, numbers and escapes as `JSON.stringify`
+writes them, 8 lowercase hex digits (`UiTreeHash` in `MaldaLang.UIHost`, `MaldaUiCore.treeHash`
+in the client). After applying an envelope the client hashes its tree; a mismatch is logged and
+answered with a resync, except right after a resync, where it is only logged. Publishing: `POST /ui/mount/{sessionId}` and `/ui/patch/{sessionId}`
 with the session envelope as the body; a body without `patches` or `revision` gets 400.
 
 Patch operations: `ReplaceNode`, `SetProp`, `RemoveProp`, `InsertChild`, `RemoveChild`,
@@ -158,6 +164,18 @@ fresh render of the second tree.
   `targetPath` has another type or key; `ui.snapshot` reports `staleEventsDropped`. Events that
   name no target (`ui.dispatchEvent` without `targetType`, `treeView` items, lifecycle events)
   are never dropped. The pulled event exposes `targetKey` when the node has one.
+- **Overflow.** The queue holds `maxEventQueueDepth` events (`ui.configure`; default 2048);
+  a full queue drops the oldest. The next pull is then an `overflow` event (`targetPath` `/`,
+  payload `{ dropped }` since the last one), and `ui.snapshot` counts all drops in
+  `droppedEvents`.
+
+### Browser client
+
+- `#app` carries `data-ui-connection`: `connecting`, `open`, `reconnecting` or `closed` (page
+  unloading, or the host refused the token). The default style shows a corner badge while
+  `reconnecting` or `closed`; style `[data-ui-connection]` to change it.
+- `?debug=1` logs every protocol message in and out, and connection changes, with
+  `console.debug`.
 
 ## State model
 
