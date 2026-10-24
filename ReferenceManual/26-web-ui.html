@@ -726,7 +726,55 @@ function itemsPage(req) {
             <li><code>ui_state_lifecycle.malda</code> — peek vs get-or-create, pin, poison defaults</li>
             <li><code>ui_form_workflow.malda</code> / <code>ui_controls_showcase_minimal.malda</code> — forms and control catalog</li>
             <li><code>ui_resync_flow.malda</code> — snapshot / resync when client and server diverge</li>
+            <li><code>ui_workbench.malda</code> — menus, split panes, tree, canvas, property grid, command palette and shortcuts; runs on the UI host and in local mode from the same source</li>
         </ul>
+        <h2 id="local-mode">26.8 Local Mode: <code>ui.*</code> in the Browser</h2>
+        <p>A program that uses <code>ui.*</code> also compiles to JavaScript (<code>malda compile app.malda --mode js</code>, <code>esm</code> or <code>pwa</code>). It then runs in the page with no host: the runtime keeps the sessions, diffs each render against the last one and patches the page through <code>malda-ui-client.js</code>, which the compiler writes beside the output and <code>index.html</code> loads with <code>data-ui-mode="local"</code>. Envelopes, events, lifecycle hooks, state and error messages are the host's, so one source runs on the interpreter with UIHost, on C# transpile and in the browser.</p>
+        <ul>
+            <li>The session draws into the element <code>[data-ui-session="id"]</code>, else <code>#app</code>.</li>
+            <li><code>ui.run(state, view, update)</code> waits for the user in a page and returns when <code>update</code> returns <code>null</code>. Without a page (Node, tests) it ends once the queue is empty, as on a host with no browser attached.</li>
+            <li>Every event's payload carries <code>action</code>: the text of the control's handler prop (<code>"onClick": "save"</code> gives <code>action</code> <code>"save"</code>), on the host too.</li>
+            <li>Sessions live as long as the page: <code>sessionTtlMs</code> and <code>ui.pinState</code> do nothing.</li>
+            <li>Host-only, and rejected by the JavaScript pre-check with <code>JS0008</code>: <code>ui.template</code>, <code>ui.partial</code>, <code>ui.layout</code>, <code>ui.renderList</code>, the <code>ui.crud*</code> helpers, <code>ui.generate</code>, <code>ui.invalidate</code>, <code>ui.sessionId</code> and <code>ui.redirectWithSession</code>.</li>
+        </ul>
+        <h3>26.8.1 Desktop controls</h3>
+        <p>These controls work on the host and in local mode. Controls drawn from props send one event type each; their payloads are listed below.</p>
+        <table>
+            <thead><tr><th>Control</th><th>Props</th><th>Events (payload)</th></tr></thead>
+            <tbody>
+                <tr><td><code>ui.splitPane(props, panes)</code></td><td><code>direction</code> (<code>"row"</code> / <code>"column"</code>), <code>sizes</code> (weights), <code>minSize</code> (px)</td><td><code>onResize</code> → <code>resize</code> (<code>sizes</code> as percentages) when the user drags a separator</td></tr>
+                <tr><td><code>ui.menuBar(props)</code></td><td><code>menus</code>: <code>[{ label, items }]</code>, items <code>{ id, label, shortcut?, disabled? }</code> or <code>{ separator: true }</code></td><td><code>onSelect</code> → <code>select</code> (<code>id</code>, <code>label</code>, <code>menu</code>)</td></tr>
+                <tr><td><code>ui.contextMenu(props, [child])</code></td><td><code>items</code> as above</td><td><code>onSelect</code> → <code>select</code> (<code>id</code>, <code>label</code>, <code>targetPath</code> of the element right-clicked)</td></tr>
+                <tr><td><code>ui.commandPalette(props)</code></td><td><code>open</code>, <code>commands</code>: <code>[{ id, label, group?, shortcut? }]</code>, <code>placeholder</code></td><td><code>onSelect</code> → <code>select</code> (<code>id</code>, <code>label</code>); <code>onClose</code> → <code>close</code> (<code>reason</code>)</td></tr>
+                <tr><td><code>ui.shortcuts(props)</code></td><td><code>bindings</code>: <code>{ "Ctrl+K": "palette", "Mod+S": "save" }</code> (<code>Mod</code> is Cmd on macOS, Ctrl elsewhere)</td><td><code>shortcut</code> (<code>id</code>, <code>keys</code>); plain keys are ignored while the user types in a field</td></tr>
+                <tr><td><code>ui.propertyGrid(props)</code></td><td><code>properties</code>: <code>[{ key, label?, type?, value, options?, group?, readOnly?, min?, max?, step? }]</code>, types <code>text</code> / <code>number</code> / <code>bool</code> / <code>select</code> / <code>color</code></td><td><code>onChange</code> → <code>change</code> (<code>key</code>, <code>value</code>) on Enter, blur or a pick</td></tr>
+                <tr><td><code>ui.canvas(props)</code></td><td><code>width</code>, <code>height</code>, <code>background</code>, <code>shapes</code>: <code>rect</code> / <code>circle</code> / <code>line</code> / <code>polyline</code> / <code>polygon</code> / <code>text</code> with <code>fill</code>, <code>stroke</code>, <code>lineWidth</code>, <code>alpha</code>, <code>dash</code></td><td><code>onClick</code>, <code>onPointerDown</code>, <code>onPointerMove</code> (once per frame), <code>onPointerUp</code>, <code>onWheel</code>: canvas <code>x</code> / <code>y</code>, <code>button</code>, <code>shift</code> / <code>ctrl</code> / <code>alt</code> / <code>meta</code>, wheel <code>deltaX</code> / <code>deltaY</code></td></tr>
+                <tr><td><code>ui.hostSlot(props)</code></td><td><code>name</code></td><td>none: an element the UI never touches, <code>[data-ui-host-slot="name"]</code>, for a <code>three</code> renderer or other JavaScript content in local mode (it keeps that content across re-renders)</td></tr>
+            </tbody>
+        </table>
+        <p><code>ui.modal</code> is a dialog over a dimmed page: <code>open: false</code> hides it, <code>title</code> heads it, and with <code>onClose</code> Escape or a press outside sends <code>close</code>. A button's <code>label</code> and a heading's <code>value</code> show as their text.</p>
+        <pre><code>function view(s) {
+    return ui.column({}, [
+        ui.menuBar({ "onSelect": "menu", "menus": [
+            { "label": "File", "items": [{ "id": "new", "label": "New", "shortcut": "Ctrl+N" }, { "separator": true }, { "id": "quit", "label": "Quit" }] }
+        ] }),
+        ui.shortcuts({ "bindings": { "Ctrl+K": "palette", "Ctrl+N": "new" } }),
+        ui.splitPane({ "sizes": [1, 3], "onResize": "resized" }, [
+            ui.panel({}, [ui.text({ "value": "outline" })]),
+            ui.canvas({ "width": 400, "height": 240, "onClick": "place", "shapes": s["shapes"] })
+        ]),
+        ui.commandPalette({ "open": s["palette"], "onSelect": "command", "onClose": "closePalette",
+            "commands": [{ "id": "new", "label": "New shape" }, { "id": "clear", "label": "Clear canvas" }] })
+    ]);
+}</code></pre>
+        <h3>26.8.2 Messages and plurals</h3>
+        <p><code>ui.messages(locale, catalog?)</code> replaces a locale's catalog when given one and makes the locale current; <code>ui.t(key, args?)</code> returns its text. A key missing from the locale is looked up in its language (<code>it-IT</code> → <code>it</code>) and then returned as is. A catalog entry is a string or a dict of plural forms chosen by <code>args.count</code>: an exact form such as <code>"=0"</code> first, then the CLDR category of the language (<code>one</code>, <code>few</code>, <code>many</code>, <code>other</code> …). <code>{name}</code> placeholders take <code>args</code>; numbers get the locale's separators, grouped by thousands with at most three decimals. Every backend gives the same text.</p>
+        <pre><code data-run="true" data-expect="no files\n1 file\n1,500 files\n1.500 file">ui.messages("en", { "files": { "=0": "no files", "one": "{count} file", "other": "{count} files" } });
+print(ui.t("files", { "count": 0 }));
+print(ui.t("files", { "count": 1 }));
+print(ui.t("files", { "count": 1500 }));
+ui.messages("it", { "files": { "one": "{count} file", "other": "{count} file" } });
+print(ui.t("files", { "count": 1500 }));</code></pre>
         <div class="see-also">
             <h3>See Also</h3>
             <ul>

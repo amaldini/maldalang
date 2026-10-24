@@ -4,7 +4,7 @@
 # Format: symbol -> tier | note
 # Optional-pack / vertical symbols must NOT appear here (enforced by OptionalPackRegistryGuardTests)
 
-# count: 376
+# count: 386
 
 abs -> tier1-core | BuiltInRegistry
 acos -> stdlib-general | BuiltInRegistry
@@ -297,10 +297,13 @@ uiAlert -> platform-ui | BuiltInRegistry
 uiBadge -> platform-ui | BuiltInRegistry
 uiBreadcrumbs -> platform-ui | BuiltInRegistry
 uiButton -> platform-ui | BuiltInRegistry
+uiCanvas -> platform-ui | BuiltInRegistry
 uiCheckbox -> platform-ui | BuiltInRegistry
 uiChoose -> platform-ui | BuiltInRegistry
 uiColumn -> platform-ui | BuiltInRegistry
+uiCommandPalette -> platform-ui | BuiltInRegistry
 uiConfigure -> platform-ui | BuiltInRegistry
+uiContextMenu -> platform-ui | BuiltInRegistry
 uiCrudControls -> platform-ui | BuiltInRegistry
 uiCrudModel -> platform-ui | BuiltInRegistry
 uiCrudSchema -> platform-ui | BuiltInRegistry
@@ -316,11 +319,14 @@ uiForm -> platform-ui | BuiltInRegistry
 uiGenerate -> platform-ui | BuiltInRegistry
 uiGetState -> platform-ui | BuiltInRegistry
 uiHeading -> platform-ui | BuiltInRegistry
+uiHostSlot -> platform-ui | BuiltInRegistry
 uiIcon -> platform-ui | BuiltInRegistry
 uiImage -> platform-ui | BuiltInRegistry
 uiInvalidate -> platform-ui | BuiltInRegistry
 uiLayout -> platform-ui | BuiltInRegistry
 uiList -> platform-ui | BuiltInRegistry
+uiMenuBar -> platform-ui | BuiltInRegistry
+uiMessages -> platform-ui | BuiltInRegistry
 uiModal -> platform-ui | BuiltInRegistry
 uiMount -> platform-ui | BuiltInRegistry
 uiMountEnvelope -> platform-ui | BuiltInRegistry
@@ -337,6 +343,7 @@ uiPanel -> platform-ui | BuiltInRegistry
 uiPartial -> platform-ui | BuiltInRegistry
 uiPinState -> platform-ui | BuiltInRegistry
 uiProgress -> platform-ui | BuiltInRegistry
+uiPropertyGrid -> platform-ui | BuiltInRegistry
 uiPullEvent -> platform-ui | BuiltInRegistry
 uiRadioGroup -> platform-ui | BuiltInRegistry
 uiRedirectWithSession -> platform-ui | BuiltInRegistry
@@ -348,15 +355,18 @@ uiRun -> platform-ui | BuiltInRegistry
 uiSelect -> platform-ui | BuiltInRegistry
 uiSessionId -> platform-ui | BuiltInRegistry
 uiSetState -> platform-ui | BuiltInRegistry
+uiShortcuts -> platform-ui | BuiltInRegistry
 uiSkeleton -> platform-ui | BuiltInRegistry
 uiSlider -> platform-ui | BuiltInRegistry
 uiSlot -> platform-ui | BuiltInRegistry
 uiSnapshot -> platform-ui | BuiltInRegistry
 uiSpacer -> platform-ui | BuiltInRegistry
 uiSpinner -> platform-ui | BuiltInRegistry
+uiSplitPane -> platform-ui | BuiltInRegistry
 uiStack -> platform-ui | BuiltInRegistry
 uiState -> platform-ui | BuiltInRegistry
 uiSwitch -> platform-ui | BuiltInRegistry
+uiT -> platform-ui | BuiltInRegistry
 uiTable -> platform-ui | BuiltInRegistry
 uiTabs -> platform-ui | BuiltInRegistry
 uiTemplate -> platform-ui | BuiltInRegistry

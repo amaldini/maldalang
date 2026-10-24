@@ -38,9 +38,9 @@ python3 scripts/sync-reference-manual-it-status.py
 | 23-durable-workflows.html | df03cb41bb5689d064e9eda4dff13a6b792cf70305b01f804d468d43f2d3b2c9 |
 | 24-agentic-runs.html | 1000af3f95a36a05f760a4ae3dccd20d324645610ddd51a69ec4322d479bfa23 |
 | 25-web-ui-hub.html | 76e211825e324c24a54677e9f3b89fba7218d67d435986a84d3e2242ae258c1b |
-| 26-web-ui.html | 6db2b996f2a0ebfb1a8e8e91b96b1f55cafbc5a1fca6de8d4a805892e5365f7f |
+| 26-web-ui.html | c7724de86f814018d09015f7be2912679d893e7f0f5e36b4e05e6f7796fc580c |
 | 27-http-server-html-ui.html | 6b735cd119bb36be0d74e77f837b3325e78925ef6f8d98d79e97fd853cee75d8 |
-| 28-browser-javascript-backend.html | a3dcbafc0e9237b64c4ea4e60a1031f25b1b3e12b2e7488778154a85f19886ea |
+| 28-browser-javascript-backend.html | 823c2d284226a0e9212a832d43d4837cef60c366a7073e259f3be4aec65de87e |
 | 29-rest-api.html | 402f049ea17fd83036171156e2f7175154b74bc427161fe477c0801cc693c4e1 |
 | 30-rest-web-client.html | f5d0ae7875b6674be2b76ca56f81f9bc1d07d46aa457304a5877fe4c9d3cde83 |
 | 31-full-stack-development.html | 8bbb0756a472059508b0f0b417442f82304419ee0ae3890ea7b5351c02ef64bf |

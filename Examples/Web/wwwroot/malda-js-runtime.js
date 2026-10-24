@@ -5581,7 +5581,7 @@
     }
   };
 
-  // The compiler leaves the `game` / `three` areas out of the runtime it writes beside a program
+  // The compiler leaves the `ui` / `game` / `three` areas out of the runtime it writes beside a program
   // that does not use them (`// @malda-runtime-area` markers); the member then names what is missing.
   function missingRuntimeArea(area) {
     return new Proxy({}, {
@@ -5985,8 +5985,914 @@
         }
         node.addEventListener(coerceToString(eventName), handler, options || undefined);
         return null;
+      },
+      off(target, eventName, handler, options) {
+        const node = resolveElement(target);
+        if (!node || typeof node.removeEventListener !== "function" || typeof handler !== "function") {
+          return null;
+        }
+        node.removeEventListener(coerceToString(eventName), handler, options || undefined);
+        return null;
+      },
+      queryAll(selector, root) {
+        const scopedRoot = root ? resolveElement(root) : document;
+        if (!scopedRoot || typeof scopedRoot.querySelectorAll !== "function") {
+          return [];
+        }
+        return Array.from(scopedRoot.querySelectorAll(coerceToString(selector)));
+      },
+      remove(target) {
+        const node = resolveElement(target);
+        if (node && node.parentNode) node.parentNode.removeChild(node);
+        return null;
+      },
+      // attr(el, name) reads an attribute (null when absent); attr(el, name, value) sets it, and a
+      // null value removes it.
+      attr(target, name, value) {
+        const node = resolveElement(target);
+        if (!node) return null;
+        const attribute = coerceToString(name);
+        if (arguments.length < 3) {
+          return node.hasAttribute(attribute) ? node.getAttribute(attribute) : null;
+        }
+        if (value === null || value === undefined) {
+          node.removeAttribute(attribute);
+        } else {
+          node.setAttribute(attribute, coerceToString(value));
+        }
+        return null;
+      },
+      addClass(target, ...names) {
+        const node = resolveElement(target);
+        if (node) node.classList.add(...names.map(coerceToString));
+        return null;
+      },
+      removeClass(target, ...names) {
+        const node = resolveElement(target);
+        if (node) node.classList.remove(...names.map(coerceToString));
+        return null;
+      },
+      // Returns whether the element has the class afterwards; force true / false adds / removes.
+      toggleClass(target, name, force) {
+        const node = resolveElement(target);
+        if (!node) return false;
+        return force === undefined || force === null
+          ? node.classList.toggle(coerceToString(name))
+          : node.classList.toggle(coerceToString(name), isTruthy(force));
+      },
+      hasClass(target, name) {
+        const node = resolveElement(target);
+        return !!node && node.classList.contains(coerceToString(name));
+      },
+      // style(el, "width") reads the computed value; style(el, "width", "10px") sets one property
+      // (null removes it); style(el, { width: "10px", "--accent": "red" }) sets several.
+      style(target, nameOrValues, value) {
+        const node = resolveElement(target);
+        if (!node) return null;
+        const set = (property, propertyValue) => {
+          const cssName = property.startsWith("--") ? property : property.replace(/[A-Z]/g, (c) => "-" + c.toLowerCase());
+          if (propertyValue === null || propertyValue === undefined) node.style.removeProperty(cssName);
+          else node.style.setProperty(cssName, coerceToString(propertyValue));
+        };
+        if (nameOrValues && typeof nameOrValues === "object") {
+          for (const property of Object.keys(nameOrValues)) {
+            if (property !== "__maldaDict") set(property, nameOrValues[property]);
+          }
+          return null;
+        }
+        const property = coerceToString(nameOrValues);
+        if (arguments.length < 3) {
+          const cssName = property.startsWith("--") ? property : property.replace(/[A-Z]/g, (c) => "-" + c.toLowerCase());
+          return typeof getComputedStyle === "function" ? getComputedStyle(node).getPropertyValue(cssName) : node.style.getPropertyValue(cssName);
+        }
+        set(property, value);
+        return null;
+      },
+      focus(target) {
+        const node = resolveElement(target);
+        if (node && typeof node.focus === "function") node.focus();
+        return null;
+      },
+      blur(target) {
+        const node = resolveElement(target);
+        if (node && typeof node.blur === "function") node.blur();
+        return null;
+      },
+      rect(target) {
+        const node = resolveElement(target);
+        if (!node || typeof node.getBoundingClientRect !== "function") return null;
+        const r = node.getBoundingClientRect();
+        return { x: r.x, y: r.y, width: r.width, height: r.height, top: r.top, left: r.left, right: r.right, bottom: r.bottom };
+      },
+      // Pointer capture: a drag started on the element keeps sending it pointermove / pointerup
+      // when the pointer leaves it.
+      capturePointer(target, pointerId) {
+        const node = resolveElement(target);
+        if (node && typeof node.setPointerCapture === "function") node.setPointerCapture(coerceToInt(pointerId));
+        return null;
+      },
+      releasePointer(target, pointerId) {
+        const node = resolveElement(target);
+        if (node && typeof node.releasePointerCapture === "function" && node.hasPointerCapture(coerceToInt(pointerId))) {
+          node.releasePointerCapture(coerceToInt(pointerId));
+        }
+        return null;
+      },
+      // "Ctrl+Shift+K" for a keyboard event (modifiers in that order, letters upper case).
+      keyCombo(event) {
+        if (!event || typeof event.key !== "string") return "";
+        const keys = [];
+        if (event.ctrlKey) keys.push("Ctrl");
+        if (event.altKey) keys.push("Alt");
+        if (event.shiftKey) keys.push("Shift");
+        if (event.metaKey) keys.push("Meta");
+        if (!["Control", "Alt", "Shift", "Meta"].includes(event.key)) {
+          const code = typeof event.code === "string" ? /^(?:Key([A-Z])|Digit([0-9]))$/.exec(event.code) : null;
+          keys.push(code ? code[1] || code[2] : event.key === " " ? "Space" : event.key.length === 1 ? event.key.toUpperCase() : event.key);
+        }
+        return keys.join("+");
+      },
+      // Calls handler({ width, height }) whenever the element's size changes; returns a function
+      // that stops watching.
+      onResize(target, handler) {
+        const node = resolveElement(target);
+        if (!node || typeof handler !== "function" || typeof ResizeObserver !== "function") {
+          return () => null;
+        }
+        const observer = new ResizeObserver((entries) => {
+          const box = entries[entries.length - 1].contentRect;
+          handler({ width: box.width, height: box.height });
+        });
+        observer.observe(node);
+        return () => {
+          observer.disconnect();
+          return null;
+        };
+      },
+      // Drag and drop: dragData(event) reads the dragged text (null when there is none);
+      // dragData(event, value) sets it in a dragstart handler.
+      dragData(event, value) {
+        const transfer = event && event.dataTransfer;
+        if (!transfer) return null;
+        if (arguments.length >= 2) {
+          transfer.setData("text/plain", coerceToString(value));
+          return null;
+        }
+        const text = transfer.getData("text/plain");
+        return text === "" ? null : text;
+      },
+      // Clipboard: both return a Promise (awaited by the compiler) and need a page the user acted on.
+      async copyText(text) {
+        if (typeof navigator === "undefined" || !navigator.clipboard) throw new Error("dom.copyText() needs a browser clipboard.");
+        await navigator.clipboard.writeText(coerceToString(text));
+        return null;
+      },
+      async readText() {
+        if (typeof navigator === "undefined" || !navigator.clipboard) throw new Error("dom.readText() needs a browser clipboard.");
+        return await navigator.clipboard.readText();
       }
     },
+    // @malda-runtime-area ui
+    // ui.* local mode: the server-driven UI model (MaldaLang/Runtime/UI/UiSession.cs) run in the
+    // page. Sessions, envelopes, events, lifecycle hooks and messages keep the host's shapes and
+    // rules, so the same program runs on the interpreter with UIHost and here with no host. The
+    // diff, hash and DOM patching come from malda-ui-client.js (MaldaUiCore / MaldaUiDom), loaded
+    // before this file in the page (data-ui-mode="local") or found beside it under Node.
+    ui: (() => {
+      const PROTOCOL_VERSION = "1.1";
+      // UiControlSpecRegistry: the events each control accepts (others are an error) and the
+      // props it requires; a type that is not listed accepts any prop.
+      const controlEvents = {
+        row: [], column: [], stack: [], spacer: [], panel: [], drawer: [], tabs: [], accordion: [], breadcrumbs: [],
+        text: [], heading: [], image: [], icon: [],
+        button: ["onClick"],
+        textField: ["onChange", "onInput"], textArea: ["onChange", "onInput"],
+        checkbox: ["onChange"], switch: ["onChange"], select: ["onChange"], radioGroup: ["onChange"],
+        slider: ["onChange", "onInput"], datePicker: ["onChange", "onInput"],
+        form: ["onSubmit"], field: [], list: [], table: [],
+        dataGrid: ["onRowClick", "onSelectionChange", "onSort", "onFilter", "onPageChange", "onViewportChange", "onDragStart", "onDragOver", "onDrop", "onDragEnd"],
+        treeView: ["onNodeSelect", "onNodeToggle", "onNodeExpand", "onNodeCollapse", "onNodeActivate", "onLoadChildren", "onDragStart", "onDragOver", "onDrop", "onDragEnd"],
+        paginator: ["onChange"], emptyState: [], badge: [], alert: [], progress: [],
+        modal: ["onClose"], toast: ["onClose"], skeleton: [], spinner: [], errorBoundary: [],
+        slot: [], splitPane: ["onResize"], menuBar: ["onSelect"], contextMenu: ["onSelect"],
+        commandPalette: ["onSelect", "onClose"], shortcuts: [], propertyGrid: ["onChange"],
+        canvas: ["onClick", "onPointerDown", "onPointerMove", "onPointerUp", "onWheel"], hostSlot: [],
+        when: [], choose: [], each: []
+      };
+      const requiredProps = { text: ["value"], heading: ["value"] };
+      // UiPropSanitizer: the props a node keeps. on* only for known events, never srcdoc /
+      // formaction, URL props only where the control's spec lists them and with a safe scheme,
+      // style without url( / expression( / script.
+      const eventProps = new Set([
+        "onClick", "onChange", "onInput", "onSubmit", "onClose", "onFocus", "onBlur",
+        "onRowClick", "onSelectionChange", "onSort", "onFilter", "onPageChange", "onViewportChange",
+        "onNodeSelect", "onNodeToggle", "onNodeExpand", "onNodeCollapse", "onNodeActivate", "onLoadChildren",
+        "onDragStart", "onDragOver", "onDrop", "onDragEnd",
+        "onSelect", "onResize", "onPointerDown", "onPointerMove", "onPointerUp", "onWheel"
+      ]);
+      const urlProps = new Set(["href", "src", "srcset", "action", "poster", "background", "cite", "data", "codebase", "ping", "manifest", "xlink:href"]);
+      const urlPropsByType = { image: ["src"], form: ["action"] };
+      const unsafeCss = ["\\", "url(", "image-set(", "expression(", "javascript:", "vbscript:", "@import", "behavior:", "-moz-binding"];
+
+      function isSafeUrl(url) {
+        const normalized = url.replace(/[\t\n\r]/g, "").replace(/^[\x00-\x20]+|[\x00-\x20]+$/g, "");
+        const scheme = /^([A-Za-z][A-Za-z0-9+.-]*):/.exec(normalized);
+        return !scheme || ["http", "https", "mailto", "tel"].includes(scheme[1].toLowerCase());
+      }
+
+      function isSafeCss(css) {
+        const compact = css.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\s+/g, "").toLowerCase();
+        return !unsafeCss.some((token) => compact.includes(token));
+      }
+
+      function isSafeProp(type, name, value) {
+        if (!/^[A-Za-z][A-Za-z0-9_:.-]*$/.test(name) || /^(srcdoc|formaction)$/i.test(name)) return false;
+        if (/^on/i.test(name)) return eventProps.has(name);
+        if (urlProps.has(name.toLowerCase())) {
+          if (!(urlPropsByType[type] || []).includes(name) || typeof value !== "string") return false;
+          return name.toLowerCase() === "srcset"
+            ? value.split(",").every((candidate) => isSafeUrl(candidate.trim().split(" ")[0]))
+            : isSafeUrl(value);
+        }
+        if (name.toLowerCase() === "style") {
+          if (typeof value === "string") return isSafeCss(value);
+          if (isPlainObject(value)) {
+            return Object.keys(value).every((key) => isSafeCss(key) && (typeof value[key] !== "string" || isSafeCss(value[key])));
+          }
+        }
+        return true;
+      }
+      const builders = [
+        "row", "column", "stack", "spacer", "panel", "text", "heading", "image", "icon",
+        "button", "textField", "checkbox", "select", "slider", "datePicker", "list", "table",
+        "alert", "progress", "modal", "form", "field", "textArea", "radioGroup", "switch",
+        "tabs", "accordion", "breadcrumbs", "drawer", "dataGrid", "treeView", "paginator", "emptyState", "badge",
+        "toast", "skeleton", "spinner", "errorBoundary", "slot",
+        "splitPane", "menuBar", "contextMenu", "commandPalette", "shortcuts", "propertyGrid", "canvas", "hostSlot"
+      ];
+      const sessions = new Map();
+      // componentId (scope::id) → Map of key → value: ui.state / getState / setState.
+      const componentState = new Map();
+
+      function isPlainObject(value) {
+        if (value === null || typeof value !== "object" || Array.isArray(value) || isBuffer(value) || isVariant(value)) return false;
+        const proto = Object.getPrototypeOf(value);
+        return proto === null || proto === Object.prototype;
+      }
+
+      function copyEntries(value) {
+        const copy = {};
+        for (const name of Object.keys(value)) {
+          if (name !== "__maldaDict") copy[name] = value[name];
+        }
+        return copy;
+      }
+
+      function textNode(value) {
+        return { type: "text", props: { value: formatValue(value) }, children: [] };
+      }
+
+      // UiFrameworkInstance.BuildNode: props first, then the children as one array or as the
+      // remaining arguments; a child that is not a node becomes a text node.
+      function buildNode(type, args) {
+        const props = args.length > 0 && isPlainObject(args[0]) ? copyEntries(args[0]) : {};
+        const rawChildren = args.length > 1 && Array.isArray(args[1]) ? args[1] : Array.prototype.slice.call(args, 1);
+        const node = { type, props, children: rawChildren.map((child) => isPlainObject(child) ? child : textNode(child)) };
+        if (typeof props.key === "string") node.key = props.key;
+        return node;
+      }
+
+      // UiNode.FromRuntimeValue: a fresh copy of the tree, checked against the control specs.
+      function normalize(value) {
+        if (!isPlainObject(value)) throw new Error("UI node must be an object.");
+        if (typeof value.type !== "string") throw new Error("UI node object must include string property 'type'.");
+        const node = { type: value.type };
+        if (typeof value.key === "string" && value.key.trim() !== "") node.key = value.key;
+        node.props = {};
+        if (isPlainObject(value.props)) {
+          for (const name of Object.keys(value.props)) {
+            if (name !== "__maldaDict" && isSafeProp(node.type, name, value.props[name])) node.props[name] = value.props[name];
+          }
+        }
+        node.children = Array.isArray(value.children) ? value.children.map(normalize) : [];
+        const events = controlEvents[node.type];
+        if (events) {
+          for (const name of requiredProps[node.type] || []) {
+            if (!Object.prototype.hasOwnProperty.call(node.props, name)) throw new Error(`ui.${node.type}() missing required prop '${name}'.`);
+          }
+          for (const name of Object.keys(node.props)) {
+            if (name.startsWith("on") && !events.includes(name)) throw new Error(`ui.${node.type}() does not support event '${name}'.`);
+          }
+        }
+        return node;
+      }
+
+      function client() {
+        if (global.MaldaUiCore && global.MaldaUiDom) return global;
+        if (typeof require === "function") {
+          const env = typeof process !== "undefined" && process.env ? process.env.MALDA_UI_CLIENT_PATH : null;
+          for (const candidate of [env, "./malda-ui-client.js"]) {
+            if (!candidate) continue;
+            try {
+              const loaded = require(candidate);
+              if (loaded && loaded.MaldaUiCore) return loaded;
+            } catch (_) {
+              // try the next place
+            }
+          }
+        }
+        throw new Error("ui.* needs malda-ui-client.js: load it before malda-js-runtime.js " +
+          "(<script src=\"./malda-ui-client.js\" data-ui-mode=\"local\"></script>) or keep it beside the runtime.");
+      }
+
+      function nowUtc() {
+        // DateTime.ToString("O"): seven fractional digits.
+        return new Date().toISOString().replace(/\.(\d{3})Z$/, ".$10000Z");
+      }
+
+      function randomId() {
+        const cryptoApi = typeof crypto !== "undefined" ? crypto : null;
+        if (cryptoApi && typeof cryptoApi.randomUUID === "function") return cryptoApi.randomUUID().replace(/-/g, "");
+        return Date.now().toString(16) + Math.floor(Math.random() * 1e12).toString(16);
+      }
+
+      function sessionIdOf(value) {
+        return typeof value === "string" ? value : "default";
+      }
+
+      function session(id) {
+        let state = sessions.get(id);
+        if (!state) {
+          state = {
+            id, tree: null, revision: 0, nextOut: 1, expectedIn: 1, events: [], hooks: new Map(),
+            maxPatchCount: 4096, maxPayloadBytes: 256 * 1024, maxQueue: 2048,
+            dropped: 0, unreported: 0, stale: 0, answersEventId: null, lastAccess: nowUtc(),
+            waiters: [], view: null
+          };
+          sessions.set(id, state);
+        }
+        state.lastAccess = nowUtc();
+        return state;
+      }
+
+      function collectComponentIds(root) {
+        const ids = new Set();
+        const visit = (node) => {
+          const componentId = node.props.componentId;
+          if (typeof componentId === "string") {
+            if (componentId.trim() !== "") ids.add(componentId);
+          } else if (typeof node.key === "string" && node.key.trim() !== "") {
+            ids.add(node.key);
+          }
+          node.children.forEach(visit);
+        };
+        if (root) visit(root);
+        return ids;
+      }
+
+      function ordered(ids) {
+        return Array.from(ids).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+      }
+
+      function lifecycle(s, eventName, componentId, payload) {
+        const registered = s.hooks.get(eventName);
+        if (!registered || !registered.has(componentId)) return;
+        enqueue(s, { type: "lifecycle", targetPath: "/", payload: { componentId, eventName, payload: payload ?? null } });
+      }
+
+      function enqueue(s, event) {
+        if (s.events.length >= s.maxQueue) {
+          // Backpressure: drop the oldest event; the next pull reports it as an `overflow` event.
+          s.events.shift();
+          s.dropped++;
+          s.unreported++;
+        }
+        s.events.push(Object.assign({ eventId: null, targetType: null, targetKey: null, createdUtc: nowUtc() }, event));
+        const waiters = s.waiters.splice(0);
+        waiters.forEach((wake) => wake());
+      }
+
+      // EnqueueUiEvent: an `error` event also fires the component's onError hook.
+      function enqueueUiEvent(s, event, eventId) {
+        const type = typeof event.type === "string" ? event.type : "event";
+        const targetPath = typeof event.targetPath === "string" ? event.targetPath : "/";
+        const payload = event.payload === undefined ? null : event.payload;
+        const text = (name) => (typeof event[name] === "string" ? event[name] : null);
+        const targetKey = text("targetKey");
+        enqueue(s, {
+          type, targetPath, payload,
+          eventId: eventId ?? text("eventId"),
+          targetType: text("targetType"),
+          targetKey: targetKey !== null && targetKey.trim() !== "" ? targetKey : null
+        });
+        if (type.toLowerCase() === "error") {
+          const componentId = errorComponentId(event, payload, targetPath);
+          if (componentId) lifecycle(s, "onError", componentId, payload);
+        }
+      }
+
+      function errorComponentId(event, payload, targetPath) {
+        const named = (value) => (typeof value === "string" && value.trim() !== "" ? value : null);
+        const fromEvent = named(event.componentId);
+        if (fromEvent) return fromEvent;
+        if (isPlainObject(payload) && named(payload.componentId)) return payload.componentId;
+        const trimmed = targetPath.replace(/^\/+|\/+$/g, "");
+        if (trimmed === "") return null;
+        return trimmed.slice(trimmed.lastIndexOf("/") + 1);
+      }
+
+      function targetStillMatches(s, event) {
+        let node = s.tree;
+        for (const segment of event.targetPath.split("/").filter(Boolean)) {
+          const index = /^[+-]?\d+$/.test(segment) ? Number(segment) : -1;
+          if (!node || index < 0 || index >= node.children.length) return false;
+          node = node.children[index];
+        }
+        const key = node && typeof node.key === "string" && node.key.trim() !== "" ? node.key : null;
+        return !!node && node.type === event.targetType && key === event.targetKey;
+      }
+
+      // TryDequeueEvent: an `overflow` event first after drops; events aimed at a node that a
+      // render has since replaced are dropped (staleEventsDropped).
+      function dequeue(s) {
+        if (s.unreported > 0) {
+          const dropped = s.unreported;
+          s.unreported = 0;
+          return { type: "overflow", targetPath: "/", payload: { dropped }, targetKey: null, createdUtc: nowUtc() };
+        }
+        while (s.events.length > 0) {
+          const event = s.events.shift();
+          if (event.eventId !== null) s.answersEventId = event.eventId;
+          if (event.targetType !== null && !targetStillMatches(s, event)) {
+            s.stale++;
+            continue;
+          }
+          return event;
+        }
+        return null;
+      }
+
+      function eventValue(event) {
+        const value = { type: event.type, targetPath: event.targetPath };
+        if (event.targetKey !== null) value.targetKey = event.targetKey;
+        value.payload = event.payload;
+        value.createdUtc = event.createdUtc;
+        return value;
+      }
+
+      function envelope(s, type, patches, baseRevision) {
+        const result = {
+          type, version: PROTOCOL_VERSION, sessionId: s.id, sequence: s.nextOut++, envelopeId: randomId(),
+          serverTimeUtc: nowUtc(), revision: s.revision
+        };
+        if (baseRevision !== undefined) result.baseRevision = baseRevision;
+        if (s.answersEventId !== null) result.answersEventId = s.answersEventId;
+        result.patches = patches;
+        result.treeHash = client().MaldaUiCore.treeHash(s.tree);
+        const json = JSON.stringify(result);
+        const bytes = typeof TextEncoder !== "undefined" ? new TextEncoder().encode(json).length : json.length;
+        if (bytes > s.maxPayloadBytes) {
+          throw new Error(`UI ${type} envelope exceeds maxPayloadBytes (${s.maxPayloadBytes} bytes). Actual: ${bytes} bytes.`);
+        }
+        if (type === "mount" || type === "patch") present(s, json);
+        return result;
+      }
+
+      function controlEnvelope(s, type, sequence, error) {
+        const result = {
+          type, version: PROTOCOL_VERSION, sessionId: s.id, sequence: s.nextOut++, ackSequence: sequence,
+          envelopeId: randomId(), serverTimeUtc: nowUtc()
+        };
+        if (error) result.error = error;
+        return result;
+      }
+
+      // The page element a session draws into: [data-ui-session="<id>"], else #app.
+      function containerFor(s) {
+        if (typeof document === "undefined" || typeof document.querySelector !== "function") return null;
+        const escaped = s.id.replace(/["\\]/g, "\\$&");
+        return document.querySelector(`[data-ui-session="${escaped}"]`) || document.getElementById("app");
+      }
+
+      // Applies a mount or patch envelope to the page, as the host client does with a socket
+      // message: patches touch only the nodes they name, so focus and caret survive.
+      function present(s, json) {
+        const container = containerFor(s);
+        if (!container) return;
+        const { MaldaUiDom } = client();
+        if (!s.view || s.view.container !== container) {
+          MaldaUiDom.installStyles(document);
+          const dom = MaldaUiDom.create(document, {
+            sendEvent: (type, targetPath, payload, target) => {
+              const eventId = randomId();
+              enqueueUiEvent(s, {
+                type, targetPath, payload,
+                targetType: target ? target.type : null,
+                targetKey: target && target.key != null ? String(target.key) : null
+              }, eventId);
+              return eventId;
+            },
+            requestFrame: (fn) => (typeof requestAnimationFrame === "function" ? requestAnimationFrame(fn) : setTimeout(fn, 0))
+          });
+          s.view = { container, dom, tree: null };
+          container.setAttribute("data-ui-connection", "local");
+        }
+        const active = document.activeElement;
+        const focusPath = active && typeof active.getAttribute === "function" ? active.getAttribute("data-ui-path") : null;
+        s.view.tree = s.view.dom.applyPayload(container, s.view.tree, JSON.parse(json));
+        if (focusPath && !container.contains(document.activeElement)) {
+          const next = container.querySelector(`[data-ui-path="${focusPath.replace(/["\\]/g, "\\$&")}"]`);
+          if (next && typeof next.focus === "function") next.focus();
+        }
+      }
+
+      function waitForEvent(s) {
+        return new Promise((resolve) => s.waiters.push(resolve));
+      }
+
+      function snapshotOf(s) {
+        return {
+          sessionId: s.id, version: PROTOCOL_VERSION, nextSequence: s.nextOut, revision: s.revision,
+          expectedInboundSequence: s.expectedIn, staleEventsDropped: s.stale, droppedEvents: s.dropped,
+          hasTree: s.tree !== null, tree: s.tree, lastAccessUtc: s.lastAccess
+        };
+      }
+
+      function resyncOf(s) {
+        return envelope(s, "resync", s.tree ? [{ op: "ReplaceNode", path: "/", value: s.tree }] : []);
+      }
+
+      function mountTree(s, root) {
+        s.tree = root;
+        s.revision++;
+        for (const componentId of ordered(collectComponentIds(root))) {
+          lifecycle(s, "onInit", componentId);
+          lifecycle(s, "onMount", componentId);
+        }
+        return envelope(s, "mount", [{ op: "ReplaceNode", path: "/", value: root }]);
+      }
+
+      function renderTree(s, next) {
+        const before = collectComponentIds(s.tree);
+        const after = collectComponentIds(next);
+        for (const componentId of ordered(after)) lifecycle(s, "onPreRender", componentId);
+        let patches = client().MaldaUiCore.diff(s.tree, next);
+        if (patches.length > s.maxPatchCount) patches = [{ op: "ReplaceNode", path: "/", value: next }];
+        s.tree = next;
+        const baseRevision = s.revision++;
+        for (const componentId of ordered(after)) {
+          if (!before.has(componentId)) {
+            lifecycle(s, "onMount", componentId);
+            lifecycle(s, "onLoad", componentId);
+          } else {
+            lifecycle(s, "onUpdate", componentId);
+          }
+        }
+        for (const componentId of ordered(before)) {
+          if (!after.has(componentId)) {
+            lifecycle(s, "onUnmount", componentId);
+            lifecycle(s, "onDispose", componentId);
+          }
+        }
+        return envelope(s, "patch", patches, baseRevision);
+      }
+
+      function scopedComponentId(componentId, scope) {
+        return typeof scope === "string" && scope.trim() !== "" ? scope + "::" + componentId : componentId;
+      }
+
+      function stateMap(componentId) {
+        let map = componentState.get(componentId);
+        if (!map) {
+          map = new Map();
+          componentState.set(componentId, map);
+        }
+        return map;
+      }
+
+      function hook(name) {
+        return function (componentId, sessionId) {
+          if (arguments.length < 1 || arguments.length > 2 || typeof componentId !== "string") {
+            throw new Error(`${name}() expects componentId and optional sessionId`);
+          }
+          const s = session(sessionIdOf(sessionId));
+          if (!s.hooks.has(name)) s.hooks.set(name, new Set());
+          s.hooks.get(name).add(componentId);
+          return null;
+        };
+      }
+
+      function replaceSlot(root, slotName, content) {
+        if (root.type === "slot" && isPlainObject(root.props) && root.props.name === slotName) {
+          return isPlainObject(content) ? content : textNode(content);
+        }
+        const copy = {};
+        for (const name of Object.keys(root)) {
+          copy[name] = name === "children" && Array.isArray(root.children)
+            ? root.children.map((child) => (isPlainObject(child) ? replaceSlot(child, slotName, content) : child))
+            : root[name];
+        }
+        return copy;
+      }
+
+      // ui.messages / ui.t (MaldaLang/Runtime/UI/UiMessages.cs): the same lookup, plural rules
+      // and number format on every backend.
+      const catalogs = new Map();
+      let currentLocale = "en";
+
+      function language(locale) {
+        const dash = locale.search(/[-_]/);
+        return dash > 0 ? locale.slice(0, dash) : locale;
+      }
+
+      function pluralCategory(locale, n) {
+        const lang = language(locale).toLowerCase();
+        const absolute = Math.abs(n);
+        const isInteger = absolute === Math.floor(absolute);
+        const i = Math.floor(absolute);
+        const mod10 = i % 10;
+        const mod100 = i % 100;
+        const fewTail = mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14);
+        switch (lang) {
+          case "ja": case "zh": case "ko": case "th": case "vi": case "id": case "ms":
+            return "other";
+          case "fr":
+            return i === 0 || i === 1 ? "one" : "other";
+          case "pt":
+            if (locale.toLowerCase() === "pt-pt") return isInteger && i === 1 ? "one" : "other";
+            return i === 0 || i === 1 ? "one" : "other";
+          case "ru": case "uk": case "be":
+            if (!isInteger) return "other";
+            if (mod10 === 1 && mod100 !== 11) return "one";
+            return fewTail ? "few" : "many";
+          case "pl":
+            if (!isInteger) return "other";
+            if (i === 1) return "one";
+            return fewTail ? "few" : "many";
+          case "cs": case "sk":
+            if (!isInteger) return "many";
+            if (i === 1) return "one";
+            return i >= 2 && i <= 4 ? "few" : "other";
+          default:
+            return isInteger && i === 1 ? "one" : "other";
+        }
+      }
+
+      const separatorCache = new Map();
+      function separators(locale) {
+        if (!separatorCache.has(locale)) {
+          let group = ",";
+          let decimal = ".";
+          try {
+            for (const part of new Intl.NumberFormat(locale, { useGrouping: true }).formatToParts(1234567.5)) {
+              if (part.type === "group") group = part.value;
+              if (part.type === "decimal") decimal = part.value;
+            }
+          } catch (_) {
+            // unknown locale: invariant separators
+          }
+          separatorCache.set(locale, { group, decimal });
+        }
+        return separatorCache.get(locale);
+      }
+
+      function formatMessageValue(value, locale) {
+        if (typeof value !== "number" || !Number.isFinite(value)) return formatValue(value);
+        const { group, decimal } = separators(locale);
+        const fixed = Math.abs(value).toFixed(3);
+        const rounded = Number(fixed);
+        const [whole, fraction] = fixed.split(".");
+        const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, () => group);
+        const decimals = fraction.replace(/0+$/, "");
+        return (value < 0 && rounded !== 0 ? "-" : "") + grouped + (decimals ? decimal + decimals : "");
+      }
+
+      function selectForm(entry, key, locale, args) {
+        if (typeof entry === "string") return entry;
+        if (!isPlainObject(entry)) return formatValue(entry);
+        const count = args && typeof args.count === "number" ? args.count : null;
+        const form = (name) => (typeof entry[name] === "string" ? entry[name] : null);
+        if (count !== null) {
+          const exact = form("=" + String(count));
+          if (exact !== null) return exact;
+          const category = form(pluralCategory(locale, count));
+          if (category !== null) return category;
+        }
+        return form("other") ?? key;
+      }
+
+      function translate(key, args) {
+        const locale = currentLocale;
+        let entry;
+        for (const candidate of [locale, language(locale)]) {
+          const catalog = catalogs.get(candidate.toLowerCase());
+          if (catalog && Object.prototype.hasOwnProperty.call(catalog, key) && catalog[key] !== null && catalog[key] !== undefined) {
+            entry = catalog[key];
+            break;
+          }
+        }
+        const text = entry === undefined ? key : selectForm(entry, key, locale, args);
+        return text.replace(/\{(\w+)\}/g, (match, name) =>
+          args && Object.prototype.hasOwnProperty.call(args, name) ? formatMessageValue(args[name], locale) : match);
+      }
+
+      const api = {
+        mount(root, sessionId) {
+          if (arguments.length < 1 || arguments.length > 2) throw new Error("uiMount() expects rootNode and optional sessionId");
+          return mountTree(session(sessionIdOf(sessionId)), normalize(root));
+        },
+        mountEnvelope(root, sessionId, options) {
+          if (arguments.length < 1 || arguments.length > 3) throw new Error("uiMountEnvelope() expects rootNode, optional sessionId, optional options");
+          if (arguments.length === 3 && !isPlainObject(options)) throw new Error("uiMountEnvelope() options must be an object when provided");
+          const tree = normalize(root);
+          const id = sessionIdOf(sessionId);
+          const s = session(id);
+          const option = (name, fallback) => (options && Number.isInteger(options[name]) ? options[name] : fallback);
+          s.maxPatchCount = Math.max(1, option("maxPatchCount", 1024));
+          api.configure("maxEventQueueDepth", option("maxEventQueueDepth", 1024), id);
+          const mount = mountTree(s, tree);
+          return { status: 200, sessionId: id, mount, snapshot: snapshotOf(s), resync: resyncOf(s) };
+        },
+        render(root, sessionId) {
+          if (arguments.length < 1 || arguments.length > 2) throw new Error("uiRender() expects rootNode and optional sessionId");
+          return renderTree(session(sessionIdOf(sessionId)), normalize(root));
+        },
+        dispatchEvent(event, sessionId, sequence) {
+          if (arguments.length < 1 || arguments.length > 3 || !isPlainObject(event)) {
+            throw new Error("uiDispatchEvent() expects event object, optional sessionId, optional sequence");
+          }
+          const s = session(sessionIdOf(sessionId));
+          const inbound = arguments.length === 3 && Number.isInteger(sequence) ? sequence : 0;
+          if (inbound > 0) {
+            if (inbound !== s.expectedIn) {
+              const reason = inbound < s.expectedIn ? `duplicate_or_stale_expected_${s.expectedIn}` : `gap_expected_${s.expectedIn}`;
+              return controlEnvelope(s, "nack", inbound, { code: "InvalidSequence", message: reason });
+            }
+            s.expectedIn++;
+          }
+          enqueueUiEvent(s, event);
+          return inbound > 0 ? controlEnvelope(s, "ack", inbound) : null;
+        },
+        pullEvent(sessionId) {
+          if (arguments.length > 1) throw new Error("uiPullEvent() expects optional sessionId");
+          const event = dequeue(session(sessionIdOf(sessionId)));
+          return event ? eventValue(event) : null;
+        },
+        // ui.run(state, view, update, sessionId?): mount view(state), then state = update(state,
+        // event) and render view(state) for each event; update returning null ends the loop. In a
+        // page the loop waits for the user's events; without one (Node) it ends on an empty queue,
+        // as on a host with no browser attached.
+        async run(state, view, update, sessionId) {
+          if (arguments.length < 3 || arguments.length > 4) throw new Error("uiRun() expects 3-4 arguments: (state, view, update, sessionId?)");
+          if (typeof view !== "function" || typeof update !== "function") {
+            throw new Error("ui.run() expects view and update to be functions: ui.run(state, view, update, sessionId?)");
+          }
+          const s = session(sessionIdOf(sessionId));
+          mountTree(s, normalize(await view(state)));
+          while (true) {
+            const event = dequeue(s);
+            if (!event) {
+              if (!containerFor(s)) return state;
+              await waitForEvent(s);
+              continue;
+            }
+            const next = await update(state, eventValue(event));
+            if (next === null || next === undefined) return state;
+            state = next;
+            renderTree(s, normalize(await view(state)));
+          }
+        },
+        state(componentId, key, defaultValue, scope) {
+          if (arguments.length < 3 || arguments.length > 4 || typeof componentId !== "string" || typeof key !== "string") {
+            throw new Error("uiState() expects componentId, key, defaultValue, optional scope");
+          }
+          const map = stateMap(scopedComponentId(componentId, scope));
+          const existing = map.get(key);
+          if (existing !== null && existing !== undefined) return existing;
+          map.set(key, defaultValue);
+          return defaultValue;
+        },
+        getState(componentId, key, defaultValue, scope) {
+          if (arguments.length < 2 || arguments.length > 4 || typeof componentId !== "string" || typeof key !== "string") {
+            throw new Error("uiGetState() expects componentId, key, optional defaultValue, optional scope");
+          }
+          const value = stateMap(scopedComponentId(componentId, scope)).get(key);
+          if ((value === null || value === undefined) && arguments.length >= 3) return defaultValue;
+          return value ?? null;
+        },
+        setState(componentId, key, value, scope) {
+          if (arguments.length < 3 || arguments.length > 4 || typeof componentId !== "string" || typeof key !== "string") {
+            throw new Error("uiSetState() expects componentId, key, value, optional scope");
+          }
+          stateMap(scopedComponentId(componentId, scope)).set(key, value);
+          return value;
+        },
+        // State never expires in the page, so pinning has nothing to keep.
+        pinState(componentId) {
+          if (typeof componentId !== "string") throw new Error("uiPinState() expects componentId and optional scope");
+          return null;
+        },
+        unpinState(componentId) {
+          if (typeof componentId !== "string") throw new Error("uiUnpinState() expects componentId and optional scope");
+          return null;
+        },
+        onInit: hook("onInit"),
+        onPreRender: hook("onPreRender"),
+        onLoad: hook("onLoad"),
+        onDispose: hook("onDispose"),
+        onMount: hook("onMount"),
+        onUpdate: hook("onUpdate"),
+        onUnmount: hook("onUnmount"),
+        onError: hook("onError"),
+        configure(setting, value, sessionId) {
+          if (arguments.length < 2 || typeof setting !== "string" || !Number.isInteger(value)) {
+            throw new Error("uiConfigure() expects settingName and integer value");
+          }
+          if (setting === "sessionTtlMs") return null; // a page's sessions live as long as the page
+          const s = session(sessionIdOf(sessionId));
+          switch (setting) {
+            case "maxPatchCount":
+              s.maxPatchCount = Math.max(1, value);
+              return null;
+            case "maxPayloadBytes":
+              s.maxPayloadBytes = Math.max(1024, value);
+              return null;
+            case "maxEventQueueDepth":
+              if (value < 32) throw new Error("maxQueueDepth must be >= 32");
+              s.maxQueue = value;
+              return null;
+            default:
+              throw new Error(`Unknown uiConfigure setting: ${setting}`);
+          }
+        },
+        snapshot(sessionId) {
+          if (arguments.length > 1) throw new Error("uiSnapshot() expects optional sessionId");
+          return snapshotOf(session(sessionIdOf(sessionId)));
+        },
+        resync(sessionId) {
+          if (arguments.length > 1) throw new Error("uiResync() expects optional sessionId");
+          return resyncOf(session(sessionIdOf(sessionId)));
+        },
+        when(condition, thenNode, elseNode) {
+          if (arguments.length < 2 || arguments.length > 3 || typeof condition !== "boolean") {
+            throw new Error("uiWhen() expects condition, thenNode, optional elseNode");
+          }
+          return condition ? thenNode : arguments.length === 3 ? elseNode : null;
+        },
+        choose(key, cases, defaultNode) {
+          if (arguments.length < 2 || arguments.length > 3 || cases === null || typeof cases !== "object" || Array.isArray(cases)) {
+            throw new Error("uiChoose() expects key, casesObject, optional defaultNode");
+          }
+          const fallback = arguments.length === 3 ? defaultNode : null;
+          if (!isPlainObject(cases)) return fallback;
+          const selected = cases[formatValue(key)];
+          return selected !== null && selected !== undefined ? selected : fallback;
+        },
+        each(items, propName) {
+          if (arguments.length < 1 || arguments.length > 2 || !Array.isArray(items)) {
+            throw new Error("uiEach() expects items array and optional propName (default: value)");
+          }
+          const name = typeof propName === "string" ? propName : "value";
+          return items.map((item) => ({ type: "text", props: { [name]: item }, children: [] }));
+        },
+        withSlot(root, slotName, content) {
+          if (arguments.length !== 3 || !isPlainObject(root) || typeof slotName !== "string") {
+            throw new Error("uiWithSlot() expects rootNode, slotName, slotContent");
+          }
+          return replaceSlot(root, slotName, content);
+        },
+        messages(locale, catalog) {
+          if (arguments.length < 1 || arguments.length > 2) throw new Error("uiMessages() expects 1-2 arguments: (locale, catalog?)");
+          if (typeof locale !== "string" || locale.trim() === "") {
+            throw new Error("ui.messages() locale must be a non-empty string, such as \"en\" or \"it-IT\".");
+          }
+          if (arguments.length === 2 && catalog !== null && catalog !== undefined) {
+            if (!isPlainObject(catalog)) throw new Error("ui.messages() catalog must be a dict of message key → text or plural forms.");
+            catalogs.set(locale.trim().toLowerCase(), copyEntries(catalog));
+          }
+          currentLocale = locale.trim();
+          return null;
+        },
+        t(key, args) {
+          if (arguments.length < 1 || arguments.length > 2) throw new Error("uiT() expects 1-2 arguments: (key, args?)");
+          if (typeof key !== "string") throw new Error("ui.t() key must be a string.");
+          if (arguments.length === 2 && args !== null && args !== undefined && !isPlainObject(args)) {
+            throw new Error("ui.t() args must be a dict of placeholder values.");
+          }
+          return translate(key, args || null);
+        },
+        // For tests: the spec table and the plural rule.
+        _controlEvents: controlEvents,
+        _pluralCategory: pluralCategory
+      };
+      for (const type of builders) {
+        api[type] = function () {
+          return buildNode(type, arguments);
+        };
+      }
+      return api;
+    })(),
+    // @malda-runtime-area-end ui
     // @malda-runtime-area game
     game: (() => {
       const state = {

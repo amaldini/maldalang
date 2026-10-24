@@ -418,6 +418,13 @@ public partial class Interpreter
                 return RuntimeValue.Object(oi);
             case IList<RuntimeValue> runtimeList:
                 return RuntimeValue.Array(runtimeList.ToList());
+            // A transpiled dict or object literal (e.g. the state ui.run gets back from update):
+            // a dict again, not the list of its entries.
+            case System.Collections.IDictionary dictionary:
+                var members = new BuiltIns.JsonObject();
+                foreach (System.Collections.DictionaryEntry entry in dictionary)
+                    members.Set(entry.Key.ToString() ?? string.Empty, CoerceTranspiledDelegateResult(entry.Value));
+                return RuntimeValue.Object(members);
             case System.Collections.IEnumerable enumerable when result is not string:
                 return RuntimeValue.Array(
                     enumerable.Cast<object?>().Select(CoerceTranspiledDelegateResult).ToList());

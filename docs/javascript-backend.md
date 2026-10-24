@@ -18,6 +18,7 @@ This document captures the current JavaScript backend design in code and the nea
   - `malda compile <input> --mode esm` / `--target esm` (ES module, default `.mjs`; `CompileToJavaScriptModule`)
   - `malda compile <input> --mode pwa`
   - `malda compile <input> --target pwa` (alias)
+  - `--minify` on any of the three (esbuild when installed; see Production Build)
   - `malda new game [directory]`
   - `malda new game [directory] --fullstack` (canvas client + `@GET` / `@POST` scores; compile `--mode fullstack`)
   - `malda play <file.malda>` (JS preview server; not a second packaging format; refuses fullstack sources)
@@ -149,8 +150,8 @@ This document captures the current JavaScript backend design in code and the nea
 ## Runtime Areas (trimmed runtime)
 
 - `malda-js-runtime.js` marks optional members of the runtime object with
-  `// @malda-runtime-area NAME` / `// @malda-runtime-area-end NAME` (today `game` and `three`, about 43% of
-  the file). `JsRuntimeAreas.WriteBeside` (`MaldaLang.Compiler/JsRuntimeAreas.cs`) writes the copy beside a
+  `// @malda-runtime-area NAME` / `// @malda-runtime-area-end NAME` (today `ui`, `game` and `three`, about
+  47% of the file). `JsRuntimeAreas.WriteBeside` (`MaldaLang.Compiler/JsRuntimeAreas.cs`) writes the copy beside a
   `--mode js` / `esm` / `pwa` output with only the areas the generated code calls (`mlRuntime.game…`), plus
   the areas an existing runtime in that folder already keeps, and a first line
   `// malda-js-runtime areas: …`. A dropped area becomes `missingRuntimeArea("NAME")`, a Proxy whose
@@ -159,6 +160,39 @@ This document captures the current JavaScript backend design in code and the nea
   use it. `nn.*` is interleaved with `math.*` and stays in the core.
 - Adding an area: wrap one member of the `runtime` object in the two markers, add its name to
   `JsRuntimeAreas.All`, and check that nothing outside the markers reaches into it.
+- Size budget: `JsBuildSizeTests.CoreRuntime_StaysWithinItsBudget` fails when the core (no area) passes
+  `Compiler.CoreRuntimeBudgetCharacters` (300 000 characters; 285 000 when J8 landed). Code only some programs
+  need belongs in an area.
+
+## Client-side UI (`ui.*` local mode)
+
+- The `ui` runtime area runs the `UiSession` model in the page: node builders with the host's prop
+  sanitizer and control specs, sessions, envelopes (`mount` / `patch` / `resync`, sequence, revision,
+  `treeHash`, `answersEventId`), the event queue with stale-target drops and `overflow`, lifecycle hooks,
+  `ui.state` / `getState` / `setState`, and `ui.messages` / `ui.t` (same plural table and number format
+  as `MaldaLang/Runtime/UI/UiMessages.cs`). Error messages match the host's word for word.
+- Diff, hash and DOM come from `malda-ui-client.js`: `MaldaUiCore.diff` is a hand port of `UiDiffEngine`
+  (decision 4) and `UiPatchFuzzTests` requires both to produce the same patches; `MaldaUiDom` applies
+  them. The runtime finds the client on `globalThis` (the page loads it first with
+  `data-ui-mode="local"`, which keeps its socket bootstrap off), else `require`s it from beside the
+  runtime or `MALDA_UI_CLIENT_PATH` (tests). `Compiler.WriteUiClientBesideIfUsed` writes it from the
+  copy embedded in `MaldaLang.UIHost.dll`.
+- A session draws into `[data-ui-session="id"]`, else `#app`; `ui.run` waits on the page's events, and
+  without a document (Node) it returns on an empty queue like a host with no browser.
+- `JsCapabilityChecker.JsUiMembers` lists the members allowed on JavaScript; the rest of `ui.*` and the
+  flat `uiXxx` names stay `JS0008`. `UiLocalModeTests` checks the three backends, the spec table, the
+  member list, and a page (fake DOM) answering clicks.
+
+## Production Build (`--minify`, size report)
+
+- Every `js` / `esm` / `pwa` build returns `CompilationResult.Report`: sizes of the program, runtime (with
+  its areas) and UI client, raw and gzipped; the CLI prints it.
+- `--minify` sets `Compiler.MinifyJavaScript`. `JsMinifier.FindEsbuild` looks at `MALDA_ESBUILD`, then
+  `node_modules/.bin` above the output and working folders, then `PATH`. With esbuild every file is
+  minified in place and the program's map is chained (it still names the `.malda`). Without it,
+  `JsMinifier.StripCommentsAndIndentation` (string-, template- and regex-aware, keeps newlines so ASI is
+  unchanged) shrinks the runtime files and the program stays as written. The runtime's
+  `// malda-js-runtime areas:` line is put back after minifying.
 
 ## Target Decorators and Partitioning
 

@@ -231,9 +231,10 @@ public partial class JsTranspiler
             }
         }
 
-        if (functionCall.Callee is MemberAccessExpression { Object: IdentifierExpression { Name: "io", ShadowsBuiltIn: false } } ioCall
-            && AsyncIoMembers.Contains(ioCall.Member)
-            && !IsLocalName("io"))
+        if (functionCall.Callee is MemberAccessExpression { Object: IdentifierExpression { ShadowsBuiltIn: false } module } moduleCall
+            && AsyncModuleMembers.TryGetValue(module.Name, out var asyncMembers)
+            && asyncMembers.Contains(moduleCall.Member)
+            && IsUnshadowedRuntimeModule(module.Name))
         {
             return true;
         }

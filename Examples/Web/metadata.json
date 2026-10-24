@@ -232,6 +232,29 @@
                          "documentationTitle":  "UI state model"
                      },
                      {
+                         "name":  "UI Workbench (local mode)",
+                         "description":  "Desktop-style ui.* app: menus, shortcuts, split panes, tree, canvas, property grid, command palette; runs on the UI host or compiled to JavaScript with no host",
+                         "file":  "ui_workbench.malda",
+                         "track":  "showcase",
+                         "difficulty":  "intermediate",
+                         "minutes":  15,
+                         "concepts":  [
+                                          "ui.run",
+                                          "ui.splitPane",
+                                          "ui.canvas",
+                                          "ui.propertyGrid",
+                                          "ui.commandPalette",
+                                          "local mode"
+                                      ],
+                         "prerequisites":  [
+                                               "Web/ui_event_loop.malda"
+                                           ],
+                         "learningGoal":  "Build one ui.* program that runs server-driven and in the browser with no host.",
+                         "expectedOutput":  "Opens a shape editor: click the canvas to add shapes, edit them in the property grid, Ctrl+K for commands.",
+                         "documentationPath":  "/ReferenceManual/26-web-ui.html#local-mode",
+                         "documentationTitle":  "Local mode"
+                     },
+                     {
                          "name":  "UI Controls Showcase",
                          "description":  "Comprehensive server-side UI example covering the full ui.* control catalog",
                          "file":  "ui_controls_showcase.malda"

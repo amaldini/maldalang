@@ -40,6 +40,9 @@ public partial class Compiler
         public bool Success { get; set; }
         public string? ErrorMessage { get; set; }
         public string? OutputPath { get; set; }
+
+        /// <summary>Lines the CLI prints after a successful build, such as the JavaScript size report.</summary>
+        public string? Report { get; set; }
     }
 
     public CompilationResult Compile(string sourcePath, string outputPath, CompilationMode mode = CompilationMode.Interpreter, bool includeLLamaSharp = false)

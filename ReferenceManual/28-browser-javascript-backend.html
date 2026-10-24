@@ -32,7 +32,7 @@
         <ul>
             <li><strong>Games (first-class JS surface)</strong> — <a href="#game-canvas">28.9</a> <code>game.*</code> · <a href="#three-scene-api">28.10</a> <code>three.*</code> · <a href="#shader-kernels">28.10.1</a> <code>@shader()</code></li>
             <li><strong>28.2</strong> What the JavaScript backend provides</li>
-            <li><strong>28.3</strong> Compile commands and output modes (<a href="#es-modules">28.3.1</a> ES modules)</li>
+            <li><strong>28.3</strong> Compile commands and output modes (<a href="#es-modules">28.3.1</a> ES modules, <a href="#production-builds">28.3.2</a> <code>--minify</code> and sizes)</li>
             <li><strong>28.4</strong> Required script loading order</li>
             <li><strong>28.5</strong> API mode DOM helpers</li>
             <li><strong>28.6</strong> Sum types and pattern matching in JS mode</li>
@@ -51,6 +51,7 @@
             <li><strong>Actor support (local)</strong>: JS mode supports local actors with mailbox semantics compatible with MALDA actor behavior.</li>
             <li><strong>3D scene support</strong>: JavaScript mode includes a curated <code>three.*</code> wrapper for browser-hosted 3D scenes, plus <code>@shader()</code> kernels compiled to GLSL (see <a href="#three-scene-api">28.10</a>).</li>
             <li><strong>Runtime expectation</strong>: generated scripts require <code>malda-js-runtime.js</code> before MALDA output runs.</li>
+            <li><strong>Client-side UI</strong>: <code>ui.*</code> programs run in the page with no host (local mode, <a href="26-web-ui.html#local-mode">26.8</a>); the compiler writes <code>malda-ui-client.js</code> beside the output and loads it before the runtime.</li>
             <li><strong>Desktop IDE debug</strong>: F5 on <code>dom.*</code> / <code>game.*</code> / <code>three.*</code> programs transpiles to JavaScript, opens Web Preview, and maps editor breakpoints through the source map. Full-stack files (<code>@client()</code> plus <code>@server()</code> or a route) debug the host interpreter and Web Preview together (see <a href="02-tools.html#javascript-desktop-debug">2.6.6</a>).</li>
         </ul>
         <h3>28.2.1 Target decorators in JS output</h3>
@@ -107,6 +108,16 @@ function helper() {          // not exported
         <pre><code>import { area, UNIT } from "./web/geometry.mjs";
 console.log(area(2, 3), UNIT);   // 60 10</code></pre>
 
+        <h3 id="production-builds">28.3.2 Production builds (<code>--minify</code>) and size report</h3>
+        <p>Every <code>js</code>, <code>esm</code> and <code>pwa</code> build prints the size of the program, the runtime (with the areas it kept) and the UI client, raw and gzipped. <code>--minify</code> minifies them with esbuild when it finds one (<code>MALDA_ESBUILD</code>, then a <code>node_modules/.bin</code> above the working or output folder, then <code>PATH</code>); the program's source map is chained, so DevTools and the Desktop IDE still map to the <code>.malda</code> lines. Without esbuild, <code>--minify</code> drops comments and indentation from the runtime files and leaves the program as written, and the report says so.</p>
+        <pre><code>malda compile app.malda --mode js --minify -o dist/app.js
+# JavaScript size (minified with esbuild):
+#   app.js                  5.8 KB  (gzip 2.3 KB)
+#   malda-js-runtime.js   158.5 KB  (gzip 46.4 KB)  areas: ui
+#   malda-ui-client.js     59.6 KB  (gzip 19.0 KB)
+#   total                 224.0 KB  (gzip 67.7 KB)</code></pre>
+        <p>A guard test keeps the runtime written beside a program without optional areas under a fixed size (<code>Compiler.CoreRuntimeBudgetCharacters</code>); new runtime code that only some programs need goes into an area.</p>
+
         <h2>28.4 Required Script Loading Order</h2>
         <p>The host page must include a container such as <code>#app</code>, then load scripts in this order. Same file: <code>Examples/Web/js/host.html</code>.</p>
         <ol>
@@ -144,7 +155,27 @@ console.log(area(2, 3), UNIT);   // 60 10</code></pre>
             <li><code>dom.setText(target, text)</code></li>
             <li><code>dom.html(target, markup)</code></li>
             <li><code>dom.on(target, eventName, handler, options?)</code></li>
+            <li><code>dom.off(target, eventName, handler, options?)</code>, <code>dom.queryAll(selector, root?)</code>, <code>dom.remove(target)</code></li>
+            <li><code>dom.attr(target, name, value?)</code> (read, set, or remove with <code>null</code>), <code>dom.addClass</code> / <code>dom.removeClass(target, ...names)</code>, <code>dom.toggleClass(target, name, force?)</code>, <code>dom.hasClass(target, name)</code></li>
+            <li><code>dom.style(target, name, value?)</code> (computed value, or set one property) and <code>dom.style(target, { name: value })</code>; custom properties (<code>--accent</code>) work too</li>
+            <li><code>dom.focus</code> / <code>dom.blur(target)</code>, <code>dom.rect(target)</code> (<code>x</code>, <code>y</code>, <code>width</code>, <code>height</code>, …)</li>
+            <li>Pointer and keyboard: <code>dom.capturePointer</code> / <code>dom.releasePointer(target, pointerId)</code>, <code>dom.keyCombo(event)</code> (<code>"Ctrl+Shift+K"</code>); events from <code>dom.on</code> carry <code>clientX</code>, <code>deltaY</code>, <code>ctrlKey</code> … as JavaScript values</li>
+            <li><code>dom.onResize(target, handler)</code> calls <code>handler({ width, height })</code> on every size change and returns a function that stops it</li>
+            <li>Drag and drop: <code>dom.dragData(event, value?)</code> sets the dragged text in <code>dragstart</code> and reads it in <code>drop</code>; dropped files go through <code>io.onFileDrop</code></li>
+            <li>Clipboard: <code>dom.copyText(text)</code> and <code>dom.readText()</code>; the compiler awaits them, and the browser allows them only after a user action</li>
         </ul>
+        <pre><code>var panel = dom.query("#panel");
+dom.addClass(panel, "busy");
+dom.style(panel, { "width": "320px", "--accent": "#60a5fa" });
+dom.attr(panel, "aria-busy", "true");
+var stop = dom.onResize(panel, function (size) { println(size["width"]); });
+dom.on(panel, "pointerdown", function (e) { dom.capturePointer(panel, e.pointerId); });
+dom.on(panel, "keydown", function (e) {
+    if (dom.keyCombo(e) == "Ctrl+C") {
+        dom.copyText("copied");
+    }
+});</code></pre>
+
         <pre><code>var root = dom.query("#app");
 
 if (root == null) {
@@ -448,6 +479,7 @@ document.body.append(button);</code></pre>
         <ul>
             <li>Do not edit generated JavaScript directly when there is a matching <code>.malda</code> source. Change the MALDA file and recompile.</li>
             <li>Load <code>malda-js-runtime.js</code> before the compiled script or the generated app will fail at runtime.</li>
+            <li>A program that uses <code>ui.*</code> also needs <code>malda-ui-client.js</code>, loaded before the runtime with <code>data-ui-mode="local"</code> (the generated <code>index.html</code> does it). Copy the whole output folder, not only the <code>.js</code>.</li>
             <li>Load <code>Examples/Web/wwwroot/vendor/three.min.js</code> before <code>malda-js-runtime.js</code> when using the <code>three.*</code> namespace.</li>
             <li><code>three.*</code> is JavaScript mode with a browser host. Call <code>three.createRenderer</code> before <code>three.start</code> or <code>three.render</code>. Do not create a second renderer while the loop is running; <code>three.stop()</code> first.</li>
             <li>Rotations are radians. After a viewport change, call both <code>three.setRendererSize</code> and <code>three.setCameraAspect</code>.</li>

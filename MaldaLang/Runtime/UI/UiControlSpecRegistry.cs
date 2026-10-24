@@ -82,6 +82,17 @@ public static class UiControlSpecRegistry
         ["spinner"] = Layout("spinner"),
         ["errorBoundary"] = Layout("errorBoundary"),
         ["slot"] = Layout("slot"),
+        ["splitPane"] = Interactive("splitPane", new[] { "onResize" }, BaseProps("direction", "sizes", "minSize")),
+        ["menuBar"] = Interactive("menuBar", new[] { "onSelect" }, BaseProps("menus")),
+        ["contextMenu"] = Interactive("contextMenu", new[] { "onSelect" }, BaseProps("items")),
+        ["commandPalette"] = Interactive("commandPalette", new[] { "onSelect", "onClose" }, BaseProps("open", "commands", "placeholder")),
+        ["shortcuts"] = Interactive("shortcuts", Array.Empty<string>(), BaseProps("bindings")),
+        ["propertyGrid"] = Interactive("propertyGrid", new[] { "onChange" }, BaseProps("properties")),
+        ["canvas"] = Interactive(
+            "canvas",
+            new[] { "onClick", "onPointerDown", "onPointerMove", "onPointerUp", "onWheel" },
+            BaseProps("width", "height", "background", "shapes")),
+        ["hostSlot"] = Layout("hostSlot"),
         ["when"] = Layout("when"),
         ["choose"] = Layout("choose"),
         ["each"] = Layout("each")

@@ -242,6 +242,53 @@ public static partial class BuiltInFunctions
     private static RuntimeValue BuiltInUiSpinner(List<RuntimeValue> args) => UiFrameworkInstance.BuildNode("spinner", args);
     private static RuntimeValue BuiltInUiErrorBoundary(List<RuntimeValue> args) => UiFrameworkInstance.BuildNode("errorBoundary", args);
     private static RuntimeValue BuiltInUiSlot(List<RuntimeValue> args) => UiFrameworkInstance.BuildNode("slot", args);
+    private static RuntimeValue BuiltInUiSplitPane(List<RuntimeValue> args) => UiFrameworkInstance.BuildNode("splitPane", args);
+    private static RuntimeValue BuiltInUiMenuBar(List<RuntimeValue> args) => UiFrameworkInstance.BuildNode("menuBar", args);
+    private static RuntimeValue BuiltInUiContextMenu(List<RuntimeValue> args) => UiFrameworkInstance.BuildNode("contextMenu", args);
+    private static RuntimeValue BuiltInUiCommandPalette(List<RuntimeValue> args) => UiFrameworkInstance.BuildNode("commandPalette", args);
+    private static RuntimeValue BuiltInUiShortcuts(List<RuntimeValue> args) => UiFrameworkInstance.BuildNode("shortcuts", args);
+    private static RuntimeValue BuiltInUiPropertyGrid(List<RuntimeValue> args) => UiFrameworkInstance.BuildNode("propertyGrid", args);
+    private static RuntimeValue BuiltInUiCanvas(List<RuntimeValue> args) => UiFrameworkInstance.BuildNode("canvas", args);
+    private static RuntimeValue BuiltInUiHostSlot(List<RuntimeValue> args) => UiFrameworkInstance.BuildNode("hostSlot", args);
+
+    /// <summary>
+    /// <c>ui.messages(locale, catalog?)</c>: with a catalog (a dict of key → text, or key → plural
+    /// forms), replaces that locale's catalog; either way makes the locale current for <c>ui.t</c>.
+    /// </summary>
+    private static RuntimeValue BuiltInUiMessages(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("uiMessages", args, 1, 2, "locale, catalog?");
+        if (args[0].Type != ValueType.String || string.IsNullOrWhiteSpace(args[0].AsString()))
+            throw new Exception("ui.messages() locale must be a non-empty string, such as \"en\" or \"it-IT\".");
+
+        JsonObject? catalog = null;
+        if (args.Count == 2 && args[1].Type != ValueType.Null)
+        {
+            catalog = CoerceRuntimeObjectToJsonObject(args[1])
+                ?? throw new Exception("ui.messages() catalog must be a dict of message key → text or plural forms.");
+        }
+
+        UiMessages.Use(args[0].AsString().Trim(), catalog?.GetProperties());
+        return RuntimeValue.Null();
+    }
+
+    /// <summary><c>ui.t(key, args?)</c>: the current locale's text for <c>key</c>; see <see cref="UiMessages"/>.</summary>
+    private static RuntimeValue BuiltInUiT(List<RuntimeValue> args)
+    {
+        BuiltInArity.Require("uiT", args, 1, 2, "key, args?");
+        if (args[0].Type != ValueType.String)
+            throw new Exception("ui.t() key must be a string.");
+
+        Dictionary<string, RuntimeValue>? values = null;
+        if (args.Count == 2 && args[1].Type != ValueType.Null)
+        {
+            var obj = CoerceRuntimeObjectToJsonObject(args[1])
+                ?? throw new Exception("ui.t() args must be a dict of placeholder values.");
+            values = obj.GetProperties().ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.Ordinal);
+        }
+
+        return RuntimeValue.String(UiMessages.Translate(args[0].AsString(), values));
+    }
 
     private static RuntimeValue BuiltInUiTemplate(List<RuntimeValue> args)
     {
@@ -309,7 +356,7 @@ public static partial class BuiltInFunctions
         if (args.Count != 3 || args[0].Type != ValueType.Object || args[1].Type != ValueType.String)
             throw new Exception("uiWithSlot() expects rootNode, slotName, slotContent");
 
-        var root = args[0].AsObject() as JsonObject;
+        var root = CoerceRuntimeObjectToJsonObject(args[0]);
         if (root == null)
             throw new Exception("uiWithSlot() rootNode must be a UI node object");
 
@@ -336,7 +383,7 @@ public static partial class BuiltInFunctions
             throw new Exception("uiChoose() expects key, casesObject, optional defaultNode");
 
         var key = args[0].ToString();
-        var casesObject = args[1].AsObject() as JsonObject;
+        var casesObject = CoerceRuntimeObjectToJsonObject(args[1]);
         if (casesObject == null)
             return args.Count == 3 ? args[2] : RuntimeValue.Null();
 

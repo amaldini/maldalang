@@ -499,7 +499,7 @@ partial class Program
     {
         if (args.Length < 2)
         {
-            Console.WriteLine("Usage: malda compile|publish <input.malda|input.malda.html> [-o <output.exe|output.dll|output.js|output-dir>] [--mode interpreter|transpile|dll|js|pwa|fullstack] [--target js|pwa|fullstack] [--include-ui-host] [--embed-folder <dir[=alias]>] [--with-trading] [--typed-transpile-level 0|1|2] [--strict-types] [--lenient-types] [--profile] [--profile-output <path>] [--profile-format text|json|both] [--profile-periodic-seconds N]");
+            Console.WriteLine("Usage: malda compile|publish <input.malda|input.malda.html> [-o <output.exe|output.dll|output.js|output-dir>] [--mode interpreter|transpile|dll|js|pwa|fullstack] [--target js|pwa|fullstack] [--include-ui-host] [--minify] [--embed-folder <dir[=alias]>] [--with-trading] [--typed-transpile-level 0|1|2] [--strict-types] [--lenient-types] [--profile] [--profile-output <path>] [--profile-format text|json|both] [--profile-periodic-seconds N]");
             Console.WriteLine("  publish       - Alias for compile --mode transpile (executable publish layout)");
             Console.WriteLine("  --with-trading - Bundle MaldaLang.Timeseries, Trading.Core, Trading.Plugin, and Trading.Abstractions DLLs");
             Console.WriteLine("  input.malda    - Source file to compile (.malda.html supported in --mode js, --mode pwa, and --mode fullstack)");
@@ -509,6 +509,7 @@ partial class Program
             Console.WriteLine("  --target js   - Alias for --mode js");
             Console.WriteLine("  --target fullstack - Alias for --mode fullstack (output is a deployable directory)");
             Console.WriteLine("  --include-ui-host - Force embedding UIHost runtime in transpiled executable");
+            Console.WriteLine("  --minify - js / esm / pwa: minify the output with esbuild when installed (MALDA_ESBUILD, PATH or node_modules), else strip comments from the runtime");
             Console.WriteLine("  --embed-folder - Embed a directory as embed:<alias>/... (alias defaults to folder name; repeatable; path=alias optional)");
             Console.WriteLine("  --typed-transpile-level - 0=legacy dynamic transpile, 1=typed-safe (default), 2=typed-aggressive");
             Console.WriteLine("  --strict-types - Refuse emit when type/match/@pure/bounds analysis has Errors (default for --mode transpile / dll)");
@@ -531,6 +532,7 @@ partial class Program
         bool outputPathExplicitlySet = false;
         bool includeUiHost = false;
         bool includeOptionalPacks = false;
+        var minifyJavaScript = false;
         int typedTranspileLevel = 1;
         bool strictTypes = false;
         bool lenientTypes = false;
@@ -630,6 +632,10 @@ partial class Program
             else if (arg == "--with-trading")
             {
                 includeOptionalPacks = true;
+            }
+            else if (arg == "--minify")
+            {
+                minifyJavaScript = true;
             }
             else if (TryParseCompileTypeFlags(arg, ref strictTypes, ref lenientTypes, out var typeFlagConflict))
             {
@@ -741,6 +747,8 @@ partial class Program
             }
 
             var compiler = Activator.CreateInstance(compilerType);
+            if (minifyJavaScript)
+                compilerType.GetProperty("MinifyJavaScript")?.SetValue(compiler, true);
             
             // Get the Compile method with the new signature (if compilationMode was loaded)
             MethodInfo? compileMethod = null;
@@ -801,6 +809,8 @@ partial class Program
                 {
                     var outputType = GetCompilationOutputType(compilationModeStr);
                     Console.WriteLine($"Compilation successful! {outputType} saved to: {resultOutputPath}");
+                    if (resultType?.GetProperty("Report")?.GetValue(result) is string { Length: > 0 } report)
+                        Console.WriteLine(report);
                 }
                 else
                 {
@@ -856,6 +866,8 @@ partial class Program
                 {
                     var outputType = GetCompilationOutputType(compilationModeStr);
                     Console.WriteLine($"Compilation successful! {outputType} saved to: {resultOutputPath}");
+                    if (resultType?.GetProperty("Report")?.GetValue(result) is string { Length: > 0 } report)
+                        Console.WriteLine(report);
                 }
                 else
                 {
@@ -985,6 +997,8 @@ partial class Program
                 {
                     var outputType = GetCompilationOutputType(compilationModeStr);
                     Console.WriteLine($"Compilation successful! {outputType} saved to: {resultOutputPath}");
+                    if (resultType?.GetProperty("Report")?.GetValue(result) is string { Length: > 0 } report)
+                        Console.WriteLine(report);
                 }
                 else
                 {
@@ -1028,6 +1042,8 @@ partial class Program
                 {
                     var outputType = GetCompilationOutputType(compilationModeStr);
                     Console.WriteLine($"Compilation successful! {outputType} saved to: {resultOutputPath}");
+                    if (resultType?.GetProperty("Report")?.GetValue(result) is string { Length: > 0 } report)
+                        Console.WriteLine(report);
                 }
                 else
                 {

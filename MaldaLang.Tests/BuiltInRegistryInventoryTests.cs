@@ -29,7 +29,8 @@ public class BuiltInRegistryInventoryTests
     public void CoreBuiltinInventory_HasExpectedScale()
     {
         var inventory = BuiltInRegistryInventoryLoader.LoadSymbolsFromCoreInventory();
-        Assert.InRange(inventory.Count, 280, 380);
+        // 386 after J6 added the desktop controls and ui.messages / ui.t.
+        Assert.InRange(inventory.Count, 280, 420);
     }
 
     [Fact]

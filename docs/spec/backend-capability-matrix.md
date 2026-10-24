@@ -61,7 +61,8 @@ These strings are what `@property` / `runProperty` use via `GetRequiredCapabilit
 | Neural helpers (`nn.dense` / activations / `denseBackward` / `Dense` / `Sequential` / `Parallel` / `Identity` / `Conv` / `Conv2D` / `MaxPool2D` / `AvgPool2D` / `Flatten` / `BatchNorm2D` / `Dropout2D` / `GlobalAvgPool2D` / `GlobalMaxPool2D` / `Activation` / `Embedding` / `Rnn` / `LayerNorm` / `Attention`) | yes | yes | yes |
 | Capability tokens (`cap.fileRead` / `cap.httpGet` / `cap.mcpCall` / `cap.shell`) | yes | yes | mint / `is` / `confine` (consume host-only) |
 | HttpServer / RestServer / sessions | yes | yes | no |
-| UIHost / `ui.*` server-driven UI | yes† | yes† | no |
+| `ui.*` controls, sessions, events, `ui.run`, state, lifecycle hooks, `ui.messages` / `ui.t` | yes† | yes† | yes (local mode)◊ |
+| UIHost-only `ui.*` (`ui.template` / `partial` / `layout` / `renderList` / `crud*`, `ui.generate`, `ui.invalidate`, `ui.sessionId` / `redirectWithSession`) | yes† | yes† | no |
 | Jobs (`enqueueJob` / `claimJob` / `completeJob` / `failJob`) | yes | yes | no |
 | Browser `dom.*` / `three.*` / game canvas | n/a | n/a | yes |
 | Persistent store (`io.storeGet` / `storeSet` / `storeRemove` / `storeKeys`) | yes (`.malda/store/`) | yes (`.malda/store/`) | yes (IndexedDB) |
@@ -72,7 +73,9 @@ These strings are what `@property` / `runProperty` use via `GetRequiredCapabilit
 
 \* OpenAI-compatible chat APIs receive `response_format` (and the host appends a `MALDA_OUTPUT_SCHEMA` appendix) when `await prompt(…) -> Type` has **no `gather:`**. Mode B (`tools:` listed) sends format + appendix with tools; if the backend rejects tools+`json_schema`, the host retries once without format (keeps tools) and remembers that backend. Mode C: `gather:` + `-> Type` runs a tool round, then a fresh typed prompt without tools. In-process llama.cpp / LLamaSharp converts the same schema to a GBNF grammar and constrains Mode A / extract sampling (not Mode B tool rounds). Closed `api` / `program(Api)` / `runProgram` is the same host surface (interpreter + C#); JS transpile rejects `api` declarations. Prompt `attachments:` (image/pdf) become OpenAI content parts on HTTP clients; in-process GGUF throws if attachments are present. `@MCPTool` / `@Tool` third argument may be a registered schema or sum-type name (or a JSON schema object string); an attached schema is host-validated on `callTool` / `tools/call` / `execute` / agent invoke; JS: n/a (MCP is host-only).
 
-† Host embed on interpret/transpile via `MaldaLang.UIHost` when the program uses `ui.mount` / related APIs — see [`docs/ui-framework.md`](../ui-framework.md). Not available on the JS backend.
+† Host embed on interpret/transpile via `MaldaLang.UIHost` when the program uses `ui.mount` / related APIs — see [`docs/ui-framework.md`](../ui-framework.md).
+
+◊ Local mode: the program runs in the page and the runtime's `ui` area diffs and draws through `malda-ui-client.js` (written beside the output), with no host. Same envelopes, events and errors as the host; sessions never expire, so `sessionTtlMs` and `pinState` do nothing. Without a page (Node), `ui.run` ends on an empty queue as on a host with no browser. See [Reference Manual 26.8](../../ReferenceManual/26-web-ui.html#local-mode).
 
 ¶ The browser file calls stop the interpreter and C# transpile at the call with a message that points to `io.readFile` / `io.writeFile`. See [Reference Manual 12.11](../../ReferenceManual/12-input-output.html#store-and-files).
 
@@ -128,7 +131,7 @@ JavaScript `no` row has no rule or no fixture (`MaldaLang.Tests/JsCapabilityChec
 | `JS0005` | VectorDB | `new VectorDB` | VectorDB |
 | `JS0006` | ONNX | `new OnnxModel` | ONNX inspect |
 | `JS0007` | HTTP servers | `new HttpServer` / `RestServer` / `HTMLCache`, `renderTemplate` / `component*` / `redirect` / CSRF / secure cookies / `bindForm` / `pageLayout` | HttpServer / RestServer / sessions |
-| `JS0008` | UIHost | `ui.*`, `ui*` builtins, `generateUI` | UIHost / `ui.*` |
+| `JS0008` | UIHost-only `ui.*` | `ui.template` / `partial` / `layout` / `renderList` / `crud*` / `generate` / `invalidate` / `sessionId` / `redirectWithSession`, flat `ui*` builtins, `generateUI` | UIHost-only `ui.*` |
 | `JS0009` | Jobs | `enqueueJob` / `claimJob` / `completeJob` / `failJob` / `getJob` / `listJobs` | Jobs |
 | `JS0010` | .NET interop | `loadAssembly` / `getDotNetType` / `dotnetNew` / `loadNativeModule` / `createNativeCallback` | .NET interop, `dotnet-interop` |
 | `JS0011` | Host processes and drivers | `runCommand` / `runMALDA` / `compileMALDA` / `checkMalda` / `getSymbols` / `exit` / `getMaldaHome` / `getCommandLineArgs` …, `new SqliteClient` / `PostgresClient` / `SqlServerClient` / `SerialConnection` / `ArduinoConnection` | `host-interop` |

@@ -29,7 +29,8 @@ public static class UiPropSanitizer
         "onClick", "onChange", "onInput", "onSubmit", "onClose", "onFocus", "onBlur",
         "onRowClick", "onSelectionChange", "onSort", "onFilter", "onPageChange", "onViewportChange",
         "onNodeSelect", "onNodeToggle", "onNodeExpand", "onNodeCollapse", "onNodeActivate", "onLoadChildren",
-        "onDragStart", "onDragOver", "onDrop", "onDragEnd"
+        "onDragStart", "onDragOver", "onDrop", "onDragEnd",
+        "onSelect", "onResize", "onPointerDown", "onPointerMove", "onPointerUp", "onWheel"
     };
 
     private static readonly HashSet<string> RejectedNames = new(StringComparer.OrdinalIgnoreCase) { "srcdoc", "formaction" };

@@ -111,6 +111,8 @@ require(runtimePath);
             startInfo.ArgumentList.Add(wrapperPath);
             startInfo.ArgumentList.Add(runtimePath);
             startInfo.ArgumentList.Add(programPath);
+            // ui.* (local mode) loads the client from beside the runtime; the repo keeps one copy.
+            startInfo.Environment["MALDA_UI_CLIENT_PATH"] = PlanningPaths.ResolveRepoFile("MaldaLang.UIHost", "wwwroot", "malda-ui-client.js");
 
             using var process = Process.Start(startInfo)
                 ?? throw new InvalidOperationException("Failed to start Node.js for Tier 0 JavaScript backend.");

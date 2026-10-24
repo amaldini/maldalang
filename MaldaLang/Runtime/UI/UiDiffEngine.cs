@@ -3,6 +3,7 @@
 
 namespace MaldaLang.Runtime.UI;
 
+using MaldaLang.BuiltIns;
 using MaldaLang.Interpreter;
 
 public static class UiDiffEngine
@@ -196,7 +197,64 @@ public static class UiDiffEngine
             ValueType.Float => Math.Abs(left.AsFloat() - right.AsFloat()) < 1e-9,
             ValueType.String => string.Equals(left.AsString(), right.AsString(), StringComparison.Ordinal),
             ValueType.Boolean => left.AsBoolean() == right.AsBoolean(),
+            ValueType.Array or ValueType.Object => DeepEquals(left, right),
             _ => string.Equals(left.ToString(), right.ToString(), StringComparison.Ordinal)
         };
     }
+
+    /// <summary>
+    /// Lists and dicts by content (a dict's member order does not count), so a changed row in
+    /// <c>dataGrid.rows</c> is a change: their text (<c>[&lt;json object&gt;]</c>) hides it. Numbers
+    /// inside compare by value, as their JSON does in <c>MaldaUiCore.diff</c>.
+    /// </summary>
+    private static bool DeepEquals(RuntimeValue left, RuntimeValue right)
+    {
+        if (IsNumber(left) && IsNumber(right))
+            return AsDouble(left) == AsDouble(right);
+        if (left.Type != right.Type)
+            return false;
+
+        switch (left.Type)
+        {
+            case ValueType.Null:
+                return true;
+            case ValueType.String:
+                return string.Equals(left.AsString(), right.AsString(), StringComparison.Ordinal);
+            case ValueType.Boolean:
+                return left.AsBoolean() == right.AsBoolean();
+            case ValueType.Array:
+                var leftItems = left.AsArray();
+                var rightItems = right.AsArray();
+                if (leftItems.Count != rightItems.Count)
+                    return false;
+                for (var i = 0; i < leftItems.Count; i++)
+                {
+                    if (!DeepEquals(leftItems[i], rightItems[i]))
+                        return false;
+                }
+                return true;
+            case ValueType.Object when Members(left) is { } leftMembers && Members(right) is { } rightMembers:
+                if (leftMembers.Count != rightMembers.Count)
+                    return false;
+                foreach (var (name, value) in leftMembers)
+                {
+                    if (!rightMembers.TryGetValue(name, out var other) || !DeepEquals(value, other))
+                        return false;
+                }
+                return true;
+            default:
+                return string.Equals(left.ToString(), right.ToString(), StringComparison.Ordinal);
+        }
+    }
+
+    private static bool IsNumber(RuntimeValue value) => value.Type is ValueType.Integer or ValueType.Float;
+
+    private static double AsDouble(RuntimeValue value) => value.Type == ValueType.Integer ? value.AsInteger() : value.AsFloat();
+
+    private static Dictionary<string, RuntimeValue>? Members(RuntimeValue value) => value.AsObject() switch
+    {
+        JsonObject obj => obj.GetProperties().ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.Ordinal),
+        DictionaryInstance dict => dict.GetEntries().ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.Ordinal),
+        _ => null
+    };
 }

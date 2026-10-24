@@ -136,7 +136,119 @@ const MaldaUiCore = (function () {
     return "{" + names.map((name) => JSON.stringify(name) + ":" + canonicalJson(value[name])).join(",") + "}";
   }
 
-  return { applyPatches, getNodeAtPath, parsePath, parentOf, childIndexOf, treeHash, canonicalJson };
+  // UiDiffEngine.Diff (MaldaLang/Runtime/UI/UiDiffEngine.cs) for local mode, where the program
+  // runs in the browser: the same patches in the same order for the same two trees
+  // (UiPatchFuzzTests compares them). Nodes are { type, key?, props, children }.
+  function diff(previous, current) {
+    const patches = [];
+    diffNode(previous || null, current || null, "/", patches);
+    return patches;
+  }
+
+  function keyOf(node) {
+    return typeof node.key === "string" ? node.key : null;
+  }
+
+  function diffNode(previous, current, path, patches) {
+    if (!previous && !current) {
+      return;
+    }
+    if (!previous || !current || previous.type !== current.type || keyOf(previous) !== keyOf(current)) {
+      patches.push({ op: "ReplaceNode", path, value: current || null });
+      return;
+    }
+    const before = previous.props || {};
+    const after = current.props || {};
+    for (const name of Object.keys(before)) {
+      if (!Object.prototype.hasOwnProperty.call(after, name)) {
+        patches.push({ op: "RemoveProp", path, prop: name });
+      }
+    }
+    for (const name of Object.keys(after)) {
+      if (!Object.prototype.hasOwnProperty.call(before, name) || !propEquals(before[name], after[name])) {
+        patches.push({ op: "SetProp", path, prop: name, value: after[name] });
+      }
+    }
+    diffChildren(previous.children || [], current.children || [], path, patches);
+  }
+
+  // RuntimeValueEquals: numbers within 1e-9, other scalars strictly, lists and dicts by content
+  // (member order does not count).
+  function propEquals(left, right) {
+    if (typeof left === "number" && typeof right === "number") {
+      return left === right || Math.abs(left - right) < 1e-9;
+    }
+    if (left === null || right === null || typeof left !== "object" || typeof right !== "object") {
+      return left === right;
+    }
+    return Array.isArray(left) === Array.isArray(right) && canonicalJson(left) === canonicalJson(right);
+  }
+
+  function diffChildren(previous, current, path, patches) {
+    if (previous.length > 0 && current.length > 0 && hasUniqueKeys(previous) && hasUniqueKeys(current)) {
+      diffChildrenByKey(previous, current, path, patches);
+      return;
+    }
+    const shared = Math.min(previous.length, current.length);
+    for (let i = 0; i < shared; i++) {
+      diffNode(previous[i], current[i], `${path}${i}/`, patches);
+    }
+    for (let i = previous.length; i < current.length; i++) {
+      patches.push({ op: "InsertChild", path, value: current[i], index: i });
+    }
+    for (let i = previous.length - 1; i >= current.length; i--) {
+      patches.push({ op: "RemoveChild", path, index: i });
+    }
+  }
+
+  function hasUniqueKeys(nodes) {
+    const seen = new Set();
+    for (const node of nodes) {
+      const key = node ? keyOf(node) : null;
+      if (key === null || key.trim() === "" || seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+    }
+    return true;
+  }
+
+  // Removes the children whose key is gone (highest index first), then walks the new order,
+  // moving or inserting each child at its final index before diffing it.
+  function diffChildrenByKey(previous, current, path, patches) {
+    const currentKeys = new Set(current.map(keyOf));
+    const working = [];
+    for (let i = previous.length - 1; i >= 0; i--) {
+      if (currentKeys.has(keyOf(previous[i]))) {
+        working.unshift(previous[i]);
+      } else {
+        patches.push({ op: "RemoveChild", path, index: i });
+      }
+    }
+    for (let i = 0; i < current.length; i++) {
+      const key = keyOf(current[i]);
+      let from = -1;
+      for (let j = i; j < working.length; j++) {
+        if (keyOf(working[j]) === key) {
+          from = j;
+          break;
+        }
+      }
+      if (from < 0) {
+        patches.push({ op: "InsertChild", path, value: current[i], index: i });
+        working.splice(i, 0, current[i]);
+        continue;
+      }
+      if (from !== i) {
+        patches.push({ op: "MoveChild", path, index: i, from });
+        const [moved] = working.splice(from, 1);
+        working.splice(i, 0, moved);
+      }
+      diffNode(working[i], current[i], `${path}${i}/`, patches);
+    }
+  }
+
+  return { applyPatches, getNodeAtPath, parsePath, parentOf, childIndexOf, treeHash, canonicalJson, diff };
 })();
 
 // Pure protocol state machine: no DOM or socket, so Node tests can drive it with the messages
@@ -357,6 +469,14 @@ const MaldaUiDom = (function () {
         flushPendingInputs();
       }
       const node = el ? el[nodeKey] : null;
+      // The handler prop's text (onClick: "save" → action "save"), so a program can tell its
+      // controls apart without matching paths.
+      if (node && payload && typeof payload === "object" && !Array.isArray(payload) && !("action" in payload)) {
+        const handler = (node.props || {})["on" + type.charAt(0).toUpperCase() + type.slice(1)];
+        if (typeof handler === "string") {
+          payload.action = handler;
+        }
+      }
       const id = hooks.sendEvent(type, path, payload, node ? { key: node.key ?? null, type: node.type || "div" } : null);
       if (id != null) {
         unansweredEvents.push(id);
@@ -440,13 +560,23 @@ const MaldaUiDom = (function () {
       "onClick", "onChange", "onInput", "onSubmit", "onClose", "onFocus", "onBlur",
       "onRowClick", "onSelectionChange", "onSort", "onFilter", "onPageChange", "onViewportChange",
       "onColumnResize", "onNodeSelect", "onNodeToggle", "onNodeExpand", "onNodeCollapse", "onNodeActivate", "onLoadChildren",
-      "onDragStart", "onDragOver", "onDrop", "onDragEnd"
+      "onDragStart", "onDragOver", "onDrop", "onDragEnd",
+      "onSelect", "onResize", "onPointerDown", "onPointerMove", "onPointerUp", "onWheel"
     ]);
 
     const controlStateByPath = new Map();
-    // Text, dataGrid and treeView: their DOM children do not mirror their UiNode children, so a
-    // patch on or inside one renders that node again.
-    const opaqueTypes = new Set(["text", "dataGrid", "treeView"]);
+    // Text and the controls drawn from props (dataGrid, treeView, menuBar, commandPalette,
+    // propertyGrid): their DOM children do not mirror their UiNode children, so a patch on or
+    // inside one renders that node again.
+    const opaqueTypes = new Set(["text", "dataGrid", "treeView", "menuBar", "commandPalette", "propertyGrid"]);
+    // Live ui.shortcuts and ui.modal elements, for the document's keydown and pointerdown listeners.
+    const shortcutElements = new Set();
+    const modalElements = new Set();
+    // name → element of each ui.hostSlot: a re-render moves the content the program put there.
+    const hostSlots = new Map();
+    let documentListenersInstalled = false;
+    // The open menu-bar dropdown or context menu: { close }.
+    let openPopup = null;
     // Kept across patches: the browser's own marks on an input the user has edited.
     const preservedAttributes = new Set(["data-ui-dirty", "data-ui-touched"]);
     const nodeKey = "__maldaNode";
@@ -552,6 +682,9 @@ const MaldaUiDom = (function () {
         case "SetProp":
         case "RemoveProp":
           syncElement(el, renderElement(node, nodePath), patch.prop);
+          if (node.type === "canvas") {
+            drawCanvas(el, node.props || {}); // the canvas keeps its identity, so a drag keeps its pointer capture
+          }
           return true;
         case "ReplaceNode": {
           const index = MaldaUiCore.childIndexOf(path);
@@ -597,12 +730,27 @@ const MaldaUiDom = (function () {
       }
     }
 
+    // A control drawn from props renders again on a patch; an editor inside it that had focus
+    // (data-ui-focus-key) gets focus and caret back in the new DOM.
     function replaceDom(old, node, path) {
+      const active = doc.activeElement;
+      const focusKey = active && active !== old && typeof old.contains === "function" && old.contains(active) &&
+        typeof active.getAttribute === "function" ? active.getAttribute("data-ui-focus-key") : null;
+      const caret = focusKey && typeof active.selectionStart === "number" ? [active.selectionStart, active.selectionEnd] : null;
       const fresh = renderNode(node, path);
       const scrollTop = old.scrollTop;
       old.parentNode.replaceChild(fresh, old);
       if (scrollTop) {
         fresh.scrollTop = scrollTop;
+      }
+      if (focusKey && typeof fresh.querySelector === "function") {
+        const target = fresh.querySelector(`[data-ui-focus-key="${focusKey.replace(/["\\]/g, "\\$&")}"]`);
+        if (target && typeof target.focus === "function") {
+          target.focus();
+          if (caret && typeof target.setSelectionRange === "function") {
+            try { target.setSelectionRange(caret[0], caret[1]); } catch { /* not a text input */ }
+          }
+        }
       }
       return true;
     }
@@ -689,9 +837,24 @@ const MaldaUiDom = (function () {
       if (type === "treeView") {
         return renderTreeView(path, props);
       }
+      if (type === "menuBar") {
+        return renderMenuBar(path, props, node);
+      }
+      if (type === "commandPalette") {
+        return renderCommandPalette(path, props, node);
+      }
+      if (type === "propertyGrid") {
+        return renderPropertyGrid(path, props, node);
+      }
 
       const el = renderElement(node, path);
+      if (type === "canvas") {
+        attachCanvas(el);
+        drawCanvas(el, props);
+        return el;
+      }
       attachListeners(el);
+      attachControl(type, el);
       (node.children || []).forEach((child, index) => {
         el.appendChild(renderNode(child, `${path}${index}/`));
       });
@@ -705,6 +868,7 @@ const MaldaUiDom = (function () {
       const tag = mapTag(type);
       const el = doc.createElement(tag);
       el.setAttribute("data-ui-path", path);
+      el.setAttribute("data-ui", type);
       applyInputTypeDefaults(type, el, props);
 
       for (const [key, value] of Object.entries(props)) {
@@ -731,8 +895,44 @@ const MaldaUiDom = (function () {
       }
 
       applyA11yDefaults(type, el, props);
+      if (type === "splitPane") {
+        applySplitLayout(el, node, path);
+      } else if (type === "modal") {
+        el.setAttribute("aria-modal", "true");
+        if (props.title != null) {
+          el.removeAttribute("title");
+          el.setAttribute("data-ui-title", String(props.title));
+          if (!el.hasAttribute("aria-label")) el.setAttribute("aria-label", String(props.title));
+        }
+      } else if (type === "hostSlot") {
+        el.setAttribute("data-ui-host-slot", props.name != null ? String(props.name) : "");
+      }
       el[nodeKey] = node;
       return el;
+    }
+
+    // Per-type listeners for the controls whose DOM mirrors their children.
+    function attachControl(type, el) {
+      if (type === "splitPane") {
+        attachSplitPane(el);
+      } else if (type === "contextMenu") {
+        attachContextMenu(el);
+      } else if (type === "shortcuts") {
+        shortcutElements.add(el);
+        installDocumentListeners();
+      } else if (type === "modal") {
+        modalElements.add(el);
+        installDocumentListeners();
+      } else if (type === "hostSlot") {
+        const name = el.getAttribute("data-ui-host-slot");
+        const previous = hostSlots.get(name);
+        if (previous && previous !== el) {
+          while (previous.firstChild) {
+            el.appendChild(previous.firstChild);
+          }
+        }
+        hostSlots.set(name, el);
+      }
     }
 
     // Every element gets the same listeners; each reads the element's node and path when the
@@ -796,6 +996,7 @@ const MaldaUiDom = (function () {
     function renderDataGrid(path, props, node) {
       const root = doc.createElement("div");
       root.setAttribute("data-ui-path", path);
+      root.setAttribute("data-ui", "dataGrid");
       root[nodeKey] = node;
       const emit = (type, payload) => sendEvent(type, path, payload, root);
       applyCommonProps(root, props, new Set(["columns", "rows", "selectedKeys", "sort", "filter", "rowKey"]));
@@ -1097,6 +1298,7 @@ const MaldaUiDom = (function () {
     function renderTreeView(path, props) {
       const root = doc.createElement("div");
       root.setAttribute("data-ui-path", path);
+      root.setAttribute("data-ui", "treeView");
       applyCommonProps(root, props, new Set(["nodes", "expandedKeys", "selectedKeys", "nodeKey", "selectionMode"]));
       root.setAttribute("role", root.getAttribute("role") || "tree");
       root.classList.add("malda-tree-view");
@@ -1237,6 +1439,658 @@ const MaldaUiDom = (function () {
         }
         container.appendChild(li);
       });
+    }
+
+    function emitFrom(el, type, payload) {
+      return sendEvent(type, el.getAttribute("data-ui-path"), payload, el);
+    }
+
+    // ui.splitPane: a grid whose gaps are the separators. sizes are weights (fr); a drag keeps its
+    // sizes for that pane until the program passes other sizes, and sends `resize` with the sizes
+    // as percentages when the pane has onResize.
+    function applySplitLayout(el, node, path) {
+      const props = node.props || {};
+      const count = Array.isArray(node.children) ? node.children.length : 0;
+      const vertical = props.direction === "column" || props.direction === "vertical";
+      const state = getControlState(path);
+      const given = JSON.stringify(props.sizes ?? null);
+      let sizes = state.sizes && state.sizes.length === count && state.givenSizes === given ? state.sizes
+        : Array.isArray(props.sizes) && props.sizes.length === count ? props.sizes.map(Number) : [];
+      if (sizes.length !== count || sizes.some((size) => !Number.isFinite(size) || size <= 0)) {
+        sizes = new Array(count).fill(1);
+      }
+      const template = sizes.map((size) => `minmax(0, ${size}fr)`).join(" ");
+      el.setAttribute("data-ui-direction", vertical ? "column" : "row");
+      el.style.gridTemplateColumns = vertical ? "" : template;
+      el.style.gridTemplateRows = vertical ? template : "";
+    }
+
+    function attachSplitPane(el) {
+      el.addEventListener("pointerdown", (evt) => {
+        if (evt.target !== el || evt.button !== 0) {
+          return;
+        }
+        const vertical = el.getAttribute("data-ui-direction") === "column";
+        const panes = Array.from(el.childNodes);
+        if (panes.some((pane) => pane.nodeType !== 1)) {
+          return;
+        }
+        const rects = panes.map((pane) => pane.getBoundingClientRect());
+        const at = vertical ? evt.clientY : evt.clientX;
+        const gap = rects.findIndex((rect, i) => i + 1 < rects.length &&
+          at >= (vertical ? rect.bottom : rect.right) - 2 && at <= (vertical ? rects[i + 1].top : rects[i + 1].left) + 2);
+        if (gap < 0) {
+          return;
+        }
+        evt.preventDefault();
+        const { props, path } = describe(el);
+        const state = getControlState(path);
+        const sizes = rects.map((rect) => Math.max(1, vertical ? rect.height : rect.width));
+        const first = sizes[gap];
+        const pair = first + sizes[gap + 1];
+        const minSize = Math.min(pair / 2, Number(props.minSize) > 0 ? Number(props.minSize) : 40);
+        if (typeof el.setPointerCapture === "function") el.setPointerCapture(evt.pointerId);
+        const move = (moveEvt) => {
+          const next = Math.max(minSize, Math.min(pair - minSize, first + (vertical ? moveEvt.clientY : moveEvt.clientX) - at));
+          sizes[gap] = next;
+          sizes[gap + 1] = pair - next;
+          state.sizes = sizes.slice();
+          state.givenSizes = JSON.stringify(describe(el).props.sizes ?? null);
+          applySplitLayout(el, el[nodeKey], path);
+        };
+        const up = () => {
+          el.removeEventListener("pointermove", move);
+          el.removeEventListener("pointerup", up);
+          el.removeEventListener("pointercancel", up);
+          if (typeof el.releasePointerCapture === "function") el.releasePointerCapture(evt.pointerId);
+          const total = sizes.reduce((sum, size) => sum + size, 0);
+          if (describe(el).props.onResize) {
+            emitFrom(el, "resize", { sizes: sizes.map((size) => Math.round(size / total * 1000) / 10) });
+          }
+        };
+        el.addEventListener("pointermove", move);
+        el.addEventListener("pointerup", up);
+        el.addEventListener("pointercancel", up);
+      });
+    }
+
+    // A menu of { id, label, shortcut?, disabled? } and { separator: true } items. pick(item) runs
+    // on a click or Enter; Escape closes it.
+    function renderMenuList(items, pick, close) {
+      const list = doc.createElement("div");
+      list.className = "malda-menu";
+      list.setAttribute("role", "menu");
+      for (const item of Array.isArray(items) ? items : []) {
+        if (!item || typeof item !== "object") continue;
+        if (item.separator) {
+          const separator = doc.createElement("div");
+          separator.className = "malda-menu-separator";
+          separator.setAttribute("role", "separator");
+          list.appendChild(separator);
+          continue;
+        }
+        const button = doc.createElement("button");
+        button.type = "button";
+        button.className = "malda-menu-item";
+        button.setAttribute("role", "menuitem");
+        button.disabled = !!item.disabled;
+        const label = doc.createElement("span");
+        label.textContent = String(item.label ?? item.id ?? "");
+        button.appendChild(label);
+        if (item.shortcut) {
+          const shortcut = doc.createElement("span");
+          shortcut.className = "malda-menu-shortcut";
+          shortcut.textContent = String(item.shortcut);
+          button.appendChild(shortcut);
+        }
+        button.addEventListener("click", (evt) => {
+          evt.stopPropagation();
+          if (!item.disabled) pick(item);
+        });
+        list.appendChild(button);
+      }
+      list.addEventListener("keydown", (evt) => {
+        const buttons = Array.from(list.querySelectorAll(".malda-menu-item:not([disabled])"));
+        const index = buttons.indexOf(doc.activeElement);
+        let next = -1;
+        if (evt.key === "ArrowDown") next = (index + 1) % buttons.length;
+        else if (evt.key === "ArrowUp") next = (index - 1 + buttons.length) % buttons.length;
+        else if (evt.key === "Home") next = 0;
+        else if (evt.key === "End") next = buttons.length - 1;
+        else if (evt.key === "Escape") {
+          evt.preventDefault();
+          close();
+          return;
+        }
+        if (next >= 0 && buttons[next]) {
+          evt.preventDefault();
+          buttons[next].focus();
+        }
+      });
+      return list;
+    }
+
+    // Opens a popup (menu-bar dropdown or context menu); a press outside it, or Escape, closes it.
+    function showPopup(list, parent, onClose) {
+      closePopup();
+      parent.appendChild(list);
+      const outside = (evt) => {
+        if (!list.contains(evt.target)) closePopup();
+      };
+      doc.addEventListener("pointerdown", outside, true);
+      openPopup = {
+        list,
+        close() {
+          doc.removeEventListener("pointerdown", outside, true);
+          if (list.parentNode) list.parentNode.removeChild(list);
+          if (onClose) onClose();
+        }
+      };
+      const first = list.querySelector(".malda-menu-item:not([disabled])");
+      if (first) first.focus();
+    }
+
+    function closePopup() {
+      const popup = openPopup;
+      openPopup = null;
+      if (popup) popup.close();
+    }
+
+    // ui.menuBar({ menus: [{ label, items }] , onSelect }): sends `select` with { id, label, menu }.
+    function renderMenuBar(path, props, node) {
+      const root = doc.createElement("div");
+      root.setAttribute("data-ui-path", path);
+      root.setAttribute("data-ui", "menuBar");
+      root[nodeKey] = node;
+      applyCommonProps(root, props, new Set(["menus"]));
+      root.classList.add("malda-menu-bar");
+      root.setAttribute("role", "menubar");
+      const menus = Array.isArray(props.menus) ? props.menus : [];
+      let openIndex = -1;
+      const buttons = menus.map((menu, index) => {
+        const button = doc.createElement("button");
+        button.type = "button";
+        button.className = "malda-menu-bar-item";
+        button.setAttribute("role", "menuitem");
+        button.setAttribute("aria-haspopup", "true");
+        button.setAttribute("aria-expanded", "false");
+        button.textContent = String(menu && menu.label != null ? menu.label : `Menu ${index + 1}`);
+        const open = () => {
+          const list = renderMenuList(menu && menu.items, (item) => {
+            closePopup();
+            emitFrom(root, "select", { id: item.id ?? null, label: item.label ?? null, menu: menu.label ?? null });
+          }, closePopup);
+          list.style.left = `${button.offsetLeft || 0}px`;
+          showPopup(list, root, () => {
+            openIndex = -1;
+            button.setAttribute("aria-expanded", "false");
+          });
+          openIndex = index;
+          button.setAttribute("aria-expanded", "true");
+        };
+        button.addEventListener("click", () => {
+          if (openIndex === index) closePopup();
+          else open();
+        });
+        button.addEventListener("mouseenter", () => {
+          if (openIndex >= 0 && openIndex !== index) open();
+        });
+        button.addEventListener("keydown", (evt) => {
+          if (evt.key === "ArrowRight" || evt.key === "ArrowLeft") {
+            evt.preventDefault();
+            const next = buttons[(index + (evt.key === "ArrowRight" ? 1 : buttons.length - 1)) % buttons.length];
+            if (next) next.focus();
+          } else if (evt.key === "ArrowDown") {
+            evt.preventDefault();
+            open();
+          }
+        });
+        root.appendChild(button);
+        return button;
+      });
+      return root;
+    }
+
+    // ui.contextMenu({ items, onSelect }, [child]): a right click inside opens the items; `select`
+    // carries { id, label, targetPath } with the path of the element clicked.
+    function attachContextMenu(el) {
+      el.addEventListener("contextmenu", (evt) => {
+        const { props } = describe(el);
+        if (!Array.isArray(props.items) || props.items.length === 0) {
+          return;
+        }
+        evt.preventDefault();
+        let target = evt.target;
+        while (target && target !== el && !(target.getAttribute && target.getAttribute("data-ui-path"))) {
+          target = target.parentNode;
+        }
+        const targetPath = target && target.getAttribute ? target.getAttribute("data-ui-path") : el.getAttribute("data-ui-path");
+        const list = renderMenuList(props.items, (item) => {
+          closePopup();
+          emitFrom(el, "select", { id: item.id ?? null, label: item.label ?? null, targetPath });
+        }, closePopup);
+        list.style.position = "fixed";
+        list.style.left = `${evt.clientX}px`;
+        list.style.top = `${evt.clientY}px`;
+        showPopup(list, doc.body || el, null);
+      });
+    }
+
+    // ui.commandPalette({ open, commands: [{ id, label, group?, shortcut? }], onSelect, onClose }):
+    // filters as the user types (every word must match); `select` carries { id, label }, and
+    // Escape or a press outside sends `close`. The typed query survives re-renders while open.
+    function renderCommandPalette(path, props, node) {
+      const root = doc.createElement("div");
+      root.setAttribute("data-ui-path", path);
+      root.setAttribute("data-ui", "commandPalette");
+      root[nodeKey] = node;
+      applyCommonProps(root, props, new Set(["commands", "open", "placeholder"]));
+      root.classList.add("malda-command-palette");
+      const state = getControlState(path);
+      if (!props.open) {
+        root.hidden = true;
+        state.query = "";
+        state.active = 0;
+        return root;
+      }
+      const box = doc.createElement("div");
+      box.className = "malda-command-palette-box";
+      box.setAttribute("role", "dialog");
+      const input = doc.createElement("input");
+      input.className = "malda-command-palette-input";
+      input.type = "text";
+      input.placeholder = props.placeholder != null ? String(props.placeholder) : "Type a command";
+      input.setAttribute("data-ui-focus-key", "palette");
+      input.setAttribute("aria-label", input.placeholder);
+      input.value = state.query || "";
+      const list = doc.createElement("div");
+      list.className = "malda-command-palette-list";
+      list.setAttribute("role", "listbox");
+      box.appendChild(input);
+      box.appendChild(list);
+      root.appendChild(box);
+
+      const commands = (Array.isArray(props.commands) ? props.commands : []).filter((c) => c && c.id != null);
+      let visible = [];
+      const choose = (command) => emitFrom(root, "select", { id: command.id, label: command.label ?? null });
+      const draw = () => {
+        const words = String(state.query || "").toLowerCase().split(/\s+/).filter(Boolean);
+        visible = commands.filter((c) => {
+          const text = `${c.label ?? c.id} ${c.group ?? ""}`.toLowerCase();
+          return words.every((word) => text.includes(word));
+        });
+        state.active = Math.max(0, Math.min(state.active || 0, visible.length - 1));
+        while (list.firstChild) list.removeChild(list.firstChild);
+        if (visible.length === 0) {
+          const empty = doc.createElement("div");
+          empty.className = "malda-command-palette-empty";
+          empty.textContent = "No matching commands";
+          list.appendChild(empty);
+        }
+        visible.forEach((command, index) => {
+          const option = doc.createElement("div");
+          option.className = "malda-command-palette-option";
+          option.setAttribute("role", "option");
+          option.setAttribute("aria-selected", index === state.active ? "true" : "false");
+          const label = doc.createElement("span");
+          label.textContent = String(command.label ?? command.id);
+          option.appendChild(label);
+          const hint = command.shortcut ?? command.group;
+          if (hint != null) {
+            const side = doc.createElement("span");
+            side.className = "malda-command-palette-group";
+            side.textContent = String(hint);
+            option.appendChild(side);
+          }
+          option.addEventListener("pointerdown", (evt) => evt.preventDefault());
+          option.addEventListener("click", () => choose(command));
+          list.appendChild(option);
+        });
+      };
+      input.addEventListener("input", () => {
+        state.query = input.value;
+        state.active = 0;
+        draw();
+      });
+      input.addEventListener("keydown", (evt) => {
+        if (evt.key === "ArrowDown" || evt.key === "ArrowUp") {
+          evt.preventDefault();
+          const step = evt.key === "ArrowDown" ? 1 : -1;
+          state.active = visible.length ? (state.active + step + visible.length) % visible.length : 0;
+          draw();
+        } else if (evt.key === "Enter") {
+          evt.preventDefault();
+          if (visible[state.active]) choose(visible[state.active]);
+        } else if (evt.key === "Escape") {
+          evt.preventDefault();
+          emitFrom(root, "close", { reason: "escape" });
+        }
+      });
+      root.addEventListener("pointerdown", (evt) => {
+        if (evt.target === root) emitFrom(root, "close", { reason: "outside" });
+      });
+      draw();
+      requestFrame(() => {
+        if (typeof input.focus === "function") input.focus();
+      });
+      return root;
+    }
+
+    // ui.propertyGrid({ properties: [{ key, label?, type?, value, options?, group?, readOnly?,
+    // min?, max?, step? }], onChange }): one editor per property (text, number, bool, select,
+    // color); `change` carries { key, value } once an edit is committed (Enter, blur or a pick).
+    function renderPropertyGrid(path, props, node) {
+      const root = doc.createElement("div");
+      root.setAttribute("data-ui-path", path);
+      root.setAttribute("data-ui", "propertyGrid");
+      root[nodeKey] = node;
+      applyCommonProps(root, props, new Set(["properties"]));
+      root.classList.add("malda-property-grid");
+      let group = null;
+      for (const property of Array.isArray(props.properties) ? props.properties : []) {
+        if (!property || typeof property !== "object" || property.key == null) continue;
+        const key = String(property.key);
+        if (property.group != null && String(property.group) !== group) {
+          group = String(property.group);
+          const header = doc.createElement("div");
+          header.className = "malda-property-grid-group";
+          header.textContent = group;
+          root.appendChild(header);
+        }
+        const label = doc.createElement("label");
+        label.className = "malda-property-grid-label";
+        label.textContent = String(property.label ?? key);
+        label.title = label.textContent;
+        root.appendChild(label);
+        const editor = createPropertyEditor(property, (value) => emitFrom(root, "change", { key: property.key, value }));
+        editor.setAttribute("data-ui-focus-key", "property:" + key);
+        editor.setAttribute("aria-label", label.textContent);
+        root.appendChild(editor);
+      }
+      return root;
+    }
+
+    function createPropertyEditor(property, commit) {
+      const type = String(property.type || (typeof property.value === "boolean" ? "bool" : typeof property.value === "number" ? "number" : "text"));
+      const value = property.value;
+      if (property.readOnly) {
+        const span = doc.createElement("span");
+        span.textContent = value == null ? "" : typeof value === "object" ? JSON.stringify(value) : String(value);
+        span.tabIndex = 0;
+        return span;
+      }
+      if (type === "bool" || type === "boolean") {
+        const box = doc.createElement("input");
+        box.type = "checkbox";
+        box.checked = !!value;
+        box.addEventListener("change", () => commit(!!box.checked));
+        return box;
+      }
+      if (type === "select") {
+        const select = doc.createElement("select");
+        const options = Array.isArray(property.options) ? property.options : [];
+        options.forEach((option, index) => {
+          const optionValue = option && typeof option === "object" ? option.value : option;
+          const el = doc.createElement("option");
+          el.value = String(index);
+          el.textContent = String(option && typeof option === "object" ? option.label ?? option.value : option);
+          if (optionValue === value) el.selected = true;
+          select.appendChild(el);
+        });
+        select.addEventListener("change", () => {
+          const option = options[Number(select.value)];
+          commit(option && typeof option === "object" ? option.value : option);
+        });
+        return select;
+      }
+      const input = doc.createElement("input");
+      input.type = type === "number" ? "number" : type === "color" ? "color" : "text";
+      for (const name of ["min", "max", "step", "placeholder"]) {
+        if (property[name] != null) input.setAttribute(name, String(property[name]));
+      }
+      input.value = value == null ? "" : String(value);
+      input.addEventListener("change", () => {
+        if (type !== "number") {
+          commit(input.value);
+        } else if (input.value.trim() === "" || !Number.isFinite(Number(input.value))) {
+          commit(null);
+        } else {
+          commit(Number(input.value));
+        }
+      });
+      input.addEventListener("keydown", (evt) => {
+        if (evt.key === "Escape") {
+          input.value = value == null ? "" : String(value);
+          input.blur();
+        }
+      });
+      return input;
+    }
+
+    // ui.canvas({ width, height, background?, shapes, onClick?, onPointerDown?, onPointerMove?,
+    // onPointerUp?, onWheel? }): a 2D drawing from a list of shapes, redrawn on every patch.
+    // Pointer events carry canvas coordinates and the modifier keys; moves go out once per frame.
+    function drawCanvas(el, props) {
+      const ctx = typeof el.getContext === "function" ? el.getContext("2d") : null;
+      if (!ctx) {
+        return;
+      }
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.globalAlpha = 1;
+      ctx.clearRect(0, 0, el.width, el.height);
+      if (props.background && isSafeCss(props.background)) {
+        ctx.fillStyle = String(props.background);
+        ctx.fillRect(0, 0, el.width, el.height);
+      }
+      for (const shape of Array.isArray(props.shapes) ? props.shapes : []) {
+        if (shape && typeof shape === "object") drawShape(ctx, shape);
+      }
+    }
+
+    function drawShape(ctx, shape) {
+      const num = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback;
+      const color = (value) => value != null && isSafeCss(value) ? String(value) : null;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, Math.min(1, num(shape.alpha, 1)));
+      ctx.lineWidth = num(shape.lineWidth, 1);
+      if (Array.isArray(shape.dash)) ctx.setLineDash(shape.dash.map((d) => num(d)));
+      const fill = color(shape.fill);
+      const stroke = color(shape.stroke);
+      const kind = String(shape.kind || shape.type || "");
+      const points = (list) => {
+        const flat = (Array.isArray(list) ? list : []).flatMap((p) => Array.isArray(p) ? p : [p]).map((v) => num(v));
+        ctx.beginPath();
+        for (let i = 0; i + 1 < flat.length; i += 2) {
+          if (i === 0) ctx.moveTo(flat[i], flat[i + 1]);
+          else ctx.lineTo(flat[i], flat[i + 1]);
+        }
+      };
+      if (kind === "rect") {
+        const [x, y, w, h] = [num(shape.x), num(shape.y), num(shape.w ?? shape.width), num(shape.h ?? shape.height)];
+        if (fill) { ctx.fillStyle = fill; ctx.fillRect(x, y, w, h); }
+        if (stroke) { ctx.strokeStyle = stroke; ctx.strokeRect(x, y, w, h); }
+      } else if (kind === "circle") {
+        ctx.beginPath();
+        ctx.arc(num(shape.x), num(shape.y), Math.max(0, num(shape.r ?? shape.radius)), 0, Math.PI * 2);
+        if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+        if (stroke) { ctx.strokeStyle = stroke; ctx.stroke(); }
+      } else if (kind === "line") {
+        ctx.beginPath();
+        ctx.moveTo(num(shape.x1), num(shape.y1));
+        ctx.lineTo(num(shape.x2), num(shape.y2));
+        ctx.strokeStyle = stroke || fill || "#e8edff";
+        ctx.stroke();
+      } else if (kind === "polyline" || kind === "polygon") {
+        points(shape.points);
+        if (kind === "polygon") ctx.closePath();
+        if (fill && kind === "polygon") { ctx.fillStyle = fill; ctx.fill(); }
+        if (stroke || kind === "polyline") { ctx.strokeStyle = stroke || fill || "#e8edff"; ctx.stroke(); }
+      } else if (kind === "text") {
+        if (shape.font && isSafeCss(shape.font)) ctx.font = String(shape.font);
+        ctx.textAlign = ["left", "right", "center", "start", "end"].includes(shape.align) ? shape.align : "start";
+        ctx.textBaseline = ["top", "middle", "bottom", "alphabetic", "hanging"].includes(shape.baseline) ? shape.baseline : "alphabetic";
+        ctx.fillStyle = fill || "#e8edff";
+        ctx.fillText(String(shape.text ?? ""), num(shape.x), num(shape.y));
+      }
+      ctx.restore();
+    }
+
+    function attachCanvas(el) {
+      const point = (evt) => {
+        const rect = el.getBoundingClientRect ? el.getBoundingClientRect() : { left: 0, top: 0, width: 0, height: 0 };
+        const scaleX = rect.width ? el.width / rect.width : 1;
+        const scaleY = rect.height ? el.height / rect.height : 1;
+        const round = (value) => Math.round(value * 100) / 100;
+        return {
+          x: round((evt.clientX - rect.left) * scaleX),
+          y: round((evt.clientY - rect.top) * scaleY),
+          button: evt.button ?? 0,
+          buttons: evt.buttons ?? 0,
+          shift: !!evt.shiftKey,
+          ctrl: !!evt.ctrlKey,
+          alt: !!evt.altKey,
+          meta: !!evt.metaKey
+        };
+      };
+      const handles = (prop) => !!describe(el).props[prop];
+      el.addEventListener("click", (evt) => {
+        if (handles("onClick")) emitFrom(el, "click", point(evt));
+      });
+      el.addEventListener("pointerdown", (evt) => {
+        if (!handles("onPointerDown") && !handles("onPointerMove")) return;
+        if (typeof el.setPointerCapture === "function") el.setPointerCapture(evt.pointerId);
+        if (handles("onPointerDown")) emitFrom(el, "pointerDown", point(evt));
+      });
+      let pendingMove = null;
+      el.addEventListener("pointermove", (evt) => {
+        if (!handles("onPointerMove")) return;
+        const waiting = pendingMove !== null;
+        pendingMove = point(evt);
+        if (!waiting) {
+          requestFrame(() => {
+            const move = pendingMove;
+            pendingMove = null;
+            if (move) emitFrom(el, "pointerMove", move);
+          });
+        }
+      });
+      el.addEventListener("pointerup", (evt) => {
+        if (typeof el.releasePointerCapture === "function" && el.hasPointerCapture && el.hasPointerCapture(evt.pointerId)) {
+          el.releasePointerCapture(evt.pointerId);
+        }
+        if (handles("onPointerUp")) emitFrom(el, "pointerUp", point(evt));
+      });
+      el.addEventListener("wheel", (evt) => {
+        if (!handles("onWheel")) return;
+        evt.preventDefault();
+        emitFrom(el, "wheel", Object.assign(point(evt), { deltaX: evt.deltaX || 0, deltaY: evt.deltaY || 0 }));
+      }, { passive: false });
+    }
+
+    // One keydown and one pointerdown listener per document: ui.shortcuts bindings, and Escape
+    // or a press outside an open ui.modal (sent as `close` when it has onClose).
+    function installDocumentListeners() {
+      if (documentListenersInstalled || typeof doc.addEventListener !== "function") {
+        return;
+      }
+      documentListenersInstalled = true;
+      doc.addEventListener("keydown", onDocumentKeydown);
+      doc.addEventListener("pointerdown", onDocumentPointerdown);
+    }
+
+    function liveElements(set) {
+      for (const el of Array.from(set)) {
+        if (el.isConnected === false) set.delete(el);
+      }
+      return Array.from(set);
+    }
+
+    function topModal() {
+      const open = liveElements(modalElements).filter((el) => el.getAttribute("open") !== "false");
+      return open.length ? open[open.length - 1] : null;
+    }
+
+    function onDocumentKeydown(evt) {
+      if (evt.defaultPrevented) {
+        return;
+      }
+      const modal = topModal();
+      if (evt.key === "Escape" && modal && describe(modal).props.onClose) {
+        evt.preventDefault();
+        emitFrom(modal, "close", { reason: "escape" });
+        return;
+      }
+      const combo = comboOfEvent(evt);
+      if (!combo) {
+        return;
+      }
+      const target = evt.target;
+      const typing = !!(target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName || "")));
+      for (const el of liveElements(shortcutElements)) {
+        const bindings = describe(el).props.bindings;
+        if (!bindings || typeof bindings !== "object") continue;
+        for (const [keys, id] of Object.entries(bindings)) {
+          if (normalizeCombo(keys) !== combo) continue;
+          if (typing && !/(^|\+)(ctrl|alt|meta)\+/.test(combo) && !/^(escape|f\d+)$/.test(combo)) continue;
+          evt.preventDefault();
+          emitFrom(el, "shortcut", { id, keys });
+          return;
+        }
+      }
+    }
+
+    function onDocumentPointerdown(evt) {
+      const modal = topModal();
+      if (!modal || modal.contains(evt.target) || (openPopup && openPopup.list.contains(evt.target))) {
+        return;
+      }
+      const props = describe(modal).props;
+      if (props.onClose && props.closeOnOutside !== false) {
+        emitFrom(modal, "close", { reason: "outside" });
+      }
+    }
+
+    const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform || "");
+    const keyAliases = { esc: "escape", del: "delete", ins: "insert", up: "arrowup", down: "arrowdown", left: "arrowleft", right: "arrowright", return: "enter", " ": "space", spacebar: "space", plus: "+" };
+
+    // "Ctrl+Shift+K" → "ctrl+shift+K": modifiers in a fixed order, letters upper case, named keys
+    // lower case. Cmd / Command / Win are meta, Option is alt, Mod is meta on macOS, ctrl elsewhere.
+    function normalizeCombo(text) {
+      const parts = String(text).split("+").map((part) => part.trim());
+      let key = parts.pop();
+      if (key === "" && parts.length && parts[parts.length - 1] === "") {
+        parts.pop();
+        key = "+";
+      }
+      const mods = new Set(parts.filter(Boolean).map((part) => {
+        const lower = part.toLowerCase();
+        if (lower === "control") return "ctrl";
+        if (lower === "cmd" || lower === "command" || lower === "win") return "meta";
+        if (lower === "option") return "alt";
+        if (lower === "mod") return isMac ? "meta" : "ctrl";
+        return lower;
+      }));
+      return comboText(mods, key || "");
+    }
+
+    function comboOfEvent(evt) {
+      if (!evt || typeof evt.key !== "string" || ["Control", "Shift", "Alt", "Meta"].includes(evt.key)) {
+        return null;
+      }
+      const mods = new Set();
+      if (evt.ctrlKey) mods.add("ctrl");
+      if (evt.altKey) mods.add("alt");
+      if (evt.shiftKey) mods.add("shift");
+      if (evt.metaKey) mods.add("meta");
+      // Shift+1 reports "!": bindings name the key on the keycap, so use the code for letters and digits.
+      const code = typeof evt.code === "string" ? /^(?:Key([A-Z])|Digit([0-9]))$/.exec(evt.code) : null;
+      return comboText(mods, code ? code[1] || code[2] : evt.key);
+    }
+
+    function comboText(mods, key) {
+      const lower = key.toLowerCase();
+      const name = keyAliases[lower] || (key.length === 1 ? key.toUpperCase() : lower);
+      return ["ctrl", "alt", "shift", "meta"].filter((mod) => mods.has(mod)).concat([name]).join("+");
     }
 
     function applyCommonProps(el, props, skippedKeys) {
@@ -1506,7 +2360,16 @@ const MaldaUiDom = (function () {
         case "skeleton":
         case "spinner":
         case "errorBoundary":
+        case "splitPane":
+        case "contextMenu":
+        case "shortcuts":
+        case "hostSlot":
+        case "menuBar":
+        case "commandPalette":
+        case "propertyGrid":
           return "div";
+        case "canvas":
+          return "canvas";
         case "heading":
           return "h2";
         case "button":
@@ -1573,6 +2436,12 @@ const MaldaUiDom = (function () {
         if (type === "badge") el.setAttribute("role", "status");
       }
 
+      // A button's label and a heading's value show through CSS (their DOM children mirror the
+      // node's children); the accessible name carries the same text.
+      if ((type === "button" && props.label != null) || (type === "heading" && props.value != null)) {
+        if (!el.hasAttribute("aria-label")) el.setAttribute("aria-label", String(type === "button" ? props.label : props.value));
+      }
+
       if ((type === "textField" || type === "textArea" || type === "datePicker") && !el.hasAttribute("aria-label") && props.placeholder) {
         el.setAttribute("aria-label", String(props.placeholder));
       }
@@ -1581,70 +2450,59 @@ const MaldaUiDom = (function () {
     return { renderInto, applyPayload, renderNode };
   }
 
-  return { create };
-})();
+  // Layout and the desktop controls. Every element carries data-ui="<type>"; colors come from
+  // --malda-ui-* custom properties so a page can theme them.
+  const layoutStyles = `
+      [data-ui="row"] { display: flex; flex-direction: row; gap: 8px; align-items: center; flex-wrap: wrap; }
+      [data-ui="column"] { display: flex; flex-direction: column; gap: 8px; }
+      [data-ui="stack"] { display: grid; }
+      [data-ui="stack"] > * { grid-area: 1 / 1; }
+      [data-ui="spacer"] { flex: 1 1 auto; }
+      [data-ui="panel"] { border: 1px solid var(--malda-ui-line, #2d3a63); border-radius: 8px; padding: 10px; background: var(--malda-ui-surface, transparent); min-width: 0; min-height: 0; overflow: auto; }
+      [data-ui="hostSlot"] { position: relative; min-width: 0; min-height: 0; }
+      [data-ui="shortcuts"] { display: none; }
+      [data-ui="splitPane"] { display: grid; gap: 6px; min-height: 0; min-width: 0; background: var(--malda-ui-line, #2d3a63); }
+      [data-ui="splitPane"][data-ui-direction="row"] { cursor: col-resize; }
+      [data-ui="splitPane"][data-ui-direction="column"] { cursor: row-resize; }
+      [data-ui="splitPane"] > * { cursor: auto; min-width: 0; min-height: 0; overflow: auto; background: var(--malda-ui-bg, #0b1020); }
+      [data-ui="modal"] { position: fixed; z-index: 1000; top: 50%; left: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; gap: 10px; min-width: min(420px, 90vw); max-width: 90vw; max-height: 85vh; overflow: auto; padding: 16px; border-radius: 10px; background: var(--malda-ui-surface2, #16224a); color: var(--malda-ui-text, #e8edff); box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.5), 0 12px 40px rgba(0, 0, 0, 0.5); }
+      [data-ui="modal"][open="false"] { display: none; }
+      [data-ui="modal"][data-ui-title]::before { content: attr(data-ui-title); font-weight: 700; font-size: 16px; }
+      .malda-menu-bar { display: flex; gap: 2px; padding: 2px 4px; position: relative; background: var(--malda-ui-surface2, #16224a); border-bottom: 1px solid var(--malda-ui-line, #2d3a63); }
+      .malda-menu-bar-item { border: 0; background: transparent; color: inherit; padding: 4px 10px; border-radius: 4px; cursor: pointer; font: inherit; }
+      .malda-menu-bar-item:hover, .malda-menu-bar-item[aria-expanded="true"] { background: var(--malda-ui-hover, #24315f); }
+      .malda-menu { position: absolute; top: 100%; z-index: 1100; display: flex; flex-direction: column; min-width: 180px; padding: 4px; border-radius: 6px; background: var(--malda-ui-surface2, #16224a); color: var(--malda-ui-text, #e8edff); border: 1px solid var(--malda-ui-line, #2d3a63); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); }
+      .malda-menu-item { display: flex; justify-content: space-between; gap: 24px; border: 0; background: transparent; color: inherit; text-align: left; padding: 5px 10px; border-radius: 4px; cursor: pointer; font: inherit; }
+      .malda-menu-item:hover:not([disabled]), .malda-menu-item:focus { background: var(--malda-ui-hover, #24315f); outline: none; }
+      .malda-menu-item[disabled] { opacity: 0.45; cursor: default; }
+      .malda-menu-shortcut { opacity: 0.6; font-size: 12px; }
+      .malda-menu-separator { height: 1px; margin: 4px 2px; background: var(--malda-ui-line, #2d3a63); }
+      .malda-command-palette { position: fixed; inset: 0; z-index: 1200; display: flex; justify-content: center; align-items: flex-start; padding-top: 12vh; background: rgba(0, 0, 0, 0.45); }
+      .malda-command-palette[hidden] { display: none; }
+      .malda-command-palette-box { width: min(560px, 92vw); border-radius: 10px; overflow: hidden; background: var(--malda-ui-surface2, #16224a); color: var(--malda-ui-text, #e8edff); border: 1px solid var(--malda-ui-line, #2d3a63); box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5); }
+      .malda-command-palette-input { width: 100%; box-sizing: border-box; padding: 12px 14px; border: 0; border-bottom: 1px solid var(--malda-ui-line, #2d3a63); background: transparent; color: inherit; font: inherit; font-size: 15px; outline: none; }
+      .malda-command-palette-list { max-height: 50vh; overflow: auto; padding: 4px; }
+      .malda-command-palette-option { display: flex; justify-content: space-between; gap: 16px; padding: 7px 10px; border-radius: 6px; cursor: pointer; }
+      .malda-command-palette-option[aria-selected="true"] { background: var(--malda-ui-hover, #24315f); }
+      .malda-command-palette-group { opacity: 0.6; font-size: 12px; }
+      .malda-command-palette-empty { padding: 10px; opacity: 0.6; }
+      .malda-property-grid { display: grid; grid-template-columns: minmax(90px, 40%) 1fr; gap: 4px 8px; align-items: center; font-size: 13px; }
+      .malda-property-grid-group { grid-column: 1 / -1; margin-top: 6px; font-weight: 700; font-size: 11px; letter-spacing: 0.4px; text-transform: uppercase; opacity: 0.7; }
+      .malda-property-grid-label { opacity: 0.85; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .malda-property-grid input:not([type="checkbox"]), .malda-property-grid select { width: 100%; box-sizing: border-box; min-width: 0; }
+      [data-ui="canvas"] { display: block; max-width: 100%; touch-action: none; }
+      [data-ui="button"][label]:empty::before { content: attr(label); }
+      [data-ui="heading"][value]:empty::before, [data-ui="badge"][value]:empty::before { content: attr(value); }
+      [data-ui="badge"] { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; background: var(--malda-ui-hover, #24315f); }
+    `;
 
-if (typeof module !== "undefined" && module.exports) {
-  module.exports = Object.assign({}, MaldaUiCore, { MaldaUiCore, MaldaUiProtocol, MaldaUiDom });
-}
-
-(function () {
-  if (typeof window === "undefined" || typeof document === "undefined") {
-    return;
-  }
-
-  const params = new URLSearchParams(window.location.search);
-  const sessionId = params.get("session") || "default";
-  const appRoot = document.getElementById("app");
-  const authToken = readAuthToken();
-  // ?debug=1 logs every protocol message in and out.
-  const debug = params.get("debug") === "1";
-
-  let tree = null;
-  const protocol = MaldaUiProtocol.createState(sessionId);
-  const dom = MaldaUiDom.create(document, {
-    sendEvent,
-    requestFrame: (fn) => requestAnimationFrame(fn)
-  });
-
-  const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
-  const wsUrl = `${wsProtocol}://${window.location.host}/ui/ws/${encodeURIComponent(sessionId)}`;
-  const reconnectBaseDelayMs = 500;
-  const reconnectMaxDelayMs = 10000;
-  const reconnectJitterMs = 250;
-  const queuedOutboundLimit = 200;
-  ensureFrameworkStyles();
-  let socket = null;
-  let reconnectAttempts = 0;
-  let reconnectTimerId = null;
-  let manualDisconnect = false;
-  const queuedOutboundMessages = [];
-  setConnectionState("connecting");
-  connectWebSocket();
-  window.addEventListener("beforeunload", () => {
-    manualDisconnect = true;
-    setConnectionState("closed");
-    clearReconnectTimer();
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.close(1000, "page_unload");
-    }
-  });
-
-  // data-ui-connection on #app: connecting (first connect), open, reconnecting (connection lost,
-  // retrying) or closed (page unloading, or the host refused the token). The default style
-  // shows a badge while reconnecting or closed; pages can restyle it with the attribute.
-  function setConnectionState(state) {
-    if (appRoot && appRoot.getAttribute("data-ui-connection") !== state) {
-      appRoot.setAttribute("data-ui-connection", state);
-      if (debug) console.debug("malda-ui connection", state);
-    }
-  }
-
-  function ensureFrameworkStyles() {
-    if (document.getElementById("malda-ui-framework-styles")) {
+  // The default stylesheet, once per document: the host page and local mode (the program
+  // running in the browser) both install it. Pages can override any rule.
+  function installStyles(doc) {
+    if (!doc || typeof doc.getElementById !== "function" || doc.getElementById("malda-ui-framework-styles")) {
       return;
     }
-    const style = document.createElement("style");
+    const style = doc.createElement("style");
     style.id = "malda-ui-framework-styles";
     style.textContent = `
       [data-ui-connection="reconnecting"]::after,
@@ -1797,9 +2655,81 @@ if (typeof module !== "undefined" && module.exports) {
         font-size: 12px;
         opacity: 0.8;
       }
-    `;
-    document.head.appendChild(style);
+    ` + layoutStyles;
+    (doc.head || doc.documentElement).appendChild(style);
   }
+
+  return { create, installStyles };
+})();
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = Object.assign({}, MaldaUiCore, { MaldaUiCore, MaldaUiProtocol, MaldaUiDom });
+}
+// For malda-js-runtime.js: top-level consts of a classic script are not properties of globalThis.
+if (typeof globalThis !== "undefined") {
+  globalThis.MaldaUiCore = MaldaUiCore;
+  globalThis.MaldaUiProtocol = MaldaUiProtocol;
+  globalThis.MaldaUiDom = MaldaUiDom;
+}
+
+(function () {
+  if (typeof window === "undefined" || typeof document === "undefined") {
+    return;
+  }
+  // Local mode (<script src="malda-ui-client.js" data-ui-mode="local">): a program compiled to
+  // JavaScript drives the UI in the page through the runtime's ui.*, so there is no host to call.
+  const script = document.currentScript;
+  if (script && script.getAttribute("data-ui-mode") === "local") {
+    return;
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const sessionId = params.get("session") || "default";
+  const appRoot = document.getElementById("app");
+  const authToken = readAuthToken();
+  // ?debug=1 logs every protocol message in and out.
+  const debug = params.get("debug") === "1";
+
+  let tree = null;
+  const protocol = MaldaUiProtocol.createState(sessionId);
+  const dom = MaldaUiDom.create(document, {
+    sendEvent,
+    requestFrame: (fn) => requestAnimationFrame(fn)
+  });
+
+  const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
+  const wsUrl = `${wsProtocol}://${window.location.host}/ui/ws/${encodeURIComponent(sessionId)}`;
+  const reconnectBaseDelayMs = 500;
+  const reconnectMaxDelayMs = 10000;
+  const reconnectJitterMs = 250;
+  const queuedOutboundLimit = 200;
+  MaldaUiDom.installStyles(document);
+  let socket = null;
+  let reconnectAttempts = 0;
+  let reconnectTimerId = null;
+  let manualDisconnect = false;
+  const queuedOutboundMessages = [];
+  setConnectionState("connecting");
+  connectWebSocket();
+  window.addEventListener("beforeunload", () => {
+    manualDisconnect = true;
+    setConnectionState("closed");
+    clearReconnectTimer();
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.close(1000, "page_unload");
+    }
+  });
+
+  // data-ui-connection on #app: connecting (first connect), open, reconnecting (connection lost,
+  // retrying) or closed (page unloading, or the host refused the token). The default style
+  // shows a badge while reconnecting or closed; pages can restyle it with the attribute.
+  function setConnectionState(state) {
+    if (appRoot && appRoot.getAttribute("data-ui-connection") !== state) {
+      appRoot.setAttribute("data-ui-connection", state);
+      if (debug) console.debug("malda-ui connection", state);
+    }
+  }
+
 
   function applyInboundPayload(payload) {
     if (!payload) return;

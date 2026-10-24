@@ -145,15 +145,17 @@ public partial class Compiler
             var mainScriptFileName = Path.GetFileName(finalOutputPath);
             var appName = Path.GetFileNameWithoutExtension(mainScriptFileName);
             JsRuntimeAreas.WriteBeside(outputDirectory, GetJavaScriptRuntimeAssetContent(), transpileResult.JavaScript);
+            var usesUi = WriteUiClientBesideIfUsed(outputDirectory, transpileResult.JavaScript);
             File.WriteAllText(
                 Path.Combine(outputDirectory, "index.html"),
-                isEsModule ? GenerateJavaScriptModuleHostHtml(appName, mainScriptFileName) : GenerateJavaScriptHostHtml(appName, mainScriptFileName),
+                isEsModule ? GenerateJavaScriptModuleHostHtml(appName, mainScriptFileName, usesUi) : GenerateJavaScriptHostHtml(appName, mainScriptFileName, usesUi),
                 Encoding.UTF8);
 
             return new CompilationResult
             {
                 Success = true,
-                OutputPath = finalOutputPath
+                OutputPath = finalOutputPath,
+                Report = FinishJavaScriptBuild(outputDirectory, finalOutputPath, !string.IsNullOrWhiteSpace(transpileResult.SourceMapJson))
             };
         }
         catch (Exception ex)
@@ -188,15 +190,17 @@ public partial class Compiler
             }
 
             JsRuntimeAreas.WriteBeside(outputDirectory, GetJavaScriptRuntimeAssetContent(), transpileResult.JavaScript);
-            File.WriteAllText(Path.Combine(outputDirectory, "index.html"), GeneratePwaIndexHtml(appName, mainScriptFileName), Encoding.UTF8);
+            var usesUi = WriteUiClientBesideIfUsed(outputDirectory, transpileResult.JavaScript);
+            File.WriteAllText(Path.Combine(outputDirectory, "index.html"), GeneratePwaIndexHtml(appName, mainScriptFileName, usesUi), Encoding.UTF8);
             File.WriteAllText(Path.Combine(outputDirectory, "icon.svg"), GeneratePwaIconSvg(), Encoding.UTF8);
             File.WriteAllText(Path.Combine(outputDirectory, "manifest.webmanifest"), GeneratePwaManifest(appName), Encoding.UTF8);
-            File.WriteAllText(Path.Combine(outputDirectory, "sw.js"), GeneratePwaServiceWorker(appName, mainScriptFileName), Encoding.UTF8);
+            File.WriteAllText(Path.Combine(outputDirectory, "sw.js"), GeneratePwaServiceWorker(appName, mainScriptFileName, usesUi), Encoding.UTF8);
 
             return new CompilationResult
             {
                 Success = true,
-                OutputPath = outputDirectory
+                OutputPath = outputDirectory,
+                Report = FinishJavaScriptBuild(outputDirectory, jsOutputPath, !string.IsNullOrWhiteSpace(transpileResult.SourceMapJson))
             };
         }
         catch (Exception ex)
@@ -420,6 +424,34 @@ public partial class Compiler
         return "console.warn('malda-js-runtime.js was not found at compile time. The generated PWA may not run correctly.');";
     }
 
+    public const string JsUiClientFileName = "malda-ui-client.js";
+
+    /// <summary>
+    /// Writes <c>malda-ui-client.js</c> beside a program whose JavaScript calls <c>ui.*</c>: in local
+    /// mode the runtime's <c>ui</c> area diffs and draws through its <c>MaldaUiCore</c> /
+    /// <c>MaldaUiDom</c>. The client is the one the UI host serves, embedded in MaldaLang.UIHost.
+    /// </summary>
+    private static bool WriteUiClientBesideIfUsed(string outputDirectory, string generatedJavaScript)
+    {
+        if (!JsRuntimeAreas.UsedBy(generatedJavaScript).Contains("ui"))
+            return false;
+        File.WriteAllText(Path.Combine(outputDirectory, JsUiClientFileName), GetUiClientAssetContent(), new UTF8Encoding(false));
+        return true;
+    }
+
+    public static string GetUiClientAssetContent()
+    {
+        const string resource = "MaldaLang.UIHost.wwwroot.malda-ui-client.js";
+        using var stream = typeof(MaldaLang.UIHost.UiTreeHash).Assembly.GetManifestResourceStream(resource)
+            ?? throw new InvalidOperationException($"MaldaLang.UIHost.dll has no embedded {resource}.");
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
+    }
+
+    /// <summary>The script tag of the local-mode UI client, before the runtime; empty when the program does not use ui.*.</summary>
+    private static string UiClientScriptTag(bool usesUi) =>
+        usesUi ? $"<script src=\"./{JsUiClientFileName}\" data-ui-mode=\"local\"></script>\n    " : string.Empty;
+
     private static IEnumerable<string> GetRuntimeAssetCandidatePaths(params string[] relativeSegments)
     {
         var currentDirectory = new DirectoryInfo(Environment.CurrentDirectory);
@@ -438,7 +470,7 @@ public partial class Compiler
         }
     }
 
-    private static string GeneratePwaIndexHtml(string appName, string mainScriptFileName)
+    private static string GeneratePwaIndexHtml(string appName, string mainScriptFileName, bool usesUi)
     {
         var scriptLiteral = JsonSerializer.Serialize(mainScriptFileName);
         return $$"""
@@ -481,12 +513,16 @@ public partial class Compiler
         #app {
             min-height: calc(100vh - 45px);
         }
+
+        #status[hidden] + #app {
+            min-height: 100vh;
+        }
     </style>
 </head>
 <body>
-    <div id="status">Loading {{appName}}...</div>
+    <div id="status"{{(usesUi ? " hidden" : "")}}>Loading {{appName}}...</div>
     <div id="app"></div>
-    <script src="./malda-js-runtime.js"></script>
+    {{UiClientScriptTag(usesUi)}}<script src="./malda-js-runtime.js"></script>
     <script src="./{{mainScriptFileName}}"></script>
     <script>
         (function () {
@@ -499,6 +535,9 @@ public partial class Compiler
 
                 statusElement.textContent = message;
                 statusElement.className = isError ? "error" : "";
+                if (isError) {
+                    statusElement.hidden = false;
+                }
             }
 
             async function runEntryPoint() {
@@ -548,7 +587,7 @@ public partial class Compiler
 """;
     }
 
-    private static string GenerateJavaScriptHostHtml(string appName, string mainScriptFileName)
+    private static string GenerateJavaScriptHostHtml(string appName, string mainScriptFileName, bool usesUi)
     {
         return $$"""
 <!DOCTYPE html>
@@ -588,12 +627,16 @@ public partial class Compiler
         #app {
             min-height: calc(100vh - 45px);
         }
+
+        #status[hidden] + #app {
+            min-height: 100vh;
+        }
     </style>
 </head>
 <body>
-    <div id="status">Loading {{appName}}...</div>
+    <div id="status"{{(usesUi ? " hidden" : "")}}>Loading {{appName}}...</div>
     <div id="app"></div>
-    <script src="./malda-js-runtime.js"></script>
+    {{UiClientScriptTag(usesUi)}}<script src="./malda-js-runtime.js"></script>
     <script src="./{{mainScriptFileName}}"></script>
     <script>
         (function () {
@@ -606,6 +649,9 @@ public partial class Compiler
 
                 statusElement.textContent = message;
                 statusElement.className = isError ? "error" : "";
+                if (isError) {
+                    statusElement.hidden = false;
+                }
             }
 
             async function runEntryPoint() {
@@ -653,7 +699,7 @@ public partial class Compiler
     /// Host page for <c>--mode esm</c>: the module runs the program when it is imported, so the
     /// page only imports it and reports the outcome.
     /// </summary>
-    private static string GenerateJavaScriptModuleHostHtml(string appName, string moduleFileName)
+    private static string GenerateJavaScriptModuleHostHtml(string appName, string moduleFileName, bool usesUi)
     {
         var moduleLiteral = JsonSerializer.Serialize("./" + moduleFileName);
         return $$"""
@@ -670,9 +716,9 @@ public partial class Compiler
     </style>
 </head>
 <body>
-    <div id="status">Loading {{appName}}...</div>
+    <div id="status"{{(usesUi ? " hidden" : "")}}>Loading {{appName}}...</div>
     <div id="app"></div>
-    <script type="module">
+    {{UiClientScriptTag(usesUi)}}<script type="module">
         const status = document.getElementById("status");
         try {
             await import({{moduleLiteral}});
@@ -681,6 +727,7 @@ public partial class Compiler
             console.error(error);
             status.textContent = error && error.message ? error.message : "JavaScript module startup failed.";
             status.className = "error";
+            status.hidden = false;
         }
     </script>
 </body>
@@ -726,10 +773,11 @@ public partial class Compiler
 """;
     }
 
-    private static string GeneratePwaServiceWorker(string appName, string mainScriptFileName)
+    private static string GeneratePwaServiceWorker(string appName, string mainScriptFileName, bool usesUi)
     {
         var cacheNameLiteral = JsonSerializer.Serialize($"malda-pwa-{appName.ToLowerInvariant()}-v1");
         var mainScriptLiteral = JsonSerializer.Serialize("./" + mainScriptFileName);
+        var uiClientEntry = usesUi ? $"\"./{JsUiClientFileName}\",\n    " : string.Empty;
         return $$"""
 const CACHE_NAME = {{cacheNameLiteral}};
 const APP_SHELL = [
@@ -738,7 +786,7 @@ const APP_SHELL = [
     "./manifest.webmanifest",
     "./icon.svg",
     "./sw.js",
-    "./malda-js-runtime.js",
+    {{uiClientEntry}}"./malda-js-runtime.js",
     {{mainScriptLiteral}}
 ];
 

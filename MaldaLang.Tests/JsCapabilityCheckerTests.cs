@@ -50,7 +50,7 @@ public static class JsCapabilityFixtures
             var api = new RestServer(8081);
             """,
         ["JS0008"] = """
-            ui.mount(ui.text("hello"));
+            var page = ui.template("<p>{{name}}</p>", { "name": "x" });
             """,
         ["JS0009"] = """
             var job = enqueueJob("emails", {});

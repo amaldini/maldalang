@@ -340,6 +340,16 @@ public static class BuiltInRegistry
             "uiResync" or
             "uiSessionId" or
             "uiRedirectWithSession" or
+            "uiSplitPane" or
+            "uiMenuBar" or
+            "uiContextMenu" or
+            "uiCommandPalette" or
+            "uiShortcuts" or
+            "uiPropertyGrid" or
+            "uiCanvas" or
+            "uiHostSlot" or
+            "uiMessages" or
+            "uiT" or
             "redirect" or
             "RedirectTo" or
             "httpGet" or

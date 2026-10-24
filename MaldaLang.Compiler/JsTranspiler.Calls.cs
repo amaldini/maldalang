@@ -61,6 +61,7 @@ public partial class JsTranspiler
                 IsUnshadowedRuntimeModule(memberObjectIdentifier.Name))
             {
                 if (memberObjectIdentifier.Name == "dom" || memberObjectIdentifier.Name == "game" || memberObjectIdentifier.Name == "three" ||
+                    memberObjectIdentifier.Name == "ui" ||
                     memberObjectIdentifier.Name == StdLibNamespaces.MathModule ||
                     memberObjectIdentifier.Name == StdLibNamespaces.DeprecatedMathModuleAlias ||
                     memberObjectIdentifier.Name == StdLibNamespaces.StrModule ||

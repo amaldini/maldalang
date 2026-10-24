@@ -1,6 +1,6 @@
 # MALDA JavaScript platform roadmap
 
-**Status:** J0–J5 and J7 landed 2026-10-24; J6 and J8 open  
+**Status:** J0–J8 landed 2026-10-24 (complete)  
 **Created:** 2026-10-23  
 **Audience:** maintainers working on `JsTranspiler`, `malda-js-runtime.js`, `JsCapabilityChecker`
 and the browser-facing built-ins
@@ -270,6 +270,36 @@ orbits the view, with Node tests on the fake renderer pattern used by the games 
 
 ## J6 — Client-side UI
 
+**Landed 2026-10-24** (decision 4: the diff is ported by hand). The runtime's new `ui` area runs the
+`UiSession` model in the page: builders with the host's prop sanitizer and control specs, sessions and
+envelopes (sequence, revision, `treeHash`, `answersEventId`), the event queue with stale-target drops and
+`overflow`, lifecycle hooks, component state, `ui.run`, and the host's error messages. `MaldaUiCore.diff` in
+`malda-ui-client.js` ports `UiDiffEngine`; `UiPatchFuzzTests` requires the same patches from both (200 seeds
+clean), and `MaldaUiDom` patches the page. The compiler writes the client beside the output (from the copy
+embedded in MaldaLang.UIHost) and `index.html` loads it with `data-ui-mode="local"`, which keeps its socket
+bootstrap off. `JS0008` now covers only the host-only members (templates, CRUD helpers, `generate`,
+`invalidate`, session redirects) and the flat `uiXxx` names. New controls on both host and page:
+`ui.splitPane`, `ui.menuBar`, `ui.contextMenu`, `ui.commandPalette`, `ui.shortcuts`, `ui.propertyGrid`,
+`ui.canvas` (2D drawing from a shape list, pointer and wheel events), `ui.hostSlot` (an element the UI never
+touches, for a `three` renderer); `ui.modal` became a real dialog (open, title, Escape / outside close);
+buttons and headings show their `label` / `value`; every event payload carries `action` (the handler prop's
+text). `dom.*` gained `off`, `queryAll`, `remove`, `attr`, classes, `style`, `focus` / `blur`, `rect`,
+pointer capture, `keyCombo`, `onResize`, `dragData` and the clipboard. `ui.messages` / `ui.t`: catalogs with
+CLDR plural forms (a shared table for en / fr / pt / ru / uk / pl / cs / ja / zh …) and locale number
+separators, the same text on the three backends.
+
+Fixed on the way: `ui.*` errors escaped `try` / `catch` on the interpreter; the C# diff compared list and dict
+props by their text (`[<json object>]`), so a changed `dataGrid` row never reached the browser; a dict returned
+by a transpiled `ui.run` callback came back as a list of entries; transpiled `ui.choose` / `ui.withSlot`
+ignored dict literals. Tests: `UiLocalModeTests` (same output on the three backends, the spec table and member
+list against the host, a page on a fake DOM answering clicks, the compiler output), `UiPatchFuzzTests`
+(JS diff = C# diff). Example `Examples/Web/ui_workbench.malda` (tree, canvas and property grid in split panes,
+menus, context menu, palette, shortcuts, About dialog), checked in headless Chrome from `file://` in local
+mode and against `malda run` with the UI host: same results. Reference: 26.8, 28.5. Not done: the interpreter's
+`dom.*` stays JS-only (no host meaning), a full render still replaces a focused input with the server value,
+`ui.hostSlot` content is the program's own (no host-side equivalent), and plural rules cover the listed
+languages only (others use the English rule).
+
 Bring the `ui.*` model into the browser so the same declarative UI runs with no host:
 
 - **`ui.*` local mode on JS.** The tree, diff and patch logic run in the browser: port
@@ -318,6 +348,19 @@ reloads; tests cover the store on Node with a fake IndexedDB.
 
 ## J8 — Production build and tooling
 
+**Landed 2026-10-24.** Every `js` / `esm` / `pwa` build reports the size of the program, runtime (with its
+areas) and UI client, raw and gzipped (`CompilationResult.Report`). `--minify` uses esbuild when it finds one
+(`MALDA_ESBUILD`, `node_modules/.bin`, `PATH`) and chains the program's source map, which still names the
+`.malda`; without esbuild it strips comments and indentation from the runtime files (`JsMinifier`) and leaves
+the program as written. On the workbench: 446 KB (gzip 101 KB) plain, 361 KB stripped, 224 KB (gzip 68 KB)
+with esbuild; the minified page and the `@worker()` example run unchanged. `JsBuildSizeTests` holds the core
+runtime under `Compiler.CoreRuntimeBudgetCharacters` (300 000; 285 000 today), checks the stripper on
+strings, templates and regexes and that a stripped runtime runs programs the same. The capability matrix
+splits `ui.*` into a local-mode row (yes on JavaScript) and a UIHost-only row (`JS0008`, new fixture);
+chapter 28 (28.3.2, 28.5, 28.12), `docs/javascript-backend.md` and the `docs/llm` gotchas (opaque `js`
+values, `null` vs `undefined`, what crosses a worker boundary, local-mode `ui.*`) are updated. Not done: no
+esbuild is bundled (CI and the dist zip build unminified unless one is installed).
+
 - `--minify` for JS / PWA output (via esbuild when available), with source maps kept.
 - **Size budget:** report runtime + program size per build; a guard test fails when the runtime
   emitted for a `core`-only program grows past a set size.
@@ -334,7 +377,7 @@ reloads; tests cover the store on Node with a fake IndexedDB.
 1. ~~Syntax for interop and exports~~ (decided: `import js …` in J1, the existing `export` keyword in J2).
 2. ~~Name and namespace for typed buffers and bytes~~ (decided: a new `buf` namespace).
 3. ~~Worker marker~~ (decided: the `@worker()` decorator on the actor declaration).
-4. Whether `ui.*` local mode ports the diff to JS by hand or generates it from the C# engine.
+4. ~~`ui.*` local mode diff~~ (decided: ported by hand to `MaldaUiCore.diff`, kept equal by the UI fuzz).
 5. ~~Host backends and J7~~ (decided: the store runs everywhere; the browser file calls are rejected on the host).
 
 ## Out of scope

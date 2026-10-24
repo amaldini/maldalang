@@ -76,7 +76,7 @@ public static class JsCapabilityChecker
     public static readonly JsCapabilityRule VectorDb = new("JS0005", "VectorDB", ["VectorDB"]);
     public static readonly JsCapabilityRule Onnx = new("JS0006", "ONNX models", ["ONNX inspect"]);
     public static readonly JsCapabilityRule HttpServer = new("JS0007", "HttpServer / RestServer", ["HttpServer / RestServer / sessions"]);
-    public static readonly JsCapabilityRule UiHost = new("JS0008", "UIHost / ui.*", ["UIHost / `ui.*`"]);
+    public static readonly JsCapabilityRule UiHost = new("JS0008", "UIHost-only ui.*", ["UIHost-only `ui.*`"]);
     public static readonly JsCapabilityRule Jobs = new("JS0009", "jobs", ["Jobs"]);
     public static readonly JsCapabilityRule DotNetInterop = new("JS0010", ".NET interop", [".NET interop", "`dotnet-interop`"]);
     public static readonly JsCapabilityRule HostInterop = new("JS0011", "host processes and drivers", ["`host-interop`"]);
@@ -133,6 +133,26 @@ public static class JsCapabilityChecker
         "print", "input", "getEnv", "getEnvOr", "hasEnv",
         "storeGet", "storeSet", "storeRemove", "storeKeys",
         "openFile", "saveFile", "downloadFile", "onFileDrop"
+    };
+
+    /// <summary>
+    /// <c>ui.*</c> members the JavaScript runtime runs in local mode (the program drives the page,
+    /// no host): controls, sessions, events, state, lifecycle hooks and messages. The rest
+    /// (templates, CRUD helpers, <c>generate</c>, <c>invalidate</c>, session redirects) need the host.
+    /// </summary>
+    public static readonly IReadOnlySet<string> JsUiMembers = new HashSet<string>(StringComparer.Ordinal)
+    {
+        "row", "column", "stack", "spacer", "panel", "text", "heading", "image", "icon",
+        "button", "textField", "checkbox", "select", "slider", "datePicker", "list", "table",
+        "alert", "progress", "modal", "form", "field", "textArea", "radioGroup", "switch",
+        "tabs", "accordion", "breadcrumbs", "drawer", "dataGrid", "treeView", "paginator", "emptyState", "badge",
+        "toast", "skeleton", "spinner", "errorBoundary", "slot",
+        "splitPane", "menuBar", "contextMenu", "commandPalette", "shortcuts", "propertyGrid", "canvas", "hostSlot",
+        "withSlot", "when", "choose", "each",
+        "mount", "mountEnvelope", "render", "dispatchEvent", "pullEvent", "run",
+        "state", "getState", "setState", "pinState", "unpinState",
+        "onInit", "onPreRender", "onLoad", "onDispose", "onMount", "onUpdate", "onUnmount", "onError",
+        "configure", "snapshot", "resync", "messages", "t"
     };
 
     /// <summary>Property-test capability tags the JavaScript backend runs (see BackendCapabilityMatrix).</summary>
@@ -237,6 +257,14 @@ public static class JsCapabilityChecker
             return;
         }
 
+        if (rule == UiHost && name.StartsWith("ui", StringComparison.Ordinal) && name.Length > 2
+            && JsUiMembers.Contains(char.ToLowerInvariant(name[2]) + name[3..]))
+        {
+            var member = char.ToLowerInvariant(name[2]) + name[3..];
+            Add(diagnostics, rule, site, $"{name}(…) is a flat alias: call ui.{member}(…), which runs in local mode");
+            return;
+        }
+
         Add(diagnostics, rule, site, $"{name}(…) is host-only");
     }
 
@@ -252,7 +280,7 @@ public static class JsCapabilityChecker
             StdLibNamespaces.IoModule when StdLibNamespaces.IoMethodNames.Contains(member) && !JsIoMembers.Contains(member) => FileIo,
             StdLibNamespaces.PdfModule or StdLibNamespaces.DocModule => FileIo,
             StdLibNamespaces.AgentsModule => Agents,
-            "ui" => UiHost,
+            "ui" when !JsUiMembers.Contains(member) => UiHost,
             "AnsiConsole" => HostStdLib,
             _ => null
         };
@@ -410,7 +438,8 @@ public static class JsCapabilityChecker
         "uiLayout", "uiRenderList", "uiCrudModel", "uiCrudControls", "uiCrudSchema", "uiMount", "uiMountEnvelope",
         "uiRender", "uiDispatchEvent", "uiPullEvent", "uiRun", "uiState", "uiGetState", "uiSetState", "uiPinState", "uiUnpinState",
         "uiInvalidate", "uiOnInit", "uiOnPreRender", "uiOnLoad", "uiOnDispose", "uiOnMount", "uiOnUpdate", "uiOnUnmount",
-        "uiOnError", "uiConfigure", "uiSnapshot", "uiResync", "uiSessionId", "uiRedirectWithSession"
+        "uiOnError", "uiConfigure", "uiSnapshot", "uiResync", "uiSessionId", "uiRedirectWithSession",
+        "uiSplitPane", "uiMenuBar", "uiContextMenu", "uiCommandPalette", "uiShortcuts", "uiPropertyGrid", "uiCanvas", "uiHostSlot", "uiMessages", "uiT"
     ];
 
     /// <summary>The <c>createXxxTool</c> builtins that build agent tools.</summary>

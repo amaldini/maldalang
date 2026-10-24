@@ -53,12 +53,20 @@ public partial class JsTranspiler
 
     private static readonly HashSet<string> JsRuntimeModules = new(StringComparer.Ordinal)
     {
-        "dom", "game", "three", "math", "Math", "str", "io", "nn", "buf",
+        "dom", "game", "three", "math", "Math", "str", "io", "nn", "buf", "ui",
         "result", "option", "grounded", "cap", "agents", "schema"
     };
 
-    /// <summary><c>io</c> members that return a Promise on JavaScript (the browser file dialogs).</summary>
-    private static readonly HashSet<string> AsyncIoMembers = new(StringComparer.Ordinal) { "openFile", "saveFile" };
+    /// <summary>
+    /// Runtime-module members that return a Promise on JavaScript, so their calls are awaited: the
+    /// browser file dialogs, the <c>ui.run</c> event loop and the clipboard.
+    /// </summary>
+    private static readonly Dictionary<string, HashSet<string>> AsyncModuleMembers = new(StringComparer.Ordinal)
+    {
+        ["io"] = new(StringComparer.Ordinal) { "openFile", "saveFile" },
+        ["ui"] = new(StringComparer.Ordinal) { "run" },
+        ["dom"] = new(StringComparer.Ordinal) { "copyText", "readText" }
+    };
 
     private static readonly HashSet<string> AsyncBuiltInNames = new(StringComparer.Ordinal)
     {

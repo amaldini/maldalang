@@ -2628,6 +2628,24 @@
     "title": "26.7 Capitoli correlati ed esempi"
   },
   {
+    "file": "26-web-ui.html",
+    "level": 2,
+    "id": "local-mode",
+    "title": "26.8 Modalità locale: ui.* nel browser"
+  },
+  {
+    "file": "26-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "26.8.1 Controlli desktop"
+  },
+  {
+    "file": "26-web-ui.html",
+    "level": 3,
+    "id": "",
+    "title": "26.8.2 Messaggi e plurali"
+  },
+  {
     "file": "27-http-server-html-ui.html",
     "level": 2,
     "id": "",
@@ -2788,6 +2806,12 @@
     "level": 3,
     "id": "es-modules",
     "title": "28.3.1 Moduli ES (--mode esm)"
+  },
+  {
+    "file": "28-browser-javascript-backend.html",
+    "level": 3,
+    "id": "production-builds",
+    "title": "28.3.2 Build di produzione (--minify) e dimensioni"
   },
   {
     "file": "28-browser-javascript-backend.html",

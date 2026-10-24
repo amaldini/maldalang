@@ -1,0 +1,219 @@
+// A desktop-style workbench on ui.*: menu bar, shortcuts, resizable panes (shape tree, canvas,
+// property grid), command palette and an About dialog. The same source runs two ways:
+//   malda Examples/Web/ui_workbench.malda                      (UI host: open the printed URL)
+//   malda compile Examples/Web/ui_workbench.malda --mode js -o dist/workbench/workbench.js
+//                                                              (local mode: open dist/workbench/index.html)
+// Click the canvas to add a circle, click a shape (or its tree item) to select it, edit it in the
+// property grid, Ctrl+K opens the command palette, Delete removes the selection.
+// Reference: ReferenceManual/26-web-ui.html#local-mode
+
+ui.messages("en", {
+    "title": "Shape workbench",
+    "status": { "=0": "No shapes yet: click the canvas", "one": "1 shape", "other": "{count} shapes" },
+    "selected": "Selected: {name}",
+    "about": "Shapes live in this page; nothing is saved."
+});
+
+var colors = ["#60a5fa", "#f472b6", "#34d399", "#fbbf24", "#a78bfa"];
+
+function newState() {
+    return { "shapes": [], "selected": null, "nextId": 1, "palette": false, "about": false, "zoom": 1.0 };
+}
+
+function addShape(state, kind, x, y) {
+    var id = "s" + string(state["nextId"]);
+    var shape = { "id": id, "kind": kind, "x": x, "y": y, "size": 28, "color": colors[(state["nextId"] - 1) % colors.length], "label": kind + " " + string(state["nextId"]) };
+    state["shapes"].append(shape);
+    state["nextId"] = state["nextId"] + 1;
+    state["selected"] = id;
+    return state;
+}
+
+function findShape(state, id) {
+    for (var shape in state["shapes"]) {
+        if (shape["id"] == id) {
+            return shape;
+        }
+    }
+    return null;
+}
+
+// The topmost shape under a canvas point, or null.
+function shapeAt(state, x, y) {
+    var hit = null;
+    for (var shape in state["shapes"]) {
+        var half = shape["size"];
+        if (x >= shape["x"] - half && x <= shape["x"] + half && y >= shape["y"] - half && y <= shape["y"] + half) {
+            hit = shape;
+        }
+    }
+    return hit;
+}
+
+function removeSelected(state) {
+    var kept = [];
+    for (var shape in state["shapes"]) {
+        if (shape["id"] != state["selected"]) {
+            kept.append(shape);
+        }
+    }
+    state["shapes"] = kept;
+    state["selected"] = null;
+    return state;
+}
+
+function canvasShapes(state) {
+    var drawn = [];
+    for (var shape in state["shapes"]) {
+        var size = shape["size"] * state["zoom"];
+        var stroke = "#0b1020";
+        if (shape["id"] == state["selected"]) {
+            stroke = "#ffffff";
+        }
+        if (shape["kind"] == "square") {
+            drawn.append({ "kind": "rect", "x": shape["x"] - size, "y": shape["y"] - size, "w": size * 2, "h": size * 2, "fill": shape["color"], "stroke": stroke, "lineWidth": 3 });
+        } else {
+            drawn.append({ "kind": "circle", "x": shape["x"], "y": shape["y"], "r": size, "fill": shape["color"], "stroke": stroke, "lineWidth": 3 });
+        }
+        drawn.append({ "kind": "text", "x": shape["x"], "y": shape["y"] + size + 14, "text": shape["label"], "fill": "#cbd5e1", "align": "center", "font": "12px sans-serif" });
+    }
+    return drawn;
+}
+
+function treeNodes(state) {
+    var nodes = [];
+    for (var shape in state["shapes"]) {
+        nodes.append({ "id": shape["id"], "label": shape["label"] });
+    }
+    return [{ "id": "root", "label": "Shapes", "children": nodes }];
+}
+
+function properties(state) {
+    var shape = findShape(state, state["selected"]);
+    if (shape == null) {
+        return [{ "key": "zoom", "label": "Zoom", "type": "number", "value": state["zoom"], "min": 0.25, "max": 4, "step": 0.25, "group": "View" }];
+    }
+    return [
+        { "key": "label", "label": "Label", "value": shape["label"], "group": "Shape" },
+        { "key": "kind", "label": "Kind", "type": "select", "value": shape["kind"], "options": ["circle", "square"], "group": "Shape" },
+        { "key": "color", "label": "Color", "type": "color", "value": shape["color"], "group": "Shape" },
+        { "key": "size", "label": "Size", "type": "number", "value": shape["size"], "min": 4, "max": 120, "group": "Shape" },
+        { "key": "x", "label": "X", "type": "number", "value": shape["x"], "group": "Position" },
+        { "key": "y", "label": "Y", "type": "number", "value": shape["y"], "group": "Position" },
+        { "key": "zoom", "label": "Zoom", "type": "number", "value": state["zoom"], "min": 0.25, "max": 4, "step": 0.25, "group": "View" }
+    ];
+}
+
+function view(state) {
+    var shape = findShape(state, state["selected"]);
+    var status = ui.t("status", { "count": state["shapes"].length });
+    if (shape != null) {
+        status = status + " · " + ui.t("selected", { "name": shape["label"] });
+    }
+    var selectedKeys = [];
+    if (shape != null) {
+        selectedKeys = [shape["id"]];
+    }
+    return ui.column({ "style": { "height": "100vh", "gap": "0" } }, [
+        ui.menuBar({ "onSelect": "menu", "menus": [
+            { "label": "File", "items": [
+                { "id": "circle", "label": "New circle", "shortcut": "Ctrl+Shift+C" },
+                { "id": "square", "label": "New square", "shortcut": "Ctrl+Shift+S" },
+                { "separator": true },
+                { "id": "clear", "label": "Clear canvas", "disabled": state["shapes"].length == 0 }
+            ] },
+            { "label": "Edit", "items": [{ "id": "delete", "label": "Delete shape", "shortcut": "Delete", "disabled": shape == null }] },
+            { "label": "View", "items": [
+                { "id": "palette", "label": "Command palette", "shortcut": "Ctrl+K" },
+                { "id": "about", "label": "About" }
+            ] }
+        ] }),
+        ui.shortcuts({ "bindings": { "Ctrl+K": "palette", "Ctrl+Shift+C": "circle", "Ctrl+Shift+S": "square", "Delete": "delete" } }),
+        ui.splitPane({ "sizes": [1, 3, 1.4], "minSize": 140, "style": { "flex": "1 1 auto" } }, [
+            ui.panel({}, [ui.treeView({ "nodes": treeNodes(state), "expandedKeys": ["root"], "selectedKeys": selectedKeys, "onNodeSelect": "pick" })]),
+            ui.contextMenu({ "onSelect": "menu", "items": [
+                { "id": "circle", "label": "New circle here" },
+                { "id": "delete", "label": "Delete shape", "disabled": shape == null }
+            ] }, [
+                ui.canvas({ "width": 640, "height": 420, "background": "#0f172a", "shapes": canvasShapes(state), "onClick": "place", "style": { "width": "100%" } })
+            ]),
+            ui.panel({}, [
+                ui.heading({ "value": ui.t("title") }),
+                ui.propertyGrid({ "properties": properties(state), "onChange": "edit" })
+            ])
+        ]),
+        ui.text({ "value": status }),
+        ui.commandPalette({ "open": state["palette"], "onSelect": "command", "onClose": "closePalette", "commands": [
+            { "id": "circle", "label": "New circle", "group": "File" },
+            { "id": "square", "label": "New square", "group": "File" },
+            { "id": "clear", "label": "Clear canvas", "group": "File" },
+            { "id": "delete", "label": "Delete shape", "group": "Edit" },
+            { "id": "about", "label": "About", "group": "View" }
+        ] }),
+        ui.modal({ "open": state["about"], "title": ui.t("title"), "onClose": "closeAbout" }, [
+            ui.text({ "value": ui.t("about") }),
+            ui.button({ "label": "Close", "onClick": "closeAbout" })
+        ])
+    ]);
+}
+
+// Runs one command from the menus, the palette, a shortcut or the context menu.
+function command(state, id) {
+    state["palette"] = false;
+    if (id == "circle" || id == "square") {
+        return addShape(state, id, 80 + (state["nextId"] * 47) % 480, 80 + (state["nextId"] * 29) % 260);
+    }
+    if (id == "clear") {
+        state["shapes"] = [];
+        state["selected"] = null;
+    } else if (id == "delete" && state["selected"] != null) {
+        removeSelected(state);
+    } else if (id == "palette") {
+        state["palette"] = true;
+    } else if (id == "about") {
+        state["about"] = true;
+    }
+    return state;
+}
+
+function update(state, event) {
+    var payload = event["payload"];
+    var action = payload["action"];
+    if (event["type"] == "shortcut") {
+        return command(state, payload["id"]);
+    }
+    if (action == "menu" || action == "command") {
+        return command(state, payload["id"]);
+    }
+    if (action == "closePalette") {
+        state["palette"] = false;
+    } else if (action == "closeAbout") {
+        state["about"] = false;
+    } else if (action == "place") {
+        var hit = shapeAt(state, payload["x"], payload["y"]);
+        if (hit != null) {
+            state["selected"] = hit["id"];
+        } else {
+            addShape(state, "circle", payload["x"], payload["y"]);
+        }
+    } else if (event["type"] == "nodeSelect" && payload["nodeKey"] != "root") {
+        state["selected"] = payload["nodeKey"];
+    } else if (action == "edit") {
+        if (payload["key"] == "zoom") {
+            if (payload["value"] != null) {
+                state["zoom"] = payload["value"];
+            }
+        } else {
+            var shape = findShape(state, state["selected"]);
+            if (shape != null && payload["value"] != null) {
+                shape[payload["key"]] = payload["value"];
+            }
+        }
+    }
+    return state;
+}
+
+var start = newState();
+addShape(start, "circle", 160, 150);
+addShape(start, "square", 360, 220);
+ui.run(start, view, update);

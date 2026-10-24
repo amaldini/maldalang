@@ -727,7 +727,55 @@ function itemsPage(req) {
             <li><code>ui_state_lifecycle.malda</code> — peek vs get-or-create, pin, default velenosi</li>
             <li><code>ui_form_workflow.malda</code> / <code>ui_controls_showcase_minimal.malda</code> — form e catalogo dei controlli</li>
             <li><code>ui_resync_flow.malda</code> — snapshot / resync quando client e server divergono</li>
+            <li><code>ui_workbench.malda</code> — menu, pannelli divisi, albero, canvas, griglia di proprietà, palette dei comandi e scorciatoie; gira sull'host UI e in modalità locale dallo stesso sorgente</li>
         </ul>
+        <h2 id="local-mode">26.8 Modalità locale: <code>ui.*</code> nel browser</h2>
+        <p>Un programma che usa <code>ui.*</code> si compila anche in JavaScript (<code>malda compile app.malda --mode js</code>, <code>esm</code> o <code>pwa</code>). Gira allora nella pagina senza host: il runtime tiene le sessioni, confronta ogni render con il precedente e aggiorna la pagina con <code>malda-ui-client.js</code>, che il compilatore scrive accanto all'output e <code>index.html</code> carica con <code>data-ui-mode="local"</code>. Envelope, eventi, hook del ciclo di vita, stato e messaggi d'errore sono quelli dell'host, quindi un sorgente gira sull'interprete con UIHost, sul transpile C# e nel browser.</p>
+        <ul>
+            <li>La sessione disegna nell'elemento <code>[data-ui-session="id"]</code>, altrimenti in <code>#app</code>.</li>
+            <li><code>ui.run(state, view, update)</code> in una pagina aspetta l'utente e ritorna quando <code>update</code> restituisce <code>null</code>. Senza pagina (Node, test) termina quando la coda è vuota, come su un host senza browser collegato.</li>
+            <li>Il payload di ogni evento contiene <code>action</code>: il testo della prop handler del controllo (<code>"onClick": "save"</code> dà <code>action</code> <code>"save"</code>), anche sull'host.</li>
+            <li>Le sessioni durano quanto la pagina: <code>sessionTtlMs</code> e <code>ui.pinState</code> non fanno nulla.</li>
+            <li>Solo host, e rifiutati dal controllo preliminare JavaScript con <code>JS0008</code>: <code>ui.template</code>, <code>ui.partial</code>, <code>ui.layout</code>, <code>ui.renderList</code>, gli helper <code>ui.crud*</code>, <code>ui.generate</code>, <code>ui.invalidate</code>, <code>ui.sessionId</code> e <code>ui.redirectWithSession</code>.</li>
+        </ul>
+        <h3>26.8.1 Controlli desktop</h3>
+        <p>Questi controlli funzionano sull'host e in modalità locale. I controlli disegnati dalle prop inviano un tipo di evento ciascuno; i payload sono elencati sotto.</p>
+        <table>
+            <thead><tr><th>Controllo</th><th>Prop</th><th>Eventi (payload)</th></tr></thead>
+            <tbody>
+                <tr><td><code>ui.splitPane(props, panes)</code></td><td><code>direction</code> (<code>"row"</code> / <code>"column"</code>), <code>sizes</code> (pesi), <code>minSize</code> (px)</td><td><code>onResize</code> → <code>resize</code> (<code>sizes</code> in percentuale) quando l'utente trascina un separatore</td></tr>
+                <tr><td><code>ui.menuBar(props)</code></td><td><code>menus</code>: <code>[{ label, items }]</code>, voci <code>{ id, label, shortcut?, disabled? }</code> o <code>{ separator: true }</code></td><td><code>onSelect</code> → <code>select</code> (<code>id</code>, <code>label</code>, <code>menu</code>)</td></tr>
+                <tr><td><code>ui.contextMenu(props, [child])</code></td><td><code>items</code> come sopra</td><td><code>onSelect</code> → <code>select</code> (<code>id</code>, <code>label</code>, <code>targetPath</code> dell'elemento cliccato col tasto destro)</td></tr>
+                <tr><td><code>ui.commandPalette(props)</code></td><td><code>open</code>, <code>commands</code>: <code>[{ id, label, group?, shortcut? }]</code>, <code>placeholder</code></td><td><code>onSelect</code> → <code>select</code> (<code>id</code>, <code>label</code>); <code>onClose</code> → <code>close</code> (<code>reason</code>)</td></tr>
+                <tr><td><code>ui.shortcuts(props)</code></td><td><code>bindings</code>: <code>{ "Ctrl+K": "palette", "Mod+S": "save" }</code> (<code>Mod</code> è Cmd su macOS, Ctrl altrove)</td><td><code>shortcut</code> (<code>id</code>, <code>keys</code>); i tasti senza modificatori sono ignorati mentre l'utente scrive in un campo</td></tr>
+                <tr><td><code>ui.propertyGrid(props)</code></td><td><code>properties</code>: <code>[{ key, label?, type?, value, options?, group?, readOnly?, min?, max?, step? }]</code>, tipi <code>text</code> / <code>number</code> / <code>bool</code> / <code>select</code> / <code>color</code></td><td><code>onChange</code> → <code>change</code> (<code>key</code>, <code>value</code>) con Invio, all'uscita dal campo o a una scelta</td></tr>
+                <tr><td><code>ui.canvas(props)</code></td><td><code>width</code>, <code>height</code>, <code>background</code>, <code>shapes</code>: <code>rect</code> / <code>circle</code> / <code>line</code> / <code>polyline</code> / <code>polygon</code> / <code>text</code> con <code>fill</code>, <code>stroke</code>, <code>lineWidth</code>, <code>alpha</code>, <code>dash</code></td><td><code>onClick</code>, <code>onPointerDown</code>, <code>onPointerMove</code> (una volta per frame), <code>onPointerUp</code>, <code>onWheel</code>: <code>x</code> / <code>y</code> del canvas, <code>button</code>, <code>shift</code> / <code>ctrl</code> / <code>alt</code> / <code>meta</code>, rotella <code>deltaX</code> / <code>deltaY</code></td></tr>
+                <tr><td><code>ui.hostSlot(props)</code></td><td><code>name</code></td><td>nessuno: un elemento che la UI non tocca mai, <code>[data-ui-host-slot="name"]</code>, per un renderer <code>three</code> o altro contenuto JavaScript in modalità locale (lo conserva tra un render e l'altro)</td></tr>
+            </tbody>
+        </table>
+        <p><code>ui.modal</code> è una finestra sopra la pagina oscurata: <code>open: false</code> la nasconde, <code>title</code> le dà un titolo e, con <code>onClose</code>, Esc o un clic fuori inviano <code>close</code>. La <code>label</code> di un pulsante e il <code>value</code> di un titolo appaiono come testo.</p>
+        <pre><code>function view(s) {
+    return ui.column({}, [
+        ui.menuBar({ "onSelect": "menu", "menus": [
+            { "label": "File", "items": [{ "id": "new", "label": "New", "shortcut": "Ctrl+N" }, { "separator": true }, { "id": "quit", "label": "Quit" }] }
+        ] }),
+        ui.shortcuts({ "bindings": { "Ctrl+K": "palette", "Ctrl+N": "new" } }),
+        ui.splitPane({ "sizes": [1, 3], "onResize": "resized" }, [
+            ui.panel({}, [ui.text({ "value": "outline" })]),
+            ui.canvas({ "width": 400, "height": 240, "onClick": "place", "shapes": s["shapes"] })
+        ]),
+        ui.commandPalette({ "open": s["palette"], "onSelect": "command", "onClose": "closePalette",
+            "commands": [{ "id": "new", "label": "New shape" }, { "id": "clear", "label": "Clear canvas" }] })
+    ]);
+}</code></pre>
+        <h3>26.8.2 Messaggi e plurali</h3>
+        <p><code>ui.messages(locale, catalog?)</code> sostituisce il catalogo di una lingua, se gliene viene dato uno, e la rende corrente; <code>ui.t(key, args?)</code> ne restituisce il testo. Una chiave che manca nella locale si cerca nella sua lingua (<code>it-IT</code> → <code>it</code>) e poi si restituisce così com'è. Una voce del catalogo è una stringa o un dict di forme plurali scelte da <code>args.count</code>: prima una forma esatta come <code>"=0"</code>, poi la categoria CLDR della lingua (<code>one</code>, <code>few</code>, <code>many</code>, <code>other</code> …). I segnaposto <code>{name}</code> prendono i valori da <code>args</code>; i numeri hanno i separatori della locale, raggruppati per migliaia con al massimo tre decimali. Ogni backend dà lo stesso testo.</p>
+        <pre><code data-run="true" data-expect="no files\n1 file\n1,500 files\n1.500 file">ui.messages("en", { "files": { "=0": "no files", "one": "{count} file", "other": "{count} files" } });
+print(ui.t("files", { "count": 0 }));
+print(ui.t("files", { "count": 1 }));
+print(ui.t("files", { "count": 1500 }));
+ui.messages("it", { "files": { "one": "{count} file", "other": "{count} file" } });
+print(ui.t("files", { "count": 1500 }));</code></pre>
         <div class="see-also">
             <h3>Vedi anche</h3>
             <ul>

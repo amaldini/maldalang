@@ -468,7 +468,15 @@ public partial class Interpreter
         }
         else if (instance is BuiltIns.UiFrameworkInstance uiFramework)
         {
-            return uiFramework.CallMethod(methodName, arguments);
+            // The ui built-ins throw plain exceptions; try / catch sees RuntimeException.
+            try
+            {
+                return uiFramework.CallMethod(methodName, arguments);
+            }
+            catch (Exception ex) when (ex is not RuntimeException and not MALDAException)
+            {
+                throw new RuntimeException(ex.Message);
+            }
         }
         else if (instance is ActorReferenceWrapper actorRefWrapper)
         {
@@ -534,7 +542,14 @@ public partial class Interpreter
         if (instance is BuiltIns.UiFrameworkInstance uiFramework && methodName == "run")
         {
             // ui.run awaits browser events and calls back into the program.
-            return await uiFramework.CallMethodAsync(methodName, arguments, this);
+            try
+            {
+                return await uiFramework.CallMethodAsync(methodName, arguments, this);
+            }
+            catch (Exception ex) when (ex is not RuntimeException and not MALDAException and not ReturnException and not BreakException and not ContinueException)
+            {
+                throw new RuntimeException(ex.Message);
+            }
         }
         // For other instances, try sync method
         return CallBuiltInMethod(instance, methodName, arguments);

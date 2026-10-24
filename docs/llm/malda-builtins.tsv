@@ -350,10 +350,13 @@ uiAlert	uiAlert
 uiBadge	uiBadge			
 uiBreadcrumbs	uiBreadcrumbs			
 uiButton	uiButton			
+uiCanvas	uiCanvas			
 uiCheckbox	uiCheckbox			
 uiChoose	uiChoose	key, casesObject, optional defaultNode		
 uiColumn	uiColumn			
+uiCommandPalette	uiCommandPalette			
 uiConfigure	uiConfigure	settingName and integer value		
+uiContextMenu	uiContextMenu			
 uiCrudControls	uiCrudControls	schema object, optional sessionId, optional queryParams object, optional lookups object, optional options object		
 uiCrudModel	uiCrudModel	schema object, optional sessionId, optional queryParams object, optional lookups object		
 uiCrudSchema	uiCrudSchema	schema object and optional defaults object		
@@ -369,11 +372,14 @@ uiForm	uiForm
 uiGenerate	uiGenerate	description and optional agent/cache arguments		
 uiGetState	uiGetState	componentId, key, optional defaultValue, optional scope		
 uiHeading	uiHeading			
+uiHostSlot	uiHostSlot			
 uiIcon	uiIcon			
 uiImage	uiImage			
 uiInvalidate	uiInvalidate	channel and optional payload		
 uiLayout	uiLayout	source string, slots object, optional model object		
 uiList	uiList			
+uiMenuBar	uiMenuBar			
+uiMessages	uiMessages	1-2 arguments: (locale, catalog?)		
 uiModal	uiModal			
 uiMount	uiMount	rootNode and optional sessionId		
 uiMountEnvelope	uiMountEnvelope	rootNode, optional sessionId, optional options		
@@ -390,6 +396,7 @@ uiPanel	uiPanel
 uiPartial	uiPartial	source string and optional model object		
 uiPinState	uiPinState	componentId and optional scope		
 uiProgress	uiProgress			
+uiPropertyGrid	uiPropertyGrid			
 uiPullEvent	uiPullEvent	optional sessionId		
 uiRadioGroup	uiRadioGroup			
 uiRedirectWithSession	uiRedirectWithSession	path, source, optional defaultSessionId		
@@ -401,15 +408,18 @@ uiRun	uiRun	3-4 arguments: (state, view, update, sessionId?)
 uiSelect	uiSelect			
 uiSessionId	uiSessionId	source and optional defaultSessionId		
 uiSetState	uiSetState	componentId, key, value, optional scope		
+uiShortcuts	uiShortcuts			
 uiSkeleton	uiSkeleton			
 uiSlider	uiSlider			
 uiSlot	uiSlot			
 uiSnapshot	uiSnapshot	optional sessionId		
 uiSpacer	uiSpacer			
 uiSpinner	uiSpinner			
+uiSplitPane	uiSplitPane			
 uiStack	uiStack			
 uiState	uiState	componentId, key, defaultValue, optional scope		
 uiSwitch	uiSwitch			
+uiT	uiT	1-2 arguments: (key, args?)		
 uiTable	uiTable			
 uiTabs	uiTabs			
 uiTemplate	uiTemplate	source string, optional model object, optional options object		

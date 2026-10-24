@@ -7,7 +7,7 @@ using System.Text.RegularExpressions;
 namespace MaldaLang.Compiler;
 
 /// <summary>
-/// Leaves the optional areas of <c>malda-js-runtime.js</c> (<c>game.*</c>, <c>three.*</c>) out of
+/// Leaves the optional areas of <c>malda-js-runtime.js</c> (<c>ui.*</c>, <c>game.*</c>, <c>three.*</c>) out of
 /// the copy written beside a program that does not use them. Areas sit between
 /// <c>// @malda-runtime-area NAME</c> and <c>// @malda-runtime-area-end NAME</c> lines around one
 /// member of the runtime object; a dropped area becomes <c>NAME: missingRuntimeArea("NAME")</c>,
@@ -16,7 +16,7 @@ namespace MaldaLang.Compiler;
 public static class JsRuntimeAreas
 {
     /// <summary>The optional areas, in file order.</summary>
-    public static readonly IReadOnlyList<string> All = new[] { "game", "three" };
+    public static readonly IReadOnlyList<string> All = new[] { "ui", "game", "three" };
 
     /// <summary>First line of a trimmed runtime: the areas it keeps.</summary>
     private const string HeaderPrefix = "// malda-js-runtime areas:";

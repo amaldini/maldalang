@@ -255,4 +255,6 @@ and a per-IP rate limit.
 | Session ↔ host link (publish, browser events) | `MaldaLang/Runtime/UI/UiHostLink.cs` |
 | Host (routes, protocol hub, tree patcher) | `MaldaLang.UIHost/` (`UiHostRoutes`, `UiHostHub`, `UiTreePatcher`, `EmbeddedUiHostRuntime`) |
 | Browser client | `MaldaLang.UIHost/wwwroot/malda-ui-client.js` |
+| Local mode (program in the browser, no host) | `ui` area of `Examples/Web/wwwroot/malda-js-runtime.js`; `MaldaUiCore.diff` ports `UiDiffEngine` ([`javascript-backend.md`](javascript-backend.md#client-side-ui-ui-local-mode)) |
+| Messages (`ui.messages` / `ui.t`) | `MaldaLang/Runtime/UI/UiMessages.cs` (and its port in the runtime's `ui` area) |
 | Language API (user docs) | `ReferenceManual/26-web-ui.html` |

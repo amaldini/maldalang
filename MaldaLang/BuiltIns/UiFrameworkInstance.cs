@@ -19,13 +19,15 @@ public sealed class UiFrameworkInstance : ObjectInstance
         "tabs", "accordion", "breadcrumbs", "drawer",
         "dataGrid", "treeView", "paginator", "emptyState", "badge",
         "toast", "skeleton", "spinner", "errorBoundary",
+        "splitPane", "menuBar", "contextMenu", "commandPalette", "shortcuts", "propertyGrid", "canvas", "hostSlot",
         "slot", "withSlot", "when", "choose", "each",
         "template", "partial", "layout", "renderList", "crudModel", "crudControls", "crudSchema",
         "mount", "mountEnvelope", "render", "dispatchEvent", "pullEvent", "run",
         "state", "getState", "setState", "pinState", "unpinState", "invalidate",
         "onInit", "onPreRender", "onLoad", "onDispose",
         "onMount", "onUpdate", "onUnmount", "onError",
-        "configure", "snapshot", "resync", "sessionId", "redirectWithSession", "generate"
+        "configure", "snapshot", "resync", "sessionId", "redirectWithSession", "generate",
+        "messages", "t"
     };
 
     public UiFrameworkInstance() : base(null)

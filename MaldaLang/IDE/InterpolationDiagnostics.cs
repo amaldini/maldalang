@@ -130,6 +130,9 @@ public static class InterpolationDiagnostics
                     Source = "malda-interp"
                 });
                 break;
+            // Message catalogs and keys: ui.messages / ui.t fill {name} placeholders themselves.
+            case FunctionCallExpression { Callee: MemberAccessExpression { Object: IdentifierExpression { Name: "ui" }, Member: "messages" or "t" } }:
+                break;
             case FunctionCallExpression call:
                 VisitExpression(call.Callee, diagnostics);
                 foreach (var arg in call.Arguments)

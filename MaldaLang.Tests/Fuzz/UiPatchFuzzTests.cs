@@ -21,7 +21,9 @@ namespace MaldaLang.Tests.Fuzz;
 /// Node, must give the second tree. Under Node, <c>MaldaUiDom</c> also applies them to a fake
 /// DOM rendered from the first tree: the result, and the paths its listeners report, must equal
 /// a fresh render of the second tree. The second tree's <c>treeHash</c> must be the same from
-/// the session's <see cref="UiNode"/>, the host's JSON tree and the client's tree. Set <c>MALDA_UI_FUZZ_SEEDS</c> (e.g. <c>1-200</c>) to
+/// the session's <see cref="UiNode"/>, the host's JSON tree and the client's tree, and
+/// <c>MaldaUiCore.diff</c> (local mode, the program in the browser) must return the same patches
+/// as <see cref="UiDiffEngine.Diff"/>. Set <c>MALDA_UI_FUZZ_SEEDS</c> (e.g. <c>1-200</c>) to
 /// explore more locally; a failure writes the trees and patches to
 /// <c>%TEMP%/malda_ui_fuzz/seed&lt;N&gt;/</c>. Without Node only the C# applier runs.
 /// </summary>
@@ -68,6 +70,7 @@ public class UiPatchFuzzTests
             cases.Add(new JsonObject
             {
                 ["previous"] = UiPatchApplier.ToJson(previous),
+                ["current"] = UiPatchApplier.ToJson(current),
                 ["patches"] = patches.DeepClone(),
                 ["expected"] = expected,
                 ["hash"] = hash
@@ -85,6 +88,10 @@ public class UiPatchFuzzTests
                 var actual = UiPatchApplier.Canonical(JsonNode.Parse((string)result["tree"]!));
                 if (actual != expected)
                     failures.Add($"case {i} (malda-ui-client.js)");
+                var serverPatches = UiPatchApplier.Canonical(cases[i]!["patches"]);
+                var clientPatches = UiPatchApplier.Canonical(JsonNode.Parse((string)result["patches"]!));
+                if (clientPatches != serverPatches)
+                    failures.Add($"case {i} (MaldaUiCore.diff): {Truncate(clientPatches)} != UiDiffEngine {Truncate(serverPatches)}");
                 if ((string?)result["hash"] != (string?)cases[i]!["hash"])
                     failures.Add($"case {i} (treeHash: client {result["hash"]} != server {cases[i]!["hash"]})");
                 if ((string?)result["patchedDom"] != (string?)result["freshDom"])
@@ -515,6 +522,7 @@ const results = cases.map((c) => {
   dom.renderInto(fresh, JSON.parse(c.expected));
   return {
     tree: JSON.stringify(tree),
+    patches: JSON.stringify(client.diff(c.previous, c.current)),
     hash: client.treeHash(tree),
     patchedDom: serialize(patched),
     freshDom: serialize(fresh),
