@@ -19,7 +19,8 @@ namespace MaldaLang.Compiler;
 
 public partial class Compiler
 {
-    private static bool UsesUiFramework(string source)
+    /// <summary>True when the program speaks the browser UI protocol and so needs the UI host (Desktop IDE F5 starts it).</summary>
+    public static bool UsesUiFramework(string source)
     {
         // In-memory ui.state / ui.setState (HttpServer components) does not need UIHost.
         // Only the browser UI protocol (mount / events) requires the embedded host.

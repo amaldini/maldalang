@@ -79,6 +79,17 @@ public class WebPreviewHostBuilderTests
             Assert.Equal("/.malda-preview/program.html", uri.AbsolutePath);
             Assert.Contains("assets=..%2FExamples%2FGames%2F", uri.Query, StringComparison.Ordinal);
             Assert.Contains("runtime=..%2FExamples%2FWeb%2Fwwwroot%2Fmalda-js-runtime.js", uri.Query, StringComparison.Ordinal);
+            Assert.DoesNotContain("uiClient=", uri.Query, StringComparison.Ordinal);
+
+            var uiUri = WebPreviewHostBuilder.BuildHostUri(
+                hostPath,
+                repoRoot,
+                scriptPath,
+                "demo",
+                sourcePath,
+                Path.Combine(previewDir, "malda-ui-client.js"));
+
+            Assert.Contains("uiClient=malda-ui-client.js", uiUri.Query, StringComparison.Ordinal);
         }
         finally
         {

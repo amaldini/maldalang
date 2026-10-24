@@ -38,6 +38,7 @@ using System.ComponentModel;
 using Microsoft.Web.WebView2.Core;
 using MaldaLang.BuiltIns;
 using MaldaLang.TraceViewer;
+using MaldaLang.Runtime.UI;
 using MaldaLang.UIHost;
 using MaldaLang.Testing;
 
@@ -416,6 +417,19 @@ public partial class MainWindow
             SwitchToTab("output");
             await PreviewCurrentDocumentAsync();
             return;
+        }
+
+        if (Compiler.Compiler.UsesUiFramework(source))
+        {
+            // ui.run waits for browser events only on a linked host; once it waits,
+            // OnUiRunWaiting opens its page in the Web UI panel.
+            UiHostLink.StopRuns();
+            if (!await UiHostLink.StartAsync())
+            {
+                SetOutputText("UI host not started: " + (EmbeddedUiHostRuntime.StartError ?? "unknown error"), isError: true);
+                SwitchToTab("output");
+                return;
+            }
         }
 
         StartInterpretRun(source, input, sourceForExecution.SourceFilePath);
@@ -836,7 +850,8 @@ public partial class MainWindow
         ResetDualDebugState();
         _ = StopJsDebuggerAsync();
         
-        // Stop regular run execution if running
+        // Stop regular run execution if running; an interpreted ui.run loop ends on its own signal
+        UiHostLink.StopRuns();
         _runCancellation?.Cancel();
         KillActiveRunProcess();
         _runTask = null;

@@ -52,13 +52,16 @@ public partial class MainWindow
 
         var hostPath = ResolveWebPreviewHostPath(repoRoot);
         string scriptPath;
+        string? uiClientPath = null;
         if (IsJavaScriptPreviewDocument(activePath))
         {
             scriptPath = Path.GetFullPath(activePath);
         }
         else if (IsMaldaPreviewDocument(activePath))
         {
-            scriptPath = WriteWebPreviewJavaScriptArtifact(repoRoot, sourceForExecution.Source, activePath).ScriptPath;
+            var artifact = WriteWebPreviewJavaScriptArtifact(repoRoot, sourceForExecution.Source, activePath);
+            scriptPath = artifact.ScriptPath;
+            uiClientPath = artifact.UiClientPath;
         }
         else
         {
@@ -70,7 +73,8 @@ public partial class MainWindow
             repoRoot,
             scriptPath,
             Path.GetFileNameWithoutExtension(activePath),
-            activePath);
+            activePath,
+            uiClientPath);
         if (_showcasePreviewAutoplay)
         {
             var joiner = string.IsNullOrEmpty(previewUri.Query) ? "?" : "&";
@@ -138,9 +142,10 @@ public partial class MainWindow
         string repoRoot,
         string scriptPath,
         string title,
-        string? sourceFilePath)
+        string? sourceFilePath,
+        string? uiClientPath = null)
     {
-        return WebPreviewHostBuilder.BuildHostUri(hostPath, repoRoot, scriptPath, title, sourceFilePath);
+        return WebPreviewHostBuilder.BuildHostUri(hostPath, repoRoot, scriptPath, title, sourceFilePath, uiClientPath);
     }
 
     private const string GeneratedWebPreviewHostHtml =
@@ -195,7 +200,8 @@ public partial class MainWindow
                 script: params.get("script") || "program.js",
                 rootSelector: params.get("root") || "#app",
                 entry: params.get("entry") || "auto",
-                assets: params.get("assets") || ""
+                assets: params.get("assets") || "",
+                uiClient: params.get("uiClient") || ""
               };
 
               var statusElement = document.getElementById("status");
@@ -217,10 +223,13 @@ public partial class MainWindow
                 statusElement.className = isError ? "error" : "";
               }
 
-              function loadScript(src) {
+              function loadScript(src, uiMode) {
                 return new Promise(function (resolve, reject) {
                   var script = document.createElement("script");
                   script.src = src;
+                  if (uiMode) {
+                    script.setAttribute("data-ui-mode", uiMode);
+                  }
                   script.onload = resolve;
                   script.onerror = function () {
                     reject(new Error("Could not load script: " + src));
@@ -270,10 +279,16 @@ public partial class MainWindow
               async function start() {
                 setStatus("Loading browser runtime...", false);
                 await loadScript(config.three);
+                // ui.* in local mode: the UI client draws the program's tree into #app.
+                if (config.uiClient) {
+                  await loadScript(config.uiClient, "local");
+                }
                 await loadScript(config.runtime);
 
                 setStatus("Loading " + config.script + "...", false);
                 await loadScript(config.script);
+                // A ui.run or game loop keeps running here, so say so before it starts.
+                setStatus("Running " + config.script, false);
                 await runEntryPoint();
 
                 setStatus("Loaded " + config.script, false);
@@ -289,7 +304,7 @@ public partial class MainWindow
         </html>
         """;
 
-    private readonly record struct WebPreviewJavaScriptArtifact(string ScriptPath, string? SourceMapJson);
+    private readonly record struct WebPreviewJavaScriptArtifact(string ScriptPath, string? SourceMapJson, string? UiClientPath);
 
     private static WebPreviewJavaScriptArtifact WriteWebPreviewJavaScriptArtifact(string repoRoot, string source, string sourceFilePath)
     {
@@ -311,7 +326,15 @@ public partial class MainWindow
             File.WriteAllText(outputPath + ".map", transpileResult.SourceMapJson, encoding);
         }
 
-        return new WebPreviewJavaScriptArtifact(outputPath, transpileResult.SourceMapJson);
+        // ui.* runs in local mode in the preview: the runtime draws through malda-ui-client.js.
+        string? uiClientPath = null;
+        if (Compiler.JsRuntimeAreas.UsedBy(javaScript).Contains("ui"))
+        {
+            uiClientPath = Path.Combine(previewDir, Compiler.Compiler.JsUiClientFileName);
+            File.WriteAllText(uiClientPath, Compiler.Compiler.GetUiClientAssetContent(), encoding);
+        }
+
+        return new WebPreviewJavaScriptArtifact(outputPath, transpileResult.SourceMapJson, uiClientPath);
     }
 
     private static string SanitizePreviewArtifactName(string relativePath)

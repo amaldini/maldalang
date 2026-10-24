@@ -48,7 +48,8 @@
         script: params.get("script") || "program.js",
         rootSelector: params.get("root") || "#app",
         entry: params.get("entry") || "auto",
-        assets: params.get("assets") || ""
+        assets: params.get("assets") || "",
+        uiClient: params.get("uiClient") || ""
       };
 
       var statusElement = document.getElementById("status");
@@ -70,10 +71,13 @@
         statusElement.className = isError ? "error" : "";
       }
 
-      function loadScript(src) {
+      function loadScript(src, uiMode) {
         return new Promise(function (resolve, reject) {
           var script = document.createElement("script");
           script.src = src;
+          if (uiMode) {
+            script.setAttribute("data-ui-mode", uiMode);
+          }
           script.onload = resolve;
           script.onerror = function () {
             reject(new Error("Could not load script: " + src));
@@ -123,10 +127,16 @@
       async function start() {
         setStatus("Loading browser runtime...", false);
         await loadScript(config.three);
+        // ui.* in local mode: the UI client draws the program's tree into #app.
+        if (config.uiClient) {
+          await loadScript(config.uiClient, "local");
+        }
         await loadScript(config.runtime);
 
         setStatus("Loading " + config.script + "...", false);
         await loadScript(config.script);
+        // A ui.run or game loop keeps running here, so say so before it starts.
+        setStatus("Running " + config.script, false);
         await runEntryPoint();
 
         setStatus("Loaded " + config.script, false);

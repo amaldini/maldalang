@@ -262,6 +262,7 @@ public partial class MainWindow : Window
         // Initialize modern embedded browser for Web UI panel.
         WebUiWebView.PreviewKeyDown += WebUiWebView_PreviewKeyDown;
         _ = InitializeWebUiPreviewAsync();
+        MaldaLang.Runtime.UI.UiHostLink.RunWaiting += OnUiRunWaiting;
         
         SetupSyntaxHighlighting();
         SetupEditor();
@@ -655,6 +656,8 @@ public partial class MainWindow : Window
     
     protected override void OnClosed(EventArgs e)
     {
+        MaldaLang.Runtime.UI.UiHostLink.RunWaiting -= OnUiRunWaiting;
+        MaldaLang.Runtime.UI.UiHostLink.StopRuns();
         base.OnClosed(e);
     }
 }

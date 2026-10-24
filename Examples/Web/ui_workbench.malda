@@ -1,8 +1,10 @@
 // A desktop-style workbench on ui.*: menu bar, shortcuts, resizable panes (shape tree, canvas,
 // property grid), command palette and an About dialog. The same source runs two ways:
-//   malda Examples/Web/ui_workbench.malda                      (UI host: open the printed URL)
+//   malda Examples/Web/ui_workbench.malda                      (UI host: open the "Open:" URL it prints)
 //   malda compile Examples/Web/ui_workbench.malda --mode js -o dist/workbench/workbench.js
 //                                                              (local mode: open dist/workbench/index.html)
+// In the Desktop IDE, F5 runs it on the UI host and shows it in the Web UI panel; Web Preview runs
+// it in local mode.
 // Click the canvas to add a circle, click a shape (or its tree item) to select it, edit it in the
 // property grid, Ctrl+K opens the command palette, Delete removes the selection.
 // Reference: ReferenceManual/26-web-ui.html#local-mode

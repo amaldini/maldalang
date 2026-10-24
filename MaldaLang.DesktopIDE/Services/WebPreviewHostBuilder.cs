@@ -20,7 +20,8 @@ public static class WebPreviewHostBuilder
         string repoRoot,
         string scriptPath,
         string title,
-        string? sourceFilePath)
+        string? sourceFilePath,
+        string? uiClientPath = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(hostPath);
         ArgumentException.ThrowIfNullOrWhiteSpace(repoRoot);
@@ -38,6 +39,13 @@ public static class WebPreviewHostBuilder
         if (!string.IsNullOrEmpty(assetBase))
         {
             query += "&assets=" + Uri.EscapeDataString(assetBase);
+        }
+
+        // A ui.* program runs in local mode: the host page loads malda-ui-client.js before the runtime.
+        if (!string.IsNullOrWhiteSpace(uiClientPath))
+        {
+            var relativeUiClientPath = ToUrlPath(Path.GetRelativePath(hostDirectory, Path.GetFullPath(uiClientPath)));
+            query += "&uiClient=" + Uri.EscapeDataString(relativeUiClientPath);
         }
 
         // Generated host lives under .malda-preview/; runtime assets stay at repo root.

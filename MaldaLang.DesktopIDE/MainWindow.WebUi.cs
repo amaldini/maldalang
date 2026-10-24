@@ -363,6 +363,21 @@ public partial class MainWindow
         _ = OpenWebUiInPanelAsync(detectedUrl, switchToTab: true);
     }
 
+    /// <summary><see cref="UiHostLink.RunWaiting"/>: an F5 ui.run program waits on the host, so show its page.</summary>
+    private void OnUiRunWaiting(string url)
+    {
+        _ = Dispatcher.InvokeAsync(async () =>
+        {
+            if (_showcase != null || !Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            {
+                return;
+            }
+
+            _lastDetectedWebUiUrl = url;
+            await OpenUriInWebUiPanelAsync(uri, url, switchToTab: true, ensureUiHost: false);
+        });
+    }
+
     private async Task OpenWebUiInPanelAsync(string url, bool switchToTab)
     {
         var uri = TryResolveWebViewUri(url);

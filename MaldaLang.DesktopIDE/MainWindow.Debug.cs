@@ -1154,7 +1154,8 @@ public partial class MainWindow
             repoRoot,
             artifact.ScriptPath,
             Path.GetFileNameWithoutExtension(fileName),
-            fileName);
+            fileName,
+            artifact.UiClientPath);
 
         var core = await EnsureWebUiCoreAsync();
         if (core == null)

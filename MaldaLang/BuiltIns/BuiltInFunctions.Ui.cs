@@ -626,9 +626,14 @@ public static partial class BuiltInFunctions
         var session = UiSessionRegistry.GetOrCreate(sessionId);
         var state = args[0];
 
+        var generation = UiHostLink.RunGeneration;
         session.Mount(UiNode.FromRuntimeValue(await CallUiCallbackAsync(view, new List<RuntimeValue> { state }, interpreter)));
+        if (UiHostLink.SessionUrl(sessionId) is { } url)
+            UiHostLink.NotifyRunWaiting(url);
         while (true)
         {
+            if (UiHostLink.RunGeneration != generation)
+                return state;
             if (!session.TryDequeueEvent(out var uiEvent) || uiEvent == null)
             {
                 if (!UiHostLink.IsAttached)

@@ -22,9 +22,45 @@ using MaldaLang.UIHost;
 public static class UiHostLink
 {
     private static int _attached;
+    private static int _runGeneration;
 
     /// <summary>True once the embedded host runs and sessions publish to it.</summary>
     public static bool IsAttached => Volatile.Read(ref _attached) == 1;
+
+    /// <summary>The URL a browser opens to see the <paramref name="sessionId"/> session, or null without a host.</summary>
+    public static string? SessionUrl(string sessionId)
+    {
+        if (!IsAttached || EmbeddedUiHostRuntime.BaseUrl is not { } baseUrl)
+            return null;
+        var url = baseUrl.TrimEnd('/') + "/";
+        return sessionId == "default" ? url : url + "?session=" + Uri.EscapeDataString(sessionId);
+    }
+
+    /// <summary>
+    /// Raised with the page URL when a <c>ui.run</c> loop starts waiting for browser events; the
+    /// Desktop IDE opens it in its Web UI panel. Without a handler the URL goes to stderr, so the
+    /// program's own output stays the same on every backend.
+    /// </summary>
+    public static event Action<string>? RunWaiting;
+
+    /// <summary>Tells the <see cref="RunWaiting"/> handlers, or stderr, which page shows the session.</summary>
+    public static void NotifyRunWaiting(string url)
+    {
+        var handlers = RunWaiting;
+        if (handlers != null)
+            handlers(url);
+        else
+            Console.Error.WriteLine($"UI running. Open: {url}");
+    }
+
+    /// <summary>Bumped by <see cref="StopRuns"/>; a <c>ui.run</c> loop ends when it changes.</summary>
+    public static int RunGeneration => Volatile.Read(ref _runGeneration);
+
+    /// <summary>
+    /// Ends every <c>ui.run</c> loop waiting for browser events (within its one-second wait), as when
+    /// the Desktop IDE stops a run: the host stays up for the next one.
+    /// </summary>
+    public static void StopRuns() => Interlocked.Increment(ref _runGeneration);
 
     /// <summary>Starts the embedded host if needed and links the sessions to it. False when the host did not start.</summary>
     public static async Task<bool> StartAsync()
