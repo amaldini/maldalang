@@ -32,7 +32,7 @@
         <ul>
             <li><strong>Games (first-class JS surface)</strong> — <a href="#game-canvas">28.9</a> <code>game.*</code> · <a href="#three-scene-api">28.10</a> <code>three.*</code> · <a href="#shader-kernels">28.10.1</a> <code>@shader()</code></li>
             <li><strong>28.2</strong> What the JavaScript backend provides</li>
-            <li><strong>28.3</strong> Compile commands and output modes</li>
+            <li><strong>28.3</strong> Compile commands and output modes (<a href="#es-modules">28.3.1</a> ES modules)</li>
             <li><strong>28.4</strong> Required script loading order</li>
             <li><strong>28.5</strong> API mode DOM helpers</li>
             <li><strong>28.6</strong> Sum types and pattern matching in JS mode</li>
@@ -75,6 +75,7 @@ malda compile Examples/Web/js/hello_dom.malda --target pwa -o dist/hello-dom
 # Template mode (.malda.html source)
 malda compile Examples/Web/js/hello_template.malda.html --mode js -o Examples/Web/js/hello_template.generated.js</code></pre>
         <p><code>--target js</code> is an alias for <code>--mode js</code>. <code>--target pwa</code> is an alias for <code>--mode pwa</code> and produces a directory containing the app shell, runtime, and transpiled JavaScript.</p>
+        <p>The <code>malda-js-runtime.js</code> written beside the output keeps the <code>game.*</code> and <code>three.*</code> parts only when the program uses them, so a program without them ships a runtime about half the size. Programs compiled into the same folder share the file and it keeps every part any of them uses; its first line lists them (<code>// malda-js-runtime areas: game</code>). A call into a part that was left out stops with <code>malda-js-runtime.js was written without the 'game' area</code>.</p>
         <p>The inner loop for canvas games is <code>malda play</code>. It compiles <code>--mode js</code>, writes a host page, and serves a local URL so you do not have to author HTML. Edits to the source, sibling <code>index.html</code>, and <code>assets/</code> rebuild and reload the browser (<code>--no-watch</code> serves the first compile only). Packaging for itch.io stays <code>--mode pwa</code>.</p>
         <pre><code>malda new game my-game
 cd my-game
@@ -83,6 +84,28 @@ malda play app.malda</code></pre>
         <pre><code>malda new game my-scores --fullstack
 cd my-scores
 malda compile app.malda --mode fullstack -o dist</code></pre>
+
+        <h3 id="es-modules">28.3.1 ES modules (<code>--mode esm</code>)</h3>
+        <p><code>--mode esm</code> (alias <code>--target esm</code>) writes an ES module, <code>.mjs</code> by default, next to <code>malda-js-runtime.js</code> and an <code>index.html</code> that imports it. Use it to call MALDA from JavaScript, or to split an app into several MALDA modules.</p>
+        <pre><code>malda compile geometry.malda --mode esm -o web/geometry.mjs   # writes geometry.mjs + malda-js-runtime.js
+malda compile scene.malda --mode esm -o web/scene.mjs         # same folder: one runtime for both</code></pre>
+        <ul>
+            <li><strong>Exports.</strong> The module exports the <code>export</code>-marked functions, classes, variables and the constructors of exported types, the same rule as a MALDA <code>import</code>. A file without any <code>export</code> exports every top-level function, class, actor, variable and variant constructor. Declarations inlined from the <code>.malda</code> files it imports are not re-exported.</li>
+            <li><strong>Top-level code runs on import.</strong> The program's statements run when the module is evaluated (<code>await main()</code> at the end of the module), so an importer sees exported variables with their values. A failure rejects the import.</li>
+            <li><strong>Calling MALDA from JavaScript.</strong> Exported functions take and return plain JavaScript values. A function that uses <code>await</code> returns a Promise.</li>
+            <li><strong>One runtime.</strong> Each module imports <code>./malda-js-runtime.js</code>; modules compiled into the same folder share one runtime instance. <code>import js</code> works the same way in a module.</li>
+            <li>The default <code>--mode js</code> output is unchanged: a classic script that registers <code>MaldaApp</code> and runs when the host calls <code>MaldaApp.main()</code>.</li>
+        </ul>
+        <pre><code>// geometry.malda
+export var UNIT = 10;
+export function area(w, h) {
+    return w * h * UNIT;
+}
+function helper() {          // not exported
+    return 1;
+}</code></pre>
+        <pre><code>import { area, UNIT } from "./web/geometry.mjs";
+console.log(area(2, 3), UNIT);   // 60 10</code></pre>
 
         <h2>28.4 Required Script Loading Order</h2>
         <p>The host page must include a container such as <code>#app</code>, then load scripts in this order. Same file: <code>Examples/Web/js/host.html</code>.</p>

@@ -93,13 +93,41 @@ public partial class Compiler
         return TemplatePreprocessor.Preprocess(source, sourceFilePath);
     }
 
-    public CompilationResult CompileToJavaScript(string sourcePath, string outputPath)
+    /// <summary>
+    /// <c>--mode esm</c> from a source string: an ES module that imports
+    /// <c>./malda-js-runtime.js</c>, runs the program when evaluated and exports its declarations.
+    /// </summary>
+    public string TranspileToJavaScriptModuleFromSource(string source, string? sourceFilePath = null)
     {
         try
         {
-            var finalOutputPath = ResolveJavaScriptOutputPath(sourcePath, outputPath);
+            return TranspileToJavaScriptArtifactsFromSource(source, sourceFilePath, generatedFileName: null, JsModuleFormat.EsModule).JavaScript;
+        }
+        catch (ParseException ex)
+        {
+            throw new Exception($"Syntax error: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"Transpilation error: {ex}");
+        }
+    }
+
+    public CompilationResult CompileToJavaScript(string sourcePath, string outputPath) =>
+        CompileToJavaScriptFile(sourcePath, outputPath, JsModuleFormat.Script);
+
+    /// <summary><c>--mode esm</c>: an ES module (default <c>.mjs</c>) beside the runtime and an <c>index.html</c> that imports it.</summary>
+    public CompilationResult CompileToJavaScriptModule(string sourcePath, string outputPath) =>
+        CompileToJavaScriptFile(sourcePath, outputPath, JsModuleFormat.EsModule);
+
+    private CompilationResult CompileToJavaScriptFile(string sourcePath, string outputPath, JsModuleFormat moduleFormat)
+    {
+        try
+        {
+            var isEsModule = moduleFormat == JsModuleFormat.EsModule;
+            var finalOutputPath = ResolveJavaScriptOutputPath(sourcePath, outputPath, isEsModule ? ".mjs" : ".js");
             var source = File.ReadAllText(sourcePath);
-            var transpileResult = TranspileToJavaScriptArtifactsFromSource(source, sourcePath, generatedFileName: Path.GetFileName(finalOutputPath));
+            var transpileResult = TranspileToJavaScriptArtifactsFromSource(source, sourcePath, generatedFileName: Path.GetFileName(finalOutputPath), moduleFormat);
             var mapFileName = Path.GetFileName(finalOutputPath) + ".map";
             var jsWithSourceMap = AppendSourceMapReference(transpileResult.JavaScript, mapFileName);
 
@@ -116,8 +144,11 @@ public partial class Compiler
 
             var mainScriptFileName = Path.GetFileName(finalOutputPath);
             var appName = Path.GetFileNameWithoutExtension(mainScriptFileName);
-            File.WriteAllText(Path.Combine(outputDirectory, "malda-js-runtime.js"), GetJavaScriptRuntimeAssetContent(), Encoding.UTF8);
-            File.WriteAllText(Path.Combine(outputDirectory, "index.html"), GenerateJavaScriptHostHtml(appName, mainScriptFileName), Encoding.UTF8);
+            JsRuntimeAreas.WriteBeside(outputDirectory, GetJavaScriptRuntimeAssetContent(), transpileResult.JavaScript);
+            File.WriteAllText(
+                Path.Combine(outputDirectory, "index.html"),
+                isEsModule ? GenerateJavaScriptModuleHostHtml(appName, mainScriptFileName) : GenerateJavaScriptHostHtml(appName, mainScriptFileName),
+                Encoding.UTF8);
 
             return new CompilationResult
             {
@@ -156,7 +187,7 @@ public partial class Compiler
                 File.WriteAllText(jsOutputPath + ".map", transpileResult.SourceMapJson, new UTF8Encoding(false));
             }
 
-            File.WriteAllText(Path.Combine(outputDirectory, "malda-js-runtime.js"), GetJavaScriptRuntimeAssetContent(), Encoding.UTF8);
+            JsRuntimeAreas.WriteBeside(outputDirectory, GetJavaScriptRuntimeAssetContent(), transpileResult.JavaScript);
             File.WriteAllText(Path.Combine(outputDirectory, "index.html"), GeneratePwaIndexHtml(appName, mainScriptFileName), Encoding.UTF8);
             File.WriteAllText(Path.Combine(outputDirectory, "icon.svg"), GeneratePwaIconSvg(), Encoding.UTF8);
             File.WriteAllText(Path.Combine(outputDirectory, "manifest.webmanifest"), GeneratePwaManifest(appName), Encoding.UTF8);
@@ -264,17 +295,17 @@ public partial class Compiler
         }
     }
 
-    private static string ResolveJavaScriptOutputPath(string sourcePath, string outputPath)
+    private static string ResolveJavaScriptOutputPath(string sourcePath, string outputPath, string defaultExtension = ".js")
     {
         if (string.IsNullOrWhiteSpace(outputPath))
         {
-            return Path.ChangeExtension(sourcePath, ".js");
+            return Path.ChangeExtension(sourcePath, defaultExtension);
         }
 
         var extension = Path.GetExtension(outputPath);
         if (string.IsNullOrEmpty(extension))
         {
-            return outputPath + ".js";
+            return outputPath + defaultExtension;
         }
 
         return outputPath;
@@ -314,7 +345,11 @@ public partial class Compiler
         return $"{normalized}{Environment.NewLine}//# sourceMappingURL={mapFileName}{Environment.NewLine}";
     }
 
-    private static JsTranspileResult TranspileToJavaScriptArtifactsFromSource(string source, string? sourceFilePath, string? generatedFileName)
+    private static JsTranspileResult TranspileToJavaScriptArtifactsFromSource(
+        string source,
+        string? sourceFilePath,
+        string? generatedFileName,
+        JsModuleFormat moduleFormat = JsModuleFormat.Script)
     {
         source = PreprocessTemplateSourceIfNeeded(source, sourceFilePath);
         var lexer = new Lexer(source, sourceFilePath);
@@ -340,7 +375,7 @@ public partial class Compiler
             throw new JsCapabilityException(capabilityDiagnostics);
         }
 
-        var transpiler = new JsTranspiler();
+        var transpiler = new JsTranspiler { ModuleFormat = moduleFormat };
         return transpiler.TranspileWithSourceMap(
             partitionResult.JavaScriptStatements,
             isLibrary: false,
@@ -608,6 +643,45 @@ public partial class Compiler
                     });
             });
         })();
+    </script>
+</body>
+</html>
+""";
+    }
+
+    /// <summary>
+    /// Host page for <c>--mode esm</c>: the module runs the program when it is imported, so the
+    /// page only imports it and reports the outcome.
+    /// </summary>
+    private static string GenerateJavaScriptModuleHostHtml(string appName, string moduleFileName)
+    {
+        var moduleLiteral = JsonSerializer.Serialize("./" + moduleFileName);
+        return $$"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{appName}}</title>
+    <style>
+        body { margin: 0; min-height: 100vh; background: #020617; color: #e2e8f0; font-family: Arial, sans-serif; }
+        #status { padding: 10px 14px; border-bottom: 1px solid #1e293b; background: #0f172a; color: #94a3b8; font-size: 14px; }
+        #status.error { color: #fecaca; background: #450a0a; border-bottom-color: #7f1d1d; }
+    </style>
+</head>
+<body>
+    <div id="status">Loading {{appName}}...</div>
+    <div id="app"></div>
+    <script type="module">
+        const status = document.getElementById("status");
+        try {
+            await import({{moduleLiteral}});
+            status.textContent = "Loaded {{appName}}";
+        } catch (error) {
+            console.error(error);
+            status.textContent = error && error.message ? error.message : "JavaScript module startup failed.";
+            status.className = "error";
+        }
     </script>
 </body>
 </html>

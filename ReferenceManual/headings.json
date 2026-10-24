@@ -2767,6 +2767,12 @@
   },
   {
     "file": "28-browser-javascript-backend.html",
+    "level": 3,
+    "id": "es-modules",
+    "title": "28.3.1 ES modules (--mode esm)"
+  },
+  {
+    "file": "28-browser-javascript-backend.html",
     "level": 2,
     "id": "",
     "title": "28.4 Required Script Loading Order"

@@ -4855,6 +4855,18 @@
     }
   };
 
+  // The compiler leaves the `game` / `three` areas out of the runtime it writes beside a program
+  // that does not use them (`// @malda-runtime-area` markers); the member then names what is missing.
+  function missingRuntimeArea(area) {
+    return new Proxy({}, {
+      get(_target, member) {
+        if (typeof member === "symbol" || member === "then") return undefined;
+        throw new Error(`malda-js-runtime.js was written without the '${area}' area (${area}.${String(member)}). ` +
+          "Recompile the program that uses it into this folder, or copy the full runtime.");
+      }
+    });
+  }
+
   // `import js …` (JavaScript interop). The generated program calls import() itself, so a
   // relative specifier resolves against the program file, not this runtime; these helpers
   // name the specifier in failures and check named exports.
@@ -5040,6 +5052,7 @@
         return null;
       }
     },
+    // @malda-runtime-area game
     game: (() => {
       const state = {
         canvas: null,
@@ -7888,6 +7901,8 @@
         removeSave
       };
     })(),
+    // @malda-runtime-area-end game
+    // @malda-runtime-area three
     three: (() => {
       const state = {
         renderer: null,
@@ -9897,6 +9912,7 @@
         wasGamepadButtonReleased: (index, button) => state.gamepad.wasButtonReleased(index, button)
       };
     })()
+    // @malda-runtime-area-end three
   };
 
   function nnLayerMatrix(rows, cols, scale) {

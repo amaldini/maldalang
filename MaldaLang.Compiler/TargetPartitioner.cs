@@ -187,7 +187,10 @@ internal static class TargetPartitioner
             filteredMembers.Add(new ClassMember(member.Access, member.IsStatic, member.Type, member.Name, clonedFunction, member.TypeHint));
         }
 
-        return new ClassDeclaration(classDeclaration.Name, classDeclaration.Superclass, filteredMembers, classDeclaration.IsExported, classDeclaration.Line, classDeclaration.Column, classDeclaration.HasPrimaryConstructor);
+        return new ClassDeclaration(classDeclaration.Name, classDeclaration.Superclass, filteredMembers, classDeclaration.IsExported, classDeclaration.Line, classDeclaration.Column, classDeclaration.HasPrimaryConstructor)
+        {
+            SourceFile = classDeclaration.SourceFile
+        };
     }
 
     private static bool IncludeProperty(PropertyDeclaration property, TargetBackend backend)
@@ -294,7 +297,11 @@ internal static class TargetPartitioner
             function.ReturnType,
             function.IsExported,
             function.Line,
-            function.Column);
+            function.Column)
+        {
+            // ES module exports and diagnostics tell inlined files apart by SourceFile.
+            SourceFile = function.SourceFile
+        };
     }
 
     private static bool HasDecorator(List<Decorator>? decorators, string name)

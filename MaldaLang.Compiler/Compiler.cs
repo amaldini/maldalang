@@ -24,7 +24,9 @@ public enum CompilationMode
     TranspileToDll,
     JavaScript,
     PWA,
-    FullStack
+    FullStack,
+    /// <summary><c>--mode esm</c>: an ES module that exports the program's declarations.</summary>
+    JavaScriptModule
 }
 
 public partial class Compiler
@@ -138,6 +140,11 @@ public partial class Compiler
         if (mode == CompilationMode.JavaScript)
         {
             return CompileToJavaScript(sourcePath, outputPath);
+        }
+
+        if (mode == CompilationMode.JavaScriptModule)
+        {
+            return CompileToJavaScriptModule(sourcePath, outputPath);
         }
 
         if (mode == CompilationMode.PWA)

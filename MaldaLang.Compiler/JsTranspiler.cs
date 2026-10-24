@@ -196,8 +196,17 @@ public partial class JsTranspiler
         CollectShaderFunctions(statements);
         var jsImports = CollectJsImports(jsImportStatements);
 
-        EmitLine("const MaldaApp = (() => {");
-        _indentLevel++;
+        var isEsModule = ModuleFormat == JsModuleFormat.EsModule;
+        if (isEsModule)
+        {
+            // Every module importing the same runtime file shares one runtime instance.
+            EmitLine($"import {TranspileLiteral(RuntimeModuleSpecifier)};");
+        }
+        else
+        {
+            EmitLine("const MaldaApp = (() => {");
+            _indentLevel++;
+        }
 
         EmitLine("if (typeof globalThis.mlRuntime === \"undefined\") {");
         _indentLevel++;
@@ -242,10 +251,14 @@ public partial class JsTranspiler
                 .OfType<IdentifierExpression>()
                 .Select(identifier => identifier.Name),
             StringComparer.Ordinal);
+        var moduleExports = isEsModule
+            ? CollectModuleExports(statements, sourceFilePath)
+            : new List<string>();
+        var exportedNames = new HashSet<string>(moduleExports, StringComparer.Ordinal);
         var moduleVarNames = topLevelStatements
             .OfType<VarDeclStatement>()
             .Select(v => v.Name)
-            .Where(name => namesUsedByDeclarations.Contains(name) && name != "main" && name != "mlRuntime" && !_jsImportNames.Contains(name))
+            .Where(name => (namesUsedByDeclarations.Contains(name) || exportedNames.Contains(name)) && name != "main" && name != "mlRuntime" && !_jsImportNames.Contains(name))
             .Distinct(StringComparer.Ordinal)
             .ToList();
         if (moduleVarNames.Count > 0)
@@ -347,6 +360,13 @@ public partial class JsTranspiler
         if (functions.Any(f => f.Name == "bootstrap"))
         {
             exportNames.Add("bootstrap");
+        }
+
+        if (isEsModule)
+        {
+            EmitEsModuleFooter(moduleExports);
+            var moduleOutput = _output.ToString();
+            return new JsTranspileResult(moduleOutput, BuildSourceMapJson(sourceFilePath, sourceContent, generatedFileName));
         }
 
         EmitLine($"return {{ {string.Join(", ", exportNames)} }};");

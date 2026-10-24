@@ -66,6 +66,11 @@ partial class Program
                 compilationModeStr = "JavaScript";
                 isJavaScriptMode = true;
                 return true;
+            case "esm":
+            case "js-module":
+                compilationModeStr = "JavaScriptModule";
+                isJavaScriptMode = true;
+                return true;
             case "pwa":
                 compilationModeStr = "PWA";
                 isPwaMode = true;
@@ -96,6 +101,13 @@ partial class Program
             return true;
         }
 
+        if (normalized == "esm")
+        {
+            compilationModeStr = "JavaScriptModule";
+            isJavaScriptMode = true;
+            return true;
+        }
+
         if (normalized == "pwa")
         {
             compilationModeStr = "PWA";
@@ -113,12 +125,17 @@ partial class Program
         return false;
     }
 
+    /// <summary><c>--mode esm</c> writes an ES module, <c>.mjs</c> so Node loads it as one.</summary>
+    static string JavaScriptOutputExtension(string compilationModeStr) =>
+        compilationModeStr == "JavaScriptModule" ? ".mjs" : ".js";
+
     static string GetCompilationOutputType(string compilationModeStr)
     {
         return compilationModeStr switch
         {
             "TranspileToDll" => "DLL",
             "JavaScript" => "JavaScript distribution",
+            "JavaScriptModule" => "JavaScript module",
             "PWA" => "PWA",
             "FullStack" => "Full-stack distribution",
             _ => "Executable"
@@ -304,7 +321,7 @@ partial class Program
             }
             else if (isJavaScriptMode)
             {
-                outputPath = Path.ChangeExtension(outputPath, ".js");
+                outputPath = Path.ChangeExtension(outputPath, JavaScriptOutputExtension(compilationModeStr));
             }
             else if (isPwaMode)
             {
@@ -446,7 +463,7 @@ partial class Program
             }
             else if (isJavaScriptMode)
             {
-                outputPath = Path.ChangeExtension(outputPath, ".js");
+                outputPath = Path.ChangeExtension(outputPath, JavaScriptOutputExtension(compilationModeStr));
             }
             else if (isPwaMode)
             {
@@ -658,7 +675,7 @@ partial class Program
         }
         else if (!outputPathExplicitlySet && isJavaScriptMode)
         {
-            outputPath = Path.ChangeExtension(inputPath, ".js");
+            outputPath = Path.ChangeExtension(inputPath, JavaScriptOutputExtension(compilationModeStr));
         }
         else if (!outputPathExplicitlySet && isPwaMode)
         {
@@ -873,6 +890,7 @@ partial class Program
                 {
                     "TranspileToDll" => ".dll",
                     "JavaScript" => ".js",
+                    "JavaScriptModule" => ".mjs",
                     _ => ".exe"
                 };
                 outputPath = Path.Combine(SystemEnvironment.CurrentDirectory, $"output_{DateTime.Now:yyyyMMdd_HHmmss}{extension}");

@@ -15,6 +15,7 @@ This document captures the current JavaScript backend design in code and the nea
 - CLI integration: `MaldaLang/Program.cs`
   - `malda compile <input> --mode js`
   - `malda compile <input> --target js` (alias)
+  - `malda compile <input> --mode esm` / `--target esm` (ES module, default `.mjs`; `CompileToJavaScriptModule`)
   - `malda compile <input> --mode pwa`
   - `malda compile <input> --target pwa` (alias)
   - `malda new game [directory]`
@@ -70,6 +71,33 @@ This document captures the current JavaScript backend design in code and the nea
   - `game.*` calls map to `mlRuntime.game.*`
 - Three mapping (3D scene API mode):
   - `three.*` calls map to `mlRuntime.three.*`
+
+## ES Module Output (`--mode esm`)
+
+- `JsTranspiler.ModuleFormat = JsModuleFormat.EsModule` (`JsTranspiler.Modules.cs`). The module starts with
+  `import "./malda-js-runtime.js";` (`RuntimeModuleSpecifier`), has no IIFE, ends with `await main();` and
+  `export { … }`. Modules that resolve the runtime to the same file share one `globalThis.mlRuntime`.
+- Exports follow the MALDA `import` rule: `export`-marked functions / classes / vars / types (their
+  variant constructors) if the file has any, else every top-level function, class, actor, var and
+  variant constructor. Only declarations whose `SourceFile` is the compiled file count, so files
+  inlined by `import "lib.malda"` are not re-exported (`TargetPartitioner` keeps `SourceFile` on the
+  functions and classes it clones). Exported vars are module-scope `let`s, assigned when `main()` runs.
+- `index.html` imports the module with `<script type="module">` and reports the outcome; there is no
+  `MaldaApp.main()` call. `import js` uses the same `__maldaJsReady` loader as the script output.
+
+## Runtime Areas (trimmed runtime)
+
+- `malda-js-runtime.js` marks optional members of the runtime object with
+  `// @malda-runtime-area NAME` / `// @malda-runtime-area-end NAME` (today `game` and `three`, about 43% of
+  the file). `JsRuntimeAreas.WriteBeside` (`MaldaLang.Compiler/JsRuntimeAreas.cs`) writes the copy beside a
+  `--mode js` / `esm` / `pwa` output with only the areas the generated code calls (`mlRuntime.game…`), plus
+  the areas an existing runtime in that folder already keeps, and a first line
+  `// malda-js-runtime areas: …`. A dropped area becomes `missingRuntimeArea("NAME")`, a Proxy whose
+  members throw an error naming the area. A runtime without that header line is a full runtime.
+- The repository copy (`Examples/Web/wwwroot/malda-js-runtime.js`) stays full; tests and `MALDA_JS_RUNTIME_PATH`
+  use it. `nn.*` is interleaved with `math.*` and stays in the core.
+- Adding an area: wrap one member of the `runtime` object in the two markers, add its name to
+  `JsRuntimeAreas.All`, and check that nothing outside the markers reaches into it.
 
 ## Target Decorators and Partitioning
 
@@ -610,6 +638,7 @@ Audio Spec v1 adds a browser-hosted game audio API in JavaScript mode. The goal 
 - Test file: `MaldaLang.Tests/JavaScriptBackendTests.cs`
 - Interpret/JS stdout pairs: `MaldaLang.Tests/InterpretJsPairTests.cs` (skip if Node or the runtime is missing)
 - `import js` against real ES / CommonJS / WASM-glue modules in Node: `MaldaLang.Tests/JsInteropTests.cs`
+- `--mode esm` modules imported by a JavaScript program in Node: `MaldaLang.Tests/JsEsModuleOutputTests.cs`
 - `malda test --target js` (`MaldaLang/Testing/JavaScriptTestRunner.cs`): runs each test file compiled to
   JavaScript in Node, with `.malda` locations through the source map. Tests:
   `MaldaLang.Tests/TestCommandJavaScriptTargetTests.cs`

@@ -213,11 +213,11 @@ partial class Program
 
     static void ShowCompileHelp()
     {
-        Console.WriteLine("Usage: malda compile|publish <input.malda|input.malda.html> [-o <output.exe|output.dll|output.js|output-dir>] [--mode interpreter|transpile|dll|js|pwa|fullstack] [--target js|pwa|fullstack] [--include-ui-host] [--embed-folder <dir[=alias]>] [--with-trading] [--profile] [--profile-output <path>] [--profile-format text|json|both] [--profile-periodic-seconds N]");
+        Console.WriteLine("Usage: malda compile|publish <input.malda|input.malda.html> [-o <output.exe|output.dll|output.js|output.mjs|output-dir>] [--mode interpreter|transpile|dll|js|esm|pwa|fullstack] [--target js|esm|pwa|fullstack] [--include-ui-host] [--embed-folder <dir[=alias]>] [--with-trading] [--profile] [--profile-output <path>] [--profile-format text|json|both] [--profile-periodic-seconds N]");
         Console.WriteLine("  publish                       Alias for compile --mode transpile (executable publish layout)");
         Console.WriteLine("  -o <path>                     Output executable, DLL, JS file, or PWA directory");
-        Console.WriteLine("  --mode <mode>                 interpreter (default), transpile, dll, js, pwa, or fullstack");
-        Console.WriteLine("  --target <js|pwa|fullstack>   Alias for --mode js, --mode pwa, or --mode fullstack");
+        Console.WriteLine("  --mode <mode>                 interpreter (default), transpile, dll, js, esm (ES module), pwa, or fullstack");
+        Console.WriteLine("  --target <js|esm|pwa|fullstack> Alias for --mode js, esm, pwa, or fullstack");
         Console.WriteLine("  --include-ui-host             Force embedding UIHost runtime in transpiled executable");
         Console.WriteLine("  --embed-folder <dir[=alias]>  Embed a directory as embed:<alias>/... (repeatable)");
         Console.WriteLine("  --with-trading                Bundle optional timeseries and trading pack DLLs beside the executable");

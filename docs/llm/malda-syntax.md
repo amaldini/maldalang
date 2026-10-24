@@ -366,6 +366,9 @@ against the compiled `.js` file: keep local modules under `assets/` and import
 `"./assets/lib.mjs"` so `malda play`, `malda compile` next to the source, and
 `malda test --target js` all find them. CommonJS `module.exports` is `NAME.default`.
 
+To call MALDA from JavaScript, compile with `--mode esm`: the `.mjs` exports the `export`-marked
+declarations (all top-level ones when the file has no `export`) and runs top-level code on import.
+
 Tooling treats the quoted path as a file reference: **F12 / `textDocument/definition` on `include "lib.malda";` or `import "lib.malda";` jumps to that file**, and the Outline lists the modules a file pulls in. A missing target is a `malda-import` **warning** in `malda check --json` / the IDE (the program still fails at run time), so check that field rather than assuming an unresolved `import` was quiet.
 
 ## Null-safe boundaries

@@ -1,6 +1,6 @@
 # MALDA JavaScript platform roadmap
 
-**Status:** J0 and J1 landed 2026-10-24; J2–J8 open  
+**Status:** J0–J2 landed 2026-10-24; J3–J8 open  
 **Created:** 2026-10-23  
 **Audience:** maintainers working on `JsTranspiler`, `malda-js-runtime.js`, `JsCapabilityChecker`
 and the browser-facing built-ins
@@ -146,6 +146,16 @@ manual chapter 28 documents it.
 
 ## J2 — ES module output and libraries
 
+**Landed 2026-10-24.** `--mode esm` (not `--module esm`: a mode, so it reaches the compiler
+through the existing `CompilationMode`), exports with the existing `export` keyword and the MALDA
+`import` rule, top-level code run on evaluation, one shared runtime per folder. Code:
+`JsTranspiler.Modules.cs`, `Compiler.CompileToJavaScriptModule`; tests `JsEsModuleOutputTests`;
+reference 28.3.1. Runtime split: the `game` and `three` areas are marked in the runtime and
+left out of the copy written beside a program that does not use them (`JsRuntimeAreas`, tests
+`JsRuntimeAreasTests`): a core program ships 238 KB of 415 KB. Not done: `nn.*` stays in the core
+(interleaved with `math.*`), and the classic script output exports nothing beyond `main` /
+`renderRoot` / `bootstrap`.
+
 - `--module esm`: emit an ES module with `import` lines for the `import js` modules and the
   runtime, and `export` for the declarations marked to export (keyword or decorator, to decide).
   Keep the IIFE as the default.
@@ -266,7 +276,7 @@ reloads; tests cover the store on Node with a fake IndexedDB.
 
 ## Open decisions
 
-1. ~~Syntax for interop~~ (decided in J1: `import js …`); syntax for exports (keyword or decorator) stays open for J2.
+1. ~~Syntax for interop and exports~~ (decided: `import js …` in J1, the existing `export` keyword in J2).
 2. Name and namespace for typed buffers and bytes (`math`, a new `buf`, or literal types).
 3. Worker marker: decorator on the actor or a `spawn` variant.
 4. Whether `ui.*` local mode ports the diff to JS by hand or generates it from the C# engine.
