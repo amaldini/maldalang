@@ -12,7 +12,7 @@
 <body>
     <header>
         <h1>Manuale di riferimento MALDA&trade;</h1>
-        <p>Il linguaggio di programmazione AI-First - Versione 1.0.40</p>
+        <p>Il linguaggio di programmazione AI-First - Versione 1.0.41</p>
     </header>
     <nav></nav>
     <main>
@@ -318,7 +318,7 @@ function render() {
 
 three.start(update, render);</code></pre>
         <p><strong>Indicazioni sul loop:</strong> <code>updateFn</code> riceve <code>dtMs</code>, come <code>game.start</code>. Scala rotazione e movimento per <code>dtMs / 1000</code> così l'animazione resta indipendente dal frame-rate. Limita i valori enormi di <code>dtMs</code> dopo che un tab è stato in background se un singolo step saltrebbe troppo. Metti il disegno in <code>renderFn</code> (oppure omettilo e fai render alla fine di <code>update</code>).</p>
-        <p><strong>Ordine di caricamento:</strong> la pagina host deve caricare un bundle browser compatibile che definisce <code>globalThis.THREE</code> prima di <code>malda-js-runtime.js</code> e prima dello script MALDA compilato, poi chiamare <code>MaldaApp.main()</code>. Il repository include <code>Examples/Web/wwwroot/vendor/three.min.js</code> a questo scopo.</p>
+        <p><strong>Ordine di caricamento:</strong> la pagina host deve caricare un bundle browser compatibile che definisce <code>globalThis.THREE</code> prima di <code>malda-js-runtime.js</code> e prima dello script MALDA compilato, poi chiamare <code>MaldaApp.main()</code>. Il repository include <code>Examples/Web/wwwroot/vendor/three.min.js</code> a questo scopo. <code>malda compile --mode js</code> (e <code>malda play</code>, <code>--mode esm</code>, <code>--mode pwa</code>) copia quel bundle accanto alla pagina e inserisce il tag script quando il programma chiama <code>three.*</code>. Una pagina host scritta a mano lo carica comunque per primo.</p>
         <ol>
             <li><code>Examples/Web/wwwroot/vendor/three.min.js</code></li>
             <li><code>malda-js-runtime.js</code></li>

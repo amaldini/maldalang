@@ -387,4 +387,37 @@ public class ThreeGraphicsTests
             Directory.Delete(directory, recursive: true);
         }
     }
+
+    [Fact]
+    public void Compile_CopiesThreeBundle_AndLoadsItBeforeTheRuntime()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), "malda_three_host", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        try
+        {
+            var source = Path.Combine(folder, "app.malda");
+            File.WriteAllText(source, """
+                var renderer = three.createRenderer(320, 180, "#app");
+                """);
+            var result = new Compiler.Compiler().CompileToJavaScript(source, Path.Combine(folder, "out", "app.js"));
+            Assert.True(result.Success, result.ErrorMessage);
+
+            var output = Path.Combine(folder, "out");
+            var vendor = PlanningPaths.ResolveRepoFile("Examples", "Web", "wwwroot", "vendor", "three.min.js");
+            Assert.Equal(File.ReadAllText(vendor), File.ReadAllText(Path.Combine(output, "three.min.js")));
+            var html = File.ReadAllText(Path.Combine(output, "index.html"));
+            Assert.Contains("<script src=\"./three.min.js\"></script>", html, StringComparison.Ordinal);
+            Assert.True(html.IndexOf("./three.min.js", StringComparison.Ordinal) < html.IndexOf("./malda-js-runtime.js", StringComparison.Ordinal));
+
+            File.WriteAllText(source, "io.print(1);");
+            var plain = Path.Combine(folder, "plain");
+            Assert.True(new Compiler.Compiler().CompileToJavaScript(source, Path.Combine(plain, "app.js")).Success);
+            Assert.False(File.Exists(Path.Combine(plain, "three.min.js")));
+            Assert.DoesNotContain("three.min.js", File.ReadAllText(Path.Combine(plain, "index.html")), StringComparison.Ordinal);
+        }
+        finally
+        {
+            try { Directory.Delete(folder, recursive: true); } catch { }
+        }
+    }
 }

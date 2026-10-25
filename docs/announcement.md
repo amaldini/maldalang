@@ -465,7 +465,7 @@ if a built-in is added without being documented anywhere.
 #### What is not good yet
 
 - **1.0 is not a checked language or a cluster.** Spec Final 1.0 and
-  the CLI/Desktop `<Version>` match ([`docs/releases/v1.0.40.md`](releases/v1.0.40.md)).
+  the CLI/Desktop `<Version>` match ([`docs/releases/v1.0.41.md`](releases/v1.0.41.md)).
   Publish (`compile --mode transpile` / `publish`) refuses emit on type-hint Errors;
   interpret stays dynamic. Tier 0 is the conformance gate; prompts, workflows and HTTP
   remain platform tiers with an honest backend capability matrix.

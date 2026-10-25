@@ -146,9 +146,12 @@ public partial class Compiler
             var appName = Path.GetFileNameWithoutExtension(mainScriptFileName);
             JsRuntimeAreas.WriteBeside(outputDirectory, GetJavaScriptRuntimeAssetContent(), transpileResult.JavaScript);
             var usesUi = WriteUiClientBesideIfUsed(outputDirectory, transpileResult.JavaScript);
+            var usesThree = WriteThreeBundleBesideIfUsed(outputDirectory, transpileResult.JavaScript);
             File.WriteAllText(
                 Path.Combine(outputDirectory, "index.html"),
-                isEsModule ? GenerateJavaScriptModuleHostHtml(appName, mainScriptFileName, usesUi) : GenerateJavaScriptHostHtml(appName, mainScriptFileName, usesUi),
+                isEsModule
+                    ? GenerateJavaScriptModuleHostHtml(appName, mainScriptFileName, usesUi, usesThree)
+                    : GenerateJavaScriptHostHtml(appName, mainScriptFileName, usesUi, usesThree),
                 Encoding.UTF8);
 
             return new CompilationResult
@@ -191,10 +194,11 @@ public partial class Compiler
 
             JsRuntimeAreas.WriteBeside(outputDirectory, GetJavaScriptRuntimeAssetContent(), transpileResult.JavaScript);
             var usesUi = WriteUiClientBesideIfUsed(outputDirectory, transpileResult.JavaScript);
-            File.WriteAllText(Path.Combine(outputDirectory, "index.html"), GeneratePwaIndexHtml(appName, mainScriptFileName, usesUi), Encoding.UTF8);
+            var usesThree = WriteThreeBundleBesideIfUsed(outputDirectory, transpileResult.JavaScript);
+            File.WriteAllText(Path.Combine(outputDirectory, "index.html"), GeneratePwaIndexHtml(appName, mainScriptFileName, usesUi, usesThree), Encoding.UTF8);
             File.WriteAllText(Path.Combine(outputDirectory, "icon.svg"), GeneratePwaIconSvg(), Encoding.UTF8);
             File.WriteAllText(Path.Combine(outputDirectory, "manifest.webmanifest"), GeneratePwaManifest(appName), Encoding.UTF8);
-            File.WriteAllText(Path.Combine(outputDirectory, "sw.js"), GeneratePwaServiceWorker(appName, mainScriptFileName, usesUi), Encoding.UTF8);
+            File.WriteAllText(Path.Combine(outputDirectory, "sw.js"), GeneratePwaServiceWorker(appName, mainScriptFileName, usesUi, usesThree), Encoding.UTF8);
 
             return new CompilationResult
             {
@@ -426,6 +430,9 @@ public partial class Compiler
 
     public const string JsUiClientFileName = "malda-ui-client.js";
 
+    /// <summary>Browser bundle that defines <c>globalThis.THREE</c>, copied beside a program that calls <c>three.*</c>.</summary>
+    public const string ThreeBundleFileName = "three.min.js";
+
     /// <summary>
     /// Writes <c>malda-ui-client.js</c> beside a program whose JavaScript calls <c>ui.*</c>: in local
     /// mode the runtime's <c>ui</c> area diffs and draws through its <c>MaldaUiCore</c> /
@@ -448,9 +455,40 @@ public partial class Compiler
         return reader.ReadToEnd();
     }
 
+    /// <summary>
+    /// Copies <c>Examples/Web/wwwroot/vendor/three.min.js</c> beside a program that calls <c>three.*</c>.
+    /// The runtime reads <c>globalThis.THREE</c> and does not bundle three.js itself.
+    /// </summary>
+    private static bool WriteThreeBundleBesideIfUsed(string outputDirectory, string generatedJavaScript)
+    {
+        if (!JsRuntimeAreas.UsedBy(generatedJavaScript).Contains("three"))
+            return false;
+
+        var source = FindThreeBundlePath();
+        File.Copy(source, Path.Combine(outputDirectory, ThreeBundleFileName), overwrite: true);
+        return true;
+    }
+
+    private static string FindThreeBundlePath()
+    {
+        foreach (var candidate in GetRuntimeAssetCandidatePaths("Examples", "Web", "wwwroot", "vendor", ThreeBundleFileName))
+        {
+            if (File.Exists(candidate))
+                return candidate;
+        }
+
+        throw new InvalidOperationException(
+            "A program that calls three.* needs three.min.js on the page before malda-js-runtime.js. "
+            + "Looked for Examples/Web/wwwroot/vendor/three.min.js walking up from the working directory and the compiler.");
+    }
+
     /// <summary>The script tag of the local-mode UI client, before the runtime; empty when the program does not use ui.*.</summary>
     private static string UiClientScriptTag(bool usesUi) =>
         usesUi ? $"<script src=\"./{JsUiClientFileName}\" data-ui-mode=\"local\"></script>\n    " : string.Empty;
+
+    /// <summary>The three.js bundle, before the runtime; empty when the program does not call three.*.</summary>
+    private static string ThreeScriptTag(bool usesThree) =>
+        usesThree ? $"<script src=\"./{ThreeBundleFileName}\"></script>\n    " : string.Empty;
 
     private static IEnumerable<string> GetRuntimeAssetCandidatePaths(params string[] relativeSegments)
     {
@@ -470,7 +508,7 @@ public partial class Compiler
         }
     }
 
-    private static string GeneratePwaIndexHtml(string appName, string mainScriptFileName, bool usesUi)
+    private static string GeneratePwaIndexHtml(string appName, string mainScriptFileName, bool usesUi, bool usesThree)
     {
         var scriptLiteral = JsonSerializer.Serialize(mainScriptFileName);
         return $$"""
@@ -522,7 +560,7 @@ public partial class Compiler
 <body>
     <div id="status"{{(usesUi ? " hidden" : "")}}>Loading {{appName}}...</div>
     <div id="app"></div>
-    {{UiClientScriptTag(usesUi)}}<script src="./malda-js-runtime.js"></script>
+    {{ThreeScriptTag(usesThree)}}{{UiClientScriptTag(usesUi)}}<script src="./malda-js-runtime.js"></script>
     <script src="./{{mainScriptFileName}}"></script>
     <script>
         (function () {
@@ -587,7 +625,7 @@ public partial class Compiler
 """;
     }
 
-    private static string GenerateJavaScriptHostHtml(string appName, string mainScriptFileName, bool usesUi)
+    private static string GenerateJavaScriptHostHtml(string appName, string mainScriptFileName, bool usesUi, bool usesThree)
     {
         return $$"""
 <!DOCTYPE html>
@@ -636,7 +674,7 @@ public partial class Compiler
 <body>
     <div id="status"{{(usesUi ? " hidden" : "")}}>Loading {{appName}}...</div>
     <div id="app"></div>
-    {{UiClientScriptTag(usesUi)}}<script src="./malda-js-runtime.js"></script>
+    {{ThreeScriptTag(usesThree)}}{{UiClientScriptTag(usesUi)}}<script src="./malda-js-runtime.js"></script>
     <script src="./{{mainScriptFileName}}"></script>
     <script>
         (function () {
@@ -699,7 +737,7 @@ public partial class Compiler
     /// Host page for <c>--mode esm</c>: the module runs the program when it is imported, so the
     /// page only imports it and reports the outcome.
     /// </summary>
-    private static string GenerateJavaScriptModuleHostHtml(string appName, string moduleFileName, bool usesUi)
+    private static string GenerateJavaScriptModuleHostHtml(string appName, string moduleFileName, bool usesUi, bool usesThree)
     {
         var moduleLiteral = JsonSerializer.Serialize("./" + moduleFileName);
         return $$"""
@@ -718,7 +756,7 @@ public partial class Compiler
 <body>
     <div id="status"{{(usesUi ? " hidden" : "")}}>Loading {{appName}}...</div>
     <div id="app"></div>
-    {{UiClientScriptTag(usesUi)}}<script type="module">
+    {{ThreeScriptTag(usesThree)}}{{UiClientScriptTag(usesUi)}}<script type="module">
         const status = document.getElementById("status");
         try {
             await import({{moduleLiteral}});
@@ -773,11 +811,12 @@ public partial class Compiler
 """;
     }
 
-    private static string GeneratePwaServiceWorker(string appName, string mainScriptFileName, bool usesUi)
+    private static string GeneratePwaServiceWorker(string appName, string mainScriptFileName, bool usesUi, bool usesThree)
     {
         var cacheNameLiteral = JsonSerializer.Serialize($"malda-pwa-{appName.ToLowerInvariant()}-v1");
         var mainScriptLiteral = JsonSerializer.Serialize("./" + mainScriptFileName);
         var uiClientEntry = usesUi ? $"\"./{JsUiClientFileName}\",\n    " : string.Empty;
+        var threeEntry = usesThree ? $"\"./{ThreeBundleFileName}\",\n    " : string.Empty;
         return $$"""
 const CACHE_NAME = {{cacheNameLiteral}};
 const APP_SHELL = [
@@ -786,7 +825,7 @@ const APP_SHELL = [
     "./manifest.webmanifest",
     "./icon.svg",
     "./sw.js",
-    {{uiClientEntry}}"./malda-js-runtime.js",
+    {{threeEntry}}{{uiClientEntry}}"./malda-js-runtime.js",
     {{mainScriptLiteral}}
 ];
 

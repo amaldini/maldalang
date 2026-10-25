@@ -558,6 +558,8 @@ Host page loading order (required):
 3. compiled MALDA script
 4. `MaldaApp.main()`
 
+`malda compile --mode js`, `--mode esm`, `--mode pwa`, and `malda play` copy `Examples/Web/wwwroot/vendor/three.min.js` into the output and load it before `malda-js-runtime.js` when the program calls `three.*`. A hand-written host page still has to load the bundle first.
+
 See `Examples/Games/three_cube.malda` and `Examples/Games/three_runtime_smoke_test.html` for the MVP reference implementation. See `Examples/Games/three_textured.malda` for a PNG `map` plus a glTF cube and `lookAt`.
 
 ### Guardrails and error conditions

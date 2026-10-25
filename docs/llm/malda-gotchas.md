@@ -1,6 +1,6 @@
 # MALDA gotchas: the mistakes the interpreter will not catch
 
-*Applies to: MALDA 1.0.40*
+*Applies to: MALDA 1.0.41*
 
 `malda-syntax.md` lists the JS-isms an agent might guess — `let`, `console.log`, `def`.
 Those are cheap: the parser rejects them immediately and you fix them on the next run.
@@ -159,7 +159,7 @@ The pure stdlib (`math.*`, `str.*`, `sort` / `reverse` / `toCsv`, `toJSON` / `pa
 
 **`malda -e` / `--exec` runs a snippet; `malda eval` runs `suite` / `case`.** `--eval` is rejected on both the top-level CLI and `malda check` so the names cannot collide. Example: `malda -e "io.print(1);"` or `malda eval path.malda`. *Lint: docs-only.*
 
-**`malda play` serves `.malda-play/`, not the source folder.** The command compiles `--mode js` into a sibling preview directory, copies `malda-js-runtime.js`, and (if present) copies `assets/`. It watches the source, sibling `index.html`, and `assets/`, rebuilds in place, and reloads the browser (`--no-watch` serves the first compile only). `game.loadImage("assets/foo.png")` works in preview because `assets/` is copied; a file sitting next to the `.malda` but outside `assets/` is not. PWA output is still `malda compile --mode pwa`. Fullstack score apps (`malda new game --fullstack`) are refused: compile `--mode fullstack` and run the server with `MALDA_WEB_DIRECTORY`. Example: `malda new game my-game` then `malda play app.malda`. *Lint: docs-only.*
+**`malda play` serves `.malda-play/`, not the source folder.** The command compiles `--mode js` into a sibling preview directory, copies `malda-js-runtime.js`, copies `three.min.js` when the program calls `three.*`, and (if present) copies `assets/`. It watches the source, sibling `index.html`, and `assets/`, rebuilds in place, and reloads the browser (`--no-watch` serves the first compile only). `game.loadImage("assets/foo.png")` works in preview because `assets/` is copied; a file sitting next to the `.malda` but outside `assets/` is not. PWA output is still `malda compile --mode pwa`. Fullstack score apps (`malda new game --fullstack`) are refused: compile `--mode fullstack` and run the server with `MALDA_WEB_DIRECTORY`. Example: `malda new game my-game` then `malda play app.malda`. *Lint: docs-only.*
 
 **Two `function boot()` declarations, one `@client()` and one `@server()`, are how a shared `boot();` call hits the right backend.** Unmarked top-level calls go to both partitions. Duplicate names are filtered by target before emit. Do not run that file with the interpreter. Template: `Templates/game-fullstack/app.malda`. *Lint: docs-only.*
 

@@ -67,15 +67,15 @@ function sdShape(kind: int, q: vec3, s: float) -> float {
 @shader()
 function shapeColor(kind: int) -> vec3 {
     if (kind == 0) {
-        return vec3(0.95, 0.45, 0.35);
+        return vec3(0.96, 0.28, 0.18);
     }
     if (kind == 1) {
-        return vec3(0.25, 0.7, 0.75);
+        return vec3(0.12, 0.72, 0.92);
     }
     if (kind == 2) {
-        return vec3(0.95, 0.75, 0.3);
+        return vec3(0.98, 0.78, 0.16);
     }
-    return vec3(0.6, 0.45, 0.9);
+    return vec3(0.58, 0.28, 0.95);
 }
 
 // Radius of a sphere around the shape (mirrors boundRadius on the host).
@@ -127,7 +127,7 @@ function runProgram(p: vec3, color: out vec3) -> float {
                 var c: float = sdShape(kind, p - data.xyz, data.w);
                 var hc: float = clamp(0.5 + 0.5 * (c + acc) / k, 0.0, 1.0);
                 acc = mix(0.0 - c, acc, hc) + k * hc * (1.0 - hc);
-                tint = mix(shapeColor(kind) * 0.6, tint, hc);
+                tint = mix(shapeColor(kind) * 0.85, tint, hc);
             }
         }
         i++;
@@ -245,7 +245,7 @@ function traceRay(origin: vec3, dir: vec3, tStart: float, tEnd: float, shadowRay
                 } else {
                     var hc: float = clamp(0.5 + 0.5 * (d + acc) / k, 0.0, 1.0);
                     acc = mix(0.0 - d, acc, hc) + k * hc * (1.0 - hc);
-                    tint = mix(shapeColor(kind) * 0.6, tint, hc);
+                    tint = mix(shapeColor(kind) * 0.85, tint, hc);
                 }
             }
         }
@@ -256,7 +256,7 @@ function traceRay(origin: vec3, dir: vec3, tStart: float, tEnd: float, shadowRay
                 break;
             }
         } else if (shadowRay) {
-            light = min(light, 8.0 * acc / t);
+            light = min(light, 16.0 * acc / t);
             if (light < 0.01) {
                 break;
             }
@@ -295,13 +295,14 @@ function softShadow(origin: vec3, dir: vec3) -> float {
 @shader()
 function shade(p: vec3, n: vec3, albedo: vec3, dir: vec3) -> vec3 {
     var lightDir: vec3 = normalize(vec3(0.55, 0.9, 0.35));
-    var diffuse: float = max(dot(n, lightDir), 0.0);
-    if (diffuse > 0.0) {
-        diffuse = diffuse * softShadow(p + n * 0.003, lightDir);
+    var key: float = max(dot(n, lightDir), 0.0);
+    if (key > 0.0) {
+        key = key * softShadow(p + n * 0.003, lightDir);
     }
-    var ambient: float = 0.22 + 0.18 * n.y;
-    var spec: float = pow(max(dot(reflect(dir, n), lightDir), 0.0), 32.0) * diffuse;
-    return albedo * (ambient + diffuse * 0.95) + vec3(spec * 0.35, spec * 0.35, spec * 0.35);
+    var fill: float = max(dot(n, normalize(vec3(-0.45, 0.35, -0.55))), 0.0);
+    var ambient: float = 0.34 + 0.16 * n.y;
+    var spec: float = pow(max(dot(reflect(dir, n), lightDir), 0.0), 32.0) * key;
+    return albedo * (ambient + key * 1.05 + fill * 0.38) + vec3(spec * 0.45, spec * 0.45, spec * 0.45);
 }
 
 @shader()
@@ -312,7 +313,7 @@ function fragmentMain() {
         + uCamRight * (ndc.x * uAspect * uTanHalf)
         + uCamUp * (ndc.y * uTanHalf)
     );
-    var sky: vec3 = mix(vec3(0.05, 0.07, 0.12), vec3(0.32, 0.42, 0.58), clamp(dir.y * 1.5 + 0.35, 0.0, 1.0));
+    var sky: vec3 = mix(vec3(0.12, 0.18, 0.38), vec3(0.55, 0.72, 0.95), clamp(dir.y * 1.4 + 0.25, 0.0, 1.0));
     var tFloor: float = FAR;
     if (dir.y < -0.0001) {
         tFloor = (0.0 - uCamPos.y) / dir.y;
@@ -333,12 +334,12 @@ function fragmentMain() {
         t = tFloor;
         var q: vec3 = uCamPos + dir * t;
         var cell: float = mod(floor(q.x) + floor(q.z), 2.0);
-        var floorColor: vec3 = mix(vec3(0.16, 0.18, 0.22), vec3(0.22, 0.24, 0.29), cell);
+        var floorColor: vec3 = mix(vec3(0.34, 0.36, 0.42), vec3(0.55, 0.58, 0.66), cell);
         color = shade(q, vec3(0.0, 1.0, 0.0), floorColor, dir);
     } else {
         t = 0.0;
     }
-    color = mix(color, sky, clamp((t - 18.0) / 30.0, 0.0, 1.0));
+    color = mix(color, sky, clamp((t - 26.0) / 36.0, 0.0, 1.0));
     gl_FragColor = vec4(sqrt(color), 1.0);
 }
 
