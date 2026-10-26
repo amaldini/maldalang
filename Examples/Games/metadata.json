@@ -592,6 +592,29 @@
       "documentationTitle": "Neural-nets kit"
     },
     {
+      "name": "Levenberg-Marquardt valley",
+      "description": "Step an exponential curve fit and watch lambda slide the step between Gauss-Newton and gradient descent",
+      "file": "lm_valley.malda",
+      "track": "student",
+      "difficulty": "advanced",
+      "minutes": 15,
+      "requires": ["offline"],
+      "concepts": [
+        "Levenberg-Marquardt",
+        "nonlinear least squares",
+        "cost landscape",
+        "game.*",
+        "JavaScript target"
+      ],
+      "prerequisites": [
+        "Algorithms/levenberg_marquardt.malda"
+      ],
+      "learningGoal": "See every step delta(lambda) the solver could take, and compare LM with Gauss-Newton and gradient descent from a start you click.",
+      "expectedOutput": "Draws the data with residuals, the cost map over (a, b) with the step curve, and a bar per LM attempt.",
+      "documentationPath": "/docs/start-here.md",
+      "documentationTitle": "Start Here"
+    },
+    {
       "name": "CartPole neural policy",
       "description": "A small net learns a centering CartPole law: watch the cart return to the mark, then drag the pole with the mouse",
       "file": "cartpole_neural.malda",

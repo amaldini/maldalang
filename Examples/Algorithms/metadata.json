@@ -143,6 +143,22 @@
       "prerequisites": ["Algorithms/simulated_annealing.malda"],
       "learningGoal": "See a random pair of points ignore outliers that ordinary least squares cannot.",
       "expectedOutput": "Prints a naive slope pulled off 0.5, then a RANSAC slope near 0.5 with 6 inliers.",
+      "next": "Algorithms/levenberg_marquardt.malda",
+      "documentationPath": "/docs/start-here.md",
+      "documentationTitle": "Start Here"
+    },
+    {
+      "name": "Levenberg-Marquardt Curve Fit",
+      "description": "Fit y = a * exp(-b * x) with a damped Gauss-Newton step that adapts lambda",
+      "file": "levenberg_marquardt.malda",
+      "track": "student",
+      "difficulty": "advanced",
+      "minutes": 15,
+      "requires": ["offline"],
+      "concepts": ["Levenberg-Marquardt", "nonlinear least squares", "Gauss-Newton", "Jacobian", "damping"],
+      "prerequisites": ["Algorithms/ransac.malda"],
+      "learningGoal": "See lambda grow after a rejected step and shrink after each kept one, while plain Gauss-Newton from the same start diverges.",
+      "expectedOutput": "Prints one rejected and seven kept LM steps ending near a=2.54 b=0.817, Gauss-Newton jumping to b=-12.6, and levenberg marquardt ok.",
       "next": "AI_Theory/sarsa_cliff.malda",
       "documentationPath": "/docs/start-here.md",
       "documentationTitle": "Start Here"

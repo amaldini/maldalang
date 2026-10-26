@@ -1,0 +1,132 @@
+// Levenberg-Marquardt: fit y = a * exp(-b * x) to eleven noisy points.
+//
+// The residual r_i = a * exp(-b * x_i) - y_i is not linear in b, so
+// there is no closed-form least squares. Each step linearizes r with
+// the Jacobian J and solves the 2x2 system
+//   (J^T J + lambda * diag(J^T J)) delta = -J^T r
+// lambda = 0 is Gauss-Newton: fast near the minimum, reckless far away.
+// A large lambda shrinks delta toward a short gradient-descent step.
+// LM keeps a step only when the cost drops (then lambda / nu) and
+// otherwise retries the same point with lambda * nu.
+// Offline, no randomness. Change this: set nu to 2.0 and count the
+// rejected steps. Drawn version: Examples/Games/lm_valley.malda.
+// Next: AI_Theory/sarsa_cliff.malda
+
+function makeData() {
+    var noise = [0.06, -0.04, 0.05, -0.07, 0.03, 0.02, -0.05, 0.04, -0.02, 0.03, -0.03];
+    var xs = [];
+    var ys = [];
+    for (var i = 0; i < noise.length; i = i + 1) {
+        var x = 0.5 * i;
+        xs.append(x);
+        ys.append(2.5 * math.exp(-0.8 * x) + noise[i]);
+    }
+    return { "xs": xs, "ys": ys };
+}
+
+function cost(data, a: float, b: float) -> float {
+    var sum = 0.0;
+    for (var i = 0; i < data.xs.length; i = i + 1) {
+        var r = a * math.exp(-b * data.xs[i]) - data.ys[i];
+        sum = sum + r * r;
+    }
+    return 0.5 * sum;
+}
+
+// J^T J (saa, sab, sbb) and the gradient J^T r (ga, gb) at (a, b).
+function normalEquations(data, a: float, b: float) {
+    var saa = 0.0;
+    var sab = 0.0;
+    var sbb = 0.0;
+    var ga = 0.0;
+    var gb = 0.0;
+    for (var i = 0; i < data.xs.length; i = i + 1) {
+        var x = data.xs[i];
+        var e = math.exp(-b * x);
+        var r = a * e - data.ys[i];
+        var ja = e;
+        var jb = -a * x * e;
+        saa = saa + ja * ja;
+        sab = sab + ja * jb;
+        sbb = sbb + jb * jb;
+        ga = ga + ja * r;
+        gb = gb + jb * r;
+    }
+    return { "saa": saa, "sab": sab, "sbb": sbb, "ga": ga, "gb": gb };
+}
+
+// Solve the damped 2x2 system by Cramer's rule.
+function dampedStep(ne, lambda: float) {
+    var m11 = ne.saa * (1.0 + lambda);
+    var m22 = ne.sbb * (1.0 + lambda);
+    var m12 = ne.sab;
+    var det = m11 * m22 - m12 * m12;
+    var da = (-ne.ga * m22 + ne.gb * m12) / det;
+    var db = (-ne.gb * m11 + ne.ga * m12) / det;
+    return [da, db];
+}
+
+function fmt(value: float) -> string {
+    if (math.abs(value) > 1000000.0) {
+        return "huge";
+    }
+    return string(math.round(value * 10000.0) / 10000.0);
+}
+
+// lambda only moves by powers of nu = 10, so print its exponent.
+function fmtLambda(lambda: float) -> string {
+    return "1e" + string(int(math.round(math.log(lambda) / math.log(10.0))));
+}
+
+var data = makeData();
+var startA = 0.6;
+var startB = 2.6;
+var lambda0 = 1.0;
+var nu = 10.0;
+var maxSteps = 30;
+
+io.print("start a=" + fmt(startA) + " b=" + fmt(startB) + " cost=" + fmt(cost(data, startA, startB)));
+
+var a = startA;
+var b = startB;
+var lambda = lambda0;
+var accepted = 0;
+var rejected = 0;
+for (var step = 1; step <= maxSteps; step = step + 1) {
+    var before = cost(data, a, b);
+    var delta = dampedStep(normalEquations(data, a, b), lambda);
+    var after = cost(data, a + delta[0], b + delta[1]);
+    var verdict = "reject";
+    if (after < before) {
+        a = a + delta[0];
+        b = b + delta[1];
+        lambda = lambda / nu;
+        accepted = accepted + 1;
+        verdict = "accept";
+    } else {
+        lambda = lambda * nu;
+        rejected = rejected + 1;
+    }
+    io.print("lm " + string(step) + " " + verdict + " lambda=" + fmtLambda(lambda) + " a=" + fmt(a) + " b=" + fmt(b) + " cost=" + fmt(cost(data, a, b)));
+    if (math.abs(before - after) < 1.0e-10) {
+        break;
+    }
+}
+
+// Gauss-Newton from the same start: lambda stays 0 and every step is kept.
+var gnA = startA;
+var gnB = startB;
+for (var step = 1; step <= 6; step = step + 1) {
+    var delta = dampedStep(normalEquations(data, gnA, gnB), 0.0);
+    gnA = gnA + delta[0];
+    gnB = gnB + delta[1];
+    io.print("gn " + string(step) + " a=" + fmt(gnA) + " b=" + fmt(gnB) + " cost=" + fmt(cost(data, gnA, gnB)));
+}
+
+var fitOk = math.abs(a - 2.5) < 0.1 && math.abs(b - 0.8) < 0.05;
+io.print("lm a=" + fmt(a) + " b=" + fmt(b) + " accepted=" + string(accepted) + " rejected=" + string(rejected));
+if (fitOk && rejected > 0) {
+    io.print("levenberg marquardt ok");
+} else {
+    io.print("levenberg marquardt failed");
+}

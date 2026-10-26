@@ -15,9 +15,11 @@ not a complete algorithms encyclopedia.
 | `qlearn_grid.malda` | Tabular reinforcement learning |
 | `simulated_annealing.malda` | Non-gradient search (tiny TSP) |
 | `ransac.malda` | Robust line fit (ignore outliers) |
+| `levenberg_marquardt.malda` | Nonlinear curve fit with adaptive damping |
 
-All are offline and (where random) seeded with `math.seed`. After the
-RANSAC sample, the path continues to
+All are offline and (where random) seeded with `math.seed`. The
+Levenberg-Marquardt fit is drawn step by step in
+`Examples/Games/lm_valley.malda` (`malda play`). After it, the path continues to
 `Examples/AI_Theory/sarsa_cliff.malda` (on-policy vs off-policy), then
 `Examples/AI_Theory/chain_rule.malda` (the derivative product), then
 `Examples/AI_Theory/xor_neural_net.malda` (gradient learning).

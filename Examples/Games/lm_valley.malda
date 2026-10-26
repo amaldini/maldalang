@@ -1,0 +1,448 @@
+// Levenberg-Marquardt, drawn. JS canvas — run: malda play Examples/Games/lm_valley.malda
+// Same fit as Examples/Algorithms/levenberg_marquardt.malda: y = a * exp(-b * x).
+//
+// Left: the data, the current curve, and its residuals.
+// Right: the cost 1/2 * |r|^2 over the (a, b) plane, the path taken so far,
+// and the curve of every step delta(lambda) the solver could take from here.
+// lambda = 0 is the Gauss-Newton end of that curve; as lambda grows the step
+// shrinks and turns toward the gradient. The ring is the step for the
+// current lambda: up / down arrows slide it along the curve.
+//
+// Keys: space = one step, A = auto, 1 / 2 / 3 = LM / Gauss-Newton / gradient
+// descent, up / down = lambda x10 / /10, R = reset. Click the map for a new start.
+
+function makeData() {
+    var noise = [0.06, -0.04, 0.05, -0.07, 0.03, 0.02, -0.05, 0.04, -0.02, 0.03, -0.03];
+    var xs = [];
+    var ys = [];
+    for (var i = 0; i < noise.length; i = i + 1) {
+        var x = 0.5 * i;
+        xs.append(x);
+        ys.append(2.5 * math.exp(-0.8 * x) + noise[i]);
+    }
+    return { "xs": xs, "ys": ys };
+}
+
+function cost(data, a: float, b: float) -> float {
+    var sum = 0.0;
+    for (var i = 0; i < data.xs.length; i = i + 1) {
+        var r = a * math.exp(-b * data.xs[i]) - data.ys[i];
+        sum = sum + r * r;
+    }
+    return 0.5 * sum;
+}
+
+function normalEquations(data, a: float, b: float) {
+    var saa = 0.0;
+    var sab = 0.0;
+    var sbb = 0.0;
+    var ga = 0.0;
+    var gb = 0.0;
+    for (var i = 0; i < data.xs.length; i = i + 1) {
+        var x = data.xs[i];
+        var e = math.exp(-b * x);
+        var r = a * e - data.ys[i];
+        var jb = -a * x * e;
+        saa = saa + e * e;
+        sab = sab + e * jb;
+        sbb = sbb + jb * jb;
+        ga = ga + e * r;
+        gb = gb + jb * r;
+    }
+    return { "saa": saa, "sab": sab, "sbb": sbb, "ga": ga, "gb": gb };
+}
+
+function dampedStep(ne, lambda: float) {
+    var m11 = ne.saa * (1.0 + lambda);
+    var m22 = ne.sbb * (1.0 + lambda);
+    var m12 = ne.sab;
+    var det = m11 * m22 - m12 * m12;
+    var da = (-ne.ga * m22 + ne.gb * m12) / det;
+    var db = (-ne.gb * m11 + ne.ga * m12) / det;
+    return [da, db];
+}
+
+function fmt(value: float) -> string {
+    if (math.abs(value) > 1000000.0) {
+        return "huge";
+    }
+    return string(math.round(value * 1000.0) / 1000.0);
+}
+
+function fmtLambda(lambda: float) -> string {
+    return "1e" + string(int(math.round(math.log(lambda) / math.log(10.0))));
+}
+
+function isFinite(value: float) -> bool {
+    return value == value && math.abs(value) < 1.0e12;
+}
+
+// Dark blue at the minimum, yellow on the walls, in banded steps so the
+// bands read as contour lines.
+function costColor(c: float) -> string {
+    var t = (math.log(c) / math.log(10.0) + 2.2) / 5.0;
+    t = math.max(0.0, math.min(1.0, t));
+    t = math.floor(t * 16.0) / 16.0;
+    var stops = [[14, 22, 48], [38, 70, 130], [42, 140, 140], [150, 190, 80], [250, 220, 90]];
+    var pos = t * 4.0;
+    var k = int(math.min(3.0, math.floor(pos)));
+    var f = pos - k;
+    var r = int(stops[k][0] + (stops[k + 1][0] - stops[k][0]) * f);
+    var g = int(stops[k][1] + (stops[k + 1][1] - stops[k][1]) * f);
+    var b = int(stops[k][2] + (stops[k + 1][2] - stops[k][2]) * f);
+    return "rgb(" + string(r) + "," + string(g) + "," + string(b) + ")";
+}
+
+var data = makeData();
+var W = 960;
+var H = 600;
+var dataPanel = { "x": 20, "y": 56, "w": 440, "h": 385 };
+var mapPanel = { "x": 500, "y": 56, "w": 440, "h": 385 };
+var xMax = 5.0;
+var yMin = -0.3;
+var yMax = 3.2;
+var aMin = 0.0;
+var aMax = 4.0;
+var bMin = -0.5;
+var bMax = 3.0;
+var lambda0 = 1.0;
+var nu = 10.0;
+var gdRate = 0.15;
+var names = ["Levenberg-Marquardt", "Gauss-Newton", "gradient descent"];
+var colors = ["#ff6b6b", "#ffffff", "#7cd4ff"];
+
+// 55 cells of 8 x 7 pixels: whole pixels, so no seams between rows.
+var grid = 55;
+var cellW = mapPanel.w / grid;
+var cellH = mapPanel.h / grid;
+var heat = [];
+for (var j = 0; j < grid; j = j + 1) {
+    var row = [];
+    for (var i = 0; i < grid; i = i + 1) {
+        var cellA = aMin + (i + 0.5) / grid * (aMax - aMin);
+        var cellB = bMax - (j + 0.5) / grid * (bMax - bMin);
+        row.append(costColor(cost(data, cellA, cellB)));
+    }
+    heat.append(row);
+}
+
+var startA = 0.6;
+var startB = 2.6;
+var runs = [];
+var active = 0;
+var auto = false;
+var autoMs = 0.0;
+var message = "";
+
+function newRun(method: int) {
+    return {
+        "method": method,
+        "a": startA,
+        "b": startB,
+        "lambda": lambda0,
+        "path": [[startA, startB]],
+        "history": [],
+        "done": false
+    };
+}
+
+function resetAll() {
+    runs = [newRun(0), newRun(1), newRun(2)];
+    message = "Start a=" + fmt(startA) + " b=" + fmt(startB) + "  cost " + fmt(cost(data, startA, startB));
+}
+
+function step() {
+    var run = runs[active];
+    if (run.done) {
+        return;
+    }
+    var ne = normalEquations(data, run.a, run.b);
+    var before = cost(data, run.a, run.b);
+    if (run.method == 0) {
+        var delta = dampedStep(ne, run.lambda);
+        var after = cost(data, run.a + delta[0], run.b + delta[1]);
+        if (isFinite(after) && after < before) {
+            run.a = run.a + delta[0];
+            run.b = run.b + delta[1];
+            run.path.append([run.a, run.b]);
+            run.history.append({ "lambda": run.lambda, "ok": true });
+            message = "lambda " + fmtLambda(run.lambda) + " accepted: cost " + fmt(before) + " -> " + fmt(after) + ", lambda / 10";
+            run.lambda = run.lambda / nu;
+            if (before - after < 1.0e-9) {
+                run.done = true;
+                message = "Converged: a=" + fmt(run.a) + " b=" + fmt(run.b) + " in " + string(run.path.length - 1) + " steps";
+            }
+        } else {
+            run.history.append({ "lambda": run.lambda, "ok": false });
+            message = "lambda " + fmtLambda(run.lambda) + " rejected: cost would be " + fmt(after) + ", lambda x 10";
+            run.lambda = run.lambda * nu;
+        }
+        run.lambda = math.max(1.0e-7, math.min(1.0e7, run.lambda));
+        return;
+    }
+    var move = [-gdRate * ne.ga, -gdRate * ne.gb];
+    if (run.method == 1) {
+        move = dampedStep(ne, 0.0);
+    }
+    run.a = run.a + move[0];
+    run.b = run.b + move[1];
+    run.path.append([run.a, run.b]);
+    var newCost = cost(data, run.a, run.b);
+    message = names[run.method] + " step " + string(run.path.length - 1) + ": cost " + fmt(before) + " -> " + fmt(newCost);
+    if (!isFinite(run.a) || !isFinite(run.b) || !isFinite(newCost)) {
+        run.done = true;
+        message = names[run.method] + " diverged";
+    } else if (math.abs(before - newCost) < 1.0e-9) {
+        run.done = true;
+        message = names[run.method] + " converged after " + string(run.path.length - 1) + " steps";
+    }
+}
+
+function mapX(a: float) -> float {
+    return mapPanel.x + (a - aMin) / (aMax - aMin) * mapPanel.w;
+}
+
+function mapY(b: float) -> float {
+    return mapPanel.y + (bMax - b) / (bMax - bMin) * mapPanel.h;
+}
+
+function dataX(x: float) -> float {
+    return dataPanel.x + x / xMax * dataPanel.w;
+}
+
+function dataY(y: float) -> float {
+    return dataPanel.y + (yMax - y) / (yMax - yMin) * dataPanel.h;
+}
+
+function inside(panel, px: float, py: float) -> bool {
+    return px >= panel.x && px <= panel.x + panel.w && py >= panel.y && py <= panel.y + panel.h;
+}
+
+// Liang-Barsky: draw only the part of a segment inside the panel, so a
+// Gauss-Newton jump to b = -12 still shows where it left the map.
+function clippedLine(panel, x0: float, y0: float, x1: float, y1: float, color: string, width: float) {
+    if (!isFinite(x0) || !isFinite(y0) || !isFinite(x1) || !isFinite(y1)) {
+        return;
+    }
+    var dx = x1 - x0;
+    var dy = y1 - y0;
+    var t0 = 0.0;
+    var t1 = 1.0;
+    var ps = [-dx, dx, -dy, dy];
+    var qs = [x0 - panel.x, panel.x + panel.w - x0, y0 - panel.y, panel.y + panel.h - y0];
+    for (var k = 0; k < 4; k = k + 1) {
+        if (ps[k] == 0.0) {
+            if (qs[k] < 0.0) {
+                return;
+            }
+        } else {
+            var t = qs[k] / ps[k];
+            if (ps[k] < 0.0) {
+                t0 = math.max(t0, t);
+            } else {
+                t1 = math.min(t1, t);
+            }
+        }
+    }
+    if (t0 <= t1) {
+        game.drawLine(x0 + t0 * dx, y0 + t0 * dy, x0 + t1 * dx, y0 + t1 * dy, color, width);
+    }
+}
+
+function drawCurve(a: float, b: float, color: string, width: float) {
+    var samples = 60;
+    var prevX = dataX(0.0);
+    var prevY = dataY(a);
+    for (var s = 1; s <= samples; s = s + 1) {
+        var x = xMax * s / samples;
+        var px = dataX(x);
+        var py = dataY(a * math.exp(-b * x));
+        clippedLine(dataPanel, prevX, prevY, px, py, color, width);
+        prevX = px;
+        prevY = py;
+    }
+}
+
+function drawDataPanel() {
+    var run = runs[active];
+    game.fillRect(dataPanel.x, dataPanel.y, dataPanel.w, dataPanel.h, "#141a26");
+    game.drawLine(dataX(0.0), dataY(0.0), dataX(xMax), dataY(0.0), "#3a4458", 1);
+    game.drawText("data: y = a * exp(-b * x)", dataPanel.x, dataPanel.y - 10, "#c8d0e0", "13px sans-serif");
+
+    if (run.method == 0 && !run.done) {
+        var delta = dampedStep(normalEquations(data, run.a, run.b), run.lambda);
+        game.setAlpha(0.45);
+        drawCurve(run.a + delta[0], run.b + delta[1], "#ffd166", 2);
+        game.setAlpha(1.0);
+    }
+    for (var i = 0; i < data.xs.length; i = i + 1) {
+        var px = dataX(data.xs[i]);
+        var fitY = run.a * math.exp(-run.b * data.xs[i]);
+        clippedLine(dataPanel, px, dataY(data.ys[i]), px, dataY(fitY), "#ff9f6b", 2);
+    }
+    drawCurve(run.a, run.b, colors[run.method], 3);
+    for (var i = 0; i < data.xs.length; i = i + 1) {
+        game.fillCircle(dataX(data.xs[i]), dataY(data.ys[i]), 5, "#f4f4f4");
+    }
+    game.drawText("orange = residuals   yellow = curve after the ringed step", dataPanel.x, dataPanel.y + dataPanel.h + 18, "#8f9ab0", "12px sans-serif");
+}
+
+function drawPath(run, color: string, width: float) {
+    for (var p = 1; p < run.path.length; p = p + 1) {
+        clippedLine(mapPanel, mapX(run.path[p - 1][0]), mapY(run.path[p - 1][1]), mapX(run.path[p][0]), mapY(run.path[p][1]), color, width);
+    }
+    for (var p = 0; p < run.path.length; p = p + 1) {
+        var px = mapX(run.path[p][0]);
+        var py = mapY(run.path[p][1]);
+        if (inside(mapPanel, px, py)) {
+            game.fillCircle(px, py, 3, color);
+        }
+    }
+}
+
+function drawMapPanel() {
+    for (var j = 0; j < grid; j = j + 1) {
+        for (var i = 0; i < grid; i = i + 1) {
+            game.fillRect(mapPanel.x + i * cellW, mapPanel.y + j * cellH, cellW, cellH, heat[j][i]);
+        }
+    }
+    game.drawText("cost over (a, b)   a ->   b ^", mapPanel.x, mapPanel.y - 10, "#c8d0e0", "13px sans-serif");
+    game.drawText(string(aMin), mapPanel.x, mapPanel.y + mapPanel.h + 14, "#8f9ab0", "11px sans-serif");
+    game.drawText(string(aMax), mapPanel.x + mapPanel.w - 10, mapPanel.y + mapPanel.h + 14, "#8f9ab0", "11px sans-serif");
+    game.drawText("b=" + string(bMax), mapPanel.x + 4, mapPanel.y + 14, "#c8d0e0", "11px sans-serif");
+    game.drawText("b=" + string(bMin), mapPanel.x + 4, mapPanel.y + mapPanel.h - 6, "#c8d0e0", "11px sans-serif");
+    var zeroY = mapY(0.0);
+    game.setAlpha(0.35);
+    game.drawLine(mapPanel.x, zeroY, mapPanel.x + mapPanel.w, zeroY, "#ffffff", 1);
+    game.setAlpha(1.0);
+
+    for (var m = 0; m < 3; m = m + 1) {
+        if (m != active) {
+            game.setAlpha(0.4);
+            drawPath(runs[m], colors[m], 1.5);
+            game.setAlpha(1.0);
+        }
+    }
+    var run = runs[active];
+    drawPath(run, colors[run.method], 2.5);
+
+    var cx = mapX(run.a);
+    var cy = mapY(run.b);
+    if (!run.done && inside(mapPanel, cx, cy)) {
+        var ne = normalEquations(data, run.a, run.b);
+        // delta(lambda) from lambda = 1e-4 (next to Gauss-Newton) to 1e4 (next to here).
+        var prev = dampedStep(ne, 0.0);
+        for (var k = 0; k <= 48; k = k + 1) {
+            var d = dampedStep(ne, math.pow(10.0, -4.0 + k / 6.0));
+            clippedLine(mapPanel, mapX(run.a + prev[0]), mapY(run.b + prev[1]), mapX(run.a + d[0]), mapY(run.b + d[1]), "#ffd166", 2);
+            prev = d;
+        }
+        var gn = dampedStep(ne, 0.0);
+        var gx = mapX(run.a + gn[0]);
+        var gy = mapY(run.b + gn[1]);
+        if (inside(mapPanel, gx, gy)) {
+            game.fillRect(gx - 5, gy - 5, 10, 10, "#ffd166");
+            game.drawText("GN", gx + 8, gy + 4, "#ffd166", "12px sans-serif");
+        }
+        if (run.method == 0) {
+            var cand = dampedStep(ne, run.lambda);
+            var rx = mapX(run.a + cand[0]);
+            var ry = mapY(run.b + cand[1]);
+            if (inside(mapPanel, rx, ry)) {
+                game.strokeCircle(rx, ry, 8, "#ffd166", 2);
+            }
+            game.drawText("ring = step for lambda " + fmtLambda(run.lambda), mapPanel.x + mapPanel.w - 170, mapPanel.y + 14, "#ffd166", "12px sans-serif");
+        }
+    }
+    game.fillCircle(mapX(2.5397), mapY(0.8169), 4, "#0b0f18");
+    game.drawText("min", mapX(2.5397) + 7, mapY(0.8169) + 14, "#0b0f18", "11px sans-serif");
+}
+
+// One bar per LM attempt: height is log10(lambda) from 1e-7 at the bottom
+// to 1e7 at the top, green kept, red rejected.
+function drawHistory() {
+    var top = 480;
+    var h = 92;
+    var mid = top + h / 2;
+    var left = 20;
+    game.fillRect(left, top, 920, h, "#141a26");
+    game.drawLine(left, mid, left + 920, mid, "#3a4458", 1);
+    game.drawText("lambda per LM attempt (log scale, middle line = 1e0)   green = kept   red = rejected", left, top - 8, "#8f9ab0", "12px sans-serif");
+    var hist = runs[0].history;
+    var first = math.max(0, hist.length - 45);
+    for (var i = first; i < hist.length; i = i + 1) {
+        var level = math.log(hist[i].lambda) / math.log(10.0);
+        var barH = (level + 7.0) / 14.0 * (h - 4) + 2;
+        var color = "#4ecb71";
+        if (!hist[i].ok) {
+            color = "#ff5d5d";
+        }
+        var x = left + 6 + (i - first) * 20;
+        game.fillRect(x, top + h - barH, 14, barH, color);
+    }
+}
+
+function update(dtMs) {
+    if (game.wasKeyPressed(" ")) {
+        step();
+    }
+    if (game.wasKeyPressed("a")) {
+        auto = !auto;
+    }
+    if (game.wasKeyPressed("1")) {
+        active = 0;
+    }
+    if (game.wasKeyPressed("2")) {
+        active = 1;
+    }
+    if (game.wasKeyPressed("3")) {
+        active = 2;
+    }
+    if (game.wasKeyPressed("r")) {
+        startA = 0.6;
+        startB = 2.6;
+        resetAll();
+    }
+    if (game.wasKeyPressed("arrowup")) {
+        runs[0].lambda = math.min(1.0e7, runs[0].lambda * nu);
+    }
+    if (game.wasKeyPressed("arrowdown")) {
+        runs[0].lambda = math.max(1.0e-7, runs[0].lambda / nu);
+    }
+    if (game.wasMousePressed(0)) {
+        var mx = game.getMouseX();
+        var my = game.getMouseY();
+        if (inside(mapPanel, mx, my)) {
+            startA = aMin + (mx - mapPanel.x) / mapPanel.w * (aMax - aMin);
+            startB = bMax - (my - mapPanel.y) / mapPanel.h * (bMax - bMin);
+            resetAll();
+        }
+    }
+    if (auto) {
+        autoMs = autoMs + dtMs;
+        if (autoMs > 550) {
+            autoMs = 0.0;
+            step();
+        }
+    }
+}
+
+function render() {
+    game.clear();
+    var run = runs[active];
+    game.drawText(names[active] + "   a=" + fmt(run.a) + "  b=" + fmt(run.b) + "  cost=" + fmt(cost(data, run.a, run.b)), 20, 24, colors[active], "bold 15px sans-serif");
+    game.drawText(message, 500, 24, "#e6e9f0", "13px sans-serif");
+    drawDataPanel();
+    drawMapPanel();
+    drawHistory();
+    var autoText = "off";
+    if (auto) {
+        autoText = "on";
+    }
+    game.drawText("space step   A auto (" + autoText + ")   1 LM  2 GN  3 GD   up/down lambda   R reset   click map = new start", 20, H - 10, "#c8d0e0", "12px sans-serif");
+}
+
+resetAll();
+game.createCanvas(W, H, "#app");
+game.setBackground("#0b0f18");
+game.start(update, render);

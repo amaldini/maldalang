@@ -11,6 +11,7 @@ These used to live under `Examples/Web/js/`. DOM/HTTP samples stay in [`Examples
 malda play Examples/Games/game_bounce.malda
 malda play Examples/Games/xor_decision_boundary.malda
 malda play Examples/Games/softmax_decision_boundary.malda
+malda play Examples/Games/lm_valley.malda
 malda play Examples/Games/cartpole_neural.malda
 malda play Examples/Games/grand_prix_neural.malda
 malda play Examples/Games/digits_cnn.malda
