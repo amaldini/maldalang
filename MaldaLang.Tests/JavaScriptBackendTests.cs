@@ -5397,6 +5397,23 @@ process.stdout.write("ok\n");
     }
 
     [Fact]
+    public void JsTranspiler_RaceTrafficExample_WalksVehiclesFromDataTexture()
+    {
+        var sourcePath = PlanningPaths.ResolveRepoFile("Examples", "Games", "three_shader_race_traffic.malda");
+        var js = new Compiler.Compiler().TranspileToJavaScript(sourcePath);
+
+        // Vehicles reach the kernel through one data texture walked as a GROUP tree, not a
+        // fixed-size uniform array, so the traffic count never recompiles the shader.
+        Assert.Contains("sampler2D uVehicles", js, StringComparison.Ordinal);
+        Assert.Contains("texelFetch(uVehicles", js, StringComparison.Ordinal);
+        Assert.Contains("walkCars(", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.three.updateDataTexture(", js, StringComparison.Ordinal);
+        Assert.Contains("gl_FragDepth", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("uCars", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("CAR_COUNT", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void JsTranspiler_ForestExample_EmitsInstancingShadowAndFogCalls()
     {
         var sourcePath = PlanningPaths.ResolveRepoFile("Examples", "Games", "three_forest.malda");

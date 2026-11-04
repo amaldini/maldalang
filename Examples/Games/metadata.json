@@ -688,6 +688,32 @@
       "documentationTitle": "Neural-nets kit"
     },
     {
+      "name": "3D GPU neural race in traffic",
+      "description": "The neural race with up to 56 road cars that keep their lane, slow in the bends and give way to racers. Every car reaches the ray tracer through one float data texture with a tree of bounding spheres, so the traffic count changes without recompiling the shader",
+      "file": "three_shader_race_traffic.malda",
+      "track": "showcase",
+      "difficulty": "advanced",
+      "minutes": 15,
+      "requires": ["offline"],
+      "concepts": [
+        "three.*",
+        "GLSL",
+        "data texture",
+        "bounding volume tree",
+        "ray tracing",
+        "neural network",
+        "JavaScript target"
+      ],
+      "prerequisites": [
+        "Games/three_shader_race_car_neural.malda",
+        "Games/three_sdf_interpreter.malda"
+      ],
+      "learningGoal": "Hand a ray tracer a scene that changes size every frame: write the vehicles and a tree of GROUP instructions into a data texture, and let each ray skip the groups it cannot hit.",
+      "expectedOutput": "Renders the 3D Grand Prix with road cars in two lanes. G toggles the traffic, [ ] change how many, B turns the group skip off to show its cost; the HUD counts the ray program and blue flags.",
+      "documentationPath": "/docs/roadmap-games.md",
+      "documentationTitle": "Browser games kit"
+    },
+    {
       "name": "Handwritten digits CNN",
       "description": "Draw a digit on a 16×16 page. Four convolutions and a small dense head learn a marker font, then read your ink",
       "file": "digits_cnn.malda",
