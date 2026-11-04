@@ -26,11 +26,16 @@
 // racer that closes in from behind (a blue flag). They follow the centerline on
 // rails: when a racer hits one, the racer bounces off a car of equal mass, and the
 // road car loses or gains speed along the road and is pushed sideways in its lane.
-// The racers' net and coach do not see the traffic yet: their rays only find the
-// road edges, so overtaking is left to the blue flag and to contact.
+// Car sensors. Besides the five road-edge rays, each racer casts three car rays
+// (straight ahead and 0.3 rad to each side) against the oriented box of every other
+// racer and road car, and measures how fast it closes on the car straight ahead.
+// Those four numbers join the net's inputs (19-20-2 here). The coach turns them into
+// a time to contact: under 2 s it steers toward the side with more room (car rays
+// and edge rays together) and lifts, harder when both sides are shut. The net learns
+// the overtake from those labels like the rest of the driving.
 //
 // Everything below is as in the race example.
-// Eight cars share a 15-20-2 net (tanh, tanh). The first eleven inputs match
+// Eight cars share a 15-20-2 net (tanh, tanh; 19-20-2 with the car sensors). The first eleven inputs match
 // grand_prix_neural.malda. Three more report sideways speed, yaw rate, and
 // how close the tires are to the grip limit, then the bias. The centerline is smoothed and resampled the same
 // way, then scaled so the road half-width is 3.2. Speeds and turn rate scale
@@ -1546,7 +1551,7 @@ if (root == null) {
     dom.append(root, heading);
 
     var hint = dom.create("p");
-    dom.setText(hint, "GPU ray-traced 3D racing through road traffic. The cars reach the shader as a data texture with a tree of bounding spheres, so the traffic count changes without recompiling. G traffic, [ ] how many, B group skip. Tab drives the selected car from the cockpit; Z and X change car.");
+    dom.setText(hint, "GPU ray-traced 3D racing through road traffic. The cars reach the shader as a data texture with a tree of bounding spheres, so the traffic count changes without recompiling. Three car rays feed the net, and the coach overtakes on them. G traffic, [ ] how many, B group skip. Tab drives the selected car from the cockpit; Z and X change car.");
     dom.append(root, hint);
 
     var hudStyle = dom.create("style");
@@ -1920,6 +1925,7 @@ if (root == null) {
         buildTerrain(spec);
         resetCars();
         resetTraffic();
+        trafficHits = 0;
         sessionBest = -1.0;
         uploadTrackTexture();
     }
@@ -2351,7 +2357,7 @@ if (root == null) {
         }
     }
 
-    var inN = 15;
+    var inN = 19;
     var hidN = 20;
     var w1 = [];
     var b1 = [];
@@ -2533,7 +2539,7 @@ if (root == null) {
         return 1.0;
     }
 
-    function observe(hit: array, heading: float, speed: float, rays: array, slip: float, yaw: float, grip: float) -> array {
+    function observe(hit: array, heading: float, speed: float, rays: array, slip: float, yaw: float, grip: float, cars: array) -> array {
         var latN = hit[1] / trackW;
         if (latN > 1.7) {
             latN = 1.7;
@@ -2600,7 +2606,7 @@ if (root == null) {
         if (gripN > 1.4) {
             gripN = 1.4;
         }
-        return [latN, headN, speedN, near, mid, far, rays[0], rays[1], rays[2], rays[3], rays[4], slipN, yawN, gripN, 1.0];
+        return [latN, headN, speedN, near, mid, far, rays[0], rays[1], rays[2], rays[3], rays[4], slipN, yawN, gripN, cars[0], cars[1], cars[2], cars[3], 1.0];
     }
 
     function teacherOf(obs: array) -> array {
@@ -2687,6 +2693,40 @@ if (root == null) {
         if (gripN < 0.92 && math.abs(obs[0]) < 1.05 && thr < 0.42) {
             thr = 0.42;
         }
+
+        // Car sensors: 14 left, 15 ahead, 16 right (distance / range), 17 closing speed.
+        // Time to contact with the car ahead, in seconds: the ray range is 128 and the
+        // speed scale 150 (both times worldScale), so ttc = ahead * 128 / (closing * 150).
+        var ahead = obs[15];
+        var closing = obs[17];
+        var threat = 0.0;
+        if (ahead < 1.0 && closing > 0.02) {
+            var ttc = ahead * 0.853 / closing;
+            threat = math.clamp((2.0 - ttc) / 1.2, 0.0, 1.0);
+        }
+        // Room on each side: the nearer of the car ray and the edge ray on that side.
+        // Positive steer turns toward the positive-angle rays (edge 9, car 16).
+        var roomL = math.min(obs[14], obs[7]);
+        var roomR = math.min(obs[16], obs[9]);
+        if (threat > 0.0) {
+            var dodge = -1.0;
+            if (roomR > roomL) {
+                dodge = 1.0;
+            }
+            steer = math.clamp(steer + dodge * threat * 1.2, -1.0, 1.0);
+            if (math.max(roomL, roomR) < 0.35) {
+                thr = thr * (1.0 - 0.8 * threat);
+            } else {
+                thr = thr * (1.0 - 0.35 * threat);
+            }
+        }
+        // A car alongside a front corner: ease away from it.
+        if (obs[14] < 0.3) {
+            steer = math.clamp(steer + (0.3 - obs[14]) * 1.2, -1.0, 1.0);
+        }
+        if (obs[16] < 0.3) {
+            steer = math.clamp(steer - (0.3 - obs[16]) * 1.2, -1.0, 1.0);
+        }
         return [steer, thr, pace];
     }
 
@@ -2707,6 +2747,100 @@ if (root == null) {
         return share;
     }
 
+    // Entry distance of the ray (ox, oz) + t (dx, dz) into a car box at (cx, cz) with
+    // heading h, from slabs in the box frame; maxD when it misses within maxD.
+    function rayCarBox(ox: float, oz: float, dx: float, dz: float, cx: float, cz: float, h: float, maxD: float) -> float {
+        var ca = math.cos(h);
+        var sa = math.sin(h);
+        var rx = ox - cx;
+        var rz = oz - cz;
+        var lo = [rx * ca + rz * sa, rz * ca - rx * sa];
+        var ld = [dx * ca + dz * sa, dz * ca - dx * sa];
+        var half = [1.28, 0.76];
+        var tMin = 0.0;
+        var tMax = maxD;
+        var a = 0;
+        while (a < 2) {
+            if (math.abs(ld[a]) < 0.000001) {
+                if (math.abs(lo[a]) > half[a]) {
+                    return maxD;
+                }
+            } else {
+                var t1 = (0.0 - half[a] - lo[a]) / ld[a];
+                var t2 = (half[a] - lo[a]) / ld[a];
+                tMin = math.max(tMin, math.min(t1, t2));
+                tMax = math.min(tMax, math.max(t1, t2));
+                if (tMin > tMax) {
+                    return maxD;
+                }
+            }
+            a = a + 1;
+        }
+        return tMin;
+    }
+
+    // Nearest car along a ray from racer i: [distance, vx, vz] of that car (maxD if none).
+    function castCarRay(i: int, angle: float, maxD: float) -> array {
+        var dx = math.cos(angle);
+        var dz = math.sin(angle);
+        var best = maxD;
+        var bvx = 0.0;
+        var bvz = 0.0;
+        var reach = (maxD + 1.6) * (maxD + 1.6);
+        var j = 0;
+        while (j < carCount) {
+            if (j != i) {
+                var ex = carX[j] - carX[i];
+                var ez = carZ[j] - carZ[i];
+                if (ex * ex + ez * ez < reach && ex * dx + ez * dz > -1.6) {
+                    var t = rayCarBox(carX[i], carZ[i], dx, dz, carX[j], carZ[j], carH[j], best);
+                    if (t < best) {
+                        best = t;
+                        bvx = carVx[j];
+                        bvz = carVz[j];
+                    }
+                }
+            }
+            j = j + 1;
+        }
+        if (trafficOn) {
+            var k = 0;
+            while (k < trafficCount) {
+                var fx = tfX[k] - carX[i];
+                var fz = tfZ[k] - carZ[i];
+                if (fx * fx + fz * fz < reach && fx * dx + fz * dz > -1.6) {
+                    var tt = rayCarBox(carX[i], carZ[i], dx, dz, tfX[k], tfZ[k], tfH[k], best);
+                    if (tt < best) {
+                        best = tt;
+                        bvx = math.cos(tfH[k]) * tfV[k];
+                        bvz = math.sin(tfH[k]) * tfV[k];
+                    }
+                }
+                k = k + 1;
+            }
+        }
+        return [best, bvx, bvz];
+    }
+
+    // The four car-sensor inputs of racer i: left, ahead, right (distance / range) and how
+    // fast it closes on the car ahead (speed scale as speedN, 0 when opening or clear).
+    function senseCars(i: int) -> array {
+        var maxD = 128.0 * worldScale;
+        var left = castCarRay(i, carH[i] - 0.3, maxD);
+        var mid = castCarRay(i, carH[i], maxD);
+        var right = castCarRay(i, carH[i] + 0.3, maxD);
+        var closing = 0.0;
+        if (mid[0] < maxD) {
+            var dx = math.cos(carH[i]);
+            var dz = math.sin(carH[i]);
+            closing = (carVx[i] - mid[1]) * dx + (carVz[i] - mid[2]) * dz;
+            closing = math.clamp(closing / math.max(150.0 * worldScale, 1.0), 0.0, 1.4);
+        }
+        return [left[0] / maxD, mid[0] / maxD, right[0] / maxD, closing];
+    }
+
+    var lastCarSense = [1.0, 1.0, 1.0, 0.0];
+
     function updateCar(i: int, dt: float) {
         var hit = query(carX[i], carZ[i], int(carIdx[i]));
         var rays = [
@@ -2716,7 +2850,11 @@ if (root == null) {
             castRay(carX[i], carZ[i], carH[i] + 0.42, int(hit[0])),
             castRay(carX[i], carZ[i], carH[i] + 0.95, int(hit[0]))
         ];
-        var obs = observe(hit, carH[i], carV[i], rays, carLat[i], carYaw[i], carGrip[i]);
+        var cars = senseCars(i);
+        if (i == hudCar) {
+            lastCarSense = cars;
+        }
+        var obs = observe(hit, carH[i], carV[i], rays, carLat[i], carYaw[i], carGrip[i], cars);
         var teach = teacherOf(obs);
         var hidden = nn.dense(obs, w1, b1, "tanh");
         var out = nn.dense(hidden.out, w2, b2, "tanh");
@@ -3117,6 +3255,11 @@ if (root == null) {
     var tfSteer = [];
     var tfFlag = [];
     var blueFlags = 0;
+    // Racer / road-car incidents since the circuit was loaded: an impact counts once per
+    // road car per second, so a racer leaning on a bumper is one incident, not one per tick.
+    var trafficHits = 0;
+    var trafficClock = 0.0;
+    var tfHitAt = [];
 
     function laneOffset() -> float {
         return trackW * 0.48;
@@ -3185,6 +3328,7 @@ if (root == null) {
         tfH = [];
         tfSteer = [];
         tfFlag = [];
+        tfHitAt = [];
         var gridLen = (40.0 + carCount * 28.0) * worldScale;
         var usable = totalLen - gridLen;
         if (usable < totalLen * 0.5) {
@@ -3211,6 +3355,7 @@ if (root == null) {
             tfH.append(pose[2]);
             tfSteer.append(0.0);
             tfFlag.append(0.0);
+            tfHitAt.append(-10.0);
             i = i + 1;
         }
     }
@@ -3234,10 +3379,22 @@ if (root == null) {
             }
             j = j + 1;
         }
+        // Nor a racer in that lane beside it or just behind: the move would cut it off.
+        var r = 0;
+        while (r < carCount) {
+            if (math.abs(racerSide(r) - lane) < trackW * 0.7) {
+                var ahead = aheadGap(tfS[me], carS[r]);
+                if (ahead < reach || totalLen - ahead < reach * 3.0) {
+                    return false;
+                }
+            }
+            r = r + 1;
+        }
         return true;
     }
 
     function updateTraffic(dt: float) {
+        trafficClock = trafficClock + dt;
         var carLen = 2.4;
         var flagged = 0;
         var i = 0;
@@ -3403,6 +3560,10 @@ if (root == null) {
                         var tvz = hz * tfV[t];
                         var rel = (carVx[r] - tvx) * nx + (carVz[r] - tvz) * nz;
                         if (rel > 0.0) {
+                            if (rel > 2.0 * worldScale && trafficClock - tfHitAt[t] > 1.0) {
+                                trafficHits = trafficHits + 1;
+                            }
+                            tfHitAt[t] = trafficClock;
                             var impulse = -(1.0 + rest) * rel * 0.5;
                             bumpCar(r, carVx[r] + nx * impulse, carVz[r] + nz * impulse);
                             var speed = (tvx - nx * impulse) * hx + (tvz - nz * impulse) * hz;
@@ -4892,6 +5053,14 @@ if (root == null) {
         return svg;
     }
 
+    // A car ray as a percentage of its range, "--" when it sees no car.
+    function sensePct(v: float) -> string {
+        if (v >= 0.999) {
+            return "--";
+        }
+        return string(int(v * 100.0));
+    }
+
     function trafficText() -> string {
         if (!trafficOn) {
             return "off";
@@ -4970,7 +5139,8 @@ if (root == null) {
         html = html + "<div class='netrow'>" + miniNet() + "</div>";
         html = html + "<div class='label'><span>LOSS</span><span>" + string(int(shownLoss * 1000.0) / 1000.0) + "</span></div>";
         html = html + "<div class='lossbox'>" + sparkline() + "</div>";
-        html = html + "<div class='row'><span class='muted'>TRAFFIC  " + trafficText() + "</span><span class='dim'>BLUE FLAGS  " + string(blueFlags) + "</span></div>";
+        html = html + "<div class='row'><span class='muted'>TRAFFIC  " + trafficText() + "</span><span class='dim'>FLAGS " + string(blueFlags) + "  HITS " + string(trafficHits) + "</span></div>";
+        html = html + "<div class='row'><span class='muted'>CAR RAYS  " + sensePct(lastCarSense[0]) + " " + sensePct(lastCarSense[1]) + " " + sensePct(lastCarSense[2]) + "</span><span class='dim'>CLOSING  " + string(int(lastCarSense[3] * 100.0)) + "</span></div>";
         html = html + "<div class='row'><span class='muted'>RAY PROGRAM  " + string(opCount) + " ops</span><span class='dim'>SHADER COMPILES  1</span></div>";
         html = html + "<div class='label'><span>ORDER</span><span></span></div><div class='order'>";
         var leaderProg = carLap[leader] * totalLen + carS[leader];

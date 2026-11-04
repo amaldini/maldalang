@@ -5411,6 +5411,9 @@ process.stdout.write("ok\n");
         Assert.Contains("gl_FragDepth", js, StringComparison.Ordinal);
         Assert.DoesNotContain("uCars", js, StringComparison.Ordinal);
         Assert.DoesNotContain("CAR_COUNT", js, StringComparison.Ordinal);
+        // The racers see the other cars through car rays fed to the net.
+        Assert.Contains("senseCars(", js, StringComparison.Ordinal);
+        Assert.Contains("rayCarBox(", js, StringComparison.Ordinal);
     }
 
     [Fact]
