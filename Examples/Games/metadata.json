@@ -689,7 +689,7 @@
     },
     {
       "name": "3D GPU neural race in traffic",
-      "description": "The neural race with up to 56 road cars that keep their lane, slow in the bends and give way to racers, who see them through three car rays and learn to overtake. Every car reaches the ray tracer through one float data texture with a tree of bounding spheres, so the traffic count changes without recompiling the shader",
+      "description": "The neural race with up to 56 road cars that keep their lane, slow in the bends and give way to racers, who see them through three car rays and learn to overtake, plus Malda City, a street circuit through blocks of buildings with traffic lights the road cars stop at. Every car reaches the ray tracer through one float data texture with a tree of bounding spheres, so the traffic count changes without recompiling the shader",
       "file": "three_shader_race_traffic.malda",
       "track": "showcase",
       "difficulty": "advanced",

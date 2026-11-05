@@ -34,6 +34,15 @@
 // and edge rays together) and lifts, harder when both sides are shut. The net learns
 // the overtake from those labels like the rest of the driving.
 //
+// City. The tenth circuit, Malda City, is a street circuit on a grid of blocks.
+// Away from the track the ground shader draws the grid itself (cityGround):
+// asphalt with a dashed centre line, zebra crossings at the junctions, pavements,
+// and lots. Each block carries 2x2 buildings from the same instanced walls and
+// roofs, taller toward the middle; a few blocks are small parks. Every junction the
+// circuit crosses has traffic lights on both pavements (instanced poles and lamps
+// whose colour follows the light). Road cars stop at red, and at amber when they
+// can, so queues form at the junctions; the racers do not stop.
+//
 // Everything below is as in the race example.
 // Eight cars share a 15-20-2 net (tanh, tanh; 19-20-2 with the car sensors). The first eleven inputs match
 // grand_prix_neural.malda. Three more report sideways speed, yaw rate, and
@@ -111,6 +120,39 @@ function formatTime(seconds: float) -> string {
         ms = 999;
     }
     return string(mins) + ":" + str.padStart(string(whole), 2, "0") + "." + str.padStart(string(ms), 3, "0");
+}
+
+// A street circuit on a grid of blocks `pitch` key units apart, from its corners in
+// grid steps. Each corner becomes two key points `e` along its legs, so the
+// smoothing in buildTrack keeps the turns tight instead of rounding whole blocks.
+function gridRoute(corners: array, pitch: float, e: float) -> array {
+    var pts = [];
+    var n = int(corners.length / 2);
+    var i = 0;
+    while (i < n) {
+        var cx = corners[i * 2] * pitch;
+        var cz = corners[i * 2 + 1] * pitch;
+        var prev = wrapIndex(i - 1, n);
+        var next = wrapIndex(i + 1, n);
+        var px = corners[prev * 2] * pitch - cx;
+        var pz = corners[prev * 2 + 1] * pitch - cz;
+        var pl = math.sqrt(px * px + pz * pz);
+        var nx = corners[next * 2] * pitch - cx;
+        var nz = corners[next * 2 + 1] * pitch - cz;
+        var nl = math.sqrt(nx * nx + nz * nz);
+        pts.append(cx + px / pl * e);
+        pts.append(cz + pz / pl * e);
+        pts.append(cx + nx / nl * e);
+        pts.append(cz + nz / nl * e);
+        i = i + 1;
+    }
+    return pts;
+}
+
+// Corners of the Malda City route, in blocks. The race runs in this order, so the
+// start grid sits on the long closing straight from (1, 6) to (8, 6).
+function cityRoute() -> array {
+    return [8.0, 6.0, 8.0, 3.0, 6.0, 3.0, 6.0, 1.0, 3.0, 1.0, 3.0, 3.0, 1.0, 3.0, 1.0, 6.0];
 }
 
 function circuitCatalog() -> array {
@@ -272,6 +314,15 @@ function circuitCatalog() -> array {
             265.0, 300.0, 205.0, 390.0, 155.0, 470.0, 130.0, 525.0,
             155.0, 590.0
         ]
+    });
+    circuits.append({
+        "name": "Malda City",
+        "place": "Street circuit",
+        "km": 3.6,
+        "width": 24.0,
+        "hills": 0.0,
+        "elev": [],
+        "pts": gridRoute(cityRoute(), 100.0, 4.0)
     });
     return circuits;
 }
@@ -1245,6 +1296,51 @@ function walkCars(origin: vec3, dir: vec3, tMax: float, anyHit: bool, tHit: out 
     return carIndex >= 0;
 }
 
+// The street grid away from the circuit: streets on the lines every uCityPitch from
+// uCityOrigin (half-width uCityStreet), a dashed centre line, zebra crossings just
+// outside each junction, pavements, and the lots the buildings stand on.
+@shader()
+function cityGround(p: vec2) -> vec3 {
+    var q: vec2 = p - uCityOrigin;
+    var f: vec2 = q - floor(q / uCityPitch) * uCityPitch;
+    var dx: float = min(f.x, uCityPitch - f.x);
+    var dz: float = min(f.y, uCityPitch - f.y);
+    var hw: float = uCityStreet;
+    var asphalt: vec3 = vec3(0.2, 0.2, 0.21);
+    var paint: vec3 = vec3(0.86, 0.86, 0.82);
+    if (dx < hw && dz < hw) {
+        return asphalt;
+    }
+    if (dx < hw) {
+        if (dz < hw + 2.2) {
+            if (mod(q.x, 0.9) < 0.45) {
+                return paint;
+            }
+            return asphalt;
+        }
+        if (dx < 0.09 && mod(q.y, 3.0) < 1.5) {
+            return vec3(0.85, 0.74, 0.3);
+        }
+        return asphalt;
+    }
+    if (dz < hw) {
+        if (dx < hw + 2.2) {
+            if (mod(q.y, 0.9) < 0.45) {
+                return paint;
+            }
+            return asphalt;
+        }
+        if (dz < 0.09 && mod(q.x, 3.0) < 1.5) {
+            return vec3(0.85, 0.74, 0.3);
+        }
+        return asphalt;
+    }
+    if (dx < hw + 1.6 || dz < hw + 1.6) {
+        return vec3(0.58, 0.57, 0.55);
+    }
+    return vec3(0.38, 0.39, 0.37);
+}
+
 @shader()
 function closestHit(
     origin: vec3,
@@ -1332,6 +1428,8 @@ function closestHit(
                     albedo = vec3(0.86, 0.05, 0.06);
                 }
             }
+        } else if (uCity > 0.5) {
+            albedo = cityGround(vec2(hit.x, hit.z));
         } else {
             var cell: float = max(uTrackW * 1.6, 0.8);
             var check: float = mod(floor(hit.x / cell) + floor(hit.z / cell), 2.0);
@@ -1473,6 +1571,10 @@ var fragmentShader = glsl.compile({
         "float uNear",
         "float uFar",
         "sampler2D uVehicles",
+        "float uCity",
+        "vec2 uCityOrigin",
+        "float uCityPitch",
+        "float uCityStreet",
         "int uOpCount",
         "float uCull",
         "float uCockpitCar",
@@ -1528,6 +1630,7 @@ var fragmentShader = glsl.compile({
         "terrainNormal",
         "sphereReach",
         "walkCars",
+        "cityGround",
         "closestHit",
         "occludedByCar",
         "inShadow",
@@ -1551,7 +1654,7 @@ if (root == null) {
     dom.append(root, heading);
 
     var hint = dom.create("p");
-    dom.setText(hint, "GPU ray-traced 3D racing through road traffic. The cars reach the shader as a data texture with a tree of bounding spheres, so the traffic count changes without recompiling. Three car rays feed the net, and the coach overtakes on them. G traffic, [ ] how many, B group skip. Tab drives the selected car from the cockpit; Z and X change car.");
+    dom.setText(hint, "GPU ray-traced 3D racing through road traffic. The cars reach the shader as a data texture with a tree of bounding spheres, so the traffic count changes without recompiling. Three car rays feed the net, and the coach overtakes on them. Q from Monza goes to the last circuit, Malda City: a street grid with traffic lights the road cars stop at. G traffic, [ ] how many, B group skip. Tab drives the selected car from the cockpit; Z and X change car.");
     dom.append(root, hint);
 
     var hudStyle = dom.create("style");
@@ -1652,6 +1755,16 @@ if (root == null) {
     // Pull along a slope, in the same worldScale units as the drive force.
     // About four times real gravity, so climbs and drops show in the lap.
     var hillGravity = 65.0;
+    // Malda City: the street grid in world units (a line every cityPitch from the
+    // origin). keyScale / keyOff map catalog key points to the fitted frame.
+    var cityOn = 0.0;
+    var cityOriginX = 0.0;
+    var cityOriginZ = 0.0;
+    var cityPitch = 40.0;
+    var cityKeyPitch = 100.0;
+    var keyScale = 1.0;
+    var keyOffX = 0.0;
+    var keyOffZ = 0.0;
 
     function buildTrack(spec: map) {
         var keys = spec.pts;
@@ -1699,6 +1812,9 @@ if (root == null) {
         var usedH = spanZ * scale;
         var offX = viewL + ((viewR - viewL) - usedW) / 2.0;
         var offZ = viewT + ((viewB - viewT) - usedH) / 2.0;
+        keyScale = scale;
+        keyOffX = offX - minX * scale;
+        keyOffZ = offZ - minZ * scale;
         var fitX = [];
         var fitZ = [];
         var p = 0;
@@ -1832,6 +1948,13 @@ if (root == null) {
             sc = sc + 1;
         }
         trackW = targetHalf;
+        cityOn = 0.0;
+        if (spec.name == "Malda City") {
+            cityOn = 1.0;
+            cityOriginX = keyOffX * worldScale;
+            cityOriginZ = keyOffZ * worldScale;
+            cityPitch = cityKeyPitch * keyScale * worldScale;
+        }
 
         trackTx = [];
         trackTz = [];
@@ -1928,6 +2051,12 @@ if (root == null) {
         trafficHits = 0;
         sessionBest = -1.0;
         uploadTrackTexture();
+        buildCityLights();
+        placeLightPoles();
+        three.setUniform(material, "uCity", cityOn);
+        three.setUniform(material, "uCityOrigin", [cityOriginX, cityOriginZ]);
+        three.setUniform(material, "uCityPitch", cityPitch);
+        three.setUniform(material, "uCityStreet", trackW);
     }
 
     function poseAt(dist: float, side: float) -> array {
@@ -3261,6 +3390,84 @@ if (root == null) {
     var trafficClock = 0.0;
     var tfHitAt = [];
 
+    // ---- traffic lights (Malda City) ----
+    var lightCount = 0;
+    var lightS = [];
+    var lightPhase = [];
+    // Two poles per light: position, and the light they show.
+    var poleX = [];
+    var poleZ = [];
+    var poleLight = [];
+    var lightCycle = 14.0;
+
+    // Along-road distance from the stop line back to the junction centre.
+    function lightBack() -> float {
+        return trackW + 2.4 + 1.3;
+    }
+
+    // 0 green, 1 amber, 2 red. Each junction runs the same cycle from its own phase.
+    function lightState(l: int) -> int {
+        var t = trafficClock + lightPhase[l];
+        t = t - math.floor(t / lightCycle) * lightCycle;
+        if (t < 7.0) {
+            return 0;
+        }
+        if (t < 9.0) {
+            return 1;
+        }
+        return 2;
+    }
+
+    // One light per junction the circuit crosses: every grid node strictly inside a
+    // straight leg of the route (the corners are where the circuit turns).
+    function buildCityLights() {
+        lightCount = 0;
+        lightS = [];
+        lightPhase = [];
+        poleX = [];
+        poleZ = [];
+        poleLight = [];
+        if (cityOn < 0.5) {
+            return;
+        }
+        var corners = cityRoute();
+        var n = int(corners.length / 2);
+        var unit = cityKeyPitch * keyScale * worldScale;
+        var c = 0;
+        while (c < n) {
+            var d = wrapIndex(c + 1, n);
+            var ax = corners[c * 2];
+            var az = corners[c * 2 + 1];
+            var bx = corners[d * 2];
+            var bz = corners[d * 2 + 1];
+            var steps = int(math.abs(bx - ax) + math.abs(bz - az) + 0.5);
+            var sx = (bx - ax) / steps;
+            var sz = (bz - az) / steps;
+            var k = 1;
+            while (k < steps) {
+                var wx = cityOriginX + (ax + sx * k) * unit;
+                var wz = cityOriginZ + (az + sz * k) * unit;
+                var hit = query(wx, wz, 0);
+                lightS.append(hit[3]);
+                lightPhase.append(lightCount * 2.3);
+                // Poles on both pavements just before the crossing, facing the traffic.
+                var back = trackW + 2.0;
+                var side = trackW + 0.9;
+                var px = wx - sx * back + (0.0 - sz) * side;
+                var pz = wz - sz * back + sx * side;
+                poleX.append(px);
+                poleZ.append(pz);
+                poleLight.append(lightCount);
+                poleX.append(wx - sx * back + sz * side);
+                poleZ.append(wz - sz * back - sx * side);
+                poleLight.append(lightCount);
+                lightCount = lightCount + 1;
+                k = k + 1;
+            }
+            c = c + 1;
+        }
+    }
+
     function laneOffset() -> float {
         return trackW * 0.48;
     }
@@ -3419,6 +3626,20 @@ if (root == null) {
                     }
                 }
                 j = j + 1;
+            }
+
+            // Traffic lights (Malda City): stop before the crossing at red, and at amber
+            // when there is room to stop; the speed allowed falls to 0 at the line.
+            var l = 0;
+            while (l < lightCount) {
+                var toStop = aheadGap(tfS[i], lightS[l] - lightBack());
+                if (toStop < 45.0) {
+                    var light = lightState(l);
+                    if (light == 2 || (light == 1 && toStop > tfV[i] * 0.9)) {
+                        target = math.min(target, math.sqrt(2.0 * 36.0 * worldScale * math.max(toStop - 0.3, 0.0)));
+                    }
+                }
+                l = l + 1;
             }
 
             // Blue flag: a faster racer close behind in this lane sends the road car to the
@@ -3931,7 +4152,7 @@ if (root == null) {
     var heightTex = three.createDataTexture(heightN, heightN, heightPixels, {"type": "float"});
 
     // Roadside props: 12 floats each (x, z, yaw, kind, six params, phrase slot, spare).
-    var propMax = 120;
+    var propMax = 540;
     var propCount = 0;
     var fontTexW = 320;
     var fontTexH = 7;
@@ -4200,6 +4421,10 @@ if (root == null) {
             "uNear": propNear,
             "uFar": propFar,
             "uVehicles": vehicleTex,
+            "uCity": 0,
+            "uCityOrigin": [0, 0],
+            "uCityPitch": 40,
+            "uCityStreet": 3.2,
             "uOpCount": 0,
             "uCull": 1,
             "uCockpitCar": -1,
@@ -4224,8 +4449,8 @@ if (root == null) {
         return three.createStandardMaterial({ "color": "#ffffff", "roughness": 1.0, "metalness": 0.0 });
     }
 
-    var treeMax = 40;
-    var buildingMax = 10;
+    var treeMax = 60;
+    var buildingMax = 420;
     var signMax = 36;
     var trunks = three.createInstancedMesh(three.createCylinderGeometry(0.18, 0.18, 1.45, 10), propMaterial(), treeMax);
     var canopies = three.createInstancedMesh(three.createSphereGeometry(1.05, 16, 12), propMaterial(), treeMax);
@@ -4299,6 +4524,43 @@ if (root == null) {
     three.add(propScene, roofs);
     three.add(propScene, posts);
     three.add(propScene, boards);
+
+    var poleMax = 48;
+    var lightPoles = three.createInstancedMesh(three.createCylinderGeometry(0.09, 0.09, 3.0, 8), propMaterial(), poleMax);
+    var lightLamps = three.createInstancedMesh(three.createBoxGeometry(0.34, 0.8, 0.34), propMaterial(), poleMax);
+    three.add(propScene, lightPoles);
+    three.add(propScene, lightLamps);
+    three.setInstanceCount(lightPoles, 0);
+    three.setInstanceCount(lightLamps, 0);
+
+    function placeLightPoles() {
+        var count = math.min(poleX.length, poleMax);
+        var k = 0;
+        while (k < count) {
+            three.setInstance(lightPoles, k, poleX[k], 1.5, poleZ[k], { "color": [0.2, 0.21, 0.23] });
+            k = k + 1;
+        }
+        three.setInstanceCount(lightPoles, count);
+        three.setInstanceCount(lightLamps, count);
+        paintLights();
+    }
+
+    // Lamp colour follows its light; called once per frame.
+    function paintLights() {
+        var count = math.min(poleX.length, poleMax);
+        var k = 0;
+        while (k < count) {
+            var state = lightState(int(poleLight[k]));
+            var color = [0.15, 0.95, 0.3];
+            if (state == 1) {
+                color = [1.0, 0.75, 0.1];
+            } else if (state == 2) {
+                color = [1.0, 0.12, 0.08];
+            }
+            three.setInstance(lightLamps, k, poleX[k], 3.3, poleZ[k], { "color": color });
+            k = k + 1;
+        }
+    }
 
     var treeCount = 0;
     var buildingCount = 0;
@@ -4853,6 +5115,62 @@ if (root == null) {
         }
     }
 
+    function cityHash(a: float, b: float, salt: float) -> float {
+        var v = math.sin(a * 127.1 + b * 311.7 + salt * 74.7) * 43758.5453;
+        return v - math.floor(v);
+    }
+
+    // Malda City: every block around the route gets 2x2 buildings (kind 3), taller
+    // toward the middle of the city; about one block in ten is a park of trees. A
+    // building that would reach the circuit (its rounded corners cut into the lots)
+    // is left out.
+    function buildCityBlocks() {
+        var inner = trackW + 1.6 + 0.5;
+        var lot = cityPitch - inner * 2.0;
+        var sub = lot * 0.5;
+        var midX = cityOriginX + cityPitch * 4.5;
+        var midZ = cityOriginZ + cityPitch * 3.5;
+        var kx = -1;
+        while (kx <= 9) {
+            var kz = -1;
+            while (kz <= 7) {
+                var x0 = cityOriginX + kx * cityPitch + inner;
+                var z0 = cityOriginZ + kz * cityPitch + inner;
+                var inside = kx >= 0 && kx <= 8 && kz >= 0 && kz <= 6;
+                if (inside && cityHash(kx, kz, 1.0) < 0.1) {
+                    var t = 0;
+                    while (t < 4 && propCount < propMax) {
+                        var tx = x0 + lot * (0.25 + 0.5 * (t % 2));
+                        var tz = z0 + lot * (0.25 + 0.5 * int(t / 2));
+                        if (roadClear(tx, tz, 0, trackW + 2.2)) {
+                            pushProp(tx, tz, 0.0, 2.0, 1.2 + cityHash(kx, kz, 5.0 + t) * 0.5, 0.0, 0.0, 0.0, 0.0, 0.0);
+                        }
+                        t = t + 1;
+                    }
+                } else {
+                    var b = 0;
+                    while (b < 4 && propCount < propMax) {
+                        var cx = x0 + sub * (0.5 + (b % 2));
+                        var cz = z0 + sub * (0.5 + int(b / 2));
+                        var hw = sub * 0.5 - 0.4 - cityHash(kx, kz, 7.0 + b) * sub * 0.12;
+                        var hd = sub * 0.5 - 0.4 - cityHash(kx, kz, 11.0 + b) * sub * 0.12;
+                        var ex = (cx - midX) / (cityPitch * 5.0);
+                        var ez = (cz - midZ) / (cityPitch * 4.0);
+                        var centre = math.max(0.0, 1.0 - math.sqrt(ex * ex + ez * ez));
+                        var h = 3.5 + cityHash(kx, kz, 3.0 + b) * 5.0 + centre * centre * 14.0;
+                        var style = int(cityHash(kx, kz, 13.0 + b) * 3.0);
+                        if (roadClear(cx, cz, 0, trackW + math.max(hw, hd) * 1.42 + 0.3)) {
+                            pushProp(cx, cz, 0.0, 3.0, h, hw, hd, style, 0.0, 0.0);
+                        }
+                        b = b + 1;
+                    }
+                }
+                kz = kz + 1;
+            }
+            kx = kx + 1;
+        }
+    }
+
     function buildScenery() {
         clearPropBuffers();
         if (gridOn >= 0.5 && nPts > 8 && totalLen > 8.0) {
@@ -4899,71 +5217,75 @@ if (root == null) {
                 }
                 si = si + 1;
             }
-            var bldGap = 84.0;
-            var bldN = int(totalLen / bldGap);
-            if (bldN < 3) {
-                bldN = 3;
-            }
-            if (bldN > 10) {
-                bldN = 10;
-            }
-            bldGap = totalLen / bldN;
-            var bi = 0;
-            while (bi < bldN && propCount < propMax) {
-                var distB = bldGap * (bi + 0.35);
-                if (alongDelta(distB, packCenter) > packHalf) {
-                    var style = bi % 3;
-                    var bh = 4.4;
-                    var hw = 2.3;
-                    var hd = 1.8;
-                    if (style == 0) {
-                        bh = 2.8;
-                        hw = 3.4;
-                        hd = 1.6;
-                    } else if (style == 2) {
-                        bh = 6.2;
-                        hw = 1.7;
-                        hd = 1.7;
-                    }
-                    var bendPose = poseAt(distB, 0.0);
-                    var bend = trackBend[int(bendPose[3])];
-                    if (bend < 0.0) {
-                        bend = -bend;
-                    }
-                    if (bend < 0.48) {
-                        var spotB = seekSpot(distB, hd + 2.6, trackW + hd + 0.9, 8.5, true);
-                        if (spotB[3] > 0) {
-                            pushProp(spotB[0], spotB[1], spotB[4], 3.0, bh, hw, hd, style, 0.0, 0.0);
+            if (cityOn > 0.5) {
+                buildCityBlocks();
+            } else {
+                var bldGap = 84.0;
+                var bldN = int(totalLen / bldGap);
+                if (bldN < 3) {
+                    bldN = 3;
+                }
+                if (bldN > 10) {
+                    bldN = 10;
+                }
+                bldGap = totalLen / bldN;
+                var bi = 0;
+                while (bi < bldN && propCount < propMax) {
+                    var distB = bldGap * (bi + 0.35);
+                    if (alongDelta(distB, packCenter) > packHalf) {
+                        var style = bi % 3;
+                        var bh = 4.4;
+                        var hw = 2.3;
+                        var hd = 1.8;
+                        if (style == 0) {
+                            bh = 2.8;
+                            hw = 3.4;
+                            hd = 1.6;
+                        } else if (style == 2) {
+                            bh = 6.2;
+                            hw = 1.7;
+                            hd = 1.7;
+                        }
+                        var bendPose = poseAt(distB, 0.0);
+                        var bend = trackBend[int(bendPose[3])];
+                        if (bend < 0.0) {
+                            bend = -bend;
+                        }
+                        if (bend < 0.48) {
+                            var spotB = seekSpot(distB, hd + 2.6, trackW + hd + 0.9, 8.5, true);
+                            if (spotB[3] > 0) {
+                                pushProp(spotB[0], spotB[1], spotB[4], 3.0, bh, hw, hd, style, 0.0, 0.0);
+                            }
                         }
                     }
+                    bi = bi + 1;
                 }
-                bi = bi + 1;
-            }
-            var treeGap = 24.0;
-            var treeN = int(totalLen / treeGap);
-            if (treeN < 6) {
-                treeN = 6;
-            }
-            if (treeN > 40) {
-                treeN = 40;
-            }
-            treeGap = totalLen / treeN;
-            var ti = 0;
-            while (ti < treeN && propCount < propMax) {
-                var distT = treeGap * (ti + 0.2);
-                if (alongDelta(distT, packCenter) > packHalf * 0.85) {
-                    var scale = 1.05;
-                    if (ti % 3 == 1) {
-                        scale = 1.35;
-                    } else if (ti % 3 == 2) {
-                        scale = 1.6;
-                    }
-                    var spotT = seekSpot(distT, 4.6 + scale, trackW + 1.05 * scale + 0.45, 5.4, ti % 2 == 1);
-                    if (spotT[3] > 0) {
-                        pushProp(spotT[0], spotT[1], 0.0, 2.0, scale, 0.0, 0.0, 0.0, 0.0, 0.0);
-                    }
+                var treeGap = 24.0;
+                var treeN = int(totalLen / treeGap);
+                if (treeN < 6) {
+                    treeN = 6;
                 }
-                ti = ti + 1;
+                if (treeN > 40) {
+                    treeN = 40;
+                }
+                treeGap = totalLen / treeN;
+                var ti = 0;
+                while (ti < treeN && propCount < propMax) {
+                    var distT = treeGap * (ti + 0.2);
+                    if (alongDelta(distT, packCenter) > packHalf * 0.85) {
+                        var scale = 1.05;
+                        if (ti % 3 == 1) {
+                            scale = 1.35;
+                        } else if (ti % 3 == 2) {
+                            scale = 1.6;
+                        }
+                        var spotT = seekSpot(distT, 4.6 + scale, trackW + 1.05 * scale + 0.45, 5.4, ti % 2 == 1);
+                        if (spotT[3] > 0) {
+                            pushProp(spotT[0], spotT[1], 0.0, 2.0, scale, 0.0, 0.0, 0.0, 0.0, 0.0);
+                        }
+                    }
+                    ti = ti + 1;
+                }
             }
         }
         syncScenery();
@@ -5460,6 +5782,9 @@ if (root == null) {
         three.setUniform(material, "uLightPos", [lightX, lightY, lightZ]);
         three.setUniform(material, "uTrackW", trackW);
         uploadVehicles();
+        if (lightCount > 0) {
+            paintLights();
+        }
         three.setUniform(material, "uCockpitCar", cockpitCar);
         three.setUniform(material, "uGrip", shownGrip);
         refreshHud();

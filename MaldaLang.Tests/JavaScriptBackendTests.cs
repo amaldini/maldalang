@@ -5414,6 +5414,10 @@ process.stdout.write("ok\n");
         // The racers see the other cars through car rays fed to the net.
         Assert.Contains("senseCars(", js, StringComparison.Ordinal);
         Assert.Contains("rayCarBox(", js, StringComparison.Ordinal);
+        // Malda City: the street grid is drawn by the ground shader, the lights are built per junction.
+        Assert.Contains("cityGround(", js, StringComparison.Ordinal);
+        Assert.Contains("uCityPitch", js, StringComparison.Ordinal);
+        Assert.Contains("buildCityLights(", js, StringComparison.Ordinal);
     }
 
     [Fact]
