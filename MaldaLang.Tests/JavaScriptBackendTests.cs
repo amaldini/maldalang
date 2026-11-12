@@ -3,7 +3,9 @@
 
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
+using System.Text;
 using System.Text.Json;
 using MaldaLang.Compiler;
 using MaldaLang.Tests.Conformance.Tier0;
@@ -6998,6 +7000,113 @@ process.stdout.write("ok\n");
 
         Assert.Contains("(3:", ex.Message, StringComparison.Ordinal);
         Assert.Contains("dFdx() has no host meaning", ex.Message, StringComparison.Ordinal);
+    }
+
+    // G23a step 5: the twins of the distance functions the SDF examples ship, run in Node, against
+    // the same formulas written here in C#. The kernels are read from the examples, so the check
+    // follows the source the GPU gets.
+    [Fact]
+    public async Task JsTranspiler_EmitsHostTwin_SdfKernelsOfTheExamples_MatchReferenceValues()
+    {
+        Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);
+
+        var interpreter = File.ReadAllText(PlanningPaths.ResolveRepoFile("Examples", "Games", "three_sdf_interpreter.malda"));
+        var invaders = File.ReadAllText(PlanningPaths.ResolveRepoFile("Examples", "Games", "three_sdf_invaders.malda"));
+        var source = new StringBuilder();
+        foreach (var name in new[] { "sdBox", "sdTorus", "sdCylinder" })
+            source.Append(ExtractShaderFunction(interpreter, name)).Append('\n');
+        source.Append(ExtractShaderFunction(invaders, "smin")).Append('\n');
+        // A smooth union of two shapes, as the examples blend them: kernels calling kernels.
+        source.Append("""
+            @shader()
+            function blend(q: vec3, s: float, k: float) -> float {
+                return smin(sdBox(q, s), sdTorus(q - vec3(0.5, 0.25, 0.0), s * 0.5), k);
+            }
+
+            """);
+
+        var points = new[]
+        {
+            new[] { 0.0, 0.0, 0.0 }, new[] { 2.0, 0.0, 0.0 }, new[] { 2.0, 2.0, 2.0 }, new[] { 0.3, -0.7, 0.2 },
+            new[] { -1.5, 0.25, 3.0 }, new[] { 0.9, 0.9, -0.9 }, new[] { 0.0, 1.0, 0.0 }, new[] { -0.4, -2.5, 0.65 }
+        };
+        var sizes = new[] { 1.0, 0.5, 1.7 };
+        var blends = new[] { 0.1, 0.45, 1.2 };
+        var expected = new List<(string What, double Value)>();
+        string N(double value) => value.ToString("R", CultureInfo.InvariantCulture);
+
+        foreach (var p in points)
+        {
+            foreach (var s in sizes)
+            {
+                var at = $"[{N(p[0])}, {N(p[1])}, {N(p[2])}], {N(s)}";
+                source.Append($"io.print(sdBox({at}));\nio.print(sdTorus({at}));\nio.print(sdCylinder({at}));\n");
+                expected.Add(($"sdBox({at})", ReferenceBox(p[0], p[1], p[2], s)));
+                expected.Add(($"sdTorus({at})", ReferenceTorus(p[0], p[1], p[2], s)));
+                expected.Add(($"sdCylinder({at})", ReferenceCylinder(p[0], p[1], p[2], s)));
+
+                foreach (var k in blends)
+                {
+                    source.Append($"io.print(blend({at}, {N(k)}));\n");
+                    expected.Add(($"blend({at}, {N(k)})", ReferenceSmoothMin(
+                        ReferenceBox(p[0], p[1], p[2], s),
+                        ReferenceTorus(p[0] - 0.5, p[1] - 0.25, p[2], s * 0.5),
+                        k)));
+                }
+            }
+        }
+
+        foreach (var (a, b, k) in new[] { (0.0, 1.0, 0.5), (1.0, 0.0, 0.5), (0.3, 0.35, 0.2), (-2.0, 4.0, 0.1), (0.7, 0.7, 1.0) })
+        {
+            source.Append($"io.print(smin({N(a)}, {N(b)}, {N(k)}));\n");
+            expected.Add(($"smin({N(a)}, {N(b)}, {N(k)})", ReferenceSmoothMin(a, b, k)));
+        }
+
+        var output = await Tier0JavaScriptRunner.RunAsync(source.ToString());
+        var lines = output.Replace("\r", string.Empty).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+
+        Assert.Equal(expected.Count, lines.Length);
+        for (var i = 0; i < lines.Length; i++)
+        {
+            var actual = double.Parse(lines[i], NumberStyles.Float, CultureInfo.InvariantCulture);
+            Assert.True(Math.Abs(actual - expected[i].Value) <= 1e-9,
+                $"{expected[i].What}: the host twin gives {lines[i]}, the reference {N(expected[i].Value)}.");
+        }
+    }
+
+    private static string ExtractShaderFunction(string source, string name)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(
+            source.Replace("\r\n", "\n"),
+            @"^@shader\(\)\nfunction " + name + @"\(.*?^\}\n",
+            System.Text.RegularExpressions.RegexOptions.Multiline | System.Text.RegularExpressions.RegexOptions.Singleline);
+        Assert.True(match.Success, $"@shader() function '{name}' was not found in the example.");
+        return match.Value;
+    }
+
+    private static double ReferenceBox(double x, double y, double z, double s)
+    {
+        double dx = Math.Abs(x) - s, dy = Math.Abs(y) - s, dz = Math.Abs(z) - s;
+        var outside = Math.Sqrt(Math.Pow(Math.Max(dx, 0), 2) + Math.Pow(Math.Max(dy, 0), 2) + Math.Pow(Math.Max(dz, 0), 2));
+        return outside + Math.Min(Math.Max(dx, Math.Max(dy, dz)), 0);
+    }
+
+    private static double ReferenceTorus(double x, double y, double z, double s)
+    {
+        var ring = Math.Sqrt(x * x + z * z) - s;
+        return Math.Sqrt(ring * ring + y * y) - s * 0.35;
+    }
+
+    private static double ReferenceCylinder(double x, double y, double z, double s)
+    {
+        double dx = Math.Abs(Math.Sqrt(x * x + z * z)) - s * 0.7, dy = Math.Abs(y) - s;
+        return Math.Min(Math.Max(dx, dy), 0) + Math.Sqrt(Math.Pow(Math.Max(dx, 0), 2) + Math.Pow(Math.Max(dy, 0), 2));
+    }
+
+    private static double ReferenceSmoothMin(double a, double b, double k)
+    {
+        var h = Math.Clamp(0.5 + 0.5 * (b - a) / k, 0, 1);
+        return b * (1 - h) + a * h - k * h * (1 - h);
     }
 
     private static string StripJsSourceMapComment(string js)

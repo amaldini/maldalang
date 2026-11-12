@@ -773,7 +773,7 @@ settled (see open questions) before any code.
   only when called, nothing new otherwise (`JsBuildSizeTests` still green).
 - [x] **4. Diagnostics.** Compile error naming the function and the construct
   for everything in the guardrail list; the function stays valid for GLSL-only use.
-- [ ] **5. Numeric check.** Node harness runs the emitted `sdBox` / `sdTorus` /
+- [x] **5. Numeric check.** Node harness runs the emitted `sdBox` / `sdTorus` /
   `sdCylinder` / smooth-union against reference values.
 - [ ] **6. Examples.** Replace `cpuShape` and `boundRadius` in
   `three_sdf_interpreter.malda` and `cpuRoundBox` and `boundRadius` in
