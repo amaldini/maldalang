@@ -805,7 +805,7 @@ must produce the same JavaScript and the same GLSL as before.
   strings keeps the string and is not written twice. `glsl.source(...)`
   prepends the consts its functions use; `glsl.functions()` stays bare
   functions. Tests in `GlslTranspilerTests`.
-- [ ] **2. Consts on the host.** The type pass takes those consts as typed
+- [x] **2. Consts on the host.** The type pass takes those consts as typed
   globals and the host twin inlines the literal value, so a twin does not
   depend on where the `const` lives in the generated file (also inside a
   `@worker()` scope). A name declared only in a `consts` string stays an

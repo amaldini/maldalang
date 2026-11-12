@@ -126,6 +126,7 @@ public sealed class GlslFunctionTypes
 {
     private readonly Dictionary<Expression, GlslType> _expressions;
     private readonly Dictionary<VarDeclStatement, GlslType> _locals;
+    private readonly HashSet<Expression> _globalReferences;
 
     internal GlslFunctionTypes(
         FunctionDeclaration function,
@@ -133,8 +134,10 @@ public sealed class GlslFunctionTypes
         IReadOnlyList<GlslParameter> parameters,
         Dictionary<Expression, GlslType> expressions,
         Dictionary<VarDeclStatement, GlslType> locals,
-        IReadOnlyList<string> callees)
+        IReadOnlyList<string> callees,
+        HashSet<Expression> globalReferences)
     {
+        _globalReferences = globalReferences;
         Function = function;
         ReturnType = returnType;
         Parameters = parameters;
@@ -154,6 +157,9 @@ public sealed class GlslFunctionTypes
         _expressions.TryGetValue(expression, out var type)
             ? type
             : throw new KeyNotFoundException("The expression is not part of the analyzed @shader() function.");
+
+    /// <summary>True when the name is not a parameter or local of the function: it resolved to a global the caller supplied.</summary>
+    public bool IsGlobal(IdentifierExpression identifier) => _globalReferences.Contains(identifier);
 
     public GlslType TypeOf(VarDeclStatement local) =>
         _locals.TryGetValue(local, out var type)
@@ -192,6 +198,7 @@ public static partial class GlslTranspiler
         private readonly Dictionary<VarDeclStatement, GlslType> _locals = new(ReferenceEqualityComparer.Instance);
         private readonly List<Dictionary<string, GlslType>> _scopes = new();
         private readonly List<string> _callees = new();
+        private readonly HashSet<Expression> _globalReferences = new(ReferenceEqualityComparer.Instance);
         private GlslType _returnType;
 
         public TypePass(
@@ -215,7 +222,7 @@ public static partial class GlslTranspiler
             CheckStatements(_function.Body.Statements);
             PopScope();
 
-            return new GlslFunctionTypes(_function, _returnType, parameters, _expressions, _locals, _callees);
+            return new GlslFunctionTypes(_function, _returnType, parameters, _expressions, _locals, _callees, _globalReferences);
         }
 
         // ---- Signatures -------------------------------------------------------------------
@@ -686,7 +693,10 @@ public static partial class GlslTranspiler
             }
 
             if (_globals != null && _globals.TryGetValue(identifier.Name, out var global))
+            {
+                _globalReferences.Add(identifier);
                 return global;
+            }
 
             throw Error(identifier,
                 $"'{identifier.Name}' is not a parameter or local of the function (uniforms, consts, varyings and gl_* names have no type here).");

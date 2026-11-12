@@ -6922,8 +6922,8 @@ process.stdout.write("ok\n");
     [InlineData("function f(p: vec3) -> float { return p.x + vUv.x; }", "varying 'vUv' has no host meaning")]
     [InlineData("function f(p: vec3) -> float { return p.x * uTime; }", "uniform 'uTime' has no host value")]
     [InlineData("function f(p: vec3) -> float { return dot(p, uCars[0]); }", "uniform 'uCars' has no host value")]
-    [InlineData("function f(p: vec3) -> float { return p.x + EPSILON; }", "const 'EPSILON' has no host value")]
-    [InlineData("function f(p: vec3) -> float { return p.x + somethingElse; }", "'somethingElse' is not a parameter or local of the function")]
+    [InlineData("function f(p: vec3) -> float { return p.x + EPSILON; }", "const 'EPSILON' is declared only in a glsl.compile consts string")]
+    [InlineData("function f(p: vec3) -> float { return p.x + somethingElse; }", "'somethingElse' is not a parameter, a local or a top-level literal MALDA const")]
     [InlineData("function f(p: vec3) -> float { if (p.x < 0.0) { discard; } return p.x; }", "discard has no host meaning")]
     [InlineData("function f(p: vec3) -> float { return dFdx(p.x); }", "dFdx() has no host meaning")]
     [InlineData("function f(p: vec3) -> float { return dFdy(p.x); }", "dFdy() has no host meaning")]
@@ -6981,7 +6981,7 @@ process.stdout.write("ok\n");
             """));
 
         Assert.Contains("@shader() function 'fog' is reached from host code through 'shade' (3:", ex.Message, StringComparison.Ordinal);
-        Assert.Contains("'uDensity' is not a parameter or local of the function", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("'uDensity' is not a parameter, a local or a top-level literal MALDA const", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -7107,6 +7107,128 @@ process.stdout.write("ok\n");
     {
         var h = Math.Clamp(0.5 + 0.5 * (b - a) / k, 0, 1);
         return b * (1 - h) + a * h - k * h * (1 - h);
+    }
+
+    // G23b step 2: a host-called kernel reads top-level MALDA consts; the twin inlines the literal.
+    private const string ConstHostKernels = """
+        const K_SPHERE = 0;
+        const K_RING = 9;
+        const GLOW_R = 2.5;
+        const FLOOR_Y = -1;
+        const SHADOWS = true;
+
+        @shader()
+        function shapeRadius(kind: int, s: float) -> float {
+            if (kind == K_SPHERE) {
+                return s;
+            }
+            if (kind == K_RING && SHADOWS) {
+                return s + GLOW_R;
+            }
+            return s * 1.5 - float(FLOOR_Y);
+        }
+
+        """;
+
+    [Fact]
+    public void JsTranspiler_EmitsHostTwin_InlinesMaldaConsts()
+    {
+        var js = new Compiler.Compiler().TranspileToJavaScriptFromSource(
+            ConstHostKernels + "var source = glsl.source(\"shapeRadius\"); io.print(shapeRadius(K_RING, 1.0));");
+
+        Assert.Contains("if ((kind === 0))", js, StringComparison.Ordinal);
+        Assert.Contains("if (((kind === 9) && true))", js, StringComparison.Ordinal);
+        Assert.Contains("return (s + 2.5);", js, StringComparison.Ordinal);
+        Assert.Contains("return ((s * 1.5) - (-1));", js, StringComparison.Ordinal);
+        // The host call itself still reads the MALDA const.
+        Assert.Contains("shapeRadius(K_RING, ", js, StringComparison.Ordinal);
+        // The GLSL of the same function names the const and declares it.
+        Assert.Contains("const int K_RING = 9;", js, StringComparison.Ordinal);
+        Assert.Contains("if ((kind == K_SPHERE))", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task JsTranspiler_EmitsHostTwin_MaldaConsts_RunOnTheHost()
+    {
+        Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);
+
+        var output = await Tier0JavaScriptRunner.RunAsync(ConstHostKernels + """
+            io.print(shapeRadius(K_SPHERE, 2.0));
+            io.print(shapeRadius(K_RING, 2.0));
+            io.print(shapeRadius(4, 2.0));
+            """);
+
+        Assert.Equal(
+            new[] { "2", "4.5", "4" },
+            output.Replace("\r", string.Empty).Split('\n', StringSplitOptions.RemoveEmptyEntries));
+    }
+
+    [Fact]
+    public void JsTranspiler_EmitsHostTwin_ALocalShadowsAMaldaConst()
+    {
+        var js = new Compiler.Compiler().TranspileToJavaScriptFromSource("""
+            const SCALE = 3.0;
+
+            @shader()
+            function scaled(x: float) -> float {
+                var SCALE: float = 0.5;
+                return x * SCALE;
+            }
+
+            io.print(scaled(2.0));
+            """);
+
+        Assert.Contains("let SCALE = 0.5;", js, StringComparison.Ordinal);
+        Assert.Contains("return (x * SCALE);", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void JsTranspiler_HostCalledShaderFunction_MaldaConstTypesAreChecked()
+    {
+        var ex = Assert.ThrowsAny<Exception>(() => new Compiler.Compiler().TranspileToJavaScriptFromSource("""
+            const COUNT = 4;
+
+            @shader()
+            function scaled(x: float) -> float {
+                return x * COUNT;
+            }
+
+            io.print(scaled(2.0));
+            """));
+
+        Assert.Contains("in @shader() function 'scaled'", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("'*' mixes float and int", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("const K = 3;", "\"int K = 3\"", null)]
+    [InlineData("const K = 3;", "\"int K = 7\"", "const 'K' is 7 in a glsl.compile consts string and 3 as a MALDA const")]
+    [InlineData("const K = 2.5;", "\"float K = 2.50\"", null)]
+    [InlineData("const OTHER = 1;", "\"int K = 3\"", "const 'K' is declared only in a glsl.compile consts string")]
+    [InlineData("const K = math.pi * 2;", "\"float OTHER = 3.0\"", "'K' is not a parameter, a local or a top-level literal MALDA const")]
+    public void JsTranspiler_HostCalledShaderFunction_ConstsStringAndMaldaConstMustAgree(string maldaConst, string constsString, string? expected)
+    {
+        var source = maldaConst + """
+
+            @shader()
+            function f(x: float) -> float {
+                return x * float(K);
+            }
+
+            var fragment = glsl.compile({ consts: [CONSTS], functions: ["f"] });
+            io.print(f(2.0));
+            """.Replace("CONSTS", constsString);
+
+        if (expected == null)
+        {
+            var js = new Compiler.Compiler().TranspileToJavaScriptFromSource(source);
+            Assert.Contains("function f(x) {", js, StringComparison.Ordinal);
+            return;
+        }
+
+        var ex = Assert.ThrowsAny<Exception>(() => new Compiler.Compiler().TranspileToJavaScriptFromSource(source));
+        Assert.Contains("@shader() function 'f' is called from host code (", ex.Message, StringComparison.Ordinal);
+        Assert.Contains(expected, ex.Message, StringComparison.Ordinal);
     }
 
     private static string StripJsSourceMapComment(string js)

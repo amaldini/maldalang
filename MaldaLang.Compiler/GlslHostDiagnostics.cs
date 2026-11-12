@@ -32,7 +32,9 @@ internal static class GlslHostDiagnostics
     public static void Check(
         FunctionDeclaration function,
         IReadOnlyDictionary<string, string> shaderGlobals,
-        string? reachedThrough = null)
+        string? reachedThrough = null,
+        IReadOnlyDictionary<string, GlslLiteralConst>? maldaConsts = null,
+        IReadOnlyDictionary<string, string>? constStringValues = null)
     {
         var found = new List<(Node At, string Message)>();
         var known = new HashSet<string>(function.Parameters, StringComparer.Ordinal);
@@ -90,16 +92,32 @@ internal static class GlslHostDiagnostics
                 continue;
 
             var name = identifier.Name;
+            if (maldaConsts != null && maldaConsts.TryGetValue(name, out var constant))
+            {
+                // One declaration serves host and shader. A consts string of the same name wins in
+                // the GLSL, so it must say the same value or the two sides disagree.
+                if (constStringValues != null && constStringValues.TryGetValue(name, out var stringValue) &&
+                    !SameConstValue(stringValue, constant.GlslValue))
+                {
+                    found.Add((identifier,
+                        $"const '{name}' is {stringValue} in a glsl.compile consts string and {constant.GlslValue} as a MALDA const: the shader and the host would disagree. Remove the string."));
+                }
+
+                continue;
+            }
+
             if (name == "discard")
                 found.Add((identifier, "discard has no host meaning: there is no fragment to drop."));
             else if (name.StartsWith("gl_", StringComparison.Ordinal))
                 found.Add((identifier, $"{name} has no host meaning: it exists only while the GPU shades a vertex or a fragment."));
             else if (shaderGlobals.TryGetValue(name, out var kind) && kind == "varying")
                 found.Add((identifier, $"varying '{name}' has no host meaning: it is interpolated by the GPU for each fragment."));
+            else if (shaderGlobals.TryGetValue(name, out kind) && kind == "const")
+                found.Add((identifier, $"const '{name}' is declared only in a glsl.compile consts string, which the host cannot read: declare it as a top-level MALDA const (const {name} = ...;) and remove the string."));
             else if (shaderGlobals.TryGetValue(name, out kind))
-                found.Add((identifier, $"{kind} '{name}' has no host value: a function called from host code can only use its parameters and locals. Pass the value as a parameter."));
+                found.Add((identifier, $"{kind} '{name}' has no host value: a function called from host code can only use its parameters, its locals and top-level MALDA consts. Pass the value as a parameter."));
             else
-                found.Add((identifier, $"'{name}' is not a parameter or local of the function: a uniform, const or varying has no host value. Pass the value as a parameter."));
+                found.Add((identifier, $"'{name}' is not a parameter, a local or a top-level literal MALDA const: a uniform or varying has no host value. Pass the value as a parameter."));
         }
 
         if (found.Count == 0)
@@ -116,6 +134,16 @@ internal static class GlslHostDiagnostics
             ? "is called from host code"
             : $"is reached from host code through '{reachedThrough}'";
         return new NotSupportedException($"@shader() function '{function.Name}' {how} ({at.Line}:{at.Column}): {message}");
+    }
+
+    private static bool SameConstValue(string stringValue, string maldaValue)
+    {
+        var culture = System.Globalization.CultureInfo.InvariantCulture;
+        var style = System.Globalization.NumberStyles.Float;
+        if (double.TryParse(stringValue, style, culture, out var left) && double.TryParse(maldaValue, style, culture, out var right))
+            return left == right;
+        // An expression (`2.0 * PI`) or a constructor cannot be compared here: not reported.
+        return stringValue == maldaValue || stringValue is not ("true" or "false");
     }
 
     private static void AddTypeProblem(List<(Node, string)> found, Node at, string? hint, string what)

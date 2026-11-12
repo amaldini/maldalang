@@ -47,6 +47,7 @@ internal sealed class GlslHostEmitter
     private readonly List<GlslHostLine> _lines = new();
     private int _indent;
     private bool _writesComponents;
+    private IReadOnlyDictionary<string, GlslLiteralConst>? _consts;
 
     private GlslHostEmitter(FunctionDeclaration function, GlslFunctionTypes types)
     {
@@ -55,9 +56,13 @@ internal sealed class GlslHostEmitter
     }
 
     /// <summary>The lines of <c>function name(params) { … }</c> for an analyzed shader function.</summary>
-    public static IReadOnlyList<GlslHostLine> Emit(GlslFunctionTypes types)
+    /// <param name="types">The analyzed function.</param>
+    /// <param name="consts">The top-level MALDA consts the type pass was given as globals, by name.</param>
+    public static IReadOnlyList<GlslHostLine> Emit(
+        GlslFunctionTypes types,
+        IReadOnlyDictionary<string, GlslLiteralConst>? consts = null)
     {
-        var emitter = new GlslHostEmitter(types.Function, types);
+        var emitter = new GlslHostEmitter(types.Function, types) { _consts = consts };
         emitter.EmitFunction();
         return emitter._lines;
     }
@@ -321,7 +326,13 @@ internal sealed class GlslHostEmitter
             case LiteralExpression literal:
                 return LiteralText(literal);
             case IdentifierExpression identifier:
-                return identifier.Name;
+                if (!_types.IsGlobal(identifier))
+                    return identifier.Name;
+                // A MALDA const is inlined: the twin does not depend on where the const lives in the
+                // generated file (a main() local, a module binding, a @worker() scope).
+                if (_consts != null && _consts.TryGetValue(identifier.Name, out var constant))
+                    return constant.GlslValue.StartsWith('-') ? $"({constant.GlslValue})" : constant.GlslValue;
+                throw Error(identifier, $"'{identifier.Name}' has no host value.");
             case UnaryExpression unary:
             {
                 var operandType = _types.TypeOf(unary.Right);
