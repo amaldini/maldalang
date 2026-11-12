@@ -27,6 +27,8 @@ internal sealed class GlslHostAnalysis
     private readonly Dictionary<string, GlslFunctionTypes> _boundTypes = new(StringComparer.Ordinal);
     private readonly Dictionary<string, GlslType> _uniformTypes = new(StringComparer.Ordinal);
     private readonly List<string> _boundRoots = new();
+    private readonly Dictionary<string, IReadOnlyList<string>> _uniformReads = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _needsBinding = new(StringComparer.Ordinal);
 
     private GlslHostAnalysis()
     {
@@ -49,6 +51,16 @@ internal sealed class GlslHostAnalysis
 
     /// <summary>The uniforms declared to <c>glsl.compile</c> in the file, by name (first declaration).</summary>
     public IReadOnlyDictionary<string, GlslType> UniformTypes => _uniformTypes;
+
+    /// <summary>The uniforms a bound function reads itself (not through a callee), in source order.</summary>
+    public IReadOnlyList<string> UniformReads(string function) =>
+        _uniformReads.TryGetValue(function, out var reads) ? reads : Array.Empty<string>();
+
+    /// <summary>
+    /// True for a bound function that reads a uniform, itself or through a kernel it calls: its twin
+    /// takes the material as a hidden first parameter. The others keep the plain shape.
+    /// </summary>
+    public bool NeedsBinding(string function) => _needsBinding.Contains(function);
 
     /// <summary>The top-level literal MALDA consts of the file, by name.</summary>
     public IReadOnlyDictionary<string, GlslLiteralConst> Consts { get; private set; } =
@@ -107,9 +119,40 @@ internal sealed class GlslHostAnalysis
         Reach(plainRoots, analysis._plainTypes, shaderFunctions, constTypes, declared, analysis.Consts, bound: false);
         Reach(analysis._boundRoots, analysis._boundTypes, shaderFunctions, boundGlobals, declared, analysis.Consts, bound: true);
 
+        analysis.FindUniformReads();
         analysis.PlainFunctions = shaderFunctions.Values.Where(f => analysis._plainTypes.ContainsKey(f.Name)).ToList();
         analysis.BoundFunctions = shaderFunctions.Values.Where(f => analysis._boundTypes.ContainsKey(f.Name)).ToList();
         return analysis;
+    }
+
+    private void FindUniformReads()
+    {
+        foreach (var (name, types) in _boundTypes)
+        {
+            var reads = AstNodeWalker.Descendants(types.Function.Body)
+                .OfType<IdentifierExpression>()
+                .Where(identifier => types.IsGlobal(identifier) && !Consts.ContainsKey(identifier.Name))
+                .OrderBy(identifier => identifier.Line)
+                .ThenBy(identifier => identifier.Column)
+                .Select(identifier => identifier.Name)
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+            _uniformReads[name] = reads;
+            if (reads.Count > 0)
+                _needsBinding.Add(name);
+        }
+
+        // A caller of a function that needs the material needs it too, to pass it on.
+        var changed = true;
+        while (changed)
+        {
+            changed = false;
+            foreach (var (name, types) in _boundTypes)
+            {
+                if (!_needsBinding.Contains(name) && types.Callees.Any(_needsBinding.Contains))
+                    changed |= _needsBinding.Add(name);
+            }
+        }
     }
 
     private static void Reach(

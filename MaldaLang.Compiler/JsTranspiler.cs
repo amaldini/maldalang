@@ -104,6 +104,7 @@ public partial class JsTranspiler
             _shaderFunctions[kv.Key] = kv.Value;
         _shaderLiteralConsts.Clear();
         _shaderLiteralConsts.AddRange(other._shaderLiteralConsts);
+        _shaderHost = other._shaderHost;
         CopyLocalScopesFrom(other);
         CopyConstScopesFrom(other);
         _classDeclarations.Clear();

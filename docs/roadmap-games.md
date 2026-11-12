@@ -829,7 +829,7 @@ must produce the same JavaScript and the same GLSL as before.
   each call, so `three.setUniform` and `three.updateDataTexture` are seen
   without rebinding. A texture that is not a data texture is an error. Node
   harness with a stub `THREE`.
-- [ ] **5. Bound emit.** `glsl.host(...)` evaluates to a host function. A twin
+- [x] **5. Bound emit.** `glsl.host(...)` evaluates to a host function. A twin
   that reads uniforms (directly or through a callee) takes the binding as a
   hidden first parameter and passes it on to such callees; twins that read
   none keep the G23a shape. Codegen tests: nothing new without `glsl.host`

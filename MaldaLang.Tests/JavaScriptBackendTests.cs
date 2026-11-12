@@ -7425,6 +7425,209 @@ process.stdout.write("ok\n");
         }
     }
 
+    // G23b step 5: glsl.host("name", material) is a host function; a twin that reads uniforms takes
+    // the material as a hidden first parameter and passes it on.
+    private const string BoundHostKernels = """
+        const OP_UNION = 1;
+
+        @shader()
+        function sdSphere(q: vec3, s: float) -> float {
+            return length(q) - s;
+        }
+
+        @shader()
+        function opAt(i: int) -> vec4 {
+            return texelFetch(uProgram, ivec2(i, 0), 0);
+        }
+
+        @shader()
+        function sceneDistance(p: vec3) -> float {
+            var acc: float = uFar;
+            for (var i: int = 0; i < uOpCount; i++) {
+                var head: vec4 = opAt(i);
+                if (int(head.x) == OP_UNION && uOn) {
+                    acc = min(acc, sdSphere(p - head.yzw, uSizes[i]) * uScale.x);
+                }
+            }
+            return acc;
+        }
+
+        var fragment = glsl.compile({
+            uniforms: ["sampler2D uProgram", "int uOpCount", "float uFar", "vec3 uScale", "float uSizes[4]", "bool uOn"],
+            functions: ["sdSphere", "opAt", "sceneDistance"]
+        });
+
+        """;
+
+    // The three.js classes the runtime builds a shader material and a data texture from.
+    private const string ThreeStubForBinding = """
+        globalThis.document = {
+          body: {},
+          querySelector() { return { appendChild() {}, removeChild() {} }; },
+          createElement() { return { style: {} }; }
+        };
+        globalThis.window = {
+          addEventListener() {}, removeEventListener() {},
+          requestAnimationFrame() { return 1; }, cancelAnimationFrame() {},
+          devicePixelRatio: 1
+        };
+        function Vector2(x, y) { this.x = x; this.y = y; this.set = function (a, b) { this.x = a; this.y = b; return this; }; }
+        function Vector3(x, y, z) { this.x = x; this.y = y; this.z = z; this.set = function (a, b, c) { this.x = a; this.y = b; this.z = c; return this; }; }
+        function Vector4(x, y, z, w) { this.x = x; this.y = y; this.z = z; this.w = w; this.set = function (a, b, c, d) { this.x = a; this.y = b; this.z = c; this.w = d; return this; }; }
+        function ShaderMaterial(options) { this.uniforms = options.uniforms; }
+        function DataTexture(data, width, height) { this.isTexture = true; this.image = { data, width, height }; }
+        globalThis.THREE = {
+          Vector2, Vector3, Vector4, Color: function () {}, ShaderMaterial, DataTexture,
+          RGBAFormat: 1023, FloatType: 1015, UnsignedByteType: 1009
+        };
+
+        """;
+
+    [Fact]
+    public void JsTranspiler_GlslHost_EmitsBoundTwins_ThatTakeAndPassTheMaterial()
+    {
+        var js = new Compiler.Compiler().TranspileToJavaScriptFromSource(BoundHostKernels + """
+            var material = three.createShaderMaterial({ "vertexShader": fragment, "fragmentShader": fragment, "uniforms": {} });
+            var sceneAt = glsl.host("sceneDistance", material);
+            var sphereAt = glsl.host("sdSphere", material);
+            """);
+
+        // A twin that reads uniforms: the material first, each uniform read once at entry.
+        Assert.Contains("function __maldaBound_sceneDistance(__maldaMaterial, p) {", js, StringComparison.Ordinal);
+        Assert.Contains("const uFar = __maldaGlsl.uniform(__maldaMaterial, \"uFar\");", js, StringComparison.Ordinal);
+        Assert.Contains("const uOn = __maldaGlsl.bool(__maldaGlsl.uniform(__maldaMaterial, \"uOn\"));", js, StringComparison.Ordinal);
+        Assert.Contains("for (let i = 0; (i < uOpCount); i++)", js, StringComparison.Ordinal);
+        Assert.Contains("uSizes[i]) * uScale[0]", js, StringComparison.Ordinal);
+        // The material is passed on to a callee that reads it; a const is still inlined.
+        Assert.Contains("let head = __maldaBound_opAt(__maldaMaterial, i);", js, StringComparison.Ordinal);
+        Assert.Contains("(__maldaGlsl.int(head[0]) === 1)", js, StringComparison.Ordinal);
+        Assert.Contains("function __maldaBound_opAt(__maldaMaterial, i) {", js, StringComparison.Ordinal);
+        Assert.Contains("return __maldaGlsl.texelFetch(uProgram, __maldaGlsl.ivec2(i, 0), 0);", js, StringComparison.Ordinal);
+        // A twin that reads none keeps the plain shape, once.
+        Assert.Contains("function sdSphere(q, s) {", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("__maldaBound_sdSphere", js, StringComparison.Ordinal);
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(js, @"function sdSphere\("));
+        Assert.Contains("sdSphere(__maldaGlsl.sub(p, __maldaGlsl.swizzle(head, [1, 2, 3])), uSizes[i])", js, StringComparison.Ordinal);
+
+        Assert.Contains("let sceneAt = mlRuntime.glsl.host(__maldaBound_sceneDistance, material, true);", js, StringComparison.Ordinal);
+        Assert.Contains("let sphereAt = mlRuntime.glsl.host(sdSphere, material, false);", js, StringComparison.Ordinal);
+        Assert.Equal(new[] { "glsl", "three" }, JsRuntimeAreas.UsedBy(js).OrderBy(area => area).ToArray());
+    }
+
+    [Fact]
+    public void JsTranspiler_GlslHost_NothingNewWithoutIt()
+    {
+        var js = new Compiler.Compiler().TranspileToJavaScriptFromSource(BoundHostKernels + "io.print(sdSphere([3, 4, 0], 1.0));");
+
+        Assert.Contains("function sdSphere(q, s) {", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("__maldaBound_", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("__maldaMaterial", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("glsl.host", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("function opAt", js, StringComparison.Ordinal);
+
+        var withoutHostCalls = new Compiler.Compiler().TranspileToJavaScriptFromSource(BoundHostKernels + "io.print(fragment.length > 0);");
+        Assert.DoesNotContain("__maldaGlsl", withoutHostCalls, StringComparison.Ordinal);
+        Assert.DoesNotContain("mlRuntime.glsl", withoutHostCalls, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task JsTranspiler_GlslHost_TwoMaterials_AreIndependent_AndSeeTheCurrentValues()
+    {
+        Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);
+
+        var js = new Compiler.Compiler().TranspileToJavaScriptFromSource(BoundHostKernels + """
+            function makeMaterial(texture, count, scale) {
+                return three.createShaderMaterial({
+                    "vertexShader": fragment,
+                    "fragmentShader": fragment,
+                    "uniforms": {
+                        "uProgram": texture, "uOpCount": count, "uFar": 1000.0,
+                        "uScale": [scale, 1, 1], "uSizes": [1.0, 0.5, 0.25, 0.125], "uOn": 1
+                    }
+                });
+            }
+
+            // Two instructions: a sphere of size 1 at the origin, a sphere of size 0.5 at x = 10.
+            var programA = three.createDataTexture(4, 1, [1, 0, 0, 0,  1, 10, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0], { "type": "float" });
+            // One instruction: a sphere of size 1 at y = 5.
+            var programB = three.createDataTexture(4, 1, [1, 0, 5, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0], { "type": "float" });
+            var materialA = makeMaterial(programA, 2, 1.0);
+            var materialB = makeMaterial(programB, 1, 2.0);
+
+            var sceneA = glsl.host("sceneDistance", materialA);
+            var sceneB = glsl.host("sceneDistance", materialB);
+            var sphereAt = glsl.host("sdSphere", materialA);
+
+            io.print(sceneA([3, 0, 0]));
+            io.print(sceneA([10, 2, 0]));
+            io.print(sceneB([0, 0, 0]));
+            io.print(sphereAt([3, 4, 0], 1.0));
+
+            // The material's values now: no rebinding after a change.
+            three.setUniform(materialA, "uOpCount", 1);
+            io.print(sceneA([10, 2, 0]));
+            three.updateDataTexture(programA, [1, 0, 0, 20,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0]);
+            io.print(sceneA([0, 0, 0]));
+            three.setUniform(materialA, "uOn", 0);
+            io.print(sceneA([0, 0, 0]));
+            io.print(sceneB([0, 0, 0]));
+            """);
+
+        var output = await Tier0JavaScriptRunner.RunCompiledJavaScriptAsync(ThreeStubForBinding + js);
+
+        Assert.Equal(
+            new[] { "2", "1.5", "8", "4", "9.198039027185569", "19", "1000", "8" },
+            output.Replace("\r", string.Empty).Split('\n', StringSplitOptions.RemoveEmptyEntries));
+    }
+
+    [Fact]
+    public async Task JsTranspiler_GlslHost_ErrorsAtRunTime_NameTheProblem()
+    {
+        Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);
+
+        var js = new Compiler.Compiler().TranspileToJavaScriptFromSource(BoundHostKernels + """
+            var material = three.createShaderMaterial({ "vertexShader": fragment, "fragmentShader": fragment, "uniforms": { "uOpCount": 1 } });
+            try {
+                var bad = glsl.host("sceneDistance", 42);
+            } catch (e) {
+                io.print(e);
+            }
+            var sceneAt = glsl.host("sceneDistance", material);
+            try {
+                io.print(sceneAt([0, 0, 0]));
+            } catch (e) {
+                io.print(e);
+            }
+            """);
+
+        var output = await Tier0JavaScriptRunner.RunCompiledJavaScriptAsync(ThreeStubForBinding + js);
+
+        Assert.Contains("glsl.host expects a shader material created by three.createShaderMaterial.", output, StringComparison.Ordinal);
+        Assert.Contains("the material has no value for uniform 'uFar'", output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void JsTranspiler_GlslHost_AUniformShadowedByALocal_IsAnError()
+    {
+        var ex = Assert.ThrowsAny<Exception>(() => new Compiler.Compiler().TranspileToJavaScriptFromSource("""
+            @shader()
+            function f(p: vec3) -> float {
+                var d: float = p.x * uGain;
+                if (d > 0.0) {
+                    var uGain: float = 2.0;
+                    d = d * uGain;
+                }
+                return d;
+            }
+
+            var fragment = glsl.compile({ uniforms: ["float uGain"], functions: ["f"] });
+            var material = three.createShaderMaterial({ "vertexShader": fragment, "fragmentShader": fragment, "uniforms": {} });
+            var h = glsl.host("f", material);
+            """));
+
+        Assert.Contains("@shader() function 'f'", ex.Message, StringComparison.Ordinal);
+    }
+
     private static string StripJsSourceMapComment(string js)
     {
         var normalized = js.Replace("\r\n", "\n").TrimStart('\uFEFF');

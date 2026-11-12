@@ -873,16 +873,6 @@ public class GlslTranspilerTests : TestBase
         Assert.Contains("varying 'vDepth' has no host meaning", ex.Message, StringComparison.Ordinal);
     }
 
-    [Fact]
-    public void GlslHost_ChecksPass_ThenTheEmitSaysItIsNotThereYet()
-    {
-        var ex = Assert.ThrowsAny<Exception>(() => new Compiler.Compiler().TranspileToJavaScriptFromSource(BoundKernels + """
-            var sceneAt = glsl.host("sceneDistance", material);
-            """));
-
-        Assert.Contains("glsl.host(\"sceneDistance\", material) passed its compile-time checks", ex.Message, StringComparison.Ordinal);
-    }
-
     [Theory]
     [InlineData("vec3 uCamPos", "uCamPos", "vec3")]
     [InlineData("uniform highp sampler2D uProgram", "uProgram", "sampler2D")]

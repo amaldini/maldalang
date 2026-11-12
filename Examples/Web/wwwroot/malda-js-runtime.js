@@ -12664,8 +12664,16 @@
         return [data[at] * scale, data[at + 1] * scale, data[at + 2] * scale, data[at + 3] * scale];
       }
 
+      // glsl.host("name", material): the twin as a host function. A twin that reads uniforms takes
+      // the material first; one that reads none is called as it is.
+      function host(twin, material, bound) {
+        requireMaterial(material);
+        return bound ? (...args) => twin(material, ...args) : (...args) => twin(...args);
+      }
+
       return {
         // ---- binding (glsl.host) ----
+        host,
         material: requireMaterial,
         uniform,
         texelFetch,

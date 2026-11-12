@@ -25,6 +25,12 @@ internal sealed class GlslHostEmitter
     /// <summary>The local name the generated file binds to <c>mlRuntime.glsl</c>.</summary>
     public const string RuntimeAlias = "__maldaGlsl";
 
+    /// <summary>The hidden first parameter of a twin that reads its material.</summary>
+    public const string MaterialParameter = "__maldaMaterial";
+
+    /// <summary>The JavaScript name of the twin of a function that takes the material.</summary>
+    public static string BoundName(string function) => "__maldaBound_" + function;
+
     // All-scalar calls that are one Math function with the same result as the GLSL built-in.
     private static readonly Dictionary<string, string> NativeScalarCalls = new(StringComparer.Ordinal)
     {
@@ -48,6 +54,7 @@ internal sealed class GlslHostEmitter
     private int _indent;
     private bool _writesComponents;
     private IReadOnlyDictionary<string, GlslLiteralConst>? _consts;
+    private GlslHostAnalysis? _binding;
 
     private GlslHostEmitter(FunctionDeclaration function, GlslFunctionTypes types)
     {
@@ -58,11 +65,13 @@ internal sealed class GlslHostEmitter
     /// <summary>The lines of <c>function name(params) { … }</c> for an analyzed shader function.</summary>
     /// <param name="types">The analyzed function.</param>
     /// <param name="consts">The top-level MALDA consts the type pass was given as globals, by name.</param>
+    /// <param name="binding">For a function reached through <c>glsl.host</c>: what it reads from its material.</param>
     public static IReadOnlyList<GlslHostLine> Emit(
         GlslFunctionTypes types,
-        IReadOnlyDictionary<string, GlslLiteralConst>? consts = null)
+        IReadOnlyDictionary<string, GlslLiteralConst>? consts = null,
+        GlslHostAnalysis? binding = null)
     {
-        var emitter = new GlslHostEmitter(types.Function, types) { _consts = consts };
+        var emitter = new GlslHostEmitter(types.Function, types) { _consts = consts, _binding = binding };
         emitter.EmitFunction();
         return emitter._lines;
     }
@@ -86,8 +95,20 @@ internal sealed class GlslHostEmitter
         var written = ComponentWrittenNames();
         _writesComponents = written.Count > 0;
 
-        Line(_function, $"function {_function.Name}({string.Join(", ", _function.Parameters)}) {{");
+        var takesMaterial = _binding != null && _binding.NeedsBinding(_function.Name);
+        if (takesMaterial)
+        {
+            var parameters = new[] { MaterialParameter }.Concat(_function.Parameters);
+            Line(_function, $"function {BoundName(_function.Name)}({string.Join(", ", parameters)}) {{");
+        }
+        else
+        {
+            Line(_function, $"function {_function.Name}({string.Join(", ", _function.Parameters)}) {{");
+        }
+
         _indent++;
+        if (takesMaterial)
+            EmitUniformReads();
         // GLSL passes by value: a parameter the body writes into is copied first.
         foreach (var parameter in _types.Parameters)
         {
@@ -98,6 +119,32 @@ internal sealed class GlslHostEmitter
         EmitStatements(_function.Body.Statements);
         _indent--;
         Line(_function, "}");
+    }
+
+    /// <summary>
+    /// The uniforms the function reads, once at entry: a uniform cannot change during a call, and a
+    /// vector read allocates. Each is a copy of the material's value now.
+    /// </summary>
+    private void EmitUniformReads()
+    {
+        var declared = new HashSet<string>(_function.Parameters, StringComparer.Ordinal);
+        foreach (var local in AstNodeWalker.Descendants(_function.Body).OfType<VarDeclStatement>())
+            declared.Add(local.Name);
+
+        foreach (var name in _binding!.UniformReads(_function.Name))
+        {
+            if (declared.Contains(name))
+            {
+                throw Error(_function,
+                    $"'{name}' is both a uniform the function reads and one of its parameters or locals: rename the parameter or local.");
+            }
+
+            var read = $"{RuntimeAlias}.uniform({MaterialParameter}, \"{name}\")";
+            // A bool uniform set as 0 / 1 must compare as a boolean.
+            if (_binding.UniformTypes[name] == GlslType.Bool)
+                read = $"{RuntimeAlias}.bool({read})";
+            Line(_function, $"const {name} = {read};");
+        }
     }
 
     /// <summary>Names written through a component, swizzle or index (<c>v.x = …</c>, <c>a[i] = …</c>, <c>v.y++</c>).</summary>
@@ -332,6 +379,9 @@ internal sealed class GlslHostEmitter
                 // generated file (a main() local, a module binding, a @worker() scope).
                 if (_consts != null && _consts.TryGetValue(identifier.Name, out var constant))
                     return constant.GlslValue.StartsWith('-') ? $"({constant.GlslValue})" : constant.GlslValue;
+                // A uniform: read into a const of that name at the top of a bound twin.
+                if (_binding != null && _binding.UniformTypes.ContainsKey(identifier.Name))
+                    return identifier.Name;
                 throw Error(identifier, $"'{identifier.Name}' has no host value.");
             case UnaryExpression unary:
             {
@@ -456,7 +506,12 @@ internal sealed class GlslHostEmitter
         if (call.Callee is IdentifierExpression)
         {
             if (_types.Callees.Contains(name, StringComparer.Ordinal))
-                return $"{name}({joined})";
+            {
+                // A callee that reads its material gets it passed on.
+                return _binding != null && _binding.NeedsBinding(name)
+                    ? $"{BoundName(name)}({string.Join(", ", new[] { MaterialParameter }.Concat(args))})"
+                    : $"{name}({joined})";
+            }
 
             if (GlslType.TryParse(name, out var constructed) && constructed.Base is not (GlslBaseType.Void or GlslBaseType.Opaque))
             {
@@ -467,7 +522,7 @@ internal sealed class GlslHostEmitter
             }
         }
 
-        if (NoHostMeaning.Contains(name))
+        if (NoHostMeaning.Contains(name) && !(name == "texelFetch" && _binding != null))
             throw Error(call, $"{name}() has no host meaning: it needs a fragment or a texture bound to a material.");
 
         if (argTypes.All(type => type.IsScalar))

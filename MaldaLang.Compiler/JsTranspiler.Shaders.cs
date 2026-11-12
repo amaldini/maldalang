@@ -112,15 +112,28 @@ public partial class JsTranspiler
     /// </summary>
     private void EmitShaderHostTwins()
     {
-        var twins = _shaderHost?.PlainFunctions ?? Array.Empty<FunctionDeclaration>();
-        if (twins.Count == 0)
+        var host = _shaderHost;
+        if (host == null || (host.PlainFunctions.Count == 0 && host.BoundFunctions.Count == 0))
             return;
 
         EmitLine($"const {GlslHostEmitter.RuntimeAlias} = mlRuntime.glsl;");
-        foreach (var function in twins)
+        // One twin for each reached function, in declaration order. A bound function that reads no
+        // uniform, itself or through a callee, has the same twin as a plain one.
+        foreach (var function in _shaderFunctions.Values)
         {
+            var name = function.Name;
+            IReadOnlyList<GlslHostLine> lines;
+            if (host.BoundTypes.TryGetValue(name, out var boundTypes) && host.NeedsBinding(name))
+                lines = GlslHostEmitter.Emit(boundTypes, host.Consts, host);
+            else if (host.PlainTypes.TryGetValue(name, out var plainTypes))
+                lines = GlslHostEmitter.Emit(plainTypes, host.Consts);
+            else if (boundTypes != null)
+                lines = GlslHostEmitter.Emit(boundTypes, host.Consts, host);
+            else
+                continue;
+
             var baseIndent = _indentLevel;
-            foreach (var line in GlslHostEmitter.Emit(_shaderHost!.PlainTypes[function.Name], _shaderHost.Consts))
+            foreach (var line in lines)
             {
                 _indentLevel = baseIndent + line.Indent;
                 EmitLineWithSource(line.Source, line.Text);
@@ -133,15 +146,15 @@ public partial class JsTranspiler
 
     /// <summary>
     /// <c>glsl.host("name", material)</c>: a host function for that <c>@shader()</c> function, bound
-    /// to the material its uniforms and data textures are read from.
+    /// to the material its uniforms and data textures are read from. Each call makes its own
+    /// function, so two materials bound to the same kernel are independent.
     /// </summary>
     private string TranspileGlslHost(FunctionCallExpression functionCall)
     {
         var name = GlslHostAnalysis.HostTarget(functionCall, _shaderFunctions);
-        // The function and its callees are checked and typed (GlslHostAnalysis); the bound twins
-        // are not written yet.
-        throw new NotSupportedException(
-            $"glsl.host(\"{name}\", material) passed its compile-time checks, but the JavaScript backend does not emit bound functions yet.");
+        var needsBinding = _shaderHost != null && _shaderHost.NeedsBinding(name);
+        var twin = needsBinding ? GlslHostEmitter.BoundName(name) : EscapeIdentifier(name);
+        return $"mlRuntime.glsl.host({twin}, {TranspileExpression(functionCall.Arguments[1])}, {(needsBinding ? "true" : "false")})";
     }
 
     private string TranspileGlslCompile(FunctionCallExpression functionCall)
