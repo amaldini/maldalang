@@ -1297,23 +1297,13 @@ if (root == null) {
 
     // ---- the shield bytecode on the host: a shield, then its cuts, as the shader runs them ----
 
-    function cpuRoundBox(qx, qy, qz, bx, by, bz, r) {
-        var dx = math.abs(qx) - bx + r;
-        var dy = math.abs(qy) - by + r;
-        var dz = math.abs(qz) - bz + r;
-        var ox = math.max(dx, 0.0);
-        var oy = math.max(dy, 0.0);
-        var oz = math.max(dz, 0.0);
-        return math.sqrt(ox * ox + oy * oy + oz * oz) + math.min(math.max(dx, math.max(dy, dz)), 0.0) - r;
-    }
-
     function cpuShield(sh, x, y, z) {
         var ux = (x - sh.x) / SHIELD_SIZE;
         var uy = (y - sh.y) / SHIELD_SIZE;
         var uz = (z - sh.z) / SHIELD_SIZE;
-        var d = cpuRoundBox(ux, uy, uz, 1.0, 0.5, 0.32, 0.08);
+        var d = sdRoundBox([ux, uy, uz], [1.0, 0.5, 0.32], 0.08);
         d = math.max(d, (math.abs(ux) + uy - 1.15) * 0.7071);
-        d = math.max(d, 0.0 - cpuRoundBox(ux, uy + 0.5, uz, 0.36, 0.3, 0.6, 0.05));
+        d = math.max(d, 0.0 - sdRoundBox([ux, uy + 0.5, uz], [0.36, 0.3, 0.6], 0.05));
         d = d * SHIELD_SIZE;
         for (var c in sh.cuts) {
             var cx = x - c.x;

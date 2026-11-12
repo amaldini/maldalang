@@ -78,7 +78,8 @@ function shapeColor(kind: int) -> vec3 {
     return vec3(0.58, 0.28, 0.95);
 }
 
-// Radius of a sphere around the shape (mirrors boundRadius on the host).
+// Radius of a sphere around the shape: the SKIP test needs a distance that is never larger
+// than the shape's own. The host calls it too, when it builds the groups.
 @shader()
 function shapeRadius(kind: int, s: float) -> float {
     if (kind == 0) {
@@ -449,21 +450,6 @@ if (root == null) {
     var upY = 1.0;
     var upZ = 0.0;
 
-    // Radius of a sphere around the shape: the SKIP test needs a distance that is never larger
-    // than the shape's own.
-    function boundRadius(kind, size) {
-        if (kind == 0) {
-            return size;
-        }
-        if (kind == 1) {
-            return size * 1.74;
-        }
-        if (kind == 2) {
-            return size * 1.35;
-        }
-        return size * 1.23;
-    }
-
     // Room an object can take in the program: its own instruction, plus at most one group
     // (a tree over n shapes in leaves of two or more has fewer than n groups).
     function opsFor(obj) {
@@ -595,7 +581,7 @@ if (root == null) {
                 writeOp(opCount, OP_CUT, obj.kind, 0, blend * 0.5, obj.x, y, obj.z, obj.size);
                 opCount = opCount + 1;
             } else {
-                var r = boundRadius(obj.kind, obj.size);
+                var r = shapeRadius(obj.kind, obj.size);
                 growBox(obj.x, y, obj.z, r + blend + 0.01);
                 run.append({ obj: obj, x: obj.x, y: y, z: obj.z, r: r });
             }
@@ -629,30 +615,8 @@ if (root == null) {
     }
 
     // ---- the same bytecode on the host (reference interpreter, used for picking) ----
-
-    function cpuShape(kind, qx, qy, qz, s) {
-        if (kind == 0) {
-            return math.sqrt(qx * qx + qy * qy + qz * qz) - s;
-        }
-        if (kind == 1) {
-            var dx = math.abs(qx) - s;
-            var dy = math.abs(qy) - s;
-            var dz = math.abs(qz) - s;
-            var ox = math.max(dx, 0.0);
-            var oy = math.max(dy, 0.0);
-            var oz = math.max(dz, 0.0);
-            return math.sqrt(ox * ox + oy * oy + oz * oz) + math.min(math.max(dx, math.max(dy, dz)), 0.0);
-        }
-        if (kind == 2) {
-            var ring = math.sqrt(qx * qx + qz * qz) - s;
-            return math.sqrt(ring * ring + qy * qy) - s * 0.35;
-        }
-        var cx = math.sqrt(qx * qx + qz * qz) - s * 0.7;
-        var cy = math.abs(qy) - s;
-        var px = math.max(cx, 0.0);
-        var py = math.max(cy, 0.0);
-        return math.min(math.max(cx, cy), 0.0) + math.sqrt(px * px + py * py);
-    }
+    // sdShape and shapeRadius are the shader's own functions: the compiler also emits them as
+    // JavaScript because the host calls them here.
 
     function cpuSceneDistance(x, y, z) {
         var acc = 100000.0;
@@ -672,15 +636,15 @@ if (root == null) {
             } else {
                 var kind = int(program[base + 1]);
                 var k = math.max(program[base + 3], 0.0001);
-                var bound = centerDistance - boundRadius(kind, program[base + 7]);
+                var bound = centerDistance - shapeRadius(kind, program[base + 7]);
                 if (op == OP_UNION) {
                     if (!skipOn || bound < acc + k) {
-                        var d = cpuShape(kind, qx, qy, qz, program[base + 7]);
+                        var d = sdShape(kind, [qx, qy, qz], program[base + 7]);
                         var h = math.clamp(0.5 + 0.5 * (d - acc) / k, 0.0, 1.0);
                         acc = d + (acc - d) * h - k * h * (1.0 - h);
                     }
                 } else if (!skipOn || bound < k - acc) {
-                    var c = cpuShape(kind, qx, qy, qz, program[base + 7]);
+                    var c = sdShape(kind, [qx, qy, qz], program[base + 7]);
                     var hc = math.clamp(0.5 + 0.5 * (c + acc) / k, 0.0, 1.0);
                     acc = 0.0 - c + (acc + c) * hc + k * hc * (1.0 - hc);
                 }

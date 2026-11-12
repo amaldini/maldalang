@@ -703,8 +703,8 @@ what the player sees. MALDA owns both emitters, so one function can feed both.
 
 | Slice | Scope | Removes from the examples |
 |-------|-------|---------------------------|
-| **G23a** Pure functions | Scalar + vector params / locals / returns, control flow, local arrays, calls to other `@shader()` functions (emitted transitively), the built-in table above | `cpuShape`, `cpuRoundBox`, both `boundRadius` |
-| **G23b** Consts, uniforms, data textures | A host-called function that reads a `consts` name, a uniform, or `texelFetch`es a `sampler2D` needs values. Bind them to a material: uniforms read the material's current values, and `texelFetch` on a `three.createDataTexture` handle reads its backing array | `cpuSceneDistance`, `cpuShield` |
+| **G23a** Pure functions | Scalar + vector params / locals / returns, control flow, local arrays, calls to other `@shader()` functions (emitted transitively), the built-in table above | `cpuShape`, `cpuRoundBox`, the interpreter's `boundRadius` |
+| **G23b** Consts, uniforms, data textures | A host-called function that reads a `consts` name, a uniform, or `texelFetch`es a `sampler2D` needs values. Bind them to a material: uniforms read the material's current values, and `texelFetch` on a `three.createDataTexture` handle reads its backing array | `cpuSceneDistance`, `cpuShield`, the invaders' `boundRadius` (its `shapeRadius` reads `K_*` consts) |
 | **G23c** Examples + docs | Convert both SDF examples to the single source and delete the twins; chapter 28.10.1 gains a "Calling a kernel from the host" section | the "mirrors …" comments |
 
 G23a is useful alone and should land first. G23b needs the binding shape
@@ -775,10 +775,11 @@ settled (see open questions) before any code.
   for everything in the guardrail list; the function stays valid for GLSL-only use.
 - [x] **5. Numeric check.** Node harness runs the emitted `sdBox` / `sdTorus` /
   `sdCylinder` / smooth-union against reference values.
-- [ ] **6. Examples.** Replace `cpuShape` and `boundRadius` in
-  `three_sdf_interpreter.malda` and `cpuRoundBox` and `boundRadius` in
-  `three_sdf_invaders.malda` with calls to the shader functions; both still
-  compile with `--mode js`.
+- [x] **6. Examples.** Replace `cpuShape` and `boundRadius` in
+  `three_sdf_interpreter.malda` and `cpuRoundBox` in `three_sdf_invaders.malda`
+  with calls to the shader functions; both still compile with `--mode js`.
+  The invaders' `boundRadius` stays until G23b: its `shapeRadius` compares
+  against `K_*` names, which are `glsl.compile` consts.
 - [ ] **7. Docs.** Chapter 28.10.1 (+ `ReferenceManual/it/`),
   `docs/javascript-backend.md`, `docs/llm/malda-gotchas.md`, a
   `docs/spec/CHANGELOG.md` Unreleased row. `ReferenceManual` tests green.
