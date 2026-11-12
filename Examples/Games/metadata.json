@@ -262,6 +262,30 @@
       "documentationTitle": "Browser Track"
     },
     {
+      "name": "JS three.js SDF Invaders",
+      "description": "A 3D space-invaders game raymarched by one shader compiled once: invaders, cannon, lasers, bombs, the saucer, goo explosions and shockwaves are bytecode in a float data texture rewritten every frame, and shield hits append CUT instructions that carve glowing craters",
+      "file": "three_sdf_invaders.malda",
+      "track": "showcase",
+      "difficulty": "advanced",
+      "minutes": 15,
+      "concepts": [
+        "three.*",
+        "GLSL",
+        "@shader() local arrays",
+        "data texture",
+        "signed distance fields",
+        "game audio",
+        "JavaScript target"
+      ],
+      "prerequisites": [
+        "Games/three_sdf_interpreter.malda"
+      ],
+      "learningGoal": "Drive a whole game through an SDF interpreter shader: the host rebuilds the program and its tree of bounding spheres each frame, runs the same shield bytecode for collisions, and never recompiles the shader.",
+      "expectedOutput": "Renders a synthwave battlefield with a marching formation of raymarched invaders, destructible shields, a reflective neon floor and a HUD. Enter starts; arrows move, Space fires.",
+      "documentationPath": "/docs/roadmap-games.md",
+      "documentationTitle": "Browser games kit"
+    },
+    {
       "name": "JS three.js GPU Billiards",
       "description": "Playable GPU billiards: cue locked to the white ball, mouse-on-table aim, hold-to-charge power, zoom/orbit stop, configurable cushion/ball restitution and felt friction, and a numbered rack traced through three.createShaderMaterial uniforms",
       "file": "three_shader_billiards.malda",

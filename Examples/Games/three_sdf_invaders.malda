@@ -1,0 +1,2036 @@
+// SDF Invaders: a 3D space-invaders game raymarched by one shader that runs the scene as bytecode.
+//
+// The technique is the one in three_sdf_interpreter.malda. The shader is a small interpreter,
+// compiled once: every frame the host writes the whole battlefield as instructions into a float
+// data texture (three.updateDataTexture) and the fragment shader runs them with texelFetch.
+// Invaders, the cannon, lasers, bombs, the saucer, the goo of every explosion and the shockwave
+// rings are all instructions; nothing is a mesh, and the shader never changes.
+//
+// Instruction = three RGBA texels:
+//   UNION  (1, kind, -, k)   (x, y, z, size)   (a, b, c, glow)   smooth-union a shape
+//   CUT    (2, kind, -, k)   (x, y, z, size)   (-, -, -, heat)   smooth-subtract a shape
+//   GROUP  (3, -, jump, -)   (cx, cy, cz, r)   (-, -, -, -)      what follows, up to jump, lies in r
+//
+// The shields are destructible SDF: a hit appends a CUT sphere after that shield's UNION, so the
+// crater is carved by the same bytecode, its rim glowing while the heat in the instruction cools.
+// The host runs the same shield bytecode (cpuShield) to know whether a shot hit material or flew
+// through an old hole. Debris spheres smooth-union with a wide blend, so explosions splash as goo.
+//
+// Each ray first walks the program once, jumping past every GROUP it misses, and keeps two short
+// local lists: the shapes it passes near (marched every step) and the glowing ones (lasers, bombs,
+// hot debris, the saucer) that add a halo along the ray and light the surface it hits. The floor is
+// hit analytically and reflects the scene with a second traced ray (F toggles it).
+//
+// Antialiasing: the raymarch renders into a render target, and a second small shader pass runs
+// FXAA on it (X toggles it), then either a vignette or the CRT mode (C: curved tube, scanlines,
+// aperture grille, color fringing, bloom). When the GPU has time to spare, the
+// auto render scale also climbs above 1x, so the scene is supersampled as well.
+//
+// Controls: Enter starts, Left / Right or A / D move, Space fires, P pauses, F floor reflections,
+// X antialiasing, C CRT mode, B ray culling (shows its cost), M mutes.
+//
+// Build: malda compile Examples/Games/three_sdf_invaders.malda --mode js -o three_sdf_invaders.js
+// Play:  malda play Examples/Games/three_sdf_invaders.malda
+
+@shader()
+function vertexMain() {
+    vUv = uv;
+    gl_Position = vec4(position.xy, 0.0, 1.0);
+}
+
+// ---- distance primitives ----
+
+@shader()
+function hash3(p: vec3) -> float {
+    return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
+}
+
+@shader()
+function smin(a: float, b: float, k: float) -> float {
+    var h: float = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);
+    return mix(b, a, h) - k * h * (1.0 - h);
+}
+
+@shader()
+function sdRoundBox(q: vec3, b: vec3, r: float) -> float {
+    var d: vec3 = abs(q) - b + vec3(r, r, r);
+    return length(max(d, vec3(0.0, 0.0, 0.0))) + min(max(d.x, max(d.y, d.z)), 0.0) - r;
+}
+
+@shader()
+function sdCapsule(q: vec3, a: vec3, b: vec3, r: float) -> float {
+    var pa: vec3 = q - a;
+    var ba: vec3 = b - a;
+    var h: float = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+    return length(pa - ba * h) - r;
+}
+
+@shader()
+function sdEllipsoid(q: vec3, r: vec3) -> float {
+    var k0: float = length(q / r);
+    var k1: float = max(length(q / (r * r)), 0.0001);
+    return k0 * (k0 - 1.0) / k1;
+}
+
+// ---- the cast: every shape is built in a unit space and scaled by the instruction's size ----
+
+// Top row: a squid with a crested head and two pairs of swaying tentacles.
+@shader()
+function sdSquid(u: vec3, sway: float, col: out vec4) -> float {
+    var m: vec3 = vec3(abs(u.x), u.y, u.z);
+    var body: float = sdEllipsoid(u - vec3(0.0, 0.2, 0.0), vec3(0.62, 0.62, 0.5));
+    body = smin(body, length(u - vec3(0.0, 0.84, 0.0)) - 0.16, 0.2);
+    var outer: float = sdCapsule(m, vec3(0.32, -0.22, 0.0), vec3(0.52 + 0.2 * sway, -0.95, 0.12), 0.1);
+    var inner: float = sdCapsule(m, vec3(0.1, -0.3, 0.05), vec3(0.16 - 0.14 * sway, -1.02, 0.0), 0.085);
+    body = smin(body, min(outer, inner), 0.14);
+    var eye: float = length(m - vec3(0.24, 0.22, 0.4)) - 0.13;
+    col = vec4(0.95, 0.22, 0.78, 0.0);
+    if (eye < body) {
+        col = vec4(0.55, 1.0, 1.0, 1.0);
+    }
+    return min(body, eye);
+}
+
+// Middle rows: a crab with antennae, raised or lowered claws and short legs.
+@shader()
+function sdCrab(u: vec3, sway: float, col: out vec4) -> float {
+    var m: vec3 = vec3(abs(u.x), u.y, u.z);
+    var body: float = sdRoundBox(u, vec3(0.62, 0.36, 0.36), 0.16);
+    body = smin(body, sdCapsule(m, vec3(0.22, 0.3, 0.0), vec3(0.42, 0.72, 0.0), 0.06), 0.08);
+    var clawY: float = 0.5 * sway;
+    body = smin(body, sdCapsule(m, vec3(0.6, 0.0, 0.0), vec3(0.98, clawY, 0.05), 0.1), 0.1);
+    body = smin(body, length(m - vec3(1.0, clawY, 0.05)) - 0.16, 0.06);
+    body = smin(body, sdCapsule(m, vec3(0.3, -0.3, 0.0), vec3(0.38 - 0.12 * sway, -0.8, 0.1), 0.08), 0.08);
+    var eye: float = min(length(m - vec3(0.26, 0.06, 0.36)) - 0.11, length(m - vec3(0.44, 0.76, 0.0)) - 0.11);
+    col = vec4(0.2, 0.95, 0.5, 0.0);
+    if (eye < body) {
+        col = vec4(1.0, 0.95, 0.3, 1.0);
+    }
+    return min(body, eye);
+}
+
+// Bottom rows: an octopus with a wide dome and three legs a side.
+@shader()
+function sdOctopus(u: vec3, sway: float, col: out vec4) -> float {
+    var m: vec3 = vec3(abs(u.x), u.y, u.z);
+    var body: float = sdEllipsoid(u - vec3(0.0, 0.12, 0.0), vec3(0.85, 0.5, 0.58));
+    var legA: float = sdCapsule(m, vec3(0.2, -0.2, 0.15), vec3(0.22 + 0.15 * sway, -0.85, 0.25), 0.09);
+    var legB: float = sdCapsule(m, vec3(0.5, -0.15, 0.0), vec3(0.75 - 0.15 * sway, -0.75, 0.05), 0.09);
+    var legC: float = sdCapsule(m, vec3(0.7, 0.0, -0.1), vec3(1.05, -0.45 + 0.2 * sway, -0.15), 0.08);
+    body = smin(body, min(legA, min(legB, legC)), 0.15);
+    var eye: float = length(m - vec3(0.32, 0.16, 0.48)) - 0.13;
+    col = vec4(1.0, 0.5, 0.1, 0.0);
+    if (eye < body) {
+        col = vec4(1.0, 0.18, 0.22, 1.0);
+    }
+    return min(body, eye);
+}
+
+// The laser cannon: a tracked base, a hull, a dome and a barrel; it banks by ext.x.
+@shader()
+function sdCannon(u: vec3, col: out vec4) -> float {
+    var m: vec3 = vec3(abs(u.x), u.y, u.z);
+    var base: float = sdRoundBox(u - vec3(0.0, -0.3, 0.05), vec3(0.95, 0.16, 0.6), 0.12);
+    var hull: float = sdRoundBox(u - vec3(0.0, -0.05, 0.1), vec3(0.6, 0.16, 0.45), 0.14);
+    var d: float = smin(base, hull, 0.1);
+    d = smin(d, length(u - vec3(0.0, 0.12, 0.05)) - 0.36, 0.12);
+    d = smin(d, sdCapsule(u, vec3(0.0, 0.2, 0.0), vec3(0.0, 0.22, -0.95), 0.09), 0.08);
+    var lamp: float = min(length(m - vec3(0.72, -0.22, 0.64)) - 0.09, length(u - vec3(0.0, 0.22, -0.98)) - 0.075);
+    col = vec4(mix(vec3(0.1, 0.12, 0.22), vec3(0.15, 0.78, 1.0), smoothstep(-0.32, -0.12, u.y)), 0.0);
+    if (lamp < d) {
+        col = vec4(0.5, 1.0, 1.0, 1.0);
+    }
+    return min(d, lamp);
+}
+
+// A shield: a chamfered slab with an arch underneath. cpuShield mirrors it on the host.
+@shader()
+function sdShield(u: vec3) -> float {
+    var d: float = sdRoundBox(u, vec3(1.0, 0.5, 0.32), 0.08);
+    d = max(d, (abs(u.x) + u.y - 1.15) * 0.7071);
+    return max(d, 0.0 - sdRoundBox(u - vec3(0.0, -0.5, 0.0), vec3(0.36, 0.3, 0.6), 0.05));
+}
+
+// The mystery saucer: a disc, a glass dome and a ring of lights spinning by ext.x.
+@shader()
+function sdSaucer(u: vec3, spin: float, col: out vec4) -> float {
+    var hull: float = sdEllipsoid(u, vec3(1.1, 0.24, 1.1));
+    var dome: float = length(u - vec3(0.0, 0.15, 0.0)) - 0.45;
+    var d: float = smin(hull, dome, 0.1);
+    var sector: float = 6.2831853 / 8.0;
+    var a: float = mod(atan(u.z, u.x) + spin + sector * 0.5, sector) - sector * 0.5;
+    var rr: float = length(u.xz);
+    var lamp: float = length(vec3(rr * cos(a), u.y, rr * sin(a)) - vec3(0.95, -0.04, 0.0)) - 0.11;
+    col = vec4(0.78, 0.8, 0.88, 0.0);
+    if (dome < hull) {
+        col = vec4(1.0, 0.15, 0.35, 0.55);
+    }
+    if (lamp < d) {
+        col = vec4(1.0, 0.85, 0.3, 1.0);
+    }
+    return min(d, lamp);
+}
+
+// Distance from q (relative to the instruction's position) to a shape of size s, with its
+// color in col.rgb and how much it glows in col.a.
+@shader()
+function sdShape(kind: int, q: vec3, s: float, ext: vec4, col: out vec4) -> float {
+    if (kind == K_SPHERE) {
+        col = ext;
+        return length(q) - s;
+    }
+    if (kind == K_RING) {
+        col = ext;
+        return length(vec2(length(q.xz) - s, q.y)) - 0.05;
+    }
+    var u: vec3 = q / s;
+    var d: float = 0.0;
+    if (kind <= K_OCTOPUS) {
+        // Turn to face the cannon (ext.y), then the animation frame (ext.x) sways the limbs.
+        var cy: float = cos(ext.y);
+        var sy: float = sin(ext.y);
+        u = vec3(cy * u.x - sy * u.z, u.y, sy * u.x + cy * u.z);
+        var sway: float = ext.x * 2.0 - 1.0;
+        if (kind == K_SQUID) {
+            d = sdSquid(u, sway, col);
+        } else if (kind == K_CRAB) {
+            d = sdCrab(u, sway, col);
+        } else {
+            d = sdOctopus(u, sway, col);
+        }
+    } else if (kind == K_CANNON) {
+        var ct: float = cos(ext.x);
+        var st: float = sin(ext.x);
+        u = vec3(ct * u.x - st * u.y, st * u.x + ct * u.y, u.z);
+        d = sdCannon(u, col);
+    } else if (kind == K_SHIELD) {
+        d = sdShield(u);
+        col = vec4(0.25, 1.0, 0.42, 0.08);
+    } else if (kind == K_LASER) {
+        d = sdCapsule(u, vec3(0.0, 0.0, -0.4), vec3(0.0, 0.0, 0.4), 0.07);
+        col = vec4(0.55, 1.0, 1.0, 1.0);
+    } else if (kind == K_BOMB) {
+        // A helix: bending space breaks the distance bound, so the step is scaled down.
+        var w: vec3 = u;
+        w.x += sin(u.z * 14.0 + ext.x) * 0.09;
+        w.y += cos(u.z * 14.0 + ext.x) * 0.09;
+        d = sdCapsule(w, vec3(0.0, 0.0, -0.32), vec3(0.0, 0.0, 0.32), 0.07) * 0.6;
+        col = vec4(1.0, 0.42, 0.08, 1.0);
+    } else {
+        d = sdSaucer(u, ext.x, col);
+    }
+    // ext.z flashes a shape white (a hit, or the cannon blinking while it respawns).
+    col = vec4(mix(col.rgb, vec3(1.0, 1.0, 1.0), ext.z), max(col.a, ext.z));
+    return d * s;
+}
+
+// Radius of a sphere around the shape (mirrors boundRadius on the host).
+@shader()
+function shapeRadius(kind: int, s: float) -> float {
+    if (kind == K_SPHERE) {
+        return s;
+    }
+    if (kind == K_RING) {
+        return s + 0.06;
+    }
+    if (kind == K_LASER || kind == K_BOMB) {
+        return s * 0.5;
+    }
+    if (kind == K_SHIELD) {
+        return s * 1.17;
+    }
+    return s * 1.3;
+}
+
+// Glowing shapes that also cast a halo and light what is near them.
+@shader()
+function haloColor(kind: int, ext: vec4) -> vec3 {
+    if (kind == K_LASER) {
+        return vec3(0.3, 0.9, 1.0);
+    }
+    if (kind == K_BOMB) {
+        return vec3(1.0, 0.4, 0.08);
+    }
+    if (kind == K_SAUCER) {
+        return vec3(1.0, 0.25, 0.4);
+    }
+    return ext.xyz;
+}
+
+@shader()
+function haloSize(kind: int, s: float) -> float {
+    if (kind == K_SAUCER) {
+        return 0.35;
+    }
+    if (kind == K_SPHERE) {
+        return 0.02 + s * s * 1.5;
+    }
+    return 0.05;
+}
+
+// Runs one instruction at p: the new distance so far, with the blended color in outTint.
+@shader()
+function evalOp(at: int, p: vec3, acc: float, tint: vec4, outTint: out vec4) -> float {
+    var head: vec4 = texelFetch(uProgram, ivec2(at * 3, 0), 0);
+    var data: vec4 = texelFetch(uProgram, ivec2(at * 3 + 1, 0), 0);
+    var ext: vec4 = texelFetch(uProgram, ivec2(at * 3 + 2, 0), 0);
+    var kind: int = int(head.y + 0.5);
+    var k: float = max(head.w, 0.0001);
+    var col: vec4 = vec4(0.0, 0.0, 0.0, 0.0);
+    var d: float = sdShape(kind, p - data.xyz, data.w, ext, col);
+    if (int(head.x + 0.5) == OP_UNION) {
+        var h: float = clamp(0.5 + 0.5 * (d - acc) / k, 0.0, 1.0);
+        outTint = mix(col, tint, h);
+        return mix(d, acc, h) - k * h * (1.0 - h);
+    }
+    // A cut: the crater wall glows molten while its heat (ext.w) lasts, then turns to char.
+    var hc: float = clamp(0.5 + 0.5 * (d + acc) / k, 0.0, 1.0);
+    var crater: vec4 = mix(vec4(0.06, 0.07, 0.05, 0.0), vec4(1.0, 0.45, 0.1, 1.0), ext.w);
+    outTint = mix(crater, tint, hc);
+    return mix(0.0 - d, acc, hc) + k * hc * (1.0 - hc);
+}
+
+// The whole program at one point, for a ray that passes near more than MAX_CAND shapes (or with
+// the culling off). With the culling on, a group or shape that cannot change the result is skipped.
+@shader()
+function runProgram(p: vec3, color: out vec4) -> float {
+    var acc: float = FAR;
+    var tint: vec4 = vec4(0.5, 0.5, 0.5, 0.0);
+    var next: vec4 = tint;
+    var skip: bool = uSkip > 0.5;
+    var i: int = 0;
+    while (i < uCount) {
+        var head: vec4 = texelFetch(uProgram, ivec2(i * 3, 0), 0);
+        var data: vec4 = texelFetch(uProgram, ivec2(i * 3 + 1, 0), 0);
+        var op: int = int(head.x + 0.5);
+        if (op == OP_GROUP) {
+            if (skip && length(p - data.xyz) - data.w > acc) {
+                i = int(head.z + 0.5);
+                continue;
+            }
+        } else {
+            var k: float = max(head.w, 0.0001);
+            var bound: float = length(p - data.xyz) - shapeRadius(int(head.y + 0.5), data.w);
+            var useIt: bool = !skip || bound < acc + k;
+            if (op == OP_CUT) {
+                useIt = !skip || bound < k - acc;
+            }
+            if (useIt) {
+                acc = evalOp(i, p, acc, tint, next);
+                tint = next;
+            }
+        }
+        i++;
+    }
+    color = tint;
+    return acc;
+}
+
+// The box around every shape (from the host): rays march only inside it.
+@shader()
+function rayBox(origin: vec3, dir: vec3, tNear: out float, tFar: out float) -> bool {
+    var inv: vec3 = 1.0 / (dir + vec3(0.0000001, 0.0000001, 0.0000001));
+    var t0: vec3 = (uBoxMin - origin) * inv;
+    var t1: vec3 = (uBoxMax - origin) * inv;
+    var lo: vec3 = min(t0, t1);
+    var hi: vec3 = max(t0, t1);
+    tNear = max(max(lo.x, lo.y), lo.z);
+    tFar = min(min(hi.x, hi.y), hi.z);
+    return tFar > max(tNear, 0.0);
+}
+
+// March one ray from tStart to tEnd. A first walk over the program jumps past every group the ray
+// misses and keeps, in program order, the shapes it passes near (cand) and the glowing shapes
+// within GLOW_R of it (glows). The march then runs only the candidates. A primary ray returns 1.0
+// on a hit, with tHit, normal and albedo, plus the halo along the ray (glow) and the light the
+// glowing shapes throw on the end point (lit). A shadow ray returns how much light gets through.
+@shader()
+function traceRay(origin: vec3, dir: vec3, tStart: float, tEnd: float, shadowRay: bool, tHit: out float, normal: out vec3, albedo: out vec4, glow: out vec3, lit: out vec3) -> float {
+    var cand: int[MAX_CAND];
+    var glows: int[MAX_GLOW];
+    var count: int = 0;
+    var glowCount: int = 0;
+    var overflow: bool = uSkip < 0.5;
+    var margin: float = 0.0;
+    if (shadowRay) {
+        margin = 0.2;
+    }
+    var i: int = 0;
+    while (i < uCount) {
+        var head: vec4 = texelFetch(uProgram, ivec2(i * 3, 0), 0);
+        var data: vec4 = texelFetch(uProgram, ivec2(i * 3 + 1, 0), 0);
+        var op: int = int(head.x + 0.5);
+        var along: float = clamp(dot(data.xyz - origin, dir), tStart, tEnd);
+        var miss: float = length(origin + dir * along - data.xyz);
+        if (op == OP_GROUP) {
+            if (miss > data.w + margin) {
+                i = int(head.z + 0.5);
+                continue;
+            }
+        } else {
+            var kind: int = int(head.y + 0.5);
+            if (!overflow && miss <= shapeRadius(kind, data.w) + max(head.w, 0.0001) + margin) {
+                if (count < MAX_CAND) {
+                    cand[count] = i;
+                    count++;
+                } else {
+                    overflow = true;
+                }
+            }
+            if (!shadowRay && op == OP_UNION && kind != K_RING && glowCount < MAX_GLOW && miss < GLOW_R) {
+                if (texelFetch(uProgram, ivec2(i * 3 + 2, 0), 0).w > 0.0) {
+                    glows[glowCount] = i;
+                    glowCount++;
+                }
+            }
+        }
+        i++;
+    }
+    tHit = tEnd;
+    normal = vec3(0.0, 1.0, 0.0);
+    albedo = vec4(0.5, 0.5, 0.5, 0.0);
+    glow = vec3(0.0, 0.0, 0.0);
+    lit = vec3(0.0, 0.0, 0.0);
+
+    // March. After a hit, four more samples around the hit point give the normal.
+    var light: float = 1.0;
+    var hit: bool = false;
+    if (count > 0 || overflow) {
+        var e: vec2 = vec2(0.001, -0.001);
+        var t: float = tStart;
+        var normalSample: int = 0;
+        var grad: vec3 = vec3(0.0, 0.0, 0.0);
+        for (var step: int = 0; step < 120; step++) {
+            var offset: vec3 = vec3(0.0, 0.0, 0.0);
+            if (hit) {
+                if (normalSample == 0) {
+                    offset = e.xyy;
+                } else if (normalSample == 1) {
+                    offset = e.yyx;
+                } else if (normalSample == 2) {
+                    offset = e.yxy;
+                } else {
+                    offset = e.xxx;
+                }
+            } else if (t > tEnd || (shadowRay && step >= 40)) {
+                break;
+            }
+            var p: vec3 = origin + dir * t + offset;
+            var acc: float = FAR;
+            var tint: vec4 = vec4(0.5, 0.5, 0.5, 0.0);
+            var next: vec4 = tint;
+            if (overflow) {
+                acc = runProgram(p, tint);
+            } else {
+                for (var c: int = 0; c < MAX_CAND; c++) {
+                    if (c >= count) {
+                        break;
+                    }
+                    acc = evalOp(cand[c], p, acc, tint, next);
+                    tint = next;
+                }
+            }
+            if (hit) {
+                grad += offset * acc;
+                normalSample++;
+                if (normalSample == 4) {
+                    break;
+                }
+            } else if (shadowRay) {
+                light = min(light, 14.0 * acc / max(t, 0.05));
+                if (light < 0.01) {
+                    break;
+                }
+                t += clamp(acc, 0.03, 0.6);
+            } else if (acc < 0.0006 + 0.0008 * t) {
+                hit = true;
+                tHit = t;
+                albedo = tint;
+            } else {
+                t += acc;
+            }
+        }
+        if (hit) {
+            normal = normalize(grad);
+        }
+    }
+    if (shadowRay) {
+        return clamp(light, 0.0, 1.0);
+    }
+
+    // Halo along the ray up to the hit, and light on the end point (a hit or the floor).
+    var endP: vec3 = origin + dir * tHit;
+    for (var g: int = 0; g < MAX_GLOW; g++) {
+        if (g >= glowCount) {
+            break;
+        }
+        var head2: vec4 = texelFetch(uProgram, ivec2(glows[g] * 3, 0), 0);
+        var data2: vec4 = texelFetch(uProgram, ivec2(glows[g] * 3 + 1, 0), 0);
+        var ext2: vec4 = texelFetch(uProgram, ivec2(glows[g] * 3 + 2, 0), 0);
+        var kind2: int = int(head2.y + 0.5);
+        var gc: vec3 = haloColor(kind2, ext2) * ext2.w;
+        var s: float = clamp(dot(data2.xyz - origin, dir), 0.0, tHit);
+        var dm: float = length(origin + dir * s - data2.xyz);
+        var size: float = haloSize(kind2, data2.w);
+        glow += gc * (size / (dm * dm + size)) * clamp(1.0 - dm / GLOW_R, 0.0, 1.0) * 0.45;
+        var toL: vec3 = data2.xyz - endP;
+        var dl: float = max(length(toL), 0.001);
+        lit += gc * max(dot(normal, toL / dl), 0.0) / (1.0 + dl * dl * 2.5) * clamp(1.0 - dl / GLOW_R, 0.0, 1.0);
+    }
+    if (hit) {
+        return 1.0;
+    }
+    return 0.0;
+}
+
+@shader()
+function softShadow(origin: vec3, dir: vec3) -> float {
+    var tNear: float = 0.0;
+    var tFar: float = 0.0;
+    if (!rayBox(origin, dir, tNear, tFar)) {
+        return 1.0;
+    }
+    var tHit: float = 0.0;
+    var normal: vec3 = vec3(0.0, 0.0, 0.0);
+    var albedo: vec4 = vec4(0.0, 0.0, 0.0, 0.0);
+    var glow: vec3 = vec3(0.0, 0.0, 0.0);
+    var lit: vec3 = vec3(0.0, 0.0, 0.0);
+    return traceRay(origin, dir, max(tNear, 0.03), tFar, true, tHit, normal, albedo, glow, lit);
+}
+
+// Key light from the upper left, a magenta rim from the sun behind the invaders, a violet bounce
+// from the floor, and the glow of the shape itself (albedo.a).
+@shader()
+function shade(p: vec3, n: vec3, albedo: vec4, dir: vec3, shadows: bool) -> vec3 {
+    var lightDir: vec3 = normalize(vec3(-0.45, 0.85, 0.3));
+    var key: float = max(dot(n, lightDir), 0.0);
+    if (shadows && key > 0.0) {
+        key *= softShadow(p + n * 0.004, lightDir);
+    }
+    var sunDir: vec3 = normalize(vec3(0.0, 0.25, -1.0));
+    var back: float = max(dot(n, sunDir), 0.0);
+    var rim: float = pow(clamp(1.0 + dot(n, dir), 0.0, 1.0), 3.0);
+    var bounce: float = clamp(0.0 - n.y, 0.0, 1.0);
+    var ambient: float = 0.2 + 0.1 * n.y;
+    var spec: float = pow(max(dot(reflect(dir, n), lightDir), 0.0), 40.0) * key;
+    var c: vec3 = albedo.rgb * (vec3(0.55, 0.5, 0.95) * ambient + vec3(1.0, 0.95, 0.9) * key * 1.15 + vec3(1.0, 0.35, 0.6) * back * 0.5 + vec3(0.8, 0.2, 0.9) * bounce * 0.35);
+    c += vec3(0.55, 0.55, 0.55) * spec + (albedo.rgb * 0.7 + vec3(0.06, 0.02, 0.05)) * vec3(1.0, 0.45, 0.85) * rim;
+    return mix(c, albedo.rgb * 1.9, clamp(albedo.a, 0.0, 1.0));
+}
+
+// Deep space: a violet gradient, a faint nebula, twinkling stars and a striped sunset sun.
+@shader()
+function skyColor(dir: vec3) -> vec3 {
+    var y: float = dir.y;
+    var c: vec3 = mix(vec3(0.11, 0.015, 0.12), vec3(0.004, 0.003, 0.02), clamp(y * 5.0, 0.0, 1.0));
+    var neb: float = sin(dir.x * 5.0 + sin(dir.y * 7.0)) * sin(dir.y * 9.0 + dir.x * 3.0 + 1.3);
+    c += vec3(0.07, 0.015, 0.11) * clamp(neb, 0.0, 1.0) * clamp(y * 3.0, 0.0, 1.0);
+    var sp: vec3 = dir * 260.0;
+    var h: float = hash3(floor(sp));
+    if (h > 0.985) {
+        var twinkle: float = 0.6 + 0.4 * sin(uTime * (2.0 + h * 9.0) + h * 70.0);
+        var dot0: float = length(fract(sp) - vec3(0.5, 0.5, 0.5));
+        c += vec3(0.8, 0.85, 1.0) * smoothstep(0.45, 0.0, dot0) * twinkle * clamp(y * 6.0, 0.0, 1.0) * (h - 0.985) / 0.015;
+    }
+    var sunDir: vec3 = normalize(vec3(0.0, 0.07, -1.0));
+    var sd: float = length(dir - sunDir);
+    var sunR: float = 0.24;
+    if (sd < sunR) {
+        var v: float = (dir.y - sunDir.y) / sunR;
+        var sunC: vec3 = mix(vec3(1.0, 0.12, 0.55), vec3(1.0, 0.85, 0.25), clamp(v * 0.55 + 0.55, 0.0, 1.0));
+        var band: float = 1.0;
+        if (v < 0.3) {
+            var stripe: float = fract(v * 7.0 + uTime * 0.12);
+            if (stripe < 0.08 + (0.3 - v) * 0.3) {
+                band = 0.0;
+            }
+        }
+        c = mix(c, sunC * 1.2, band * smoothstep(sunR, sunR - 0.01, sd));
+    }
+    c += vec3(1.0, 0.25, 0.55) * exp(0.0 - sd * 5.0) * 0.18;
+    c += vec3(0.9, 0.2, 0.6) * exp(0.0 - abs(y) * 22.0) * 0.22;
+    return c;
+}
+
+@shader()
+function fragmentMain() {
+    var ndc: vec2 = vUv * 2.0 - 1.0;
+    var dir: vec3 = normalize(
+        uCamForward
+        + uCamRight * (ndc.x * uAspect * uTanHalf)
+        + uCamUp * (ndc.y * uTanHalf)
+    );
+    var up: vec3 = vec3(0.0, 1.0, 0.0);
+    var tFloor: float = FAR;
+    if (dir.y < -0.0001) {
+        tFloor = (0.0 - uCamPos.y) / dir.y;
+    }
+    // The neon grid, derived at the top level so fwidth sees every pixel.
+    var fq: vec3 = uCamPos + dir * min(tFloor, 400.0);
+    var gridUv: vec2 = fq.xz / 1.25 + vec2(0.5, 0.5);
+    var gridW: vec2 = max(fwidth(gridUv), vec2(0.0001, 0.0001));
+    var gridD: vec2 = abs(fract(gridUv) - vec2(0.5, 0.5)) / gridW;
+    var gridLine: float = 1.0 - min(min(gridD.x, gridD.y), 1.0);
+
+    var sky: vec3 = skyColor(dir);
+    var t: float = 0.0;
+    var hit: bool = false;
+    var normal: vec3 = up;
+    var albedo: vec4 = vec4(0.0, 0.0, 0.0, 0.0);
+    var glow: vec3 = vec3(0.0, 0.0, 0.0);
+    var lit: vec3 = vec3(0.0, 0.0, 0.0);
+    var tNear: float = 0.0;
+    var tFar: float = 0.0;
+    if (rayBox(uCamPos, dir, tNear, tFar)) {
+        hit = traceRay(uCamPos, dir, max(tNear, 0.0), min(tFar, tFloor), false, t, normal, albedo, glow, lit) > 0.5;
+    }
+    var color: vec3 = sky;
+    if (hit) {
+        color = shade(uCamPos + dir * t, normal, albedo, dir, true) + albedo.rgb * lit * (1.0 - albedo.a);
+    } else if (tFloor < FAR) {
+        t = tFloor;
+        var floorColor: vec3 = shade(fq, up, vec4(0.02, 0.015, 0.04, 0.0), dir, true);
+        floorColor += lit * 0.55;
+        if (uReflect > 0.5) {
+            // A second ray off the glossy floor: the scene and the sky mirrored.
+            var rdir: vec3 = reflect(dir, up);
+            var rc: vec3 = skyColor(rdir);
+            var rNear: float = 0.0;
+            var rFar: float = 0.0;
+            if (rayBox(fq, rdir, rNear, rFar)) {
+                var rt: float = 0.0;
+                var rn: vec3 = up;
+                var ra: vec4 = vec4(0.0, 0.0, 0.0, 0.0);
+                var rg: vec3 = vec3(0.0, 0.0, 0.0);
+                var rl: vec3 = vec3(0.0, 0.0, 0.0);
+                if (traceRay(fq, rdir, max(rNear, 0.0), rFar, false, rt, rn, ra, rg, rl) > 0.5) {
+                    rc = shade(fq + rdir * rt, rn, ra, rdir, false) + ra.rgb * rl * (1.0 - ra.a);
+                }
+                rc += rg;
+            }
+            var fresnel: float = 0.12 + 0.4 * pow(1.0 - max(0.0 - dir.y, 0.0), 5.0);
+            floorColor = mix(floorColor, rc, fresnel);
+        }
+        var lineColor: vec3 = mix(vec3(1.0, 0.18, 0.72), vec3(0.2, 0.8, 1.0), clamp((fq.z + 16.0) / 22.0, 0.0, 1.0));
+        floorColor += lineColor * gridLine * (0.45 + uPulse * 0.9) * exp(0.0 - t * 0.03);
+        color = floorColor;
+    } else {
+        t = 0.0;
+    }
+    color += glow;
+    color = mix(color, vec3(0.15, 0.03, 0.16), clamp((t - 34.0) / 70.0, 0.0, 1.0));
+    color += uFlashColor * uFlash;
+
+    // Filmic roll-off, vignette and faint scanlines.
+    color = vec3(1.0, 1.0, 1.0) - exp(color * -1.15);
+    color = max(mix(vec3(dot(color, vec3(0.3, 0.55, 0.15))), color, 1.3), vec3(0.0, 0.0, 0.0));
+    gl_FragColor = vec4(sqrt(color), 1.0);
+}
+
+// ---- the second pass: FXAA over the rendered frame, then vignette and scanlines ----
+
+@shader()
+function lumaOf(c: vec3) -> float {
+    return dot(c, vec3(0.299, 0.587, 0.114));
+}
+
+// FXAA: find the edge direction from the luma of the four diagonal neighbours, blur along it, and
+// keep the wider blur only when it stays inside the local luma range (it did not cross the edge).
+@shader()
+function fxaa(uv: vec2, texel: vec2) -> vec3 {
+    var rgbM: vec3 = textureLod(uScene, uv, 0.0).rgb;
+    var lumaNW: float = lumaOf(textureLod(uScene, uv + vec2(-1.0, -1.0) * texel, 0.0).rgb);
+    var lumaNE: float = lumaOf(textureLod(uScene, uv + vec2(1.0, -1.0) * texel, 0.0).rgb);
+    var lumaSW: float = lumaOf(textureLod(uScene, uv + vec2(-1.0, 1.0) * texel, 0.0).rgb);
+    var lumaSE: float = lumaOf(textureLod(uScene, uv + vec2(1.0, 1.0) * texel, 0.0).rgb);
+    var lumaM: float = lumaOf(rgbM);
+    var lumaMin: float = min(lumaM, min(min(lumaNW, lumaNE), min(lumaSW, lumaSE)));
+    var lumaMax: float = max(lumaM, max(max(lumaNW, lumaNE), max(lumaSW, lumaSE)));
+    if (lumaMax - lumaMin < max(0.03, lumaMax * 0.1)) {
+        return rgbM;
+    }
+    var dir: vec2 = vec2((lumaSW + lumaSE) - (lumaNW + lumaNE), (lumaNW + lumaSW) - (lumaNE + lumaSE));
+    var reduce: float = max((lumaNW + lumaNE + lumaSW + lumaSE) * 0.03125, 0.0078125);
+    var rcpDirMin: float = 1.0 / (min(abs(dir.x), abs(dir.y)) + reduce);
+    dir = clamp(dir * rcpDirMin, vec2(-8.0, -8.0), vec2(8.0, 8.0)) * texel;
+    var rgbA: vec3 = 0.5 * (textureLod(uScene, uv + dir * (1.0 / 3.0 - 0.5), 0.0).rgb + textureLod(uScene, uv + dir * (2.0 / 3.0 - 0.5), 0.0).rgb);
+    var rgbB: vec3 = rgbA * 0.5 + 0.25 * (textureLod(uScene, uv - dir * 0.5, 0.0).rgb + textureLod(uScene, uv + dir * 0.5, 0.0).rgb);
+    var lumaB: float = lumaOf(rgbB);
+    if (lumaB < lumaMin || lumaB > lumaMax) {
+        return rgbA;
+    }
+    return rgbB;
+}
+
+@shader()
+function sceneAt(uv: vec2) -> vec3 {
+    var color: vec3 = textureLod(uScene, uv, 0.0).rgb;
+    if (uFxaa > 0.5) {
+        color = fxaa(uv, 1.0 / uResolution);
+    }
+    return color;
+}
+
+// CRT mode: a curved tube, red and blue split toward the edges, a soft phosphor bloom, scanlines
+// and an aperture grille on screen pixels, and a faint flicker. When the render scale makes the
+// frame coarser than the screen, the lines follow the frame's pixels instead, or they would alias.
+@shader()
+function crtColor(uv: vec2) -> vec3 {
+    var cc: vec2 = uv - vec2(0.5, 0.5);
+    var warped: vec2 = uv + cc * dot(cc, cc) * 0.16;
+    if (warped.x < 0.0 || warped.x > 1.0 || warped.y < 0.0 || warped.y > 1.0) {
+        return vec3(0.0, 0.0, 0.0);
+    }
+    var fringe: vec2 = (warped - vec2(0.5, 0.5)) * 0.006;
+    var color: vec3 = vec3(sceneAt(warped + fringe).r, sceneAt(warped).g, sceneAt(warped - fringe).b);
+
+    // Bloom: eight taps on a ring, only what is brighter than the threshold spills over.
+    var px: vec2 = 2.0 / uResolution;
+    var halo: vec3 = vec3(0.0, 0.0, 0.0);
+    for (var i: int = 0; i < 8; i++) {
+        var a: float = float(i) * 0.785398;
+        halo += textureLod(uScene, warped + vec2(cos(a), sin(a)) * px, 0.0).rgb;
+    }
+    color += max(halo / 8.0 - vec3(0.45, 0.45, 0.45), vec3(0.0, 0.0, 0.0)) * 0.9;
+
+    var screen: vec2 = warped * min(uScreen, uResolution);
+    var line: float = 0.72 + 0.28 * sin(screen.y * 3.14159);
+    var column: float = mod(floor(screen.x), 3.0);
+    var grille: vec3 = vec3(0.82, 0.82, 0.82);
+    if (column < 1.0) {
+        grille.r = 1.0;
+    } else if (column < 2.0) {
+        grille.g = 1.0;
+    } else {
+        grille.b = 1.0;
+    }
+    color *= line * grille * 1.3 * (1.0 + 0.012 * sin(uTime * 110.0));
+
+    // Darker toward the rounded corners of the tube.
+    var edge: vec2 = abs(warped - vec2(0.5, 0.5)) * 2.0;
+    var corner: float = length(max(edge - vec2(0.9, 0.86), vec2(0.0, 0.0))) / 0.1;
+    color *= clamp(1.0 - corner, 0.0, 1.0) * (1.0 - dot(cc, cc) * 1.1);
+    return color;
+}
+
+@shader()
+function postMain() {
+    var color: vec3 = vec3(0.0, 0.0, 0.0);
+    if (uCrt > 0.5) {
+        color = crtColor(vUv);
+    } else {
+        color = sceneAt(vUv);
+        var v2: vec2 = vUv - vec2(0.5, 0.5);
+        color *= 1.0 - dot(v2, v2) * 0.7;
+    }
+    gl_FragColor = vec4(color, 1.0);
+}
+
+var vertexShader = glsl.compile({
+    varyings: ["vec2 vUv"],
+    functions: ["vertexMain"],
+    main: "vertexMain"
+});
+
+var fragmentShader = glsl.compile({
+    varyings: ["vec2 vUv"],
+    uniforms: [
+        "sampler2D uProgram",
+        "int uCount",
+        "float uSkip",
+        "float uReflect",
+        "vec3 uBoxMin",
+        "vec3 uBoxMax",
+        "vec3 uCamPos",
+        "vec3 uCamForward",
+        "vec3 uCamRight",
+        "vec3 uCamUp",
+        "float uTanHalf",
+        "float uAspect",
+        "float uTime",
+        "float uPulse",
+        "float uFlash",
+        "vec3 uFlashColor"
+    ],
+    consts: [
+        "int OP_UNION = 1",
+        "int OP_CUT = 2",
+        "int OP_GROUP = 3",
+        "int K_SPHERE = 0",
+        "int K_SQUID = 1",
+        "int K_CRAB = 2",
+        "int K_OCTOPUS = 3",
+        "int K_CANNON = 4",
+        "int K_SHIELD = 5",
+        "int K_LASER = 6",
+        "int K_BOMB = 7",
+        "int K_SAUCER = 8",
+        "int K_RING = 9",
+        "int MAX_CAND = 24",
+        "int MAX_GLOW = 6",
+        "float GLOW_R = 2.2",
+        "float FAR = 100000.0"
+    ],
+    functions: [
+        "hash3",
+        "smin",
+        "sdRoundBox",
+        "sdCapsule",
+        "sdEllipsoid",
+        "sdSquid",
+        "sdCrab",
+        "sdOctopus",
+        "sdCannon",
+        "sdShield",
+        "sdSaucer",
+        "sdShape",
+        "shapeRadius",
+        "haloColor",
+        "haloSize",
+        "evalOp",
+        "runProgram",
+        "rayBox",
+        "traceRay",
+        "softShadow",
+        "shade",
+        "skyColor",
+        "fragmentMain"
+    ],
+    main: "fragmentMain"
+});
+
+var postShader = glsl.compile({
+    varyings: ["vec2 vUv"],
+    uniforms: ["sampler2D uScene", "vec2 uResolution", "vec2 uScreen", "float uFxaa", "float uCrt", "float uTime"],
+    functions: ["lumaOf", "fxaa", "sceneAt", "crtColor", "postMain"],
+    main: "postMain"
+});
+
+const OP_UNION = 1;
+const OP_CUT = 2;
+const OP_GROUP = 3;
+const K_SPHERE = 0;
+const K_SQUID = 1;
+const K_CRAB = 2;
+const K_OCTOPUS = 3;
+const K_CANNON = 4;
+const K_SHIELD = 5;
+const K_LASER = 6;
+const K_BOMB = 7;
+const K_SAUCER = 8;
+const K_RING = 9;
+const GLOW_R = 2.2;
+// A group with this many shapes or fewer lists them; a bigger one splits in two.
+const GROUP_LEAF = 4;
+const MAX_OPS = 640;
+
+const COLS = 11;
+const ROWS = 5;
+const SPACING = 1.25;
+const ROW_SPACING = 1.5;
+const FIELD_HALF = 8.6;
+const INVADER_SIZE = 0.42;
+const INVADER_Y = 0.85;
+const CANNON_SIZE = 0.55;
+const CANNON_Y = 0.45;
+const CANNON_Z = 3.2;
+const SHIELD_SIZE = 1.0;
+const SHIELD_Z = 0.4;
+const SHIELD_Y = 0.5;
+const CUT_K = 0.06;
+const MAX_CUTS = 44;
+const MAX_DEBRIS = 110;
+const LASER_Y = 0.6;
+const LASER_SPEED = 22.0;
+const ROW_KINDS = [K_SQUID, K_CRAB, K_CRAB, K_OCTOPUS, K_OCTOPUS];
+const ROW_POINTS = [30, 20, 20, 10, 10];
+const BASS_NOTES = [98, 87, 78, 73];
+const SAUCER_POINTS = [50, 100, 150, 300];
+
+var root = dom.query("#app");
+
+if (root == null) {
+    io.print("No #app container found.");
+} else {
+    dom.clear(root);
+
+    var width = 960;
+    var height = 540;
+    var aspect = width / height;
+    var tanHalf = math.tan(math.degToRad(24));
+
+    var css = "#app{background:#07040f;color:#f3e8ff;font-family:Consolas,'Courier New',monospace}";
+    css = css + "#app h1{margin:6px 0 2px;font-size:22px;letter-spacing:.3em;color:#ff4fd8;text-shadow:0 0 12px #ff4fd8}";
+    css = css + "#app>p{margin:2px 0 8px;color:#b9a7d6;font-size:13px}";
+    css = css + "#si-stage{position:relative;width:960px;height:540px;max-width:100%}";
+    css = css + "#si-stage canvas{display:block;border-radius:6px;box-shadow:0 0 40px rgba(255,60,200,.25)}";
+    css = css + "#si-hud{position:absolute;inset:0;pointer-events:none;text-transform:uppercase;letter-spacing:.12em}";
+    css = css + "#si-hud .bar{position:absolute;top:10px;left:16px;right:16px;display:flex;justify-content:space-between;font-size:15px;font-weight:700;text-shadow:0 0 8px #000,0 0 10px #ff3cc8}";
+    css = css + "#si-hud .lbl{color:#ff8ae6;font-size:11px;display:block}";
+    css = css + "#si-hud .num{color:#fff;font-size:20px}";
+    css = css + "#si-hud .lives{color:#5ff3ff;font-size:18px;text-shadow:0 0 10px #5ff3ff}";
+    css = css + "#si-hud .center{position:absolute;left:0;right:0;top:34%;text-align:center}";
+    css = css + "#si-hud .big{font-size:54px;font-weight:900;color:#fff;letter-spacing:.25em;text-shadow:0 0 18px #ff3cc8,0 0 40px #ff3cc8}";
+    css = css + "#si-hud .sub{margin-top:12px;font-size:15px;color:#7ff6ff;text-shadow:0 0 10px #22d3ee}";
+    css = css + "#si-hud .table{margin-top:16px;font-size:13px;color:#f0d0ff;line-height:1.7}";
+    css = css + "#si-hud .blink{animation:siblink 1s steps(2,start) infinite}";
+    css = css + "@keyframes siblink{to{visibility:hidden}}";
+    css = css + "#si-hud .toast{position:absolute;left:0;right:0;top:20%;text-align:center;font-size:26px;font-weight:900;color:#ffd84f;text-shadow:0 0 14px #ff9b2f}";
+    css = css + "#si-hud .rapid{position:absolute;left:16px;top:58px;font-size:12px;color:#ffd84f;text-shadow:0 0 8px #ff9b2f}";
+    css = css + "#si-hud .rapid i{display:block;height:4px;margin-top:4px;background:#ffd84f;box-shadow:0 0 8px #ffd84f}";
+    css = css + "#si-hud .stats{position:absolute;left:16px;bottom:10px;font-size:11px;color:#9d8bc0;letter-spacing:.05em;text-transform:none}";
+    var style = dom.create("style");
+    dom.setText(style, css);
+    dom.append(root, style);
+
+    var heading = dom.create("h1");
+    dom.setText(heading, "SDF INVADERS");
+    dom.append(root, heading);
+
+    var hint = dom.create("p");
+    dom.setText(hint, "Every invader, shot, shield crater and splash of goo is an instruction in a data texture that one raymarching shader interprets. Enter starts. Left / Right or A / D move, Space fires, P pauses, F floor reflections, X antialiasing, C CRT mode, B ray culling, M mute.");
+    dom.append(root, hint);
+
+    var stage = dom.create("div");
+    stage.id = "si-stage";
+    dom.append(root, stage);
+
+    // ---- the program the shader runs: MAX_OPS instructions, 12 floats each ----
+
+    var program = buf.float32(MAX_OPS * 12);
+    var opCount = 0;
+    var boxMin = [1, 1, 1];
+    var boxMax = [-1, -1, -1];
+    var uploads = 0;
+
+    // Radius of a sphere around the shape (mirrors shapeRadius in the shader).
+    function boundRadius(kind, size) {
+        if (kind == K_SPHERE) {
+            return size;
+        }
+        if (kind == K_RING) {
+            return size + 0.06;
+        }
+        if (kind == K_LASER || kind == K_BOMB) {
+            return size * 0.5;
+        }
+        if (kind == K_SHIELD) {
+            return size * 1.17;
+        }
+        return size * 1.3;
+    }
+
+    function writeOp(index, op, kind, jump, k, x, y, z, s, e0, e1, e2, e3) {
+        var base = index * 12;
+        program[base] = op;
+        program[base + 1] = kind;
+        program[base + 2] = jump;
+        program[base + 3] = k;
+        program[base + 4] = x;
+        program[base + 5] = y;
+        program[base + 6] = z;
+        program[base + 7] = s;
+        program[base + 8] = e0;
+        program[base + 9] = e1;
+        program[base + 10] = e2;
+        program[base + 11] = e3;
+    }
+
+    function growBox(x, y, z, r) {
+        if (boxMin[0] > boxMax[0]) {
+            boxMin = [x - r, y - r, z - r];
+            boxMax = [x + r, y + r, z + r];
+            return;
+        }
+        boxMin = [math.min(boxMin[0], x - r), math.min(boxMin[1], y - r), math.min(boxMin[2], z - r)];
+        boxMax = [math.max(boxMax[0], x + r), math.max(boxMax[1], y + r), math.max(boxMax[2], z + r)];
+    }
+
+    // A shape for the group tree. r is how far from its center a ray must stay to ignore it: the
+    // bound plus the blend, plus GLOW_R when it casts a halo.
+    function item(kind, k, x, y, z, s, e0, e1, e2, e3) {
+        var r = boundRadius(kind, s) + k;
+        if (e3 > 0 && kind != K_RING) {
+            r = math.max(r, GLOW_R);
+        }
+        return { kind: kind, k: k, x: x, y: y, z: z, s: s, e0: e0, e1: e1, e2: e2, e3: e3, r: r };
+    }
+
+    function sphereAround(items) {
+        var minX = items[0].x;
+        var maxX = items[0].x;
+        var minY = items[0].y;
+        var maxY = items[0].y;
+        var minZ = items[0].z;
+        var maxZ = items[0].z;
+        for (var it in items) {
+            minX = math.min(minX, it.x - it.r);
+            maxX = math.max(maxX, it.x + it.r);
+            minY = math.min(minY, it.y - it.r);
+            maxY = math.max(maxY, it.y + it.r);
+            minZ = math.min(minZ, it.z - it.r);
+            maxZ = math.max(maxZ, it.z + it.r);
+        }
+        var cx = (minX + maxX) * 0.5;
+        var cy = (minY + maxY) * 0.5;
+        var cz = (minZ + maxZ) * 0.5;
+        var radius = 0.0;
+        for (var it in items) {
+            var dx = it.x - cx;
+            var dy = it.y - cy;
+            var dz = it.z - cz;
+            radius = math.max(radius, math.sqrt(dx * dx + dy * dy + dz * dz) + it.r);
+        }
+        return { x: cx, y: cy, z: cz, r: radius, alongX: maxX - minX >= maxZ - minZ };
+    }
+
+    // Writes a tree of GROUPs over `items` at opCount: a group with the sphere around its members
+    // and a jump past them, then either its shapes or its two halves, split at the middle.
+    function emitGroup(items) {
+        if (items.length == 0) {
+            return;
+        }
+        var sphere = sphereAround(items);
+        var groupAt = opCount;
+        opCount = opCount + 1;
+        if (items.length <= GROUP_LEAF) {
+            for (var it in items) {
+                writeOp(opCount, OP_UNION, it.kind, 0, it.k, it.x, it.y, it.z, it.s, it.e0, it.e1, it.e2, it.e3);
+                opCount = opCount + 1;
+            }
+        } else {
+            var low = [];
+            var high = [];
+            for (var it in items) {
+                var coord = it.z;
+                var middle = sphere.z;
+                if (sphere.alongX) {
+                    coord = it.x;
+                    middle = sphere.x;
+                }
+                if (coord < middle) {
+                    low.append(it);
+                } else {
+                    high.append(it);
+                }
+            }
+            if (low.length == 0 || high.length == 0) {
+                low = [];
+                high = [];
+                for (var j = 0; j < items.length; j++) {
+                    if (j * 2 < items.length) {
+                        low.append(items[j]);
+                    } else {
+                        high.append(items[j]);
+                    }
+                }
+            }
+            emitGroup(low);
+            emitGroup(high);
+        }
+        writeOp(groupAt, OP_GROUP, 0, opCount, 0, sphere.x, sphere.y, sphere.z, sphere.r, 0, 0, 0, 0);
+    }
+
+    // ---- game state ----
+
+    var mode = "title";
+    var modeTime = 0.0;
+    var paused = false;
+    var muted = false;
+    var reflectOn = true;
+    var fxaaOn = true;
+    var crtOn = false;
+    var skipOn = true;
+    var audioReady = false;
+    var timeSec = 0.0;
+
+    var score = 0;
+    var hiScore = 0;
+    var saved = game.load("sdf-invaders-hi");
+    if (saved != null) {
+        hiScore = int(saved);
+    }
+    var lives = 3;
+    var wave = 1;
+    var extraLifeGiven = false;
+
+    var invaders = [];
+    var formX = 0.0;
+    var formZ = 0.0;
+    var drawFormX = 0.0;
+    var drawFormZ = 0.0;
+    var formDir = 1;
+    var beatTimer = 0.0;
+    var beatIndex = 0;
+    var animFrame = 0.0;
+    var animDrawn = 0.0;
+    var pulse = 0.0;
+
+    var cannonX = 0.0;
+    var cannonVx = 0.0;
+    var cannonAlive = true;
+    var respawnTimer = 0.0;
+    var invulnTimer = 0.0;
+    var rapidTimer = 0.0;
+    var fireCooldown = 0.0;
+
+    var lasers = [];
+    var bombs = [];
+    var bombTimer = 1.5;
+    var saucer = null;
+    var saucerTimer = 18.0;
+    var saucerVoice = null;
+    var debris = [];
+    var rings = [];
+    var shields = [];
+
+    var shake = 0.0;
+    var flash = 0.0;
+    var flashColor = [1.0, 0.8, 0.95];
+    var toastText = "";
+    var toastTimer = 0.0;
+    var sfxQueue = [];
+
+    // ---- sound: tones and noise from the game audio kit, arpeggios through a small queue ----
+
+    function tone(freq, ms, wave0, volume) {
+        if (audioReady && !muted) {
+            game.audioPlayTone(freq, ms, wave0, volume);
+        }
+    }
+
+    function noise(ms, volume) {
+        if (audioReady && !muted) {
+            game.audioPlayNoise(ms, volume);
+        }
+    }
+
+    function queueTone(delay, freq, ms, wave0, volume) {
+        sfxQueue.append({ at: timeSec + delay, freq: freq, ms: ms, wave: wave0, volume: volume });
+    }
+
+    function runSfxQueue() {
+        var keep = [];
+        for (var s in sfxQueue) {
+            if (s.at <= timeSec) {
+                tone(s.freq, s.ms, s.wave, s.volume);
+            } else {
+                keep.append(s);
+            }
+        }
+        sfxQueue = keep;
+    }
+
+    function stopSaucerVoice() {
+        if (saucerVoice != null) {
+            game.audioStopVoice(saucerVoice);
+            saucerVoice = null;
+        }
+    }
+
+    // ---- setup ----
+
+    function invaderBaseX(col) {
+        return (col - (COLS - 1) * 0.5) * SPACING;
+    }
+
+    function invaderBaseZ(row) {
+        return -12.0 + row * ROW_SPACING + math.min(wave - 1, 5) * 0.55;
+    }
+
+    function resetFormation() {
+        invaders = [];
+        for (var row = 0; row < ROWS; row++) {
+            for (var col = 0; col < COLS; col++) {
+                invaders.append({ row: row, col: col, kind: ROW_KINDS[row], alive: true });
+            }
+        }
+        formX = 0.0;
+        formZ = 0.0;
+        drawFormX = 0.0;
+        drawFormZ = 0.0;
+        formDir = 1;
+        beatTimer = 0.5;
+    }
+
+    function resetShields() {
+        shields = [];
+        for (var i = 0; i < 4; i++) {
+            shields.append({ x: (i - 1.5) * 4.2, y: SHIELD_Y, z: SHIELD_Z, alive: true, cuts: [] });
+        }
+    }
+
+    function clearShots() {
+        lasers = [];
+        bombs = [];
+    }
+
+    function startGame() {
+        score = 0;
+        lives = 3;
+        wave = 1;
+        extraLifeGiven = false;
+        cannonX = 0.0;
+        cannonVx = 0.0;
+        cannonAlive = true;
+        invulnTimer = 1.5;
+        rapidTimer = 0.0;
+        saucer = null;
+        stopSaucerVoice();
+        saucerTimer = 18.0;
+        debris = [];
+        rings = [];
+        clearShots();
+        resetFormation();
+        resetShields();
+        mode = "wave";
+        modeTime = 0.0;
+        queueTone(0.0, 392, 120, "square", 0.12);
+        queueTone(0.12, 523, 120, "square", 0.12);
+        queueTone(0.24, 659, 120, "square", 0.12);
+        queueTone(0.36, 784, 260, "square", 0.12);
+    }
+
+    function invaderX(inv) {
+        return invaderBaseX(inv.col) + drawFormX;
+    }
+
+    function invaderZ(inv) {
+        return invaderBaseZ(inv.row) + drawFormZ;
+    }
+
+    function aliveCount() {
+        var n = 0;
+        for (var inv in invaders) {
+            if (inv.alive) {
+                n = n + 1;
+            }
+        }
+        return n;
+    }
+
+    function addScore(points) {
+        score = score + points;
+        if (score > hiScore) {
+            hiScore = score;
+        }
+        if (!extraLifeGiven && score >= 1500) {
+            extraLifeGiven = true;
+            lives = lives + 1;
+            toastText = "EXTRA CANNON";
+            toastTimer = 2.0;
+            queueTone(0.0, 659, 90, "square", 0.1);
+            queueTone(0.1, 880, 90, "square", 0.1);
+            queueTone(0.2, 1319, 200, "square", 0.1);
+        }
+    }
+
+    // ---- explosions: goo spheres that blend into each other, a shockwave ring, a flash ----
+
+    function explode(x, y, z, cr, cg, cb, count, power, big) {
+        for (var i = 0; i < count; i++) {
+            var angle = math.randomFloat(0, 6.2832);
+            var speed = math.randomFloat(0.8, 3.2) * power;
+            debris.append({
+                x: x + math.randomFloat(-0.2, 0.2),
+                y: y + math.randomFloat(-0.1, 0.2),
+                z: z + math.randomFloat(-0.2, 0.2),
+                vx: math.cos(angle) * speed,
+                vy: math.randomFloat(1.5, 5.0) * power,
+                vz: math.sin(angle) * speed,
+                r: math.randomFloat(0.1, 0.22) * (big ? 1.5 : 1.0),
+                life: math.randomFloat(0.7, 1.3),
+                maxLife: 1.3,
+                cr: cr,
+                cg: cg,
+                cb: cb
+            });
+        }
+        while (debris.length > MAX_DEBRIS) {
+            var trimmed = [];
+            for (var j = debris.length - MAX_DEBRIS; j < debris.length; j++) {
+                trimmed.append(debris[j]);
+            }
+            debris = trimmed;
+        }
+        rings.append({ x: x, y: math.max(y - 0.3, 0.12), z: z, life: 0.0, maxLife: big ? 0.7 : 0.45, size: big ? 3.2 : 1.6, cr: cr, cg: cg, cb: cb });
+        flash = math.max(flash, big ? 0.6 : 0.12);
+        flashColor = [cr, cg, cb];
+        shake = math.max(shake, big ? 0.55 : 0.12);
+    }
+
+    function invaderColor(kind) {
+        if (kind == K_SQUID) {
+            return [0.95, 0.22, 0.78];
+        }
+        if (kind == K_CRAB) {
+            return [0.2, 0.95, 0.5];
+        }
+        return [1.0, 0.5, 0.1];
+    }
+
+    function killInvader(inv) {
+        inv.alive = false;
+        var c = invaderColor(inv.kind);
+        explode(invaderX(inv), INVADER_Y, invaderZ(inv), c[0], c[1], c[2], 12, 1.0, false);
+        addScore(ROW_POINTS[inv.row]);
+        noise(160, 0.22);
+        tone(140, 140, "sawtooth", 0.1);
+    }
+
+    function killCannon() {
+        cannonAlive = false;
+        respawnTimer = 2.2;
+        lives = lives - 1;
+        explode(cannonX, CANNON_Y, CANNON_Z, 0.3, 0.9, 1.0, 18, 1.4, true);
+        flashColor = [1.0, 0.25, 0.3];
+        noise(700, 0.4);
+        queueTone(0.0, 330, 160, "sawtooth", 0.14);
+        queueTone(0.16, 247, 160, "sawtooth", 0.14);
+        queueTone(0.32, 165, 360, "sawtooth", 0.14);
+        bombs = [];
+        if (lives <= 0) {
+            mode = "dying";
+            modeTime = 0.0;
+        }
+    }
+
+    // ---- the shield bytecode on the host: a shield, then its cuts, as the shader runs them ----
+
+    function cpuRoundBox(qx, qy, qz, bx, by, bz, r) {
+        var dx = math.abs(qx) - bx + r;
+        var dy = math.abs(qy) - by + r;
+        var dz = math.abs(qz) - bz + r;
+        var ox = math.max(dx, 0.0);
+        var oy = math.max(dy, 0.0);
+        var oz = math.max(dz, 0.0);
+        return math.sqrt(ox * ox + oy * oy + oz * oz) + math.min(math.max(dx, math.max(dy, dz)), 0.0) - r;
+    }
+
+    function cpuShield(sh, x, y, z) {
+        var ux = (x - sh.x) / SHIELD_SIZE;
+        var uy = (y - sh.y) / SHIELD_SIZE;
+        var uz = (z - sh.z) / SHIELD_SIZE;
+        var d = cpuRoundBox(ux, uy, uz, 1.0, 0.5, 0.32, 0.08);
+        d = math.max(d, (math.abs(ux) + uy - 1.15) * 0.7071);
+        d = math.max(d, 0.0 - cpuRoundBox(ux, uy + 0.5, uz, 0.36, 0.3, 0.6, 0.05));
+        d = d * SHIELD_SIZE;
+        for (var c in sh.cuts) {
+            var cx = x - c.x;
+            var cy = y - c.y;
+            var cz = z - c.z;
+            var cd = math.sqrt(cx * cx + cy * cy + cz * cz) - c.r;
+            var hc = math.clamp(0.5 + 0.5 * (cd + d) / CUT_K, 0.0, 1.0);
+            d = 0.0 - cd + (d + cd) * hc + CUT_K * hc * (1.0 - hc);
+        }
+        return d;
+    }
+
+    // The shield a point is inside, or null.
+    function shieldAt(x, y, z) {
+        for (var sh in shields) {
+            if (sh.alive && math.abs(x - sh.x) < 1.3 && math.abs(z - sh.z) < 0.7) {
+                if (cpuShield(sh, x, y, z) < 0.0) {
+                    return sh;
+                }
+            }
+        }
+        return null;
+    }
+
+    function carve(sh, x, y, z, r, sparks) {
+        sh.cuts.append({ x: x, y: y, z: z, r: r, heat: 1.0 });
+        for (var i = 0; i < sparks; i++) {
+            debris.append({
+                x: x,
+                y: y,
+                z: z,
+                vx: math.randomFloat(-2.5, 2.5),
+                vy: math.randomFloat(1.0, 4.0),
+                vz: math.randomFloat(-2.5, 2.5),
+                r: math.randomFloat(0.04, 0.08),
+                life: math.randomFloat(0.3, 0.6),
+                maxLife: 0.6,
+                cr: 1.0,
+                cg: 0.55,
+                cb: 0.15
+            });
+        }
+        noise(60, 0.08);
+        if (sh.cuts.length > MAX_CUTS) {
+            // Too many craters for its budget: the shield crumbles.
+            sh.alive = false;
+            explode(sh.x, sh.y, sh.z, 0.25, 1.0, 0.42, 16, 1.1, true);
+            noise(400, 0.3);
+        }
+    }
+
+    // ---- the frame's program ----
+
+    function buildProgram() {
+        opCount = 0;
+        boxMin = [1, 1, 1];
+        boxMax = [-1, -1, -1];
+
+        // Shields first, each in its own group: a cut subtracts from everything before it, and
+        // only its own shield is there to take it.
+        for (var sh in shields) {
+            if (!sh.alive) {
+                continue;
+            }
+            var reach = boundRadius(K_SHIELD, SHIELD_SIZE) + 0.05;
+            var groupAt = opCount;
+            opCount = opCount + 1;
+            writeOp(opCount, OP_UNION, K_SHIELD, 0, 0.02, sh.x, sh.y, sh.z, SHIELD_SIZE, 0, 0, 0, 0);
+            opCount = opCount + 1;
+            for (var c in sh.cuts) {
+                writeOp(opCount, OP_CUT, K_SPHERE, 0, CUT_K, c.x, c.y, c.z, c.r, 0, 0, 0, c.heat);
+                opCount = opCount + 1;
+            }
+            writeOp(groupAt, OP_GROUP, 0, opCount, 0, sh.x, sh.y, sh.z, reach, 0, 0, 0, 0);
+            growBox(sh.x, sh.y, sh.z, reach);
+        }
+
+        var items = [];
+        var cannonZ = CANNON_Z;
+        for (var inv in invaders) {
+            if (inv.alive) {
+                var x = invaderX(inv);
+                var z = invaderZ(inv);
+                var y = INVADER_Y + math.sin(timeSec * 2.2 + inv.col * 0.6 + inv.row * 1.3) * 0.07;
+                var yaw = math.clamp(math.atan((cannonX - x) / math.max(cannonZ - z, 1.0)) * 0.6, -0.5, 0.5);
+                var frame = animDrawn;
+                if (inv.row % 2 == 1) {
+                    frame = 1.0 - animDrawn;
+                }
+                items.append(item(inv.kind, 0.02, x, y, z, INVADER_SIZE, frame, yaw, 0, 0));
+            }
+        }
+        if (cannonAlive && mode != "title") {
+            var blink = 0.0;
+            if (invulnTimer > 0 && math.sin(timeSec * 30) > 0) {
+                blink = 0.6;
+            }
+            items.append(item(K_CANNON, 0.02, cannonX, CANNON_Y, CANNON_Z, CANNON_SIZE, 0.0 - cannonVx * 0.035, 0, blink, 0));
+        }
+        for (var l in lasers) {
+            items.append(item(K_LASER, 0.05, l.x, LASER_Y, l.z, 1.0, 0, 0, 0, 1.0));
+        }
+        for (var b in bombs) {
+            items.append(item(K_BOMB, 0.05, b.x, b.y, b.z, 1.0, b.spin, 0, 0, 0.9));
+        }
+        if (saucer != null) {
+            items.append(item(K_SAUCER, 0.02, saucer.x, saucer.y, saucer.z, 0.7, saucer.spin, 0, saucer.flash, 0.8));
+        }
+        for (var d in debris) {
+            var f = math.max(d.life / d.maxLife, 0.0);
+            var heat = f * f;
+            items.append(item(
+                K_SPHERE,
+                0.22,
+                d.x,
+                d.y,
+                d.z,
+                d.r * math.sqrt(f),
+                d.cr + (1.0 - d.cr) * heat,
+                d.cg + (1.0 - d.cg) * heat,
+                d.cb + (1.0 - d.cb) * heat,
+                1.3 * f
+            ));
+        }
+        for (var ring in rings) {
+            var rf = ring.life / ring.maxLife;
+            items.append(item(K_RING, 0.02, ring.x, ring.y, ring.z, 0.2 + ring.size * rf, ring.cr, ring.cg, ring.cb, 1.6 * (1.0 - rf)));
+        }
+        for (var it in items) {
+            growBox(it.x, it.y, it.z, it.r + 0.01);
+        }
+        emitGroup(items);
+    }
+
+    // ---- camera ----
+
+    var camX = 0.0;
+    var camY = 5.0;
+    var camZ = 10.0;
+    var fwd = [0.0, 0.0, -1.0];
+    var right = [1.0, 0.0, 0.0];
+    var upv = [0.0, 1.0, 0.0];
+    var camFollow = 0.0;
+
+    function aimCamera(ex, ey, ez, tx, ty, tz) {
+        camX = ex;
+        camY = ey;
+        camZ = ez;
+        var fx = tx - ex;
+        var fy = ty - ey;
+        var fz = tz - ez;
+        var fl = math.sqrt(fx * fx + fy * fy + fz * fz);
+        fx = fx / fl;
+        fy = fy / fl;
+        fz = fz / fl;
+        var rl = math.sqrt(fz * fz + fx * fx);
+        var rx = (0.0 - fz) / rl;
+        var rz = fx / rl;
+        fwd = [fx, fy, fz];
+        right = [rx, 0.0, rz];
+        upv = [0.0 * fz - rz * fy, rz * fx - rx * fz, rx * fy - 0.0 * fx];
+    }
+
+    function updateCamera(dt) {
+        if (mode == "title" || mode == "over") {
+            var a = math.sin(timeSec * 0.17) * 0.55;
+            aimCamera(math.sin(a) * 15.0, 5.5 + math.sin(timeSec * 0.23) * 1.2, math.cos(a) * 15.0 - 5.0, 0.0, 0.6, -7.0);
+        } else {
+            camFollow = camFollow + (cannonX - camFollow) * math.min(dt * 3.0, 1.0);
+            var sx = math.randomFloat(-1, 1) * shake * 0.35;
+            var sy = math.randomFloat(-1, 1) * shake * 0.25;
+            aimCamera(camFollow * 0.35 + sx, 5.3 + sy, 9.8, camFollow * 0.22 + sx * 0.5, 0.2 + sy * 0.5, -4.6);
+        }
+    }
+
+    // ---- renderer and material ----
+
+    var renderer = three.createRenderer(width, height, "#si-stage");
+    three.setClearColor(renderer, "#07040f");
+    three.setRendererSize(renderer, width, height);
+    three.setAutoRenderScale(renderer, 60, 0.6, 1.5);
+
+    var hud = dom.create("div");
+    hud.id = "si-hud";
+    dom.append(stage, hud);
+
+    var scene = three.createScene();
+    var camera = three.createOrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+    resetFormation();
+    resetShields();
+    buildProgram();
+    var programTexture = three.createDataTexture(MAX_OPS * 3, 1, program, { "type": "float" });
+
+    var material = three.createShaderMaterial({
+        "vertexShader": vertexShader,
+        "fragmentShader": fragmentShader,
+        "depthWrite": false,
+        "uniforms": {
+            "uProgram": programTexture,
+            "uCount": opCount,
+            "uSkip": 1.0,
+            "uReflect": 1.0,
+            "uBoxMin": boxMin,
+            "uBoxMax": boxMax,
+            "uCamPos": [0, 5, 10],
+            "uCamForward": [0, 0, -1],
+            "uCamRight": [1, 0, 0],
+            "uCamUp": [0, 1, 0],
+            "uTanHalf": tanHalf,
+            "uAspect": aspect,
+            "uTime": 0.0,
+            "uPulse": 0.0,
+            "uFlash": 0.0,
+            "uFlashColor": [1, 1, 1]
+        }
+    });
+    three.add(scene, three.createMesh(three.createPlaneGeometry(2, 2), material));
+
+    // The raymarch draws into this target at the canvas resolution; the post pass reads it.
+    var targetW = width;
+    var targetH = height;
+    var sceneTarget = three.createRenderTarget(targetW, targetH, { "depth": false, "linear": true });
+    var postMaterial = three.createShaderMaterial({
+        "vertexShader": vertexShader,
+        "fragmentShader": postShader,
+        "depthWrite": false,
+        "uniforms": {
+            "uScene": three.getTargetTexture(sceneTarget),
+            "uResolution": [targetW, targetH],
+            "uScreen": [width, height],
+            "uFxaa": 1.0,
+            "uCrt": 0.0,
+            "uTime": 0.0
+        }
+    });
+    var postScene = three.createScene();
+    three.add(postScene, three.createMesh(three.createPlaneGeometry(2, 2), postMaterial));
+
+    // ---- the formation: one beat at a time, faster as it thins out ----
+
+    function beatInterval() {
+        var fraction = aliveCount() / (ROWS * COLS);
+        var interval = 0.05 + 0.75 * math.pow(fraction, 1.3);
+        return interval * math.pow(0.9, math.min(wave - 1, 6));
+    }
+
+    function marchBeat() {
+        var minX = 1000.0;
+        var maxX = -1000.0;
+        for (var inv in invaders) {
+            if (inv.alive) {
+                var x = invaderBaseX(inv.col) + formX;
+                minX = math.min(minX, x);
+                maxX = math.max(maxX, x);
+            }
+        }
+        var step = 0.32 * formDir;
+        if ((formDir > 0 && maxX + step > FIELD_HALF) || (formDir < 0 && minX + step < 0.0 - FIELD_HALF)) {
+            formZ = formZ + 0.6;
+            formDir = 0 - formDir;
+        } else {
+            formX = formX + step;
+        }
+        animFrame = 1.0 - animFrame;
+        pulse = 1.0;
+        if (mode == "play") {
+            tone(BASS_NOTES[beatIndex % 4], 110, "square", 0.16);
+        }
+        beatIndex = beatIndex + 1;
+
+        // Invaders that reach the shields plow through them.
+        for (var inv in invaders) {
+            if (inv.alive) {
+                var ix = invaderBaseX(inv.col) + formX;
+                var iz = invaderBaseZ(inv.row) + formZ;
+                for (var sh in shields) {
+                    if (sh.alive && math.abs(ix - sh.x) < 1.6 && math.abs(iz - sh.z) < 0.9) {
+                        if (cpuShield(sh, ix, SHIELD_Y, iz) < 0.5) {
+                            carve(sh, ix, SHIELD_Y + 0.1, iz, 0.55, 0);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    function frontInvaderZ() {
+        var front = -1000.0;
+        for (var inv in invaders) {
+            if (inv.alive) {
+                front = math.max(front, invaderBaseZ(inv.row) + formZ);
+            }
+        }
+        return front;
+    }
+
+    function dropBomb() {
+        // The front invader of a column: often the column nearest the cannon.
+        var best = null;
+        var target = math.randomInt(0, COLS - 1);
+        if (math.random() < 0.45) {
+            var nearest = 1000.0;
+            for (var inv in invaders) {
+                if (inv.alive) {
+                    var gap = math.abs(invaderX(inv) - cannonX);
+                    if (gap < nearest) {
+                        nearest = gap;
+                        target = inv.col;
+                    }
+                }
+            }
+        }
+        for (var inv in invaders) {
+            if (inv.alive && inv.col == target && (best == null || inv.row > best.row)) {
+                best = inv;
+            }
+        }
+        if (best == null) {
+            return;
+        }
+        bombs.append({ x: invaderX(best), y: INVADER_Y - 0.2, z: invaderZ(best) + 0.5, spin: 0.0 });
+        tone(220, 50, "triangle", 0.05);
+    }
+
+    // ---- per-frame update ----
+
+    function moveDebris(dt) {
+        var keep = [];
+        for (var d in debris) {
+            d.life = d.life - dt;
+            if (d.life <= 0) {
+                continue;
+            }
+            d.vy = d.vy - 12.0 * dt;
+            d.x = d.x + d.vx * dt;
+            d.y = d.y + d.vy * dt;
+            d.z = d.z + d.vz * dt;
+            if (d.y < d.r) {
+                d.y = d.r;
+                d.vy = 0.0 - d.vy * 0.45;
+                d.vx = d.vx * 0.8;
+                d.vz = d.vz * 0.8;
+            }
+            keep.append(d);
+        }
+        debris = keep;
+        var keepRings = [];
+        for (var ring in rings) {
+            ring.life = ring.life + dt;
+            if (ring.life < ring.maxLife) {
+                keepRings.append(ring);
+            }
+        }
+        rings = keepRings;
+        for (var sh in shields) {
+            for (var c in sh.cuts) {
+                c.heat = math.max(c.heat - dt * 0.9, 0.0);
+            }
+        }
+    }
+
+    function moveLasers(dt) {
+        var keep = [];
+        for (var l in lasers) {
+            var alive = true;
+            // Sub-steps, so a fast laser cannot jump over an invader at a low frame rate.
+            var travel = LASER_SPEED * dt;
+            var steps = int(math.floor(travel / 0.25)) + 1;
+            for (var s = 0; s < steps && alive; s++) {
+                l.z = l.z - travel / steps;
+                for (var inv in invaders) {
+                    if (inv.alive && math.abs(invaderX(inv) - l.x) < 0.55 && math.abs(invaderZ(inv) - l.z) < 0.45) {
+                        killInvader(inv);
+                        alive = false;
+                        break;
+                    }
+                }
+                if (!alive) {
+                    break;
+                }
+                var sh = shieldAt(l.x, LASER_Y, l.z - 0.35);
+                if (sh != null) {
+                    carve(sh, l.x, LASER_Y, l.z - 0.3, math.randomFloat(0.2, 0.27), 4);
+                    alive = false;
+                    break;
+                }
+                var keepBombs = [];
+                for (var b in bombs) {
+                    if (alive && math.abs(b.x - l.x) < 0.3 && math.abs(b.z - l.z) < 0.55) {
+                        alive = false;
+                        explode(b.x, b.y, b.z, 1.0, 0.5, 0.15, 5, 0.6, false);
+                        addScore(5);
+                        tone(660, 60, "square", 0.08);
+                    } else {
+                        keepBombs.append(b);
+                    }
+                }
+                bombs = keepBombs;
+                if (alive && saucer != null && math.abs(saucer.x - l.x) < 0.95 && math.abs(saucer.z - l.z) < 0.7) {
+                    alive = false;
+                    var points = SAUCER_POINTS[math.randomInt(0, 3)];
+                    addScore(points);
+                    explode(saucer.x, saucer.y, saucer.z, 1.0, 0.3, 0.45, 22, 1.6, true);
+                    toastText = "+" + string(points) + "   RAPID FIRE";
+                    toastTimer = 2.2;
+                    rapidTimer = 10.0;
+                    saucer = null;
+                    stopSaucerVoice();
+                    queueTone(0.0, 523, 80, "square", 0.12);
+                    queueTone(0.08, 659, 80, "square", 0.12);
+                    queueTone(0.16, 784, 80, "square", 0.12);
+                    queueTone(0.24, 1047, 220, "square", 0.12);
+                }
+            }
+            if (alive && l.z > -22.0) {
+                keep.append(l);
+            }
+        }
+        lasers = keep;
+    }
+
+    function moveBombs(dt) {
+        var speed = 5.5 + math.min(wave, 8) * 0.45;
+        var keep = [];
+        for (var b in bombs) {
+            b.z = b.z + speed * dt;
+            b.spin = b.spin + dt * 14.0;
+            var alive = true;
+            var sh = shieldAt(b.x, b.y, b.z + 0.3);
+            if (sh != null) {
+                carve(sh, b.x, b.y, b.z + 0.3, math.randomFloat(0.24, 0.32), 5);
+                alive = false;
+            } else if (cannonAlive && invulnTimer <= 0 && mode == "play" && math.abs(b.x - cannonX) < 0.6 && math.abs(b.z - CANNON_Z) < 0.45) {
+                alive = false;
+                killCannon();
+            }
+            if (alive && b.z < CANNON_Z + 4.0) {
+                keep.append(b);
+            }
+        }
+        bombs = keep;
+    }
+
+    function moveSaucer(dt) {
+        if (saucer == null) {
+            saucerTimer = saucerTimer - dt;
+            if (saucerTimer <= 0 && (mode == "play" || mode == "title")) {
+                var fromLeft = math.random() < 0.5;
+                saucer = {
+                    x: fromLeft ? -12.0 : 12.0,
+                    y: 1.05,
+                    z: invaderBaseZ(0) + formZ - 1.7,
+                    dir: fromLeft ? 1.0 : -1.0,
+                    spin: 0.0,
+                    flash: 0.0
+                };
+                saucerTimer = math.randomFloat(18, 28);
+                if (audioReady && !muted) {
+                    saucerVoice = game.audioCreateVoice({ "wave": "sine", "freq": 520, "volume": 0.06 });
+                }
+            }
+            return;
+        }
+        saucer.x = saucer.x + saucer.dir * 3.2 * dt;
+        saucer.spin = saucer.spin + dt * 5.0;
+        saucer.y = 1.05 + math.sin(timeSec * 3.0) * 0.08;
+        if (saucerVoice != null) {
+            game.audioSetVoice(saucerVoice, { "freq": 520 + math.sin(timeSec * 18.0) * 140 });
+        }
+        if (math.abs(saucer.x) > 12.5) {
+            saucer = null;
+            stopSaucerVoice();
+        }
+    }
+
+    function updatePlay(dt) {
+        var move = 0.0;
+        if (three.isKeyDown("arrowleft") || three.isKeyDown("a")) {
+            move = move - 1.0;
+        }
+        if (three.isKeyDown("arrowright") || three.isKeyDown("d")) {
+            move = move + 1.0;
+        }
+        if (cannonAlive) {
+            cannonVx = cannonVx + (move * 9.0 - cannonVx) * math.min(dt * 14.0, 1.0);
+            cannonX = math.clamp(cannonX + cannonVx * dt, 0.0 - FIELD_HALF, FIELD_HALF);
+            fireCooldown = fireCooldown - dt;
+            var maxLasers = rapidTimer > 0 ? 3 : 1;
+            var wantFire = three.wasKeyPressed(" ") || (rapidTimer > 0 && three.isKeyDown(" "));
+            if (wantFire && lasers.length < maxLasers && fireCooldown <= 0) {
+                lasers.append({ x: cannonX, z: CANNON_Z - 0.6 });
+                fireCooldown = rapidTimer > 0 ? 0.14 : 0.0;
+                tone(1250, 50, "square", 0.06);
+                tone(720, 90, "sawtooth", 0.05);
+            }
+        } else {
+            respawnTimer = respawnTimer - dt;
+            if (respawnTimer <= 0 && lives > 0) {
+                cannonAlive = true;
+                cannonX = 0.0;
+                cannonVx = 0.0;
+                invulnTimer = 2.0;
+            }
+        }
+        invulnTimer = math.max(invulnTimer - dt, 0.0);
+        rapidTimer = math.max(rapidTimer - dt, 0.0);
+
+        bombTimer = bombTimer - dt;
+        if (bombTimer <= 0) {
+            if (cannonAlive && bombs.length < math.min(2 + wave, 7)) {
+                dropBomb();
+            }
+            bombTimer = math.randomFloat(0.35, 1.1) / (1.0 + wave * 0.15);
+        }
+
+        moveLasers(dt);
+        moveBombs(dt);
+
+        if (aliveCount() == 0) {
+            wave = wave + 1;
+            mode = "wave";
+            modeTime = 0.0;
+            clearShots();
+            resetFormation();
+            resetShields();
+            queueTone(0.0, 523, 100, "square", 0.12);
+            queueTone(0.1, 784, 100, "square", 0.12);
+            queueTone(0.2, 1047, 260, "square", 0.12);
+        } else if (frontInvaderZ() > CANNON_Z - 0.9) {
+            // Invasion: the formation reached the cannon line.
+            if (cannonAlive) {
+                killCannon();
+            }
+            lives = 0;
+            mode = "dying";
+            modeTime = 0.0;
+        }
+    }
+
+    function updateFormation(dt) {
+        beatTimer = beatTimer - dt;
+        if (beatTimer <= 0) {
+            marchBeat();
+            beatTimer = beatInterval();
+        }
+        var ease = math.min(dt * 16.0, 1.0);
+        drawFormX = drawFormX + (formX - drawFormX) * ease;
+        drawFormZ = drawFormZ + (formZ - drawFormZ) * ease;
+        animDrawn = animDrawn + (animFrame - animDrawn) * math.min(dt * 22.0, 1.0);
+        if ((mode == "title" || mode == "over") && frontInvaderZ() > SHIELD_Z - 2.0) {
+            // Attract mode loops: march back to the start.
+            resetFormation();
+        }
+    }
+
+    var statsMs = 0.0;
+    var lastHud = "";
+    var statsText = "";
+
+    function pad(n, size) {
+        var text = string(n);
+        while (text.length < size) {
+            text = "0" + text;
+        }
+        return text;
+    }
+
+    function showHud() {
+        var livesText = "";
+        for (var i = 0; i < lives - 1; i++) {
+            livesText = livesText + "&#9650; ";
+        }
+        var html = "<div class='bar'><div><span class='lbl'>score</span><span class='num'>" + pad(score, 5) + "</span></div>";
+        html = html + "<div><span class='lbl'>hi-score</span><span class='num'>" + pad(hiScore, 5) + "</span></div>";
+        html = html + "<div><span class='lbl'>wave</span><span class='num'>" + string(wave) + "</span></div>";
+        html = html + "<div><span class='lbl'>cannons</span><span class='lives'>" + (livesText == "" ? "-" : livesText) + "</span></div></div>";
+        if (rapidTimer > 0) {
+            html = html + "<div class='rapid'>rapid fire<i style='width:" + string(math.round(rapidTimer * 12)) + "px'></i></div>";
+        }
+        if (toastTimer > 0) {
+            html = html + "<div class='toast'>" + toastText + "</div>";
+        }
+        if (mode == "title") {
+            html = html + "<div class='center'><div class='big'>SDF INVADERS</div>";
+            html = html + "<div class='table'>squid = 30 &nbsp; crab = 20 &nbsp; octopus = 10 &nbsp; saucer = ???</div>";
+            html = html + "<div class='sub blink'>press enter</div></div>";
+        } else if (mode == "wave") {
+            html = html + "<div class='center'><div class='big'>WAVE " + string(wave) + "</div><div class='sub'>get ready</div></div>";
+        } else if (mode == "over") {
+            html = html + "<div class='center'><div class='big'>GAME OVER</div>";
+            html = html + "<div class='sub'>score " + pad(score, 5) + " &nbsp; hi-score " + pad(hiScore, 5) + "</div>";
+            html = html + "<div class='sub blink'>press enter</div></div>";
+        } else if (paused) {
+            html = html + "<div class='center'><div class='big'>PAUSED</div><div class='sub'>p resumes</div></div>";
+        }
+        html = html + "<div class='stats'>" + statsText + "</div>";
+        if (html != lastHud) {
+            lastHud = html;
+            dom.html(hud, html);
+        }
+    }
+
+    function update(dtMs) {
+        var dt = math.min(dtMs, 50) / 1000;
+
+        if (three.wasKeyPressed("enter") || three.wasKeyPressed(" ")) {
+            if (!audioReady) {
+                game.audioInit();
+                audioReady = true;
+            }
+        }
+        if (three.wasKeyPressed("m")) {
+            muted = !muted;
+            if (muted) {
+                stopSaucerVoice();
+            }
+        }
+        if (three.wasKeyPressed("f")) {
+            reflectOn = !reflectOn;
+            three.setUniform(material, "uReflect", reflectOn ? 1.0 : 0.0);
+        }
+        if (three.wasKeyPressed("x")) {
+            fxaaOn = !fxaaOn;
+            three.setUniform(postMaterial, "uFxaa", fxaaOn ? 1.0 : 0.0);
+        }
+        if (three.wasKeyPressed("c")) {
+            crtOn = !crtOn;
+            three.setUniform(postMaterial, "uCrt", crtOn ? 1.0 : 0.0);
+        }
+        if (three.wasKeyPressed("b")) {
+            skipOn = !skipOn;
+            three.setUniform(material, "uSkip", skipOn ? 1.0 : 0.0);
+        }
+        if (mode == "play" && three.wasKeyPressed("p")) {
+            paused = !paused;
+        }
+        if ((mode == "title" || (mode == "over" && modeTime > 1.0)) && three.wasKeyPressed("enter")) {
+            startGame();
+        }
+
+        if (!paused) {
+            timeSec = timeSec + dt;
+            modeTime = modeTime + dt;
+            runSfxQueue();
+            if (mode == "wave") {
+                if (modeTime > 2.0) {
+                    mode = "play";
+                    modeTime = 0.0;
+                }
+            } else if (mode == "play") {
+                updatePlay(dt);
+            } else if (mode == "dying") {
+                moveLasers(dt);
+                moveBombs(dt);
+                if (modeTime > 2.5) {
+                    mode = "over";
+                    modeTime = 0.0;
+                    game.save("sdf-invaders-hi", hiScore);
+                    stopSaucerVoice();
+                }
+            }
+            if (mode != "dying") {
+                updateFormation(dt);
+            }
+            moveSaucer(dt);
+            moveDebris(dt);
+            shake = math.max(shake - dt * 1.6, 0.0);
+            flash = math.max(flash - dt * 2.5, 0.0);
+            pulse = math.max(pulse - dt * 4.0, 0.0);
+            toastTimer = math.max(toastTimer - dt, 0.0);
+        }
+
+        updateCamera(dt);
+
+        // Only data changes: rewrite the program texture, never the shader.
+        buildProgram();
+        three.updateDataTexture(programTexture, program);
+        uploads = uploads + 1;
+        three.setUniform(material, "uCount", opCount);
+        three.setUniform(material, "uBoxMin", boxMin);
+        three.setUniform(material, "uBoxMax", boxMax);
+        three.setUniform(material, "uCamPos", [camX, camY, camZ]);
+        three.setUniform(material, "uCamForward", fwd);
+        three.setUniform(material, "uCamRight", right);
+        three.setUniform(material, "uCamUp", upv);
+        three.setUniform(material, "uTime", timeSec);
+        three.setUniform(postMaterial, "uTime", timeSec);
+        three.setUniform(material, "uPulse", pulse);
+        three.setUniform(material, "uFlash", flash * 0.6);
+        three.setUniform(material, "uFlashColor", flashColor);
+
+        // Keep the target at the canvas's drawing-buffer size, which follows the render scale.
+        var stats = three.getStats();
+        if (stats.width > 0 && (stats.width != targetW || stats.height != targetH)) {
+            targetW = stats.width;
+            targetH = stats.height;
+            three.setTargetSize(sceneTarget, targetW, targetH);
+            three.setUniform(postMaterial, "uResolution", [targetW, targetH]);
+        }
+
+        statsMs = statsMs + dtMs;
+        if (statsMs > 250) {
+            statsMs = 0.0;
+            statsText = "instructions " + string(opCount) + " / " + string(MAX_OPS) + " · texture uploads "
+                + string(uploads) + " · shader compiles 1 · culling " + (skipOn ? "on" : "off")
+                + " · reflections " + (reflectOn ? "on" : "off") + " · fxaa " + (fxaaOn ? "on" : "off") + " · crt " + (crtOn ? "on" : "off")
+                + " · scale " + string(stats.renderScale) + "x · " + string(math.round(stats.fps)) + " fps";
+        }
+        showHud();
+    }
+
+    function render() {
+        three.renderToTarget(renderer, sceneTarget, scene, camera);
+        three.render(renderer, postScene, camera);
+    }
+
+    showHud();
+    three.start(update, render);
+}
