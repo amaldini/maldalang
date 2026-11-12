@@ -354,7 +354,7 @@ var material = three.createShaderMaterial({
 three.setUniform(material, "uTime", t);</code></pre>
         <p><code>glsl.compile</code> accetta un solo object literal. Chiavi:</p>
         <ul>
-            <li><code>varyings</code> / <code>uniforms</code> / <code>consts</code> — array di stringhe di dichiarazione GLSL, per esempio <code>"vec3 uCamPos"</code> o <code>"float EPSILON = 0.0015"</code></li>
+            <li><code>varyings</code> / <code>uniforms</code> / <code>consts</code> — array di stringhe di dichiarazione GLSL, per esempio <code>"vec3 uCamPos"</code> o <code>"float EPSILON = 0.0015"</code>. Una <code>const</code> MALDA di primo livello con valore letterale non richiede una stringa: vedi <a href="#shader-host-calls">Chiamare un kernel dall'host</a></li>
             <li><code>functions</code> — nomi delle funzioni <code>@shader()</code> in questo file da emettere, in ordine</li>
             <li><code>main</code> — quale di quelle funzioni diventa il <code>void main()</code> GLSL (usalo quando il nome MALDA è <code>vertexMain</code> / <code>fragmentMain</code>, perché un file non può dichiarare due funzioni MALDA chiamate <code>main</code>)</li>
             <li><code>header</code> — prefisso GLSL grezzo opzionale</li>
@@ -398,10 +398,53 @@ if (distance &lt; 0.05) {
         <ul>
             <li><strong>Valori.</strong> Un <code>vec2</code> / <code>vec3</code> / <code>vec4</code> / <code>ivec*</code> è una lista MALDA di 2 / 3 / 4 numeri, la forma che accetta <code>three.setUniform</code>. <code>float</code> e <code>int</code> sono numeri, <code>bool</code> è un booleano. Un vettore restituito è una lista nuova, e la funzione non scrive mai in una lista che le passi.</li>
             <li><strong>I tipi sono controllati.</strong> Un kernel chiamato dall'host è tipizzato dai suoi hint con le regole di GLSL ES: <code>float</code> e <code>int</code> non si mescolano senza <code>float(i)</code> o <code>int(x)</code>, un locale float vuole <code>1.0</code> e non <code>1</code>, e <code>int / int</code> tronca. Un'incoerenza è un errore di compilazione (<code>GLSL type pass</code>) alla riga MALDA. Il driver della GPU rifiuterebbe lo stesso codice.</li>
-            <li><strong>Solo parametri e locali.</strong> Una funzione chiamata dall'host non può usare ciò che esiste solo sulla GPU o in un materiale: uniform, const, varying, <code>gl_FragCoord</code> / <code>gl_Position</code>, <code>discard</code>, <code>dFdx</code> / <code>dFdy</code> / <code>fwidth</code>, <code>texture()</code> / <code>texelFetch()</code>, parametri <code>out</code> e tipi <code>mat*</code>. Ognuno è un errore di compilazione che nomina la funzione e il costrutto, e il kernel che la raggiunge quando l'host la chiama attraverso un altro. Passa il valore come parametro. La stessa funzione resta valida quando la usa solo uno shader.</li>
+            <li><strong>Cosa può usare un kernel chiamato per nome.</strong> I suoi parametri, i suoi locali e le const MALDA di primo livello. Le uniform e <code>texelFetch()</code> richiedono <code>glsl.host</code> (sotto). Ciò che esiste solo sulla GPU non è mai disponibile: varying, <code>gl_FragCoord</code> / <code>gl_Position</code>, <code>discard</code>, <code>dFdx</code> / <code>dFdy</code> / <code>fwidth</code>, <code>texture()</code> filtrata e tipi <code>mat*</code>. Ognuno è un errore di compilazione che nomina la funzione e il costrutto, e il kernel che la raggiunge quando l'host la chiama attraverso un altro. La stessa funzione resta valida quando la usa solo uno shader.</li>
             <li><strong>Stessa formula, non gli stessi bit.</strong> L'host calcola in float64, la GPU in float32. Confronta con un margine; non verificare l'uguaglianza con un valore riletto dalla GPU.</li>
             <li><strong>Costo.</strong> I valori vettoriali sono liste, quindi ogni operazione vettoriale alloca. Serve per decine o migliaia di chiamate per frame (una marcia di picking, i test dei colpi in volo), non per il lavoro per-pixel, e non è un fallback su CPU dello shader.</li>
             <li><strong>Backend.</strong> Solo JavaScript. L'interprete e il transpile C# continuano a non eseguire i kernel. Gli helper sono la parte <code>glsl</code> di <code>malda-js-runtime.js</code>, tenuta solo quando un programma chiama un kernel dall'host.</li>
+        </ul>
+        <p><strong>Const.</strong> Un kernel può nominare una <code>const</code> MALDA di primo livello il cui valore è un letterale <code>int</code>, <code>float</code> o <code>bool</code> (è ammesso un <code>-</code> iniziale). <code>glsl.compile</code> e <code>glsl.source</code> scrivono <code>const int OP_UNION = 1;</code> nel GLSL per ogni const di questo tipo usata dalle loro funzioni, prima delle uniform, con il tipo del letterale: <code>0</code> è un <code>int</code>, <code>2.2</code> un <code>float</code>, e <code>const HALF: float = 2;</code> un <code>float</code>. Il gemello host usa lo stesso valore, quindi una sola dichiarazione serve entrambi i lati. Una const calcolata (<code>const TWO_PI = math.pi * 2;</code>) non è visibile ai kernel. Un nome presente anche nelle stringhe <code>consts</code> di <code>glsl.compile</code> mantiene la stringa nel GLSL; un kernel chiamato dall'host che lo legge è un errore quando i due valori differiscono, e una const dichiarata solo come stringa non può essere letta da un kernel chiamato dall'host.</p>
+        <p><strong>Uniform e data texture: <code>glsl.host</code>.</strong> <code>glsl.host("name", material)</code> restituisce una funzione host per quel kernel, legata a un materiale creato con <code>three.createShaderMaterial</code>. Il kernel e i kernel che chiama possono allora leggere le uniform dichiarate nelle stringhe <code>uniforms</code> di <code>glsl.compile</code> nel file, e fare <code>texelFetch</code> su una uniform <code>sampler2D</code> che contiene una <code>three.createDataTexture</code>. I valori sono letti dal materiale a ogni chiamata, quindi <code>three.setUniform</code> e <code>three.updateDataTexture</code> si vedono senza legare di nuovo, e due materiali legati allo stesso kernel danno due funzioni indipendenti.</p>
+<pre><code>const OP_UNION = 1;                       // one declaration, host and shader
+
+@shader()
+function runProgram(p: vec3, color: out vec3) -&gt; float {
+    var acc: float = 100000.0;
+    for (var i: int = 0; i &lt; uCount; i++) {
+        var head: vec4 = texelFetch(uProgram, ivec2(i, 0), 0);
+        if (int(head.x + 0.5) == OP_UNION) {
+            acc = min(acc, length(p - head.yzw) - uSize);
+        }
+    }
+    color = vec3(1.0, 0.5, 0.25);
+    return acc;
+}
+
+// The host cannot receive `out`: it enters through a kernel that returns what it needs.
+@shader()
+function sceneDistance(p: vec3) -&gt; float {
+    var color: vec3 = vec3(0.0, 0.0, 0.0);
+    return runProgram(p, color);
+}
+
+var frag = glsl.compile({
+    uniforms: ["sampler2D uProgram", "int uCount", "float uSize"],
+    functions: ["runProgram", "sceneDistance", "fragmentMain"],
+    main: "fragmentMain"
+});
+var material = three.createShaderMaterial({
+    "vertexShader": vert,
+    "fragmentShader": frag,
+    "uniforms": { "uProgram": programTexture, "uCount": 2, "uSize": 0.5 }
+});
+
+var sceneAt = glsl.host("sceneDistance", material);
+var d = sceneAt([x, y, z]);               // reads the material's uniforms and data texture now</code></pre>
+        <ul>
+            <li><code>texelFetch</code> sull'host legge solo data texture, a lod 0, come RGBA. Un texel fuori dalla texture è un errore che ne nomina la dimensione. Le texture immagine restano sulla GPU.</li>
+            <li>Il materiale deve avere un valore per ogni uniform letta dal kernel; una mancante è un errore alla chiamata. Una uniform dichiarata con due tipi diversi nel file è un errore di compilazione.</li>
+            <li>Chiamare per nome un kernel che legge una uniform è un errore di compilazione che indica <code>glsl.host</code>.</li>
+            <li><strong><code>out</code> tra kernel.</strong> Un kernel può chiamare un kernel con parametri <code>out</code>. L'argomento deve essere una variabile (per un vettore va bene anche un elemento di array), non uno swizzle o un'espressione. La funzione chiamata dall'host non può averne: entra attraverso un kernel che restituisce il valore, come fa <code>sceneDistance</code> qui sopra.</li>
         </ul>
         <p><code>Examples/Games/three_sdf_interpreter.malda</code> trova la superficie sotto il mouse con <code>sdShape</code> e <code>shapeRadius</code> dello shader stesso; <code>Examples/Games/three_sdf_invaders.malda</code> verifica i colpi contro gli scudi con <code>sdRoundBox</code>.</p>
 

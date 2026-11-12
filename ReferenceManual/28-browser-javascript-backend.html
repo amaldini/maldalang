@@ -353,7 +353,7 @@ var material = three.createShaderMaterial({
 three.setUniform(material, "uTime", t);</code></pre>
         <p><code>glsl.compile</code> takes a single object literal. Keys:</p>
         <ul>
-            <li><code>varyings</code> / <code>uniforms</code> / <code>consts</code> — arrays of GLSL declaration strings, for example <code>"vec3 uCamPos"</code> or <code>"float EPSILON = 0.0015"</code></li>
+            <li><code>varyings</code> / <code>uniforms</code> / <code>consts</code> — arrays of GLSL declaration strings, for example <code>"vec3 uCamPos"</code> or <code>"float EPSILON = 0.0015"</code>. A top-level MALDA <code>const</code> with a literal value needs no string: see <a href="#shader-host-calls">Calling a kernel from the host</a></li>
             <li><code>functions</code> — names of <code>@shader()</code> functions in this file to emit, in order</li>
             <li><code>main</code> — which of those functions becomes GLSL <code>void main()</code> (use this when the MALDA name is <code>vertexMain</code> / <code>fragmentMain</code>, because a file cannot declare two MALDA functions named <code>main</code>)</li>
             <li><code>header</code> — optional raw GLSL prefix</li>
@@ -397,10 +397,53 @@ if (distance &lt; 0.05) {
         <ul>
             <li><strong>Values.</strong> A <code>vec2</code> / <code>vec3</code> / <code>vec4</code> / <code>ivec*</code> is a MALDA list of 2 / 3 / 4 numbers, the shape <code>three.setUniform</code> takes. <code>float</code> and <code>int</code> are numbers, <code>bool</code> is a boolean. A returned vector is a new list, and the function never writes into a list you pass in.</li>
             <li><strong>Types are checked.</strong> A host-called kernel is typed from its hints with the rules of GLSL ES: <code>float</code> and <code>int</code> do not mix without <code>float(i)</code> or <code>int(x)</code>, a float local needs <code>1.0</code> and not <code>1</code>, and <code>int / int</code> truncates. A mismatch is a compile error (<code>GLSL type pass</code>) at the MALDA line. The GPU driver would reject the same code.</li>
-            <li><strong>Parameters and locals only.</strong> A function called from the host cannot use what exists only on the GPU or in a material: uniforms, consts, varyings, <code>gl_FragCoord</code> / <code>gl_Position</code>, <code>discard</code>, <code>dFdx</code> / <code>dFdy</code> / <code>fwidth</code>, <code>texture()</code> / <code>texelFetch()</code>, <code>out</code> parameters and <code>mat*</code> types. Each is a compile error that names the function and the construct, and the kernel that reaches it when the host calls it through another one. Pass the value as a parameter instead. The same function stays valid when only a shader uses it.</li>
+            <li><strong>What a kernel called by name may use.</strong> Its parameters, its locals and top-level MALDA consts. Uniforms and <code>texelFetch()</code> need <code>glsl.host</code> (below). What exists only on the GPU is never available: varyings, <code>gl_FragCoord</code> / <code>gl_Position</code>, <code>discard</code>, <code>dFdx</code> / <code>dFdy</code> / <code>fwidth</code>, filtered <code>texture()</code> and <code>mat*</code> types. Each is a compile error that names the function and the construct, and the kernel that reaches it when the host calls it through another one. The same function stays valid when only a shader uses it.</li>
             <li><strong>Same formula, not the same bits.</strong> The host computes in float64, the GPU in float32. Compare with a margin; do not test for equality with a value read back from the GPU.</li>
             <li><strong>Cost.</strong> Vector values are lists, so every vector operation allocates. This is for tens to thousands of calls per frame (a picking march, hit tests for live shots), not for per-pixel work, and it is not a CPU fallback for the shader.</li>
             <li><strong>Backends.</strong> JavaScript only. The interpreter and C# transpile still do not run kernels. The helpers are the <code>glsl</code> part of <code>malda-js-runtime.js</code>, kept only when a program calls a kernel from the host.</li>
+        </ul>
+        <p><strong>Consts.</strong> A kernel may name a top-level MALDA <code>const</code> whose value is an <code>int</code>, <code>float</code> or <code>bool</code> literal (a leading <code>-</code> is allowed). <code>glsl.compile</code> and <code>glsl.source</code> write <code>const int OP_UNION = 1;</code> into the GLSL for every such const their functions use, before the uniforms, typed from the literal: <code>0</code> is an <code>int</code>, <code>2.2</code> a <code>float</code>, and <code>const HALF: float = 2;</code> a <code>float</code>. The host twin uses the same value, so one declaration serves both sides. A computed const (<code>const TWO_PI = math.pi * 2;</code>) is not visible to kernels. A name that is also in the <code>consts</code> strings of <code>glsl.compile</code> keeps the string in the GLSL; a host-called kernel that reads it is an error when the two values differ, and a const declared only as a string cannot be read by a host-called kernel.</p>
+        <p><strong>Uniforms and data textures: <code>glsl.host</code>.</strong> <code>glsl.host("name", material)</code> returns a host function for that kernel, bound to a material from <code>three.createShaderMaterial</code>. The kernel and the kernels it calls may then read the uniforms declared in the <code>uniforms</code> strings of <code>glsl.compile</code> in the file, and <code>texelFetch</code> a <code>sampler2D</code> uniform that holds a <code>three.createDataTexture</code>. Values are read from the material at each call, so <code>three.setUniform</code> and <code>three.updateDataTexture</code> are seen without binding again, and two materials bound to the same kernel give two independent functions.</p>
+<pre><code>const OP_UNION = 1;                       // one declaration, host and shader
+
+@shader()
+function runProgram(p: vec3, color: out vec3) -&gt; float {
+    var acc: float = 100000.0;
+    for (var i: int = 0; i &lt; uCount; i++) {
+        var head: vec4 = texelFetch(uProgram, ivec2(i, 0), 0);
+        if (int(head.x + 0.5) == OP_UNION) {
+            acc = min(acc, length(p - head.yzw) - uSize);
+        }
+    }
+    color = vec3(1.0, 0.5, 0.25);
+    return acc;
+}
+
+// The host cannot receive `out`: it enters through a kernel that returns what it needs.
+@shader()
+function sceneDistance(p: vec3) -&gt; float {
+    var color: vec3 = vec3(0.0, 0.0, 0.0);
+    return runProgram(p, color);
+}
+
+var frag = glsl.compile({
+    uniforms: ["sampler2D uProgram", "int uCount", "float uSize"],
+    functions: ["runProgram", "sceneDistance", "fragmentMain"],
+    main: "fragmentMain"
+});
+var material = three.createShaderMaterial({
+    "vertexShader": vert,
+    "fragmentShader": frag,
+    "uniforms": { "uProgram": programTexture, "uCount": 2, "uSize": 0.5 }
+});
+
+var sceneAt = glsl.host("sceneDistance", material);
+var d = sceneAt([x, y, z]);               // reads the material's uniforms and data texture now</code></pre>
+        <ul>
+            <li><code>texelFetch</code> on the host reads data textures only, at lod 0, as RGBA. A texel outside the texture is an error that names its size. Image textures stay on the GPU.</li>
+            <li>The material must hold a value for every uniform the kernel reads; a missing one is an error at the call. A uniform declared with two different types in the file is a compile error.</li>
+            <li>Calling a kernel that reads a uniform by plain name is a compile error that points to <code>glsl.host</code>.</li>
+            <li><strong><code>out</code> between kernels.</strong> A kernel may call a kernel with <code>out</code> parameters. The argument must be a variable (for a vector, an array element also works), not a swizzle or an expression. The function the host calls cannot have one: enter through a kernel that returns the value, as <code>sceneDistance</code> does above.</li>
         </ul>
         <p><code>Examples/Games/three_sdf_interpreter.malda</code> picks the surface under the mouse with the shader's own <code>sdShape</code> and <code>shapeRadius</code>; <code>Examples/Games/three_sdf_invaders.malda</code> tests shots against its shields with <code>sdRoundBox</code>.</p>
 

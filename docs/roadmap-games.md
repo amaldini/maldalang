@@ -846,7 +846,7 @@ must produce the same JavaScript and the same GLSL as before.
   fixed bytecode program in a data texture, against values recorded from
   today's `cpuSceneDistance`, before G23c deletes it. Same for one shield with
   cuts against `cpuShield`.
-- [ ] **8. Docs.** Chapter 28.10.1 "Calling a kernel from the host" (+
+- [x] **8. Docs.** Chapter 28.10.1 "Calling a kernel from the host" (+
   `ReferenceManual/it/`), `docs/javascript-backend.md`,
   `docs/llm/malda-gotchas.md`, a `docs/spec/CHANGELOG.md` Unreleased row.
   `ReferenceManual` tests green.
