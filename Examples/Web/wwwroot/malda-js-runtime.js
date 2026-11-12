@@ -12680,6 +12680,11 @@
 
         // ---- values: GLSL vectors are values, so a twin copies one where GLSL would ----
         copy: (value) => (isVector(value) ? value.slice() : value),
+        // col = value for an `out` vector: the callee writes into its caller's list.
+        assign(target, value) {
+            for (let i = 0; i < target.length; i++) target[i] = value[i];
+            return target;
+        },
         float: scalar(toFloat),
         int: scalar(toInt),
         bool: scalar(toBool),

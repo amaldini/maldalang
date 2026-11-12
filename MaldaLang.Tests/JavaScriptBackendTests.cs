@@ -7628,6 +7628,185 @@ process.stdout.write("ok\n");
         Assert.Contains("@shader() function 'f'", ex.Message, StringComparison.Ordinal);
     }
 
+    // G23b step 6: `out` parameters between kernels. A vector is written in place into the caller's
+    // list, a scalar comes back through a one-slot box; `out` on the function the host enters is
+    // still an error.
+    private const string OutKernels = """
+        @shader()
+        function rayBox(origin: vec3, dir: vec3, tNear: out float, tFar: out float) -> bool {
+            var inv: vec3 = vec3(1.0, 1.0, 1.0) / dir;
+            var a: vec3 = (vec3(-1.0, -1.0, -1.0) - origin) * inv;
+            var b: vec3 = (vec3(1.0, 1.0, 1.0) - origin) * inv;
+            var lo: vec3 = min(a, b);
+            var hi: vec3 = max(a, b);
+            tNear = max(lo.x, max(lo.y, lo.z));
+            tFar = min(hi.x, min(hi.y, hi.z));
+            tFar += 0.0;
+            return tFar >= max(tNear, 0.0);
+        }
+
+        @shader()
+        function shapeAt(p: vec3, color: out vec3) -> float {
+            color = vec3(1.0, 0.5, 0.25);
+            color *= 2.0;
+            color.y = p.x;
+            return length(p) - 1.0;
+        }
+
+        @shader()
+        function pass(p: vec3, color: out vec3, hits: out int) -> float {
+            hits = hits + 1;
+            return shapeAt(p, color);
+        }
+
+        @shader()
+        function probe(origin: vec3, dir: vec3) -> vec4 {
+            var tNear: float = 0.0;
+            var tFar: float = 5.0;
+            var tint: vec3 = vec3(0.0, 0.0, 0.0);
+            var count: int = 0;
+            var d: float = -1.0;
+            if (rayBox(origin, dir, tNear, tFar)) {
+                d = pass(origin + dir * tNear, tint, count);
+                d = d + pass(origin + dir * tFar, tint, count) * 0.0;
+            }
+            return vec4(tNear, tFar, tint.y + float(count), d);
+        }
+
+        """;
+
+    [Fact]
+    public void JsTranspiler_EmitsHostTwin_OutParametersBetweenKernels()
+    {
+        var js = new Compiler.Compiler().TranspileToJavaScriptFromSource(OutKernels + "io.print(probe([-3, 0.25, 0], [1, 0, 0]));");
+
+        // A scalar `out` is a one-slot box on both sides.
+        Assert.Contains("function rayBox(origin, dir, tNear, tFar) {", js, StringComparison.Ordinal);
+        Assert.Contains("tNear[0] = Math.max(lo[0], Math.max(lo[1], lo[2]));", js, StringComparison.Ordinal);
+        Assert.Contains("tFar[0] += 0.0;", js, StringComparison.Ordinal);
+        Assert.Contains("return (tFar[0] >= Math.max(tNear[0], 0.0));", js, StringComparison.Ordinal);
+        Assert.Contains("let tNear = [0.0];", js, StringComparison.Ordinal);
+        Assert.Contains("let count = [0];", js, StringComparison.Ordinal);
+        Assert.Contains("if (rayBox(origin, dir, tNear, tFar))", js, StringComparison.Ordinal);
+        Assert.Contains("__maldaGlsl.mul(dir, tNear[0])", js, StringComparison.Ordinal);
+        // A local that is never an `out` argument stays a plain number.
+        Assert.Contains("let d = (-1.0);", js, StringComparison.Ordinal);
+        // A vector `out` is the caller's list: assignment copies into it.
+        Assert.Contains("__maldaGlsl.assign(color, __maldaGlsl.vec3(1.0, 0.5, 0.25));", js, StringComparison.Ordinal);
+        Assert.Contains("__maldaGlsl.assign(color, __maldaGlsl.mul(color, 2.0));", js, StringComparison.Ordinal);
+        Assert.Contains("color[1] = p[0];", js, StringComparison.Ordinal);
+        // `out` parameters are passed on as they are; the box of a scalar is updated in place.
+        Assert.Contains("hits[0] = (hits[0] + 1);", js, StringComparison.Ordinal);
+        Assert.Contains("return shapeAt(p, color);", js, StringComparison.Ordinal);
+        // GLSL copies inputs in: an input may be the same list as an `out` (f(v, v)).
+        Assert.Matches(@"function shapeAt\(p, color\) \{\s+p = p\.slice\(\);", js);
+        Assert.Contains("d = pass(__maldaGlsl.add(origin, __maldaGlsl.mul(dir, tNear[0])), tint, count);", js, StringComparison.Ordinal);
+        Assert.Contains("return __maldaGlsl.vec4(tNear[0], tFar[0], (tint[1] + count[0]), d);", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task JsTranspiler_EmitsHostTwin_OutParameters_RunOnTheHost()
+    {
+        Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);
+
+        var output = await Tier0JavaScriptRunner.RunAsync(OutKernels + """
+            @shader()
+            function swapInto(a: vec2, b: out vec2) -> float {
+                b = a.yx;
+                return a.x;
+            }
+
+            @shader()
+            function swapped(v: vec2) -> vec3 {
+                var kept: vec2 = v;
+                var result: vec2 = v;
+                var first: float = swapInto(result, result);
+                return vec3(result, kept.x + first);
+            }
+
+            var origin = [-3, 0.25, 0];
+            var hit = probe(origin, [1, 0, 0]);
+            io.print(hit[0]);
+            io.print(hit[1]);
+            io.print(hit[2]);
+            io.print(math.abs(hit[3] - 0.030776406404415146) < 0.000000001);
+            io.print(probe([-3, 5, 0], [1, 0, 0])[3]);
+            io.print(origin);
+            io.print(swapped([1, 2]));
+            """);
+
+        Assert.Equal(
+            new[] { "2", "4", "3", "true", "-1", "[-3, 0.25, 0]", "[2, 1, 2]" },
+            output.Replace("\r", string.Empty).Split('\n', StringSplitOptions.RemoveEmptyEntries));
+    }
+
+    [Theory]
+    [InlineData("io.print(shapeAt([1, 0, 0], [0, 0, 0]));", "@shader() function 'shapeAt' is called from host code", "'out' parameter 'color' has no host meaning")]
+    [InlineData("io.print(rayBox([0, 0, 0], [1, 0, 0], 0, 0));", "@shader() function 'rayBox' is called from host code", "'out' parameter 'tNear' has no host meaning")]
+    public void JsTranspiler_HostCalledShaderFunction_OutOnTheEntryFunctionIsStillAnError(string hostCode, string function, string expected)
+    {
+        var ex = Assert.ThrowsAny<Exception>(() => new Compiler.Compiler().TranspileToJavaScriptFromSource(OutKernels + hostCode));
+        Assert.Contains(function, ex.Message, StringComparison.Ordinal);
+        Assert.Contains(expected, ex.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("var v: vec3 = vec3(0.0, 0.0, 0.0); return f(p, v.x);", "the 'out' argument 'd' of f() must be a local variable or a parameter")]
+    [InlineData("var arr: float[2]; return f(p, arr[0]);", "the 'out' argument 'd' of f() must be a local variable or a parameter")]
+    [InlineData("var v: vec4 = vec4(0.0, 0.0, 0.0, 0.0); return g(p, v.xyz);", "the 'out' argument 'c' of g() must be a vector variable or an array element")]
+    public void JsTranspiler_HostCalledShaderFunction_OutArgumentsMustBeVariables(string body, string expected)
+    {
+        var source = """
+            @shader()
+            function f(p: vec3, d: out float) -> float {
+                d = p.x;
+                return p.y;
+            }
+
+            @shader()
+            function g(p: vec3, c: out vec3) -> float {
+                c = p;
+                return p.y;
+            }
+
+            @shader()
+            function entry(p: vec3) -> float {
+            BODY
+            }
+
+            io.print(entry([1, 2, 3]));
+            """.Replace("BODY", body);
+
+        var ex = Assert.ThrowsAny<Exception>(() => new Compiler.Compiler().TranspileToJavaScriptFromSource(source));
+        Assert.Contains("@shader() function 'entry' is called from host code", ex.Message, StringComparison.Ordinal);
+        Assert.Contains(expected, ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task JsTranspiler_EmitsHostTwin_OutVectorIntoAnArrayElement()
+    {
+        Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);
+
+        var output = await Tier0JavaScriptRunner.RunAsync("""
+            @shader()
+            function g(p: vec3, c: out vec3) -> float {
+                c = p * 2.0;
+                return p.y;
+            }
+
+            @shader()
+            function entry(p: vec3) -> vec3 {
+                var slots: vec3[2];
+                var y: float = g(p, slots[1]);
+                return slots[1] + slots[0] + vec3(y, 0.0, 0.0);
+            }
+
+            io.print(entry([1, 2, 3]));
+            """);
+
+        Assert.Equal("[4, 4, 6]", output.Trim());
+    }
+
     private static string StripJsSourceMapComment(string js)
     {
         var normalized = js.Replace("\r\n", "\n").TrimStart('\uFEFF');

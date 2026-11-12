@@ -135,9 +135,11 @@ public sealed class GlslFunctionTypes
         Dictionary<Expression, GlslType> expressions,
         Dictionary<VarDeclStatement, GlslType> locals,
         IReadOnlyList<string> callees,
-        HashSet<Expression> globalReferences)
+        HashSet<Expression> globalReferences,
+        IReadOnlyDictionary<string, IReadOnlyList<GlslParameter>> calleeParameters)
     {
         _globalReferences = globalReferences;
+        CalleeParameters = calleeParameters;
         Function = function;
         ReturnType = returnType;
         Parameters = parameters;
@@ -152,6 +154,9 @@ public sealed class GlslFunctionTypes
 
     /// <summary>Other <c>@shader()</c> functions this one calls, in first-call order.</summary>
     public IReadOnlyList<string> Callees { get; }
+
+    /// <summary>The typed parameters of each function in <see cref="Callees"/>, with their <c>out</c> qualifiers.</summary>
+    public IReadOnlyDictionary<string, IReadOnlyList<GlslParameter>> CalleeParameters { get; }
 
     public GlslType TypeOf(Expression expression) =>
         _expressions.TryGetValue(expression, out var type)
@@ -199,6 +204,7 @@ public static partial class GlslTranspiler
         private readonly List<Dictionary<string, GlslType>> _scopes = new();
         private readonly List<string> _callees = new();
         private readonly HashSet<Expression> _globalReferences = new(ReferenceEqualityComparer.Instance);
+        private readonly Dictionary<string, IReadOnlyList<GlslParameter>> _calleeParameters = new(StringComparer.Ordinal);
         private GlslType _returnType;
 
         public TypePass(
@@ -222,7 +228,7 @@ public static partial class GlslTranspiler
             CheckStatements(_function.Body.Statements);
             PopScope();
 
-            return new GlslFunctionTypes(_function, _returnType, parameters, _expressions, _locals, _callees, _globalReferences);
+            return new GlslFunctionTypes(_function, _returnType, parameters, _expressions, _locals, _callees, _globalReferences, _calleeParameters);
         }
 
         // ---- Signatures -------------------------------------------------------------------
@@ -669,6 +675,7 @@ public static partial class GlslTranspiler
 
             if (!_callees.Contains(callee.Name, StringComparer.Ordinal))
                 _callees.Add(callee.Name);
+            _calleeParameters[callee.Name] = parameters;
             return ReadReturnType(callee, call);
         }
 

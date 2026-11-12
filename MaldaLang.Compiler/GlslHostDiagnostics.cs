@@ -52,8 +52,14 @@ internal static class GlslHostDiagnostics
             {
                 if (!hint.StartsWith(qualifier + " ", StringComparison.Ordinal))
                     continue;
-                found.Add((function,
-                    $"'{qualifier}' parameter '{name}' has no host meaning: a function called from host code gives its result back with return."));
+                // Between kernels `out` works (the twin writes into its caller's value); the host
+                // has nothing to receive it with.
+                if (reachedThrough == null || qualifier == "inout")
+                {
+                    found.Add((function,
+                        $"'{qualifier}' parameter '{name}' has no host meaning: a function called from host code gives its result back with return. Call it from another @shader() function that returns what the host needs."));
+                }
+
                 hint = hint[qualifier.Length..].Trim();
                 break;
             }

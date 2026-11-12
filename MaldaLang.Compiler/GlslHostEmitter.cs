@@ -55,6 +55,9 @@ internal sealed class GlslHostEmitter
     private bool _writesComponents;
     private IReadOnlyDictionary<string, GlslLiteralConst>? _consts;
     private GlslHostAnalysis? _binding;
+    private readonly HashSet<string> _boxed = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _outVectors = new(StringComparer.Ordinal);
+    private bool _passesOut;
 
     private GlslHostEmitter(FunctionDeclaration function, GlslFunctionTypes types)
     {
@@ -80,20 +83,21 @@ internal sealed class GlslHostEmitter
     {
         foreach (var parameter in _types.Parameters)
         {
-            if (parameter.Qualifier.Length > 0)
-            {
-                throw Error(_function,
-                    $"'{parameter.Qualifier}' parameter '{parameter.Name}' has no host meaning: a function called from host code returns its result.");
-            }
-
+            if (parameter.Qualifier == "inout")
+                throw Error(_function, $"'inout' parameter '{parameter.Name}' is not supported in a host-called function.");
             RequireHostType(parameter.Type, _function, $"parameter '{parameter.Name}'");
+            if (parameter.Type.IsArray && parameter.Qualifier == "out")
+                throw Error(_function, $"'out' array parameter '{parameter.Name}' is not supported in a host-called function.");
         }
+
+        FindOutParameters();
 
         if (_types.ReturnType.Base != GlslBaseType.Void)
             RequireHostType(_types.ReturnType, _function, "the return value");
 
         var written = ComponentWrittenNames();
-        _writesComponents = written.Count > 0;
+        // A callee writes an `out` vector in place, so a vector must never alias another one here.
+        _writesComponents = written.Count > 0 || _passesOut || _outVectors.Count > 0;
 
         var takesMaterial = _binding != null && _binding.NeedsBinding(_function.Name);
         if (takesMaterial)
@@ -112,13 +116,73 @@ internal sealed class GlslHostEmitter
         // GLSL passes by value: a parameter the body writes into is copied first.
         foreach (var parameter in _types.Parameters)
         {
-            if (parameter.Type.IsVector && written.Contains(parameter.Name))
+            if (parameter.Qualifier == "out")
+                continue;
+            // With an `out` vector around, an input may be the same list as an output (f(v, v)):
+            // GLSL copies inputs in, so the twin does too.
+            if (parameter.Type.IsVector && (written.Contains(parameter.Name) || _passesOut || _outVectors.Count > 0))
                 Line(_function, $"{parameter.Name} = {parameter.Name}.slice();");
+            else if (_boxed.Contains(parameter.Name))
+                Line(_function, $"{parameter.Name} = [{parameter.Name}];");
         }
 
         EmitStatements(_function.Body.Statements);
         _indent--;
         Line(_function, "}");
+    }
+
+    /// <summary>
+    /// How `out` reaches JavaScript, which passes numbers by value and lists by reference.
+    /// A vector `out` parameter is the caller's list: the callee writes its components in place
+    /// (<c>col = v</c> copies into it). A scalar `out` parameter is a one-slot box, <c>[value]</c>:
+    /// every local or parameter that is passed as a scalar `out` argument lives in a box for the
+    /// whole function, by name, so the call can hand the box over.
+    /// </summary>
+    private void FindOutParameters()
+    {
+        foreach (var parameter in _types.Parameters)
+        {
+            if (parameter.Qualifier != "out")
+                continue;
+            if (parameter.Type.IsScalar)
+                _boxed.Add(parameter.Name);
+            else
+                _outVectors.Add(parameter.Name);
+        }
+
+        foreach (var call in AstNodeWalker.Descendants(_function.Body).OfType<FunctionCallExpression>())
+        {
+            if (call.Callee is not IdentifierExpression callee ||
+                !_types.CalleeParameters.TryGetValue(callee.Name, out var parameters))
+            {
+                continue;
+            }
+
+            for (var i = 0; i < parameters.Count && i < call.Arguments.Count; i++)
+            {
+                if (parameters[i].Qualifier != "out")
+                    continue;
+
+                _passesOut = true;
+                var argument = call.Arguments[i];
+                var isName = argument is IdentifierExpression name && !_types.IsGlobal(name);
+                if (parameters[i].Type.IsScalar)
+                {
+                    if (!isName)
+                    {
+                        throw Error(argument,
+                            $"the 'out' argument '{parameters[i].Name}' of {callee.Name}() must be a local variable or a parameter in a host-called function, not a component or an array element.");
+                    }
+
+                    _boxed.Add(((IdentifierExpression)argument).Name);
+                }
+                else if (!isName && argument is not ArrayAccessExpression)
+                {
+                    throw Error(argument,
+                        $"the 'out' argument '{parameters[i].Name}' of {callee.Name}() must be a vector variable or an array element in a host-called function, not a swizzle or an expression.");
+                }
+            }
+        }
     }
 
     /// <summary>
@@ -284,7 +348,7 @@ internal sealed class GlslHostEmitter
         var value = varDecl.Initializer is LiteralExpression { Value: null }
             ? DefaultValue(type, varDecl)
             : ValueCopy(varDecl.Initializer, always: false);
-        return $"let {varDecl.Name} = {value}";
+        return _boxed.Contains(varDecl.Name) ? $"let {varDecl.Name} = [{value}]" : $"let {varDecl.Name} = {value}";
     }
 
     /// <summary>What an uninitialized local holds. GLSL leaves it undefined; zero keeps the twin deterministic.</summary>
@@ -320,6 +384,15 @@ internal sealed class GlslHostEmitter
         }
 
         var target = Expr(assignment.Target);
+        // An `out` vector is the caller's list: assigning it copies into that list.
+        if (assignment.Target is IdentifierExpression outName && _outVectors.Contains(outName.Name) && !_types.IsGlobal(outName))
+        {
+            var value = op == TokenType.Assign
+                ? Expr(assignment.Value)
+                : Arithmetic(BinaryOf(op, assignment), targetType, target, _types.TypeOf(assignment.Value), Expr(assignment.Value));
+            return $"{RuntimeAlias}.assign({target}, {value})";
+        }
+
         if (op == TokenType.Assign)
             return $"{target} = {ValueCopy(assignment.Value, always: false)}";
 
@@ -374,7 +447,7 @@ internal sealed class GlslHostEmitter
                 return LiteralText(literal);
             case IdentifierExpression identifier:
                 if (!_types.IsGlobal(identifier))
-                    return identifier.Name;
+                    return _boxed.Contains(identifier.Name) ? identifier.Name + "[0]" : identifier.Name;
                 // A MALDA const is inlined: the twin does not depend on where the const lives in the
                 // generated file (a main() local, a module binding, a @worker() scope).
                 if (_consts != null && _consts.TryGetValue(identifier.Name, out var constant))
@@ -501,6 +574,16 @@ internal sealed class GlslHostEmitter
         };
         var args = call.Arguments.Select(Expr).ToList();
         var argTypes = call.Arguments.Select(_types.TypeOf).ToList();
+        if (call.Callee is IdentifierExpression && _types.CalleeParameters.TryGetValue(name, out var calleeParameters))
+        {
+            // A scalar `out` argument is handed over as its box, not as the number in it.
+            for (var i = 0; i < args.Count && i < calleeParameters.Count; i++)
+            {
+                if (calleeParameters[i].Qualifier == "out" && calleeParameters[i].Type.IsScalar)
+                    args[i] = ((IdentifierExpression)call.Arguments[i]).Name;
+            }
+        }
+
         var joined = string.Join(", ", args);
 
         if (call.Callee is IdentifierExpression)

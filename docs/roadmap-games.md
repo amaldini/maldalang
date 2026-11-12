@@ -835,7 +835,7 @@ must produce the same JavaScript and the same GLSL as before.
   none keep the G23a shape. Codegen tests: nothing new without `glsl.host`
   (`JsBuildSizeTests` green), two materials bound to the same kernel give two
   independent functions.
-- [ ] **6. `out` parameters between kernels.** The scene walks of both examples
+- [x] **6. `out` parameters between kernels.** The scene walks of both examples
   return a distance and write a color through `out` (`runProgram(p, color:
   out vec3)`). `out` on the function the host enters stays an error, but a
   twin may call a twin with `out` parameters: vectors are written in place
