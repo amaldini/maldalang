@@ -709,8 +709,8 @@ what the player sees. MALDA owns both emitters, so one function can feed both.
 | **G23b** Consts, uniforms, data textures | A host-called function that reads a `consts` name, a uniform, or `texelFetch`es a `sampler2D` needs values. Bind them to a material: uniforms read the material's current values, and `texelFetch` on a `three.createDataTexture` handle reads its backing array | `cpuSceneDistance`, `cpuShield`, the invaders' `boundRadius` (its `shapeRadius` reads `K_*` consts) |
 | **G23c** Examples + docs | Convert both SDF examples to the single source and delete the twins; chapter 28.10.1 gains a "Calling a kernel from the host" section | the "mirrors …" comments |
 
-G23a landed first and is useful alone. G23b needs the binding shape
-settled (see open questions) before any code.
+G23a landed first and is useful alone. The binding shape and the source of
+consts for G23b are decided (see open questions).
 
 **Guardrails**
 
@@ -732,16 +732,17 @@ settled (see open questions) before any code.
 
 **Open questions**
 
-1. **Binding shape for G23b.** Proposal: `glsl.host("sceneDistance", material)`
+1. **Binding shape for G23b.** *Decided 2026-11-12:* `glsl.host("sceneDistance", material)`
    returns a host function whose uniforms and samplers resolve against that
-   material. Alternative: bind once per file with `glsl.bind(material)`. The
-   first keeps two materials with different scenes unambiguous.
-2. **Consts.** `glsl.compile` takes consts as strings (`"float EPSILON = 0.0015"`),
-   per call, not per function. Either parse those strings for the host emit, or
-   let kernels read literal top-level MALDA `const` declarations and write them
-   into the GLSL automatically. The second also removes the duplicated
-   `OP_UNION`-style opcode constants, but it is a larger change to the kernel
-   contract.
+   material. It keeps two materials with different scenes unambiguous. The
+   alternative, binding once per file with `glsl.bind(material)`, is dropped.
+2. **Consts.** *Decided 2026-11-12:* kernels read literal top-level MALDA `const`
+   declarations, and the compiler writes them into the GLSL automatically, so
+   one declaration serves host and shader. This removes the duplicated
+   `OP_UNION` / `K_*` constants and lets the invaders' `boundRadius` become a
+   call to `shapeRadius`. It is a change to the kernel contract: the `consts`
+   strings of `glsl.compile` (`"float EPSILON = 0.0015"`) keep working beside
+   it. Parsing those strings for the host emit is dropped.
 3. **Scalarizing vectors.** Lowering `vec3` locals to three JS numbers would
    remove the allocations. Defer until a profile of the converted examples
    shows the picking march in the frame budget.
@@ -788,7 +789,8 @@ settled (see open questions) before any code.
 - [x] **8. Close G23a.** Mark the slice landed here and in the priority table.
   Real-GPU `malda play` check of both examples is the maintainer's.
 
-G23b does not start until open questions 1 and 2 above carry a decision.
+Open questions 1 and 2 above carry a decision (2026-11-12), so G23b can start;
+it needs its own progress checklist first.
 
 **Files:** `MaldaLang.Compiler/GlslTranspiler.cs` (type pass, shared with the
 host emit), `JsTranspiler.Shaders.cs` (collect host calls, emit twins),
