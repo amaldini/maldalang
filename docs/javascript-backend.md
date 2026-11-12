@@ -613,7 +613,18 @@ var vert = glsl.compile({
 
 The user-facing contract (types, subset, `glsl.compile` keys, IDE rename) is in [Reference Manual 28.10.1](../ReferenceManual/28-browser-javascript-backend.html#shader-kernels). The three.js scene API itself is [28.10](../ReferenceManual/28-browser-javascript-backend.html).
 
-`@shader()` functions are not emitted as JavaScript. They are a typed subset (C-like control flow, GLSL type hints such as `vec3` / `out float`, `math.sqrt` → `sqrt`). Host MALDA still owns the `three.*` loop and uniforms.
+`@shader()` functions are a typed subset (C-like control flow, GLSL type hints such as `vec3` / `out float`, `math.sqrt` → `sqrt`). Host MALDA still owns the `three.*` loop and uniforms. A kernel is emitted as JavaScript only when host code calls it.
+
+### Host-called kernels (G23a)
+
+Host MALDA may call an `@shader()` function by name (`var d = sdBox([qx, qy, qz], s);`). `JsTranspiler.EmitShaderHostTwins` (`JsTranspiler.Shaders.cs`) finds those calls outside shader bodies, follows the callees, and emits each reached function as a plain JavaScript function declaration after the ordinary functions, so the normal call emit reaches it. A program with no such call produces the same `.js` as before.
+
+- **Type pass:** `GlslTranspiler.AnalyzeTypes` (`GlslTranspiler.Types.cs`) types every expression from the declared hints with GLSL ES rules: no implicit `int` → `float`, scalar broadcast on vector arithmetic, `int / int` stays `int`, a signature table for the mapped built-ins (`GlslBuiltIns`). Errors read `GLSL type pass (line:col) in @shader() function 'name': …`. It runs only for host-reached functions; GLSL-only kernels are not type-checked.
+- **Emit:** `GlslHostEmitter` is type-directed. Scalar code stays native (`a + b`, `Math.max`, `Math.trunc(i / j)`), a single component is an index (`d.x` → `d[0]`), and vector operators, swizzles, constructors and built-ins go through `mlRuntime.glsl` (bound once as `__maldaGlsl`). Vectors are plain arrays. GLSL passes by value, so a parameter the body writes into is copied on entry, a returned name is copied, and inside a function that writes components an assignment from a bare name is copied too.
+- **Runtime:** `mlRuntime.glsl` is the optional `glsl` runtime area (see Runtime Areas): `vec2`–`vec4` / `ivec*` / `bvec*` constructors, `add` / `sub` / `mul` / `div` / `neg`, truncating `idiv` / `imod`, `eq` / `ne`, `swizzle` / `setSwizzle`, and the built-in table with GLSL formulas (`mod` takes the sign of `y`, `fract` is `x - floor(x)`). The helpers trust the typed emit: no coercion, no length checks.
+- **Diagnostics:** `GlslHostDiagnostics` runs before the type pass and rejects what has no host meaning, naming the function and the construct: `gl_*` names, varyings, `discard`, `dFdx` / `dFdy` / `fwidth`, `texture()` / `texelFetch()`, `out` parameters, `mat*` and sampler types, and uniforms / consts (not bound to host calls yet). Names are classified from the string lists given to `glsl.compile` in the file. A callee is reported as `reached from host code through 'caller'`.
+- **Limits:** JavaScript only. Arrays are locals with a literal size. `++` / `--` on a whole vector is rejected. Host call sites are not checked for argument count or types. Results agree with the GPU to float32 precision, not bit for bit. Vector values allocate, so this is for picking and hit tests, not per-pixel work.
+- **Tests:** `GlslTranspilerTests` (`TypePass_*`), `JavaScriptBackendTests` (`GlslRuntime_*`, `JsTranspiler_EmitsHostTwin_*`, `JsTranspiler_HostCalledShaderFunction_*`).
 
 See `Examples/Games/three_shader_raytracer.malda` for a realtime GPU ray tracer (spheres, cube, prism, cylinder, cone). Compile:
 

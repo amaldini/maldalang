@@ -76,7 +76,7 @@ malda compile Examples/Web/js/hello_dom.malda --target pwa -o dist/hello-dom
 # Template mode (.malda.html source)
 malda compile Examples/Web/js/hello_template.malda.html --mode js -o Examples/Web/js/hello_template.generated.js</code></pre>
         <p><code>--target js</code> is an alias for <code>--mode js</code>. <code>--target pwa</code> is an alias for <code>--mode pwa</code> and produces a directory containing the app shell, runtime, and transpiled JavaScript.</p>
-        <p>The <code>malda-js-runtime.js</code> written beside the output keeps the <code>game.*</code> and <code>three.*</code> parts only when the program uses them, so a program without them ships a runtime about half the size. Programs compiled into the same folder share the file and it keeps every part any of them uses; its first line lists them (<code>// malda-js-runtime areas: game</code>). A call into a part that was left out stops with <code>malda-js-runtime.js was written without the 'game' area</code>.</p>
+        <p>The <code>malda-js-runtime.js</code> written beside the output keeps the <code>game.*</code>, <code>three.*</code> and <code>glsl</code> (<a href="#shader-host-calls">host-called kernels</a>) parts only when the program uses them, so a program without them ships a runtime about half the size. Programs compiled into the same folder share the file and it keeps every part any of them uses; its first line lists them (<code>// malda-js-runtime areas: game</code>). A call into a part that was left out stops with <code>malda-js-runtime.js was written without the 'game' area</code>.</p>
         <p>The inner loop for canvas games is <code>malda play</code>. It compiles <code>--mode js</code>, writes a host page, and serves a local URL so you do not have to author HTML. Edits to the source, sibling <code>index.html</code>, and <code>assets/</code> rebuild and reload the browser (<code>--no-watch</code> serves the first compile only). Packaging for itch.io stays <code>--mode pwa</code>.</p>
         <pre><code>malda new game my-game
 cd my-game
@@ -332,7 +332,7 @@ three.start(update, render);</code></pre>
 
         <h3 id="shader-kernels">28.10.1 Shader kernels (MALDA to GLSL)</h3>
         <p>When CPU <code>game.setPixel</code> is too slow, put per-pixel work on the GPU. This is a <strong>JavaScript compile-time subset</strong>, not a fourth execution backend. Host MALDA still owns the <code>three.*</code> loop and uniform updates. The kernel owns the rays.</p>
-        <p>Mark GPU functions with <code>@shader()</code> and gather them into a GLSL string with <code>glsl.compile({ ... })</code>. Those functions are <strong>not</strong> emitted as JavaScript or C#. Do not call them from host MALDA. Interpreter and C# transpile skip them.</p>
+        <p>Mark GPU functions with <code>@shader()</code> and gather them into a GLSL string with <code>glsl.compile({ ... })</code>. Those functions are <strong>not</strong> emitted as C#, and as JavaScript only when host code calls them (see <a href="#shader-host-calls">Calling a kernel from the host</a>). Interpreter and C# transpile skip them.</p>
         <pre><code>@shader()
 function vertexMain() {
     vUv = uv;
@@ -378,6 +378,31 @@ three.setUniform(material, "uAngles", carH);</code></pre>
         <h4>Language subset</h4>
         <p>Allowed: <code>if</code> / <code>else</code>, <code>while</code>, <code>for</code>, <code>return</code>, arithmetic and comparisons, <code>and</code> / <code>or</code> / <code>not</code> (emitted as <code>&amp;&amp;</code> / <code>||</code> / <code>!</code>), member swizzles such as <code>position.xy</code>, GLSL constructors and builtins (<code>vec3</code>, <code>dot</code>, <code>normalize</code>, <code>mix</code>, <code>clamp</code>, …), and <code>math.sqrt</code> → GLSL <code>sqrt</code> (same for the other mapped <code>math.*</code> names).</p>
         <p>Not allowed in kernels: actors, prompts, <code>match</code>, strings, <code>foreach</code>, <code>await</code>, classes, and MALDA I/O. A construct the GLSL emitter does not know fails JS compile with a <code>GLSL transpile</code> error at the MALDA line.</p>
+
+        <h4 id="shader-host-calls">Calling a kernel from the host</h4>
+        <p>Host MALDA may call an <code>@shader()</code> function by name. The compiler then also emits that function, and the kernels it calls, as JavaScript, so one source feeds the GPU and the host: a raymarched game can test a shot or pick the surface under the mouse with the same distance function the fragment shader marches. A kernel that host code never calls is still GLSL-only, and a program without such calls compiles to the same JavaScript as before.</p>
+        <pre><code>@shader()
+function sdBox(q: vec3, s: float) -&gt; float {
+    var d: vec3 = abs(q) - vec3(s, s, s);
+    return length(max(d, vec3(0.0, 0.0, 0.0))) + min(max(d.x, max(d.y, d.z)), 0.0);
+}
+
+var frag = glsl.compile({ functions: ["sdBox", "fragmentMain"], main: "fragmentMain" });
+
+// The same function on the host: a vec3 is a list of three numbers.
+var distance = sdBox([shotX - boxX, shotY - boxY, shotZ - boxZ], 0.5);
+if (distance &lt; 0.05) {
+    io.print("hit");
+}</code></pre>
+        <ul>
+            <li><strong>Values.</strong> A <code>vec2</code> / <code>vec3</code> / <code>vec4</code> / <code>ivec*</code> is a MALDA list of 2 / 3 / 4 numbers, the shape <code>three.setUniform</code> takes. <code>float</code> and <code>int</code> are numbers, <code>bool</code> is a boolean. A returned vector is a new list, and the function never writes into a list you pass in.</li>
+            <li><strong>Types are checked.</strong> A host-called kernel is typed from its hints with the rules of GLSL ES: <code>float</code> and <code>int</code> do not mix without <code>float(i)</code> or <code>int(x)</code>, a float local needs <code>1.0</code> and not <code>1</code>, and <code>int / int</code> truncates. A mismatch is a compile error (<code>GLSL type pass</code>) at the MALDA line. The GPU driver would reject the same code.</li>
+            <li><strong>Parameters and locals only.</strong> A function called from the host cannot use what exists only on the GPU or in a material: uniforms, consts, varyings, <code>gl_FragCoord</code> / <code>gl_Position</code>, <code>discard</code>, <code>dFdx</code> / <code>dFdy</code> / <code>fwidth</code>, <code>texture()</code> / <code>texelFetch()</code>, <code>out</code> parameters and <code>mat*</code> types. Each is a compile error that names the function and the construct, and the kernel that reaches it when the host calls it through another one. Pass the value as a parameter instead. The same function stays valid when only a shader uses it.</li>
+            <li><strong>Same formula, not the same bits.</strong> The host computes in float64, the GPU in float32. Compare with a margin; do not test for equality with a value read back from the GPU.</li>
+            <li><strong>Cost.</strong> Vector values are lists, so every vector operation allocates. This is for tens to thousands of calls per frame (a picking march, hit tests for live shots), not for per-pixel work, and it is not a CPU fallback for the shader.</li>
+            <li><strong>Backends.</strong> JavaScript only. The interpreter and C# transpile still do not run kernels. The helpers are the <code>glsl</code> part of <code>malda-js-runtime.js</code>, kept only when a program calls a kernel from the host.</li>
+        </ul>
+        <p><code>Examples/Games/three_sdf_interpreter.malda</code> picks the surface under the mouse with the shader's own <code>sdShape</code> and <code>shapeRadius</code>; <code>Examples/Games/three_sdf_invaders.malda</code> tests shots against its shields with <code>sdRoundBox</code>.</p>
 
         <h4>IDE</h4>
         <p>Because kernels are ordinary MALDA <code>function</code> declarations, Desktop IDE and LSP rename, find references, highlights, and outline apply to <strong>identifiers</strong> in the kernel — unlike raw GLSL inside a <code>"""</code> string, which is one token. Rename still matches the lexeme across the file (same as the rest of MALDA). It does <strong>not</strong> rewrite string entries in <code>glsl.compile</code> (<code>functions: ["hitSphere"]</code>, <code>uniforms: ["vec3 uCamPos"]</code>, <code>main: "fragmentMain"</code>). After renaming a kernel or uniform identifier, update those strings. GLSL builtins (<code>dot</code>, <code>gl_FragColor</code>, type name <code>vec3</code>) have no MALDA declaration, so go to definition has nowhere to go.</p>

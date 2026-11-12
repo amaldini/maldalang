@@ -780,7 +780,7 @@ settled (see open questions) before any code.
   with calls to the shader functions; both still compile with `--mode js`.
   The invaders' `boundRadius` stays until G23b: its `shapeRadius` compares
   against `K_*` names, which are `glsl.compile` consts.
-- [ ] **7. Docs.** Chapter 28.10.1 (+ `ReferenceManual/it/`),
+- [x] **7. Docs.** Chapter 28.10.1 (+ `ReferenceManual/it/`),
   `docs/javascript-backend.md`, `docs/llm/malda-gotchas.md`, a
   `docs/spec/CHANGELOG.md` Unreleased row. `ReferenceManual` tests green.
 - [ ] **8. Close G23a.** Mark the slice landed here and in the priority table.

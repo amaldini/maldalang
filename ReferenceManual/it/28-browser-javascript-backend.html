@@ -77,7 +77,7 @@ malda compile Examples/Web/js/hello_dom.malda --target pwa -o dist/hello-dom
 # Template mode (.malda.html source)
 malda compile Examples/Web/js/hello_template.malda.html --mode js -o Examples/Web/js/hello_template.generated.js</code></pre>
         <p><code>--target js</code> è un alias di <code>--mode js</code>. <code>--target pwa</code> è un alias di <code>--mode pwa</code> e produce una directory che contiene l'app shell, il runtime e il JavaScript transpile.</p>
-        <p>Il <code>malda-js-runtime.js</code> scritto accanto all'output tiene le parti <code>game.*</code> e <code>three.*</code> solo quando il programma le usa, così un programma che non le usa distribuisce un runtime grande circa la metà. I programmi compilati nella stessa cartella condividono il file, che tiene ogni parte usata da almeno uno di loro; la prima riga le elenca (<code>// malda-js-runtime areas: game</code>). Una chiamata a una parte tolta si ferma con <code>malda-js-runtime.js was written without the 'game' area</code>.</p>
+        <p>Il <code>malda-js-runtime.js</code> scritto accanto all'output tiene le parti <code>game.*</code>, <code>three.*</code> e <code>glsl</code> (<a href="#shader-host-calls">kernel chiamati dall'host</a>) solo quando il programma le usa, così un programma che non le usa distribuisce un runtime grande circa la metà. I programmi compilati nella stessa cartella condividono il file, che tiene ogni parte usata da almeno uno di loro; la prima riga le elenca (<code>// malda-js-runtime areas: game</code>). Una chiamata a una parte tolta si ferma con <code>malda-js-runtime.js was written without the 'game' area</code>.</p>
         <p>Il ciclo interno per i giochi canvas è <code>malda play</code>. Compila <code>--mode js</code>, scrive una pagina host e serve un URL locale così non devi scrivere HTML. Le modifiche al sorgente, all'<code>index.html</code> gemello e ad <code>assets/</code> ricompilano e ricaricano il browser (<code>--no-watch</code> serve solo la prima compile). Il packaging per itch.io resta <code>--mode pwa</code>.</p>
         <pre><code>malda new game my-game
 cd my-game
@@ -333,7 +333,7 @@ three.start(update, render);</code></pre>
 
         <h3 id="shader-kernels">28.10.1 Kernel shader (MALDA verso GLSL)</h3>
         <p>Quando <code>game.setPixel</code> sulla CPU è troppo lento, sposta il lavoro per-pixel sulla GPU. Questo è un <strong>sottoinsieme a compile-time JavaScript</strong>, non un quarto backend di esecuzione. Il MALDA host continua a possedere il loop <code>three.*</code> e gli aggiornamenti delle uniform. Il kernel possiede i raggi.</p>
-        <p>Marca le funzioni GPU con <code>@shader()</code> e raccoglile in una stringa GLSL con <code>glsl.compile({ ... })</code>. Quelle funzioni <strong>non</strong> vengono emesse come JavaScript o C#. Non chiamarle dal MALDA host. L'interprete e il transpile C# le saltano.</p>
+        <p>Marca le funzioni GPU con <code>@shader()</code> e raccoglile in una stringa GLSL con <code>glsl.compile({ ... })</code>. Quelle funzioni <strong>non</strong> vengono emesse come C#, e come JavaScript solo quando il codice host le chiama (vedi <a href="#shader-host-calls">Chiamare un kernel dall'host</a>). L'interprete e il transpile C# le saltano.</p>
         <pre><code>@shader()
 function vertexMain() {
     vUv = uv;
@@ -379,6 +379,31 @@ three.setUniform(material, "uAngles", carH);</code></pre>
         <h4>Sottoinsieme del linguaggio</h4>
         <p>Ammessi: <code>if</code> / <code>else</code>, <code>while</code>, <code>for</code>, <code>return</code>, aritmetica e confronti, <code>and</code> / <code>or</code> / <code>not</code> (emessi come <code>&amp;&amp;</code> / <code>||</code> / <code>!</code>), swizzle di membro come <code>position.xy</code>, costruttori e builtin GLSL (<code>vec3</code>, <code>dot</code>, <code>normalize</code>, <code>mix</code>, <code>clamp</code>, …), e <code>math.sqrt</code> → GLSL <code>sqrt</code> (stesso per gli altri nomi <code>math.*</code> mappati).</p>
         <p>Non ammessi nei kernel: actor, prompt, <code>match</code>, stringhe, <code>foreach</code>, <code>await</code>, classi e I/O MALDA. Un costrutto che l'emettitore GLSL non conosce fa fallire il compile JS con un errore <code>GLSL transpile</code> alla riga MALDA.</p>
+
+        <h4 id="shader-host-calls">Chiamare un kernel dall'host</h4>
+        <p>Il MALDA host può chiamare una funzione <code>@shader()</code> per nome. Il compilatore allora emette quella funzione, e i kernel che chiama, anche come JavaScript, così una sola sorgente serve la GPU e l'host: un gioco in raymarching può verificare un colpo o trovare la superficie sotto il mouse con la stessa funzione di distanza che il fragment shader percorre. Un kernel che il codice host non chiama mai resta solo GLSL, e un programma senza queste chiamate compila nello stesso JavaScript di prima.</p>
+        <pre><code>@shader()
+function sdBox(q: vec3, s: float) -&gt; float {
+    var d: vec3 = abs(q) - vec3(s, s, s);
+    return length(max(d, vec3(0.0, 0.0, 0.0))) + min(max(d.x, max(d.y, d.z)), 0.0);
+}
+
+var frag = glsl.compile({ functions: ["sdBox", "fragmentMain"], main: "fragmentMain" });
+
+// The same function on the host: a vec3 is a list of three numbers.
+var distance = sdBox([shotX - boxX, shotY - boxY, shotZ - boxZ], 0.5);
+if (distance &lt; 0.05) {
+    io.print("hit");
+}</code></pre>
+        <ul>
+            <li><strong>Valori.</strong> Un <code>vec2</code> / <code>vec3</code> / <code>vec4</code> / <code>ivec*</code> è una lista MALDA di 2 / 3 / 4 numeri, la forma che accetta <code>three.setUniform</code>. <code>float</code> e <code>int</code> sono numeri, <code>bool</code> è un booleano. Un vettore restituito è una lista nuova, e la funzione non scrive mai in una lista che le passi.</li>
+            <li><strong>I tipi sono controllati.</strong> Un kernel chiamato dall'host è tipizzato dai suoi hint con le regole di GLSL ES: <code>float</code> e <code>int</code> non si mescolano senza <code>float(i)</code> o <code>int(x)</code>, un locale float vuole <code>1.0</code> e non <code>1</code>, e <code>int / int</code> tronca. Un'incoerenza è un errore di compilazione (<code>GLSL type pass</code>) alla riga MALDA. Il driver della GPU rifiuterebbe lo stesso codice.</li>
+            <li><strong>Solo parametri e locali.</strong> Una funzione chiamata dall'host non può usare ciò che esiste solo sulla GPU o in un materiale: uniform, const, varying, <code>gl_FragCoord</code> / <code>gl_Position</code>, <code>discard</code>, <code>dFdx</code> / <code>dFdy</code> / <code>fwidth</code>, <code>texture()</code> / <code>texelFetch()</code>, parametri <code>out</code> e tipi <code>mat*</code>. Ognuno è un errore di compilazione che nomina la funzione e il costrutto, e il kernel che la raggiunge quando l'host la chiama attraverso un altro. Passa il valore come parametro. La stessa funzione resta valida quando la usa solo uno shader.</li>
+            <li><strong>Stessa formula, non gli stessi bit.</strong> L'host calcola in float64, la GPU in float32. Confronta con un margine; non verificare l'uguaglianza con un valore riletto dalla GPU.</li>
+            <li><strong>Costo.</strong> I valori vettoriali sono liste, quindi ogni operazione vettoriale alloca. Serve per decine o migliaia di chiamate per frame (una marcia di picking, i test dei colpi in volo), non per il lavoro per-pixel, e non è un fallback su CPU dello shader.</li>
+            <li><strong>Backend.</strong> Solo JavaScript. L'interprete e il transpile C# continuano a non eseguire i kernel. Gli helper sono la parte <code>glsl</code> di <code>malda-js-runtime.js</code>, tenuta solo quando un programma chiama un kernel dall'host.</li>
+        </ul>
+        <p><code>Examples/Games/three_sdf_interpreter.malda</code> trova la superficie sotto il mouse con <code>sdShape</code> e <code>shapeRadius</code> dello shader stesso; <code>Examples/Games/three_sdf_invaders.malda</code> verifica i colpi contro gli scudi con <code>sdRoundBox</code>.</p>
 
         <h4>IDE</h4>
         <p>Poiché i kernel sono dichiarazioni <code>function</code> MALDA ordinarie, nel Desktop IDE e nell'LSP rename, trova riferimenti, highlight e outline si applicano agli <strong>identificatori</strong> nel kernel — a differenza del GLSL grezzo in una stringa <code>"""</code>, che è un solo token. Rename continua a matchare il lessema in tutto il file (come nel resto di MALDA). <strong>Non</strong> riscrive le stringhe in <code>glsl.compile</code> (<code>functions: ["hitSphere"]</code>, <code>uniforms: ["vec3 uCamPos"]</code>, <code>main: "fragmentMain"</code>). Dopo aver rinominato un identificatore di kernel o di uniform, aggiorna quelle stringhe. I builtin GLSL (<code>dot</code>, <code>gl_FragColor</code>, nome di tipo <code>vec3</code>) non hanno una dichiarazione MALDA, quindi vai alla definizione non ha dove andare.</p>
