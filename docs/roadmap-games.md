@@ -811,7 +811,7 @@ must produce the same JavaScript and the same GLSL as before.
   `@worker()` scope). A name declared only in a `consts` string stays an
   error for a host-called function, now saying "declare it as a top-level
   MALDA `const`". Codegen and Node tests in `JavaScriptBackendTests`.
-- [ ] **3. `glsl.host` at compile time.** `glsl.host("name", material)` takes a
+- [x] **3. `glsl.host` at compile time.** `glsl.host("name", material)` takes a
   string literal naming an `@shader()` function of the file and marks it, and
   the kernels it calls, as *bound*. A bound function may read uniforms and
   `texelFetch` a `sampler2D` uniform; uniform types come from the `uniforms`

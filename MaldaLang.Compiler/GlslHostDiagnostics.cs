@@ -34,8 +34,11 @@ internal static class GlslHostDiagnostics
         IReadOnlyDictionary<string, string> shaderGlobals,
         string? reachedThrough = null,
         IReadOnlyDictionary<string, GlslLiteralConst>? maldaConsts = null,
-        IReadOnlyDictionary<string, string>? constStringValues = null)
+        IReadOnlyDictionary<string, string>? constStringValues = null,
+        IReadOnlyDictionary<string, IReadOnlyList<GlslType>>? boundUniforms = null)
     {
+        // Non-null for a function reached through glsl.host: it may read the declared uniforms.
+        var bound = boundUniforms != null;
         var found = new List<(Node At, string Message)>();
         var known = new HashSet<string>(function.Parameters, StringComparer.Ordinal);
 
@@ -72,7 +75,7 @@ internal static class GlslHostDiagnostics
                     break;
                 case FunctionCallExpression { Callee: IdentifierExpression callee } call:
                     callees.Add(callee);
-                    if (AddCallProblem(found, callee, callee.Name))
+                    if (AddCallProblem(found, callee, callee.Name, function.Name, bound))
                     {
                         // The call is the problem, not the sampler or uniform passed to it.
                         foreach (var argument in AstNodeWalker.Descendants(call).OfType<IdentifierExpression>())
@@ -114,8 +117,18 @@ internal static class GlslHostDiagnostics
                 found.Add((identifier, $"varying '{name}' has no host meaning: it is interpolated by the GPU for each fragment."));
             else if (shaderGlobals.TryGetValue(name, out kind) && kind == "const")
                 found.Add((identifier, $"const '{name}' is declared only in a glsl.compile consts string, which the host cannot read: declare it as a top-level MALDA const (const {name} = ...;) and remove the string."));
+            else if (shaderGlobals.TryGetValue(name, out kind) && bound)
+            {
+                // A uniform: its type comes from the glsl.compile strings of the file.
+                if (!boundUniforms!.TryGetValue(name, out var declaredTypes))
+                    found.Add((identifier, $"uniform '{name}' has a declaration glsl.host cannot read; write it as \"type {name}\" in the uniforms of glsl.compile."));
+                else if (declaredTypes.Count > 1)
+                    found.Add((identifier, $"uniform '{name}' is declared as {string.Join(" and as ", declaredTypes)} in the glsl.compile calls of this file: a bound function needs one type."));
+            }
             else if (shaderGlobals.TryGetValue(name, out kind))
-                found.Add((identifier, $"{kind} '{name}' has no host value: a function called from host code can only use its parameters, its locals and top-level MALDA consts. Pass the value as a parameter."));
+                found.Add((identifier, $"{kind} '{name}' has no host value when the function is called by name: it can only use its parameters, its locals and top-level MALDA consts. Bind it to a material with glsl.host(\"{function.Name}\", material), or pass the value as a parameter."));
+            else if (bound)
+                found.Add((identifier, $"'{name}' is not a parameter, a local, a top-level literal MALDA const or a uniform declared to glsl.compile in this file."));
             else
                 found.Add((identifier, $"'{name}' is not a parameter, a local or a top-level literal MALDA const: a uniform or varying has no host value. Pass the value as a parameter."));
         }
@@ -160,15 +173,19 @@ internal static class GlslHostDiagnostics
             found.Add((at, $"type {type} of {what} has no host value."));
     }
 
-    private static bool AddCallProblem(List<(Node, string)> found, Node at, string name)
+    private static bool AddCallProblem(List<(Node, string)> found, Node at, string name, string functionName, bool bound)
     {
+        // A bound function reads a data texture of its material; the type pass checks the arguments.
+        if (bound && name == "texelFetch")
+            return false;
+
         string? message = null;
         if (Derivatives.Contains(name))
             message = $"{name}() has no host meaning: screen-space derivatives exist only in a fragment shader.";
         else if (FilteredTextureCalls.Contains(name))
             message = $"{name}() has no host meaning: a filtered texture lookup needs the GPU.";
         else if (name == "texelFetch")
-            message = "texelFetch() has no host value: a function called from host code has no texture bound to it.";
+            message = $"texelFetch() has no host value when the function is called by name: bind it to a material with glsl.host(\"{functionName}\", material).";
         else if (name is "mat2" or "mat3" or "mat4")
             message = $"{name}() is not supported on the host: mat* types are GLSL-only in this version.";
 

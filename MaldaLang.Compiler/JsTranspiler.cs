@@ -37,7 +37,7 @@ public partial class JsTranspiler
     private readonly HashSet<string> _asyncFunctions = new(StringComparer.Ordinal);
     private readonly Dictionary<string, int> _variantConstructorArities = new(StringComparer.Ordinal);
     private readonly Dictionary<string, FunctionDeclaration> _shaderFunctions = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, GlslFunctionTypes> _shaderHostTypes = new(StringComparer.Ordinal);
+    private GlslHostAnalysis? _shaderHost;
     private readonly List<GlslLiteralConst> _shaderLiteralConsts = new();
     private readonly Stack<HashSet<string>> _localScopes = new();
     private readonly HashSet<string> _moduleConstNames = new(StringComparer.Ordinal);
@@ -225,6 +225,7 @@ public partial class JsTranspiler
 
         CollectShaderFunctions(statements);
         CollectShaderLiteralConsts(statements);
+        AnalyzeShaderHostCalls(statements);
         var jsImports = CollectJsImports(jsImportStatements);
         InferNumericNames(statements);
 
@@ -317,7 +318,7 @@ public partial class JsTranspiler
             });
         }
 
-        EmitShaderHostTwins(statements);
+        EmitShaderHostTwins();
 
         foreach (var actor in actorDeclarations)
         {

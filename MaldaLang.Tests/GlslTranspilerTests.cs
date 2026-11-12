@@ -690,6 +690,223 @@ public class GlslTranspilerTests : TestBase
         return string.Empty;
     }
 
+    // ---- G23b step 3: glsl.host at compile time ----
+
+    private const string BoundKernels = """
+        const OP_UNION = 1;
+
+        @shader()
+        function sdSphere(q: vec3, s: float) -> float {
+            return length(q) - s;
+        }
+
+        @shader()
+        function opAt(i: int) -> vec4 {
+            return texelFetch(uProgram, ivec2(i, 0), 0);
+        }
+
+        @shader()
+        function sceneDistance(p: vec3) -> float {
+            var acc: float = uFar;
+            for (var i: int = 0; i < uOpCount; i++) {
+                var head: vec4 = opAt(i);
+                if (int(head.x) == OP_UNION) {
+                    acc = min(acc, sdSphere(p - head.yzw, uSizes[i]) * uScale.x);
+                }
+            }
+            return acc;
+        }
+
+        @shader()
+        function fragmentMain() {
+            gl_FragColor = vec4(sceneDistance(vPos), 0.0, 0.0, 1.0);
+        }
+
+        var fragment = glsl.compile({
+            varyings: ["vec3 vPos"],
+            uniforms: ["sampler2D uProgram", "int uOpCount", "uniform float uFar", "vec3 uScale", "float uSizes[MAX_OPS]"],
+            consts: ["int MAX_OPS = 16"],
+            functions: ["sdSphere", "opAt", "sceneDistance"],
+            main: "fragmentMain"
+        });
+        var material = three.createShaderMaterial({ "vertexShader": fragment, "fragmentShader": fragment, "uniforms": {} });
+
+        """;
+
+    private static GlslHostAnalysis AnalyzeHost(string source)
+    {
+        var statements = Parse(source);
+        var functions = statements
+            .OfType<FunctionDeclaration>()
+            .Where(ShaderFunction.IsMarked)
+            .ToDictionary(f => f.Name, StringComparer.Ordinal);
+        var consts = statements
+            .OfType<VarDeclStatement>()
+            .Select(GlslLiteralConst.TryRead)
+            .Where(constant => constant != null)
+            .Select(constant => constant!)
+            .ToList();
+        return GlslHostAnalysis.Run(statements, functions, consts);
+    }
+
+    [Fact]
+    public void GlslHost_BindsTheFunctionAndItsCallees_AndTypesTheUniforms()
+    {
+        var analysis = AnalyzeHost(BoundKernels + """
+            var sceneAt = glsl.host("sceneDistance", material);
+            """);
+
+        Assert.Equal(new[] { "sceneDistance" }, analysis.BoundRoots);
+        Assert.Equal(new[] { "sdSphere", "opAt", "sceneDistance" }, analysis.BoundFunctions.Select(f => f.Name));
+        Assert.Empty(analysis.PlainFunctions);
+        Assert.Equal(GlslType.Float, analysis.BoundTypes["sceneDistance"].ReturnType);
+        Assert.Equal(new[] { "opAt", "sdSphere" }, analysis.BoundTypes["sceneDistance"].Callees);
+
+        Assert.Equal("sampler2D", analysis.UniformTypes["uProgram"].ToString());
+        Assert.Equal(GlslType.Int, analysis.UniformTypes["uOpCount"]);
+        Assert.Equal(GlslType.Float, analysis.UniformTypes["uFar"]);
+        Assert.Equal(GlslType.Vec(3), analysis.UniformTypes["uScale"]);
+        Assert.Equal("float[]", analysis.UniformTypes["uSizes"].ToString());
+        Assert.Equal("1", analysis.Consts["OP_UNION"].GlslValue);
+    }
+
+    [Fact]
+    public void GlslHost_AFunctionCanBeBoundAndCalledByName()
+    {
+        var analysis = AnalyzeHost(BoundKernels + """
+            var sceneAt = glsl.host("sceneDistance", material);
+            var other = glsl.host("sceneDistance", material);
+            io.print(sdSphere([1, 0, 0], 0.5));
+            """);
+
+        Assert.Equal(new[] { "sceneDistance" }, analysis.BoundRoots);
+        Assert.Equal(new[] { "sdSphere" }, analysis.PlainFunctions.Select(f => f.Name));
+        Assert.Contains("sdSphere", analysis.BoundTypes.Keys);
+    }
+
+    [Fact]
+    public void GlslHost_NothingReached_IsEmpty()
+    {
+        var analysis = AnalyzeHost(BoundKernels + "io.print(fragment.length > 0);");
+
+        Assert.Empty(analysis.BoundRoots);
+        Assert.Empty(analysis.BoundFunctions);
+        Assert.Empty(analysis.PlainFunctions);
+    }
+
+    [Theory]
+    [InlineData("function f(p: vec3) -> float { return p.x * uGain; }", "io.print(f([1, 2, 3]));",
+        "uniform 'uGain' has no host value when the function is called by name")]
+    [InlineData("function f(p: vec3) -> float { return p.x * uGain; }", "io.print(f([1, 2, 3]));",
+        "glsl.host(\"f\", material)")]
+    [InlineData("function f(p: vec3) -> float { return texelFetch(uMap, ivec2(0, 0), 0).x; }", "io.print(f([1, 2, 3]));",
+        "texelFetch() has no host value when the function is called by name: bind it to a material with glsl.host(\"f\", material)")]
+    [InlineData("function f(p: vec3) -> float { return p.x * uMissing; }", "var h = glsl.host(\"f\", material);",
+        "'uMissing' is not a parameter, a local, a top-level literal MALDA const or a uniform declared to glsl.compile in this file")]
+    [InlineData("function f(p: vec3) -> float { return p.x * uTwice; }", "var h = glsl.host(\"f\", material);",
+        "uniform 'uTwice' is declared as float and as vec3 in the glsl.compile calls of this file")]
+    [InlineData("function f(p: vec3) -> float { return p.x + vUv.x; }", "var h = glsl.host(\"f\", material);",
+        "varying 'vUv' has no host meaning")]
+    [InlineData("function f(p: vec3) -> float { return gl_FragCoord.x + p.x; }", "var h = glsl.host(\"f\", material);",
+        "gl_FragCoord has no host meaning")]
+    [InlineData("function f(p: vec3) -> float { return dFdx(p.x) * uGain; }", "var h = glsl.host(\"f\", material);",
+        "dFdx() has no host meaning")]
+    [InlineData("function f(p: vec3) -> float { return texture(uMap, p.xy).x; }", "var h = glsl.host(\"f\", material);",
+        "texture() has no host meaning")]
+    [InlineData("function f(p: vec3, d: out float) -> bool { d = uGain; return true; }", "var h = glsl.host(\"f\", material);",
+        "'out' parameter 'd' has no host meaning")]
+    [InlineData("function f(p: vec3) -> vec3 { return p * mat3(uGain); }", "var h = glsl.host(\"f\", material);",
+        "mat3() is not supported on the host")]
+    [InlineData("function f(p: vec3) -> float { return p.x + EPSILON; }", "var h = glsl.host(\"f\", material);",
+        "const 'EPSILON' is declared only in a glsl.compile consts string")]
+    [InlineData("function f(p: vec3) -> float { return p.x * uCount; }", "var h = glsl.host(\"f\", material);",
+        "'*' mixes float and int")]
+    [InlineData("function f(p: vec3) -> float { return texelFetch(uGain, ivec2(0, 0), 0).x; }", "var h = glsl.host(\"f\", material);",
+        "no overload of texelFetch() takes (float, ivec2, int)")]
+    [InlineData("function f(p: vec3) -> float { return p.x; }", "var h = glsl.host(\"g\", material);",
+        "glsl.host (", "references 'g', which is not an @shader() function in this file")]
+    [InlineData("function f(p: vec3) -> float { return p.x; }", "var h = glsl.host(name, material);",
+        "glsl.host (", "expects the name of an @shader() function as a string literal, and a material")]
+    [InlineData("function f(p: vec3) -> float { return p.x; }", "var h = glsl.host(\"f\");",
+        "glsl.host (", "expects the name of an @shader() function as a string literal, and a material")]
+    public void GlslHost_RejectsWhatABoundFunctionCannotUse(string declaration, string hostCode, string expected, string? alsoExpected = null)
+    {
+        var source = "@shader()\n" + declaration + """
+
+            var fragment = glsl.compile({
+                varyings: ["vec2 vUv"],
+                uniforms: ["float uGain", "int uCount", "sampler2D uMap", "float uTwice"],
+                consts: ["float EPSILON = 0.0015"],
+                functions: ["f"]
+            });
+            var second = glsl.compile({ uniforms: ["vec3 uTwice"], functions: ["f"] });
+            var name = "f";
+            var material = three.createShaderMaterial({ "vertexShader": fragment, "fragmentShader": second, "uniforms": {} });
+
+            """ + hostCode;
+
+        var ex = Assert.ThrowsAny<Exception>(() => new Compiler.Compiler().TranspileToJavaScriptFromSource(source));
+        Assert.Contains(expected, ex.Message, StringComparison.Ordinal);
+        if (alsoExpected != null)
+            Assert.Contains(alsoExpected, ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void GlslHost_ErrorInACallee_NamesTheBoundFunctionThatReachesIt()
+    {
+        var ex = Assert.ThrowsAny<Exception>(() => AnalyzeHost("""
+            @shader()
+            function fog(p: vec3) -> float {
+                return length(p) * vDepth;
+            }
+
+            @shader()
+            function shade(p: vec3) -> float {
+                return 1.0 - fog(p) * uDensity;
+            }
+
+            var fragment = glsl.compile({ varyings: ["float vDepth"], uniforms: ["float uDensity"], functions: ["fog", "shade"] });
+            var shadeAt = glsl.host("shade", material);
+            """));
+
+        Assert.Contains("@shader() function 'fog' is reached from host code through 'shade' (3:", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("varying 'vDepth' has no host meaning", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void GlslHost_ChecksPass_ThenTheEmitSaysItIsNotThereYet()
+    {
+        var ex = Assert.ThrowsAny<Exception>(() => new Compiler.Compiler().TranspileToJavaScriptFromSource(BoundKernels + """
+            var sceneAt = glsl.host("sceneDistance", material);
+            """));
+
+        Assert.Contains("glsl.host(\"sceneDistance\", material) passed its compile-time checks", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("vec3 uCamPos", "uCamPos", "vec3")]
+    [InlineData("uniform highp sampler2D uProgram", "uProgram", "sampler2D")]
+    [InlineData("vec3 uCars[CAR_COUNT]", "uCars", "vec3[]")]
+    [InlineData("float uAngles[8];", "uAngles", "float[8]")]
+    [InlineData("int uCount", "uCount", "int")]
+    [InlineData("float EPSILON = 0.0015", "EPSILON", "float")]
+    public void TryParseDeclaration_ReadsNameAndType(string declaration, string name, string type)
+    {
+        Assert.True(GlslTranspiler.TryParseDeclaration(declaration, out var parsedName, out var parsedType));
+        Assert.Equal(name, parsedName);
+        Assert.Equal(type, parsedType.ToString());
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("vec3")]
+    [InlineData("void nothing")]
+    [InlineData("float uOpen[8")]
+    public void TryParseDeclaration_RejectsWhatIsNotADeclaration(string declaration)
+    {
+        Assert.False(GlslTranspiler.TryParseDeclaration(declaration, out _, out _));
+    }
+
     private static List<MaldaLang.Parser.AST.Statements.Statement> Parse(string source)
     {
         var parser = new Parser.Parser(new Lexer(source).Tokenize());

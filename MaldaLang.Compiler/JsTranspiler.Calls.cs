@@ -48,8 +48,10 @@ public partial class JsTranspiler
                     return TranspileGlslSource(functionCall);
                 if (memberCall.Member == "functions")
                     return TranspileGlslFunctions(functionCall);
+                if (memberCall.Member == "host")
+                    return TranspileGlslHost(functionCall);
 
-                throw new NotSupportedException($"Unknown glsl helper 'glsl.{memberCall.Member}'. Use glsl.compile({{ ... }}), glsl.source(\"name\", ...) or glsl.functions() in JavaScript mode.");
+                throw new NotSupportedException($"Unknown glsl helper 'glsl.{memberCall.Member}'. Use glsl.compile({{ ... }}), glsl.source(\"name\", ...), glsl.functions() or glsl.host(\"name\", material) in JavaScript mode.");
             }
 
             if (memberCall.Member == "append" && functionCall.Arguments.Count == 1)

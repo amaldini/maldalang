@@ -92,6 +92,54 @@ public static partial class GlslTranspiler
     }
 
     /// <summary>
+    /// Reads the name and the type of a <c>glsl.compile</c> declaration string:
+    /// <c>"vec3 uCamPos"</c>, <c>"uniform highp sampler2D uProgram"</c>, <c>"vec3 uCars[CAR_COUNT]"</c>
+    /// (an array whose length is unknown here), <c>"float uAngles[8]"</c>.
+    /// </summary>
+    public static bool TryParseDeclaration(string declaration, out string name, out GlslType type)
+    {
+        name = string.Empty;
+        type = default;
+        Match? typeWord = null;
+        Match? nameWord = null;
+        foreach (Match word in DeclarationWords.Matches(declaration))
+        {
+            if (typeWord == null && word.Value is "uniform" or "varying" or "const" or "in" or "out" or "highp" or "mediump" or "lowp")
+                continue;
+            if (typeWord == null)
+            {
+                typeWord = word;
+                continue;
+            }
+
+            nameWord = word;
+            break;
+        }
+
+        if (typeWord == null || nameWord == null || !GlslType.TryParse(typeWord.Value, out var element) || element.Base == GlslBaseType.Void)
+            return false;
+
+        name = nameWord.Value;
+        type = element;
+        var rest = declaration[(nameWord.Index + nameWord.Length)..].TrimStart();
+        if (rest.StartsWith('['))
+        {
+            var close = rest.IndexOf(']');
+            if (close < 0)
+                return false;
+            var size = rest[1..close].Trim();
+            type = element with
+            {
+                ArrayLength = int.TryParse(size, NumberStyles.None, CultureInfo.InvariantCulture, out var length) && length > 0
+                    ? length
+                    : GlslType.UnknownArrayLength
+            };
+        }
+
+        return true;
+    }
+
+    /// <summary>
     /// The MALDA consts the compiled functions name, in declaration order, without those the
     /// request already declares itself (a <c>consts</c> / <c>uniforms</c> / <c>varyings</c> string
     /// of that name, or a raw header that mentions it) and those a function shadows with a

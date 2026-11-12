@@ -6930,7 +6930,7 @@ process.stdout.write("ok\n");
     [InlineData("function f(p: vec3) -> float { return fwidth(p.x); }", "fwidth() has no host meaning")]
     [InlineData("function f(p: vec3) -> float { return texture(uMap, p.xy).x; }", "texture() has no host meaning")]
     [InlineData("function f(p: vec3) -> float { return texture2D(uMap, p.xy).x; }", "texture2D() has no host meaning")]
-    [InlineData("function f(p: vec3) -> float { return texelFetch(uProgram, ivec2(0, 0), 0).x; }", "texelFetch() has no host value")]
+    [InlineData("function f(p: vec3) -> float { return texelFetch(uProgram, ivec2(0, 0), 0).x; }", "texelFetch() has no host value when the function is called by name")]
     [InlineData("function f(p: vec3, d: out float) -> bool { d = p.x; return true; }", "'out' parameter 'd' has no host meaning")]
     [InlineData("function f(p: vec3, m: mat3) -> float { return p.x; }", "type mat3 of parameter 'm' is not supported on the host")]
     [InlineData("function f(a: float) -> mat2 { return mat2(a, a, a, a); }", "type mat2 of the return value is not supported on the host")]

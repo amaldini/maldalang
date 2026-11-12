@@ -96,98 +96,13 @@ public partial class JsTranspiler
     }
 
     /// <summary>
-    /// The <c>@shader()</c> functions host code calls by name, and the shader functions those call,
-    /// in declaration order. A function nothing on the host calls stays GLSL-only.
+    /// Finds, checks and types the <c>@shader()</c> functions host code reaches (by plain name or
+    /// through <c>glsl.host</c>). Runs before any emit, so an error in a kernel is reported before
+    /// the code that calls it is written.
     /// </summary>
-    private List<FunctionDeclaration> CollectHostCalledShaderFunctions(IEnumerable<Statement> statements)
+    private void AnalyzeShaderHostCalls(IEnumerable<Statement> statements)
     {
-        var reached = new HashSet<string>(StringComparer.Ordinal);
-        if (_shaderFunctions.Count == 0)
-            return new List<FunctionDeclaration>();
-
-        // Calls inside a shader function are GLSL calls, not host calls.
-        var hostNodes = AstNodeWalker.Descendants(
-            statements.ToList(),
-            node => node is not FunctionDeclaration function || !ShaderFunction.IsMarked(function));
-        var pending = new Queue<(string Name, string? ReachedThrough)>();
-        var hostCalls = hostNodes.OfType<FunctionCallExpression>().ToList();
-        foreach (var call in hostCalls)
-        {
-            if (call.Callee is IdentifierExpression callee && _shaderFunctions.ContainsKey(callee.Name) && reached.Add(callee.Name))
-                pending.Enqueue((callee.Name, null));
-        }
-
-        if (pending.Count == 0)
-            return new List<FunctionDeclaration>();
-
-        var constStringValues = new Dictionary<string, string>(StringComparer.Ordinal);
-        var shaderGlobals = CollectDeclaredShaderGlobals(hostCalls, constStringValues);
-        var maldaConsts = _shaderLiteralConsts.ToDictionary(constant => constant.Name, StringComparer.Ordinal);
-        var constTypes = maldaConsts.ToDictionary(entry => entry.Key, entry => entry.Value.Type, StringComparer.Ordinal);
-        while (pending.Count > 0)
-        {
-            var (name, reachedThrough) = pending.Dequeue();
-            var function = _shaderFunctions[name];
-            // What exists only on the GPU is named here, before the type pass meets it as an unknown name.
-            GlslHostDiagnostics.Check(function, shaderGlobals, reachedThrough, maldaConsts, constStringValues);
-            var types = GlslTranspiler.AnalyzeTypes(function, _shaderFunctions, constTypes);
-            _shaderHostTypes[name] = types;
-            foreach (var callee in types.Callees)
-            {
-                if (reached.Add(callee))
-                    pending.Enqueue((callee, name));
-            }
-        }
-
-        return _shaderFunctions.Values.Where(function => reached.Contains(function.Name)).ToList();
-    }
-
-    /// <summary>
-    /// The names the file declares to <c>glsl.compile</c> (<c>varyings</c>, <c>uniforms</c>,
-    /// <c>consts</c>), to their kind, so a host-call error can say what a name is.
-    /// </summary>
-    private static Dictionary<string, string> CollectDeclaredShaderGlobals(
-        IEnumerable<FunctionCallExpression> hostCalls,
-        Dictionary<string, string> constStringValues)
-    {
-        var globals = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (var call in hostCalls)
-        {
-            if (call.Callee is not MemberAccessExpression { Member: "compile", Object: IdentifierExpression { Name: "glsl" } } ||
-                call.Arguments.Count != 1 || call.Arguments[0] is not ObjectLiteralExpression options)
-            {
-                continue;
-            }
-
-            foreach (var (keyExpr, valueExpr) in options.Properties)
-            {
-                var kind = (keyExpr as LiteralExpression)?.Value?.ToString() switch
-                {
-                    "varyings" or "varying" => "varying",
-                    "uniforms" or "uniform" => "uniform",
-                    "consts" or "const" => "const",
-                    _ => null
-                };
-                if (kind == null || valueExpr is not ArrayLiteralExpression declarations)
-                    continue;
-
-                foreach (var declaration in declarations.Elements)
-                {
-                    // "vec3 uCars[CAR_COUNT]", "float EPSILON = 0.0015": the name is the second word.
-                    var text = (declaration as LiteralExpression)?.Value as string ?? string.Empty;
-                    var words = text.Split(new[] { ' ', '\t', '=', '[', ';' }, StringSplitOptions.RemoveEmptyEntries);
-                    var nameIndex = words.Length > 0 && words[0] == kind ? 2 : 1;
-                    if (words.Length <= nameIndex)
-                        continue;
-                    globals.TryAdd(words[nameIndex], kind);
-                    var equals = text.IndexOf('=');
-                    if (kind == "const" && equals >= 0)
-                        constStringValues.TryAdd(words[nameIndex], text[(equals + 1)..].Trim().TrimEnd(';').Trim());
-                }
-            }
-        }
-
-        return globals;
+        _shaderHost = GlslHostAnalysis.Run(statements, _shaderFunctions, _shaderLiteralConsts);
     }
 
     /// <summary>
@@ -195,19 +110,17 @@ public partial class JsTranspiler
     /// declarations, so the ordinary call emit (<c>sdBox(q, s)</c>) reaches them. Nothing is
     /// written for a program that never calls a shader function from the host.
     /// </summary>
-    private void EmitShaderHostTwins(IEnumerable<Statement> statements)
+    private void EmitShaderHostTwins()
     {
-        _shaderHostTypes.Clear();
-        var twins = CollectHostCalledShaderFunctions(statements);
+        var twins = _shaderHost?.PlainFunctions ?? Array.Empty<FunctionDeclaration>();
         if (twins.Count == 0)
             return;
 
         EmitLine($"const {GlslHostEmitter.RuntimeAlias} = mlRuntime.glsl;");
-        var maldaConsts = _shaderLiteralConsts.ToDictionary(constant => constant.Name, StringComparer.Ordinal);
         foreach (var function in twins)
         {
             var baseIndent = _indentLevel;
-            foreach (var line in GlslHostEmitter.Emit(_shaderHostTypes[function.Name], maldaConsts))
+            foreach (var line in GlslHostEmitter.Emit(_shaderHost!.PlainTypes[function.Name], _shaderHost.Consts))
             {
                 _indentLevel = baseIndent + line.Indent;
                 EmitLineWithSource(line.Source, line.Text);
@@ -216,6 +129,19 @@ public partial class JsTranspiler
             _indentLevel = baseIndent;
             EmitLine(string.Empty);
         }
+    }
+
+    /// <summary>
+    /// <c>glsl.host("name", material)</c>: a host function for that <c>@shader()</c> function, bound
+    /// to the material its uniforms and data textures are read from.
+    /// </summary>
+    private string TranspileGlslHost(FunctionCallExpression functionCall)
+    {
+        var name = GlslHostAnalysis.HostTarget(functionCall, _shaderFunctions);
+        // The function and its callees are checked and typed (GlslHostAnalysis); the bound twins
+        // are not written yet.
+        throw new NotSupportedException(
+            $"glsl.host(\"{name}\", material) passed its compile-time checks, but the JavaScript backend does not emit bound functions yet.");
     }
 
     private string TranspileGlslCompile(FunctionCallExpression functionCall)
