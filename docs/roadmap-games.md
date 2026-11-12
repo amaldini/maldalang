@@ -1,6 +1,6 @@
 # MALDA games platform plan
 
-**Status:** G0–G22 landed  
+**Status:** G0–G22 landed; G23 planned  
 **Created:** 2026-08-21  
 **Audience:** maintainers extending the JS `game.*` / `three.*` surface after Final 1.0
 
@@ -80,6 +80,7 @@ top-level globals, Web IDE Desktop parity, product apps or vertical packs
 | 20 | **G20** Render scale + stats overlay | Landed | Per-pixel ray tracing ran at full devicePixelRatio with no way to trade resolution for fps or see the frame rate |
 | 21 | **G21** Instancing, shadows, fog | Landed | The raster path had one draw call per mesh, no shadows, and no fog, which pushed 3D scenes into one big fragment shader |
 | 22 | **G22** Audio voices + 3D sound | Landed | Continuous sounds were retriggered one-shots (choppy engines), and `pan` was stereo only with no listener |
+| 23 | **G23** Host-callable `@shader()` functions | Planned | SDF games write every distance function twice (GLSL kernel + hand-copied host twin) so the host can pick, collide and carve; the copies drift |
 
 ```text
 G0  roadmap file                          (landed)
@@ -652,6 +653,148 @@ G11–G15 landed together after those contracts were specified. **G16** (tint +
 `setBlend`) followed as the next ranked kit gap from
 [`docs/games-2d-gap-analysis.md`](games-2d-gap-analysis.md). **G17** (tile
 helpers) is the Pico-8 `map`/`mget` slice from the same file.
+
+---
+
+## G23 — Host-callable `@shader()` functions (planned)
+
+**Why:** A raymarched game needs its distance functions in two places. The
+fragment shader marches them; the host needs the same numbers to pick the
+surface under the mouse, test a shot against a shield, or bound a shape for
+culling. Today `@shader()` functions are GLSL-only: `JsTranspiler` skips them
+when it emits functions, so the examples copy them by hand in scalar host code.
+
+| Example | Shader function | Hand-written host twin |
+|---------|-----------------|------------------------|
+| `three_sdf_interpreter.malda` | `sdShape` (+ `sdBox` / `sdTorus` / `sdCylinder`) | `cpuShape` |
+| `three_sdf_interpreter.malda` | `shapeRadius` | `boundRadius` |
+| `three_sdf_interpreter.malda` | the bytecode walk over `uProgram` | `cpuSceneDistance` |
+| `three_sdf_invaders.malda` | the shield SDF | `cpuShield` / `cpuRoundBox` |
+| `three_sdf_invaders.malda` | `shapeRadius` | `boundRadius` |
+
+Each pair is kept in step by a "mirrors … on the host" comment. A change to one
+side that misses the other is a silent gameplay bug: the shot passes through
+what the player sees. MALDA owns both emitters, so one function can feed both.
+
+**Contract (proposed)**
+
+- Host MALDA may call an `@shader()` function by name: `var d = sdBox([qx, qy, qz], s);`.
+  A shader function reached from host code is also emitted as JavaScript.
+  Functions never called from the host are still GLSL-only, so existing
+  programs produce the same `.js` (`JsBuildSizeTests` unchanged).
+- No new syntax, decorator argument or keyword. Emit follows use (principle 3).
+- `vec2` / `vec3` / `vec4` / `ivec*` values are plain MALDA lists of 2 / 3 / 4
+  numbers on the host — the same shape `three.setUniform` already accepts.
+  `float` / `int` / `bool` are host numbers and booleans.
+- The emit is type-directed. Parameter, return and local type hints are already
+  required in kernels; a small type pass over the subset infers expression
+  types so that scalar code stays native (`a + b`), vector operators and
+  swizzles lower to `mlRuntime.glsl.*` helpers, and `int` division truncates
+  as in GLSL.
+- GLSL built-ins the subset already maps (`length`, `dot`, `abs`, `min`, `max`,
+  `clamp`, `mix`, `normalize`, `cross`, `fract`, `floor`, `step`, `smoothstep`,
+  `sin` …) get host implementations with GLSL semantics, including scalar
+  broadcast (`max(d, 0.0)` on a `vec3`).
+- Same formula, not the same bits: the host computes in float64, the GPU in
+  float32. Results agree to float32 precision. Game logic must compare with a
+  margin, never for equality with a value read back from the GPU.
+
+**Slices**
+
+| Slice | Scope | Removes from the examples |
+|-------|-------|---------------------------|
+| **G23a** Pure functions | Scalar + vector params / locals / returns, control flow, local arrays, calls to other `@shader()` functions (emitted transitively), the built-in table above | `cpuShape`, `cpuRoundBox`, both `boundRadius` |
+| **G23b** Consts, uniforms, data textures | A host-called function that reads a `consts` name, a uniform, or `texelFetch`es a `sampler2D` needs values. Bind them to a material: uniforms read the material's current values, and `texelFetch` on a `three.createDataTexture` handle reads its backing array | `cpuSceneDistance`, `cpuShield` |
+| **G23c** Examples + docs | Convert both SDF examples to the single source and delete the twins; chapter 28.10.1 gains a "Calling a kernel from the host" section | the "mirrors …" comments |
+
+G23a is useful alone and should land first. G23b needs the binding shape
+settled (see open questions) before any code.
+
+**Guardrails**
+
+- JS backend only. Interpreter and C# still do not run shader functions; the
+  capability matrix row for shader kernels does not change.
+- A host-called function that uses something with no host meaning is a compile
+  error naming the function and the construct: `gl_FragCoord`, `gl_Position`,
+  varyings, `discard`, `dFdx` / `dFdy` / `fwidth`, filtered `texture()`, `out` /
+  `inout` parameters, and `mat*` types in the first cut. The same function is
+  still valid GLSL when only the shader uses it.
+- Not a software rasterizer and not a CPU fallback for the shader. Vector
+  values allocate, so this is for tens to thousands of calls per frame (a
+  picking march, hit tests for live shots), not per-pixel work.
+- No new top-level names: helpers live under `mlRuntime.glsl`, not in
+  `BuiltInRegistry`.
+- `@shader()` functions still do not cross module imports
+  (`JsTranspiler.Modules.cs` leaves them out of exports). Sharing kernels
+  between files is the reusable SDF kit, a separate workstream after G23.
+
+**Open questions**
+
+1. **Binding shape for G23b.** Proposal: `glsl.host("sceneDistance", material)`
+   returns a host function whose uniforms and samplers resolve against that
+   material. Alternative: bind once per file with `glsl.bind(material)`. The
+   first keeps two materials with different scenes unambiguous.
+2. **Consts.** `glsl.compile` takes consts as strings (`"float EPSILON = 0.0015"`),
+   per call, not per function. Either parse those strings for the host emit, or
+   let kernels read literal top-level MALDA `const` declarations and write them
+   into the GLSL automatically. The second also removes the duplicated
+   `OP_UNION`-style opcode constants, but it is a larger change to the kernel
+   contract.
+3. **Scalarizing vectors.** Lowering `vec3` locals to three JS numbers would
+   remove the allocations. Defer until a profile of the converted examples
+   shows the picking march in the frame budget.
+
+**Tests**
+
+- `GlslTranspilerTests`: the type pass (operator result types, swizzles, `int`
+  vs `float` division, the unsupported-construct errors).
+- `JavaScriptBackendTests`: `JsTranspiler_EmitsHostTwin…` codegen tests (emitted
+  only when called, callees pulled in, nothing emitted otherwise), plus a Node
+  harness that runs the emitted `sdBox` / `sdTorus` / smooth-union against
+  reference values.
+- G23c: a Node harness that checks the single-source `sceneDistance` on a fixed
+  bytecode program against values recorded from today's `cpuSceneDistance`
+  before it is deleted.
+- GPU parity is by construction (one AST, two emitters). CI has no GPU and
+  SwiftShader is not a valid check for these examples (`AGENTS.md`); ask for a
+  `malda play` run on real hardware after G23c.
+
+**Progress (G23a)** — one step per PR-sized commit; tick the box in the same commit.
+
+- [x] **1. Type pass.** Expression types for the kernel subset from the declared
+  hints: scalars, `vec*` / `ivec*`, swizzles, operator result types with scalar
+  broadcast, `int` vs `float` division, a signature table for the mapped
+  built-ins. No emit change yet. Tests in `GlslTranspilerTests`.
+- [ ] **2. Runtime helpers.** `mlRuntime.glsl` in `malda-js-runtime.js`: vector
+  arithmetic, swizzle read / write, and the built-in table with GLSL semantics.
+  Node harness in `JavaScriptBackendTests`.
+- [ ] **3. Host emit.** `JsTranspiler` finds host calls to `@shader()` functions,
+  pulls in their callees, and emits the JavaScript twins. Codegen tests: emitted
+  only when called, nothing new otherwise (`JsBuildSizeTests` still green).
+- [ ] **4. Diagnostics.** Compile error naming the function and the construct
+  for everything in the guardrail list; the function stays valid for GLSL-only use.
+- [ ] **5. Numeric check.** Node harness runs the emitted `sdBox` / `sdTorus` /
+  `sdCylinder` / smooth-union against reference values.
+- [ ] **6. Examples.** Replace `cpuShape` and `boundRadius` in
+  `three_sdf_interpreter.malda` and `cpuRoundBox` and `boundRadius` in
+  `three_sdf_invaders.malda` with calls to the shader functions; both still
+  compile with `--mode js`.
+- [ ] **7. Docs.** Chapter 28.10.1 (+ `ReferenceManual/it/`),
+  `docs/javascript-backend.md`, `docs/llm/malda-gotchas.md`, a
+  `docs/spec/CHANGELOG.md` Unreleased row. `ReferenceManual` tests green.
+- [ ] **8. Close G23a.** Mark the slice landed here and in the priority table.
+  Real-GPU `malda play` check of both examples is the maintainer's.
+
+G23b does not start until open questions 1 and 2 above carry a decision.
+
+**Files:** `MaldaLang.Compiler/GlslTranspiler.cs` (type pass, shared with the
+host emit), `JsTranspiler.Shaders.cs` (collect host calls, emit twins),
+`JsTranspiler.cs` (the two `ShaderFunction.IsMarked` skips),
+`Examples/Web/wwwroot/malda-js-runtime.js` (`mlRuntime.glsl`), chapter 28.10.1
+(+ `ReferenceManual/it/`), `docs/javascript-backend.md`,
+`docs/llm/malda-gotchas.md`. Check the "Runtime Material" list in
+`LICENSE-RUNTIME-EXCEPTION` if the emit adds inline helpers. Filtered:
+`GlslTranspilerTests`, `JavaScriptBackendTests`.
 
 ---
 

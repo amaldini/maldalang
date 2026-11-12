@@ -25,7 +25,7 @@ public sealed class GlslCompileRequest
 /// Compiles a typed MALDA subset used by <c>@shader()</c> functions into GLSL source.
 /// This is a JavaScript-backend compile-time path, not a new execution backend.
 /// </summary>
-public static class GlslTranspiler
+public static partial class GlslTranspiler
 {
     private static readonly HashSet<string> MathMembers = new(StringComparer.Ordinal)
     {
