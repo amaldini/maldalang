@@ -820,7 +820,7 @@ must produce the same JavaScript and the same GLSL as before.
   globals. Calling a uniform-reading kernel by plain name stays an error that
   points to `glsl.host`. Varyings, `gl_*`, `discard`, derivatives, filtered
   `texture()` and `mat*` stay errors for bound functions too. No emit yet.
-- [ ] **4. Runtime binding.** `mlRuntime.glsl` gains what a bound twin needs:
+- [x] **4. Runtime binding.** `mlRuntime.glsl` gains what a bound twin needs:
   read a material's *current* uniform value as a host value (number, boolean,
   list of 2 / 3 / 4 from `Vector2-4` / `Color`, list of those for
   `uniform T name[N]`), and `texelFetch(sampler, ivec2, lod)` on a

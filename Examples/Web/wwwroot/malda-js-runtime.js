@@ -12496,6 +12496,8 @@
     // of 2 / 3 / 4 values, a float / int / bool a number or boolean. The emit is typed, so the
     // helpers trust their arguments: no coercion, no length checks. Same formulas as GLSL, in
     // float64: results agree with the GPU to float32 precision, not bit for bit.
+    // A twin made with glsl.host("name", material) also reads that material: its uniforms as they
+    // are now, and the backing array of a data texture for texelFetch.
     glsl: (() => {
       const isVector = Array.isArray;
 
@@ -12597,7 +12599,77 @@
         return true;
       }
 
+      // ---- binding: a twin made with glsl.host reads its material ----
+
+      function requireMaterial(material) {
+        if (!material || typeof material !== "object" || !material.uniforms || typeof material.uniforms !== "object") {
+          throw new Error("glsl.host expects a shader material created by three.createShaderMaterial.");
+        }
+        return material;
+      }
+
+      // A uniform as three.js holds it, as the host value a twin computes with: a Vector2-4 or a
+      // Color is a list, a `uniform T name[N]` a list of those, a texture stays the texture.
+      function hostValue(value) {
+        if (value === null || typeof value !== "object") return value;
+        if (isVector(value)) {
+          const out = new Array(value.length);
+          for (let i = 0; i < value.length; i++) out[i] = hostValue(value[i]);
+          return out;
+        }
+        if (value.isColor) return [value.r, value.g, value.b];
+        if (value.image !== undefined || value.isTexture) return value;
+        if (typeof value.x === "number" && typeof value.y === "number") {
+          if (typeof value.w === "number") return [value.x, value.y, value.z, value.w];
+          if (typeof value.z === "number") return [value.x, value.y, value.z];
+          return [value.x, value.y];
+        }
+        return value;
+      }
+
+      // The material's value now: three.setUniform and three.updateDataTexture are seen at the next
+      // call, with nothing to rebind.
+      function uniform(material, name) {
+        const entry = requireMaterial(material).uniforms[name];
+        if (!entry || typeof entry !== "object" || entry.value === undefined || entry.value === null) {
+          throw new Error(`glsl.host: the material has no value for uniform '${name}'. Give it in the uniforms of three.createShaderMaterial or with three.setUniform.`);
+        }
+        return hostValue(entry.value);
+      }
+
+      // texelFetch on the backing array of a three.createDataTexture: RGBA, lod 0, no filtering.
+      // A byte texture reads as the GPU normalizes it, 0..1.
+      function texelFetch(sampler, coord, lod) {
+        const texture = sampler && sampler.__maldaThreeTexture ? sampler.texture : sampler;
+        const image = texture && texture.image;
+        const data = image && image.data;
+        if (!data || typeof data.length !== "number") {
+          throw new Error("glsl.texelFetch on the host needs a data texture (three.createDataTexture): an image texture lives on the GPU.");
+        }
+        if (lod !== 0 && lod !== undefined) {
+          throw new Error(`glsl.texelFetch on the host reads lod 0 only, not lod ${lod}.`);
+        }
+        const width = image.width;
+        const height = image.height;
+        const x = coord[0];
+        const y = coord[1];
+        if (!(x >= 0 && x < width && y >= 0 && y < height) || x !== Math.trunc(x) || y !== Math.trunc(y)) {
+          throw new Error(`glsl.texelFetch: texel (${x}, ${y}) is outside the ${width}x${height} data texture.`);
+        }
+        const at = (y * width + x) * 4;
+        if (at + 3 >= data.length) {
+          throw new Error(`glsl.texelFetch: the ${width}x${height} data texture holds ${data.length} values, not 4 for each texel.`);
+        }
+        const scale = data instanceof Uint8Array || data instanceof Uint8ClampedArray ? 1 / 255 : 1;
+        return [data[at] * scale, data[at + 1] * scale, data[at + 2] * scale, data[at + 3] * scale];
+      }
+
       return {
+        // ---- binding (glsl.host) ----
+        material: requireMaterial,
+        uniform,
+        texelFetch,
+
         // ---- values: GLSL vectors are values, so a twin copies one where GLSL would ----
         copy: (value) => (isVector(value) ? value.slice() : value),
         float: scalar(toFloat),

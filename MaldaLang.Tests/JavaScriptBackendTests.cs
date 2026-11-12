@@ -7231,6 +7231,200 @@ process.stdout.write("ok\n");
         Assert.Contains(expected, ex.Message, StringComparison.Ordinal);
     }
 
+    // G23b step 4: what a twin made with glsl.host reads from its material at run time.
+    [Fact]
+    public void GlslRuntime_Binding_ReadsCurrentUniformsAndDataTextures()
+    {
+        Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);
+
+        var runtimePath = PlanningPaths.ResolveRepoFile("Examples", "Web", "wwwroot", "malda-js-runtime.js");
+        var root = CreateTempDirectory("malda_js_glsl_binding_");
+        try
+        {
+            var scriptPath = Path.Combine(root, "glsl-binding-test.js");
+            File.WriteAllText(scriptPath, """
+globalThis.document = {
+  body: {},
+  querySelector() { return { appendChild() {}, removeChild() {} }; },
+  createElement() { return { style: {} }; }
+};
+globalThis.window = {
+  addEventListener() {},
+  removeEventListener() {},
+  requestAnimationFrame() { return 1; },
+  cancelAnimationFrame() {},
+  devicePixelRatio: 1
+};
+
+// A stub three.js: the classes the runtime builds uniforms and data textures from.
+function Vector2(x, y) {
+  this.x = x; this.y = y;
+  this.set = function (a, b) { this.x = a; this.y = b; return this; };
+}
+function Vector3(x, y, z) {
+  this.x = x; this.y = y; this.z = z;
+  this.set = function (a, b, c) { this.x = a; this.y = b; this.z = c; return this; };
+}
+function Vector4(x, y, z, w) {
+  this.x = x; this.y = y; this.z = z; this.w = w;
+  this.set = function (a, b, c, d) { this.x = a; this.y = b; this.z = c; this.w = d; return this; };
+}
+function Color(text) {
+  this.isColor = true;
+  this.set = function (value) {
+    const n = parseInt(String(value).slice(1), 16);
+    this.r = ((n >> 16) & 255) / 255; this.g = ((n >> 8) & 255) / 255; this.b = (n & 255) / 255;
+    return this;
+  };
+  this.set(text);
+}
+function ShaderMaterial(options) {
+  this.uniforms = options.uniforms;
+  this.vertexShader = options.vertexShader;
+  this.fragmentShader = options.fragmentShader;
+}
+function DataTexture(data, width, height, format, type) {
+  this.isTexture = true;
+  this.image = { data, width, height };
+  this.format = format;
+  this.type = type;
+}
+function Texture() {
+  this.isTexture = true;
+  this.image = { width: 64, height: 64 };
+}
+globalThis.THREE = {
+  Vector2, Vector3, Vector4, Color, ShaderMaterial, DataTexture,
+  RGBAFormat: 1023, FloatType: 1015, UnsignedByteType: 1009, NearestFilter: 1003, ClampToEdgeWrapping: 1001
+};
+
+require(process.argv[2]);
+const three = globalThis.mlRuntime.three;
+const g = globalThis.mlRuntime.glsl;
+
+function same(actual, expected, what) {
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+    throw new Error(`${what}: ${JSON.stringify(actual)} vs ${JSON.stringify(expected)}`);
+  }
+}
+function fails(action, pattern, what) {
+  let message = "";
+  try { action(); } catch (error) { message = error.message; }
+  if (!pattern.test(message)) throw new Error(`${what}: "${message}" does not match ${pattern}`);
+}
+
+const program = three.createDataTexture(3, 2, [
+  1, 2, 3, 4,   5, 6, 7, 8,   9, 10, 11, 12,
+  13, 14, 15, 16,   17, 18, 19, 20,   21, 22, 23, 0.5
+], { type: "float" });
+const bytes = three.createDataTexture(2, 1, [255, 0, 51, 255, 0, 255, 102, 255], { type: "byte" });
+const shader = "uniform vec3 uCars[2];\nuniform float uAngles[3];\nvoid main() {}";
+const material = three.createShaderMaterial({
+  vertexShader: shader,
+  fragmentShader: shader,
+  uniforms: {
+    uTime: 0.25,
+    uCount: 3,
+    uOn: true,
+    uResolution: [320, 180],
+    uCamPos: [1, 2, 3],
+    uTint: [0.1, 0.2, 0.3, 0.4],
+    uColor: "#ff8000",
+    uProgram: program,
+    uBytes: bytes,
+    uCars: [[1, 2, 3], [4, 5, 6]],
+    uAngles: [0.5, 1.5, 2.5]
+  }
+});
+
+if (g.material(material) !== material) throw new Error("material() returns the material");
+fails(() => g.material(null), /glsl\.host expects a shader material created by three\.createShaderMaterial/, "material(null)");
+fails(() => g.material({}), /glsl\.host expects a shader material/, "material({})");
+
+// Uniforms as host values.
+same(g.uniform(material, "uTime"), 0.25, "float");
+same(g.uniform(material, "uCount"), 3, "int");
+same(g.uniform(material, "uOn"), true, "bool");
+same(g.uniform(material, "uResolution"), [320, 180], "vec2");
+same(g.uniform(material, "uCamPos"), [1, 2, 3], "vec3");
+same(g.uniform(material, "uTint"), [0.1, 0.2, 0.3, 0.4], "vec4");
+same(g.uniform(material, "uColor"), [1, 128 / 255, 0], "color");
+same(g.uniform(material, "uCars"), [[1, 2, 3], [4, 5, 6]], "vec3[2]");
+same(g.uniform(material, "uAngles"), [0.5, 1.5, 2.5], "float[3]");
+fails(() => g.uniform(material, "uMissing"), /the material has no value for uniform 'uMissing'/, "missing uniform");
+fails(() => g.uniform(null, "uTime"), /glsl\.host expects a shader material/, "uniform(null)");
+
+// A host value is a copy: writing into it does not move the uniform.
+const cam = g.uniform(material, "uCamPos");
+cam[0] = 99;
+same(g.uniform(material, "uCamPos"), [1, 2, 3], "uniform values are copies");
+
+// The value now, with nothing to rebind.
+three.setUniform(material, "uTime", 1.5);
+three.setUniform(material, "uCamPos", [7, 8, 9]);
+three.setUniform(material, "uCars", [[9, 9, 9]]);
+same(g.uniform(material, "uTime"), 1.5, "setUniform float");
+same(g.uniform(material, "uCamPos"), [7, 8, 9], "setUniform vec3");
+same(g.uniform(material, "uCars"), [[9, 9, 9], [0, 0, 0]], "setUniform vec3[2]");
+
+// texelFetch on the backing array.
+const sampler = g.uniform(material, "uProgram");
+same(g.texelFetch(sampler, [0, 0], 0), [1, 2, 3, 4], "texel (0,0)");
+same(g.texelFetch(sampler, [2, 0], 0), [9, 10, 11, 12], "texel (2,0)");
+same(g.texelFetch(sampler, [1, 1], 0), [17, 18, 19, 20], "texel (1,1)");
+same(g.texelFetch(sampler, [2, 1], 0), [21, 22, 23, 0.5], "texel (2,1)");
+same(g.texelFetch(program, [1, 0], 0), [5, 6, 7, 8], "a MALDA texture handle works too");
+const texel = g.texelFetch(sampler, [0, 0], 0);
+texel[0] = 99;
+same(g.texelFetch(sampler, [0, 0], 0), [1, 2, 3, 4], "a texel is a copy");
+
+three.updateDataTexture(program, [100, 200, 300, 400]);
+same(g.texelFetch(sampler, [0, 0], 0), [100, 200, 300, 400], "updateDataTexture is seen");
+same(g.texelFetch(sampler, [1, 0], 0), [0, 0, 0, 0], "updateDataTexture zeroes the rest");
+
+// A byte texture reads normalized, as the GPU gives it.
+same(g.texelFetch(g.uniform(material, "uBytes"), [0, 0], 0), [1, 0, 0.2, 1], "byte texel 0");
+same(g.texelFetch(g.uniform(material, "uBytes"), [1, 0], 0), [0, 1, 0.4, 1], "byte texel 1");
+
+fails(() => g.texelFetch(sampler, [3, 0], 0), /texel \(3, 0\) is outside the 3x2 data texture/, "x past the end");
+fails(() => g.texelFetch(sampler, [0, 2], 0), /texel \(0, 2\) is outside the 3x2 data texture/, "y past the end");
+fails(() => g.texelFetch(sampler, [-1, 0], 0), /texel \(-1, 0\) is outside the 3x2 data texture/, "negative x");
+fails(() => g.texelFetch(sampler, [0.5, 0], 0), /texel \(0\.5, 0\) is outside/, "not an integer texel");
+fails(() => g.texelFetch(sampler, [0, 0], 1), /reads lod 0 only, not lod 1/, "lod 1");
+fails(() => g.texelFetch(new Texture(), [0, 0], 0), /needs a data texture \(three\.createDataTexture\)/, "image texture");
+fails(() => g.texelFetch(undefined, [0, 0], 0), /needs a data texture/, "no texture");
+
+process.stdout.write("ok\n");
+""");
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = Environment.GetEnvironmentVariable("MALDA_NODE_PATH") is { Length: > 0 } nodePath
+                    ? nodePath
+                    : "node",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = root
+            };
+            startInfo.ArgumentList.Add(scriptPath);
+            startInfo.ArgumentList.Add(runtimePath);
+
+            using var process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("Failed to start Node.js for the glsl binding test.");
+            var stdout = process.StandardOutput.ReadToEnd();
+            var stderr = process.StandardError.ReadToEnd();
+            process.WaitForExit(15000);
+            Assert.True(process.ExitCode == 0, $"glsl binding test failed ({process.ExitCode}). stderr: {stderr}");
+            Assert.Equal("ok", stdout.Trim());
+        }
+        finally
+        {
+            SafeDeleteDirectory(root);
+        }
+    }
+
     private static string StripJsSourceMapComment(string js)
     {
         var normalized = js.Replace("\r\n", "\n").TrimStart('\uFEFF');
