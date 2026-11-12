@@ -75,6 +75,68 @@ public partial class JsTranspiler
         }
     }
 
+    /// <summary>
+    /// The <c>@shader()</c> functions host code calls by name, and the shader functions those call,
+    /// in declaration order. A function nothing on the host calls stays GLSL-only.
+    /// </summary>
+    private List<FunctionDeclaration> CollectHostCalledShaderFunctions(IEnumerable<Statement> statements)
+    {
+        var reached = new HashSet<string>(StringComparer.Ordinal);
+        if (_shaderFunctions.Count == 0)
+            return new List<FunctionDeclaration>();
+
+        // Calls inside a shader function are GLSL calls, not host calls.
+        var hostNodes = AstNodeWalker.Descendants(
+            statements.ToList(),
+            node => node is not FunctionDeclaration function || !ShaderFunction.IsMarked(function));
+        var pending = new Queue<string>();
+        foreach (var call in hostNodes.OfType<FunctionCallExpression>())
+        {
+            if (call.Callee is IdentifierExpression callee && _shaderFunctions.ContainsKey(callee.Name) && reached.Add(callee.Name))
+                pending.Enqueue(callee.Name);
+        }
+
+        while (pending.Count > 0)
+        {
+            var types = GlslTranspiler.AnalyzeTypes(_shaderFunctions[pending.Dequeue()], _shaderFunctions);
+            _shaderHostTypes[types.Function.Name] = types;
+            foreach (var callee in types.Callees)
+            {
+                if (reached.Add(callee))
+                    pending.Enqueue(callee);
+            }
+        }
+
+        return _shaderFunctions.Values.Where(function => reached.Contains(function.Name)).ToList();
+    }
+
+    /// <summary>
+    /// Emits the JavaScript twins of the host-called <c>@shader()</c> functions as plain function
+    /// declarations, so the ordinary call emit (<c>sdBox(q, s)</c>) reaches them. Nothing is
+    /// written for a program that never calls a shader function from the host.
+    /// </summary>
+    private void EmitShaderHostTwins(IEnumerable<Statement> statements)
+    {
+        _shaderHostTypes.Clear();
+        var twins = CollectHostCalledShaderFunctions(statements);
+        if (twins.Count == 0)
+            return;
+
+        EmitLine($"const {GlslHostEmitter.RuntimeAlias} = mlRuntime.glsl;");
+        foreach (var function in twins)
+        {
+            var baseIndent = _indentLevel;
+            foreach (var line in GlslHostEmitter.Emit(_shaderHostTypes[function.Name]))
+            {
+                _indentLevel = baseIndent + line.Indent;
+                EmitLineWithSource(line.Source, line.Text);
+            }
+
+            _indentLevel = baseIndent;
+            EmitLine(string.Empty);
+        }
+    }
+
     private string TranspileGlslCompile(FunctionCallExpression functionCall)
     {
         if (functionCall.Arguments.Count != 1 || functionCall.Arguments[0] is not ObjectLiteralExpression options)

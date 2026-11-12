@@ -6731,6 +6731,187 @@ process.stdout.write("ok\n");
         }
     }
 
+    // G23a step 3: an @shader() function called from host code is also emitted as JavaScript.
+    private const string HostTwinKernels = """
+        @shader()
+        function sdBox(q: vec3, s: float) -> float {
+            var d: vec3 = abs(q) - vec3(s, s, s);
+            return length(max(d, vec3(0.0, 0.0, 0.0))) + min(max(d.x, max(d.y, d.z)), 0.0);
+        }
+
+        @shader()
+        function sdTorus(q: vec3, s: float) -> float {
+            var t: vec2 = vec2(length(q.xz) - s, q.y);
+            return length(t) - s * 0.35;
+        }
+
+        @shader()
+        function sdShape(kind: int, q: vec3, s: float) -> float {
+            if (kind == 1) {
+                return sdBox(q, s);
+            }
+            return length(q) - s;
+        }
+
+        @shader()
+        function fragmentMain() {
+            gl_FragColor = vec4(sdShape(1, vPos, 1.0), sdTorus(vPos, 1.0), 0.0, 1.0);
+        }
+
+        var fragment = glsl.compile({
+            varyings: ["vec3 vPos"],
+            functions: ["sdBox", "sdTorus", "sdShape"],
+            main: "fragmentMain"
+        });
+
+        """;
+
+    [Fact]
+    public void JsTranspiler_EmitsHostTwin_OnlyForShaderFunctionsTheHostCalls()
+    {
+        var js = new Compiler.Compiler().TranspileToJavaScriptFromSource(HostTwinKernels + "io.print(sdBox([2, 0, 0], 1));");
+
+        Assert.Contains("const __maldaGlsl = mlRuntime.glsl;", js, StringComparison.Ordinal);
+        Assert.Contains("function sdBox(q, s) {", js, StringComparison.Ordinal);
+        Assert.Contains("let d = __maldaGlsl.sub(__maldaGlsl.abs(q), __maldaGlsl.vec3(s, s, s));", js, StringComparison.Ordinal);
+        // Scalar code stays native, a single component is an index.
+        Assert.Contains("Math.min(Math.max(d[0], Math.max(d[1], d[2])), 0.0)", js, StringComparison.Ordinal);
+        Assert.Contains("mlRuntime.io.print(sdBox([2, 0, 0], 1));", js, StringComparison.Ordinal);
+        // The others are still GLSL-only, and the GLSL is the same as before.
+        Assert.DoesNotContain("function sdTorus", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("function sdShape", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("function fragmentMain", js, StringComparison.Ordinal);
+        Assert.Contains("float sdTorus(vec3 q, float s)", js, StringComparison.Ordinal);
+        Assert.Equal(new[] { "glsl" }, JsRuntimeAreas.UsedBy(js).ToArray());
+    }
+
+    [Fact]
+    public void JsTranspiler_EmitsHostTwin_PullsInCalleesInDeclarationOrder()
+    {
+        var js = new Compiler.Compiler().TranspileToJavaScriptFromSource(HostTwinKernels + """
+            function nearest(p) {
+                return sdShape(1, p, 0.5);
+            }
+            io.print(nearest([1, 0, 0]));
+            """);
+
+        var box = js.IndexOf("function sdBox(q, s) {", StringComparison.Ordinal);
+        var shape = js.IndexOf("function sdShape(kind, q, s) {", StringComparison.Ordinal);
+        Assert.True(box >= 0, "the callee of a host-called shader function must be emitted too");
+        Assert.True(shape > box, "twins follow the declaration order");
+        Assert.Contains("return sdBox(q, s);", js, StringComparison.Ordinal);
+        Assert.Contains("if ((kind === 1))", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("function sdTorus", js, StringComparison.Ordinal);
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(js, "const __maldaGlsl = "));
+    }
+
+    [Fact]
+    public void JsTranspiler_EmitsHostTwin_NothingWhenTheHostNeverCalls()
+    {
+        var js = new Compiler.Compiler().TranspileToJavaScriptFromSource(HostTwinKernels + "io.print(fragment.length > 0);");
+
+        Assert.DoesNotContain("__maldaGlsl", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("mlRuntime.glsl", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("function sd", js, StringComparison.Ordinal);
+        Assert.Empty(JsRuntimeAreas.UsedBy(js));
+    }
+
+    [Fact]
+    public void JsTranspiler_EmitsHostTwin_TypeDirected_IntDivisionSwizzlesAndCopies()
+    {
+        var js = new Compiler.Compiler().TranspileToJavaScriptFromSource("""
+            @shader()
+            function walk(n: int, p: vec3) -> vec3 {
+                var stack: float[4];
+                var acc: vec3 = p;
+                var half: int = n / 2;
+                for (var i: int = 0; i < 4; i++) {
+                    if (i >= n) {
+                        continue;
+                    }
+                    stack[i] = float(i) + acc.x;
+                    acc.xz += vec2(1.0, 2.0);
+                    acc *= 0.5;
+                    acc.y = stack[i] + float(half);
+                }
+                p.x = 100.0;
+                return acc;
+            }
+
+            io.print(walk(3, [2, 0, 0]));
+            """);
+
+        Assert.Contains("p = p.slice();", js, StringComparison.Ordinal);
+        Assert.Contains("let stack = new Array(4).fill(0);", js, StringComparison.Ordinal);
+        Assert.Contains("let acc = p.slice();", js, StringComparison.Ordinal);
+        Assert.Contains("let half = Math.trunc(n / 2);", js, StringComparison.Ordinal);
+        // A real `for`, so `continue` still runs the increment.
+        Assert.Contains("for (let i = 0; (i < 4); i++)", js, StringComparison.Ordinal);
+        Assert.Contains("stack[i] = (i + acc[0]);", js, StringComparison.Ordinal);
+        Assert.Contains("__maldaGlsl.setSwizzle(acc, [0, 2], __maldaGlsl.add(__maldaGlsl.swizzle(acc, [0, 2]), __maldaGlsl.vec2(1.0, 2.0)));", js, StringComparison.Ordinal);
+        Assert.Contains("acc = __maldaGlsl.mul(acc, 0.5);", js, StringComparison.Ordinal);
+        Assert.Contains("p[0] = 100.0;", js, StringComparison.Ordinal);
+        Assert.Contains("return acc.slice();", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task JsTranspiler_EmitsHostTwin_RunsOnTheHostWithValueSemantics()
+    {
+        Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);
+
+        var output = await Tier0JavaScriptRunner.RunAsync(HostTwinKernels + """
+            @shader()
+            function walk(n: int, p: vec3) -> vec3 {
+                var stack: float[4];
+                var acc: vec3 = p;
+                var half: int = n / 2;
+                for (var i: int = 0; i < 4; i++) {
+                    if (i >= n) {
+                        continue;
+                    }
+                    stack[i] = float(i) + acc.x;
+                    acc.xz += vec2(1.0, 2.0);
+                    acc *= 0.5;
+                    acc.y = stack[i] + float(half);
+                }
+                p.x = 100.0;
+                return acc;
+            }
+
+            @shader()
+            function same(p: vec3) -> vec3 {
+                return p;
+            }
+
+            var q = [2, 0, 0];
+            io.print(sdShape(1, q, 1));
+            io.print(sdShape(0, [0, 3, 4], 1));
+            io.print(walk(3, q));
+            var copy = same(q);
+            copy[0] = 9;
+            io.print(q);
+            """);
+
+        Assert.Equal(
+            new[] { "1", "4", "[1.125, 4.25, 1.75]", "[2, 0, 0]" },
+            output.Replace("\r", string.Empty).Split('\n', StringSplitOptions.RemoveEmptyEntries));
+    }
+
+    [Fact]
+    public void JsTranspiler_EmitsHostTwin_RejectsWhatHasNoHostValue()
+    {
+        var ex = Assert.ThrowsAny<Exception>(() => new Compiler.Compiler().TranspileToJavaScriptFromSource("""
+            @shader()
+            function lit(p: vec3) -> float {
+                return dot(p, uLightDir);
+            }
+
+            io.print(lit([0, 1, 0]));
+            """));
+        Assert.Contains("'lit'", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("'uLightDir'", ex.Message, StringComparison.Ordinal);
+    }
+
     private static string StripJsSourceMapComment(string js)
     {
         var normalized = js.Replace("\r\n", "\n").TrimStart('\uFEFF');
