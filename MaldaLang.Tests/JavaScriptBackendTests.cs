@@ -6912,6 +6912,94 @@ process.stdout.write("ok\n");
         Assert.Contains("'uLightDir'", ex.Message, StringComparison.Ordinal);
     }
 
+    // G23a step 4: a host-called @shader() function that uses something GPU-only is a compile
+    // error naming the function and the construct.
+    [Theory]
+    [InlineData("function f(p: vec3) -> float { return gl_FragCoord.x + p.x; }", "gl_FragCoord has no host meaning")]
+    [InlineData("function f(p: vec3) -> float { gl_Position = vec4(p, 1.0); return p.x; }", "gl_Position has no host meaning")]
+    [InlineData("function f(p: vec3) -> float { return p.x + vUv.x; }", "varying 'vUv' has no host meaning")]
+    [InlineData("function f(p: vec3) -> float { return p.x * uTime; }", "uniform 'uTime' has no host value")]
+    [InlineData("function f(p: vec3) -> float { return dot(p, uCars[0]); }", "uniform 'uCars' has no host value")]
+    [InlineData("function f(p: vec3) -> float { return p.x + EPSILON; }", "const 'EPSILON' has no host value")]
+    [InlineData("function f(p: vec3) -> float { return p.x + somethingElse; }", "'somethingElse' is not a parameter or local of the function")]
+    [InlineData("function f(p: vec3) -> float { if (p.x < 0.0) { discard; } return p.x; }", "discard has no host meaning")]
+    [InlineData("function f(p: vec3) -> float { return dFdx(p.x); }", "dFdx() has no host meaning")]
+    [InlineData("function f(p: vec3) -> float { return dFdy(p.x); }", "dFdy() has no host meaning")]
+    [InlineData("function f(p: vec3) -> float { return fwidth(p.x); }", "fwidth() has no host meaning")]
+    [InlineData("function f(p: vec3) -> float { return texture(uMap, p.xy).x; }", "texture() has no host meaning")]
+    [InlineData("function f(p: vec3) -> float { return texture2D(uMap, p.xy).x; }", "texture2D() has no host meaning")]
+    [InlineData("function f(p: vec3) -> float { return texelFetch(uProgram, ivec2(0, 0), 0).x; }", "texelFetch() has no host value")]
+    [InlineData("function f(p: vec3, d: out float) -> bool { d = p.x; return true; }", "'out' parameter 'd' has no host meaning")]
+    [InlineData("function f(p: vec3, m: mat3) -> float { return p.x; }", "type mat3 of parameter 'm' is not supported on the host")]
+    [InlineData("function f(a: float) -> mat2 { return mat2(a, a, a, a); }", "type mat2 of the return value is not supported on the host")]
+    [InlineData("function f(p: vec3) -> float { var m: mat3 = mat3(1.0); return p.x; }", "type mat3 of local 'm' is not supported on the host")]
+    [InlineData("function f(p: vec3) -> vec3 { return p * mat3(1.0); }", "mat3() is not supported on the host")]
+    [InlineData("function f(p: vec3, map: sampler2D) -> float { return p.x; }", "type sampler2D of parameter 'map' has no host value")]
+    public void JsTranspiler_HostCalledShaderFunction_NamesWhatHasNoHostMeaning(string declaration, string expected)
+    {
+        const string Compile = """
+
+            var fragment = glsl.compile({
+                varyings: ["vec2 vUv"],
+                uniforms: ["float uTime", "uniform vec3 uCars[CAR_COUNT]", "sampler2D uMap", "sampler2D uProgram"],
+                consts: ["float EPSILON = 0.0015", "int CAR_COUNT = 8"],
+                functions: ["f"]
+            });
+
+            """;
+        var kernel = "@shader()\n" + declaration + "\n";
+
+        var ex = Assert.ThrowsAny<Exception>(() =>
+            new Compiler.Compiler().TranspileToJavaScriptFromSource(kernel + Compile + "io.print(f([1, 2, 3]));"));
+        Assert.Contains("@shader() function 'f' is called from host code (", ex.Message, StringComparison.Ordinal);
+        Assert.Contains(expected, ex.Message, StringComparison.Ordinal);
+
+        // The same function is still valid when only the shader uses it.
+        var js = new Compiler.Compiler().TranspileToJavaScriptFromSource(kernel + Compile + "io.print(fragment.length > 0);");
+        Assert.Contains(" f(", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("function f(", js, StringComparison.Ordinal);
+        Assert.DoesNotContain("mlRuntime.glsl", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void JsTranspiler_HostCalledShaderFunction_NamesTheCalleeAndTheHostEntry()
+    {
+        var ex = Assert.ThrowsAny<Exception>(() => new Compiler.Compiler().TranspileToJavaScriptFromSource("""
+            @shader()
+            function fog(p: vec3) -> float {
+                return length(p) * uDensity;
+            }
+
+            @shader()
+            function shade(p: vec3) -> float {
+                return 1.0 - fog(p);
+            }
+
+            io.print(shade([1, 2, 3]));
+            """));
+
+        Assert.Contains("@shader() function 'fog' is reached from host code through 'shade' (3:", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("'uDensity' is not a parameter or local of the function", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void JsTranspiler_HostCalledShaderFunction_ReportsTheFirstProblemInSourceOrder()
+    {
+        var ex = Assert.ThrowsAny<Exception>(() => new Compiler.Compiler().TranspileToJavaScriptFromSource("""
+            @shader()
+            function f(p: vec3) -> float {
+                var a: float = dFdx(p.x);
+                var b: float = gl_FragCoord.x;
+                return a + b + uTime;
+            }
+
+            io.print(f([1, 2, 3]));
+            """));
+
+        Assert.Contains("(3:", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("dFdx() has no host meaning", ex.Message, StringComparison.Ordinal);
+    }
+
     private static string StripJsSourceMapComment(string js)
     {
         var normalized = js.Replace("\r\n", "\n").TrimStart('\uFEFF');

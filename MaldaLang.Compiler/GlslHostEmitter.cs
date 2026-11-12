@@ -525,6 +525,5 @@ internal sealed class GlslHostEmitter
 
     private void Line(Node? source, string text) => _lines.Add(new GlslHostLine(source, _indent, text));
 
-    private NotSupportedException Error(Node node, string message) =>
-        new($"@shader() function '{_function.Name}' is called from host code ({node.Line}:{node.Column}): {message}");
+    private NotSupportedException Error(Node node, string message) => GlslHostDiagnostics.Error(_function, node, message);
 }

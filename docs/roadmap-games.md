@@ -771,7 +771,7 @@ settled (see open questions) before any code.
 - [x] **3. Host emit.** `JsTranspiler` finds host calls to `@shader()` functions,
   pulls in their callees, and emits the JavaScript twins. Codegen tests: emitted
   only when called, nothing new otherwise (`JsBuildSizeTests` still green).
-- [ ] **4. Diagnostics.** Compile error naming the function and the construct
+- [x] **4. Diagnostics.** Compile error naming the function and the construct
   for everything in the guardrail list; the function stays valid for GLSL-only use.
 - [ ] **5. Numeric check.** Node harness runs the emitted `sdBox` / `sdTorus` /
   `sdCylinder` / smooth-union against reference values.

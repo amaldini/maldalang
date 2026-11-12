@@ -89,25 +89,76 @@ public partial class JsTranspiler
         var hostNodes = AstNodeWalker.Descendants(
             statements.ToList(),
             node => node is not FunctionDeclaration function || !ShaderFunction.IsMarked(function));
-        var pending = new Queue<string>();
-        foreach (var call in hostNodes.OfType<FunctionCallExpression>())
+        var pending = new Queue<(string Name, string? ReachedThrough)>();
+        var hostCalls = hostNodes.OfType<FunctionCallExpression>().ToList();
+        foreach (var call in hostCalls)
         {
             if (call.Callee is IdentifierExpression callee && _shaderFunctions.ContainsKey(callee.Name) && reached.Add(callee.Name))
-                pending.Enqueue(callee.Name);
+                pending.Enqueue((callee.Name, null));
         }
 
+        if (pending.Count == 0)
+            return new List<FunctionDeclaration>();
+
+        var shaderGlobals = CollectDeclaredShaderGlobals(hostCalls);
         while (pending.Count > 0)
         {
-            var types = GlslTranspiler.AnalyzeTypes(_shaderFunctions[pending.Dequeue()], _shaderFunctions);
-            _shaderHostTypes[types.Function.Name] = types;
+            var (name, reachedThrough) = pending.Dequeue();
+            var function = _shaderFunctions[name];
+            // What exists only on the GPU is named here, before the type pass meets it as an unknown name.
+            GlslHostDiagnostics.Check(function, shaderGlobals, reachedThrough);
+            var types = GlslTranspiler.AnalyzeTypes(function, _shaderFunctions);
+            _shaderHostTypes[name] = types;
             foreach (var callee in types.Callees)
             {
                 if (reached.Add(callee))
-                    pending.Enqueue(callee);
+                    pending.Enqueue((callee, name));
             }
         }
 
         return _shaderFunctions.Values.Where(function => reached.Contains(function.Name)).ToList();
+    }
+
+    /// <summary>
+    /// The names the file declares to <c>glsl.compile</c> (<c>varyings</c>, <c>uniforms</c>,
+    /// <c>consts</c>), to their kind, so a host-call error can say what a name is.
+    /// </summary>
+    private static Dictionary<string, string> CollectDeclaredShaderGlobals(IEnumerable<FunctionCallExpression> hostCalls)
+    {
+        var globals = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var call in hostCalls)
+        {
+            if (call.Callee is not MemberAccessExpression { Member: "compile", Object: IdentifierExpression { Name: "glsl" } } ||
+                call.Arguments.Count != 1 || call.Arguments[0] is not ObjectLiteralExpression options)
+            {
+                continue;
+            }
+
+            foreach (var (keyExpr, valueExpr) in options.Properties)
+            {
+                var kind = (keyExpr as LiteralExpression)?.Value?.ToString() switch
+                {
+                    "varyings" or "varying" => "varying",
+                    "uniforms" or "uniform" => "uniform",
+                    "consts" or "const" => "const",
+                    _ => null
+                };
+                if (kind == null || valueExpr is not ArrayLiteralExpression declarations)
+                    continue;
+
+                foreach (var declaration in declarations.Elements)
+                {
+                    // "vec3 uCars[CAR_COUNT]", "float EPSILON = 0.0015": the name is the second word.
+                    var text = (declaration as LiteralExpression)?.Value as string ?? string.Empty;
+                    var words = text.Split(new[] { ' ', '\t', '=', '[', ';' }, StringSplitOptions.RemoveEmptyEntries);
+                    var nameIndex = words.Length > 0 && words[0] == kind ? 2 : 1;
+                    if (words.Length > nameIndex)
+                        globals.TryAdd(words[nameIndex], kind);
+                }
+            }
+        }
+
+        return globals;
     }
 
     /// <summary>
