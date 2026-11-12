@@ -6517,6 +6517,220 @@ const missingModel = three.loadGLTF("missing.gltf");
         Assert.Contains("add(2, 3)", js, StringComparison.Ordinal);
     }
 
+    // G23a step 2: mlRuntime.glsl, the host side of an @shader() function called from host code.
+    [Fact]
+    public void GlslRuntime_VectorHelpersAndBuiltIns_FollowGlslSemantics()
+    {
+        Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);
+
+        var fullRuntime = File.ReadAllText(PlanningPaths.ResolveRepoFile("Examples", "Web", "wwwroot", "malda-js-runtime.js"));
+        Assert.Equal(new[] { "glsl" }, JsRuntimeAreas.UsedBy("var d = mlRuntime.glsl.length(q);").ToArray());
+
+        var root = CreateTempDirectory("malda_js_glsl_runtime_");
+        try
+        {
+            // The helpers must work in the runtime written beside a program that uses nothing else.
+            var runtimePath = Path.Combine(root, "malda-js-runtime.js");
+            var trimmed = JsRuntimeAreas.Trim(fullRuntime, new HashSet<string> { "glsl" });
+            Assert.StartsWith("// malda-js-runtime areas: glsl", trimmed);
+            File.WriteAllText(runtimePath, trimmed);
+
+            var coreRuntimePath = Path.Combine(root, "core", "malda-js-runtime.js");
+            Directory.CreateDirectory(Path.GetDirectoryName(coreRuntimePath)!);
+            File.WriteAllText(coreRuntimePath, JsRuntimeAreas.Trim(fullRuntime, new HashSet<string>()));
+
+            var scriptPath = Path.Combine(root, "glsl-runtime-test.js");
+            File.WriteAllText(scriptPath, """
+require(process.argv[2]);
+const g = globalThis.mlRuntime.glsl;
+
+function close(actual, expected, what) {
+  const a = Array.isArray(actual) ? actual : [actual];
+  const e = Array.isArray(expected) ? expected : [expected];
+  if (Array.isArray(actual) !== Array.isArray(expected) || a.length !== e.length) {
+    throw new Error(`${what}: shape ${JSON.stringify(actual)} vs ${JSON.stringify(expected)}`);
+  }
+  for (let i = 0; i < a.length; i++) {
+    if (typeof e[i] === "boolean" ? a[i] !== e[i] : !(Math.abs(a[i] - e[i]) <= 1e-12)) {
+      throw new Error(`${what}: ${JSON.stringify(actual)} vs ${JSON.stringify(expected)}`);
+    }
+  }
+}
+
+// Constructors: one scalar fills, arguments flatten, the tail of the last one is dropped.
+close(g.vec3(2), [2, 2, 2], "vec3(s)");
+close(g.vec3(1, 2, 3), [1, 2, 3], "vec3(x,y,z)");
+close(g.vec4([1, 2, 3], 4), [1, 2, 3, 4], "vec4(v3,s)");
+close(g.vec4([1, 2], [3, 4]), [1, 2, 3, 4], "vec4(v2,v2)");
+close(g.vec2([7, 8, 9]), [7, 8], "vec2(v3)");
+close(g.ivec2(1.9, -1.9), [1, -1], "ivec2 truncates");
+close(g.vec2([true, false]), [1, 0], "vec2(bvec2)");
+close(g.bvec2(0, 2), [false, true], "bvec2");
+close(g.float(true), 1, "float(bool)");
+close(g.float([5, 6]), 5, "float(vec)");
+close(g.int(-2.7), -2, "int truncates toward zero");
+close(g.int(2.7), 2, "int(2.7)");
+close(g.bool(0.0), false, "bool(0)");
+let threw = false;
+try { g.vec3(1, 2); } catch (error) { threw = /3-component constructor got 2/.test(error.message); }
+if (!threw) throw new Error("vec3(1, 2) must name the missing component");
+
+// Values: copy detaches, the operators never write into an operand.
+const p = [1, 2, 3];
+const q = g.copy(p);
+q[0] = 9;
+close(p, [1, 2, 3], "copy detaches");
+close(g.copy(4), 4, "copy(scalar)");
+close(g.add(p, [10, 20, 30]), [11, 22, 33], "v + v");
+close(g.add(p, 1), [2, 3, 4], "v + s");
+close(g.sub(1, p), [0, -1, -2], "s - v");
+close(g.mul(p, 2), [2, 4, 6], "v * s");
+close(g.mul(p, p), [1, 4, 9], "v * v is component-wise");
+close(g.div(p, 2), [0.5, 1, 1.5], "v / s");
+close(g.div(6, p), [6, 3, 2], "s / v");
+close(g.neg(p), [-1, -2, -3], "-v");
+close(p, [1, 2, 3], "operands untouched");
+close(g.idiv(7, 2), 3, "int / int");
+close(g.idiv(-7, 2), -3, "int / int truncates toward zero");
+close(g.idiv([7, -7], 2), [3, -3], "ivec / int");
+close(g.imod(7, 3), 1, "int % int");
+close(g.imod([7, 8], 3), [1, 2], "ivec % int");
+close(g.eq([1, 2], [1, 2]), true, "v == v");
+close(g.eq([1, 2], [1, 3]), false, "v == v (differs)");
+close(g.ne([1, 2], [1, 3]), true, "v != v");
+close(g.eq(2, 2), true, "s == s");
+
+// Swizzles.
+const c = [10, 20, 30, 40];
+close(g.swizzle(c, [0, 2]), [10, 30], ".xz");
+close(g.swizzle(c, [2, 1, 0]), [30, 20, 10], ".zyx");
+close(g.swizzle(c, [0, 0, 1, 1]), [10, 10, 20, 20], ".xxyy");
+const w = [1, 2, 3];
+if (g.setSwizzle(w, [0, 2], [7, 9]) !== w) throw new Error("setSwizzle returns its target");
+close(w, [7, 2, 9], ".xz = v2");
+g.setSwizzle(w, [0, 1], g.swizzle(w, [1, 0]));
+close(w, [2, 7, 9], ".xy = .yx");
+g.setSwizzle(w, [0, 1], w);
+close(w, [2, 7, 9], "the source may be the target");
+g.setSwizzle(w, [1, 2], 0);
+close(w, [2, 0, 0], ".yz = s");
+
+// Built-ins: GLSL formulas, component-wise, scalar broadcast.
+close(g.abs([-1, 2, -3]), [1, 2, 3], "abs");
+close(g.sign([-2, 0, 5]), [-1, 0, 1], "sign");
+close(g.floor([1.5, -1.5]), [1, -2], "floor");
+close(g.ceil([1.2, -1.2]), [2, -1], "ceil");
+close(g.fract(-0.25), 0.75, "fract is x - floor(x)");
+close(g.fract([1.25, 2.5]), [0.25, 0.5], "fract(v)");
+close(g.mod(-1, 3), 2, "mod takes the sign of y");
+close(g.mod(5.5, 2), 1.5, "mod");
+close(g.mod([5, -1], 3), [2, 2], "mod(v, s)");
+close(g.min([1, 5, 3], 2), [1, 2, 2], "min(v, s)");
+close(g.max([-1, 0.5, 3], 0), [0, 0.5, 3], "max(v, 0.0)");
+close(g.max([1, 5], [4, 2]), [4, 5], "max(v, v)");
+close(g.min(3, 2), 2, "min(s, s)");
+close(g.clamp([-1, 0.5, 2], 0, 1), [0, 0.5, 1], "clamp(v, s, s)");
+close(g.clamp([5, 5], [0, 6], [1, 9]), [1, 6], "clamp(v, v, v)");
+close(g.clamp(1.5, 0, 1), 1, "clamp(s)");
+close(g.mix(2, 4, 0.25), 2.5, "mix(s)");
+close(g.mix([0, 10], [10, 20], 0.5), [5, 15], "mix(v, v, s)");
+close(g.mix([0, 10], [10, 20], [0, 1]), [0, 20], "mix(v, v, v)");
+close(g.step(0.5, [0.2, 0.5, 0.9]), [0, 1, 1], "step(s, v)");
+close(g.step(1, 0.5), 0, "step(s, s)");
+close(g.smoothstep(0, 1, 0.5), 0.5, "smoothstep mid");
+close(g.smoothstep(0, 2, [-1, 0.5, 3]), [0, 0.15625, 1], "smoothstep(s, s, v)");
+close(g.pow([2, 3], [3, 2]), [8, 9], "pow");
+close(g.sqrt([4, 9]), [2, 3], "sqrt");
+close(g.inversesqrt(4), 0.5, "inversesqrt");
+close(g.exp2(3), 8, "exp2");
+close(g.log2(8), 3, "log2");
+close(g.sin([0, Math.PI / 2]), [0, 1], "sin");
+close(g.cos(0), 1, "cos");
+close(g.atan(1), Math.PI / 4, "atan(y_over_x)");
+close(g.atan(1, -1), (3 * Math.PI) / 4, "atan(y, x)");
+close(g.atan([1, 0], [0, 1]), [Math.PI / 2, 0], "atan(v, v)");
+close(g.radians(180), Math.PI, "radians");
+close(g.degrees(Math.PI), 180, "degrees");
+close(g.trunc(-1.7), -1, "trunc");
+
+// Geometry.
+close(g.length([3, 4]), 5, "length");
+close(g.length(-2), 2, "length(s)");
+close(g.distance([1, 1, 1], [1, 4, 5]), 5, "distance");
+close(g.dot([1, 2, 3], [4, 5, 6]), 32, "dot");
+close(g.dot(2, 3), 6, "dot(s, s)");
+close(g.cross([1, 0, 0], [0, 1, 0]), [0, 0, 1], "cross");
+close(g.normalize([0, 3, 4]), [0, 0.6, 0.8], "normalize");
+close(g.reflect([1, -1, 0], [0, 1, 0]), [1, 1, 0], "reflect");
+close(g.refract([0, -1, 0], [0, 1, 0], 0.5), [0, -1, 0], "refract straight through");
+close(g.refract([1, 0, 0], [0, 1, 0], 2), [0, 0, 0], "refract total internal reflection");
+close(g.faceforward([0, 1, 0], [0, -1, 0], [0, 1, 0]), [0, 1, 0], "faceforward keeps");
+close(g.faceforward([0, 1, 0], [0, 1, 0], [0, 1, 0]), [0, -1, 0], "faceforward flips");
+
+// Vector relations.
+close(g.lessThan([1, 5], [2, 2]), [true, false], "lessThan");
+close(g.greaterThanEqual([2, 1], [2, 2]), [true, false], "greaterThanEqual");
+close(g.equal([1, 2], [1, 3]), [true, false], "equal");
+close(g.notEqual([1, 2], [1, 3]), [false, true], "notEqual");
+close(g.any([false, true]), true, "any");
+close(g.all([false, true]), false, "all");
+close(g.not([false, true]), [true, false], "not");
+
+// The distance functions of the SDF examples, written with the helpers as a twin would be.
+function sdBox(q, s) {
+  const d = g.sub(g.abs(q), g.vec3(s, s, s));
+  return g.length(g.max(d, g.vec3(0, 0, 0))) + g.min(g.max(d[0], g.max(d[1], d[2])), 0);
+}
+close(sdBox([2, 0, 0], 1), 1, "sdBox outside a face");
+close(sdBox([0, 0, 0], 1), -1, "sdBox center");
+close(sdBox([2, 2, 2], 1), Math.sqrt(3), "sdBox outside a corner");
+function sdTorus(q, s) {
+  const t = g.vec2(g.length(g.swizzle(q, [0, 2])) - s, q[1]);
+  return g.length(t) - s * 0.35;
+}
+close(sdTorus([1, 0, 0], 1), -0.35, "sdTorus on the ring");
+close(sdTorus([0, 0, 0], 1), 0.65, "sdTorus center");
+
+// A runtime without the area names it.
+delete require.cache[require.resolve(process.argv[2])];
+delete globalThis.mlRuntime;
+require(process.argv[3]);
+let missing = "";
+try { globalThis.mlRuntime.glsl.length([3, 4]); } catch (error) { missing = error.message; }
+if (!/without the 'glsl' area \(glsl\.length\)/.test(missing)) throw new Error("missing area message: " + missing);
+
+process.stdout.write("ok\n");
+""");
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = Environment.GetEnvironmentVariable("MALDA_NODE_PATH") is { Length: > 0 } nodePath
+                    ? nodePath
+                    : "node",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = root
+            };
+            startInfo.ArgumentList.Add(scriptPath);
+            startInfo.ArgumentList.Add(runtimePath);
+            startInfo.ArgumentList.Add(coreRuntimePath);
+
+            using var process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("Failed to start Node.js for the glsl runtime test.");
+            var stdout = process.StandardOutput.ReadToEnd();
+            var stderr = process.StandardError.ReadToEnd();
+            process.WaitForExit(15000);
+            Assert.True(process.ExitCode == 0, $"glsl runtime test failed ({process.ExitCode}). stderr: {stderr}");
+            Assert.Equal("ok", stdout.Trim());
+        }
+        finally
+        {
+            SafeDeleteDirectory(root);
+        }
+    }
+
     private static string StripJsSourceMapComment(string js)
     {
         var normalized = js.Replace("\r\n", "\n").TrimStart('\uFEFF');

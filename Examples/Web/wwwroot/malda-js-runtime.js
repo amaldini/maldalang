@@ -5581,7 +5581,7 @@
     }
   };
 
-  // The compiler leaves the `ui` / `game` / `three` areas out of the runtime it writes beside a program
+  // The compiler leaves the `ui` / `game` / `three` / `glsl` areas out of the runtime it writes beside a program
   // that does not use them (`// @malda-runtime-area` markers); the member then names what is missing.
   function missingRuntimeArea(area) {
     return new Proxy({}, {
@@ -12488,8 +12488,236 @@
         wasGamepadButtonPressed: (index, button) => state.gamepad.wasButtonPressed(index, button),
         wasGamepadButtonReleased: (index, button) => state.gamepad.wasButtonReleased(index, button)
       };
-    })()
+    })(),
     // @malda-runtime-area-end three
+    // @malda-runtime-area glsl
+    // glsl.*: what an @shader() function needs to run on the host (the JavaScript twin the compiler
+    // emits for a kernel that host code calls). A vec2 / vec3 / vec4 / ivec* / bvec* is a plain array
+    // of 2 / 3 / 4 values, a float / int / bool a number or boolean. The emit is typed, so the
+    // helpers trust their arguments: no coercion, no length checks. Same formulas as GLSL, in
+    // float64: results agree with the GPU to float32 precision, not bit for bit.
+    glsl: (() => {
+      const isVector = Array.isArray;
+
+      function lift1(f) {
+        return (x) => {
+          if (!isVector(x)) return f(x);
+          const out = new Array(x.length);
+          for (let i = 0; i < x.length; i++) out[i] = f(x[i]);
+          return out;
+        };
+      }
+
+      // Scalar broadcast: a scalar argument next to a vector applies to every component.
+      function lift2(f) {
+        return (a, b) => {
+          const av = isVector(a);
+          const bv = isVector(b);
+          if (!av && !bv) return f(a, b);
+          const n = av ? a.length : b.length;
+          const out = new Array(n);
+          for (let i = 0; i < n; i++) out[i] = f(av ? a[i] : a, bv ? b[i] : b);
+          return out;
+        };
+      }
+
+      function lift3(f) {
+        return (a, b, c) => {
+          const av = isVector(a);
+          const bv = isVector(b);
+          const cv = isVector(c);
+          if (!av && !bv && !cv) return f(a, b, c);
+          const n = av ? a.length : bv ? b.length : c.length;
+          const out = new Array(n);
+          for (let i = 0; i < n; i++) out[i] = f(av ? a[i] : a, bv ? b[i] : b, cv ? c[i] : c);
+          return out;
+        };
+      }
+
+      function toFloat(value) {
+        return typeof value === "boolean" ? (value ? 1 : 0) : value;
+      }
+
+      // int(x) truncates toward zero, and | 0 keeps the 32-bit wrap of a GLSL int.
+      function toInt(value) {
+        return typeof value === "boolean" ? (value ? 1 : 0) : Math.trunc(value) | 0;
+      }
+
+      function toBool(value) {
+        return typeof value === "boolean" ? value : value !== 0;
+      }
+
+      // vecN(...): one scalar fills every component; otherwise the arguments are read in order,
+      // component by component, and what is left over of the last one is dropped (vec2(v3)).
+      function construct(size, convert, args) {
+        const out = new Array(size);
+        if (args.length === 1 && !isVector(args[0])) {
+          const value = convert(args[0]);
+          for (let i = 0; i < size; i++) out[i] = value;
+          return out;
+        }
+        let at = 0;
+        for (let a = 0; a < args.length && at < size; a++) {
+          const arg = args[a];
+          if (isVector(arg)) {
+            for (let i = 0; i < arg.length && at < size; i++) out[at++] = convert(arg[i]);
+          } else {
+            out[at++] = convert(arg);
+          }
+        }
+        if (at < size) throw new Error(`glsl: a ${size}-component constructor got ${at} component(s).`);
+        return out;
+      }
+
+      const scalar = (convert) => (value) => convert(isVector(value) ? value[0] : value);
+      const vector = (size, convert) => (...args) => construct(size, convert, args);
+
+      function dot(a, b) {
+        if (!isVector(a)) return a * b;
+        let sum = 0;
+        for (let i = 0; i < a.length; i++) sum += a[i] * b[i];
+        return sum;
+      }
+
+      function length(x) {
+        return isVector(x) ? Math.sqrt(dot(x, x)) : Math.abs(x);
+      }
+
+      const add = lift2((a, b) => a + b);
+      const sub = lift2((a, b) => a - b);
+      const mul = lift2((a, b) => a * b);
+      const div = lift2((a, b) => a / b);
+      const clampScalar = (x, low, high) => Math.min(Math.max(x, low), high);
+
+      function equal(a, b) {
+        if (!isVector(a)) return a === b;
+        for (let i = 0; i < a.length; i++) {
+          if (a[i] !== b[i]) return false;
+        }
+        return true;
+      }
+
+      return {
+        // ---- values: GLSL vectors are values, so a twin copies one where GLSL would ----
+        copy: (value) => (isVector(value) ? value.slice() : value),
+        float: scalar(toFloat),
+        int: scalar(toInt),
+        bool: scalar(toBool),
+        vec2: vector(2, toFloat),
+        vec3: vector(3, toFloat),
+        vec4: vector(4, toFloat),
+        ivec2: vector(2, toInt),
+        ivec3: vector(3, toInt),
+        ivec4: vector(4, toInt),
+        bvec2: vector(2, toBool),
+        bvec3: vector(3, toBool),
+        bvec4: vector(4, toBool),
+
+        // ---- operators with a vector operand (scalar code stays native in the emit) ----
+        add,
+        sub,
+        mul,
+        div,
+        neg: lift1((x) => -x),
+        // int and ivec* `/` and `%`: the quotient truncates toward zero.
+        idiv: lift2((a, b) => Math.trunc(a / b) | 0),
+        imod: lift2((a, b) => (a % b) | 0),
+        eq: equal,
+        ne: (a, b) => !equal(a, b),
+
+        // ---- swizzles: component indexes 0..3 for x y z w (r g b a, s t p q) ----
+        swizzle(value, indexes) {
+          const out = new Array(indexes.length);
+          for (let i = 0; i < indexes.length; i++) out[i] = value[indexes[i]];
+          return out;
+        },
+        // v.xz = value: writes into `target` and returns it. A scalar goes to every named component
+        // (the result of `v.xz *= 2.0` is computed by the emit, then stored here).
+        setSwizzle(target, indexes, value) {
+          if (isVector(value)) {
+            // Read first: the source may be the target (v.xy = v.yx).
+            const source = value.slice();
+            for (let i = 0; i < indexes.length; i++) target[indexes[i]] = source[i];
+          } else {
+            for (let i = 0; i < indexes.length; i++) target[indexes[i]] = value;
+          }
+          return target;
+        },
+
+        // ---- built-ins, component-wise with scalar broadcast ----
+        radians: lift1((x) => (x * Math.PI) / 180),
+        degrees: lift1((x) => (x * 180) / Math.PI),
+        sin: lift1(Math.sin),
+        cos: lift1(Math.cos),
+        tan: lift1(Math.tan),
+        asin: lift1(Math.asin),
+        acos: lift1(Math.acos),
+        // atan(y_over_x) or atan(y, x).
+        atan(y, x) {
+          return x === undefined ? lift1(Math.atan)(y) : lift2(Math.atan2)(y, x);
+        },
+        sinh: lift1(Math.sinh),
+        cosh: lift1(Math.cosh),
+        tanh: lift1(Math.tanh),
+        pow: lift2(Math.pow),
+        exp: lift1(Math.exp),
+        log: lift1(Math.log),
+        exp2: lift1((x) => Math.pow(2, x)),
+        log2: lift1(Math.log2),
+        sqrt: lift1(Math.sqrt),
+        inversesqrt: lift1((x) => 1 / Math.sqrt(x)),
+        abs: lift1(Math.abs),
+        sign: lift1(Math.sign),
+        floor: lift1(Math.floor),
+        ceil: lift1(Math.ceil),
+        trunc: lift1(Math.trunc),
+        // GLSL leaves the direction of a half open; this rounds it up, as Math.round does.
+        round: lift1(Math.round),
+        fract: lift1((x) => x - Math.floor(x)),
+        // x - y * floor(x / y): the sign of y, unlike JavaScript's %.
+        mod: lift2((x, y) => x - y * Math.floor(x / y)),
+        min: lift2(Math.min),
+        max: lift2(Math.max),
+        clamp: lift3(clampScalar),
+        mix: lift3((a, b, t) => a * (1 - t) + b * t),
+        step: lift2((edge, x) => (x < edge ? 0 : 1)),
+        smoothstep: lift3((edge0, edge1, x) => {
+          const t = clampScalar((x - edge0) / (edge1 - edge0), 0, 1);
+          return t * t * (3 - 2 * t);
+        }),
+
+        // ---- geometry ----
+        length,
+        distance: (a, b) => length(sub(a, b)),
+        dot,
+        cross: (a, b) => [
+          a[1] * b[2] - a[2] * b[1],
+          a[2] * b[0] - a[0] * b[2],
+          a[0] * b[1] - a[1] * b[0]
+        ],
+        normalize: (x) => div(x, length(x)),
+        faceforward: (n, i, nref) => (dot(nref, i) < 0 ? (isVector(n) ? n.slice() : n) : mul(n, -1)),
+        reflect: (i, n) => sub(i, mul(n, 2 * dot(n, i))),
+        refract(i, n, eta) {
+          const d = dot(n, i);
+          const k = 1 - eta * eta * (1 - d * d);
+          if (k < 0) return isVector(i) ? new Array(i.length).fill(0) : 0;
+          return sub(mul(i, eta), mul(n, eta * d + Math.sqrt(k)));
+        },
+
+        // ---- vector relations ----
+        lessThan: lift2((a, b) => a < b),
+        lessThanEqual: lift2((a, b) => a <= b),
+        greaterThan: lift2((a, b) => a > b),
+        greaterThanEqual: lift2((a, b) => a >= b),
+        equal: lift2((a, b) => a === b),
+        notEqual: lift2((a, b) => a !== b),
+        any: (v) => v.some((x) => x),
+        all: (v) => v.every((x) => x),
+        not: (v) => v.map((x) => !x)
+      };
+    })()
+    // @malda-runtime-area-end glsl
   };
 
   function nnLayerMatrix(rows, cols, scale) {

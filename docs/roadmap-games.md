@@ -765,7 +765,7 @@ settled (see open questions) before any code.
   hints: scalars, `vec*` / `ivec*`, swizzles, operator result types with scalar
   broadcast, `int` vs `float` division, a signature table for the mapped
   built-ins. No emit change yet. Tests in `GlslTranspilerTests`.
-- [ ] **2. Runtime helpers.** `mlRuntime.glsl` in `malda-js-runtime.js`: vector
+- [x] **2. Runtime helpers.** `mlRuntime.glsl` in `malda-js-runtime.js`: vector
   arithmetic, swizzle read / write, and the built-in table with GLSL semantics.
   Node harness in `JavaScriptBackendTests`.
 - [ ] **3. Host emit.** `JsTranspiler` finds host calls to `@shader()` functions,

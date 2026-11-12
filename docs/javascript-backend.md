@@ -150,7 +150,7 @@ This document captures the current JavaScript backend design in code and the nea
 ## Runtime Areas (trimmed runtime)
 
 - `malda-js-runtime.js` marks optional members of the runtime object with
-  `// @malda-runtime-area NAME` / `// @malda-runtime-area-end NAME` (today `ui`, `game` and `three`, about
+  `// @malda-runtime-area NAME` / `// @malda-runtime-area-end NAME` (today `ui`, `game`, `three` and `glsl`, about
   47% of the file). `JsRuntimeAreas.WriteBeside` (`MaldaLang.Compiler/JsRuntimeAreas.cs`) writes the copy beside a
   `--mode js` / `esm` / `pwa` output with only the areas the generated code calls (`mlRuntime.game…`), plus
   the areas an existing runtime in that folder already keeps, and a first line
