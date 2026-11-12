@@ -1,6 +1,6 @@
 # MALDA games platform plan
 
-**Status:** G0–G22 and G23a landed; G23b–G23c planned  
+**Status:** G0–G22 and G23a–G23b landed; G23c planned  
 **Created:** 2026-08-21  
 **Audience:** maintainers extending the JS `game.*` / `three.*` surface after Final 1.0
 
@@ -80,7 +80,7 @@ top-level globals, Web IDE Desktop parity, product apps or vertical packs
 | 20 | **G20** Render scale + stats overlay | Landed | Per-pixel ray tracing ran at full devicePixelRatio with no way to trade resolution for fps or see the frame rate |
 | 21 | **G21** Instancing, shadows, fog | Landed | The raster path had one draw call per mesh, no shadows, and no fog, which pushed 3D scenes into one big fragment shader |
 | 22 | **G22** Audio voices + 3D sound | Landed | Continuous sounds were retriggered one-shots (choppy engines), and `pan` was stereo only with no listener |
-| 23 | **G23** Host-callable `@shader()` functions | G23a landed; G23b–G23c planned | SDF games write every distance function twice (GLSL kernel + hand-copied host twin) so the host can pick, collide and carve; the copies drift |
+| 23 | **G23** Host-callable `@shader()` functions | G23a–G23b landed; G23c planned | SDF games write every distance function twice (GLSL kernel + hand-copied host twin) so the host can pick, collide and carve; the copies drift |
 
 ```text
 G0  roadmap file                          (landed)
@@ -656,15 +656,17 @@ helpers) is the Pico-8 `map`/`mget` slice from the same file.
 
 ---
 
-## G23 — Host-callable `@shader()` functions (G23a landed)
+## G23 — Host-callable `@shader()` functions (G23a–G23b landed)
 
 **Why:** A raymarched game needs its distance functions in two places. The
 fragment shader marches them; the host needs the same numbers to pick the
 surface under the mouse, test a shot against a shield, or bound a shape for
 culling. Today `@shader()` functions are GLSL-only: `JsTranspiler` skips them
 when it emits functions, so the examples copied them by hand in scalar host code.
-G23a (landed) emits a pure kernel as JavaScript when host code calls it; the twins
-that read consts, uniforms or a data texture wait for G23b.
+G23a (landed) emits a pure kernel as JavaScript when host code calls it. G23b
+(landed) lets a host-called kernel read top-level MALDA consts and, bound with
+`glsl.host("name", material)`, uniforms and data textures. The examples still
+carry the twins that need them; G23c converts them.
 
 | Example | Shader function | Hand-written host twin |
 |---------|-----------------|------------------------|
@@ -678,7 +680,7 @@ Each pair is kept in step by a "mirrors … on the host" comment. A change to on
 side that misses the other is a silent gameplay bug: the shot passes through
 what the player sees. MALDA owns both emitters, so one function can feed both.
 
-**Contract** (G23a as landed; G23b–G23c proposed)
+**Contract** (G23a as landed; G23b as landed is in the decided open questions and its checklist; G23c proposed)
 
 - Host MALDA may call an `@shader()` function by name: `var d = sdBox([qx, qy, qz], s);`.
   A shader function reached from host code is also emitted as JavaScript.
@@ -706,11 +708,12 @@ what the player sees. MALDA owns both emitters, so one function can feed both.
 | Slice | Scope | Removes from the examples |
 |-------|-------|---------------------------|
 | **G23a** Pure functions (landed) | Scalar + vector params / locals / returns, control flow, local arrays, calls to other `@shader()` functions (emitted transitively), the built-in table above | `cpuShape`, `cpuRoundBox`, the interpreter's `boundRadius` |
-| **G23b** Consts, uniforms, data textures | A host-called function that reads a `consts` name, a uniform, or `texelFetch`es a `sampler2D` needs values. Bind them to a material: uniforms read the material's current values, and `texelFetch` on a `three.createDataTexture` handle reads its backing array | `cpuSceneDistance`, `cpuShield`, the invaders' `boundRadius` (its `shapeRadius` reads `K_*` consts) |
+| **G23b** Consts, uniforms, data textures (landed) | A host-called function that reads a `consts` name, a uniform, or `texelFetch`es a `sampler2D` needs values. Bind them to a material: uniforms read the material's current values, and `texelFetch` on a `three.createDataTexture` handle reads its backing array | `cpuSceneDistance`, `cpuShield`, the invaders' `boundRadius` (its `shapeRadius` reads `K_*` consts) |
 | **G23c** Examples + docs | Convert both SDF examples to the single source and delete the twins; chapter 28.10.1 gains a "Calling a kernel from the host" section | the "mirrors …" comments |
 
-G23a landed first and is useful alone. The binding shape and the source of
-consts for G23b are decided (see open questions).
+G23a landed first and is useful alone. G23b landed with the binding shape and
+the source of consts decided in the open questions. G23c needs its own
+checklist.
 
 **Guardrails**
 
@@ -850,7 +853,7 @@ must produce the same JavaScript and the same GLSL as before.
   `ReferenceManual/it/`), `docs/javascript-backend.md`,
   `docs/llm/malda-gotchas.md`, a `docs/spec/CHANGELOG.md` Unreleased row.
   `ReferenceManual` tests green.
-- [ ] **9. Close G23b.** Mark the slice landed here and in the priority table.
+- [x] **9. Close G23b.** Mark the slice landed here and in the priority table.
   The examples are converted in G23c (`cpuSceneDistance`, `cpuShield`, the
   invaders' `boundRadius`, the duplicated `K_*` / `OP_*` const strings).
 
