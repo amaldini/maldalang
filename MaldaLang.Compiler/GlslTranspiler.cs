@@ -18,6 +18,12 @@ public sealed class GlslCompileRequest
     public IReadOnlyList<string> Uniforms { get; init; } = Array.Empty<string>();
     public IReadOnlyList<string> Consts { get; init; } = Array.Empty<string>();
     public IReadOnlyList<FunctionDeclaration> Functions { get; init; } = Array.Empty<FunctionDeclaration>();
+
+    /// <summary>
+    /// The file's top-level literal MALDA consts. Those the functions name are written as GLSL
+    /// <c>const</c> declarations after <see cref="Consts"/> and before the uniforms.
+    /// </summary>
+    public IReadOnlyList<GlslLiteralConst> MaldaConsts { get; init; } = Array.Empty<GlslLiteralConst>();
     public string? MainFunctionName { get; init; }
 }
 
@@ -47,6 +53,7 @@ public static partial class GlslTranspiler
         // Consts go before uniforms so `uniform vec3 uCars[CAR_COUNT]` can size from one.
         AppendPrefixedDeclarations(output, "varying", request.Varyings);
         AppendPrefixedDeclarations(output, "const", request.Consts);
+        AppendMaldaConsts(output, request);
         AppendPrefixedDeclarations(output, "uniform", request.Uniforms);
 
         if (output.Length > 0)

@@ -76,6 +76,26 @@ public partial class JsTranspiler
     }
 
     /// <summary>
+    /// The top-level <c>const NAME = literal;</c> declarations of the file: the consts an
+    /// <c>@shader()</c> function may name, written into the GLSL by <c>glsl.compile</c>.
+    /// </summary>
+    private void CollectShaderLiteralConsts(IEnumerable<Statement> statements)
+    {
+        _shaderLiteralConsts.Clear();
+        if (_shaderFunctions.Count == 0)
+            return;
+
+        foreach (var declaration in statements.OfType<VarDeclStatement>())
+        {
+            if (GlslLiteralConst.TryRead(declaration) is { } constant &&
+                !_shaderLiteralConsts.Any(existing => existing.Name == constant.Name))
+            {
+                _shaderLiteralConsts.Add(constant);
+            }
+        }
+    }
+
+    /// <summary>
     /// The <c>@shader()</c> functions host code calls by name, and the shader functions those call,
     /// in declaration order. A function nothing on the host calls stays GLSL-only.
     /// </summary>
@@ -255,6 +275,7 @@ public partial class JsTranspiler
             Uniforms = uniforms,
             Consts = consts,
             Functions = functions,
+            MaldaConsts = _shaderLiteralConsts,
             MainFunctionName = mainName
         });
         return TranspileLiteral(glsl);
@@ -272,7 +293,7 @@ public partial class JsTranspiler
         var functions = functionCall.Arguments
             .Select(argument => RequireShaderFunction(RequireString(argument, "source"), "glsl.source"))
             .ToList();
-        return TranspileLiteral(GlslTranspiler.Compile(new GlslCompileRequest { Functions = functions }));
+        return TranspileLiteral(GlslTranspiler.Compile(new GlslCompileRequest { Functions = functions, MaldaConsts = _shaderLiteralConsts }));
     }
 
     /// <summary>

@@ -506,6 +506,190 @@ public class GlslTranspilerTests : TestBase
             .ToDictionary(f => f.Name, StringComparer.Ordinal);
     }
 
+    // ---- G23b step 1: top-level MALDA consts written into the GLSL ----
+
+    private const string ConstKernels = """
+        const K_SPHERE = 0;
+        const K_RING = 9;
+        const GLOW_R = 2.2;
+        const FLOOR_Y = -1;
+        const HALF: float = 2;
+        const SHADOWS = true;
+        const UNUSED = 5;
+        const TWO_PI = math.pi * 2;
+        var notConst = 3;
+
+        @shader()
+        function shapeRadius(kind: int, s: float) -> float {
+            if (kind == K_SPHERE) {
+                return s;
+            }
+            if (kind == K_RING && SHADOWS) {
+                return s + GLOW_R / HALF;
+            }
+            return s * 1.3;
+        }
+
+        @shader()
+        function floorDistance(p: vec3) -> float {
+            return p.y - float(FLOOR_Y);
+        }
+
+        @shader()
+        function fragmentMain() {
+            gl_FragColor = vec4(shapeRadius(K_RING, uSize), floorDistance(vPos), 0.0, 1.0);
+        }
+
+        """;
+
+    [Fact]
+    public void GlslCompile_WritesTheMaldaConstsItsFunctionsUse_BeforeTheUniforms()
+    {
+        var js = new Compiler.Compiler().TranspileToJavaScriptFromSource(ConstKernels + """
+            var fragment = glsl.compile({
+                varyings: ["vec3 vPos"],
+                uniforms: ["float uSize"],
+                consts: ["float EPSILON = 0.0015"],
+                functions: ["shapeRadius", "floorDistance"],
+                main: "fragmentMain"
+            });
+            """);
+        var glsl = GlslStringIn(js, "varying vec3 vPos;");
+
+        // Typed from the literal, in declaration order, after the consts strings.
+        Assert.Contains(
+            "const float EPSILON = 0.0015;\nconst int K_SPHERE = 0;\nconst int K_RING = 9;\nconst float GLOW_R = 2.2;\n" +
+            "const int FLOOR_Y = -1;\nconst float HALF = 2.0;\nconst bool SHADOWS = true;\nuniform float uSize;\n",
+            glsl, StringComparison.Ordinal);
+        // Emit follows use; a computed const and a var are not kernel consts.
+        Assert.DoesNotContain("UNUSED", glsl, StringComparison.Ordinal);
+        Assert.DoesNotContain("TWO_PI", glsl, StringComparison.Ordinal);
+        Assert.DoesNotContain("notConst", glsl, StringComparison.Ordinal);
+        Assert.Contains("if ((kind == K_SPHERE))", glsl, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void GlslCompile_MaldaConst_OnlyForTheFunctionsOfThatCall()
+    {
+        var js = new Compiler.Compiler().TranspileToJavaScriptFromSource(ConstKernels + """
+            var fragment = glsl.compile({ functions: ["floorDistance"] });
+            """);
+        var glsl = GlslStringIn(js, "float floorDistance(vec3 p)");
+
+        Assert.StartsWith("const int FLOOR_Y = -1;\n\nfloat floorDistance(vec3 p)", glsl, StringComparison.Ordinal);
+        Assert.DoesNotContain("K_SPHERE", glsl, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void GlslCompile_MaldaConst_IsNotWrittenTwice_NorOverALocalOrAUniform()
+    {
+        var js = new Compiler.Compiler().TranspileToJavaScriptFromSource("""
+            const K_SPHERE = 0;
+            const LIMIT = 4;
+            const SCALE = 2.0;
+            const uGain = 1.5;
+            const WIDTH = 8;
+
+            @shader()
+            function pick(kind: int, LIMIT: int) -> float {
+                var SCALE: float = 0.5;
+                if (kind == K_SPHERE && kind < LIMIT) {
+                    return SCALE * uGain * float(WIDTH);
+                }
+                return 0.0;
+            }
+
+            var fragment = glsl.compile({
+                header: "#define WIDTH 16",
+                uniforms: ["uniform float uGain"],
+                consts: ["int K_SPHERE = 7"],
+                functions: ["pick"]
+            });
+            """);
+        var glsl = GlslStringIn(js, "#define WIDTH 16");
+
+        // The consts string wins; a parameter, a local, a uniform or a header name is not redeclared.
+        Assert.Contains("const int K_SPHERE = 7;", glsl, StringComparison.Ordinal);
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(glsl, @"\bconst\b"));
+        Assert.Contains("uniform float uGain;", glsl, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void GlslSource_PrependsTheConstsItsFunctionsUse_AndGlslFunctionsStaysBare()
+    {
+        var js = new Compiler.Compiler().TranspileToJavaScriptFromSource(ConstKernels + """
+            var source = glsl.source("floorDistance", "shapeRadius");
+            var library = glsl.functions();
+            """);
+
+        var source = GlslStringIn(js, "const int K_SPHERE = 0;");
+        Assert.StartsWith(
+            "const int K_SPHERE = 0;\nconst int K_RING = 9;\nconst float GLOW_R = 2.2;\nconst int FLOOR_Y = -1;\n" +
+            "const float HALF = 2.0;\nconst bool SHADOWS = true;\n\nfloat floorDistance(vec3 p)",
+            source, StringComparison.Ordinal);
+        Assert.Contains("\"floorDistance\": \"float floorDistance(vec3 p) {", js, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void GlslCompile_WithoutMaldaConsts_IsUnchanged()
+    {
+        var source = """
+            @shader()
+            function carPosition(index: int) -> vec3 {
+                return uCars[index] * EPSILON;
+            }
+            """;
+        var func = Assert.IsType<FunctionDeclaration>(Assert.Single(Parse(source)));
+        var request = new GlslCompileRequest
+        {
+            Uniforms = ["vec3 uCars[CAR_COUNT]"],
+            Consts = ["int CAR_COUNT = 8", "float EPSILON = 0.0015"],
+            Functions = [func]
+        };
+        var withConsts = new GlslCompileRequest
+        {
+            Uniforms = request.Uniforms,
+            Consts = request.Consts,
+            Functions = request.Functions,
+            MaldaConsts =
+            [
+                new GlslLiteralConst("EPSILON", GlslType.Float, "1.0"),
+                new GlslLiteralConst("CAR_COUNT", GlslType.Int, "2"),
+                new GlslLiteralConst("OTHER", GlslType.Int, "3")
+            ]
+        };
+
+        Assert.Equal(GlslTranspiler.Compile(request), GlslTranspiler.Compile(withConsts));
+    }
+
+    [Theory]
+    [InlineData("vec3 uCars[CAR_COUNT]", "uCars")]
+    [InlineData("float EPSILON = 0.0015", "EPSILON")]
+    [InlineData("uniform vec3 uCamPos", "uCamPos")]
+    [InlineData("const int K=1;", "K")]
+    [InlineData("highp float uTime", "uTime")]
+    [InlineData("uniform highp sampler2D uMap", "uMap")]
+    [InlineData("", null)]
+    public void DeclaredName_ReadsTheNameOfAGlslDeclarationString(string declaration, string? expected)
+    {
+        Assert.Equal(expected, GlslTranspiler.DeclaredName(declaration));
+    }
+
+    /// <summary>The GLSL string literal of the generated JavaScript that contains <paramref name="marker"/>, unescaped.</summary>
+    private static string GlslStringIn(string js, string marker)
+    {
+        foreach (System.Text.RegularExpressions.Match match in
+                 System.Text.RegularExpressions.Regex.Matches(js, "\"(?:[^\"\\\\]|\\\\.)*\""))
+        {
+            var text = System.Text.Json.JsonSerializer.Deserialize<string>(match.Value)!;
+            if (text.Contains(marker, StringComparison.Ordinal))
+                return text;
+        }
+
+        Assert.Fail($"No string literal of the generated JavaScript contains '{marker}'.");
+        return string.Empty;
+    }
+
     private static List<MaldaLang.Parser.AST.Statements.Statement> Parse(string source)
     {
         var parser = new Parser.Parser(new Lexer(source).Tokenize());

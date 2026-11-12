@@ -797,7 +797,7 @@ tick the box in the same commit. JS backend only, no `BuiltInRegistry` entries;
 a program without `glsl.host` and without a kernel that reads a MALDA `const`
 must produce the same JavaScript and the same GLSL as before.
 
-- [ ] **1. Consts in the GLSL.** A kernel may name a top-level MALDA `const`
+- [x] **1. Consts in the GLSL.** A kernel may name a top-level MALDA `const`
   whose initializer is an `int`, `float` or `bool` literal (a leading `-`
   allowed). `glsl.compile` writes `const int K_SPHERE = 0;` for every such
   name its `functions` use, before the uniforms, typed from the literal

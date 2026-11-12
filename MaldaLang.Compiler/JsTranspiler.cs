@@ -38,6 +38,7 @@ public partial class JsTranspiler
     private readonly Dictionary<string, int> _variantConstructorArities = new(StringComparer.Ordinal);
     private readonly Dictionary<string, FunctionDeclaration> _shaderFunctions = new(StringComparer.Ordinal);
     private readonly Dictionary<string, GlslFunctionTypes> _shaderHostTypes = new(StringComparer.Ordinal);
+    private readonly List<GlslLiteralConst> _shaderLiteralConsts = new();
     private readonly Stack<HashSet<string>> _localScopes = new();
     private readonly HashSet<string> _moduleConstNames = new(StringComparer.Ordinal);
     private readonly Stack<HashSet<string>> _constScopeStack = new();
@@ -101,6 +102,8 @@ public partial class JsTranspiler
         _shaderFunctions.Clear();
         foreach (var kv in other._shaderFunctions)
             _shaderFunctions[kv.Key] = kv.Value;
+        _shaderLiteralConsts.Clear();
+        _shaderLiteralConsts.AddRange(other._shaderLiteralConsts);
         CopyLocalScopesFrom(other);
         CopyConstScopesFrom(other);
         _classDeclarations.Clear();
@@ -143,6 +146,7 @@ public partial class JsTranspiler
         _asyncFunctions.Clear();
         _variantConstructorArities.Clear();
         _shaderFunctions.Clear();
+        _shaderLiteralConsts.Clear();
         ResetLocalScopes();
         ResetConstScopes();
         _classDeclarations.Clear();
@@ -220,6 +224,7 @@ public partial class JsTranspiler
         }
 
         CollectShaderFunctions(statements);
+        CollectShaderLiteralConsts(statements);
         var jsImports = CollectJsImports(jsImportStatements);
         InferNumericNames(statements);
 
