@@ -789,8 +789,83 @@ consts for G23b are decided (see open questions).
 - [x] **8. Close G23a.** Mark the slice landed here and in the priority table.
   Real-GPU `malda play` check of both examples is the maintainer's.
 
-Open questions 1 and 2 above carry a decision (2026-11-12), so G23b can start;
-it needs its own progress checklist first.
+Open questions 1 and 2 above carry a decision (2026-11-12), and the checklist
+below is approved (2026-11-13), so G23b can start.
+
+**Progress (G23b)** — one step per PR-sized commit;
+tick the box in the same commit. JS backend only, no `BuiltInRegistry` entries;
+a program without `glsl.host` and without a kernel that reads a MALDA `const`
+must produce the same JavaScript and the same GLSL as before.
+
+- [ ] **1. Consts in the GLSL.** A kernel may name a top-level MALDA `const`
+  whose initializer is an `int`, `float` or `bool` literal (a leading `-`
+  allowed). `glsl.compile` writes `const int K_SPHERE = 0;` for every such
+  name its `functions` use, before the uniforms, typed from the literal
+  (`0` is `int`, `2.2` is `float`). A name also declared in the `consts`
+  strings keeps the string and is not written twice. `glsl.source(...)`
+  prepends the consts its functions use; `glsl.functions()` stays bare
+  functions. Tests in `GlslTranspilerTests`.
+- [ ] **2. Consts on the host.** The type pass takes those consts as typed
+  globals and the host twin inlines the literal value, so a twin does not
+  depend on where the `const` lives in the generated file (also inside a
+  `@worker()` scope). A name declared only in a `consts` string stays an
+  error for a host-called function, now saying "declare it as a top-level
+  MALDA `const`". Codegen and Node tests in `JavaScriptBackendTests`.
+- [ ] **3. `glsl.host` at compile time.** `glsl.host("name", material)` takes a
+  string literal naming an `@shader()` function of the file and marks it, and
+  the kernels it calls, as *bound*. A bound function may read uniforms and
+  `texelFetch` a `sampler2D` uniform; uniform types come from the `uniforms`
+  strings given to `glsl.compile` in the file (an undeclared name, or two
+  declarations with different types, is an error). The type pass gets them as
+  globals. Calling a uniform-reading kernel by plain name stays an error that
+  points to `glsl.host`. Varyings, `gl_*`, `discard`, derivatives, filtered
+  `texture()` and `mat*` stay errors for bound functions too. No emit yet.
+- [ ] **4. Runtime binding.** `mlRuntime.glsl` gains what a bound twin needs:
+  read a material's *current* uniform value as a host value (number, boolean,
+  list of 2 / 3 / 4 from `Vector2-4` / `Color`, list of those for
+  `uniform T name[N]`), and `texelFetch(sampler, ivec2, lod)` on a
+  `three.createDataTexture` handle from its backing array (RGBA, lod 0; a texel
+  outside the texture is an error naming the texture size). Values are read at
+  each call, so `three.setUniform` and `three.updateDataTexture` are seen
+  without rebinding. A texture that is not a data texture is an error. Node
+  harness with a stub `THREE`.
+- [ ] **5. Bound emit.** `glsl.host(...)` evaluates to a host function. A twin
+  that reads uniforms (directly or through a callee) takes the binding as a
+  hidden first parameter and passes it on to such callees; twins that read
+  none keep the G23a shape. Codegen tests: nothing new without `glsl.host`
+  (`JsBuildSizeTests` green), two materials bound to the same kernel give two
+  independent functions.
+- [ ] **6. `out` parameters between kernels.** The scene walks of both examples
+  return a distance and write a color through `out` (`runProgram(p, color:
+  out vec3)`). `out` on the function the host enters stays an error, but a
+  twin may call a twin with `out` parameters: vectors are written in place
+  into the caller's list, scalars come back through a one-slot box. Without
+  this step the host needs a second, distance-only copy of the walk, which is
+  what G23 removes. Codegen and Node tests.
+- [ ] **7. Numeric check.** Node harness: a bound scene-distance kernel over a
+  fixed bytecode program in a data texture, against values recorded from
+  today's `cpuSceneDistance`, before G23c deletes it. Same for one shield with
+  cuts against `cpuShield`.
+- [ ] **8. Docs.** Chapter 28.10.1 "Calling a kernel from the host" (+
+  `ReferenceManual/it/`), `docs/javascript-backend.md`,
+  `docs/llm/malda-gotchas.md`, a `docs/spec/CHANGELOG.md` Unreleased row.
+  `ReferenceManual` tests green.
+- [ ] **9. Close G23b.** Mark the slice landed here and in the priority table.
+  The examples are converted in G23c (`cpuSceneDistance`, `cpuShield`, the
+  invaders' `boundRadius`, the duplicated `K_*` / `OP_*` const strings).
+
+Confirmed with the checklist (2026-11-13):
+
+- A MALDA `const` reaches the GLSL only when a compiled function names it
+  (emit follows use), never every top-level const of the file.
+- Only literal initializers count. `const TWO_PI = math.pi * 2;` is not
+  visible to kernels in this slice.
+- Uniform types are taken from the `glsl.compile` strings, not from the values
+  the material holds at run time.
+- `texelFetch` on the host supports data textures only (step 4); image
+  textures stay GPU-only.
+- Step 6 widens the G23a guardrail on `out`: an error on the function the host
+  enters, allowed between kernels.
 
 **Files:** `MaldaLang.Compiler/GlslTranspiler.cs` (type pass, shared with the
 host emit), `JsTranspiler.Shaders.cs` (collect host calls, emit twins),
