@@ -842,7 +842,7 @@ must produce the same JavaScript and the same GLSL as before.
   into the caller's list, scalars come back through a one-slot box. Without
   this step the host needs a second, distance-only copy of the walk, which is
   what G23 removes. Codegen and Node tests.
-- [ ] **7. Numeric check.** Node harness: a bound scene-distance kernel over a
+- [x] **7. Numeric check.** Node harness: a bound scene-distance kernel over a
   fixed bytecode program in a data texture, against values recorded from
   today's `cpuSceneDistance`, before G23c deletes it. Same for one shield with
   cuts against `cpuShield`.

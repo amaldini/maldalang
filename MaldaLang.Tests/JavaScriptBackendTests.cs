@@ -7807,6 +7807,168 @@ process.stdout.write("ok\n");
         Assert.Equal("[4, 4, 6]", output.Trim());
     }
 
+    // G23b step 7: the scene walks of both SDF examples, bound to a material with glsl.host and run
+    // in Node over a fixed bytecode program in a data texture, against values recorded from the
+    // hand-written host twins (cpuSceneDistance, cpuShield) on 2026-11-13, before G23c deletes them.
+    // The program holds float32 values and CUT_K is not one, so the two agree to float32 precision.
+    private const double RecordedTwinTolerance = 1e-6;
+
+    private static readonly double[][] ScenePoints =
+    [
+        [0, 0.5, 0], [0.75, 0.5, 0], [1.25, 0.5, 0.25], [2.5, 0.5, 0], [-3, 1, 2], [-2.25, 1.25, 2],
+        [4, 1, -2], [4.5, 2.25, -2], [0, 1.25, 0], [0, 1.75, 0.25], [0.5, 0.125, 0.5], [8, 3, 8],
+        [-1.5, 0.75, -0.5], [0.25, 2.5, 0]
+    ];
+
+    // cpuSceneDistance of three_sdf_interpreter.malda at ScenePoints, ray culling on then off.
+    private static readonly double[] RecordedSceneDistances =
+    [
+        -0.25, -0.25, -0.25, 0.5, 0.48750000000000004, -0.012499999999999956, -0.35, 0.7648529270389177, 0.5,
+        0.2747548783981961, -0.19960947032089393, 3, 0.6007810593582121, 1.0155644370746373,
+        -0.25, -0.25, -0.25, 0.5, 0.4874999999999998, -0.012500000000000178, -0.3500000000000001, 0.7648529270389179, 0.5,
+        0.2747548783981961, -0.19960947032089393, 3, 0.6007810593582121, 1.0155644370746373
+    ];
+
+    private static readonly double[][] ShieldPoints =
+    [
+        [0.5, 1.25, -2], [0.75, 1.5, -2], [0.25, 1, -1.75], [1.25, 1.25, -2], [0.5, 0.875, -2], [0.5, 2, -2],
+        [-0.25, 1.375, -1.875], [0.875, 1.625, -2.125], [0.5, 1.25, -1.5], [3, 1.25, -2]
+    ];
+
+    // cpuShield of three_sdf_invaders.malda at ShieldPoints: a shield at (0.5, 1.25, -2) with two cuts.
+    private static readonly double[] RecordedShieldDistances =
+    [
+        -0.05714156987872007, 0.25, 0.375, -0.24999597374975463, 0.17499999999999993, 0.25,
+        -0.19445249999999992, 0.033493649053890295, 0.17999999999999994, 1.5
+    ];
+
+    [Fact]
+    public async Task JsTranspiler_GlslHost_InterpreterSceneWalk_MatchesTheRecordedHostTwin()
+    {
+        Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);
+
+        var example = File.ReadAllText(PlanningPaths.ResolveRepoFile("Examples", "Games", "three_sdf_interpreter.malda"));
+        var kernels = new[] { "sdBox", "sdTorus", "sdCylinder", "sdShape", "shapeColor", "shapeRadius", "runProgram" };
+        var source = new StringBuilder("const OP_UNION = 1;\nconst OP_CUT = 2;\nconst OP_GROUP = 3;\nconst FAR = 100000.0;\n\n");
+        foreach (var name in kernels)
+            source.Append(ExtractShaderFunction(example, name)).Append('\n');
+        // The walk gives its color through `out`: the host enters through a kernel that returns the
+        // distance, with the floor cpuSceneDistance adds.
+        source.Append("""
+            @shader()
+            function sceneDistance(p: vec3) -> float {
+                var color: vec3 = vec3(0.0, 0.0, 0.0);
+                return min(runProgram(p, color), p.y);
+            }
+
+            var fragment = glsl.compile({
+                uniforms: ["sampler2D uProgram", "int uCount", "float uBlend", "float uSkip"],
+                functions: ["sdBox", "sdTorus", "sdCylinder", "sdShape", "shapeColor", "shapeRadius", "runProgram", "sceneDistance"]
+            });
+
+            // op, kind, jump, k, x, y, z, size: a group over two shapes, four unions (one of each kind), a cut.
+            var program = [
+                3, 0, 3, 0,      0, 0.5, 0, 3.0,
+                1, 0, 0, 0.25,   0, 0.5, 0, 1.0,
+                1, 1, 0, 0.25,   1.25, 0.5, 0, 0.5,
+                1, 2, 0, 0.25,   -3, 1, 2, 0.75,
+                1, 3, 0, 0.125,  4, 1, -2, 0.5,
+                2, 0, 0, 0.125,  0, 1.25, 0, 0.5
+            ];
+            var texture = three.createDataTexture(12, 1, program, { "type": "float" });
+            var material = three.createShaderMaterial({
+                "vertexShader": fragment,
+                "fragmentShader": fragment,
+                "uniforms": { "uProgram": texture, "uCount": 6, "uBlend": 0.25, "uSkip": 1.0 }
+            });
+            var sceneAt = glsl.host("sceneDistance", material);
+
+            """);
+        AppendPointCalls(source, "sceneAt", ScenePoints);
+        source.Append("three.setUniform(material, \"uSkip\", 0.0);\n");
+        AppendPointCalls(source, "sceneAt", ScenePoints);
+
+        await AssertMatchesRecorded(source.ToString(), RecordedSceneDistances, "cpuSceneDistance");
+    }
+
+    [Fact]
+    public async Task JsTranspiler_GlslHost_InvadersShieldWithCuts_MatchesTheRecordedHostTwin()
+    {
+        Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);
+
+        var example = File.ReadAllText(PlanningPaths.ResolveRepoFile("Examples", "Games", "three_sdf_invaders.malda"));
+        var kernels = new[]
+        {
+            "smin", "sdRoundBox", "sdCapsule", "sdEllipsoid", "sdSquid", "sdCrab", "sdOctopus", "sdCannon", "sdShield",
+            "sdSaucer", "sdShape", "shapeRadius", "evalOp", "runProgram"
+        };
+        var source = new StringBuilder();
+        // The example's own top-level consts: the K_* / OP_* names its kernels read.
+        foreach (System.Text.RegularExpressions.Match match in System.Text.RegularExpressions.Regex.Matches(
+                     example.Replace("\r\n", "\n"), @"^const (?:OP|K)_\w+ = \d+;\n", System.Text.RegularExpressions.RegexOptions.Multiline))
+        {
+            source.Append(match.Value);
+        }
+
+        source.Append("const FAR = 100000.0;\n\n");
+        foreach (var name in kernels)
+            source.Append(ExtractShaderFunction(example, name)).Append('\n');
+        source.Append("""
+            @shader()
+            function sceneDistance(p: vec3) -> float {
+                var color: vec4 = vec4(0.0, 0.0, 0.0, 0.0);
+                return runProgram(p, color);
+            }
+
+            var fragment = glsl.compile({
+                uniforms: ["sampler2D uProgram", "int uCount", "float uSkip"],
+                functions: ["sceneDistance"]
+            });
+
+            // op, kind, jump, k, x, y, z, size, ext x 4: a shield (K_SHIELD = 5), then two sphere cuts
+            // with CUT_K = 0.06, as the example writes them (the last ext is the crater heat).
+            var program = [
+                1, 5, 0, 0.02,   0.5, 1.25, -2, 1.0,     0, 0, 0, 0,
+                2, 0, 0, 0.06,   0.75, 1.5, -2, 0.25,    0, 0, 0, 1.0,
+                2, 0, 0, 0.06,   0.25, 1.0, -1.75, 0.375,  0, 0, 0, 0.5
+            ];
+            var texture = three.createDataTexture(9, 1, program, { "type": "float" });
+            var material = three.createShaderMaterial({
+                "vertexShader": fragment,
+                "fragmentShader": fragment,
+                "uniforms": { "uProgram": texture, "uCount": 3, "uSkip": 0.0 }
+            });
+            var shieldAt = glsl.host("sceneDistance", material);
+
+            """);
+        AppendPointCalls(source, "shieldAt", ShieldPoints);
+
+        await AssertMatchesRecorded(source.ToString(), RecordedShieldDistances, "cpuShield");
+    }
+
+    private static void AppendPointCalls(StringBuilder source, string function, double[][] points)
+    {
+        foreach (var p in points)
+        {
+            source.Append(CultureInfo.InvariantCulture, $"io.print({function}([{p[0]:R}, {p[1]:R}, {p[2]:R}]));\n");
+        }
+    }
+
+    private static async Task AssertMatchesRecorded(string source, double[] recorded, string twin)
+    {
+        var js = new Compiler.Compiler().TranspileToJavaScriptFromSource(source);
+        var output = await Tier0JavaScriptRunner.RunCompiledJavaScriptAsync(ThreeStubForBinding + js);
+        var lines = output.Replace("\r", string.Empty).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+
+        Assert.Equal(recorded.Length, lines.Length);
+        for (var i = 0; i < lines.Length; i++)
+        {
+            var actual = double.Parse(lines[i], NumberStyles.Float, CultureInfo.InvariantCulture);
+            Assert.True(Math.Abs(actual - recorded[i]) <= RecordedTwinTolerance,
+                $"value {i}: the bound kernel gives {lines[i]}, {twin} recorded {recorded[i].ToString("R", CultureInfo.InvariantCulture)}.");
+        }
+    }
+
     private static string StripJsSourceMapComment(string js)
     {
         var normalized = js.Replace("\r\n", "\n").TrimStart('\uFEFF');
