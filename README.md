@@ -4,7 +4,7 @@
 [![Release](https://img.shields.io/github/v/release/amaldini/maldalang)](https://github.com/amaldini/maldalang/releases)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue)](#license)
 
-**MALDA** (Multi Agent Language with Development Automation) is an AI-native programming language and platform for agents, web apps, and durable workflows. The automation in the name runs both ways: coding agents write MALDA — the language pack in [`docs/llm/`](docs/llm/) exists for that reader — and MALDA programs automate development work in turn.
+**MALDA** (Multi Agent Language with Development Automation) is an AI-native programming language and platform for agents, web apps, durable workflows, and browser apps and games. The automation in the name runs both ways: coding agents write MALDA — the language pack in [`docs/llm/`](docs/llm/) exists for that reader — and MALDA programs automate development work in turn.
 
 This repository is the **open-source core**: language runtime, compiler/transpiler, IDEs, language server, examples, templates, and reference manual.
 
@@ -57,23 +57,31 @@ malda Examples/Basics/first_look.malda
 
 *Contact form on `HttpServer`: fill fields, `@POST /submit`, thank-you page (`Examples/ui_contact_form.malda` pattern).*
 
+![SDF Invaders screenshot](docs/assets/sdf-invaders.png)
+
+*[`Examples/Games/three_sdf_invaders.malda`](Examples/Games/three_sdf_invaders.malda): a 3D game drawn by one `@shader()` raymarcher, compiled to JavaScript and GLSL. Run it with `malda play`.*
+
 ## Features
 
 - **Language & runtime** — objects, functions, actors, exceptions, namespaced standard library (`io` / `math` / `str`)
-- **Three backends, documented overlap** — interpret for iteration; transpile to a .NET executable; compile a **browser subset** to JavaScript (no agents, HTTP servers, or workflows on the JS path). Matrix: [`docs/spec/backend-capability-matrix.md`](docs/spec/backend-capability-matrix.md)
+- **Three backends, documented overlap** — interpret for iteration; transpile to a .NET executable; compile to JavaScript for the browser. Agents, prompts, HTTP servers, file I/O and workflows stay on the host backends. Matrix: [`docs/spec/backend-capability-matrix.md`](docs/spec/backend-capability-matrix.md)
 - **AI** — `prompt` declarations, agents, tools, MCP
-- **Neural nets** — from-scratch track after the basics: perceptron, XOR, then the chapter 14 dense stack (`nn.dense`, `Sequential`), a one-step REINFORCE bandit, and the local layers `Conv`, `Embedding`, `Rnn`, `LayerNorm`, `Attention`. Offline, no API key. Guide: [`docs/start-here.md`](docs/start-here.md). Manual: [chapter 14](ReferenceManual/14-neural-nets.html)
-- **Web** — REST decorators and `@PAGE` / `@AIPAGE` on the host runtime
+- **Web** — REST decorators and `@PAGE` / `@AIPAGE` on the host runtime; `ui.*` controls, served by a UI host that is secure by default or run in the page with no host. Notes: [`docs/ui-framework.md`](docs/ui-framework.md)
+- **Browser apps** — the JavaScript backend emits scripts or ES modules (`--minify` optional) and has `import js` interop with existing libraries, `buf.*` typed buffers, `@worker()` actors on Web Workers, client-side `ui.*`, a persistent `io.store*` on IndexedDB, and browser file calls. Notes: [`docs/javascript-backend.md`](docs/javascript-backend.md)
+- **Games and graphics** — a `game.*` canvas kit, `three.*` 3D, and `@shader()` functions compiled to GLSL; `malda play <file>` compiles and serves one. Samples: [`Examples/Games`](Examples/Games)
+- **Neural nets** — a from-scratch track from the perceptron to attention, on `nn.*` and `math.matmul`, with layer classes that run on all three backends. Offline, no API key. Guide: [`docs/start-here.md`](docs/start-here.md). Manual: [chapter 14](ReferenceManual/14-neural-nets.html)
 - **Workflows** — durable `step` / retry / compensate on local SQLite (single writer, not a cluster)
 - **Types** — annotations feed the IDE/LSP (mismatches are Errors by default in the editor); runtime stays dynamic. `malda compile --mode transpile` / `publish` refuses emit on those Errors (`--lenient-types` to skip)
-- **Tooling** — Desktop IDE (Windows reference), Web IDE (browser playground — not Desktop parity), VS Code + LSP
+- **Tooling** — Desktop IDE (Windows reference), Web IDE (browser playground — not Desktop parity), VS Code + LSP, `malda fmt` / `lint` / `test`, and a debug adapter (`malda debug-adapter`) for interpreted programs
 
-**What this is not:** a Temporal cluster, a full static type system, or three equal backends. Workflows are local SQLite (single writer). JavaScript is a browser subset. Spec Final 1.0 is the language kernel; the toolchain is on the 1.0.x line (publish is the type boundary) — current version on [Releases](https://github.com/amaldini/maldalang/releases).
+**What this is not:** a Temporal cluster, a full static type system, or three equal backends. Workflows are local SQLite (single writer). JavaScript runs browser programs, not the host features (agents, HTTP servers, workflows). Spec Final 1.0 is the language kernel; the toolchain is on the 1.0.x line (publish is the type boundary) — current version on [Releases](https://github.com/amaldini/maldalang/releases).
 
-The two largest showcases were written entirely by coding agents, even though MALDA is in no
+The largest showcases were written entirely by coding agents, even though MALDA is in no
 model's training data, because [`docs/llm/`](docs/llm/) ships a compact language pack for that
-reader: **`Examples/Agents/secondbrain_semantic.malda`** (~7,600 lines with shared libs) and
-**`Examples/RalphWiggum/`** (~4,300 lines). Guard tests, the conformance matrix, and executed
+reader: **`Examples/Agents/secondbrain_semantic.malda`** (~7,600 lines with shared libs),
+**`Examples/RalphWiggum/`** (~4,300 lines), and the games in
+[`Examples/Games`](Examples/Games) (~29,000 lines; the largest,
+**`three_shader_race_traffic.malda`**, is ~5,800). Guard tests, the conformance matrix, and executed
 reference-manual snippets keep those claims checkable.
 
 Longer version, with objections and current weaknesses stated up front:
@@ -204,10 +212,10 @@ Community help on the Web IDE (Monaco UX, diagnostics, examples browser) is welc
 |------|---------|
 | [`AGENTS.md`](AGENTS.md) | Map for humans and coding agents |
 | [`docs/llm/`](docs/llm/) | Compact pack for writing `.malda` programs |
-| [`docs/architecture.md`](docs/architecture.md) | Pipeline and project layout |
+| [`docs/architecture.md`](docs/architecture.md) | Pipeline, projects in the solution, where to edit |
 | [`docs/start-here.md`](docs/start-here.md) | Guided onboarding |
 | [`llms.txt`](llms.txt) | Compact doc index for LLM tools |
-| [`docs/releases/`](docs/releases/) | Release notes for every tag ([`v1.0.0`](docs/releases/v1.0.0.md): publish is the type boundary) |
+| [`docs/releases/`](docs/releases/) | Release notes for every tag |
 | [`Examples/README.md`](Examples/README.md) | Full examples catalog (`requires`, tracks) |
 | [`Examples/Basics`](Examples/Basics) | Language basics |
 | [`Examples/Prompts`](Examples/Prompts) | Prompts and agents |
@@ -218,28 +226,12 @@ Community help on the Web IDE (Monaco UX, diagnostics, examples browser) is welc
 | [`ReferenceManual/`](ReferenceManual) | Language reference (HTML sources of the online manual) |
 | [`vscode-malda/`](vscode-malda) | VS Code extension |
 
-## Solution layout
-
-| Project | Role |
-|---------|------|
-| `MaldaLang` | CLI + interpreter (`malda`) |
-| `MaldaLang.Compiler` | Transpiler / publish |
-| `MaldaLang.IDE` | Web IDE (browser playground) |
-| `MaldaLang.DesktopIDE` | Desktop IDE (full Windows IDE) |
-| `MaldaLang.LanguageServer` | LSP |
-| `MaldaLang.UIHost` | UI hosting support |
-| `MaldaLang.Tests` | Automated tests |
-
 ## Scope of this repository
 
-Included: core language, compiler, IDEs, LSP, examples, templates, conformance, docs, reference manual.
-
-**Not included** (kept private or separate): product apps and vertical domain packs built on
-top of MALDA. The open-source CLI zip is built from this repo
-(`build_malda_distribution.bat`).
-
-The compiler may keep string-only optional-pack emit hooks so separately distributed
-assemblies can plug in without living in this repository.
+This repository holds the core language, compiler, IDEs, LSP, examples, templates,
+conformance suite, docs and reference manual; the release zips are built from it
+(`build_malda_distribution.bat`). Product apps and vertical domain packs built on top of
+MALDA are kept separately.
 
 ## Contributing
 
@@ -251,38 +243,25 @@ See [SECURITY.md](SECURITY.md).
 
 ## License
 
-MALDA is dual licensed under either
-
-- the [MIT License](LICENSE-MIT), or
-- the [Apache License 2.0](LICENSE-APACHE),
-
-at your option — the same arrangement Rust uses. Take whichever fits your project: MIT if you want the shortest possible terms or need GPLv2 compatibility, Apache-2.0 if you want an express patent grant. One choice covers the runtime, the compiler, the IDEs, the reference manual and the examples.
-
-Programs you compile with MALDA are yours. The toolchain injects runtime code into its output, and [`LICENSE-RUNTIME-EXCEPTION`](LICENSE-RUNTIME-EXCEPTION) confirms that this creates no attribution obligation for your own program.
-
-The name "MALDA" is not covered by either licence — see [TRADEMARK.md](TRADEMARK.md). Third-party dependencies are listed in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+MALDA is dual licensed under the [MIT License](LICENSE-MIT) or the [Apache License 2.0](LICENSE-APACHE), at your option. Programs you compile with MALDA are yours: [`LICENSE-RUNTIME-EXCEPTION`](LICENSE-RUNTIME-EXCEPTION) confirms that the runtime code in the output adds no attribution obligation. The name "MALDA" is covered by [TRADEMARK.md](TRADEMARK.md); dependencies are listed in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md). Details: [CONTRIBUTING.md](CONTRIBUTING.md#licensing).
 
 ## Why MALDA exists
 
-I have spent years writing business software in C#, Java and VB.NET — PDM/PLM systems, CAD
-integrations, integrations with ERP and other business systems, data processing — work where
-the hard part is the domain and getting existing systems to agree with each other, not
-language internals. This is the first compiler or interpreter I have written. With coding
-agents I now write far less code by hand, and a language is the project where what remains is
-the deciding: an agent will type a parser, but someone still has to say what the grammar
-means. Those decisions were not made alone either — the grammar and the semantics were argued
-out with models, so the project ended up being its own subject: how you design a programming
-language now that agents write most of the code. The push to try came from Geoff Huntley's
-[Ralph Wiggum technique](https://ghuntley.com/ralph/) and the
-[`cursed`](https://ghuntley.com/cursed/) language he built with it — hence the name of
-`Examples/RalphWiggum/`. What I wanted was different from an esoteric language: one whose
-subject is the work I spend my days around, so prompts, tools, agents, endpoints and durable
-workflows are syntax instead of glue code. I am not running MALDA in that work today — my day
-job is large systems already in flight, and those do not get rewritten for an experiment. For
-now it is where I experiment with what building on AI looks like.
+Most code that talks to models is glue: prompt strings, tool schemas, retry loops, endpoints.
+MALDA makes those things syntax — `prompt`, `schema`, agents, tools, REST decorators, durable
+`workflow` steps — so the compiler, the IDE and a coding agent can all check them.
 
-## Maintainer
+It is also an experiment in language design now that agents write most of the code: the
+grammar and semantics are specified tightly enough that a model which has never seen MALDA
+can write it from [`docs/llm/`](docs/llm/). It is inspired by Geoff Huntley's
+[Ralph Wiggum technique](https://ghuntley.com/ralph/) — hence the name of
+`Examples/RalphWiggum/`. Background and known weaknesses:
+[`docs/announcement.md`](docs/announcement.md).
 
-MALDA is maintained by Andrea Maldini ([@amaldini](https://github.com/amaldini)), a business-software developer for whom this is a first language project. There is no CLA and no plan to relicense: the core stays MIT OR Apache-2.0.
+## Project
 
-Everything goes through GitHub — [issues](https://github.com/amaldini/maldalang/issues) for bugs, questions and trademark requests, [discussions or a pull request](https://github.com/amaldini/maldalang/pulls) for design proposals, and private [Security Advisories](https://github.com/amaldini/maldalang/security/advisories) for vulnerabilities (see [SECURITY.md](SECURITY.md)).
+Maintained by Andrea Maldini ([@amaldini](https://github.com/amaldini)). No CLA and no plan
+to relicense: the core stays MIT OR Apache-2.0. Bugs, questions and trademark requests go to
+[issues](https://github.com/amaldini/maldalang/issues), design proposals to a
+[pull request](https://github.com/amaldini/maldalang/pulls), and vulnerabilities to private
+[Security Advisories](https://github.com/amaldini/maldalang/security/advisories).
