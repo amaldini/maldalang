@@ -1,26 +1,42 @@
 // SDF Pac-Man: a 3D maze chase raymarched by the same bytecode interpreter as SDF Invaders.
 //
-// The shader is compiled once. Every frame the host writes the maze as instructions into a float
-// data texture (three.updateDataTexture) and the fragment shader runs them with texelFetch.
-// Walls, dots, the muncher and the four ghosts are all instructions; nothing is a mesh.
-// A tree of GROUP instructions lets each ray skip the parts of the maze it does not pass near.
-// Power dots glow: the ray keeps a second list of those shapes and they light the corridor.
-// The floor is analytic, with an optional second ray for reflections (F). The march renders
-// into a target and a second shader pass adds FXAA (X) or CRT mode (C), the same post path
-// as the invaders game.
+// The technique is the one in three_sdf_interpreter.malda. The shader is compiled once. Every
+// frame the host writes the maze as instructions into a float data texture
+// (three.updateDataTexture) and the fragment shader runs them with texelFetch. Walls, dots, the
+// muncher, the four ghosts, the bonus crystal and the sparks are all instructions; nothing is a
+// mesh, and the shader never changes.
 //
 // Instruction = three RGBA texels:
 //   UNION  (1, kind, -, k)   (x, y, z, size)   (a, b, c, glow)   smooth-union a shape
 //   CUT    (2, kind, -, k)   (x, y, z, size)   (-, -, -, heat)   smooth-subtract a shape
 //   GROUP  (3, -, jump, -)   (cx, cy, cz, r)   (-, -, -, -)      what follows, up to jump, lies in r
 //
-// The muncher is an SDF sphere with a wedge mouth (sdPacman). Each ghost is an SDF body with
-// eyes (sdGhost). The host calls shapeRadius, the same kernel the shader uses, when it builds
-// the group spheres. It also steps the maze: buffered turns, a tunnel wrap, scatter / chase,
-// and the frightened retreat after a power dot.
+// Three mazes, 27 by 17, take turns as the levels go up. Each is a text map: the host merges its
+// wall tiles into boxes, floods it once for the two distance fields the ghosts follow in and out
+// of their house, and raises the walls out of the floor when the level starts (the wall height is
+// just a number in the instruction). A cleared maze flashes and sinks, and the next one rises.
 //
-// Controls: Enter or an arrow starts. Arrows or WASD turn. P pauses. F floor reflections,
-// X antialiasing, C CRT mode, B ray culling, M mute.
+// Each ray first walks the program once, jumping past every GROUP it misses, and keeps two short
+// local lists: the shapes it passes near (marched every step) and the glowing ones. The muncher,
+// the ghosts, the power dots and the crystal glow: they add a halo along the ray and light the
+// floor and the walls around them, so the color of a ghost shows on the floor before the ghost
+// turns the corner. A power dot sends a shockwave ring across the floor and tints the maze while
+// the ghosts are frightened. The floor is analytic, with an optional second ray for reflections
+// (F). The march renders into a target and a second shader pass adds FXAA (X) or CRT mode (C).
+//
+// The host calls the shader's own kernels by name: shapeRadius when it builds the groups,
+// sdGhostBody to know when the muncher touches a ghost and sdGem when it takes the crystal.
+//
+// The music is a chiptune written here as note lists: a square-wave lead over a triangle bass,
+// played by game.audioPlayPattern. It follows the game: a rising phrase while the walls come up,
+// the maze theme (in another key for each maze), the same theme faster when few dots are left,
+// a frantic minor loop while the ghosts are frightened, a fanfare for a cleared maze and a slow
+// fall for game over.
+//
+// Controls: Enter or an arrow starts. Arrows or WASD turn (the next turn is buffered until the
+// tile). V changes the camera: the whole maze, a close follow, or a chase camera behind the
+// muncher, where Left / Right turn relative to its heading and Down turns back. P pauses,
+// F floor reflections, X antialiasing, C CRT mode, B ray culling, M mute.
 //
 // Build: malda compile Examples/Games/three_sdf_pacman.malda --mode js -o three_sdf_pacman.js
 // Play:  malda play Examples/Games/three_sdf_pacman.malda
@@ -31,12 +47,14 @@ function vertexMain() {
     gl_Position = vec4(position.xy, 0.0, 1.0);
 }
 
+// Smooth minimum: two distances melt into each other over a band k wide.
 @shader()
 function smin(a: float, b: float, k: float) -> float {
     var h: float = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);
     return mix(b, a, h) - k * h * (1.0 - h);
 }
 
+// A box with half-extents b and rounded edges of radius r.
 @shader()
 function sdRoundBox(q: vec3, b: vec3, r: float) -> float {
     var d: vec3 = abs(q) - b + vec3(r, r, r);
@@ -51,10 +69,11 @@ function yawXZ(q: vec3, yaw: float) -> vec3 {
     return vec3(cy * q.x + sy * q.z, q.y, 0.0 - sy * q.x + cy * q.z);
 }
 
-// A sphere with a wedge mouth opening toward local +X, and two eyes up top.
+// A sphere with a wedge mouth opening toward local +X, between an upper and a lower jaw, and
+// two eyes above it, one on each side.
 @shader()
 function sdPacman(u: vec3, mouth: float, col: out vec4) -> float {
-    var wedge: float = 0.0 - sin(mouth) * u.x + cos(mouth) * abs(u.z);
+    var wedge: float = 0.0 - sin(mouth) * u.x + cos(mouth) * abs(u.y);
     var body: float = max(length(u) - 1.0, 0.0 - wedge);
     var eye: float = length(vec3(u.x - 0.22, u.y - 0.68, abs(u.z) - 0.46)) - 0.26;
     var pupil: float = length(vec3(u.x - 0.38, u.y - 0.7, abs(u.z) - 0.52)) - 0.1;
@@ -71,27 +90,43 @@ function sdPacman(u: vec3, mouth: float, col: out vec4) -> float {
     return d;
 }
 
-// A ghost: round head, body, scalloped hem, two eyes. mode 1 is frightened, mode 2 is eyes only.
+// Body color of a ghost kind.
 @shader()
-function sdGhost(u: vec3, mode: float, kind: int, col: out vec4) -> float {
-    var bodyCol: vec3 = vec3(1.0, 0.62, 0.15);
+function ghostColor(kind: int) -> vec3 {
     if (kind == K_BLINKY) {
-        bodyCol = vec3(1.0, 0.22, 0.28);
-    } else if (kind == K_PINKY) {
-        bodyCol = vec3(1.0, 0.55, 0.78);
-    } else if (kind == K_INKY) {
-        bodyCol = vec3(0.25, 0.9, 1.0);
-    } else if (kind == K_CLYDE) {
-        bodyCol = vec3(1.0, 0.62, 0.15);
+        return vec3(1.0, 0.22, 0.28);
     }
-    if (mode > 0.5 && mode < 1.5) {
-        bodyCol = vec3(0.16, 0.28, 1.0);
+    if (kind == K_PINKY) {
+        return vec3(1.0, 0.55, 0.78);
     }
+    if (kind == K_INKY) {
+        return vec3(0.25, 0.9, 1.0);
+    }
+    if (kind == K_CLYDE) {
+        return vec3(1.0, 0.62, 0.15);
+    }
+    return vec3(1.0, 1.0, 1.0);
+}
+
+// The body of a ghost without its eyes: round head, torso, scalloped hem. The host calls it too,
+// to know when the muncher touches a ghost (touchesGhost).
+@shader()
+function sdGhostBody(u: vec3) -> float {
     var head: float = length(u - vec3(0.0, 0.22, 0.0)) - 0.58;
     var torso: float = sdRoundBox(u - vec3(0.0, -0.1, 0.0), vec3(0.52, 0.36, 0.48), 0.12);
     var d: float = smin(head, torso, 0.16);
     var bottom: float = -0.55 + 0.1 * sin(atan(u.z, u.x) * 3.0);
-    d = max(d, bottom - u.y);
+    return max(d, bottom - u.y);
+}
+
+// A ghost: the body and two eyes. mode 1 is frightened, mode 2 is eyes only.
+@shader()
+function sdGhost(u: vec3, mode: float, kind: int, col: out vec4) -> float {
+    var bodyCol: vec3 = ghostColor(kind);
+    if (mode > 0.5 && mode < 1.5) {
+        bodyCol = vec3(0.16, 0.28, 1.0);
+    }
+    var d: float = sdGhostBody(u);
     var eye: float = length(vec3(u.x - 0.26, u.y - 0.24, abs(u.z) - 0.18)) - 0.15;
     var pupil: float = length(vec3(u.x - 0.36, u.y - 0.22, abs(u.z) - 0.18)) - 0.07;
     if (mode > 1.5) {
@@ -111,10 +146,21 @@ function sdGhost(u: vec3, mode: float, kind: int, col: out vec4) -> float {
     return min(d, min(eye, pupil));
 }
 
+// The bonus crystal: an octahedron. The host calls it too, to know when the muncher takes it
+// (touchesGem).
+@shader()
+function sdGem(u: vec3) -> float {
+    return (abs(u.x) + abs(u.y) + abs(u.z) - 1.0) * 0.5774;
+}
+
 // Distance from q (relative to the instruction position) to a shape of the given kind.
 // Walls store their half-extents in ext.xyz and their bounding radius in size.
-// The muncher stores yaw in ext.x and the mouth angle in ext.y.
-// A ghost stores yaw in ext.x, fright/eyes mode in ext.y, and a white flash in ext.z.
+// The muncher stores yaw in ext.x, the mouth angle in ext.y and a white flash in ext.z.
+// A ghost stores yaw in ext.x, fright/eyes mode in ext.y and a white flash in ext.z.
+// The crystal stores its spin in ext.x. A wall takes its color from uWallColor and lights the
+// rim of its top face, so the maze reads as neon outlines from above. Its ext.y is the half
+// height plus a whole number of flags, one per end that joins another wall (1 -x, 2 +x, 4 -z,
+// 8 +z): a joined end has no rim, so a wall cut into short boxes still reads as one piece.
 @shader()
 function sdShape(kind: int, q: vec3, s: float, ext: vec4, col: out vec4) -> float {
     if (kind == K_SPHERE) {
@@ -122,13 +168,29 @@ function sdShape(kind: int, q: vec3, s: float, ext: vec4, col: out vec4) -> floa
         return length(q) - s;
     }
     if (kind == K_WALL) {
-        col = vec4(0.1, 0.28, 0.86, 0.1);
-        return sdRoundBox(q, vec3(ext.x, ext.y, ext.z), 0.04);
+        var flags: float = floor(ext.y);
+        var hy: float = ext.y - flags;
+        var joinX: float = mod(flags, 4.0);
+        var joinZ: float = floor(flags / 4.0);
+        var sideX: float = abs(q.x) - ext.x;
+        var sideZ: float = abs(q.z) - ext.z;
+        if ((q.x < 0.0 && mod(joinX, 2.0) > 0.5) || (q.x > 0.0 && joinX > 1.5)) {
+            sideX = -1.0;
+        }
+        if ((q.z < 0.0 && mod(joinZ, 2.0) > 0.5) || (q.z > 0.0 && joinZ > 1.5)) {
+            sideZ = -1.0;
+        }
+        var rim: float = clamp((max(sideX, sideZ) + 0.11) / 0.05, 0.0, 1.0) * clamp((q.y - hy + 0.05) / 0.03, 0.0, 1.0);
+        col = vec4(uWallColor * (0.32 + 0.68 * rim), 0.04 + 0.86 * rim);
+        return sdRoundBox(q, vec3(ext.x, hy, ext.z), 0.04);
     }
     var u: vec3 = yawXZ(q, ext.x) / s;
     var d: float = 0.0;
     if (kind == K_PAC) {
         d = sdPacman(u, ext.y, col);
+    } else if (kind == K_GEM) {
+        d = sdGem(u);
+        col = vec4(1.0, 0.3, 0.85, 0.45);
     } else {
         d = sdGhost(u, ext.y, kind, col);
     }
@@ -136,10 +198,10 @@ function sdShape(kind: int, q: vec3, s: float, ext: vec4, col: out vec4) -> floa
     return d * s;
 }
 
-// Radius of a sphere around the shape. The host calls this too, when it builds groups.
+// Radius of a sphere around the shape. The host calls it too, when it builds the groups.
 @shader()
 function shapeRadius(kind: int, s: float) -> float {
-    if (kind == K_SPHERE || kind == K_WALL) {
+    if (kind == K_SPHERE || kind == K_WALL || kind == K_GEM) {
         return s;
     }
     if (kind == K_PAC) {
@@ -148,16 +210,39 @@ function shapeRadius(kind: int, s: float) -> float {
     return s * 1.35;
 }
 
+// Color of the light a glowing shape casts: its own for a sphere, the body color for an actor.
+// A ghost lights the floor before it turns the corner, so its color warns of it.
 @shader()
 function haloColor(kind: int, ext: vec4) -> vec3 {
-    return vec3(ext.x, ext.y, ext.z);
+    if (kind == K_SPHERE) {
+        return vec3(ext.x, ext.y, ext.z);
+    }
+    if (kind == K_PAC) {
+        return vec3(1.0, 0.8, 0.2);
+    }
+    if (kind == K_GEM) {
+        return vec3(1.0, 0.3, 0.85);
+    }
+    if (ext.y > 1.5) {
+        return vec3(0.5, 0.7, 1.0);
+    }
+    if (ext.y > 0.5) {
+        return vec3(0.2, 0.35, 1.0);
+    }
+    return ghostColor(kind);
 }
 
+// How wide the halo around a glowing shape is.
 @shader()
 function haloSize(kind: int, s: float) -> float {
-    return 0.12 + s;
+    if (kind == K_SPHERE) {
+        return 0.12 + s;
+    }
+    return 0.22;
 }
 
+// A cut of a shape at distance d out of what is there at distance acc, with a rim k wide.
+// cutBlend is how much of what was there is left, and cutDistance the distance after the cut.
 @shader()
 function cutBlend(d: float, acc: float, k: float) -> float {
     return clamp(0.5 + 0.5 * (d + acc) / k, 0.0, 1.0);
@@ -169,6 +254,7 @@ function cutDistance(d: float, acc: float, k: float) -> float {
     return mix(0.0 - d, acc, h) + k * h * (1.0 - h);
 }
 
+// Runs one instruction at p: the new distance so far, with the blended color in outTint.
 @shader()
 function evalOp(at: int, p: vec3, acc: float, tint: vec4, outTint: out vec4) -> float {
     var head: vec4 = texelFetch(uProgram, ivec2(at * 3, 0), 0);
@@ -188,6 +274,8 @@ function evalOp(at: int, p: vec3, acc: float, tint: vec4, outTint: out vec4) -> 
     return cutDistance(d, acc, k);
 }
 
+// The whole program at one point, for a ray that passes near more than MAX_CAND shapes (or with
+// culling off). A GROUP farther away than the distance so far is jumped over.
 @shader()
 function runProgram(p: vec3, color: out vec4) -> float {
     var acc: float = FAR;
@@ -222,6 +310,7 @@ function runProgram(p: vec3, color: out vec4) -> float {
     return acc;
 }
 
+// Where a ray enters and leaves the box around the maze.
 @shader()
 function rayBox(origin: vec3, dir: vec3, tNear: out float, tFar: out float) -> bool {
     var inv: vec3 = 1.0 / (dir + vec3(0.0000001, 0.0000001, 0.0000001));
@@ -234,6 +323,10 @@ function rayBox(origin: vec3, dir: vec3, tNear: out float, tFar: out float) -> b
     return tFar > max(tNear, 0.0);
 }
 
+// Marches one ray. It first walks the program once, jumping past every GROUP it misses, and
+// keeps the shapes it passes near (cand) and the glowing ones (glows). A shadow ray returns the
+// light that gets through; a view ray returns 1 on a hit, with the halo along it in glow and the
+// light the glowing shapes cast on the end point in lit.
 @shader()
 function traceRay(origin: vec3, dir: vec3, tStart: float, tEnd: float, shadowRay: bool, tHit: out float, normal: out vec3, albedo: out vec4, glow: out vec3, lit: out vec3) -> float {
     var cand: int[MAX_CAND];
@@ -371,6 +464,7 @@ function traceRay(origin: vec3, dir: vec3, tStart: float, tEnd: float, shadowRay
     return 0.0;
 }
 
+// Light reaching origin from dir, through the maze.
 @shader()
 function softShadow(origin: vec3, dir: vec3) -> float {
     var tNear: float = 0.0;
@@ -386,6 +480,7 @@ function softShadow(origin: vec3, dir: vec3) -> float {
     return traceRay(origin, dir, max(tNear, 0.03), tFar, true, tHit, normal, albedo, glow, lit);
 }
 
+// Key light with soft shadow, sky ambient, floor bounce and rim. albedo.a is how emissive it is.
 @shader()
 function shade(p: vec3, n: vec3, albedo: vec4, dir: vec3, shadows: bool) -> vec3 {
     var lightDir: vec3 = normalize(vec3(-0.35, 0.9, 0.25));
@@ -408,6 +503,8 @@ function skyColor(dir: vec3) -> vec3 {
     return mix(vec3(0.015, 0.02, 0.05), vec3(0.0, 0.0, 0.015), clamp(y * 3.0, 0.0, 1.0));
 }
 
+// One pixel: the maze, or the analytic floor under it (grid lines, optional reflection), then
+// the shockwave ring (uWave), fog, flash and tone mapping.
 @shader()
 function fragmentMain() {
     var ndc: vec2 = vUv * 2.0 - 1.0;
@@ -441,11 +538,11 @@ function fragmentMain() {
     }
     var color: vec3 = sky;
     if (hit) {
-        color = shade(uCamPos + dir * t, normal, albedo, dir, true) + albedo.rgb * lit * (1.0 - albedo.a);
+        color = shade(uCamPos + dir * t, normal, albedo, dir, true) + mix(albedo.rgb, vec3(1.0, 1.0, 1.0), 0.3) * lit * (1.0 - albedo.a);
     } else if (tFloor < FAR) {
         t = tFloor;
         var floorColor: vec3 = shade(fq, up, vec4(0.02, 0.025, 0.045, 0.0), dir, true);
-        floorColor += lit * 0.65;
+        floorColor += lit * 0.95;
         if (uReflect > 0.5) {
             var rdir: vec3 = reflect(dir, up);
             var rc: vec3 = skyColor(rdir);
@@ -465,13 +562,18 @@ function fragmentMain() {
             var fresnel: float = 0.08 + 0.28 * pow(1.0 - max(0.0 - dir.y, 0.0), 5.0);
             floorColor = mix(floorColor, rc, fresnel);
         }
-        floorColor += vec3(0.15, 0.45, 1.0) * gridLine * 0.22 * exp(0.0 - t * 0.05);
+        floorColor += uGridColor * gridLine * 0.24 * exp(0.0 - t * 0.02);
         color = floorColor;
     } else {
         t = 0.0;
     }
+    if (hit || tFloor < FAR) {
+        var wp: vec3 = uCamPos + dir * t;
+        var ring: float = length(wp.xz - uWave.xy) - uWave.z;
+        color += uWaveColor * exp(0.0 - ring * ring * 5.0) * uWave.w;
+    }
     color += glow;
-    color = mix(color, vec3(0.01, 0.015, 0.03), clamp((t - 16.0) / 26.0, 0.0, 1.0));
+    color = mix(color, vec3(0.01, 0.015, 0.03), clamp((t - 30.0) / 40.0, 0.0, 1.0));
     color += uFlashColor * uFlash;
     color = vec3(1.0, 1.0, 1.0) - exp(color * -1.2);
     color = max(mix(vec3(dot(color, vec3(0.3, 0.55, 0.15))), color, 1.25), vec3(0.0, 0.0, 0.0));
@@ -483,6 +585,7 @@ function lumaOf(c: vec3) -> float {
     return dot(c, vec3(0.299, 0.587, 0.114));
 }
 
+// FXAA: blends along the edge direction where the local contrast is high.
 @shader()
 function fxaa(uv: vec2, texel: vec2) -> vec3 {
     var rgbM: vec3 = textureLod(uScene, uv, 0.0).rgb;
@@ -518,6 +621,7 @@ function sceneAt(uv: vec2) -> vec3 {
     return color;
 }
 
+// CRT mode: curved tube, color fringing, bloom, scanlines and an aperture grille.
 @shader()
 function crtColor(uv: vec2) -> vec3 {
     var cc: vec2 = uv - vec2(0.5, 0.5);
@@ -588,14 +692,23 @@ var fragmentShader = glsl.compile({
         "float uAspect",
         "float uTime",
         "float uFlash",
-        "vec3 uFlashColor"
+        "vec3 uFlashColor",
+        "vec3 uWallColor",
+        "vec3 uGridColor",
+        "vec4 uWave",
+        "vec3 uWaveColor"
     ],
+    // No consts list: the kernels read the MALDA consts below, and the compiler writes them
+    // into the GLSL.
     functions: [
         "smin",
         "sdRoundBox",
         "yawXZ",
         "sdPacman",
+        "ghostColor",
+        "sdGhostBody",
         "sdGhost",
+        "sdGem",
         "sdShape",
         "shapeRadius",
         "haloColor",
@@ -632,10 +745,107 @@ const K_BLINKY = 3;
 const K_PINKY = 4;
 const K_INKY = 5;
 const K_CLYDE = 6;
+const K_GEM = 7;
+// Shapes and halos a ray keeps in its local lists before it falls back to the whole program.
 const MAX_CAND = 40;
-const MAX_GLOW = 6;
+const MAX_GLOW = 8;
 const GLOW_R = 2.4;
 const FAR = 100000.0;
+// A group with this many shapes or fewer lists them; a bigger one splits in two.
+const GROUP_LEAF = 4;
+const MAX_OPS = 896;
+
+// Every maze is COLS by ROWS tiles, one unit each.
+const COLS = 27;
+const ROWS = 17;
+const T_WALL = 0;
+const T_OPEN = 1;
+const T_DOT = 2;
+const T_POWER = 3;
+const T_GATE = 4;
+const T_HOUSE = 5;
+// Half the height of a wall: low, so the camera above sees every corridor.
+const WALL_HALF = 0.26;
+// Most tiles in one wall box, and how far a box reaches into the wall it joins.
+const WALL_RUN = 3;
+const WALL_OVERLAP = 0.05;
+const PAC_SIZE = 0.4;
+const PAC_Y = 0.42;
+const GHOST_SIZE = 0.46;
+const GHOST_Y = 0.5;
+const DOT_SIZE = 0.11;
+const DOT_Y = 0.16;
+const POWER_SIZE = 0.16;
+const GEM_SIZE = 0.3;
+const GEM_Y = 0.45;
+// The muncher touches a shape when this much of its radius reaches the surface.
+const TOUCH = 0.8;
+// Tiles per second.
+const PAC_SPEED = 5.6;
+const GHOST_SPEED = 4.75;
+const EYES_SPEED = 10.0;
+const HOUSE_SPEED = 4.0;
+const FRIGHT_SPEED = 3.2;
+const SCATTER_TIME = 6.0;
+const CHASE_TIME = 20.0;
+const BONUS_TIME = 9.0;
+const EXTRA_LIFE = 10000;
+const MAX_SPARKS = 24;
+const PI = 3.14159265;
+// Directions: east, south (toward the camera), west, north.
+const DX = [1, 0, -1, 0];
+const DY = [0, 1, 0, -1];
+const YAW = [0.0, 1.5707963, 3.14159265, -1.5707963];
+const GHOST_KIND = [K_BLINKY, K_PINKY, K_INKY, K_CLYDE];
+const GHOST_RELEASE = [0.0, 1.5, 4.5, 8.0];
+// Share of the dots eaten when a bonus crystal appears.
+const BONUS_AT = [0.3, 0.65];
+const CAMERA_NAMES = ["maze", "follow", "chase"];
+
+// ---- the music: pairs of (MIDI note, length in sixteenths); note 0 is a rest ----
+// The maze theme: eight bars over C, A minor, F and G, twice.
+const MAZE_LEAD = [
+    64, 2, 67, 2, 72, 2, 67, 2, 64, 2, 67, 2, 69, 2, 67, 2,
+    64, 2, 69, 2, 72, 2, 69, 2, 71, 2, 69, 2, 67, 2, 64, 2,
+    65, 2, 69, 2, 72, 2, 69, 2, 74, 2, 72, 2, 69, 2, 65, 2,
+    67, 2, 71, 2, 74, 2, 71, 2, 67, 1, 69, 1, 71, 1, 74, 1, 79, 4,
+    72, 3, 67, 1, 64, 2, 67, 2, 72, 3, 74, 1, 76, 4,
+    76, 2, 74, 2, 72, 2, 69, 2, 72, 3, 69, 1, 64, 4,
+    65, 2, 69, 2, 72, 2, 77, 2, 76, 2, 72, 2, 69, 2, 72, 2,
+    74, 3, 71, 1, 67, 2, 71, 2, 74, 2, 79, 2, 0, 2, 67, 2
+];
+const MAZE_BASS = [
+    48, 2, 60, 2, 48, 2, 60, 2, 48, 2, 60, 2, 48, 2, 60, 2,
+    45, 2, 57, 2, 45, 2, 57, 2, 45, 2, 57, 2, 45, 2, 57, 2,
+    41, 2, 53, 2, 41, 2, 53, 2, 41, 2, 53, 2, 41, 2, 53, 2,
+    43, 2, 55, 2, 43, 2, 55, 2, 43, 2, 55, 2, 43, 2, 55, 2,
+    48, 2, 60, 2, 48, 2, 60, 2, 48, 2, 60, 2, 48, 2, 60, 2,
+    45, 2, 57, 2, 45, 2, 57, 2, 45, 2, 57, 2, 45, 2, 57, 2,
+    41, 2, 53, 2, 41, 2, 53, 2, 41, 2, 53, 2, 41, 2, 53, 2,
+    43, 2, 55, 2, 43, 2, 55, 2, 43, 2, 55, 2, 47, 2, 55, 2
+];
+// Frightened ghosts: two bars of running sixteenths over A minor, F and E.
+const FRIGHT_LEAD = [
+    69, 1, 72, 1, 76, 1, 81, 1, 80, 1, 76, 1, 72, 1, 71, 1, 69, 1, 72, 1, 76, 1, 81, 1, 83, 1, 81, 1, 76, 1, 72, 1,
+    65, 1, 69, 1, 72, 1, 77, 1, 76, 1, 72, 1, 69, 1, 68, 1, 64, 1, 68, 1, 71, 1, 76, 1, 74, 1, 71, 1, 68, 1, 71, 1
+];
+const FRIGHT_BASS = [
+    45, 2, 45, 2, 57, 2, 45, 2, 45, 2, 45, 2, 57, 2, 45, 2,
+    41, 2, 41, 2, 53, 2, 41, 2, 40, 2, 40, 2, 52, 2, 40, 2
+];
+// While the walls rise.
+const READY_LEAD = [72, 1, 76, 1, 79, 1, 84, 1, 74, 1, 77, 1, 81, 1, 86, 1, 76, 1, 79, 1, 84, 1, 88, 1, 91, 4];
+const READY_BASS = [48, 4, 50, 4, 52, 4, 55, 4];
+const CLEAR_LEAD = [72, 2, 72, 1, 72, 1, 76, 2, 79, 2, 84, 3, 79, 1, 84, 6];
+const CLEAR_BASS = [48, 4, 53, 4, 55, 4, 60, 6];
+const OVER_LEAD = [69, 4, 67, 4, 65, 4, 64, 8];
+const OVER_BASS = [45, 8, 41, 4, 40, 8];
+// Semitones each maze shifts its theme by.
+const MAZE_KEY = [0, 3, -2];
+const MAZE_TEMPO = 138;
+const HURRY_TEMPO = 166;
+// The theme speeds up when this share of the dots is left.
+const HURRY_AT = 0.25;
 
 var root = dom.query("#app");
 
@@ -648,27 +858,25 @@ if (root == null) {
     var height = 540;
     var aspect = width / height;
     var tanHalf = math.tan(math.degToRad(26));
-    var MAX_OPS = 768;
-    var GROUP_LEAF = 4;
-    var COLS = 19;
-    var ROWS = 26;
 
     var css = "#app{background:#070b14;color:#e8f1ff;font-family:Consolas,'Courier New',monospace}";
     css = css + "#app h1{margin:6px 0 2px;font-size:22px;letter-spacing:.28em;color:#ffe14a;text-shadow:0 0 12px #f5c518}";
     css = css + "#app>p{margin:2px 0 8px;color:#9fb0c8;font-size:13px}";
     css = css + "#pm-stage{position:relative;width:960px;height:540px;max-width:100%}";
     css = css + "#pm-stage canvas{display:block;border-radius:6px;box-shadow:0 0 36px rgba(40,80,200,.35)}";
-    css = css + "#pm-hud{position:absolute;inset:0;pointer-events:none;text-transform:uppercase;letter-spacing:.12em}";
-    css = css + "#pm-hud .bar{position:absolute;top:10px;left:16px;right:16px;display:flex;justify-content:space-between;font-size:15px;font-weight:700;text-shadow:0 0 8px #000,0 0 10px #3b82f6}";
+    css = css + "#pm-hud{position:absolute;inset:0;pointer-events:none;text-transform:uppercase;letter-spacing:.12em;overflow:hidden}";
+    css = css + "#pm-hud .bar{position:absolute;top:8px;left:16px;right:16px;display:flex;justify-content:space-between;font-size:15px;font-weight:700;text-shadow:0 0 8px #000,0 0 10px #3b82f6}";
     css = css + "#pm-hud .lbl{color:#93c5fd;font-size:11px;display:block}";
     css = css + "#pm-hud .num{color:#fff;font-size:20px}";
     css = css + "#pm-hud .lives{color:#ffe14a;font-size:18px;text-shadow:0 0 10px #f5c518}";
-    css = css + "#pm-hud .center{position:absolute;left:0;right:0;top:32%;text-align:center}";
+    css = css + "#pm-hud .center{position:absolute;left:0;right:0;top:30%;text-align:center}";
     css = css + "#pm-hud .big{font-size:46px;font-weight:900;color:#fff;letter-spacing:.22em;text-shadow:0 0 18px #f5c518,0 0 36px #3b82f6}";
     css = css + "#pm-hud .sub{margin-top:12px;font-size:15px;color:#bfdbfe;text-shadow:0 0 10px #1d4ed8}";
     css = css + "#pm-hud .blink{animation:pmblink 1s steps(2,start) infinite}";
     css = css + "@keyframes pmblink{to{visibility:hidden}}";
-    css = css + "#pm-hud .stats{position:absolute;left:16px;bottom:10px;font-size:11px;color:#8ea0b8;letter-spacing:.04em;text-transform:none}";
+    css = css + "#pm-hud .toast{position:absolute;left:0;right:0;top:15%;text-align:center;font-size:24px;font-weight:900;color:#ffe14a;text-shadow:0 0 8px #000,0 0 14px #f59e0b}";
+    css = css + "#pm-hud .pop{position:absolute;transform:translate(-50%,-50%);font-size:19px;font-weight:900;color:#a5f3fc;text-shadow:0 0 6px #000,0 0 12px #22d3ee}";
+    css = css + "#pm-hud .stats{position:absolute;left:16px;bottom:8px;font-size:11px;color:#8ea0b8;letter-spacing:.04em;text-transform:none}";
     var style = dom.create("style");
     dom.setText(style, css);
     dom.append(root, style);
@@ -678,12 +886,14 @@ if (root == null) {
     dom.append(root, heading);
 
     var hint = dom.create("p");
-    dom.setText(hint, "Same raymarcher as SDF Invaders: the maze is bytecode in a data texture, rewritten every frame. Enter or an arrow starts. Arrows or WASD turn, P pauses, F reflections, X antialiasing, C CRT, B culling, M mute.");
+    dom.setText(hint, "Same raymarcher as SDF Invaders: the maze is bytecode in a data texture, rewritten every frame. Enter or an arrow starts. Arrows or WASD turn, V camera (maze, follow, chase), P pauses, F reflections, X antialiasing, C CRT, B culling, M mute.");
     dom.append(root, hint);
 
     var stage = dom.create("div");
-    dom.attr(stage, "id", "pm-stage");
+    stage.id = "pm-stage";
     dom.append(root, stage);
+
+    // ---- the program the shader runs: MAX_OPS instructions, 12 floats each ----
 
     var program = buf.float32(MAX_OPS * 12);
     var opCount = 0;
@@ -720,9 +930,11 @@ if (root == null) {
         boxMax = [math.max(boxMax[0], x + r), math.max(boxMax[1], y + r), math.max(boxMax[2], z + r)];
     }
 
+    // A shape for the group tree. r is how far from its center a ray must stay to ignore it: the
+    // bound plus the blend, plus GLOW_R when it casts a halo.
     function item(kind, k, x, y, z, s, e0, e1, e2, e3) {
         var r = shapeRadius(kind, s) + k;
-        if (e3 > 0 && kind == K_SPHERE) {
+        if (e3 > 0) {
             r = math.max(r, GLOW_R);
         }
         return { kind: kind, k: k, x: x, y: y, z: z, s: s, e0: e0, e1: e1, e2: e2, e3: e3, r: r };
@@ -756,6 +968,8 @@ if (root == null) {
         return { x: cx, y: cy, z: cz, r: radius, alongX: maxX - minX >= maxZ - minZ };
     }
 
+    // Writes a tree of GROUPs over `items` at opCount: a group with the sphere around its members
+    // and a jump past them, then either its shapes or its two halves, split at the middle.
     function emitGroup(items) {
         if (items.length == 0 || opCount >= MAX_OPS - 1) {
             return;
@@ -804,52 +1018,97 @@ if (root == null) {
         writeOp(groupAt, OP_GROUP, 0, opCount, 0, sphere.x, sphere.y, sphere.z, sphere.r, 0, 0, 0, 0);
     }
 
-    // ---- maze: 19 by 26. # wall, . dot, o power, space corridor, ~ void, = gate, H house ----
+    // ---- the mazes: # wall, . dot, o power dot, space corridor, = gate, H house, P start ----
+    // Corridors are one tile wide and never end blind. A row open at both edges is a tunnel.
+    // The ghost house is the three H tiles under the gate.
 
-    var MAP = [
-        "###################",
-        "#........#........#",
-        "#.##.###.#.###.##.#",
-        "#o##.###.#.###.##o#",
-        "#.##.###.#.###.##.#",
-        "#.................#",
-        "#.##.#.#####.#.##.#",
-        "#.##.#.#####.#.##.#",
-        "#....#...#...#....#",
-        "####.### # ###.####",
-        "~~~#.#       #.#~~~",
-        "~~~#.# ##=## #.#~~~",
-        "####.# #HHH# #.####",
-        ".....# #BKI# #.....",
-        "####.# #HCH# #.####",
-        "~~~#.# ##### #.#~~~",
-        "~~~#.#       #.#~~~",
-        "####.# ##### #.####",
-        "#........#........#",
-        "#.##.###.#.###.##.#",
-        "#o..#....P....#..o#",
-        "#.##.#.#####.#.##.#",
-        "#....#...#...#....#",
-        "#.##.###.#.###.##.#",
-        "#.................#",
-        "###################"
+    var MAZES = [
+        {
+            name: "lattice",
+            wall: [0.1, 0.28, 0.9],
+            grid: [0.15, 0.45, 1.0],
+            rows: [
+                "###########################",
+                "#o.......................o#",
+                "#.###.###.###.###.###.###.#",
+                "#.....#.............#.....#",
+                "#.#.###.###.###.###.###.#.#",
+                "#.....#.............#.....#",
+                "#####.###.###=###.###.#####",
+                "   .......##HHH##.......   ",
+                "#####.###.#######.###.#####",
+                "#.....#.............#.....#",
+                "#.#.###.###.###.###.###.#.#",
+                "#...#........P........#...#",
+                "#.###.###.#######.###.###.#",
+                "#.....#.............#.....#",
+                "#.#####.###.###.###.#####.#",
+                "#o.......................o#",
+                "###########################"
+            ]
+        },
+        {
+            name: "bastions",
+            wall: [0.62, 0.14, 0.85],
+            grid: [0.75, 0.25, 1.0],
+            rows: [
+                "###########################",
+                "#.........................#",
+                "#.###.#.#####.#####.#.###.#",
+                "#o###.#.............#.###o#",
+                "#.###.#####.###.#####.###.#",
+                "#.....#.............#.....#",
+                "#.###.#.#.###=###.#.#.###.#",
+                " .........##HHH##......... ",
+                "#.###.#.#.#######.#.#.###.#",
+                "#.....#.............#.....#",
+                "#.###.#####.###.#####.###.#",
+                "#o###.#......P......#.###o#",
+                "#.###.#.#####.#####.#.###.#",
+                "#.........................#",
+                "#.#####.###.###.###.#####.#",
+                "#.........................#",
+                "###########################"
+            ]
+        },
+        {
+            name: "crossways",
+            wall: [0.05, 0.62, 0.5],
+            grid: [0.1, 0.9, 0.7],
+            rows: [
+                "###########################",
+                "#o....#.............#....o#",
+                "#.###.#.###.###.###.#.###.#",
+                " ......................... ",
+                "###.###.#.#######.#.###.###",
+                "#...#.................#...#",
+                "#.###.###.###=###.###.###.#",
+                "#.#...#...##HHH##...#...#.#",
+                "#.#.###.#.#######.#.###.#.#",
+                "#.....#.............#.....#",
+                "#.###.###.#.###.#.###.###.#",
+                "#...#........P........#...#",
+                "#.#.###.###.###.###.###.#.#",
+                " ......................... ",
+                "#.###.#.###.###.###.#.###.#",
+                "#o....#.............#....o#",
+                "###########################"
+            ]
+        }
     ];
 
-    var DX = [1, 0, -1, 0];
-    var DY = [0, 1, 0, -1];
-    var YAW = [0.0, 1.5707963, 3.14159265, -1.5707963];
-    var GHOST_KIND = [K_BLINKY, K_PINKY, K_INKY, K_CLYDE];
-    var GHOST_RELEASE = [0.0, 2.0, 5.0, 8.0];
-
+    var maze = MAZES[0];
     var baseTiles = [];
     var tiles = [];
     var walls = [];
-    var pacHomeC = 9;
-    var pacHomeR = 20;
-    var gateCol = 9;
-    var gateRow = 11;
-    var homeCol = [8, 9, 10, 9];
-    var homeRow = [13, 13, 13, 14];
+    var tunnelRow = [];
+    // Steps to the tile above the gate, and to the middle of the house, through the gate.
+    var distExit = [];
+    var distHome = [];
+    var pacHomeC = 13;
+    var pacHomeR = 11;
+    var gateCol = 13;
+    var gateRow = 6;
     var pelletsTotal = 0;
 
     function cellX(c) {
@@ -862,54 +1121,41 @@ if (root == null) {
 
     function tileAt(c, r) {
         if (c < 0 || r < 0 || c >= COLS || r >= ROWS) {
-            return 5;
+            return T_WALL;
         }
         return tiles[r * COLS + c];
     }
 
     function parseMap() {
         baseTiles = [];
+        tunnelRow = [];
         pelletsTotal = 0;
         for (var r = 0; r < ROWS; r = r + 1) {
-            var line = MAP[r];
+            var line = maze.rows[r];
             for (var c = 0; c < COLS; c = c + 1) {
-                var ch = str.substring(line, c, c + 1);
-                var code = 1;
+                var ch = str.substring(line, c, 1);
+                var code = T_OPEN;
                 if (ch == "#") {
-                    code = 0;
+                    code = T_WALL;
                 } else if (ch == ".") {
-                    code = 2;
+                    code = T_DOT;
                     pelletsTotal = pelletsTotal + 1;
                 } else if (ch == "o") {
-                    code = 3;
+                    code = T_POWER;
                     pelletsTotal = pelletsTotal + 1;
                 } else if (ch == "=") {
-                    code = 4;
+                    code = T_GATE;
                     gateCol = c;
                     gateRow = r;
-                } else if (ch == "~") {
-                    code = 5;
-                } else if (ch == "H" || ch == "B" || ch == "K" || ch == "I" || ch == "C") {
-                    code = 6;
-                    var gi = 0;
-                    if (ch == "K") {
-                        gi = 1;
-                    } else if (ch == "I") {
-                        gi = 2;
-                    } else if (ch == "C") {
-                        gi = 3;
-                    }
-                    if (ch != "H") {
-                        homeCol[gi] = c;
-                        homeRow[gi] = r;
-                    }
+                } else if (ch == "H") {
+                    code = T_HOUSE;
                 } else if (ch == "P") {
-                    code = 1;
                     pacHomeC = c;
                     pacHomeR = r;
                 }
                 baseTiles.append(code);
             }
+            tunnelRow.append(baseTiles[r * COLS] != T_WALL && baseTiles[r * COLS + COLS - 1] != T_WALL);
         }
     }
 
@@ -920,19 +1166,51 @@ if (root == null) {
         }
     }
 
-    function addWall(col, row, wlen, hlen, hy) {
-        var cx = col + (wlen - 1) * 0.5;
-        var cz = row + (hlen - 1) * 0.5;
+    function isWall(c, r) {
+        return c >= 0 && r >= 0 && c < COLS && r < ROWS && baseTiles[r * COLS + c] == T_WALL;
+    }
+
+    // One box over the tiles (c0, r0) to (c1, r1). joinLow / joinHigh tell whether its two ends
+    // along the run meet another wall: such an end reaches a little into the neighbor and gets
+    // the flag that turns its rim off (see sdShape).
+    function addWall(c0, r0, c1, r1, alongX, joinLow, joinHigh) {
+        var x0 = cellX(c0) - 0.5;
+        var x1 = cellX(c1) + 0.5;
+        var z0 = cellZ(r0) - 0.5;
+        var z1 = cellZ(r1) + 0.5;
+        var flags = 0;
+        if (alongX) {
+            if (joinLow) {
+                x0 = x0 - WALL_OVERLAP;
+                flags = flags + 1;
+            }
+            if (joinHigh) {
+                x1 = x1 + WALL_OVERLAP;
+                flags = flags + 2;
+            }
+        } else {
+            if (joinLow) {
+                z0 = z0 - WALL_OVERLAP;
+                flags = flags + 4;
+            }
+            if (joinHigh) {
+                z1 = z1 + WALL_OVERLAP;
+                flags = flags + 8;
+            }
+        }
         walls.append({
-            x: cellX(cx),
-            y: hy,
-            z: cellZ(cz),
-            hx: wlen * 0.5,
-            hy: hy,
-            hz: hlen * 0.5
+            x: (x0 + x1) * 0.5,
+            z: (z0 + z1) * 0.5,
+            hx: (x1 - x0) * 0.5,
+            hz: (z1 - z0) * 0.5,
+            scale: 1.0,
+            flags: flags
         });
     }
 
+    // Turns the wall tiles into boxes. A run along a row, or a lone tile grown down its column,
+    // is cut into boxes of WALL_RUN tiles at most: a long box has a wide bounding sphere, and
+    // every ray near that sphere would march it.
     function buildWalls() {
         walls = [];
         var used = [];
@@ -942,21 +1220,21 @@ if (root == null) {
         for (var y = 0; y < ROWS; y = y + 1) {
             for (var x = 0; x < COLS; x = x + 1) {
                 var id = y * COLS + x;
-                if (baseTiles[id] != 0 || used[id] == 1) {
+                if (baseTiles[id] != T_WALL || used[id] == 1) {
                     continue;
                 }
                 var wlen = 1;
-                while (x + wlen < COLS && baseTiles[id + wlen] == 0 && used[id + wlen] == 0) {
+                while (x + wlen < COLS && baseTiles[id + wlen] == T_WALL && used[id + wlen] == 0) {
                     wlen = wlen + 1;
                 }
                 if (wlen == 1) {
                     var hlen = 1;
                     while (y + hlen < ROWS) {
                         var down = (y + hlen) * COLS + x;
-                        if (baseTiles[down] != 0 || used[down] == 1) {
+                        if (baseTiles[down] != T_WALL || used[down] == 1) {
                             break;
                         }
-                        if (x + 1 < COLS && baseTiles[down + 1] == 0 && used[down + 1] == 0) {
+                        if (x + 1 < COLS && baseTiles[down + 1] == T_WALL && used[down + 1] == 0) {
                             break;
                         }
                         hlen = hlen + 1;
@@ -964,152 +1242,27 @@ if (root == null) {
                     for (var k = 0; k < hlen; k = k + 1) {
                         used[(y + k) * COLS + x] = 1;
                     }
-                    addWall(x, y, 1, hlen, 0.64);
+                    for (var from = 0; from < hlen; from = from + WALL_RUN) {
+                        var last = math.min(from + WALL_RUN, hlen) - 1;
+                        addWall(x, y + from, x, y + last, false, isWall(x, y + from - 1), isWall(x, y + last + 1));
+                    }
                 } else {
                     for (var k = 0; k < wlen; k = k + 1) {
                         used[id + k] = 1;
                     }
-                    addWall(x, y, wlen, 1, 0.64);
+                    for (var from = 0; from < wlen; from = from + WALL_RUN) {
+                        var last = math.min(from + WALL_RUN, wlen) - 1;
+                        addWall(x + from, y, x + last, y, true, isWall(x + from - 1, y), isWall(x + last + 1, y));
+                    }
                 }
             }
         }
-        // A lintel over the ghost gate, open underneath so the ghosts can leave.
-        walls.append({
-            x: cellX(gateCol),
-            y: 1.05,
-            z: cellZ(gateRow),
-            hx: 0.46,
-            hy: 0.14,
-            hz: 0.16
-        });
+        // The gate is a thin bar the ghosts pass through.
+        walls.append({ x: cellX(gateCol), z: cellZ(gateRow), hx: 0.5, hz: 0.07, scale: 0.55, flags: 0 });
     }
 
-    function mover(c, r, dir) {
-        return { col: c, row: r, destC: c, destR: r, wrapC: c, progress: 0.0, dir: dir, queued: -1 };
-    }
-
-    var mode = "title";
-    var paused = false;
-    var muted = false;
-    var reflectOn = false;
-    var fxaaOn = true;
-    var crtOn = false;
-    var skipOn = true;
-    var audioReady = false;
-    var timeSec = 0.0;
-    var clock = 0.0;
-    var score = 0;
-    var hiScore = 0;
-    var saved = game.load("sdf-pacman-hi");
-    if (saved != null) {
-        hiScore = int(saved);
-    }
-    var lives = 3;
-    var pelletsLeft = 0;
-    var frightLeft = 0.0;
-    var chain = 1;
-    var chaseMode = 0;
-    var modeLeft = 7.0;
-    var startedMove = false;
-    var deadLeft = 0.0;
-    var flash = 0.0;
-    var flashColor = [1.0, 0.9, 0.4];
-    var siren = null;
-    var waka = 0;
-    var pac = mover(9, 20, 2);
-    var ghosts = [];
-
-    function resetActors() {
-        pac = mover(pacHomeC, pacHomeR, 2);
-        startedMove = false;
-        ghosts = [];
-        for (var i = 0; i < 4; i = i + 1) {
-            var g = mover(homeCol[i], homeRow[i], 3);
-            g.kind = GHOST_KIND[i];
-            g.freed = false;
-            g.eyes = false;
-            g.release = clock + GHOST_RELEASE[i];
-            g.homeC = homeCol[i];
-            g.homeR = homeRow[i];
-            if (i == 0) {
-                g.scatterC = COLS - 2;
-                g.scatterR = 1;
-            } else if (i == 1) {
-                g.scatterC = 1;
-                g.scatterR = 1;
-            } else if (i == 2) {
-                g.scatterC = COLS - 2;
-                g.scatterR = ROWS - 2;
-            } else {
-                g.scatterC = 1;
-                g.scatterR = ROWS - 2;
-            }
-            ghosts.append(g);
-        }
-    }
-
-    function startLevel() {
-        copyTiles();
-        pelletsLeft = pelletsTotal;
-        clock = 0.0;
-        frightLeft = 0.0;
-        chain = 1;
-        chaseMode = 0;
-        modeLeft = 7.0;
-        deadLeft = 0.0;
-        resetActors();
-    }
-
-    function startGame() {
-        score = 0;
-        lives = 3;
-        startLevel();
-        mode = "play";
-        tone(392, 90, "square", 0.1);
-        tone(523, 90, "square", 0.1);
-        tone(659, 160, "square", 0.1);
-    }
-
-    function noteHi() {
-        if (score > hiScore) {
-            hiScore = score;
-            game.save("sdf-pacman-hi", hiScore);
-        }
-    }
-
-    function tone(freq, ms, wave0, volume) {
-        if (audioReady && !muted) {
-            game.audioPlayTone(freq, ms, wave0, volume);
-        }
-    }
-
-    function stopSiren() {
-        if (siren != null) {
-            game.audioStopVoice(siren);
-            siren = null;
-        }
-    }
-
-    function syncSiren() {
-        var want = audioReady && !muted && !paused && mode == "play";
-        if (!want) {
-            stopSiren();
-            return;
-        }
-        if (siren == null) {
-            siren = game.audioCreateVoice({ "wave": "sine", "freq": 190, "volume": 0.045 });
-        }
-        var left = 0.0;
-        if (pelletsTotal > 0) {
-            left = pelletsLeft / pelletsTotal;
-        }
-        var freq = 170.0 + (1.0 - left) * 280.0;
-        if (frightLeft > 0) {
-            freq = 120.0 + math.abs(math.sin(timeSec * 8.0)) * 40.0;
-        }
-        game.audioSetVoice(siren, { "freq": freq, "volume": 0.045 });
-    }
-
+    // The tile one step from (c, r), or null at the top and bottom edge and at a closed side.
+    // col runs off the grid in a tunnel, so the actor slides out; wrap is the tile it lands on.
     function nextCell(c, r, dir) {
         var nc = c + DX[dir];
         var nr = r + DY[dir];
@@ -1122,30 +1275,335 @@ if (root == null) {
         } else if (nc >= COLS) {
             wrap = 0;
         }
-        if (nc < 0 || nc >= COLS) {
-            var edge = tileAt(wrap, nr);
-            if (edge == 0 || edge == 5) {
-                return null;
-            }
+        if (wrap != nc && tileAt(wrap, nr) == T_WALL) {
+            return null;
         }
         return { col: nc, row: nr, wrap: wrap };
     }
 
-    function canEnter(c, r, dir, kind) {
+    // Steps from (fromC, fromR) to every tile that is not a wall, gate and house included.
+    function flood(fromC, fromR) {
+        var dist = [];
+        for (var i = 0; i < COLS * ROWS; i = i + 1) {
+            dist.append(9999);
+        }
+        var queueC = [fromC];
+        var queueR = [fromR];
+        dist[fromR * COLS + fromC] = 0;
+        var head = 0;
+        while (head < queueC.length) {
+            var c = queueC[head];
+            var r = queueR[head];
+            head = head + 1;
+            for (var d = 0; d < 4; d = d + 1) {
+                var n = nextCell(c, r, d);
+                if (n == null || tileAt(n.wrap, n.row) == T_WALL) {
+                    continue;
+                }
+                var at = n.row * COLS + n.wrap;
+                if (dist[at] > dist[r * COLS + c] + 1) {
+                    dist[at] = dist[r * COLS + c] + 1;
+                    queueC.append(n.wrap);
+                    queueR.append(n.row);
+                }
+            }
+        }
+        return dist;
+    }
+
+    function loadMaze(index) {
+        maze = MAZES[index % MAZES.length];
+        parseMap();
+        copyTiles();
+        buildWalls();
+        distExit = flood(gateCol, gateRow - 1);
+        distHome = flood(gateCol, gateRow + 1);
+    }
+
+    // ---- game state ----
+
+    function mover(c, r, dir) {
+        return { col: c, row: r, destC: c, destR: r, wrapC: c, progress: 0.0, dir: dir, queued: -1 };
+    }
+
+    // title, ready (walls rise, then a short wait), play, dead, clear (flash, walls sink), over.
+    var mode = "title";
+    var paused = false;
+    var muted = false;
+    var reflectOn = false;
+    var fxaaOn = true;
+    var crtOn = false;
+    var skipOn = true;
+    var cameraMode = 0;
+    var audioReady = false;
+    var timeSec = 0.0;
+    var clock = 0.0;
+    var score = 0;
+    var hiScore = 0;
+    var saved = game.load("sdf-pacman-hi");
+    if (saved != null) {
+        hiScore = int(saved);
+    }
+    var lives = 3;
+    var level = 1;
+    var nextLife = EXTRA_LIFE;
+    var pelletsLeft = 0;
+    var frightLeft = 0.0;
+    var chain = 1;
+    var chaseMode = 0;
+    var modeLeft = SCATTER_TIME;
+    var readyLeft = 0.0;
+    // Whether this ready phase opens a maze (walls rising, with its phrase) or follows a death.
+    var risingMaze = false;
+    var deadLeft = 0.0;
+    var clearLeft = 0.0;
+    // A short stop when a ghost is eaten, so the bite is felt.
+    var freeze = 0.0;
+    var wallRise = 1.0;
+    var flash = 0.0;
+    var flashColor = [1.0, 0.9, 0.4];
+    var wave = { x: 0.0, z: 0.0, radius: 0.0, strength: 0.0, color: [1.0, 1.0, 1.0] };
+    var bonusLeft = 0.0;
+    var bonusStage = 0;
+    var sparks = [];
+    var pops = [];
+    // The tune that plays now, or "" for none.
+    var song = "";
+    var waka = 0;
+    var pac = mover(13, 11, 2);
+    var pacYaw = YAW[2];
+    var ghosts = [];
+
+    function resetActors() {
+        pac = mover(pacHomeC, pacHomeR, 2);
+        pacYaw = YAW[2];
+        ghosts = [];
+        var homeCol = [gateCol, gateCol, gateCol - 1, gateCol + 1];
+        var scatterCol = [COLS - 2, 1, COLS - 2, 1];
+        var scatterRow = [1, 1, ROWS - 2, ROWS - 2];
+        var hurry = math.max(1.0 - (level - 1) * 0.1, 0.4);
+        for (var i = 0; i < 4; i = i + 1) {
+            var g = mover(homeCol[i], gateRow + 1, 3);
+            g.kind = GHOST_KIND[i];
+            g.phase = i * 1.7;
+            g.fright = false;
+            // home (waits in the house), leave, roam, eyes (eaten, on the way back).
+            g.state = "home";
+            g.release = clock + GHOST_RELEASE[i] * hurry;
+            g.scatterC = scatterCol[i];
+            g.scatterR = scatterRow[i];
+            if (i == 0) {
+                g.row = gateRow - 1;
+                g.destR = g.row;
+                g.dir = 2;
+                g.state = "roam";
+            }
+            ghosts.append(g);
+        }
+    }
+
+    function beginLevel() {
+        copyTiles();
+        pelletsLeft = pelletsTotal;
+        clock = 0.0;
+        frightLeft = 0.0;
+        chain = 1;
+        chaseMode = 0;
+        modeLeft = math.max(SCATTER_TIME - (level - 1) * 0.5, 2.0);
+        bonusLeft = 0.0;
+        bonusStage = 0;
+        sparks = [];
+        pops = [];
+        freeze = 0.0;
+        wallRise = 0.0;
+        resetActors();
+        mode = "ready";
+        readyLeft = 2.2;
+        risingMaze = true;
+    }
+
+    function startGame() {
+        score = 0;
+        lives = 3;
+        level = 1;
+        nextLife = EXTRA_LIFE;
+        loadMaze(0);
+        beginLevel();
+    }
+
+    function tone(freq, ms, wave0, volume) {
+        if (audioReady && !muted) {
+            game.audioPlayTone(freq, ms, wave0, volume);
+        }
+    }
+
+    function addScore(points) {
+        score = score + points;
+        if (score > hiScore) {
+            hiScore = score;
+            game.save("sdf-pacman-hi", hiScore);
+        }
+        if (score >= nextLife) {
+            nextLife = nextLife + EXTRA_LIFE * 3;
+            lives = lives + 1;
+            tone(784, 70, "triangle", 0.12);
+            tone(988, 70, "triangle", 0.12);
+            tone(1319, 180, "triangle", 0.12);
+        }
+    }
+
+    // ---- music ----
+
+    // One voice of a pattern from a note list. hold is the share of each step the note sounds:
+    // the bass holds its notes to the end, so a loop lasts exactly as long as its note list.
+    function voice(notes, wave0, volume, shift, hold) {
+        var events = [];
+        var at = 0.0;
+        for (var i = 0; i + 1 < notes.length; i = i + 2) {
+            var beats = notes[i + 1] * 0.25;
+            if (notes[i] > 0) {
+                events.append({
+                    "atBeats": at,
+                    "noteHz": 440.0 * math.pow(2.0, (notes[i] + shift - 69) / 12.0),
+                    "durBeats": beats * hold,
+                    "waveType": wave0,
+                    "volume": volume
+                });
+            }
+            at = at + beats;
+        }
+        return events;
+    }
+
+    function tune(lead, bass, tempo, loop, shift) {
+        return {
+            "tempoBpm": tempo,
+            "loop": loop,
+            "tracks": [voice(lead, "square", 0.05, shift, 0.8), voice(bass, "triangle", 0.11, shift, 1.0)]
+        };
+    }
+
+    // The tune the moment calls for.
+    function wantedSong() {
+        if (!audioReady || muted || paused) {
+            return "";
+        }
+        if (mode == "ready") {
+            return risingMaze ? "ready" : "";
+        }
+        if (mode == "play") {
+            if (frightLeft > 0) {
+                return "fright";
+            }
+            if (pelletsLeft <= pelletsTotal * HURRY_AT) {
+                return "hurry";
+            }
+            return "maze";
+        }
+        if (mode == "clear") {
+            return "clear";
+        }
+        if (mode == "over") {
+            return "over";
+        }
+        return "";
+    }
+
+    // Starts the wanted tune when it changes. A tune that does not loop plays once and stays
+    // the current one, so it is not started again.
+    function syncMusic() {
+        var want = wantedSong();
+        if (want == song) {
+            return;
+        }
+        song = want;
+        game.audioStopPattern();
+        var key = MAZE_KEY[(level - 1) % MAZE_KEY.length];
+        if (want == "maze") {
+            game.audioPlayPattern(tune(MAZE_LEAD, MAZE_BASS, MAZE_TEMPO, true, key));
+        } else if (want == "hurry") {
+            game.audioPlayPattern(tune(MAZE_LEAD, MAZE_BASS, HURRY_TEMPO, true, key));
+        } else if (want == "fright") {
+            game.audioPlayPattern(tune(FRIGHT_LEAD, FRIGHT_BASS, 168, true, key));
+        } else if (want == "ready") {
+            game.audioPlayPattern(tune(READY_LEAD, READY_BASS, MAZE_TEMPO, false, key));
+        } else if (want == "clear") {
+            game.audioPlayPattern(tune(CLEAR_LEAD, CLEAR_BASS, 150, false, key));
+        } else if (want == "over") {
+            game.audioPlayPattern(tune(OVER_LEAD, OVER_BASS, 80, false, 0));
+        }
+    }
+
+    // ---- effects: floor shockwave, sparks, score pop-ups ----
+
+    function startWave(x, z, strength, color) {
+        wave = { x: x, z: z, radius: 0.2, strength: strength, color: color };
+    }
+
+    function burst(x, y, z, color, count) {
+        for (var i = 0; i < count; i = i + 1) {
+            if (sparks.length >= MAX_SPARKS) {
+                return;
+            }
+            var a = (i + math.randomInt(0, 100) / 100.0) / count * PI * 2.0;
+            var speed = 1.6 + math.randomInt(0, 100) / 45.0;
+            sparks.append({
+                x: x, y: y, z: z,
+                vx: math.cos(a) * speed, vy: 2.2 + math.randomInt(0, 100) / 40.0, vz: math.sin(a) * speed,
+                life: 0.7, color: color
+            });
+        }
+    }
+
+    function popUp(x, z, text) {
+        pops.append({ x: x, z: z, text: text, life: 0.9 });
+    }
+
+    function updateEffects(dt) {
+        flash = math.max(flash - dt * 2.2, 0.0);
+        wave.radius = wave.radius + dt * 9.0;
+        wave.strength = math.max(wave.strength - dt * 0.9, 0.0);
+        var alive = [];
+        for (var s in sparks) {
+            s.life = s.life - dt;
+            if (s.life <= 0) {
+                continue;
+            }
+            s.vy = s.vy - 9.0 * dt;
+            s.x = s.x + s.vx * dt;
+            s.y = s.y + s.vy * dt;
+            s.z = s.z + s.vz * dt;
+            if (s.y < 0.06) {
+                s.y = 0.06;
+                s.vy = 0.0 - s.vy * 0.45;
+            }
+            alive.append(s);
+        }
+        sparks = alive;
+        var shown = [];
+        for (var p in pops) {
+            p.life = p.life - dt;
+            if (p.life > 0) {
+                shown.append(p);
+            }
+        }
+        pops = shown;
+    }
+
+    // ---- movement: actors go tile to tile; col/row is the tile left, dest the tile ahead ----
+
+    // Whether an actor may step that way. Only a ghost going in or out of the house (free)
+    // crosses the gate.
+    function canEnter(c, r, dir, free) {
         var n = nextCell(c, r, dir);
         if (n == null) {
             return false;
         }
         var t = tileAt(n.wrap, n.row);
-        if (t == 0 || t == 5) {
+        if (t == T_WALL) {
             return false;
         }
-        if (t == 4 || t == 6) {
-            if (kind == "pac" || kind == "ghost") {
-                return false;
-            }
-        }
-        return true;
+        return free || (t != T_GATE && t != T_HOUSE);
     }
 
     function beginMove(m, dir, extra) {
@@ -1154,7 +1612,7 @@ if (root == null) {
         m.destC = n.col;
         m.destR = n.row;
         m.wrapC = n.wrap;
-        m.progress = extra;
+        m.progress = math.min(extra, 0.9);
     }
 
     function moving(m) {
@@ -1176,14 +1634,20 @@ if (root == null) {
         m.dir = (m.dir + 2) % 4;
     }
 
+    function actorX(m) {
+        return cellX(m.col + (m.destC - m.col) * m.progress);
+    }
+
+    function actorZ(m) {
+        return cellZ(m.row + (m.destR - m.row) * m.progress);
+    }
+
+    // Where a roaming ghost heads: its corner while they scatter, else a tile that depends on
+    // its kind (the muncher, ahead of it, across it from the first ghost, or away when close).
     function ghostTarget(g) {
-        if (g.eyes) {
-            return { col: g.homeC, row: g.homeR };
-        }
-        if (!g.freed) {
-            return { col: gateCol, row: gateRow - 1 };
-        }
-        if (chaseMode == 0 || (g.kind == K_CLYDE && (pac.col - g.col) * (pac.col - g.col) + (pac.row - g.row) * (pac.row - g.row) < 36)) {
+        var dc = pac.col - g.col;
+        var dr = pac.row - g.row;
+        if (chaseMode == 0 || (g.kind == K_CLYDE && dc * dc + dr * dr < 36)) {
             return { col: g.scatterC, row: g.scatterR };
         }
         if (g.kind == K_PINKY) {
@@ -1197,59 +1661,91 @@ if (root == null) {
         return { col: pac.col, row: pac.row };
     }
 
-    function think(g, kind) {
+    // The way a ghost takes at a tile, or -1. In and out of the house it walks down a distance
+    // field. Roaming, it never turns back: frightened it picks at random, else the way that ends
+    // nearest its target.
+    function think(g) {
+        if (g.state == "leave" || g.state == "eyes") {
+            var field = distHome;
+            if (g.state == "leave") {
+                field = distExit;
+            }
+            var way = -1;
+            var least = field[g.row * COLS + g.col];
+            for (var d = 0; d < 4; d = d + 1) {
+                var n = nextCell(g.col, g.row, d);
+                if (n == null) {
+                    continue;
+                }
+                var steps = field[n.row * COLS + n.wrap];
+                if (steps < least) {
+                    least = steps;
+                    way = d;
+                }
+            }
+            return way;
+        }
         var back = (g.dir + 2) % 4;
         var choice = [];
         for (var d = 0; d < 4; d = d + 1) {
-            if (d != back && canEnter(g.col, g.row, d, kind)) {
+            if (d != back && canEnter(g.col, g.row, d, false)) {
                 choice.append(d);
             }
         }
         if (choice.length == 0) {
-            if (canEnter(g.col, g.row, back, kind)) {
+            if (canEnter(g.col, g.row, back, false)) {
                 return back;
             }
             return -1;
         }
-        if (frightLeft > 0 && !g.eyes && g.freed) {
+        if (g.fright) {
             return choice[math.randomInt(0, choice.length - 1)];
         }
         var target = ghostTarget(g);
         var best = choice[0];
         var bestDist = 1000000.0;
-        for (var n = 0; n < choice.length; n = n + 1) {
-            var cell = nextCell(g.col, g.row, choice[n]);
-            var dc = cell.wrap - target.col;
-            var dr = cell.row - target.row;
-            var dist = dc * dc + dr * dr;
-            if (dist < bestDist) {
-                bestDist = dist;
-                best = choice[n];
+        for (var i = 0; i < choice.length; i = i + 1) {
+            var cell = nextCell(g.col, g.row, choice[i]);
+            var tc = cell.wrap - target.col;
+            var tr = cell.row - target.row;
+            if (tc * tc + tr * tr < bestDist) {
+                bestDist = tc * tc + tr * tr;
+                best = choice[i];
             }
         }
         return best;
     }
 
+    function frightTime() {
+        return math.max(6.5 - (level - 1) * 0.5, 2.0);
+    }
+
     function eatAt(c, r) {
         var t = tileAt(c, r);
-        if (t != 2 && t != 3) {
+        if (t != T_DOT && t != T_POWER) {
             return;
         }
-        tiles[r * COLS + c] = 1;
+        tiles[r * COLS + c] = T_OPEN;
         pelletsLeft = pelletsLeft - 1;
-        if (t == 3) {
-            score = score + 50;
-            frightLeft = 6.0;
+        if (t == T_POWER) {
+            addScore(50);
+            frightLeft = frightTime();
             chain = 1;
             for (var g in ghosts) {
-                if (g.freed && !g.eyes) {
-                    reverseMover(g);
+                if (g.state != "eyes") {
+                    g.fright = true;
+                    if (g.state == "roam") {
+                        reverseMover(g);
+                    }
                 }
             }
+            startWave(cellX(c), cellZ(r), 1.0, [0.5, 0.6, 1.0]);
+            flash = 0.3;
+            flashColor = [0.4, 0.5, 1.0];
             tone(160, 90, "square", 0.1);
             tone(240, 140, "square", 0.1);
         } else {
-            score = score + 10;
+            addScore(10);
             if (waka == 0) {
                 tone(520, 45, "square", 0.05);
                 waka = 1;
@@ -1258,99 +1754,102 @@ if (root == null) {
                 waka = 0;
             }
         }
-        noteHi();
+        if (bonusStage < BONUS_AT.length && pelletsTotal - pelletsLeft >= pelletsTotal * BONUS_AT[bonusStage]) {
+            bonusStage = bonusStage + 1;
+            bonusLeft = BONUS_TIME;
+            tone(1175, 60, "triangle", 0.08);
+            tone(1568, 90, "triangle", 0.08);
+        }
         if (pelletsLeft <= 0) {
-            mode = "win";
-            stopSiren();
-            tone(523, 80, "square", 0.1);
-            tone(659, 80, "square", 0.1);
-            tone(784, 80, "square", 0.1);
-            tone(1047, 220, "square", 0.12);
+            mode = "clear";
+            clearLeft = 2.6;
+            frightLeft = 0.0;
+            bonusLeft = 0.0;
+            startWave(actorX(pac), actorZ(pac), 1.2, [1.0, 1.0, 1.0]);
         }
     }
 
-    function advance(m, dt, speed, kind) {
-        if (moving(m)) {
-            m.progress = m.progress + speed * dt;
-            if (m.progress < 1.0) {
+    // Leaves the tile an actor stands on: the muncher by its buffered turn or straight on, a
+    // ghost by think.
+    function depart(m, extra, isPac) {
+        var next = -1;
+        if (isPac) {
+            if (m.queued >= 0 && canEnter(m.col, m.row, m.queued, false)) {
+                next = m.queued;
+            } else if (canEnter(m.col, m.row, m.dir, false)) {
+                next = m.dir;
+            }
+        } else {
+            next = think(m);
+        }
+        if (next >= 0) {
+            beginMove(m, next, extra);
+        }
+    }
+
+    function ghostArrived(g) {
+        if (g.state == "leave" && g.col == gateCol && g.row == gateRow - 1) {
+            g.state = "roam";
+        } else if (g.state == "eyes" && distHome[g.row * COLS + g.col] == 0) {
+            g.state = "home";
+            g.release = clock + 0.8;
+        }
+    }
+
+    function advance(m, dt, speed, isPac) {
+        if (!moving(m)) {
+            depart(m, 0.0, isPac);
+            return;
+        }
+        m.progress = m.progress + speed * dt;
+        if (m.progress < 1.0) {
+            return;
+        }
+        var extra = m.progress - 1.0;
+        m.col = m.wrapC;
+        m.row = m.destR;
+        m.destC = m.col;
+        m.destR = m.row;
+        m.progress = 0.0;
+        if (isPac) {
+            eatAt(m.col, m.row);
+            if (mode != "play") {
                 return;
             }
-            var extra = m.progress - 1.0;
-            m.col = m.wrapC;
-            m.row = m.destR;
-            m.destC = m.col;
-            m.destR = m.row;
-            m.wrapC = m.col;
-            m.progress = 0.0;
-            if (kind == "pac") {
-                eatAt(m.col, m.row);
-                if (mode != "play") {
-                    return;
-                }
+        } else {
+            ghostArrived(m);
+            if (m.state == "home") {
+                return;
             }
-            var next = m.dir;
-            if (kind == "pac") {
-                if (m.queued >= 0 && canEnter(m.col, m.row, m.queued, kind)) {
-                    next = m.queued;
-                }
-            } else {
-                next = think(m, kind);
-            }
-            if (next >= 0 && canEnter(m.col, m.row, next, kind)) {
-                beginMove(m, next, extra);
-            } else if (kind == "pac" && canEnter(m.col, m.row, m.dir, kind)) {
-                beginMove(m, m.dir, extra);
-            }
-            return;
         }
-        var next = m.dir;
-        if (kind == "pac") {
-            if (m.queued >= 0 && canEnter(m.col, m.row, m.queued, kind)) {
-                next = m.queued;
-            }
-            if (canEnter(m.col, m.row, next, kind)) {
-                beginMove(m, next, 0.0);
-            }
-            return;
-        }
-        next = think(m, kind);
-        if (next >= 0 && canEnter(m.col, m.row, next, kind)) {
-            beginMove(m, next, 0.0);
-        }
-    }
-
-    function actorX(m) {
-        return cellX(m.col + (m.destC - m.col) * m.progress);
-    }
-
-    function actorZ(m) {
-        return cellZ(m.row + (m.destR - m.row) * m.progress);
+        depart(m, extra, isPac);
     }
 
     function killPac() {
         mode = "dead";
-        deadLeft = 1.15;
+        deadLeft = 1.3;
         lives = lives - 1;
         flash = 1.0;
         flashColor = [1.0, 0.85, 0.3];
-        stopSiren();
+        startWave(actorX(pac), actorZ(pac), 1.0, [1.0, 0.5, 0.15]);
+        burst(actorX(pac), PAC_Y, actorZ(pac), [1.0, 0.84, 0.12], 10);
         tone(180, 180, "sawtooth", 0.12);
         tone(120, 220, "sawtooth", 0.1);
         tone(70, 320, "triangle", 0.1);
     }
 
     function eatGhost(g) {
-        g.eyes = true;
+        var gx = actorX(g);
+        var gz = actorZ(g);
+        g.state = "eyes";
+        g.fright = false;
         var points = 200 * chain;
-        if (points > 1600) {
-            points = 1600;
-        }
-        score = score + points;
-        chain = chain * 2;
-        if (chain > 8) {
-            chain = 8;
-        }
-        noteHi();
+        chain = math.min(chain * 2, 8);
+        addScore(points);
+        popUp(gx, gz, string(points));
+        burst(gx, GHOST_Y, gz, [0.3, 0.5, 1.0], 8);
+        startWave(gx, gz, 0.6, [0.4, 0.9, 1.0]);
+        freeze = 0.35;
         flash = 0.45;
         flashColor = [0.7, 0.85, 1.0];
         tone(440, 50, "square", 0.1);
@@ -1358,149 +1857,88 @@ if (root == null) {
         tone(880, 90, "square", 0.1);
     }
 
+    // The muncher is a sphere of PAC_SIZE at (px, PAC_Y, pz). It touches a ghost when the ghost's
+    // body, measured by the kernel the shader draws it with, comes within TOUCH of that radius.
+    function touchesGhost(g, px, pz) {
+        var dx = px - actorX(g);
+        var dz = pz - actorZ(g);
+        if (math.abs(dx) > 1.5 || math.abs(dz) > 1.5) {
+            return false;
+        }
+        var u = [dx / GHOST_SIZE, (PAC_Y - GHOST_Y) / GHOST_SIZE, dz / GHOST_SIZE];
+        return sdGhostBody(u) * GHOST_SIZE < PAC_SIZE * TOUCH;
+    }
+
+    function touchesGem(px, pz) {
+        var u = [(px - bonusX()) / GEM_SIZE, (PAC_Y - GEM_Y) / GEM_SIZE, (pz - bonusZ()) / GEM_SIZE];
+        return sdGem(u) * GEM_SIZE < PAC_SIZE * TOUCH;
+    }
+
+    function bonusX() {
+        return cellX(gateCol);
+    }
+
+    function bonusZ() {
+        return cellZ(gateRow + 3);
+    }
+
     function collide() {
         var px = actorX(pac);
         var pz = actorZ(pac);
+        if (bonusLeft > 0 && touchesGem(px, pz)) {
+            var points = math.min(level, 10) * 200;
+            bonusLeft = 0.0;
+            addScore(points);
+            popUp(bonusX(), bonusZ(), string(points));
+            burst(bonusX(), GEM_Y, bonusZ(), [1.0, 0.3, 0.85], 10);
+            startWave(bonusX(), bonusZ(), 0.7, [1.0, 0.4, 0.9]);
+            tone(988, 60, "triangle", 0.1);
+            tone(1319, 60, "triangle", 0.1);
+            tone(1976, 140, "triangle", 0.1);
+        }
         for (var g in ghosts) {
-            if (g.eyes) {
+            if (g.state == "eyes" || !touchesGhost(g, px, pz)) {
                 continue;
             }
-            var dx = px - actorX(g);
-            var dz = pz - actorZ(g);
-            if (dx * dx + dz * dz < 0.4) {
-                if (frightLeft > 0 && g.freed) {
-                    eatGhost(g);
-                } else {
-                    killPac();
-                    return;
-                }
+            if (g.fright) {
+                eatGhost(g);
+            } else {
+                killPac();
+                return;
             }
         }
     }
 
-    function ghostKind(g) {
-        if (g.eyes) {
-            return "eyes";
+    function ghostSpeed(g) {
+        if (g.state == "eyes") {
+            return EYES_SPEED;
         }
-        if (!g.freed) {
-            if (clock < g.release) {
-                return "wait";
-            }
-            return "leave";
+        if (g.state != "roam") {
+            return HOUSE_SPEED;
         }
-        return "ghost";
+        if (g.fright) {
+            return FRIGHT_SPEED;
+        }
+        var speed = GHOST_SPEED + math.min(level - 1, 6) * 0.14;
+        if (tunnelRow[g.row] && (g.col < 3 || g.col > COLS - 4)) {
+            speed = speed * 0.6;
+        }
+        return speed;
     }
 
     function updateGhosts(dt) {
         for (var g in ghosts) {
-            var kind = ghostKind(g);
-            var speed = 5.05;
-            if (g.eyes) {
-                speed = 9.0;
-            } else if (!g.freed) {
-                speed = 4.2;
-            } else if (frightLeft > 0) {
-                speed = 3.15;
-            }
-            if (kind != "wait") {
-                advance(g, dt, speed, kind);
-            }
-            if (!g.freed && !g.eyes && g.row < gateRow) {
-                var t = tileAt(g.col, g.row);
-                if (t != 4 && t != 6) {
-                    g.freed = true;
+            if (g.state == "home") {
+                if (clock < g.release) {
+                    continue;
                 }
+                g.state = "leave";
             }
-            if (g.eyes && g.col == g.homeC && g.row == g.homeR && !moving(g)) {
-                g.eyes = false;
-                g.freed = false;
-                g.release = clock + 0.7;
-                g.dir = 3;
-            }
+            advance(g, dt, ghostSpeed(g), false);
         }
     }
 
-    function updatePlay(dt) {
-        var turn = -1;
-        if (three.wasKeyPressed("arrowright") || three.wasKeyPressed("d")) {
-            turn = 0;
-        } else if (three.wasKeyPressed("arrowdown") || three.wasKeyPressed("s")) {
-            turn = 1;
-        } else if (three.wasKeyPressed("arrowleft") || three.wasKeyPressed("a")) {
-            turn = 2;
-        } else if (three.wasKeyPressed("arrowup") || three.wasKeyPressed("w")) {
-            turn = 3;
-        }
-        if (turn >= 0) {
-            pac.queued = turn;
-            startedMove = true;
-            if ((pac.dir + 2) % 4 == turn) {
-                reverseMover(pac);
-            }
-        }
-        clock = clock + dt;
-        modeLeft = modeLeft - dt;
-        if (modeLeft <= 0) {
-            if (chaseMode == 0) {
-                chaseMode = 1;
-                modeLeft = 20.0;
-            } else {
-                chaseMode = 0;
-                modeLeft = 7.0;
-            }
-            if (frightLeft <= 0) {
-                for (var g in ghosts) {
-                    if (g.freed && !g.eyes) {
-                        reverseMover(g);
-                    }
-                }
-            }
-        }
-        var prevFright = frightLeft;
-        frightLeft = frightLeft - dt;
-        if (frightLeft < 0) {
-            frightLeft = 0;
-        }
-        if (prevFright > 0 && frightLeft == 0) {
-            chain = 1;
-            for (var g in ghosts) {
-                if (g.freed && !g.eyes) {
-                    reverseMover(g);
-                }
-            }
-        }
-        var pacSpeed = 5.5;
-        if (frightLeft > 0) {
-            pacSpeed = 6.3;
-        }
-        if (startedMove) {
-            advance(pac, dt, pacSpeed, "pac");
-        }
-        if (mode != "play") {
-            return;
-        }
-        updateGhosts(dt);
-        if (mode == "play") {
-            collide();
-        }
-    }
-
-    function updateDead(dt) {
-        deadLeft = deadLeft - dt;
-        if (deadLeft > 0) {
-            return;
-        }
-        if (lives <= 0) {
-            mode = "over";
-            noteHi();
-            return;
-        }
-        frightLeft = 0;
-        chain = 1;
-        resetActors();
-        mode = "play";
-    }
-
+    // Arrow or WASD pressed this frame as a direction, or -1.
     function readTurn() {
         if (three.wasKeyPressed("arrowright") || three.wasKeyPressed("d")) {
             return 0;
@@ -1517,15 +1955,105 @@ if (root == null) {
         return -1;
     }
 
+    // Buffers a turn. With the chase camera the keys are relative to the heading: Up is straight
+    // on, Right and Left turn, Down turns back.
+    function steer(turn) {
+        if (turn < 0) {
+            return;
+        }
+        var want = turn;
+        if (cameraMode == 2) {
+            want = (pac.dir + turn + 1) % 4;
+        }
+        pac.queued = want;
+        if (mode == "play" && (pac.dir + 2) % 4 == want) {
+            reverseMover(pac);
+        }
+    }
+
+    function updatePlay(dt) {
+        clock = clock + dt;
+        modeLeft = modeLeft - dt;
+        if (modeLeft <= 0) {
+            if (chaseMode == 0) {
+                chaseMode = 1;
+                modeLeft = CHASE_TIME;
+            } else {
+                chaseMode = 0;
+                modeLeft = math.max(SCATTER_TIME - (level - 1) * 0.5, 2.0);
+            }
+            for (var g in ghosts) {
+                if (g.state == "roam" && !g.fright) {
+                    reverseMover(g);
+                }
+            }
+        }
+        if (frightLeft > 0) {
+            frightLeft = frightLeft - dt;
+            if (frightLeft <= 0) {
+                frightLeft = 0.0;
+                chain = 1;
+                for (var g in ghosts) {
+                    g.fright = false;
+                }
+            }
+        }
+        if (bonusLeft > 0) {
+            bonusLeft = math.max(bonusLeft - dt, 0.0);
+        }
+        advance(pac, dt, PAC_SPEED, true);
+        if (mode != "play") {
+            return;
+        }
+        collide();
+        if (mode != "play" || freeze > 0) {
+            return;
+        }
+        updateGhosts(dt);
+        collide();
+    }
+
+    function updateDead(dt) {
+        deadLeft = deadLeft - dt;
+        if (deadLeft > 0) {
+            return;
+        }
+        if (lives <= 0) {
+            mode = "over";
+            return;
+        }
+        frightLeft = 0.0;
+        chain = 1;
+        bonusLeft = 0.0;
+        resetActors();
+        mode = "ready";
+        readyLeft = 1.3;
+        risingMaze = false;
+    }
+
+    function updateClear(dt) {
+        clearLeft = clearLeft - dt;
+        if (clearLeft < 0.8) {
+            wallRise = math.max(clearLeft / 0.8, 0.0);
+        }
+        if (clearLeft <= 0) {
+            level = level + 1;
+            loadMaze(level - 1);
+            beginLevel();
+        }
+    }
+
+    // ---- camera ----
+
     var camX = 0.0;
-    var camY = 12.0;
-    var camZ = 16.0;
-    var fwd = [0.0, -0.4, -1.0];
+    var camY = 14.0;
+    var camZ = 19.0;
+    var fwd = [0.0, -0.6, -0.8];
     var right = [1.0, 0.0, 0.0];
-    var upv = [0.0, 1.0, 0.0];
-    var followX = 0.0;
-    var followY = 12.0;
-    var followZ = 16.0;
+    var upv = [0.0, 0.8, -0.6];
+    var eye = [0.0, 14.0, 19.0];
+    var look = [0.0, 0.2, 0.0];
+    var camYaw = PI;
 
     function aimCamera(ex, ey, ez, tx, ty, tz) {
         camX = ex;
@@ -1538,122 +2066,174 @@ if (root == null) {
         fx = fx / fl;
         fy = fy / fl;
         fz = fz / fl;
-        var rl = math.sqrt(fz * fz + fx * fx);
-        if (rl < 0.001) {
-            rl = 0.001;
-        }
+        var rl = math.max(math.sqrt(fz * fz + fx * fx), 0.001);
         var rx = (0.0 - fz) / rl;
         var rz = fx / rl;
         fwd = [fx, fy, fz];
         right = [rx, 0.0, rz];
-        upv = [0.0 * fz - rz * fy, rz * fx - rx * fz, rx * fy - 0.0 * fx];
+        upv = [0.0 - rz * fy, rz * fx - rx * fz, rx * fy];
+    }
+
+    // The shorter way round from one angle to another.
+    function angleTo(from, to) {
+        var diff = to - from;
+        while (diff > PI) {
+            diff = diff - PI * 2.0;
+        }
+        while (diff < 0.0 - PI) {
+            diff = diff + PI * 2.0;
+        }
+        return diff;
     }
 
     function updateCamera(dt) {
-        var wantX = 0.0;
-        var wantY = 11.5;
-        var wantZ = 15.0;
-        var lookX = 0.0;
-        var lookY = 0.4;
-        var lookZ = 0.0;
-        if (mode == "title" || mode == "over" || mode == "win") {
-            var a = timeSec * 0.18;
-            wantX = math.sin(a) * 14.0;
-            wantY = 11.0 + math.sin(timeSec * 0.27) * 1.1;
-            wantZ = math.cos(a) * 14.0;
-        } else {
-            var face = pac.dir;
-            if (pac.queued >= 0) {
-                face = pac.dir;
-            }
-            var px = actorX(pac);
-            var pz = actorZ(pac);
-            var fx = DX[face];
-            var fz = DY[face];
-            wantX = px - fx * 5.4;
-            wantY = 6.3;
-            wantZ = pz - fz * 5.4;
-            lookX = px + fx * 2.0;
-            lookY = 0.35;
-            lookZ = pz + fz * 2.0;
+        var px = actorX(pac);
+        var pz = actorZ(pac);
+        var want = [px * 0.05, 18.5, 10.0 + pz * 0.05];
+        var aim = [px * 0.05, 0.0, 0.8 + pz * 0.05];
+        camYaw = camYaw + angleTo(camYaw, pac.dir * PI * 0.5) * math.min(dt * 5.0, 1.0);
+        if (mode == "title" || mode == "over") {
+            var a = timeSec * 0.16;
+            want = [math.sin(a) * 19.0, 13.0 + math.sin(timeSec * 0.27) * 1.2, math.cos(a) * 19.0];
+            aim = [0.0, 0.0, 0.0];
+        } else if (cameraMode == 1) {
+            want = [px * 0.8, 9.5, pz + 6.0];
+            aim = [px * 0.8, 0.2, pz - 0.4];
+        } else if (cameraMode == 2) {
+            var hx = math.cos(camYaw);
+            var hz = math.sin(camYaw);
+            want = [px - hx * 5.0, 5.2, pz - hz * 5.0];
+            aim = [px + hx * 2.4, 0.3, pz + hz * 2.4];
         }
-        var ease = math.min(dt * 4.0, 1.0);
-        followX = followX + (wantX - followX) * ease;
-        followY = followY + (wantY - followY) * ease;
-        followZ = followZ + (wantZ - followZ) * ease;
-        aimCamera(followX, followY, followZ, lookX, lookY, lookZ);
+        var ease = math.min(dt * 5.0, 1.0);
+        for (var i = 0; i < 3; i = i + 1) {
+            eye[i] = eye[i] + (want[i] - eye[i]) * ease;
+            look[i] = look[i] + (aim[i] - look[i]) * ease;
+        }
+        aimCamera(eye[0], eye[1], eye[2], look[0], look[1], look[2]);
     }
+
+    // A point of the maze on the stage, in percent, or null behind the camera.
+    function project(x, y, z) {
+        var vx = x - camX;
+        var vy = y - camY;
+        var vz = z - camZ;
+        var depth = vx * fwd[0] + vy * fwd[1] + vz * fwd[2];
+        if (depth < 0.1) {
+            return null;
+        }
+        var sx = (vx * right[0] + vy * right[1] + vz * right[2]) / (depth * tanHalf * aspect);
+        var sy = (vx * upv[0] + vy * upv[1] + vz * upv[2]) / (depth * tanHalf);
+        return { x: math.round((sx * 0.5 + 0.5) * 1000) / 10, y: math.round((0.5 - sy * 0.5) * 1000) / 10 };
+    }
+
+    // ---- the frame as instructions ----
 
     function mouthAngle() {
         if (mode == "dead") {
             return 1.05;
         }
-        if (mode == "play" && startedMove) {
+        if (mode == "play" && moving(pac)) {
             return 0.12 + 0.62 * math.abs(math.sin(timeSec * 14.0));
         }
         return 0.18 + 0.22 * math.abs(math.sin(timeSec * 2.4));
     }
 
     function ghostMode(g) {
-        if (g.eyes) {
+        if (g.state == "eyes") {
             return 2.0;
         }
-        if (frightLeft > 0 && g.freed) {
+        if (g.fright) {
             return 1.0;
         }
         return 0.0;
     }
 
     function ghostFlash(g) {
-        if (frightLeft > 0 && frightLeft < 2.0 && g.freed && !g.eyes && math.sin(timeSec * 16.0) > 0) {
+        if (g.fright && frightLeft < 2.0 && math.sin(timeSec * 16.0) > 0) {
             return 0.85;
         }
         return 0.0;
     }
 
+    // Two group trees, one after the other. The glowing shapes get their own: each reaches
+    // GLOW_R, and among the walls and dots it would swell every group sphere above it.
     function buildProgram() {
         opCount = 0;
         boxMin = [1, 1, 1];
         boxMax = [-1, -1, -1];
         var items = [];
+        var lights = [];
+        var rise = math.max(wallRise, 0.02);
         for (var w in walls) {
-            var bound = math.sqrt(w.hx * w.hx + w.hy * w.hy + w.hz * w.hz) + 0.06;
-            items.append(item(K_WALL, 0.001, w.x, w.y, w.z, bound, w.hx, w.hy, w.hz, 0));
+            var hy = WALL_HALF * rise * w.scale;
+            var bound = math.sqrt(w.hx * w.hx + hy * hy + w.hz * w.hz) + 0.06;
+            items.append(item(K_WALL, 0.001, w.x, hy, w.z, bound, w.hx, hy + w.flags, w.hz, 0));
         }
         for (var r = 0; r < ROWS; r = r + 1) {
             for (var c = 0; c < COLS; c = c + 1) {
                 var t = tiles[r * COLS + c];
-                if (t == 2) {
-                    items.append(item(K_SPHERE, 0.001, cellX(c), 0.12, cellZ(r), 0.075, 1.0, 0.84, 0.2, 0));
-                } else if (t == 3) {
-                    var pulse = 0.15 + 0.03 * math.sin(timeSec * 5.0);
-                    items.append(item(K_SPHERE, 0.001, cellX(c), 0.18, cellZ(r), pulse, 1.0, 0.92, 0.45, 0.95));
+                if (t == T_DOT) {
+                    items.append(item(K_SPHERE, 0.001, cellX(c), DOT_Y, cellZ(r), DOT_SIZE, 1.0, 0.84, 0.2, 0));
+                } else if (t == T_POWER) {
+                    var pulse = POWER_SIZE + 0.03 * math.sin(timeSec * 5.0);
+                    lights.append(item(K_SPHERE, 0.001, cellX(c), 0.2, cellZ(r), pulse, 1.0, 0.92, 0.45, 0.95));
                 }
             }
         }
-        var pacS = 0.4;
-        if (mode == "dead") {
-            pacS = 0.4 * math.max(deadLeft / 1.15, 0.05);
+        if (bonusLeft > 0) {
+            var gemY = GEM_Y + 0.06 * math.sin(timeSec * 3.0);
+            var fade = math.min(bonusLeft, 1.0);
+            lights.append(item(K_GEM, 0.001, bonusX(), gemY, bonusZ(), GEM_SIZE * fade, timeSec * 2.2, 0, 0, 0.7));
         }
-        var pacYaw = YAW[pac.dir];
-        items.append(item(K_PAC, 0.001, actorX(pac), 0.4, actorZ(pac), pacS, pacYaw, mouthAngle(), mode == "dead" ? 0.35 : 0.0, 0));
-        for (var g in ghosts) {
-            var gs = 0.46;
-            if (g.eyes) {
-                gs = 0.42;
+        var pacS = PAC_SIZE;
+        if (mode == "dead") {
+            pacS = PAC_SIZE * math.max(deadLeft / 1.3, 0.05);
+        }
+        lights.append(item(K_PAC, 0.001, actorX(pac), PAC_Y, actorZ(pac), pacS, pacYaw, mouthAngle(), mode == "dead" ? 0.35 : 0.0, 0.35));
+        if (mode != "clear") {
+            for (var g in ghosts) {
+                var gs = GHOST_SIZE;
+                var glow = 0.5;
+                if (g.state == "eyes") {
+                    gs = GHOST_SIZE * 0.92;
+                    glow = 0.25;
+                } else if (g.fright) {
+                    glow = 0.3;
+                }
+                var bob = 0.035 * math.sin(timeSec * 6.0 + g.phase);
+                lights.append(item(g.kind, 0.001, actorX(g), GHOST_Y + bob, actorZ(g), gs, YAW[g.dir], ghostMode(g), ghostFlash(g), glow));
             }
-            items.append(item(g.kind, 0.001, actorX(g), 0.46, actorZ(g), gs, YAW[g.dir], ghostMode(g), ghostFlash(g), 0));
+        }
+        for (var s in sparks) {
+            items.append(item(K_SPHERE, 0.001, s.x, s.y, s.z, 0.03 + 0.07 * s.life, s.color[0], s.color[1], s.color[2], 0));
         }
         for (var it in items) {
             growBox(it.x, it.y, it.z, it.r + 0.02);
         }
+        for (var it in lights) {
+            growBox(it.x, it.y, it.z, it.r + 0.02);
+        }
         emitGroup(items);
+        emitGroup(lights);
     }
 
-    parseMap();
-    copyTiles();
+    // The wall color of the frame: the maze's own, shifted while the ghosts are frightened, and
+    // blinking white when the maze is cleared.
+    function wallColor() {
+        if (mode == "clear" && clearLeft > 0.8 && math.sin(timeSec * 20.0) > 0) {
+            return [0.9, 0.95, 1.0];
+        }
+        var shift = 0.0;
+        if (frightLeft > 2.0 || (frightLeft > 0 && math.sin(timeSec * 16.0) < 0)) {
+            shift = 0.7;
+        }
+        var w = maze.wall;
+        return [w[0] + (0.5 - w[0]) * shift, w[1] + (0.1 - w[1]) * shift, w[2] + (0.75 - w[2]) * shift];
+    }
+
+    loadMaze(0);
     pelletsLeft = pelletsTotal;
-    buildWalls();
     resetActors();
 
     var renderer = three.createRenderer(width, height, "#pm-stage");
@@ -1662,7 +2242,7 @@ if (root == null) {
     three.setAutoRenderScale(renderer, 60, 0.5, 1.25);
 
     var hud = dom.create("div");
-    dom.attr(hud, "id", "pm-hud");
+    hud.id = "pm-hud";
     dom.append(stage, hud);
 
     var scene = three.createScene();
@@ -1682,15 +2262,19 @@ if (root == null) {
             "uReflect": 0.0,
             "uBoxMin": boxMin,
             "uBoxMax": boxMax,
-            "uCamPos": [0, 12, 16],
-            "uCamForward": [0, -0.45, -1],
+            "uCamPos": [0, 14, 19],
+            "uCamForward": [0, -0.6, -0.8],
             "uCamRight": [1, 0, 0],
-            "uCamUp": [0, 1, 0],
+            "uCamUp": [0, 0.8, -0.6],
             "uTanHalf": tanHalf,
             "uAspect": aspect,
             "uTime": 0.0,
             "uFlash": 0.0,
-            "uFlashColor": [1, 0.9, 0.4]
+            "uFlashColor": [1, 0.9, 0.4],
+            "uWallColor": maze.wall,
+            "uGridColor": maze.grid,
+            "uWave": [0, 0, 0, 0],
+            "uWaveColor": [1, 1, 1]
         }
     });
     three.add(scene, three.createMesh(three.createPlaneGeometry(2, 2), material));
@@ -1714,6 +2298,8 @@ if (root == null) {
     var postScene = three.createScene();
     three.add(postScene, three.createMesh(three.createPlaneGeometry(2, 2), postMaterial));
 
+    // ---- HUD ----
+
     var statsMs = 0.0;
     var lastHud = "";
     var statsText = "";
@@ -1733,15 +2319,12 @@ if (root == null) {
         }
         var html = "<div class='bar'><div><span class='lbl'>score</span><span class='num'>" + pad(score, 5) + "</span></div>";
         html = html + "<div><span class='lbl'>hi-score</span><span class='num'>" + pad(hiScore, 5) + "</span></div>";
-        html = html + "<div><span class='lbl'>dots</span><span class='num'>" + string(pelletsLeft) + "</span></div>";
+        html = html + "<div><span class='lbl'>level</span><span class='num'>" + string(level) + " " + maze.name + "</span></div>";
         html = html + "<div><span class='lbl'>lives</span><span class='lives'>" + (livesText == "" ? "-" : livesText) + "</span></div></div>";
         if (mode == "title") {
             html = html + "<div class='center'><div class='big'>SDF PAC-MAN</div>";
             html = html + "<div class='sub'>arrows or wasd &nbsp; eat the dots &nbsp; power dots turn the chase</div>";
-            html = html + "<div class='sub blink'>press enter</div></div>";
-        } else if (mode == "win") {
-            html = html + "<div class='center'><div class='big'>CLEARED</div>";
-            html = html + "<div class='sub'>score " + pad(score, 5) + "</div>";
+            html = html + "<div class='sub'>v changes the camera</div>";
             html = html + "<div class='sub blink'>press enter</div></div>";
         } else if (mode == "over") {
             html = html + "<div class='center'><div class='big'>GAME OVER</div>";
@@ -1749,6 +2332,16 @@ if (root == null) {
             html = html + "<div class='sub blink'>press enter</div></div>";
         } else if (paused) {
             html = html + "<div class='center'><div class='big'>PAUSED</div><div class='sub'>p resumes</div></div>";
+        } else if (mode == "ready") {
+            html = html + "<div class='toast'>level " + string(level) + " &nbsp; ready</div>";
+        } else if (mode == "clear") {
+            html = html + "<div class='toast'>maze cleared</div>";
+        }
+        for (var p in pops) {
+            var at = project(p.x, 0.9, p.z);
+            if (at != null) {
+                html = html + "<div class='pop' style='left:" + string(at.x) + "%;top:" + string(at.y) + "%'>" + p.text + "</div>";
+            }
         }
         html = html + "<div class='stats'>" + statsText + "</div>";
         if (html != lastHud) {
@@ -1757,16 +2350,17 @@ if (root == null) {
         }
     }
 
+    // ---- frame ----
+
     function update(dtMs) {
         var dt = math.min(dtMs, 50) / 1000.0;
         var turn = readTurn();
+        var startEdge = three.wasKeyPressed("enter") || three.wasKeyPressed(" ");
 
-        if (three.wasKeyPressed("enter") || three.wasKeyPressed(" ") || turn >= 0) {
-            if (!audioReady) {
-                game.audioInit();
-                game.audioSetMasterVolume(0.45);
-                audioReady = true;
-            }
+        if ((startEdge || turn >= 0) && !audioReady) {
+            game.audioInit();
+            game.audioSetMasterVolume(0.45);
+            audioReady = true;
         }
         if (three.wasKeyPressed("m")) {
             muted = !muted;
@@ -1787,28 +2381,41 @@ if (root == null) {
             skipOn = !skipOn;
             three.setUniform(material, "uSkip", skipOn ? 1.0 : 0.0);
         }
+        if (three.wasKeyPressed("v")) {
+            cameraMode = (cameraMode + 1) % CAMERA_NAMES.length;
+        }
         if (mode == "play" && three.wasKeyPressed("p")) {
             paused = !paused;
         }
-        var startEdge = three.wasKeyPressed("enter") || three.wasKeyPressed(" ");
-        if ((mode == "title" || mode == "over" || mode == "win") && (startEdge || turn >= 0)) {
+        if ((mode == "title" || mode == "over") && (startEdge || turn >= 0)) {
             startGame();
-            if (turn >= 0) {
-                pac.queued = turn;
-                startedMove = true;
-            }
+        } else if (!paused && (mode == "play" || mode == "ready")) {
+            steer(turn);
         }
 
         if (!paused) {
             timeSec = timeSec + dt;
-            if (mode == "play") {
+            if (mode != "clear") {
+                wallRise = math.min(wallRise + dt / 0.8, 1.0);
+            }
+            if (freeze > 0) {
+                freeze = freeze - dt;
+            } else if (mode == "ready") {
+                readyLeft = readyLeft - dt;
+                if (readyLeft <= 0) {
+                    mode = "play";
+                }
+            } else if (mode == "play") {
                 updatePlay(dt);
             } else if (mode == "dead") {
                 updateDead(dt);
+            } else if (mode == "clear") {
+                updateClear(dt);
             }
-            flash = math.max(flash - dt * 2.2, 0.0);
+            pacYaw = pacYaw + angleTo(pacYaw, YAW[pac.dir]) * math.min(dt * 18.0, 1.0);
+            updateEffects(dt);
         }
-        syncSiren();
+        syncMusic();
         updateCamera(dt);
 
         buildProgram();
@@ -1825,6 +2432,10 @@ if (root == null) {
         three.setUniform(postMaterial, "uTime", timeSec);
         three.setUniform(material, "uFlash", flash * 0.55);
         three.setUniform(material, "uFlashColor", flashColor);
+        three.setUniform(material, "uWallColor", wallColor());
+        three.setUniform(material, "uGridColor", maze.grid);
+        three.setUniform(material, "uWave", [wave.x, wave.z, wave.radius, wave.strength]);
+        three.setUniform(material, "uWaveColor", wave.color);
 
         var stats = three.getStats();
         if (stats.width > 0 && (stats.width != targetW || stats.height != targetH)) {
@@ -1838,7 +2449,7 @@ if (root == null) {
         if (statsMs > 250) {
             statsMs = 0.0;
             statsText = "instructions " + string(opCount) + " / " + string(MAX_OPS) + " · uploads "
-                + string(uploads) + " · culling " + (skipOn ? "on" : "off")
+                + string(uploads) + " · camera " + CAMERA_NAMES[cameraMode] + " · culling " + (skipOn ? "on" : "off")
                 + " · reflections " + (reflectOn ? "on" : "off") + " · fxaa " + (fxaaOn ? "on" : "off")
                 + " · crt " + (crtOn ? "on" : "off")
                 + " · scale " + string(stats.renderScale) + "x · " + string(math.round(stats.fps)) + " fps";

@@ -7999,6 +7999,9 @@ process.stdout.write("ok\n");
         var pacmanPath = PlanningPaths.ResolveRepoFile("Examples", "Games", "three_sdf_pacman.malda");
         var pacman = new Compiler.Compiler().TranspileToJavaScript(pacmanPath);
         Assert.Contains("function shapeRadius(kind, s) {", pacman, StringComparison.Ordinal);
+        // Collisions: the ghost body and the crystal, measured by the kernels that draw them.
+        Assert.Contains("function sdGhostBody(u) {", pacman, StringComparison.Ordinal);
+        Assert.Contains("function sdGem(u) {", pacman, StringComparison.Ordinal);
         Assert.Contains("float sdPacman(vec3 u, float mouth, out vec4 col)", pacman, StringComparison.Ordinal);
         Assert.DoesNotContain("__maldaBound_", pacman, StringComparison.Ordinal);
         Assert.Contains("const int K_PAC = 1;", pacman, StringComparison.Ordinal);
