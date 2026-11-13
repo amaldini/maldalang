@@ -7970,7 +7970,7 @@ process.stdout.write("ok\n");
         }
     }
 
-    // G23c: both examples compile with their kernels as the single source, and the hand-written
+    // G23c: the SDF examples compile with their kernels as the single source, and the hand-written
     // host copies are gone.
     [Fact]
     public void SdfExamples_CompileWithSingleSourceKernels()
@@ -7996,7 +7996,15 @@ process.stdout.write("ok\n");
         Assert.Contains("const int K_SHIELD = 5;", invaders, StringComparison.Ordinal);
         Assert.Contains("float cutDistance(float d, float acc, float k) {", invaders, StringComparison.Ordinal);
 
-        foreach (var path in new[] { interpreterPath, invadersPath })
+        var pacmanPath = PlanningPaths.ResolveRepoFile("Examples", "Games", "three_sdf_pacman.malda");
+        var pacman = new Compiler.Compiler().TranspileToJavaScript(pacmanPath);
+        Assert.Contains("function shapeRadius(kind, s) {", pacman, StringComparison.Ordinal);
+        Assert.Contains("float sdPacman(vec3 u, float mouth, out vec4 col)", pacman, StringComparison.Ordinal);
+        Assert.DoesNotContain("__maldaBound_", pacman, StringComparison.Ordinal);
+        Assert.Contains("const int K_PAC = 1;", pacman, StringComparison.Ordinal);
+        Assert.Contains("const int K_CLYDE = 6;", pacman, StringComparison.Ordinal);
+
+        foreach (var path in new[] { interpreterPath, invadersPath, pacmanPath })
         {
             var text = File.ReadAllText(path);
             foreach (var twin in new[] { "cpuShape", "cpuSceneDistance", "cpuRoundBox", "cpuShield", "boundRadius" })

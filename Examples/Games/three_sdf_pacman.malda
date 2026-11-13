@@ -1,0 +1,1856 @@
+// SDF Pac-Man: a 3D maze chase raymarched by the same bytecode interpreter as SDF Invaders.
+//
+// The shader is compiled once. Every frame the host writes the maze as instructions into a float
+// data texture (three.updateDataTexture) and the fragment shader runs them with texelFetch.
+// Walls, dots, the muncher and the four ghosts are all instructions; nothing is a mesh.
+// A tree of GROUP instructions lets each ray skip the parts of the maze it does not pass near.
+// Power dots glow: the ray keeps a second list of those shapes and they light the corridor.
+// The floor is analytic, with an optional second ray for reflections (F). The march renders
+// into a target and a second shader pass adds FXAA (X) or CRT mode (C), the same post path
+// as the invaders game.
+//
+// Instruction = three RGBA texels:
+//   UNION  (1, kind, -, k)   (x, y, z, size)   (a, b, c, glow)   smooth-union a shape
+//   CUT    (2, kind, -, k)   (x, y, z, size)   (-, -, -, heat)   smooth-subtract a shape
+//   GROUP  (3, -, jump, -)   (cx, cy, cz, r)   (-, -, -, -)      what follows, up to jump, lies in r
+//
+// The muncher is an SDF sphere with a wedge mouth (sdPacman). Each ghost is an SDF body with
+// eyes (sdGhost). The host calls shapeRadius, the same kernel the shader uses, when it builds
+// the group spheres. It also steps the maze: buffered turns, a tunnel wrap, scatter / chase,
+// and the frightened retreat after a power dot.
+//
+// Controls: Enter or an arrow starts. Arrows or WASD turn. P pauses. F floor reflections,
+// X antialiasing, C CRT mode, B ray culling, M mute.
+//
+// Build: malda compile Examples/Games/three_sdf_pacman.malda --mode js -o three_sdf_pacman.js
+// Play:  malda play Examples/Games/three_sdf_pacman.malda
+
+@shader()
+function vertexMain() {
+    vUv = uv;
+    gl_Position = vec4(position.xy, 0.0, 1.0);
+}
+
+@shader()
+function smin(a: float, b: float, k: float) -> float {
+    var h: float = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);
+    return mix(b, a, h) - k * h * (1.0 - h);
+}
+
+@shader()
+function sdRoundBox(q: vec3, b: vec3, r: float) -> float {
+    var d: vec3 = abs(q) - b + vec3(r, r, r);
+    return length(max(d, vec3(0.0, 0.0, 0.0))) + min(max(d.x, max(d.y, d.z)), 0.0) - r;
+}
+
+// Rotate a point about Y so local +X matches a yaw of 0.
+@shader()
+function yawXZ(q: vec3, yaw: float) -> vec3 {
+    var cy: float = cos(yaw);
+    var sy: float = sin(yaw);
+    return vec3(cy * q.x + sy * q.z, q.y, 0.0 - sy * q.x + cy * q.z);
+}
+
+// A sphere with a wedge mouth opening toward local +X, and two eyes up top.
+@shader()
+function sdPacman(u: vec3, mouth: float, col: out vec4) -> float {
+    var wedge: float = 0.0 - sin(mouth) * u.x + cos(mouth) * abs(u.z);
+    var body: float = max(length(u) - 1.0, 0.0 - wedge);
+    var eye: float = length(vec3(u.x - 0.22, u.y - 0.68, abs(u.z) - 0.46)) - 0.26;
+    var pupil: float = length(vec3(u.x - 0.38, u.y - 0.7, abs(u.z) - 0.52)) - 0.1;
+    col = vec4(1.0, 0.84, 0.12, 0.22);
+    var d: float = body;
+    if (eye < d) {
+        d = eye;
+        col = vec4(0.06, 0.07, 0.1, 0.35);
+    }
+    if (pupil < d) {
+        d = pupil;
+        col = vec4(0.35, 0.7, 1.0, 0.45);
+    }
+    return d;
+}
+
+// A ghost: round head, body, scalloped hem, two eyes. mode 1 is frightened, mode 2 is eyes only.
+@shader()
+function sdGhost(u: vec3, mode: float, kind: int, col: out vec4) -> float {
+    var bodyCol: vec3 = vec3(1.0, 0.62, 0.15);
+    if (kind == K_BLINKY) {
+        bodyCol = vec3(1.0, 0.22, 0.28);
+    } else if (kind == K_PINKY) {
+        bodyCol = vec3(1.0, 0.55, 0.78);
+    } else if (kind == K_INKY) {
+        bodyCol = vec3(0.25, 0.9, 1.0);
+    } else if (kind == K_CLYDE) {
+        bodyCol = vec3(1.0, 0.62, 0.15);
+    }
+    if (mode > 0.5 && mode < 1.5) {
+        bodyCol = vec3(0.16, 0.28, 1.0);
+    }
+    var head: float = length(u - vec3(0.0, 0.22, 0.0)) - 0.58;
+    var torso: float = sdRoundBox(u - vec3(0.0, -0.1, 0.0), vec3(0.52, 0.36, 0.48), 0.12);
+    var d: float = smin(head, torso, 0.16);
+    var bottom: float = -0.55 + 0.1 * sin(atan(u.z, u.x) * 3.0);
+    d = max(d, bottom - u.y);
+    var eye: float = length(vec3(u.x - 0.26, u.y - 0.24, abs(u.z) - 0.18)) - 0.15;
+    var pupil: float = length(vec3(u.x - 0.36, u.y - 0.22, abs(u.z) - 0.18)) - 0.07;
+    if (mode > 1.5) {
+        col = vec4(0.95, 0.97, 1.0, 0.55);
+        if (pupil < eye) {
+            col = vec4(0.15, 0.35, 1.0, 0.4);
+        }
+        return min(eye, pupil);
+    }
+    col = vec4(bodyCol, 0.12);
+    if (eye < d) {
+        col = vec4(0.96, 0.97, 1.0, 0.4);
+    }
+    if (pupil < d) {
+        col = vec4(0.08, 0.12, 0.28, 0.25);
+    }
+    return min(d, min(eye, pupil));
+}
+
+// Distance from q (relative to the instruction position) to a shape of the given kind.
+// Walls store their half-extents in ext.xyz and their bounding radius in size.
+// The muncher stores yaw in ext.x and the mouth angle in ext.y.
+// A ghost stores yaw in ext.x, fright/eyes mode in ext.y, and a white flash in ext.z.
+@shader()
+function sdShape(kind: int, q: vec3, s: float, ext: vec4, col: out vec4) -> float {
+    if (kind == K_SPHERE) {
+        col = vec4(ext.x, ext.y, ext.z, 0.5);
+        return length(q) - s;
+    }
+    if (kind == K_WALL) {
+        col = vec4(0.1, 0.28, 0.86, 0.1);
+        return sdRoundBox(q, vec3(ext.x, ext.y, ext.z), 0.04);
+    }
+    var u: vec3 = yawXZ(q, ext.x) / s;
+    var d: float = 0.0;
+    if (kind == K_PAC) {
+        d = sdPacman(u, ext.y, col);
+    } else {
+        d = sdGhost(u, ext.y, kind, col);
+    }
+    col = vec4(mix(col.rgb, vec3(1.0, 1.0, 1.0), ext.z), max(col.a, ext.z));
+    return d * s;
+}
+
+// Radius of a sphere around the shape. The host calls this too, when it builds groups.
+@shader()
+function shapeRadius(kind: int, s: float) -> float {
+    if (kind == K_SPHERE || kind == K_WALL) {
+        return s;
+    }
+    if (kind == K_PAC) {
+        return s * 1.2;
+    }
+    return s * 1.35;
+}
+
+@shader()
+function haloColor(kind: int, ext: vec4) -> vec3 {
+    return vec3(ext.x, ext.y, ext.z);
+}
+
+@shader()
+function haloSize(kind: int, s: float) -> float {
+    return 0.12 + s;
+}
+
+@shader()
+function cutBlend(d: float, acc: float, k: float) -> float {
+    return clamp(0.5 + 0.5 * (d + acc) / k, 0.0, 1.0);
+}
+
+@shader()
+function cutDistance(d: float, acc: float, k: float) -> float {
+    var h: float = cutBlend(d, acc, k);
+    return mix(0.0 - d, acc, h) + k * h * (1.0 - h);
+}
+
+@shader()
+function evalOp(at: int, p: vec3, acc: float, tint: vec4, outTint: out vec4) -> float {
+    var head: vec4 = texelFetch(uProgram, ivec2(at * 3, 0), 0);
+    var data: vec4 = texelFetch(uProgram, ivec2(at * 3 + 1, 0), 0);
+    var ext: vec4 = texelFetch(uProgram, ivec2(at * 3 + 2, 0), 0);
+    var kind: int = int(head.y + 0.5);
+    var k: float = max(head.w, 0.0001);
+    var col: vec4 = vec4(0.0, 0.0, 0.0, 0.0);
+    var d: float = sdShape(kind, p - data.xyz, data.w, ext, col);
+    if (int(head.x + 0.5) == OP_UNION) {
+        var h: float = clamp(0.5 + 0.5 * (d - acc) / k, 0.0, 1.0);
+        outTint = mix(col, tint, h);
+        return mix(d, acc, h) - k * h * (1.0 - h);
+    }
+    var crater: vec4 = mix(vec4(0.05, 0.06, 0.08, 0.0), vec4(1.0, 0.7, 0.2, 1.0), ext.w);
+    outTint = mix(crater, tint, cutBlend(d, acc, k));
+    return cutDistance(d, acc, k);
+}
+
+@shader()
+function runProgram(p: vec3, color: out vec4) -> float {
+    var acc: float = FAR;
+    var tint: vec4 = vec4(0.5, 0.5, 0.5, 0.0);
+    var next: vec4 = tint;
+    var skip: bool = uSkip > 0.5;
+    var i: int = 0;
+    while (i < uCount) {
+        var head: vec4 = texelFetch(uProgram, ivec2(i * 3, 0), 0);
+        var data: vec4 = texelFetch(uProgram, ivec2(i * 3 + 1, 0), 0);
+        var op: int = int(head.x + 0.5);
+        if (op == OP_GROUP) {
+            if (skip && length(p - data.xyz) - data.w > acc) {
+                i = int(head.z + 0.5);
+                continue;
+            }
+        } else {
+            var k: float = max(head.w, 0.0001);
+            var bound: float = length(p - data.xyz) - shapeRadius(int(head.y + 0.5), data.w);
+            var useIt: bool = !skip || bound < acc + k;
+            if (op == OP_CUT) {
+                useIt = !skip || bound < k - acc;
+            }
+            if (useIt) {
+                acc = evalOp(i, p, acc, tint, next);
+                tint = next;
+            }
+        }
+        i++;
+    }
+    color = tint;
+    return acc;
+}
+
+@shader()
+function rayBox(origin: vec3, dir: vec3, tNear: out float, tFar: out float) -> bool {
+    var inv: vec3 = 1.0 / (dir + vec3(0.0000001, 0.0000001, 0.0000001));
+    var t0: vec3 = (uBoxMin - origin) * inv;
+    var t1: vec3 = (uBoxMax - origin) * inv;
+    var lo: vec3 = min(t0, t1);
+    var hi: vec3 = max(t0, t1);
+    tNear = max(max(lo.x, lo.y), lo.z);
+    tFar = min(min(hi.x, hi.y), hi.z);
+    return tFar > max(tNear, 0.0);
+}
+
+@shader()
+function traceRay(origin: vec3, dir: vec3, tStart: float, tEnd: float, shadowRay: bool, tHit: out float, normal: out vec3, albedo: out vec4, glow: out vec3, lit: out vec3) -> float {
+    var cand: int[MAX_CAND];
+    var glows: int[MAX_GLOW];
+    var count: int = 0;
+    var glowCount: int = 0;
+    var overflow: bool = uSkip < 0.5;
+    var margin: float = 0.0;
+    if (shadowRay) {
+        margin = 0.2;
+    }
+    var i: int = 0;
+    while (i < uCount) {
+        var head: vec4 = texelFetch(uProgram, ivec2(i * 3, 0), 0);
+        var data: vec4 = texelFetch(uProgram, ivec2(i * 3 + 1, 0), 0);
+        var op: int = int(head.x + 0.5);
+        var along: float = clamp(dot(data.xyz - origin, dir), tStart, tEnd);
+        var miss: float = length(origin + dir * along - data.xyz);
+        if (op == OP_GROUP) {
+            if (miss > data.w + margin) {
+                i = int(head.z + 0.5);
+                continue;
+            }
+        } else {
+            var kind: int = int(head.y + 0.5);
+            if (!overflow && miss <= shapeRadius(kind, data.w) + max(head.w, 0.0001) + margin) {
+                if (count < MAX_CAND) {
+                    cand[count] = i;
+                    count++;
+                } else {
+                    overflow = true;
+                }
+            }
+            if (!shadowRay && op == OP_UNION && glowCount < MAX_GLOW && miss < GLOW_R) {
+                if (texelFetch(uProgram, ivec2(i * 3 + 2, 0), 0).w > 0.0) {
+                    glows[glowCount] = i;
+                    glowCount++;
+                }
+            }
+        }
+        i++;
+    }
+    tHit = tEnd;
+    normal = vec3(0.0, 1.0, 0.0);
+    albedo = vec4(0.5, 0.5, 0.5, 0.0);
+    glow = vec3(0.0, 0.0, 0.0);
+    lit = vec3(0.0, 0.0, 0.0);
+
+    var light: float = 1.0;
+    var hit: bool = false;
+    if (count > 0 || overflow) {
+        var e: vec2 = vec2(0.001, -0.001);
+        var t: float = tStart;
+        var normalSample: int = 0;
+        var grad: vec3 = vec3(0.0, 0.0, 0.0);
+        for (var step: int = 0; step < 100; step++) {
+            var offset: vec3 = vec3(0.0, 0.0, 0.0);
+            if (hit) {
+                if (normalSample == 0) {
+                    offset = e.xyy;
+                } else if (normalSample == 1) {
+                    offset = e.yyx;
+                } else if (normalSample == 2) {
+                    offset = e.yxy;
+                } else {
+                    offset = e.xxx;
+                }
+            } else if (t > tEnd || (shadowRay && step >= 36)) {
+                break;
+            }
+            var p: vec3 = origin + dir * t + offset;
+            var acc: float = FAR;
+            var tint: vec4 = vec4(0.5, 0.5, 0.5, 0.0);
+            var next: vec4 = tint;
+            if (overflow) {
+                acc = runProgram(p, tint);
+            } else {
+                for (var c: int = 0; c < MAX_CAND; c++) {
+                    if (c >= count) {
+                        break;
+                    }
+                    acc = evalOp(cand[c], p, acc, tint, next);
+                    tint = next;
+                }
+            }
+            if (hit) {
+                grad += offset * acc;
+                normalSample++;
+                if (normalSample == 4) {
+                    break;
+                }
+            } else if (shadowRay) {
+                light = min(light, 14.0 * acc / max(t, 0.05));
+                if (light < 0.01) {
+                    break;
+                }
+                t += clamp(acc, 0.03, 0.6);
+            } else if (acc < 0.0006 + 0.0008 * t) {
+                hit = true;
+                tHit = t;
+                albedo = tint;
+            } else {
+                t += acc;
+            }
+        }
+        if (hit) {
+            normal = normalize(grad);
+        }
+    }
+    if (shadowRay) {
+        return clamp(light, 0.0, 1.0);
+    }
+
+    var endP: vec3 = origin + dir * tHit;
+    for (var g: int = 0; g < MAX_GLOW; g++) {
+        if (g >= glowCount) {
+            break;
+        }
+        var head2: vec4 = texelFetch(uProgram, ivec2(glows[g] * 3, 0), 0);
+        var data2: vec4 = texelFetch(uProgram, ivec2(glows[g] * 3 + 1, 0), 0);
+        var ext2: vec4 = texelFetch(uProgram, ivec2(glows[g] * 3 + 2, 0), 0);
+        var kind2: int = int(head2.y + 0.5);
+        var gc: vec3 = haloColor(kind2, ext2) * ext2.w;
+        var s: float = clamp(dot(data2.xyz - origin, dir), 0.0, tHit);
+        var dm: float = length(origin + dir * s - data2.xyz);
+        var size: float = haloSize(kind2, data2.w);
+        glow += gc * (size / (dm * dm + size)) * clamp(1.0 - dm / GLOW_R, 0.0, 1.0) * 0.55;
+        var toL: vec3 = data2.xyz - endP;
+        var dl: float = max(length(toL), 0.001);
+        lit += gc * max(dot(normal, toL / dl), 0.0) / (1.0 + dl * dl * 2.0) * clamp(1.0 - dl / GLOW_R, 0.0, 1.0);
+    }
+    if (hit) {
+        return 1.0;
+    }
+    return 0.0;
+}
+
+@shader()
+function softShadow(origin: vec3, dir: vec3) -> float {
+    var tNear: float = 0.0;
+    var tFar: float = 0.0;
+    if (!rayBox(origin, dir, tNear, tFar)) {
+        return 1.0;
+    }
+    var tHit: float = 0.0;
+    var normal: vec3 = vec3(0.0, 0.0, 0.0);
+    var albedo: vec4 = vec4(0.0, 0.0, 0.0, 0.0);
+    var glow: vec3 = vec3(0.0, 0.0, 0.0);
+    var lit: vec3 = vec3(0.0, 0.0, 0.0);
+    return traceRay(origin, dir, max(tNear, 0.03), tFar, true, tHit, normal, albedo, glow, lit);
+}
+
+@shader()
+function shade(p: vec3, n: vec3, albedo: vec4, dir: vec3, shadows: bool) -> vec3 {
+    var lightDir: vec3 = normalize(vec3(-0.35, 0.9, 0.25));
+    var key: float = max(dot(n, lightDir), 0.0);
+    if (shadows && key > 0.0) {
+        key *= softShadow(p + n * 0.004, lightDir);
+    }
+    var rim: float = pow(clamp(1.0 + dot(n, dir), 0.0, 1.0), 3.0);
+    var bounce: float = clamp(0.0 - n.y, 0.0, 1.0);
+    var ambient: float = 0.28 + 0.12 * n.y;
+    var spec: float = pow(max(dot(reflect(dir, n), lightDir), 0.0), 40.0) * key;
+    var c: vec3 = albedo.rgb * (vec3(0.45, 0.55, 0.85) * ambient + vec3(1.0, 0.96, 0.88) * key * 1.2 + vec3(0.25, 0.45, 0.9) * bounce * 0.35);
+    c += vec3(0.5, 0.55, 0.6) * spec + albedo.rgb * rim * 0.15;
+    return mix(c, albedo.rgb * 1.7, clamp(albedo.a, 0.0, 1.0));
+}
+
+@shader()
+function skyColor(dir: vec3) -> vec3 {
+    var y: float = dir.y;
+    return mix(vec3(0.015, 0.02, 0.05), vec3(0.0, 0.0, 0.015), clamp(y * 3.0, 0.0, 1.0));
+}
+
+@shader()
+function fragmentMain() {
+    var ndc: vec2 = vUv * 2.0 - 1.0;
+    var dir: vec3 = normalize(
+        uCamForward
+        + uCamRight * (ndc.x * uAspect * uTanHalf)
+        + uCamUp * (ndc.y * uTanHalf)
+    );
+    var up: vec3 = vec3(0.0, 1.0, 0.0);
+    var tFloor: float = FAR;
+    if (dir.y < -0.0001) {
+        tFloor = (0.0 - uCamPos.y) / dir.y;
+    }
+    var fq: vec3 = uCamPos + dir * min(tFloor, 80.0);
+    var gridUv: vec2 = fq.xz + vec2(0.5, 0.5);
+    var gridW: vec2 = max(fwidth(gridUv), vec2(0.0001, 0.0001));
+    var gridD: vec2 = abs(fract(gridUv) - vec2(0.5, 0.5)) / gridW;
+    var gridLine: float = 1.0 - min(min(gridD.x, gridD.y), 1.0);
+
+    var sky: vec3 = skyColor(dir);
+    var t: float = 0.0;
+    var hit: bool = false;
+    var normal: vec3 = up;
+    var albedo: vec4 = vec4(0.0, 0.0, 0.0, 0.0);
+    var glow: vec3 = vec3(0.0, 0.0, 0.0);
+    var lit: vec3 = vec3(0.0, 0.0, 0.0);
+    var tNear: float = 0.0;
+    var tFar: float = 0.0;
+    if (rayBox(uCamPos, dir, tNear, tFar)) {
+        hit = traceRay(uCamPos, dir, max(tNear, 0.0), min(tFar, tFloor), false, t, normal, albedo, glow, lit) > 0.5;
+    }
+    var color: vec3 = sky;
+    if (hit) {
+        color = shade(uCamPos + dir * t, normal, albedo, dir, true) + albedo.rgb * lit * (1.0 - albedo.a);
+    } else if (tFloor < FAR) {
+        t = tFloor;
+        var floorColor: vec3 = shade(fq, up, vec4(0.02, 0.025, 0.045, 0.0), dir, true);
+        floorColor += lit * 0.65;
+        if (uReflect > 0.5) {
+            var rdir: vec3 = reflect(dir, up);
+            var rc: vec3 = skyColor(rdir);
+            var rNear: float = 0.0;
+            var rFar: float = 0.0;
+            if (rayBox(fq, rdir, rNear, rFar)) {
+                var rt: float = 0.0;
+                var rn: vec3 = up;
+                var ra: vec4 = vec4(0.0, 0.0, 0.0, 0.0);
+                var rg: vec3 = vec3(0.0, 0.0, 0.0);
+                var rl: vec3 = vec3(0.0, 0.0, 0.0);
+                if (traceRay(fq, rdir, max(rNear, 0.0), rFar, false, rt, rn, ra, rg, rl) > 0.5) {
+                    rc = shade(fq + rdir * rt, rn, ra, rdir, false) + ra.rgb * rl * (1.0 - ra.a);
+                }
+                rc += rg;
+            }
+            var fresnel: float = 0.08 + 0.28 * pow(1.0 - max(0.0 - dir.y, 0.0), 5.0);
+            floorColor = mix(floorColor, rc, fresnel);
+        }
+        floorColor += vec3(0.15, 0.45, 1.0) * gridLine * 0.22 * exp(0.0 - t * 0.05);
+        color = floorColor;
+    } else {
+        t = 0.0;
+    }
+    color += glow;
+    color = mix(color, vec3(0.01, 0.015, 0.03), clamp((t - 16.0) / 26.0, 0.0, 1.0));
+    color += uFlashColor * uFlash;
+    color = vec3(1.0, 1.0, 1.0) - exp(color * -1.2);
+    color = max(mix(vec3(dot(color, vec3(0.3, 0.55, 0.15))), color, 1.25), vec3(0.0, 0.0, 0.0));
+    gl_FragColor = vec4(sqrt(color), 1.0);
+}
+
+@shader()
+function lumaOf(c: vec3) -> float {
+    return dot(c, vec3(0.299, 0.587, 0.114));
+}
+
+@shader()
+function fxaa(uv: vec2, texel: vec2) -> vec3 {
+    var rgbM: vec3 = textureLod(uScene, uv, 0.0).rgb;
+    var lumaNW: float = lumaOf(textureLod(uScene, uv + vec2(-1.0, -1.0) * texel, 0.0).rgb);
+    var lumaNE: float = lumaOf(textureLod(uScene, uv + vec2(1.0, -1.0) * texel, 0.0).rgb);
+    var lumaSW: float = lumaOf(textureLod(uScene, uv + vec2(-1.0, 1.0) * texel, 0.0).rgb);
+    var lumaSE: float = lumaOf(textureLod(uScene, uv + vec2(1.0, 1.0) * texel, 0.0).rgb);
+    var lumaM: float = lumaOf(rgbM);
+    var lumaMin: float = min(lumaM, min(min(lumaNW, lumaNE), min(lumaSW, lumaSE)));
+    var lumaMax: float = max(lumaM, max(max(lumaNW, lumaNE), max(lumaSW, lumaSE)));
+    if (lumaMax - lumaMin < max(0.03, lumaMax * 0.1)) {
+        return rgbM;
+    }
+    var dir: vec2 = vec2((lumaSW + lumaSE) - (lumaNW + lumaNE), (lumaNW + lumaSW) - (lumaNE + lumaSE));
+    var reduce: float = max((lumaNW + lumaNE + lumaSW + lumaSE) * 0.03125, 0.0078125);
+    var rcpDirMin: float = 1.0 / (min(abs(dir.x), abs(dir.y)) + reduce);
+    dir = clamp(dir * rcpDirMin, vec2(-8.0, -8.0), vec2(8.0, 8.0)) * texel;
+    var rgbA: vec3 = 0.5 * (textureLod(uScene, uv + dir * (1.0 / 3.0 - 0.5), 0.0).rgb + textureLod(uScene, uv + dir * (2.0 / 3.0 - 0.5), 0.0).rgb);
+    var rgbB: vec3 = rgbA * 0.5 + 0.25 * (textureLod(uScene, uv - dir * 0.5, 0.0).rgb + textureLod(uScene, uv + dir * 0.5, 0.0).rgb);
+    var lumaB: float = lumaOf(rgbB);
+    if (lumaB < lumaMin || lumaB > lumaMax) {
+        return rgbA;
+    }
+    return rgbB;
+}
+
+@shader()
+function sceneAt(uv: vec2) -> vec3 {
+    var color: vec3 = textureLod(uScene, uv, 0.0).rgb;
+    if (uFxaa > 0.5) {
+        color = fxaa(uv, 1.0 / uResolution);
+    }
+    return color;
+}
+
+@shader()
+function crtColor(uv: vec2) -> vec3 {
+    var cc: vec2 = uv - vec2(0.5, 0.5);
+    var warped: vec2 = uv + cc * dot(cc, cc) * 0.16;
+    if (warped.x < 0.0 || warped.x > 1.0 || warped.y < 0.0 || warped.y > 1.0) {
+        return vec3(0.0, 0.0, 0.0);
+    }
+    var fringe: vec2 = (warped - vec2(0.5, 0.5)) * 0.006;
+    var color: vec3 = vec3(sceneAt(warped + fringe).r, sceneAt(warped).g, sceneAt(warped - fringe).b);
+    var px: vec2 = 2.0 / uResolution;
+    var halo: vec3 = vec3(0.0, 0.0, 0.0);
+    for (var i: int = 0; i < 8; i++) {
+        var a: float = float(i) * 0.785398;
+        halo += textureLod(uScene, warped + vec2(cos(a), sin(a)) * px, 0.0).rgb;
+    }
+    color += max(halo / 8.0 - vec3(0.45, 0.45, 0.45), vec3(0.0, 0.0, 0.0)) * 0.9;
+    var screen: vec2 = warped * min(uScreen, uResolution);
+    var line: float = 0.72 + 0.28 * sin(screen.y * 3.14159);
+    var column: float = mod(floor(screen.x), 3.0);
+    var grille: vec3 = vec3(0.82, 0.82, 0.82);
+    if (column < 1.0) {
+        grille.r = 1.0;
+    } else if (column < 2.0) {
+        grille.g = 1.0;
+    } else {
+        grille.b = 1.0;
+    }
+    color *= line * grille * 1.3 * (1.0 + 0.012 * sin(uTime * 110.0));
+    var edge: vec2 = abs(warped - vec2(0.5, 0.5)) * 2.0;
+    var corner: float = length(max(edge - vec2(0.9, 0.86), vec2(0.0, 0.0))) / 0.1;
+    color *= clamp(1.0 - corner, 0.0, 1.0) * (1.0 - dot(cc, cc) * 1.1);
+    return color;
+}
+
+@shader()
+function postMain() {
+    var color: vec3 = vec3(0.0, 0.0, 0.0);
+    if (uCrt > 0.5) {
+        color = crtColor(vUv);
+    } else {
+        color = sceneAt(vUv);
+        var v2: vec2 = vUv - vec2(0.5, 0.5);
+        color *= 1.0 - dot(v2, v2) * 0.55;
+    }
+    gl_FragColor = vec4(color, 1.0);
+}
+
+var vertexShader = glsl.compile({
+    varyings: ["vec2 vUv"],
+    functions: ["vertexMain"],
+    main: "vertexMain"
+});
+
+var fragmentShader = glsl.compile({
+    varyings: ["vec2 vUv"],
+    uniforms: [
+        "sampler2D uProgram",
+        "int uCount",
+        "float uSkip",
+        "float uReflect",
+        "vec3 uBoxMin",
+        "vec3 uBoxMax",
+        "vec3 uCamPos",
+        "vec3 uCamForward",
+        "vec3 uCamRight",
+        "vec3 uCamUp",
+        "float uTanHalf",
+        "float uAspect",
+        "float uTime",
+        "float uFlash",
+        "vec3 uFlashColor"
+    ],
+    functions: [
+        "smin",
+        "sdRoundBox",
+        "yawXZ",
+        "sdPacman",
+        "sdGhost",
+        "sdShape",
+        "shapeRadius",
+        "haloColor",
+        "haloSize",
+        "cutBlend",
+        "cutDistance",
+        "evalOp",
+        "runProgram",
+        "rayBox",
+        "traceRay",
+        "softShadow",
+        "shade",
+        "skyColor",
+        "fragmentMain"
+    ],
+    main: "fragmentMain"
+});
+
+var postShader = glsl.compile({
+    varyings: ["vec2 vUv"],
+    uniforms: ["sampler2D uScene", "vec2 uResolution", "vec2 uScreen", "float uFxaa", "float uCrt", "float uTime"],
+    functions: ["lumaOf", "fxaa", "sceneAt", "crtColor", "postMain"],
+    main: "postMain"
+});
+
+// Read by the host and by the shader kernels: one declaration for both.
+const OP_UNION = 1;
+const OP_CUT = 2;
+const OP_GROUP = 3;
+const K_SPHERE = 0;
+const K_PAC = 1;
+const K_WALL = 2;
+const K_BLINKY = 3;
+const K_PINKY = 4;
+const K_INKY = 5;
+const K_CLYDE = 6;
+const MAX_CAND = 40;
+const MAX_GLOW = 6;
+const GLOW_R = 2.4;
+const FAR = 100000.0;
+
+var root = dom.query("#app");
+
+if (root == null) {
+    io.print("No #app container found.");
+} else {
+    dom.clear(root);
+
+    var width = 960;
+    var height = 540;
+    var aspect = width / height;
+    var tanHalf = math.tan(math.degToRad(26));
+    var MAX_OPS = 768;
+    var GROUP_LEAF = 4;
+    var COLS = 19;
+    var ROWS = 26;
+
+    var css = "#app{background:#070b14;color:#e8f1ff;font-family:Consolas,'Courier New',monospace}";
+    css = css + "#app h1{margin:6px 0 2px;font-size:22px;letter-spacing:.28em;color:#ffe14a;text-shadow:0 0 12px #f5c518}";
+    css = css + "#app>p{margin:2px 0 8px;color:#9fb0c8;font-size:13px}";
+    css = css + "#pm-stage{position:relative;width:960px;height:540px;max-width:100%}";
+    css = css + "#pm-stage canvas{display:block;border-radius:6px;box-shadow:0 0 36px rgba(40,80,200,.35)}";
+    css = css + "#pm-hud{position:absolute;inset:0;pointer-events:none;text-transform:uppercase;letter-spacing:.12em}";
+    css = css + "#pm-hud .bar{position:absolute;top:10px;left:16px;right:16px;display:flex;justify-content:space-between;font-size:15px;font-weight:700;text-shadow:0 0 8px #000,0 0 10px #3b82f6}";
+    css = css + "#pm-hud .lbl{color:#93c5fd;font-size:11px;display:block}";
+    css = css + "#pm-hud .num{color:#fff;font-size:20px}";
+    css = css + "#pm-hud .lives{color:#ffe14a;font-size:18px;text-shadow:0 0 10px #f5c518}";
+    css = css + "#pm-hud .center{position:absolute;left:0;right:0;top:32%;text-align:center}";
+    css = css + "#pm-hud .big{font-size:46px;font-weight:900;color:#fff;letter-spacing:.22em;text-shadow:0 0 18px #f5c518,0 0 36px #3b82f6}";
+    css = css + "#pm-hud .sub{margin-top:12px;font-size:15px;color:#bfdbfe;text-shadow:0 0 10px #1d4ed8}";
+    css = css + "#pm-hud .blink{animation:pmblink 1s steps(2,start) infinite}";
+    css = css + "@keyframes pmblink{to{visibility:hidden}}";
+    css = css + "#pm-hud .stats{position:absolute;left:16px;bottom:10px;font-size:11px;color:#8ea0b8;letter-spacing:.04em;text-transform:none}";
+    var style = dom.create("style");
+    dom.setText(style, css);
+    dom.append(root, style);
+
+    var heading = dom.create("h1");
+    dom.setText(heading, "SDF PAC-MAN");
+    dom.append(root, heading);
+
+    var hint = dom.create("p");
+    dom.setText(hint, "Same raymarcher as SDF Invaders: the maze is bytecode in a data texture, rewritten every frame. Enter or an arrow starts. Arrows or WASD turn, P pauses, F reflections, X antialiasing, C CRT, B culling, M mute.");
+    dom.append(root, hint);
+
+    var stage = dom.create("div");
+    dom.attr(stage, "id", "pm-stage");
+    dom.append(root, stage);
+
+    var program = buf.float32(MAX_OPS * 12);
+    var opCount = 0;
+    var boxMin = [1, 1, 1];
+    var boxMax = [-1, -1, -1];
+    var uploads = 0;
+
+    function writeOp(index, op, kind, jump, k, x, y, z, s, e0, e1, e2, e3) {
+        if (index < 0 || index >= MAX_OPS) {
+            return;
+        }
+        var base = index * 12;
+        program[base] = op;
+        program[base + 1] = kind;
+        program[base + 2] = jump;
+        program[base + 3] = k;
+        program[base + 4] = x;
+        program[base + 5] = y;
+        program[base + 6] = z;
+        program[base + 7] = s;
+        program[base + 8] = e0;
+        program[base + 9] = e1;
+        program[base + 10] = e2;
+        program[base + 11] = e3;
+    }
+
+    function growBox(x, y, z, r) {
+        if (boxMin[0] > boxMax[0]) {
+            boxMin = [x - r, y - r, z - r];
+            boxMax = [x + r, y + r, z + r];
+            return;
+        }
+        boxMin = [math.min(boxMin[0], x - r), math.min(boxMin[1], y - r), math.min(boxMin[2], z - r)];
+        boxMax = [math.max(boxMax[0], x + r), math.max(boxMax[1], y + r), math.max(boxMax[2], z + r)];
+    }
+
+    function item(kind, k, x, y, z, s, e0, e1, e2, e3) {
+        var r = shapeRadius(kind, s) + k;
+        if (e3 > 0 && kind == K_SPHERE) {
+            r = math.max(r, GLOW_R);
+        }
+        return { kind: kind, k: k, x: x, y: y, z: z, s: s, e0: e0, e1: e1, e2: e2, e3: e3, r: r };
+    }
+
+    function sphereAround(items) {
+        var minX = items[0].x;
+        var maxX = items[0].x;
+        var minY = items[0].y;
+        var maxY = items[0].y;
+        var minZ = items[0].z;
+        var maxZ = items[0].z;
+        for (var it in items) {
+            minX = math.min(minX, it.x - it.r);
+            maxX = math.max(maxX, it.x + it.r);
+            minY = math.min(minY, it.y - it.r);
+            maxY = math.max(maxY, it.y + it.r);
+            minZ = math.min(minZ, it.z - it.r);
+            maxZ = math.max(maxZ, it.z + it.r);
+        }
+        var cx = (minX + maxX) * 0.5;
+        var cy = (minY + maxY) * 0.5;
+        var cz = (minZ + maxZ) * 0.5;
+        var radius = 0.0;
+        for (var it in items) {
+            var dx = it.x - cx;
+            var dy = it.y - cy;
+            var dz = it.z - cz;
+            radius = math.max(radius, math.sqrt(dx * dx + dy * dy + dz * dz) + it.r);
+        }
+        return { x: cx, y: cy, z: cz, r: radius, alongX: maxX - minX >= maxZ - minZ };
+    }
+
+    function emitGroup(items) {
+        if (items.length == 0 || opCount >= MAX_OPS - 1) {
+            return;
+        }
+        var sphere = sphereAround(items);
+        var groupAt = opCount;
+        opCount = opCount + 1;
+        if (items.length <= GROUP_LEAF) {
+            for (var it in items) {
+                if (opCount >= MAX_OPS) {
+                    break;
+                }
+                writeOp(opCount, OP_UNION, it.kind, 0, it.k, it.x, it.y, it.z, it.s, it.e0, it.e1, it.e2, it.e3);
+                opCount = opCount + 1;
+            }
+        } else {
+            var low = [];
+            var high = [];
+            for (var it in items) {
+                var coord = it.z;
+                var middle = sphere.z;
+                if (sphere.alongX) {
+                    coord = it.x;
+                    middle = sphere.x;
+                }
+                if (coord < middle) {
+                    low.append(it);
+                } else {
+                    high.append(it);
+                }
+            }
+            if (low.length == 0 || high.length == 0) {
+                low = [];
+                high = [];
+                for (var j = 0; j < items.length; j = j + 1) {
+                    if (j * 2 < items.length) {
+                        low.append(items[j]);
+                    } else {
+                        high.append(items[j]);
+                    }
+                }
+            }
+            emitGroup(low);
+            emitGroup(high);
+        }
+        writeOp(groupAt, OP_GROUP, 0, opCount, 0, sphere.x, sphere.y, sphere.z, sphere.r, 0, 0, 0, 0);
+    }
+
+    // ---- maze: 19 by 26. # wall, . dot, o power, space corridor, ~ void, = gate, H house ----
+
+    var MAP = [
+        "###################",
+        "#........#........#",
+        "#.##.###.#.###.##.#",
+        "#o##.###.#.###.##o#",
+        "#.##.###.#.###.##.#",
+        "#.................#",
+        "#.##.#.#####.#.##.#",
+        "#.##.#.#####.#.##.#",
+        "#....#...#...#....#",
+        "####.### # ###.####",
+        "~~~#.#       #.#~~~",
+        "~~~#.# ##=## #.#~~~",
+        "####.# #HHH# #.####",
+        ".....# #BKI# #.....",
+        "####.# #HCH# #.####",
+        "~~~#.# ##### #.#~~~",
+        "~~~#.#       #.#~~~",
+        "####.# ##### #.####",
+        "#........#........#",
+        "#.##.###.#.###.##.#",
+        "#o..#....P....#..o#",
+        "#.##.#.#####.#.##.#",
+        "#....#...#...#....#",
+        "#.##.###.#.###.##.#",
+        "#.................#",
+        "###################"
+    ];
+
+    var DX = [1, 0, -1, 0];
+    var DY = [0, 1, 0, -1];
+    var YAW = [0.0, 1.5707963, 3.14159265, -1.5707963];
+    var GHOST_KIND = [K_BLINKY, K_PINKY, K_INKY, K_CLYDE];
+    var GHOST_RELEASE = [0.0, 2.0, 5.0, 8.0];
+
+    var baseTiles = [];
+    var tiles = [];
+    var walls = [];
+    var pacHomeC = 9;
+    var pacHomeR = 20;
+    var gateCol = 9;
+    var gateRow = 11;
+    var homeCol = [8, 9, 10, 9];
+    var homeRow = [13, 13, 13, 14];
+    var pelletsTotal = 0;
+
+    function cellX(c) {
+        return c - (COLS - 1) * 0.5;
+    }
+
+    function cellZ(r) {
+        return r - (ROWS - 1) * 0.5;
+    }
+
+    function tileAt(c, r) {
+        if (c < 0 || r < 0 || c >= COLS || r >= ROWS) {
+            return 5;
+        }
+        return tiles[r * COLS + c];
+    }
+
+    function parseMap() {
+        baseTiles = [];
+        pelletsTotal = 0;
+        for (var r = 0; r < ROWS; r = r + 1) {
+            var line = MAP[r];
+            for (var c = 0; c < COLS; c = c + 1) {
+                var ch = str.substring(line, c, c + 1);
+                var code = 1;
+                if (ch == "#") {
+                    code = 0;
+                } else if (ch == ".") {
+                    code = 2;
+                    pelletsTotal = pelletsTotal + 1;
+                } else if (ch == "o") {
+                    code = 3;
+                    pelletsTotal = pelletsTotal + 1;
+                } else if (ch == "=") {
+                    code = 4;
+                    gateCol = c;
+                    gateRow = r;
+                } else if (ch == "~") {
+                    code = 5;
+                } else if (ch == "H" || ch == "B" || ch == "K" || ch == "I" || ch == "C") {
+                    code = 6;
+                    var gi = 0;
+                    if (ch == "K") {
+                        gi = 1;
+                    } else if (ch == "I") {
+                        gi = 2;
+                    } else if (ch == "C") {
+                        gi = 3;
+                    }
+                    if (ch != "H") {
+                        homeCol[gi] = c;
+                        homeRow[gi] = r;
+                    }
+                } else if (ch == "P") {
+                    code = 1;
+                    pacHomeC = c;
+                    pacHomeR = r;
+                }
+                baseTiles.append(code);
+            }
+        }
+    }
+
+    function copyTiles() {
+        tiles = [];
+        for (var i = 0; i < baseTiles.length; i = i + 1) {
+            tiles.append(baseTiles[i]);
+        }
+    }
+
+    function addWall(col, row, wlen, hlen, hy) {
+        var cx = col + (wlen - 1) * 0.5;
+        var cz = row + (hlen - 1) * 0.5;
+        walls.append({
+            x: cellX(cx),
+            y: hy,
+            z: cellZ(cz),
+            hx: wlen * 0.5,
+            hy: hy,
+            hz: hlen * 0.5
+        });
+    }
+
+    function buildWalls() {
+        walls = [];
+        var used = [];
+        for (var i = 0; i < COLS * ROWS; i = i + 1) {
+            used.append(0);
+        }
+        for (var y = 0; y < ROWS; y = y + 1) {
+            for (var x = 0; x < COLS; x = x + 1) {
+                var id = y * COLS + x;
+                if (baseTiles[id] != 0 || used[id] == 1) {
+                    continue;
+                }
+                var wlen = 1;
+                while (x + wlen < COLS && baseTiles[id + wlen] == 0 && used[id + wlen] == 0) {
+                    wlen = wlen + 1;
+                }
+                if (wlen == 1) {
+                    var hlen = 1;
+                    while (y + hlen < ROWS) {
+                        var down = (y + hlen) * COLS + x;
+                        if (baseTiles[down] != 0 || used[down] == 1) {
+                            break;
+                        }
+                        if (x + 1 < COLS && baseTiles[down + 1] == 0 && used[down + 1] == 0) {
+                            break;
+                        }
+                        hlen = hlen + 1;
+                    }
+                    for (var k = 0; k < hlen; k = k + 1) {
+                        used[(y + k) * COLS + x] = 1;
+                    }
+                    addWall(x, y, 1, hlen, 0.64);
+                } else {
+                    for (var k = 0; k < wlen; k = k + 1) {
+                        used[id + k] = 1;
+                    }
+                    addWall(x, y, wlen, 1, 0.64);
+                }
+            }
+        }
+        // A lintel over the ghost gate, open underneath so the ghosts can leave.
+        walls.append({
+            x: cellX(gateCol),
+            y: 1.05,
+            z: cellZ(gateRow),
+            hx: 0.46,
+            hy: 0.14,
+            hz: 0.16
+        });
+    }
+
+    function mover(c, r, dir) {
+        return { col: c, row: r, destC: c, destR: r, wrapC: c, progress: 0.0, dir: dir, queued: -1 };
+    }
+
+    var mode = "title";
+    var paused = false;
+    var muted = false;
+    var reflectOn = false;
+    var fxaaOn = true;
+    var crtOn = false;
+    var skipOn = true;
+    var audioReady = false;
+    var timeSec = 0.0;
+    var clock = 0.0;
+    var score = 0;
+    var hiScore = 0;
+    var saved = game.load("sdf-pacman-hi");
+    if (saved != null) {
+        hiScore = int(saved);
+    }
+    var lives = 3;
+    var pelletsLeft = 0;
+    var frightLeft = 0.0;
+    var chain = 1;
+    var chaseMode = 0;
+    var modeLeft = 7.0;
+    var startedMove = false;
+    var deadLeft = 0.0;
+    var flash = 0.0;
+    var flashColor = [1.0, 0.9, 0.4];
+    var siren = null;
+    var waka = 0;
+    var pac = mover(9, 20, 2);
+    var ghosts = [];
+
+    function resetActors() {
+        pac = mover(pacHomeC, pacHomeR, 2);
+        startedMove = false;
+        ghosts = [];
+        for (var i = 0; i < 4; i = i + 1) {
+            var g = mover(homeCol[i], homeRow[i], 3);
+            g.kind = GHOST_KIND[i];
+            g.freed = false;
+            g.eyes = false;
+            g.release = clock + GHOST_RELEASE[i];
+            g.homeC = homeCol[i];
+            g.homeR = homeRow[i];
+            if (i == 0) {
+                g.scatterC = COLS - 2;
+                g.scatterR = 1;
+            } else if (i == 1) {
+                g.scatterC = 1;
+                g.scatterR = 1;
+            } else if (i == 2) {
+                g.scatterC = COLS - 2;
+                g.scatterR = ROWS - 2;
+            } else {
+                g.scatterC = 1;
+                g.scatterR = ROWS - 2;
+            }
+            ghosts.append(g);
+        }
+    }
+
+    function startLevel() {
+        copyTiles();
+        pelletsLeft = pelletsTotal;
+        clock = 0.0;
+        frightLeft = 0.0;
+        chain = 1;
+        chaseMode = 0;
+        modeLeft = 7.0;
+        deadLeft = 0.0;
+        resetActors();
+    }
+
+    function startGame() {
+        score = 0;
+        lives = 3;
+        startLevel();
+        mode = "play";
+        tone(392, 90, "square", 0.1);
+        tone(523, 90, "square", 0.1);
+        tone(659, 160, "square", 0.1);
+    }
+
+    function noteHi() {
+        if (score > hiScore) {
+            hiScore = score;
+            game.save("sdf-pacman-hi", hiScore);
+        }
+    }
+
+    function tone(freq, ms, wave0, volume) {
+        if (audioReady && !muted) {
+            game.audioPlayTone(freq, ms, wave0, volume);
+        }
+    }
+
+    function stopSiren() {
+        if (siren != null) {
+            game.audioStopVoice(siren);
+            siren = null;
+        }
+    }
+
+    function syncSiren() {
+        var want = audioReady && !muted && !paused && mode == "play";
+        if (!want) {
+            stopSiren();
+            return;
+        }
+        if (siren == null) {
+            siren = game.audioCreateVoice({ "wave": "sine", "freq": 190, "volume": 0.045 });
+        }
+        var left = 0.0;
+        if (pelletsTotal > 0) {
+            left = pelletsLeft / pelletsTotal;
+        }
+        var freq = 170.0 + (1.0 - left) * 280.0;
+        if (frightLeft > 0) {
+            freq = 120.0 + math.abs(math.sin(timeSec * 8.0)) * 40.0;
+        }
+        game.audioSetVoice(siren, { "freq": freq, "volume": 0.045 });
+    }
+
+    function nextCell(c, r, dir) {
+        var nc = c + DX[dir];
+        var nr = r + DY[dir];
+        if (nr < 0 || nr >= ROWS) {
+            return null;
+        }
+        var wrap = nc;
+        if (nc < 0) {
+            wrap = COLS - 1;
+        } else if (nc >= COLS) {
+            wrap = 0;
+        }
+        if (nc < 0 || nc >= COLS) {
+            var edge = tileAt(wrap, nr);
+            if (edge == 0 || edge == 5) {
+                return null;
+            }
+        }
+        return { col: nc, row: nr, wrap: wrap };
+    }
+
+    function canEnter(c, r, dir, kind) {
+        var n = nextCell(c, r, dir);
+        if (n == null) {
+            return false;
+        }
+        var t = tileAt(n.wrap, n.row);
+        if (t == 0 || t == 5) {
+            return false;
+        }
+        if (t == 4 || t == 6) {
+            if (kind == "pac" || kind == "ghost") {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function beginMove(m, dir, extra) {
+        var n = nextCell(m.col, m.row, dir);
+        m.dir = dir;
+        m.destC = n.col;
+        m.destR = n.row;
+        m.wrapC = n.wrap;
+        m.progress = extra;
+    }
+
+    function moving(m) {
+        return m.destC != m.col || m.destR != m.row;
+    }
+
+    function reverseMover(m) {
+        if (!moving(m) || m.destC < 0 || m.destC >= COLS) {
+            return;
+        }
+        var oc = m.col;
+        var orow = m.row;
+        m.col = m.destC;
+        m.row = m.destR;
+        m.destC = oc;
+        m.destR = orow;
+        m.wrapC = oc;
+        m.progress = 1.0 - m.progress;
+        m.dir = (m.dir + 2) % 4;
+    }
+
+    function ghostTarget(g) {
+        if (g.eyes) {
+            return { col: g.homeC, row: g.homeR };
+        }
+        if (!g.freed) {
+            return { col: gateCol, row: gateRow - 1 };
+        }
+        if (chaseMode == 0 || (g.kind == K_CLYDE && (pac.col - g.col) * (pac.col - g.col) + (pac.row - g.row) * (pac.row - g.row) < 36)) {
+            return { col: g.scatterC, row: g.scatterR };
+        }
+        if (g.kind == K_PINKY) {
+            return { col: pac.col + DX[pac.dir] * 4, row: pac.row + DY[pac.dir] * 4 };
+        }
+        if (g.kind == K_INKY) {
+            var ax = pac.col + DX[pac.dir] * 2;
+            var ay = pac.row + DY[pac.dir] * 2;
+            return { col: ax + (ax - ghosts[0].col), row: ay + (ay - ghosts[0].row) };
+        }
+        return { col: pac.col, row: pac.row };
+    }
+
+    function think(g, kind) {
+        var back = (g.dir + 2) % 4;
+        var choice = [];
+        for (var d = 0; d < 4; d = d + 1) {
+            if (d != back && canEnter(g.col, g.row, d, kind)) {
+                choice.append(d);
+            }
+        }
+        if (choice.length == 0) {
+            if (canEnter(g.col, g.row, back, kind)) {
+                return back;
+            }
+            return -1;
+        }
+        if (frightLeft > 0 && !g.eyes && g.freed) {
+            return choice[math.randomInt(0, choice.length - 1)];
+        }
+        var target = ghostTarget(g);
+        var best = choice[0];
+        var bestDist = 1000000.0;
+        for (var n = 0; n < choice.length; n = n + 1) {
+            var cell = nextCell(g.col, g.row, choice[n]);
+            var dc = cell.wrap - target.col;
+            var dr = cell.row - target.row;
+            var dist = dc * dc + dr * dr;
+            if (dist < bestDist) {
+                bestDist = dist;
+                best = choice[n];
+            }
+        }
+        return best;
+    }
+
+    function eatAt(c, r) {
+        var t = tileAt(c, r);
+        if (t != 2 && t != 3) {
+            return;
+        }
+        tiles[r * COLS + c] = 1;
+        pelletsLeft = pelletsLeft - 1;
+        if (t == 3) {
+            score = score + 50;
+            frightLeft = 6.0;
+            chain = 1;
+            for (var g in ghosts) {
+                if (g.freed && !g.eyes) {
+                    reverseMover(g);
+                }
+            }
+            tone(160, 90, "square", 0.1);
+            tone(240, 140, "square", 0.1);
+        } else {
+            score = score + 10;
+            if (waka == 0) {
+                tone(520, 45, "square", 0.05);
+                waka = 1;
+            } else {
+                tone(680, 45, "square", 0.05);
+                waka = 0;
+            }
+        }
+        noteHi();
+        if (pelletsLeft <= 0) {
+            mode = "win";
+            stopSiren();
+            tone(523, 80, "square", 0.1);
+            tone(659, 80, "square", 0.1);
+            tone(784, 80, "square", 0.1);
+            tone(1047, 220, "square", 0.12);
+        }
+    }
+
+    function advance(m, dt, speed, kind) {
+        if (moving(m)) {
+            m.progress = m.progress + speed * dt;
+            if (m.progress < 1.0) {
+                return;
+            }
+            var extra = m.progress - 1.0;
+            m.col = m.wrapC;
+            m.row = m.destR;
+            m.destC = m.col;
+            m.destR = m.row;
+            m.wrapC = m.col;
+            m.progress = 0.0;
+            if (kind == "pac") {
+                eatAt(m.col, m.row);
+                if (mode != "play") {
+                    return;
+                }
+            }
+            var next = m.dir;
+            if (kind == "pac") {
+                if (m.queued >= 0 && canEnter(m.col, m.row, m.queued, kind)) {
+                    next = m.queued;
+                }
+            } else {
+                next = think(m, kind);
+            }
+            if (next >= 0 && canEnter(m.col, m.row, next, kind)) {
+                beginMove(m, next, extra);
+            } else if (kind == "pac" && canEnter(m.col, m.row, m.dir, kind)) {
+                beginMove(m, m.dir, extra);
+            }
+            return;
+        }
+        var next = m.dir;
+        if (kind == "pac") {
+            if (m.queued >= 0 && canEnter(m.col, m.row, m.queued, kind)) {
+                next = m.queued;
+            }
+            if (canEnter(m.col, m.row, next, kind)) {
+                beginMove(m, next, 0.0);
+            }
+            return;
+        }
+        next = think(m, kind);
+        if (next >= 0 && canEnter(m.col, m.row, next, kind)) {
+            beginMove(m, next, 0.0);
+        }
+    }
+
+    function actorX(m) {
+        return cellX(m.col + (m.destC - m.col) * m.progress);
+    }
+
+    function actorZ(m) {
+        return cellZ(m.row + (m.destR - m.row) * m.progress);
+    }
+
+    function killPac() {
+        mode = "dead";
+        deadLeft = 1.15;
+        lives = lives - 1;
+        flash = 1.0;
+        flashColor = [1.0, 0.85, 0.3];
+        stopSiren();
+        tone(180, 180, "sawtooth", 0.12);
+        tone(120, 220, "sawtooth", 0.1);
+        tone(70, 320, "triangle", 0.1);
+    }
+
+    function eatGhost(g) {
+        g.eyes = true;
+        var points = 200 * chain;
+        if (points > 1600) {
+            points = 1600;
+        }
+        score = score + points;
+        chain = chain * 2;
+        if (chain > 8) {
+            chain = 8;
+        }
+        noteHi();
+        flash = 0.45;
+        flashColor = [0.7, 0.85, 1.0];
+        tone(440, 50, "square", 0.1);
+        tone(660, 50, "square", 0.1);
+        tone(880, 90, "square", 0.1);
+    }
+
+    function collide() {
+        var px = actorX(pac);
+        var pz = actorZ(pac);
+        for (var g in ghosts) {
+            if (g.eyes) {
+                continue;
+            }
+            var dx = px - actorX(g);
+            var dz = pz - actorZ(g);
+            if (dx * dx + dz * dz < 0.4) {
+                if (frightLeft > 0 && g.freed) {
+                    eatGhost(g);
+                } else {
+                    killPac();
+                    return;
+                }
+            }
+        }
+    }
+
+    function ghostKind(g) {
+        if (g.eyes) {
+            return "eyes";
+        }
+        if (!g.freed) {
+            if (clock < g.release) {
+                return "wait";
+            }
+            return "leave";
+        }
+        return "ghost";
+    }
+
+    function updateGhosts(dt) {
+        for (var g in ghosts) {
+            var kind = ghostKind(g);
+            var speed = 5.05;
+            if (g.eyes) {
+                speed = 9.0;
+            } else if (!g.freed) {
+                speed = 4.2;
+            } else if (frightLeft > 0) {
+                speed = 3.15;
+            }
+            if (kind != "wait") {
+                advance(g, dt, speed, kind);
+            }
+            if (!g.freed && !g.eyes && g.row < gateRow) {
+                var t = tileAt(g.col, g.row);
+                if (t != 4 && t != 6) {
+                    g.freed = true;
+                }
+            }
+            if (g.eyes && g.col == g.homeC && g.row == g.homeR && !moving(g)) {
+                g.eyes = false;
+                g.freed = false;
+                g.release = clock + 0.7;
+                g.dir = 3;
+            }
+        }
+    }
+
+    function updatePlay(dt) {
+        var turn = -1;
+        if (three.wasKeyPressed("arrowright") || three.wasKeyPressed("d")) {
+            turn = 0;
+        } else if (three.wasKeyPressed("arrowdown") || three.wasKeyPressed("s")) {
+            turn = 1;
+        } else if (three.wasKeyPressed("arrowleft") || three.wasKeyPressed("a")) {
+            turn = 2;
+        } else if (three.wasKeyPressed("arrowup") || three.wasKeyPressed("w")) {
+            turn = 3;
+        }
+        if (turn >= 0) {
+            pac.queued = turn;
+            startedMove = true;
+            if ((pac.dir + 2) % 4 == turn) {
+                reverseMover(pac);
+            }
+        }
+        clock = clock + dt;
+        modeLeft = modeLeft - dt;
+        if (modeLeft <= 0) {
+            if (chaseMode == 0) {
+                chaseMode = 1;
+                modeLeft = 20.0;
+            } else {
+                chaseMode = 0;
+                modeLeft = 7.0;
+            }
+            if (frightLeft <= 0) {
+                for (var g in ghosts) {
+                    if (g.freed && !g.eyes) {
+                        reverseMover(g);
+                    }
+                }
+            }
+        }
+        var prevFright = frightLeft;
+        frightLeft = frightLeft - dt;
+        if (frightLeft < 0) {
+            frightLeft = 0;
+        }
+        if (prevFright > 0 && frightLeft == 0) {
+            chain = 1;
+            for (var g in ghosts) {
+                if (g.freed && !g.eyes) {
+                    reverseMover(g);
+                }
+            }
+        }
+        var pacSpeed = 5.5;
+        if (frightLeft > 0) {
+            pacSpeed = 6.3;
+        }
+        if (startedMove) {
+            advance(pac, dt, pacSpeed, "pac");
+        }
+        if (mode != "play") {
+            return;
+        }
+        updateGhosts(dt);
+        if (mode == "play") {
+            collide();
+        }
+    }
+
+    function updateDead(dt) {
+        deadLeft = deadLeft - dt;
+        if (deadLeft > 0) {
+            return;
+        }
+        if (lives <= 0) {
+            mode = "over";
+            noteHi();
+            return;
+        }
+        frightLeft = 0;
+        chain = 1;
+        resetActors();
+        mode = "play";
+    }
+
+    function readTurn() {
+        if (three.wasKeyPressed("arrowright") || three.wasKeyPressed("d")) {
+            return 0;
+        }
+        if (three.wasKeyPressed("arrowdown") || three.wasKeyPressed("s")) {
+            return 1;
+        }
+        if (three.wasKeyPressed("arrowleft") || three.wasKeyPressed("a")) {
+            return 2;
+        }
+        if (three.wasKeyPressed("arrowup") || three.wasKeyPressed("w")) {
+            return 3;
+        }
+        return -1;
+    }
+
+    var camX = 0.0;
+    var camY = 12.0;
+    var camZ = 16.0;
+    var fwd = [0.0, -0.4, -1.0];
+    var right = [1.0, 0.0, 0.0];
+    var upv = [0.0, 1.0, 0.0];
+    var followX = 0.0;
+    var followY = 12.0;
+    var followZ = 16.0;
+
+    function aimCamera(ex, ey, ez, tx, ty, tz) {
+        camX = ex;
+        camY = ey;
+        camZ = ez;
+        var fx = tx - ex;
+        var fy = ty - ey;
+        var fz = tz - ez;
+        var fl = math.sqrt(fx * fx + fy * fy + fz * fz);
+        fx = fx / fl;
+        fy = fy / fl;
+        fz = fz / fl;
+        var rl = math.sqrt(fz * fz + fx * fx);
+        if (rl < 0.001) {
+            rl = 0.001;
+        }
+        var rx = (0.0 - fz) / rl;
+        var rz = fx / rl;
+        fwd = [fx, fy, fz];
+        right = [rx, 0.0, rz];
+        upv = [0.0 * fz - rz * fy, rz * fx - rx * fz, rx * fy - 0.0 * fx];
+    }
+
+    function updateCamera(dt) {
+        var wantX = 0.0;
+        var wantY = 11.5;
+        var wantZ = 15.0;
+        var lookX = 0.0;
+        var lookY = 0.4;
+        var lookZ = 0.0;
+        if (mode == "title" || mode == "over" || mode == "win") {
+            var a = timeSec * 0.18;
+            wantX = math.sin(a) * 14.0;
+            wantY = 11.0 + math.sin(timeSec * 0.27) * 1.1;
+            wantZ = math.cos(a) * 14.0;
+        } else {
+            var face = pac.dir;
+            if (pac.queued >= 0) {
+                face = pac.dir;
+            }
+            var px = actorX(pac);
+            var pz = actorZ(pac);
+            var fx = DX[face];
+            var fz = DY[face];
+            wantX = px - fx * 5.4;
+            wantY = 6.3;
+            wantZ = pz - fz * 5.4;
+            lookX = px + fx * 2.0;
+            lookY = 0.35;
+            lookZ = pz + fz * 2.0;
+        }
+        var ease = math.min(dt * 4.0, 1.0);
+        followX = followX + (wantX - followX) * ease;
+        followY = followY + (wantY - followY) * ease;
+        followZ = followZ + (wantZ - followZ) * ease;
+        aimCamera(followX, followY, followZ, lookX, lookY, lookZ);
+    }
+
+    function mouthAngle() {
+        if (mode == "dead") {
+            return 1.05;
+        }
+        if (mode == "play" && startedMove) {
+            return 0.12 + 0.62 * math.abs(math.sin(timeSec * 14.0));
+        }
+        return 0.18 + 0.22 * math.abs(math.sin(timeSec * 2.4));
+    }
+
+    function ghostMode(g) {
+        if (g.eyes) {
+            return 2.0;
+        }
+        if (frightLeft > 0 && g.freed) {
+            return 1.0;
+        }
+        return 0.0;
+    }
+
+    function ghostFlash(g) {
+        if (frightLeft > 0 && frightLeft < 2.0 && g.freed && !g.eyes && math.sin(timeSec * 16.0) > 0) {
+            return 0.85;
+        }
+        return 0.0;
+    }
+
+    function buildProgram() {
+        opCount = 0;
+        boxMin = [1, 1, 1];
+        boxMax = [-1, -1, -1];
+        var items = [];
+        for (var w in walls) {
+            var bound = math.sqrt(w.hx * w.hx + w.hy * w.hy + w.hz * w.hz) + 0.06;
+            items.append(item(K_WALL, 0.001, w.x, w.y, w.z, bound, w.hx, w.hy, w.hz, 0));
+        }
+        for (var r = 0; r < ROWS; r = r + 1) {
+            for (var c = 0; c < COLS; c = c + 1) {
+                var t = tiles[r * COLS + c];
+                if (t == 2) {
+                    items.append(item(K_SPHERE, 0.001, cellX(c), 0.12, cellZ(r), 0.075, 1.0, 0.84, 0.2, 0));
+                } else if (t == 3) {
+                    var pulse = 0.15 + 0.03 * math.sin(timeSec * 5.0);
+                    items.append(item(K_SPHERE, 0.001, cellX(c), 0.18, cellZ(r), pulse, 1.0, 0.92, 0.45, 0.95));
+                }
+            }
+        }
+        var pacS = 0.4;
+        if (mode == "dead") {
+            pacS = 0.4 * math.max(deadLeft / 1.15, 0.05);
+        }
+        var pacYaw = YAW[pac.dir];
+        items.append(item(K_PAC, 0.001, actorX(pac), 0.4, actorZ(pac), pacS, pacYaw, mouthAngle(), mode == "dead" ? 0.35 : 0.0, 0));
+        for (var g in ghosts) {
+            var gs = 0.46;
+            if (g.eyes) {
+                gs = 0.42;
+            }
+            items.append(item(g.kind, 0.001, actorX(g), 0.46, actorZ(g), gs, YAW[g.dir], ghostMode(g), ghostFlash(g), 0));
+        }
+        for (var it in items) {
+            growBox(it.x, it.y, it.z, it.r + 0.02);
+        }
+        emitGroup(items);
+    }
+
+    parseMap();
+    copyTiles();
+    pelletsLeft = pelletsTotal;
+    buildWalls();
+    resetActors();
+
+    var renderer = three.createRenderer(width, height, "#pm-stage");
+    three.setClearColor(renderer, "#070b14");
+    three.setRendererSize(renderer, width, height);
+    three.setAutoRenderScale(renderer, 60, 0.5, 1.25);
+
+    var hud = dom.create("div");
+    dom.attr(hud, "id", "pm-hud");
+    dom.append(stage, hud);
+
+    var scene = three.createScene();
+    var camera = three.createOrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+    buildProgram();
+    var programTexture = three.createDataTexture(MAX_OPS * 3, 1, program, { "type": "float" });
+
+    var material = three.createShaderMaterial({
+        "vertexShader": vertexShader,
+        "fragmentShader": fragmentShader,
+        "depthWrite": false,
+        "uniforms": {
+            "uProgram": programTexture,
+            "uCount": opCount,
+            "uSkip": 1.0,
+            "uReflect": 0.0,
+            "uBoxMin": boxMin,
+            "uBoxMax": boxMax,
+            "uCamPos": [0, 12, 16],
+            "uCamForward": [0, -0.45, -1],
+            "uCamRight": [1, 0, 0],
+            "uCamUp": [0, 1, 0],
+            "uTanHalf": tanHalf,
+            "uAspect": aspect,
+            "uTime": 0.0,
+            "uFlash": 0.0,
+            "uFlashColor": [1, 0.9, 0.4]
+        }
+    });
+    three.add(scene, three.createMesh(three.createPlaneGeometry(2, 2), material));
+
+    var targetW = width;
+    var targetH = height;
+    var sceneTarget = three.createRenderTarget(targetW, targetH, { "depth": false, "linear": true });
+    var postMaterial = three.createShaderMaterial({
+        "vertexShader": vertexShader,
+        "fragmentShader": postShader,
+        "depthWrite": false,
+        "uniforms": {
+            "uScene": three.getTargetTexture(sceneTarget),
+            "uResolution": [targetW, targetH],
+            "uScreen": [width, height],
+            "uFxaa": 1.0,
+            "uCrt": 0.0,
+            "uTime": 0.0
+        }
+    });
+    var postScene = three.createScene();
+    three.add(postScene, three.createMesh(three.createPlaneGeometry(2, 2), postMaterial));
+
+    var statsMs = 0.0;
+    var lastHud = "";
+    var statsText = "";
+
+    function pad(n, size) {
+        var text = string(n);
+        while (text.length < size) {
+            text = "0" + text;
+        }
+        return text;
+    }
+
+    function showHud() {
+        var livesText = "";
+        for (var i = 0; i < lives; i = i + 1) {
+            livesText = livesText + "&#9679; ";
+        }
+        var html = "<div class='bar'><div><span class='lbl'>score</span><span class='num'>" + pad(score, 5) + "</span></div>";
+        html = html + "<div><span class='lbl'>hi-score</span><span class='num'>" + pad(hiScore, 5) + "</span></div>";
+        html = html + "<div><span class='lbl'>dots</span><span class='num'>" + string(pelletsLeft) + "</span></div>";
+        html = html + "<div><span class='lbl'>lives</span><span class='lives'>" + (livesText == "" ? "-" : livesText) + "</span></div></div>";
+        if (mode == "title") {
+            html = html + "<div class='center'><div class='big'>SDF PAC-MAN</div>";
+            html = html + "<div class='sub'>arrows or wasd &nbsp; eat the dots &nbsp; power dots turn the chase</div>";
+            html = html + "<div class='sub blink'>press enter</div></div>";
+        } else if (mode == "win") {
+            html = html + "<div class='center'><div class='big'>CLEARED</div>";
+            html = html + "<div class='sub'>score " + pad(score, 5) + "</div>";
+            html = html + "<div class='sub blink'>press enter</div></div>";
+        } else if (mode == "over") {
+            html = html + "<div class='center'><div class='big'>GAME OVER</div>";
+            html = html + "<div class='sub'>score " + pad(score, 5) + " &nbsp; hi-score " + pad(hiScore, 5) + "</div>";
+            html = html + "<div class='sub blink'>press enter</div></div>";
+        } else if (paused) {
+            html = html + "<div class='center'><div class='big'>PAUSED</div><div class='sub'>p resumes</div></div>";
+        }
+        html = html + "<div class='stats'>" + statsText + "</div>";
+        if (html != lastHud) {
+            lastHud = html;
+            dom.html(hud, html);
+        }
+    }
+
+    function update(dtMs) {
+        var dt = math.min(dtMs, 50) / 1000.0;
+        var turn = readTurn();
+
+        if (three.wasKeyPressed("enter") || three.wasKeyPressed(" ") || turn >= 0) {
+            if (!audioReady) {
+                game.audioInit();
+                game.audioSetMasterVolume(0.45);
+                audioReady = true;
+            }
+        }
+        if (three.wasKeyPressed("m")) {
+            muted = !muted;
+        }
+        if (three.wasKeyPressed("f")) {
+            reflectOn = !reflectOn;
+            three.setUniform(material, "uReflect", reflectOn ? 1.0 : 0.0);
+        }
+        if (three.wasKeyPressed("x")) {
+            fxaaOn = !fxaaOn;
+            three.setUniform(postMaterial, "uFxaa", fxaaOn ? 1.0 : 0.0);
+        }
+        if (three.wasKeyPressed("c")) {
+            crtOn = !crtOn;
+            three.setUniform(postMaterial, "uCrt", crtOn ? 1.0 : 0.0);
+        }
+        if (three.wasKeyPressed("b")) {
+            skipOn = !skipOn;
+            three.setUniform(material, "uSkip", skipOn ? 1.0 : 0.0);
+        }
+        if (mode == "play" && three.wasKeyPressed("p")) {
+            paused = !paused;
+        }
+        var startEdge = three.wasKeyPressed("enter") || three.wasKeyPressed(" ");
+        if ((mode == "title" || mode == "over" || mode == "win") && (startEdge || turn >= 0)) {
+            startGame();
+            if (turn >= 0) {
+                pac.queued = turn;
+                startedMove = true;
+            }
+        }
+
+        if (!paused) {
+            timeSec = timeSec + dt;
+            if (mode == "play") {
+                updatePlay(dt);
+            } else if (mode == "dead") {
+                updateDead(dt);
+            }
+            flash = math.max(flash - dt * 2.2, 0.0);
+        }
+        syncSiren();
+        updateCamera(dt);
+
+        buildProgram();
+        three.updateDataTexture(programTexture, program);
+        uploads = uploads + 1;
+        three.setUniform(material, "uCount", opCount);
+        three.setUniform(material, "uBoxMin", boxMin);
+        three.setUniform(material, "uBoxMax", boxMax);
+        three.setUniform(material, "uCamPos", [camX, camY, camZ]);
+        three.setUniform(material, "uCamForward", fwd);
+        three.setUniform(material, "uCamRight", right);
+        three.setUniform(material, "uCamUp", upv);
+        three.setUniform(material, "uTime", timeSec);
+        three.setUniform(postMaterial, "uTime", timeSec);
+        three.setUniform(material, "uFlash", flash * 0.55);
+        three.setUniform(material, "uFlashColor", flashColor);
+
+        var stats = three.getStats();
+        if (stats.width > 0 && (stats.width != targetW || stats.height != targetH)) {
+            targetW = stats.width;
+            targetH = stats.height;
+            three.setTargetSize(sceneTarget, targetW, targetH);
+            three.setUniform(postMaterial, "uResolution", [targetW, targetH]);
+        }
+
+        statsMs = statsMs + dtMs;
+        if (statsMs > 250) {
+            statsMs = 0.0;
+            statsText = "instructions " + string(opCount) + " / " + string(MAX_OPS) + " · uploads "
+                + string(uploads) + " · culling " + (skipOn ? "on" : "off")
+                + " · reflections " + (reflectOn ? "on" : "off") + " · fxaa " + (fxaaOn ? "on" : "off")
+                + " · crt " + (crtOn ? "on" : "off")
+                + " · scale " + string(stats.renderScale) + "x · " + string(math.round(stats.fps)) + " fps";
+        }
+        showHud();
+    }
+
+    function render() {
+        three.renderToTarget(renderer, sceneTarget, scene, camera);
+        three.render(renderer, postScene, camera);
+    }
+
+    showHud();
+    three.start(update, render);
+}

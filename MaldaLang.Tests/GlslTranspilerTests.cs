@@ -459,6 +459,8 @@ public class GlslTranspilerTests : TestBase
     [InlineData("three_sdf_invaders.malda", "sdRoundBox", "float")]
     [InlineData("three_sdf_invaders.malda", "sdCapsule", "float")]
     [InlineData("three_sdf_invaders.malda", "sdEllipsoid", "float")]
+    [InlineData("three_sdf_pacman.malda", "yawXZ", "vec3")]
+    [InlineData("three_sdf_pacman.malda", "sdPacman", "float")]
     public void TypePass_AcceptsThePureKernelsOfTheSdfExamples(string file, string name, string returnType)
     {
         var path = Path.Combine(PlanningPaths.RepoRoot, "Examples", "Games", file);

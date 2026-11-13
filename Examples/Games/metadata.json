@@ -286,6 +286,30 @@
       "documentationTitle": "Browser games kit"
     },
     {
+      "name": "JS three.js SDF Pac-Man",
+      "description": "A 3D maze chase raymarched by the invaders bytecode shader: walls, dots, the muncher and four ghosts are instructions in a float data texture rewritten every frame, with a wedge-mouth SDF and frightened ghosts",
+      "file": "three_sdf_pacman.malda",
+      "track": "showcase",
+      "difficulty": "advanced",
+      "minutes": 12,
+      "concepts": [
+        "three.*",
+        "GLSL",
+        "@shader() local arrays",
+        "data texture",
+        "signed distance fields",
+        "game audio",
+        "JavaScript target"
+      ],
+      "prerequisites": [
+        "Games/three_sdf_invaders.malda"
+      ],
+      "learningGoal": "Reuse the SDF interpreter for a maze game: the host rebuilds the program and its bounding-sphere tree each frame, and calls shapeRadius by name so the groups match the shader.",
+      "expectedOutput": "Renders a neon maze on a dark floor. Enter or an arrow starts; arrows or WASD turn, P pauses. Eat the dots, and the power dots turn the ghosts blue.",
+      "documentationPath": "/docs/roadmap-games.md",
+      "documentationTitle": "Browser games kit"
+    },
+    {
       "name": "JS three.js GPU Billiards",
       "description": "Playable GPU billiards: cue locked to the white ball, mouse-on-table aim, hold-to-charge power, zoom/orbit stop, configurable cushion/ball restitution and felt friction, and a numbered rack traced through three.createShaderMaterial uniforms",
       "file": "three_shader_billiards.malda",
