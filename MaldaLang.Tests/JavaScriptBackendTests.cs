@@ -7900,7 +7900,7 @@ process.stdout.write("ok\n");
         var kernels = new[]
         {
             "smin", "sdRoundBox", "sdCapsule", "sdEllipsoid", "sdSquid", "sdCrab", "sdOctopus", "sdCannon", "sdShield",
-            "sdSaucer", "sdShape", "shapeRadius", "evalOp", "runProgram"
+            "sdSaucer", "sdShape", "shapeRadius", "cutBlend", "cutDistance", "evalOp", "runProgram"
         };
         var source = new StringBuilder();
         // The example's own top-level consts: the K_* / OP_* names its kernels read.

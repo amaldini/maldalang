@@ -13,8 +13,8 @@
 //
 // The shields are destructible SDF: a hit appends a CUT sphere after that shield's UNION, so the
 // crater is carved by the same bytecode, its rim glowing while the heat in the instruction cools.
-// The host runs the same shield bytecode (cpuShield) to know whether a shot hit material or flew
-// through an old hole. Debris spheres smooth-union with a wide blend, so explosions splash as goo.
+// The host tests a shot with the shader's own kernels (sdShield for the slab, cutDistance for
+// each crater) to know whether it hit material or flew through an old hole. Debris spheres smooth-union with a wide blend, so explosions splash as goo.
 //
 // Each ray first walks the program once, jumping past every GROUP it misses, and keeps two short
 // local lists: the shapes it passes near (marched every step) and the glowing ones (lasers, bombs,
@@ -143,7 +143,7 @@ function sdCannon(u: vec3, col: out vec4) -> float {
     return min(d, lamp);
 }
 
-// A shield: a chamfered slab with an arch underneath. cpuShield mirrors it on the host.
+// A shield: a chamfered slab with an arch underneath. The host calls it too (shieldDistance).
 @shader()
 function sdShield(u: vec3) -> float {
     var d: float = sdRoundBox(u, vec3(1.0, 0.5, 0.32), 0.08);
@@ -268,6 +268,20 @@ function haloSize(kind: int, s: float) -> float {
     return 0.05;
 }
 
+// A cut of a shape at distance d out of what is there at distance acc, with a rim k wide.
+// cutBlend is how much of what was there is left (0 inside the cut, 1 away from it), and
+// cutDistance the distance after the cut. The host carves its shields with the same two.
+@shader()
+function cutBlend(d: float, acc: float, k: float) -> float {
+    return clamp(0.5 + 0.5 * (d + acc) / k, 0.0, 1.0);
+}
+
+@shader()
+function cutDistance(d: float, acc: float, k: float) -> float {
+    var h: float = cutBlend(d, acc, k);
+    return mix(0.0 - d, acc, h) + k * h * (1.0 - h);
+}
+
 // Runs one instruction at p: the new distance so far, with the blended color in outTint.
 @shader()
 function evalOp(at: int, p: vec3, acc: float, tint: vec4, outTint: out vec4) -> float {
@@ -284,10 +298,9 @@ function evalOp(at: int, p: vec3, acc: float, tint: vec4, outTint: out vec4) -> 
         return mix(d, acc, h) - k * h * (1.0 - h);
     }
     // A cut: the crater wall glows molten while its heat (ext.w) lasts, then turns to char.
-    var hc: float = clamp(0.5 + 0.5 * (d + acc) / k, 0.0, 1.0);
     var crater: vec4 = mix(vec4(0.06, 0.07, 0.05, 0.0), vec4(1.0, 0.45, 0.1, 1.0), ext.w);
-    outTint = mix(crater, tint, hc);
-    return mix(0.0 - d, acc, hc) + k * hc * (1.0 - hc);
+    outTint = mix(crater, tint, cutBlend(d, acc, k));
+    return cutDistance(d, acc, k);
 }
 
 // The whole program at one point, for a ray that passes near more than MAX_CAND shapes (or with
@@ -770,6 +783,8 @@ var fragmentShader = glsl.compile({
         "shapeRadius",
         "haloColor",
         "haloSize",
+        "cutBlend",
+        "cutDistance",
         "evalOp",
         "runProgram",
         "rayBox",
@@ -1266,23 +1281,16 @@ if (root == null) {
         }
     }
 
-    // ---- the shield bytecode on the host: a shield, then its cuts, as the shader runs them ----
+    // ---- a shield on the host: the slab, then its cuts, with the kernels the shader runs ----
 
-    function cpuShield(sh, x, y, z) {
-        var ux = (x - sh.x) / SHIELD_SIZE;
-        var uy = (y - sh.y) / SHIELD_SIZE;
-        var uz = (z - sh.z) / SHIELD_SIZE;
-        var d = sdRoundBox([ux, uy, uz], [1.0, 0.5, 0.32], 0.08);
-        d = math.max(d, (math.abs(ux) + uy - 1.15) * 0.7071);
-        d = math.max(d, 0.0 - sdRoundBox([ux, uy + 0.5, uz], [0.36, 0.3, 0.6], 0.05));
-        d = d * SHIELD_SIZE;
+    function shieldDistance(sh, x, y, z) {
+        var u = [(x - sh.x) / SHIELD_SIZE, (y - sh.y) / SHIELD_SIZE, (z - sh.z) / SHIELD_SIZE];
+        var d = sdShield(u) * SHIELD_SIZE;
         for (var c in sh.cuts) {
             var cx = x - c.x;
             var cy = y - c.y;
             var cz = z - c.z;
-            var cd = math.sqrt(cx * cx + cy * cy + cz * cz) - c.r;
-            var hc = math.clamp(0.5 + 0.5 * (cd + d) / CUT_K, 0.0, 1.0);
-            d = 0.0 - cd + (d + cd) * hc + CUT_K * hc * (1.0 - hc);
+            d = cutDistance(math.sqrt(cx * cx + cy * cy + cz * cz) - c.r, d, CUT_K);
         }
         return d;
     }
@@ -1291,7 +1299,7 @@ if (root == null) {
     function shieldAt(x, y, z) {
         for (var sh in shields) {
             if (sh.alive && math.abs(x - sh.x) < 1.3 && math.abs(z - sh.z) < 0.7) {
-                if (cpuShield(sh, x, y, z) < 0.0) {
+                if (shieldDistance(sh, x, y, z) < 0.0) {
                     return sh;
                 }
             }
@@ -1553,7 +1561,7 @@ if (root == null) {
                 var iz = invaderBaseZ(inv.row) + formZ;
                 for (var sh in shields) {
                     if (sh.alive && math.abs(ix - sh.x) < 1.6 && math.abs(iz - sh.z) < 0.9) {
-                        if (cpuShield(sh, ix, SHIELD_Y, iz) < 0.5) {
+                        if (shieldDistance(sh, ix, SHIELD_Y, iz) < 0.5) {
                             carve(sh, ix, SHIELD_Y + 0.1, iz, 0.55, 0);
                         }
                     }

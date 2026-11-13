@@ -893,7 +893,7 @@ how they look and play is the maintainer's `malda play` check on a real GPU.
   `three_sdf_invaders.malda` delete the duplicated `K_*` / `OP_*` strings and
   move `MAX_CAND`, `MAX_GLOW`, `GLOW_R`, `FAR` to MALDA consts, then replace
   the host `boundRadius` with calls to `shapeRadius` (parked from G23a).
-- [ ] **4. Invaders example: the shield test.** Replace the formulas of
+- [x] **4. Invaders example: the shield test.** Replace the formulas of
   `cpuShield` with shared pure kernels, per the decision below: the host keeps
   its loop over `sh.cuts` and calls the shader's own `sdShield` for the slab
   and a new small kernel for one cut, which `evalOp` calls too. The compiled
