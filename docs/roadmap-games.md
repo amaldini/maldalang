@@ -665,18 +665,18 @@ culling. Today `@shader()` functions are GLSL-only: `JsTranspiler` skips them
 when it emits functions, so the examples copied them by hand in scalar host code.
 G23a (landed) emits a pure kernel as JavaScript when host code calls it. G23b
 (landed) lets a host-called kernel read top-level MALDA consts and, bound with
-`glsl.host("name", material)`, uniforms and data textures. The examples still
-carry the twins that need them; G23c converts them.
+`glsl.host("name", material)`, uniforms and data textures. G23c converted the
+examples: the host twins below are gone.
 
-| Example | Shader function | Hand-written host twin |
-|---------|-----------------|------------------------|
-| `three_sdf_interpreter.malda` | `sdShape` (+ `sdBox` / `sdTorus` / `sdCylinder`) | `cpuShape` |
-| `three_sdf_interpreter.malda` | `shapeRadius` | `boundRadius` |
-| `three_sdf_interpreter.malda` | the bytecode walk over `uProgram` | `cpuSceneDistance` |
-| `three_sdf_invaders.malda` | the shield SDF | `cpuShield` / `cpuRoundBox` |
-| `three_sdf_invaders.malda` | `shapeRadius` | `boundRadius` |
+| Example | Shader function | Hand-written host twin (history) | Replaced by |
+|---------|-----------------|----------------------------------|-------------|
+| `three_sdf_interpreter.malda` | `sdShape` (+ `sdBox` / `sdTorus` / `sdCylinder`) | `cpuShape` | calls to `sdShape` (G23a), then the bound walk (G23c) |
+| `three_sdf_interpreter.malda` | `shapeRadius` | `boundRadius` | calls to `shapeRadius` (G23a) |
+| `three_sdf_interpreter.malda` | the bytecode walk over `uProgram` | `cpuSceneDistance` | `glsl.host("sceneDistance", material)` (G23c) |
+| `three_sdf_invaders.malda` | the shield SDF | `cpuShield` / `cpuRoundBox` | `sdShield` + the new `cutDistance` kernel, called by name (G23a, G23c) |
+| `three_sdf_invaders.malda` | `shapeRadius` | `boundRadius` | calls to `shapeRadius`, once its `K_*` consts were MALDA consts (G23c) |
 
-Each pair is kept in step by a "mirrors … on the host" comment. A change to one
+Each pair was kept in step by a "mirrors … on the host" comment. A change to one
 side that misses the other is a silent gameplay bug: the shot passes through
 what the player sees. MALDA owns both emitters, so one function can feed both.
 
@@ -903,7 +903,7 @@ how they look and play is the maintainer's `malda play` check on a real GPU.
   `…MatchesTheRecordedHostTwin`) use the examples' own `sceneDistance` /
   shield kernels where they added their own; the recorded values do not
   change. `ExamplesParseGuardTests` and `ExamplesStyleGuardTests` green.
-- [ ] **6. Docs.** Remove the "mirrors … on the host" comments and the header
+- [x] **6. Docs.** Remove the "mirrors … on the host" comments and the header
   comments that name the deleted twins; chapter 28.10.1 (+
   `ReferenceManual/it/`) and `docs/javascript-backend.md` name what each
   example now shows; the table at the top of this section becomes history; a
