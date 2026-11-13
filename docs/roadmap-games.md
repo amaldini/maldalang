@@ -1,11 +1,11 @@
 # MALDA games platform plan
 
-**Status:** G0–G22 and G23a–G23b landed; G23c planned  
+**Status:** G0–G23 landed  
 **Created:** 2026-08-21  
 **Audience:** maintainers extending the JS `game.*` / `three.*` surface after Final 1.0
 
 This is the plan that made MALDA a **good platform for games people finish** —
-Love2D / Pico-8 / Phaser, not Unity. G0–G22 are landed. Prefer
+Love2D / Pico-8 / Phaser, not Unity. G0–G23 are landed. Prefer
 [`docs/javascript-backend.md`](javascript-backend.md),
 [Reference Manual 28](../ReferenceManual/28-browser-javascript-backend.html),
 and the deferred list at the end for engines that stay out of core.
@@ -80,7 +80,7 @@ top-level globals, Web IDE Desktop parity, product apps or vertical packs
 | 20 | **G20** Render scale + stats overlay | Landed | Per-pixel ray tracing ran at full devicePixelRatio with no way to trade resolution for fps or see the frame rate |
 | 21 | **G21** Instancing, shadows, fog | Landed | The raster path had one draw call per mesh, no shadows, and no fog, which pushed 3D scenes into one big fragment shader |
 | 22 | **G22** Audio voices + 3D sound | Landed | Continuous sounds were retriggered one-shots (choppy engines), and `pan` was stereo only with no listener |
-| 23 | **G23** Host-callable `@shader()` functions | G23a–G23b landed; G23c planned | SDF games write every distance function twice (GLSL kernel + hand-copied host twin) so the host can pick, collide and carve; the copies drift |
+| 23 | **G23** Host-callable `@shader()` functions | Landed | SDF games write every distance function twice (GLSL kernel + hand-copied host twin) so the host can pick, collide and carve; the copies drift |
 
 ```text
 G0  roadmap file                          (landed)
@@ -656,7 +656,7 @@ helpers) is the Pico-8 `map`/`mget` slice from the same file.
 
 ---
 
-## G23 — Host-callable `@shader()` functions (G23a–G23b landed)
+## G23 — Host-callable `@shader()` functions (landed)
 
 **Why:** A raymarched game needs its distance functions in two places. The
 fragment shader marches them; the host needs the same numbers to pick the
@@ -680,7 +680,7 @@ Each pair was kept in step by a "mirrors … on the host" comment. A change to o
 side that misses the other is a silent gameplay bug: the shot passes through
 what the player sees. MALDA owns both emitters, so one function can feed both.
 
-**Contract** (G23a as landed; G23b as landed is in the decided open questions and its checklist; G23c proposed)
+**Contract** (as landed; the G23b parts are in the decided open questions and its checklist)
 
 - Host MALDA may call an `@shader()` function by name: `var d = sdBox([qx, qy, qz], s);`.
   A shader function reached from host code is also emitted as JavaScript.
@@ -709,7 +709,7 @@ what the player sees. MALDA owns both emitters, so one function can feed both.
 |-------|-------|---------------------------|
 | **G23a** Pure functions (landed) | Scalar + vector params / locals / returns, control flow, local arrays, calls to other `@shader()` functions (emitted transitively), the built-in table above | `cpuShape`, `cpuRoundBox`, the interpreter's `boundRadius` |
 | **G23b** Consts, uniforms, data textures (landed) | A host-called function that reads a `consts` name, a uniform, or `texelFetch`es a `sampler2D` needs values. Bind them to a material: uniforms read the material's current values, and `texelFetch` on a `three.createDataTexture` handle reads its backing array | `cpuSceneDistance`, `cpuShield`, the invaders' `boundRadius` (its `shapeRadius` reads `K_*` consts) |
-| **G23c** Examples + docs | Convert both SDF examples to the single source and delete the twins; chapter 28.10.1 gains a "Calling a kernel from the host" section | the "mirrors …" comments |
+| **G23c** Examples + docs (landed) | Convert both SDF examples to the single source and delete the twins; chapter 28.10.1 gains a "Calling a kernel from the host" section | the "mirrors …" comments |
 
 G23a landed first and is useful alone. G23b landed with the binding shape and
 the source of consts decided in the open questions. G23c has its
@@ -908,10 +908,11 @@ how they look and play is the maintainer's `malda play` check on a real GPU.
   `ReferenceManual/it/`) and `docs/javascript-backend.md` name what each
   example now shows; the table at the top of this section becomes history; a
   `docs/spec/CHANGELOG.md` Unreleased row. `ReferenceManual` tests green.
-- [ ] **7. Close G23.** Mark the slice and the workstream landed here, in the
+- [x] **7. Close G23.** Mark the slice and the workstream landed here, in the
   priority table and in the one-line pointers (`AGENTS.md`, `llms.txt`,
   `docs/architecture.md`). Both examples need the maintainer's `malda play`
-  run before this box is ticked.
+  run before this box is ticked. (Run on a real GPU by the maintainer,
+  2026-11-13: both work.)
 
 **How the host tests a shield** — *decided 2026-11-13:* shared pure kernels,
 cuts from host state. Same formulas on both sides, the same timing as today (a
