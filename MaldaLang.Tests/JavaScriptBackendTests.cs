@@ -7848,19 +7848,13 @@ process.stdout.write("ok\n");
         Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);
 
         var example = File.ReadAllText(PlanningPaths.ResolveRepoFile("Examples", "Games", "three_sdf_interpreter.malda"));
-        var kernels = new[] { "sdBox", "sdTorus", "sdCylinder", "sdShape", "shapeColor", "shapeRadius", "runProgram" };
-        var source = new StringBuilder("const OP_UNION = 1;\nconst OP_CUT = 2;\nconst OP_GROUP = 3;\nconst FAR = 100000.0;\n\n");
+        // The example's own consts and kernels, with the sceneDistance kernel its host binds: the
+        // walk gives its color through `out`, so the host enters there.
+        var kernels = new[] { "sdBox", "sdTorus", "sdCylinder", "sdShape", "shapeColor", "shapeRadius", "runProgram", "sceneDistance" };
+        var source = new StringBuilder(ExtractLiteralConsts(example)).Append('\n');
         foreach (var name in kernels)
             source.Append(ExtractShaderFunction(example, name)).Append('\n');
-        // The walk gives its color through `out`: the host enters through a kernel that returns the
-        // distance, with the floor cpuSceneDistance adds.
         source.Append("""
-            @shader()
-            function sceneDistance(p: vec3) -> float {
-                var color: vec3 = vec3(0.0, 0.0, 0.0);
-                return min(runProgram(p, color), p.y);
-            }
-
             var fragment = glsl.compile({
                 uniforms: ["sampler2D uProgram", "int uCount", "float uBlend", "float uSkip"],
                 functions: ["sdBox", "sdTorus", "sdCylinder", "sdShape", "shapeColor", "shapeRadius", "runProgram", "sceneDistance"]
@@ -7902,17 +7896,12 @@ process.stdout.write("ok\n");
             "smin", "sdRoundBox", "sdCapsule", "sdEllipsoid", "sdSquid", "sdCrab", "sdOctopus", "sdCannon", "sdShield",
             "sdSaucer", "sdShape", "shapeRadius", "cutBlend", "cutDistance", "evalOp", "runProgram"
         };
-        var source = new StringBuilder();
-        // The example's own top-level consts: the K_* / OP_* names its kernels read.
-        foreach (System.Text.RegularExpressions.Match match in System.Text.RegularExpressions.Regex.Matches(
-                     example.Replace("\r\n", "\n"), @"^const (?:OP|K)_\w+ = \d+;\n", System.Text.RegularExpressions.RegexOptions.Multiline))
-        {
-            source.Append(match.Value);
-        }
-
-        source.Append("const FAR = 100000.0;\n\n");
+        // The example's own top-level consts: the K_* / OP_* names and FAR its kernels read.
+        var source = new StringBuilder(ExtractLiteralConsts(example)).Append('\n');
         foreach (var name in kernels)
             source.Append(ExtractShaderFunction(example, name)).Append('\n');
+        // The example tests its shields with pure kernels (next test); this one enters the same
+        // bytecode walk the pixels run, through a kernel that drops the `out` color.
         source.Append("""
             @shader()
             function sceneDistance(p: vec3) -> float {
@@ -7944,6 +7933,102 @@ process.stdout.write("ok\n");
         AppendPointCalls(source, "shieldAt", ShieldPoints);
 
         await AssertMatchesRecorded(source.ToString(), RecordedShieldDistances, "cpuShield");
+    }
+
+    // G23c: the host path of the invaders example itself. shieldDistance loops over the cuts and
+    // calls the shader's own sdShield and cutDistance; cpuShield, which it replaced, recorded the
+    // same numbers.
+    [Fact]
+    public async Task JsTranspiler_EmitsHostTwin_InvadersShieldDistance_MatchesTheRecordedHostTwin()
+    {
+        Assert.True(Tier0JavaScriptRunner.IsAvailable(out var reason), "JavaScript backend unavailable: " + reason);
+
+        var example = File.ReadAllText(PlanningPaths.ResolveRepoFile("Examples", "Games", "three_sdf_invaders.malda"));
+        var source = new StringBuilder(ExtractLiteralConsts(example)).Append('\n');
+        foreach (var name in new[] { "sdRoundBox", "sdShield", "cutBlend", "cutDistance" })
+            source.Append(ExtractShaderFunction(example, name)).Append('\n');
+        source.Append(ExtractNestedHostFunction(example, "shieldDistance")).Append('\n');
+        source.Append("""
+            var sh = { x: 0.5, y: 1.25, z: -2.0, alive: true, cuts: [] };
+            sh.cuts.append({ x: 0.75, y: 1.5, z: -2.0, r: 0.25, heat: 1.0 });
+            sh.cuts.append({ x: 0.25, y: 1.0, z: -1.75, r: 0.375, heat: 0.5 });
+
+            """);
+        foreach (var p in ShieldPoints)
+            source.Append(CultureInfo.InvariantCulture, $"io.print(shieldDistance(sh, {p[0]:R}, {p[1]:R}, {p[2]:R}));\n");
+
+        var output = await Tier0JavaScriptRunner.RunAsync(source.ToString());
+        var lines = output.Replace("\r", string.Empty).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+
+        Assert.Equal(RecordedShieldDistances.Length, lines.Length);
+        for (var i = 0; i < lines.Length; i++)
+        {
+            // Host numbers on both sides (no float32 texture in between): the same to rounding.
+            var actual = double.Parse(lines[i], NumberStyles.Float, CultureInfo.InvariantCulture);
+            Assert.True(Math.Abs(actual - RecordedShieldDistances[i]) <= 1e-12,
+                $"value {i}: shieldDistance gives {lines[i]}, cpuShield recorded {RecordedShieldDistances[i].ToString("R", CultureInfo.InvariantCulture)}.");
+        }
+    }
+
+    // G23c: both examples compile with their kernels as the single source, and the hand-written
+    // host copies are gone.
+    [Fact]
+    public void SdfExamples_CompileWithSingleSourceKernels()
+    {
+        var interpreterPath = PlanningPaths.ResolveRepoFile("Examples", "Games", "three_sdf_interpreter.malda");
+        var interpreter = new Compiler.Compiler().TranspileToJavaScript(interpreterPath);
+        // Picking: the scene walk bound to the material, reading the program texture.
+        Assert.Contains("mlRuntime.glsl.host(__maldaBound_sceneDistance, material, true)", interpreter, StringComparison.Ordinal);
+        Assert.Contains("function __maldaBound_runProgram(__maldaMaterial, p, color) {", interpreter, StringComparison.Ordinal);
+        Assert.Contains("__maldaGlsl.texelFetch(uProgram,", interpreter, StringComparison.Ordinal);
+        // The group builder calls the shader's shapeRadius; the consts reach the GLSL from MALDA.
+        Assert.Contains("function shapeRadius(kind, s) {", interpreter, StringComparison.Ordinal);
+        Assert.Contains("const int OP_UNION = 1;", interpreter, StringComparison.Ordinal);
+        Assert.Contains("const float FAR = 100000.0;", interpreter, StringComparison.Ordinal);
+
+        var invadersPath = PlanningPaths.ResolveRepoFile("Examples", "Games", "three_sdf_invaders.malda");
+        var invaders = new Compiler.Compiler().TranspileToJavaScript(invadersPath);
+        // Shield hits: pure kernels called by name, cuts from host state. No glsl.host here.
+        Assert.Contains("function sdShield(u) {", invaders, StringComparison.Ordinal);
+        Assert.Contains("function cutDistance(d, acc, k) {", invaders, StringComparison.Ordinal);
+        Assert.Contains("function shapeRadius(kind, s) {", invaders, StringComparison.Ordinal);
+        Assert.DoesNotContain("__maldaBound_", invaders, StringComparison.Ordinal);
+        Assert.Contains("const int K_SHIELD = 5;", invaders, StringComparison.Ordinal);
+        Assert.Contains("float cutDistance(float d, float acc, float k) {", invaders, StringComparison.Ordinal);
+
+        foreach (var path in new[] { interpreterPath, invadersPath })
+        {
+            var text = File.ReadAllText(path);
+            foreach (var twin in new[] { "cpuShape", "cpuSceneDistance", "cpuRoundBox", "cpuShield", "boundRadius" })
+                Assert.DoesNotContain(twin, text, StringComparison.Ordinal);
+            // Each const is declared once: no `consts:` list repeats it for the shader.
+            Assert.DoesNotContain("consts:", text, StringComparison.Ordinal);
+        }
+    }
+
+    /// <summary>The top-level <c>const NAME = number;</c> lines of an example, as its kernels read them.</summary>
+    private static string ExtractLiteralConsts(string source)
+    {
+        var consts = new StringBuilder();
+        foreach (System.Text.RegularExpressions.Match match in System.Text.RegularExpressions.Regex.Matches(
+                     source.Replace("\r\n", "\n"), @"^const \w+ = -?[\d.]+;\n", System.Text.RegularExpressions.RegexOptions.Multiline))
+        {
+            consts.Append(match.Value);
+        }
+
+        Assert.True(consts.Length > 0, "The example declares no top-level literal consts.");
+        return consts.ToString();
+    }
+
+    /// <summary>A host function nested one level deep in an example (<c>    function name(...) { ... }</c>), dedented.</summary>
+    private static string ExtractNestedHostFunction(string source, string name)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(
+            source.Replace("\r\n", "\n"),
+            @"^    function " + name + @"\(.*?^    \}\n",
+            System.Text.RegularExpressions.RegexOptions.Multiline | System.Text.RegularExpressions.RegexOptions.Singleline);
+        Assert.True(match.Success, $"host function '{name}' was not found in the example.");
+        return string.Join("\n", match.Value.Split('\n').Select(line => line.StartsWith("    ", StringComparison.Ordinal) ? line[4..] : line));
     }
 
     private static void AppendPointCalls(StringBuilder source, string function, double[][] points)

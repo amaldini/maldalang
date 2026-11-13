@@ -898,7 +898,7 @@ how they look and play is the maintainer's `malda play` check on a real GPU.
   its loop over `sh.cuts` and calls the shader's own `sdShield` for the slab
   and a new small kernel for one cut, which `evalOp` calls too. The compiled
   GLSL must compute the same cut as before.
-- [ ] **5. Tests.** The G23a / G23b tests that read kernels from the examples
+- [x] **5. Tests.** The G23a / G23b tests that read kernels from the examples
   (`…SdfKernelsOfTheExamples_MatchReferenceValues`,
   `…MatchesTheRecordedHostTwin`) use the examples' own `sceneDistance` /
   shield kernels where they added their own; the recorded values do not
