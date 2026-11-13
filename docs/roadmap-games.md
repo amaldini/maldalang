@@ -712,8 +712,8 @@ what the player sees. MALDA owns both emitters, so one function can feed both.
 | **G23c** Examples + docs | Convert both SDF examples to the single source and delete the twins; chapter 28.10.1 gains a "Calling a kernel from the host" section | the "mirrors …" comments |
 
 G23a landed first and is useful alone. G23b landed with the binding shape and
-the source of consts decided in the open questions. G23c needs its own
-checklist.
+the source of consts decided in the open questions. G23c has its
+checklist below.
 
 **Guardrails**
 
@@ -869,6 +869,62 @@ Confirmed with the checklist (2026-11-13):
   textures stay GPU-only.
 - Step 6 widens the G23a guardrail on `out`: an error on the function the host
   enters, allowed between kernels.
+
+**Progress (G23c)** — approved 2026-11-13. One step per PR-sized commit;
+tick the box in the same commit. The examples change here, so every step that
+touches one ends with `malda compile --mode js` of both and the filtered tests;
+how they look and play is the maintainer's `malda play` check on a real GPU.
+
+- [ ] **1. Interpreter example: one set of consts.** In
+  `three_sdf_interpreter.malda` delete the `consts:` strings that repeat a
+  top-level MALDA `const` (`OP_UNION`, `OP_CUT`, `OP_GROUP`) and declare the
+  others (`MAX_CAND`, `FAR`) as MALDA consts. The compiled GLSL must differ
+  only in the order of its `const` lines.
+- [ ] **2. Interpreter example: picking through `glsl.host`.** Add a
+  `sceneDistance(p)` kernel that calls `runProgram`, drops its `out` color and
+  takes the floor (`min(d, p.y)`), bind it with `glsl.host("sceneDistance",
+  material)` and delete `cpuSceneDistance`. The pick reads the program as last
+  uploaded: check that `three.updateDataTexture` and the `uCount` / `uBlend` /
+  `uSkip` uniforms are current when the mouse ray is marched, and move the
+  upload before the pick if they are not.
+- [ ] **3. Invaders example: one set of consts, and `boundRadius`.** In
+  `three_sdf_invaders.malda` delete the duplicated `K_*` / `OP_*` strings and
+  move `MAX_CAND`, `MAX_GLOW`, `GLOW_R`, `FAR` to MALDA consts, then replace
+  the host `boundRadius` with calls to `shapeRadius` (parked from G23a).
+- [ ] **4. Invaders example: the shield test.** Replace the formulas of
+  `cpuShield` with shared pure kernels, per the decision below: the host keeps
+  its loop over `sh.cuts` and calls the shader's own `sdShield` for the slab
+  and a new small kernel for one cut, which `evalOp` calls too. The compiled
+  GLSL must compute the same cut as before.
+- [ ] **5. Tests.** The G23a / G23b tests that read kernels from the examples
+  (`…SdfKernelsOfTheExamples_MatchReferenceValues`,
+  `…MatchesTheRecordedHostTwin`) use the examples' own `sceneDistance` /
+  shield kernels where they added their own; the recorded values do not
+  change. `ExamplesParseGuardTests` and `ExamplesStyleGuardTests` green.
+- [ ] **6. Docs.** Remove the "mirrors … on the host" comments and the header
+  comments that name the deleted twins; chapter 28.10.1 (+
+  `ReferenceManual/it/`) and `docs/javascript-backend.md` name what each
+  example now shows; the table at the top of this section becomes history; a
+  `docs/spec/CHANGELOG.md` Unreleased row. `ReferenceManual` tests green.
+- [ ] **7. Close G23.** Mark the slice and the workstream landed here, in the
+  priority table and in the one-line pointers (`AGENTS.md`, `llms.txt`,
+  `docs/architecture.md`). Both examples need the maintainer's `malda play`
+  run before this box is ticked.
+
+**How the host tests a shield** — *decided 2026-11-13:* shared pure kernels,
+cuts from host state. Same formulas on both sides, the same timing as today (a
+cut made this frame is seen at once, which the invader overrun loop relies
+on), no texture round trip. `glsl.host` is not used in the invaders example;
+the interpreter example exercises it. The alternative, running the shield's
+own instructions from the uploaded bytecode through `glsl.host`, is dropped:
+the host would see a cut only after the next `three.updateDataTexture`.
+
+Known gap, not needed by these examples: `glsl.compile` writes a MALDA const
+when a function names it in an expression. A const that appears only as an
+array size in a type hint (`var cand: int[MAX_CAND];`) is not seen. Both
+examples also compare against `MAX_CAND` / `MAX_GLOW` in the same function, so
+they are written; a kernel that only sizes an array with one still needs the
+`consts` string.
 
 **Files:** `MaldaLang.Compiler/GlslTranspiler.cs` (type pass, shared with the
 host emit), `JsTranspiler.Shaders.cs` (collect host calls, emit twins),
