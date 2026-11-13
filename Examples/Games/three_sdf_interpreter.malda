@@ -366,13 +366,8 @@ var fragmentShader = glsl.compile({
         "float uTanHalf",
         "float uAspect"
     ],
-    consts: [
-        "int OP_UNION = 1",
-        "int OP_CUT = 2",
-        "int OP_GROUP = 3",
-        "int MAX_CAND = 24",
-        "float FAR = 100000.0"
-    ],
+    // No consts list: the kernels read the MALDA consts below, and the compiler writes them
+    // into the GLSL.
     functions: [
         "sdBox",
         "sdTorus",
@@ -390,9 +385,13 @@ var fragmentShader = glsl.compile({
     main: "fragmentMain"
 });
 
+// Read by the host and by the shader kernels: one declaration for both.
 const OP_UNION = 1;
 const OP_CUT = 2;
 const OP_GROUP = 3;
+// Shapes a ray keeps in its local list before it falls back to the whole program.
+const MAX_CAND = 24;
+const FAR = 100000.0;
 // A group with this many shapes or fewer lists them; a bigger one splits in two.
 const GROUP_LEAF = 4;
 const MAX_OPS = 384;

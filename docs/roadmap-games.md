@@ -875,11 +875,13 @@ tick the box in the same commit. The examples change here, so every step that
 touches one ends with `malda compile --mode js` of both and the filtered tests;
 how they look and play is the maintainer's `malda play` check on a real GPU.
 
-- [ ] **1. Interpreter example: one set of consts.** In
+- [x] **1. Interpreter example: one set of consts.** In
   `three_sdf_interpreter.malda` delete the `consts:` strings that repeat a
   top-level MALDA `const` (`OP_UNION`, `OP_CUT`, `OP_GROUP`) and declare the
   others (`MAX_CAND`, `FAR`) as MALDA consts. The compiled GLSL must differ
-  only in the order of its `const` lines.
+  only in the order of its `const` lines. (As landed: the same lines in the
+  same order, minus `const int OP_CUT = 2;`, which no kernel names: a cut is
+  the `else` of a union.)
 - [ ] **2. Interpreter example: picking through `glsl.host`.** Add a
   `sceneDistance(p)` kernel that calls `runProgram`, drops its `out` color and
   takes the floor (`min(d, p.y)`), bind it with `glsl.host("sceneDistance",
