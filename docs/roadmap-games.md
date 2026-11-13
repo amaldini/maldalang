@@ -889,7 +889,7 @@ how they look and play is the maintainer's `malda play` check on a real GPU.
   uploaded: check that `three.updateDataTexture` and the `uCount` / `uBlend` /
   `uSkip` uniforms are current when the mouse ray is marched, and move the
   upload before the pick if they are not.
-- [ ] **3. Invaders example: one set of consts, and `boundRadius`.** In
+- [x] **3. Invaders example: one set of consts, and `boundRadius`.** In
   `three_sdf_invaders.malda` delete the duplicated `K_*` / `OP_*` strings and
   move `MAX_CAND`, `MAX_GLOW`, `GLOW_R`, `FAR` to MALDA consts, then replace
   the host `boundRadius` with calls to `shapeRadius` (parked from G23a).

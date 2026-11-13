@@ -224,7 +224,7 @@ function sdShape(kind: int, q: vec3, s: float, ext: vec4, col: out vec4) -> floa
     return d * s;
 }
 
-// Radius of a sphere around the shape (mirrors boundRadius on the host).
+// Radius of a sphere around the shape. The host calls it too, when it builds the groups.
 @shader()
 function shapeRadius(kind: int, s: float) -> float {
     if (kind == K_SPHERE) {
@@ -752,25 +752,8 @@ var fragmentShader = glsl.compile({
         "float uFlash",
         "vec3 uFlashColor"
     ],
-    consts: [
-        "int OP_UNION = 1",
-        "int OP_CUT = 2",
-        "int OP_GROUP = 3",
-        "int K_SPHERE = 0",
-        "int K_SQUID = 1",
-        "int K_CRAB = 2",
-        "int K_OCTOPUS = 3",
-        "int K_CANNON = 4",
-        "int K_SHIELD = 5",
-        "int K_LASER = 6",
-        "int K_BOMB = 7",
-        "int K_SAUCER = 8",
-        "int K_RING = 9",
-        "int MAX_CAND = 24",
-        "int MAX_GLOW = 6",
-        "float GLOW_R = 2.2",
-        "float FAR = 100000.0"
-    ],
+    // No consts list: the kernels read the MALDA consts below, and the compiler writes them
+    // into the GLSL.
     functions: [
         "hash3",
         "smin",
@@ -806,6 +789,7 @@ var postShader = glsl.compile({
     main: "postMain"
 });
 
+// Read by the host and by the shader kernels: one declaration for both.
 const OP_UNION = 1;
 const OP_CUT = 2;
 const OP_GROUP = 3;
@@ -819,7 +803,11 @@ const K_LASER = 6;
 const K_BOMB = 7;
 const K_SAUCER = 8;
 const K_RING = 9;
+// Shapes and halos a ray keeps in its local lists before it falls back to the whole program.
+const MAX_CAND = 24;
+const MAX_GLOW = 6;
 const GLOW_R = 2.2;
+const FAR = 100000.0;
 // A group with this many shapes or fewer lists them; a bigger one splits in two.
 const GROUP_LEAF = 4;
 const MAX_OPS = 640;
@@ -903,23 +891,6 @@ if (root == null) {
     var boxMax = [-1, -1, -1];
     var uploads = 0;
 
-    // Radius of a sphere around the shape (mirrors shapeRadius in the shader).
-    function boundRadius(kind, size) {
-        if (kind == K_SPHERE) {
-            return size;
-        }
-        if (kind == K_RING) {
-            return size + 0.06;
-        }
-        if (kind == K_LASER || kind == K_BOMB) {
-            return size * 0.5;
-        }
-        if (kind == K_SHIELD) {
-            return size * 1.17;
-        }
-        return size * 1.3;
-    }
-
     function writeOp(index, op, kind, jump, k, x, y, z, s, e0, e1, e2, e3) {
         var base = index * 12;
         program[base] = op;
@@ -949,7 +920,7 @@ if (root == null) {
     // A shape for the group tree. r is how far from its center a ray must stay to ignore it: the
     // bound plus the blend, plus GLOW_R when it casts a halo.
     function item(kind, k, x, y, z, s, e0, e1, e2, e3) {
-        var r = boundRadius(kind, s) + k;
+        var r = shapeRadius(kind, s) + k;
         if (e3 > 0 && kind != K_RING) {
             r = math.max(r, GLOW_R);
         }
@@ -1368,7 +1339,7 @@ if (root == null) {
             if (!sh.alive) {
                 continue;
             }
-            var reach = boundRadius(K_SHIELD, SHIELD_SIZE) + 0.05;
+            var reach = shapeRadius(K_SHIELD, SHIELD_SIZE) + 0.05;
             var groupAt = opCount;
             opCount = opCount + 1;
             writeOp(opCount, OP_UNION, K_SHIELD, 0, 0.02, sh.x, sh.y, sh.z, SHIELD_SIZE, 0, 0, 0, 0);
