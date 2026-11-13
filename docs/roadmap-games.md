@@ -882,7 +882,7 @@ how they look and play is the maintainer's `malda play` check on a real GPU.
   only in the order of its `const` lines. (As landed: the same lines in the
   same order, minus `const int OP_CUT = 2;`, which no kernel names: a cut is
   the `else` of a union.)
-- [ ] **2. Interpreter example: picking through `glsl.host`.** Add a
+- [x] **2. Interpreter example: picking through `glsl.host`.** Add a
   `sceneDistance(p)` kernel that calls `runProgram`, drops its `out` color and
   takes the floor (`min(d, p.y)`), bind it with `glsl.host("sceneDistance",
   material)` and delete `cpuSceneDistance`. The pick reads the program as last

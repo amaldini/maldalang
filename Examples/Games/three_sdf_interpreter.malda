@@ -18,7 +18,8 @@
 // Shapes away from the ray can neither be hit nor bend the surface where it is hit, so every
 // march step then runs only those few. B turns the culling off to compare. Rays also march only
 // inside the box around the shapes, and the floor is hit analytically.
-// The same bytecode runs on the host (cpuSceneDistance) to find the surface under the mouse.
+// The host finds the surface under the mouse with the same kernels: glsl.host binds
+// sceneDistance to the material, and the compiler also emits it as JavaScript.
 //
 // Controls: click drops the current tool on the surface. 1-4 pick sphere / box / torus / cylinder,
 // X toggles add / cut, Backspace undoes, [ ] change the blend, B toggles the ray culling,
@@ -135,6 +136,14 @@ function runProgram(p: vec3, color: out vec3) -> float {
     }
     color = tint;
     return acc;
+}
+
+// The scene at a point, with the floor, for the host: it cannot receive `out`, so it enters
+// here. Bound to the material with glsl.host, it walks the uProgram texture the pixels walk.
+@shader()
+function sceneDistance(p: vec3) -> float {
+    var color: vec3 = vec3(0.0, 0.0, 0.0);
+    return min(runProgram(p, color), p.y);
 }
 
 // The box around every shape (from the host): rays march only inside it.
@@ -613,47 +622,10 @@ if (root == null) {
         addObject(1, 3.2, 0.9, -3.2, 0.55, true);
     }
 
-    // ---- the same bytecode on the host (reference interpreter, used for picking) ----
-    // sdShape and shapeRadius are the shader's own functions: the compiler also emits them as
-    // JavaScript because the host calls them here.
+    // ---- picking: the shader's own scene walk, run on the host ----
 
-    function cpuSceneDistance(x, y, z) {
-        var acc = 100000.0;
-        var i = 0;
-        while (i < opCount) {
-            var base = i * 8;
-            var op = int(program[base]);
-            var qx = x - program[base + 4];
-            var qy = y - program[base + 5];
-            var qz = z - program[base + 6];
-            var centerDistance = math.sqrt(qx * qx + qy * qy + qz * qz);
-            if (op == OP_GROUP) {
-                if (skipOn && centerDistance - program[base + 7] > acc + blend) {
-                    i = int(program[base + 2]);
-                    continue;
-                }
-            } else {
-                var kind = int(program[base + 1]);
-                var k = math.max(program[base + 3], 0.0001);
-                var bound = centerDistance - shapeRadius(kind, program[base + 7]);
-                if (op == OP_UNION) {
-                    if (!skipOn || bound < acc + k) {
-                        var d = sdShape(kind, [qx, qy, qz], program[base + 7]);
-                        var h = math.clamp(0.5 + 0.5 * (d - acc) / k, 0.0, 1.0);
-                        acc = d + (acc - d) * h - k * h * (1.0 - h);
-                    }
-                } else if (!skipOn || bound < k - acc) {
-                    var c = sdShape(kind, [qx, qy, qz], program[base + 7]);
-                    var hc = math.clamp(0.5 + 0.5 * (c + acc) / k, 0.0, 1.0);
-                    acc = 0.0 - c + (acc + c) * hc + k * hc * (1.0 - hc);
-                }
-            }
-            i = i + 1;
-        }
-        return math.min(acc, y);
-    }
-
-    // March the mouse ray on the host; returns [x, y, z] of the hit, or null.
+    // March the mouse ray on the host; returns [x, y, z] of the hit, or null. sceneAt reads the
+    // program texture and the uniforms of the material as they are now.
     function pickSurface(mx, my) {
         var ndcX = (mx / width) * 2.0 - 1.0;
         var ndcY = 1.0 - (my / height) * 2.0;
@@ -668,7 +640,7 @@ if (root == null) {
         // with t. A ray that grazes a surface may run out of steps close to it: still a hit.
         var t = 0.0;
         for (var step = 0; step < 128; step++) {
-            var d = cpuSceneDistance(camX + dx * t, camY + dy * t, camZ + dz * t);
+            var d = sceneAt([camX + dx * t, camY + dy * t, camZ + dz * t]);
             if (d < 0.0005 + 0.0008 * t) {
                 break;
             }
@@ -734,6 +706,21 @@ if (root == null) {
         }
     });
     three.add(scene, three.createMesh(three.createPlaneGeometry(2, 2), material));
+
+    // The sceneDistance kernel as a host function, reading this material.
+    var sceneAt = glsl.host("sceneDistance", material);
+
+    // Only data changes: rewrite the program texture, never the shader.
+    function uploadProgram() {
+        buildProgram();
+        three.updateDataTexture(programTexture, program);
+        three.setUniform(material, "uCount", opCount);
+        three.setUniform(material, "uBlend", blend);
+        three.setUniform(material, "uBoxMin", boxMin);
+        three.setUniform(material, "uBoxMax", boxMax);
+        uploads = uploads + 1;
+        dirty = false;
+    }
 
     var statusMs = 0.0;
 
@@ -816,6 +803,10 @@ if (root == null) {
             var mx = three.getMouseX();
             var my = three.getMouseY();
             if (mx >= 0 && my >= 0 && mx < width && my < height) {
+                // The pick reads the uploaded program: send an edit made in this same frame first.
+                if (dirty) {
+                    uploadProgram();
+                }
                 var hitPoint = pickSurface(mx, my);
                 if (hitPoint != null) {
                     var size = 0.45;
@@ -827,16 +818,8 @@ if (root == null) {
             }
         }
 
-        // Only data changes: rewrite the program texture, never the shader.
         if (dirty || motionOn) {
-            buildProgram();
-            three.updateDataTexture(programTexture, program);
-            three.setUniform(material, "uCount", opCount);
-            three.setUniform(material, "uBlend", blend);
-            three.setUniform(material, "uBoxMin", boxMin);
-            three.setUniform(material, "uBoxMax", boxMax);
-            uploads = uploads + 1;
-            dirty = false;
+            uploadProgram();
         }
 
         three.setUniform(material, "uCamPos", [camX, camY, camZ]);
