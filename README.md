@@ -80,7 +80,7 @@ The largest showcases were written entirely by coding agents, even though MALDA 
 model's training data, because [`docs/llm/`](docs/llm/) ships a compact language pack for that
 reader: **`Examples/Agents/secondbrain_semantic.malda`** (~7,600 lines with shared libs),
 **`Examples/RalphWiggum/`** (~4,300 lines), and the games in
-[`Examples/Games`](Examples/Games) (~29,000 lines; the largest,
+[`Examples/Games`](Examples/Games) (~32,000 lines; the largest,
 **`three_shader_race_traffic.malda`**, is ~5,800). Guard tests, the conformance matrix, and executed
 reference-manual snippets keep those claims checkable.
 
